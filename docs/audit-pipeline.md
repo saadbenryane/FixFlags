@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: architecture
-reviewed_at: 2026-10-12
+reviewed_at: 2026-10-27
 supersedes: []
 ---
 
@@ -37,6 +37,18 @@ Google worker fixture checks agreement with current Site Flags and run results,
 retains the original history after independent repair, and checks recurrence.
 Provider responses in this fixture are simulated; this does not establish live
 Google acceptance.
+Per-check Google reads retain their Site owner, property and authorization grant
+through evidence commit. Project and connection locks serialize that comparison
+with transfer, disconnect and replacement. A changed grant records unknown
+evidence without committing indexing or performance facts or certifying repair.
+The legacy account connection follows the same rule; its refresh write compares
+the admitted credential and active owner, and returns the resulting grant with
+the token. Normal access-token refresh and provider-issued refresh-token rotation
+remain usable. Previously committed receipts remain immutable history. Migrated
+PostgreSQL fixtures reproduce in-flight grant changes, refused stale refresh
+writes, normal refresh and historical replay; the installed worker fixture
+separately retains indexed-version repair and recurrence. These are local proofs,
+with controlled provider responses.
 Local worker acceptance covers Search rechecks, Security repair and recurrence;
 live-provider and production acceptance remain separate requirements.
 
@@ -79,6 +91,22 @@ the current saved cadence. Pause retains that cadence without depending on
 Redis or account-policy availability. Disposable PostgreSQL fixtures exercise
 concurrent transfer, removal, suspension and cadence edits, plus rollback of
 both writes after a real database constraint failure.
+
+`Project.watchPausedAt` records explicit monitoring intent independently of
+the next analysis time. Pause disables the uptime monitor and revokes its probe
+lease in the same transaction. Scheduling, admission, current status, completion
+recovery and both alert paths honor that intent. Late probe results cannot
+publish after pause, and incidents stay open until a fresh observation after
+resume proves recovery. Basic uptime continues through an allowance-limited or
+halted analysis clock when the Site is not explicitly paused. Owner restoration
+of a removed Site clears pause through default admission. The additive migration
+preserves known explicit pause markers and leaves quota and absent-clock states
+unpaused; its timestamp is a migration baseline, not historical provenance.
+Disposable database fixtures exercise the real pause command, retained cadence,
+queued and active probes, incident continuity, stale alert claims and migration.
+Site home and list use the same explicit intent for their existing paused state.
+A quota-limited or halted analysis clock retains its existing quota or delayed
+state while uptime remains active, rather than describing the whole Site as paused.
 
 Operator reconciliation checks its scoped grant before scheduler changes and
 passes the operator through scheduled admission. A new RunRequest records the
@@ -138,6 +166,66 @@ selected contexts. Disposable database fixtures exercise inactive owners,
 in-flight lifecycle changes and per-connection persistence failures. These local
 fixtures do not establish real Google acceptance or notification delivery.
 
+Google OAuth completion now owns Site admission in the connection application
+code. After code exchange, its credential write rechecks the admitted owner,
+active account, non-deleted Site and original URL and hostname in one short
+transaction. Refresh and context publication carry the expected owner from
+their admitting route, Search check or scheduler selection. Account and Site
+locks follow User, Project, connection order and retain permission through the
+credential or fact commit. Provider calls remain outside those transactions.
+Changed ownership cannot admit a cached token, rotate an older credential,
+or replace dated context from an in-flight read. Disposable database fixtures
+reproduce refused initial and replacement OAuth grants, ownership changes during
+refresh and collection, removal, suspension and target changes. Existing scoped
+Search and Analytics behavior and historical facts remain intact. These are
+local permission and persistence checks, not real-provider authorization proof.
+
+Site Google connections also retain the authorizing owner separately from the
+Site's current owner. Cached-token reads, refreshes, context writes, per-check
+Search admission and disconnect compare both identities. A transferred Site
+cannot borrow the former owner's grant or display that owner's retained provider
+context. Upkeep joins grant and Site ownership before its batch limit, preserving
+progress for eligible connections. A fresh OAuth callback can bind the new owner,
+but resets the old property identity and observation date before any new context
+is published. Retained facts stay in storage until ordinary successful refresh
+replaces that projection; a failed new-owner refresh cannot relabel them.
+
+Migration `20261026170000_site_connection_authorizer` binds existing grants to the
+current ownership baseline without changing tokens or facts. This preserves the
+previous connection contract; it does not reconstruct original authorization
+provenance. Authorizer erasure removes that binding. Disposable PostgreSQL fixtures
+apply the exact migration to legacy-shaped tables, verify cached and expired
+grant refusal on both providers, fresh-owner reconnection and bounded upkeep.
+The existing native Search repair and recurrence cycle passes with the bound
+grant. These are local checks; migration rollout and real Google acceptance
+remain external verification requirements.
+
+Site Google token admission compares the admitted refresh grant and current
+owner, then reads its latest credential. Independent index, performance and
+context workers can reuse an already committed renewal. Refresh writes still
+compare the selected credential and cannot replace a newer token. A losing
+write or competing provider refusal only reuses a sufficiently fresh credential
+for that same grant and owner; changed grants, revocation and inactive owners
+remain refused. Disposable database fixtures reproduce simultaneous index and
+performance admission and delayed successful, rejected and malformed refreshes.
+The native Search worker cycle starts with expired credentials and retains all
+four page/module receipts before exercising failure, repair and recurrence.
+No provider operation or waiting worker holds a database transaction open.
+
+OAuth and report responses share bounded Google response parsing and typed
+failure classification. Token-service outages, quotas and malformed credentials
+cannot become invented authorization expiry. Search admission retains provider
+retry guidance for both Site and legacy credentials; transient attempts use the
+existing worker retry path before committing a final observation. The native
+worker fixture observes a token-service failure, resumes without reconnection,
+and then completes the existing Search evidence, repair and recurrence cycle.
+Manual refresh returns a retryable failure without changing permission. Context
+upkeep retains dated facts and requires reauthentication only for an explicit
+grant or permission refusal, never words or status digits in an exception.
+Compatibility token-only readers retain their nullable response while the
+evidence reader preserves failure meaning. These are controlled local provider
+responses, not live Google outage or authorization proof.
+
 Analytics property selection follows account-summary and data-stream pagination
 and stops at the first stream on the Site's hostname aliases. It no longer
 returns a partial list of twenty properties as a complete catalog. Refresh of a
@@ -193,6 +281,25 @@ effects or terminate arbitrary JavaScript; collectors retain their physical
 resource deadlines, and protected retries still require reconciliation before
 another effect. Disposable worker fixtures verify queue progress, late-write
 denial, transaction rollback, exhausted retries and protected reconciliation.
+
+Public HTTP collection also follows the owning execution's cancellation through
+capacity admission, DNS validation, redirects, response reads and gzip decoding.
+Canceled requests leave the shared queue or close their active transport without
+becoming a website timeout finding. Parser cancellation retires the worker before
+releasing its single physical slot, so an obsolete response cannot satisfy a
+later request. PageSpeed tasks pass the same execution signal to their existing
+provider transport; canceled attempts cannot replace cached measurements with a
+failure sentinel. Native HTTP and parser fixtures and disposable PostgreSQL,
+Redis and worker fixtures exercise cancellation, task replacement, retained
+incomplete work and independent subsequent observations. Provider responses are
+controlled locally; these results do not establish production acceptance.
+The shared AI SDK transport also inherits execution cancellation for every
+triage, prescription and journey consumer. Its application retry runner cancels
+backoff and refuses further attempts or provider fallback after ownership ends.
+Installed OpenAI and Anthropic SDKs against local HTTP fixtures verify transport
+closure and a later independent request. Existing provider-consumption custody
+remains authoritative; transport cancellation does not prove that a provider
+stopped computation or incurred no charge.
 
 Progressive graph admission uses a bounded cross-worker window, independently of
 legacy whole-audit concurrency. `AUDIT_ACTIVE_GRAPH_LIMIT` defaults to eight;
@@ -300,6 +407,26 @@ only the handoff note preserves the grant and active work. Completed reports
 retain their original encrypted evidence. Unversioned credential snapshots
 require a matching live legacy Site grant; absent or unreadable access fails
 closed. These records reuse existing encrypted storage and execution metadata.
+
+Saved access also retains the owner who supplied or revoked that decision.
+Ownership changes do not transfer executable credentials. Fresh admissions use
+public access until the new owner supplies credentials, while previously
+borrowed snapshots fail the shared execution resolver. Explicit one-off access
+retains its independent scope. Supplying even identical credentials under a new
+owner rotates the grant reference and cannot revive old borrowed work. Settings
+read the same grant envelope and revocation marker as execution, so removing
+access is unconfigured rather than an unreadable-secret error. New credential
+writes use User then Site locks and require an active account; revocation remains
+available after suspension or erasure begins.
+
+Migration `20261026173000_scan_access_authorizer` preserves retained decisions
+under their current owner baseline without reencrypting secrets or rewriting
+Audit evidence. It does not reconstruct historical authorization provenance.
+Disposable database fixtures apply the exact migration to legacy-shaped tables,
+exercise removal, ownership, unreadable owned access, snapshot refusal and
+inactive-account revocation. The existing native worker fixture still uses
+current authorized Site access independently of its parent snapshot. Production
+migration and private-site acceptance remain separate requirements.
 
 Browser Basic authentication and custom headers, and separately fetched flow
 destinations, use the approved origin. Default cookies keep that origin's host;
@@ -564,6 +691,20 @@ and CLS incidents through absent and errored measurements, then verifies genuine
 repair from fresh controlled measurements. It does not prove real-provider
 behavior or an immediate field-data improvement.
 
+Fresh CrUX cohorts must match the requested page or the provider-recorded final
+page. Page records compare protocol, host, port and pathname; origin records
+must identify a matching origin itself. Credential-bearing and unrelated
+records cannot supply field metrics or INP findings. This field identity follows
+[CrUX page aggregation](https://developer.chrome.com/docs/crux/methodology#page-eligibility),
+which removes query strings and fragments, without changing exact live-page
+verification scope. Each accepted cohort retains its own original reported URL
+and page/origin classification. Invalid field context does not discard an
+independent lab score, LCP or CLS measurement. Existing stored evidence remains
+readable. Focused provider-response cases and a disposable worker fixture
+exercise withheld foreign page/origin metrics, retained lab facts and the
+continued refusal to certify an immediate repair from rolling INP data.
+Controlled provider responses do not establish live Google measurement proof.
+
 Page summaries retain incomplete module receipts alongside failed tasks in both
 execution adapters. Progressive reads obtain bounded module identifiers and map
 redirected observations through their owning task; they do not transfer another
@@ -693,8 +834,16 @@ unavailable. Missing conditions can still supply observed measurements, but
 cannot certify a repair. Historical findings without these conditions remain
 inconclusive. The same comparison governs explicit verification and Watch
 recovery, with a separate original scope for every affected page. Provider
-timestamps remain provenance, without establishing immediate field recovery or
-real-provider freshness. These fields follow the
+timestamps retain their provider provenance. Each request also records its local
+start and receipt times. Lab scores, resources and mobile tap targets certify
+repair only when the reported fetch time falls inside that request window.
+Old, future, missing or historically unrecorded timing leaves assertions incomplete
+and recovery unverified while retaining the measured numbers and findings.
+Requalifying an already scoped context applies the same current timing check.
+Controlled worker fixtures reproduce a day-old response that previously marked
+a repair Improved, then verify refusal, fresh recovery and recurrence. This
+timestamp check does not establish immediate field recovery or production
+provider acceptance. These fields follow the
 [PageSpeed response contract](https://developers.google.com/speed/docs/insights/v5/reference/pagespeedapi/runpagespeed).
 Detection and proof share one resource policy with the existing savings thresholds
 and units. New findings retain each failed provider audit, original page, device,
@@ -783,6 +932,17 @@ proof before the Flag closes. Removed links, changed destinations and access
 restrictions remain inconclusive. Recurrence reopens the existing Improvement
 and preserves the original Flag's resolution.
 
+Public GET missing-page interpretation uses the shared scripting-enabled HTML
+parser. Script and style text, dormant template and noscript contents, and SVG
+title nodes cannot supply a page headline or missing-page prose. Active text is
+entity-decoded before applying the existing missing-page wording rules. This
+removes the separate raw-tag stripping and title regex. Public-link response v2
+records that interpretation in its comparison identity; historical raw-text
+observations remain separate and cannot treat a detector correction as repair.
+The native application and worker fixture retains actual HTTP errors, active
+HTTP-200 missing pages, blocked and removed destinations, independent repair
+through dormant error markup, and recurrence with the same Improvement.
+
 Discovery and targeted public-link repair read the existing bounded native anchor
 section independently of whole-document metadata. They share its captured
 `document.baseURI`, decoded hrefs and the existing URL eligibility, depth and GET
@@ -863,6 +1023,13 @@ The Audit coordinator admits a validated dependency graph and returns. Existing
 `AuditVerifierExecution` rows checkpoint work; append-only `AuditPipelineEvent`
 facts record claims, attempts, committed observations and terminal limitations.
 The task token, generation, lease and Audit recovery deadline fence publication.
+The source Audit must also belong to the Site's current owner. Coordinator and
+task claims, guarded writes, lease renewal and the read-only resource watch share
+that authority rule. Stale deliveries cannot consume another execution attempt. The
+Site lock remains held through publication, while the watch closes native work
+after transfer without waiting for renewal. Cleanup may outlive Site removal or
+account deactivation, but cannot acquire a new owner's authority. Anonymous
+claiming keeps the original execution when the Audit and Site owners agree.
 Queue delivery completion is not analysis completion.
 Public category admission requires a live worker with support for its scope,
 without requiring every collector to be healthy. Browser tasks retain their
@@ -1175,6 +1342,16 @@ background. An indistinguishable outline cannot establish focus visibility.
 Patterned backgrounds, clipping, translucent effects and unresolved dark canvas
 colors remain inconclusive. Native fixtures verify a contrasting repair, and the
 worker fixture exercises the same-color failure through targeted recovery.
+Focus profiles also normalize unpainted borders, zero-area element and generated
+backgrounds, and text-decoration colors without a drawn line. Visible border
+patterns, colors, text decoration and generated backgrounds retain their observed
+changes. New native observations record `painted-properties-v2` in the focus
+comparison identity. Historical focus evidence keeps its original identity;
+navigation and popup behavior keep their existing scope. Native fixtures
+reproduce the invisible-declaration false passes. The application and worker
+fixture retains the failure through an ineffective repair, then independently
+verifies the contrasting outline. Component repair and recurrence use the same
+collector and comparison.
 Computed focus styles do not certify visual contrast or every custom effect. Accessibility cards cannot
 use a completed axe receipt or successful subset to conceal unfinished keyboard
 scope in the current task plan.
@@ -1253,6 +1430,37 @@ setup consent. Authorization requires a successful exact-version receipt with pr
 cleanup. Settings show pending, recovery and incomplete states from recorded work;
 reads do not initiate execution or cleanup. Setup-only Audits do not replace Site
 report evidence or enter report comparison and Improvement learning.
+
+Safe Form configuration now retains its supplying owner independently of later
+Site ownership. Fixture writes lock User then Site, check the expected owner,
+and normalize against the current locked Site URL. Creation, replacement and
+authorization require an active account. Revocation and deletion remain
+available after suspension or erasure begins. A new owner must replace the
+configuration and establish a fresh exact-version dry run before authorizing it.
+Fixture views, setup admission, native request permission and current Outcome
+comparability use that same ownership fact. Historical configuration and proof
+stay stored without becoming the new owner's executable permission. Outcome
+binding changes compare Site ownership and fixture authority inside their write
+transaction, preventing stale reads from installing a binding after transfer.
+
+Cleanup reconciliation selects unsettled operations before its limit. A newer
+completed operation cannot hide an older unresolved one. Receipts match operation,
+Site, fixture and version, even when a later recovery Audit records settlement.
+Two bounded cleanup calls may run per reconciliation; remaining operations keep
+replay unavailable. The recorded submission permits only cleanup through the
+unchanged fixture, including setup-only operations after account deactivation.
+It cannot authorize another reset or submission, which still require live
+consent. Changed-version hooks remain unavailable for an old operation.
+
+Migration `20261026180000_fixture_configuration_owner` preserves retained
+configuration under the current ownership baseline without reconstructing its
+historical authorizer. Erasure nulls that binding. Partial indexes keep submission
+and cleanup lookup separate from unrelated observation events. The exact migration
+and ownership changes have disposable PostgreSQL proof. Native local hooks verify
+that unrelated cleanup cannot grant replay and that owed cleanup survives account
+deactivation. The real Signup worker cycle retains setup, confirmation, failure,
+cleanup uncertainty, independent repair and recurrence. These are local results;
+production migration and real-site hook acceptance remain separate requirements.
 
 Completion readers project metadata, media references and result artifacts in
 PostgreSQL, without transferring collected HTML, sitemap bodies or browser traces.
@@ -1502,7 +1710,11 @@ These observations cover recorded windows, not every later interaction or
 JavaScript execution state.
 Accessibility collection retains each actual axe rule's passed, failed,
 unresolved or inapplicable outcome, with engine version and the desktop capture
-scope. The shared Accessibility evaluator consumes native rule evidence even
+scope. The target-size responsibility also runs in the native mobile profile,
+including Accessibility-only runs and focused target-size verification. Its
+snapshot, element evidence and assertions retain the mobile profile separately.
+A desktop pass cannot certify a mobile repair, and an admitted mobile capture
+without valid rule outcomes remains incomplete. The shared Accessibility evaluator consumes native rule evidence even
 when whole-document metadata is unavailable. Captured-HTML fallback assertions
 then remain incomplete, while positive comparable native results can still verify
 their original rule-specific findings. A failure-only list cannot certify a repair or a healthy automated
@@ -1525,6 +1737,11 @@ The registered duplicate-active-ID rule also runs as a legacy control-identifier
 diagnostic, without treating the retired parsing criterion as current WCAG policy.
 The policy does not enable the entire best-practice or experimental rule sets.
 Collection and the portable registration guard share this selected rule inventory.
+The disposable `mobile-accessibility.integration.test.ts` scenario uses actual
+HTTP documents, responsive controls, native Chromium and the application/worker
+path. It checks a mobile-only failure, a desktop-only change that leaves the Flag
+open, a refused mobile document that remains inconclusive, a comparable mobile
+repair and recurrence with the original finding identity.
 Verification repeats every originally affected page, requiring positive outcomes
 for the same rule family. Unrelated failures do not invalidate an independently
 proved repair. Captured-HTML fallbacks retain their existing copy and severity,
@@ -1574,6 +1791,29 @@ collector output are exercised through both development and compiled parser
 workers. This prevents a private worker schema from rejecting valid observations
 and leaving broad monitoring unable to finalize. These defaults do not establish
 production capacity; capacity and starvation acceptance remain required.
+
+The compiled runtime has a separate opt-in integration check. After
+`npm run worker:build`, run
+`COMPILED_WORKER_REQUIRED=true node scripts/verify-progressive-execution.mjs --only worker/__tests__/compiled-runtime.integration.test.ts`.
+It starts the actual `dist/worker/index.js` child with `NODE_ENV=production`
+against migrated disposable PostgreSQL, isolated Redis and a local HTTP fixture.
+Provider credentials are disabled. Native failure evidence, parsed browser
+metadata, comparable independent repair and clean process shutdown are required.
+The child exercises the compiled parser even though the parent Vitest process
+uses test mode. This is local artifact/runtime evidence, not a deployed service,
+container-image or real-provider acceptance result.
+
+After building both web and worker artifacts, the same check can exercise the
+normal authenticated HTTP boundary with
+`COMPILED_WEB_REQUIRED=true node scripts/verify-progressive-execution.mjs --only worker/__tests__/compiled-runtime.integration.test.ts`.
+Set `NEXT_DIST_DIR` to the web build's directory when using an isolated build.
+This mode starts the built standalone web process, signs in an ordinary Site
+owner against the local credential fixture, validates the Site and Flag response
+contracts, admits the category check over HTTP and verifies the repair through
+the normal Flag endpoint. Durable issue identity stays distinct from its source
+occurrence. The API must return the same fixed state recorded by the worker, and
+replaying verification must reuse its original execution and attempt. The test
+does not exercise signup email delivery, third-party sign-in or browser cookies.
 
 HTTP and browser collectors retain observations already obtained when metadata
 parsing fails. A retryable parser crash gets one bounded retry against the same
@@ -2074,6 +2314,13 @@ The current catalog's 108 responsibilities have explicit stable coverage identit
 registered evaluator mappings. The capability report exposes partial coverage;
 registration is not execution proof. Capability check inventories derive from
 the check registry rather than a second list of finding identities.
+Catalog scenarios require certified comparable repair for responsibilities that
+can verify a repair, including every returned facet. Auth-link proof uses its
+actual detector and original destination scope. Internal links and section anchors
+map to their page evaluator, separately from sitemap discovery observations;
+unused-code proof exercises both JavaScript and CSS. Uptime provenance records
+URL, time and response evidence without inventing a failure or healing transition.
+Provider, lifecycle and scheduled observation obligations remain explicit.
 Outcome verification, Flag verification, prompt copying, settings and connection
 actions use shared submission ownership and operation-specific response contracts.
 Verification keeps its idempotency key after an uncertain response. Site refresh
@@ -2102,6 +2349,17 @@ are excluded before the backfill batch limit. Existing schedules and explicit
 pauses remain authoritative. Disposable PostgreSQL fixtures exercise grant
 lifecycle, inactive-account exclusion and claim-time scheduling without modifying
 stored subscription state.
+
+The same upkeep also selects a clock halted by the scheduler's exact known
+schedule-permission refusal. It resumes the saved cadence only after current
+entitlements permit it again, preserving custom timing, last-run history and
+existing Outcome bindings. Still-disallowed cadences use the shared bounded
+setup retry so they cannot occupy every batch. Explicit owner pauses, active
+leases and unrelated missing-clock reasons cannot enter this recovery path.
+The normal scheduler and admission transaction then own the next check.
+Disposable database fixtures reproduce refusal followed by restored permission
+and confirm a new queued Watch receipt, plus batch progress and authority
+exclusions. This is local scheduling evidence, not production observation.
 
 Automatic monitoring isolates account lookup, admission and retry persistence
 for each due Site. A failure for one Site cannot stop the remaining due batch.
@@ -2490,8 +2748,13 @@ live and expired opt-outs, exact recipients and Flag links through the installed
 SDK with a controlled HTTP boundary. This establishes local ledger and SDK
 behavior, not real-provider acceptance or inbox delivery.
 
-Notification retry batches exclude inactive accounts and removed Sites before
-applying the batch limit. Classification itself requires a completed, dated
+Notification retry batches exclude inactive accounts, removed or transferred
+Sites, and undated observations before applying the batch limit. The selection
+joins the observation to its current Site owner, so historical ineligible rows
+cannot repeatedly occupy the batch ahead of valid alerts. Disposable database
+fixtures reproduce this starvation for pending, failed and abandoned deliveries
+and verify that history is preserved while current-owner alerts proceed.
+Classification itself requires a completed, dated
 Watch observation belonging to the current active Site owner. Direct delivery
 also requires the durable projection receipt. Completion time updates compare
 that exact source observation and current ownership at the Site write, without
@@ -2542,6 +2805,22 @@ observations with unavailable media and retains independent repair and recurrenc
 
 Recorded repairs share the existing Improvement Attempt and cycle ledger across Site, API and MCP paths. A request key identifies one declared repair within its Improvement. Exact retries return the original receipt, including completed outcomes, without another attempt or event. A changed declaration under that key returns `FIX_INTENT_MISMATCH` (HTTP 409). Historical receipts without a recorded request hash retain their original receipt; their original payload cannot be reconstructed. Commit and deployment references are declared provenance, not proof that those changes were deployed.
 
+MCP OAuth grant consumption and replacement access/refresh creation share one
+transaction under the existing active-account lock. A failure at either
+credential write retains the original grant for a retry and leaves no partial
+credentials. Concurrent exchanges still issue one pair. Expired grants and
+unavailable owners cannot issue credentials, and client, redirect, resource,
+scope and PKCE binding remain enforced. Disposable PostgreSQL fixtures reproduce
+the formerly spent-grant failure, then exercise successful retry and rotation
+through the token handler and scoped admission through the installed MCP handler.
+Those handler calls are local; external client acceptance remains separate.
+
+OAuth client metadata uses the same bounded public transport as website
+evidence, including socket-time DNS validation. It refuses redirects and bodies
+larger than 64,000 bytes or otherwise incomplete, before parsing the exact client
+and redirect identities. Controlled DNS cases and a native TCP fixture verify
+that changed DNS cannot connect metadata admission to a private service.
+
 MCP repair handoffs include the stable verification request key required by the
 registered tool schema. Following `record_fix.next` can therefore start execution
 without inventing another argument, and retries retain the same attempt and run.
@@ -2557,6 +2836,18 @@ stateless HTTP handler, hashed scoped credentials, database and worker, includin
 read-only write refusal, cross-owner privacy, completed replay and revocation.
 This establishes local protocol behavior, not acceptance by a live editor or
 external MCP client.
+
+CLI device login uses the existing developer-key account lock and limit. Approval
+and denial serialize on the device code, so a competing decision cannot leave an
+orphan key or overwrite approval. Only an approved, uncollected credential belongs
+to device-code expiry; collecting the credential transfers its lifetime to the
+scoped developer key. Expired-code polling and bounded cleanup use the same
+conditional revocation transaction. Starting another login therefore cannot
+revoke an earlier collected key. Unreadable encrypted credentials retain their
+one-use grant for retry. Disposable database fixtures exercise expiry, cleanup,
+concurrent decisions and key limits, inactive owners, and collection through the
+token handler. They establish local behavior, not production or external CLI
+acceptance.
 
 The `20261012060000_fix_attempt_commit_reference` migration persists commit references, freezes keyed or admitted repair intent in PostgreSQL, and removes the older constraint limiting a source to one pending repair. Distinct repairs may coexist while an earlier verifier runs. The database protects source, builder, handoff, references, description and request identity after freezing. Legacy unkeyed, unadmitted drafts retain guarded preparation updates. Native conflict-safe materialization preserves existing Improvement and occurrence history under concurrent first-fix requests.
 
@@ -2644,3 +2935,100 @@ local simulated observations, not deployed or real-device performance proof.
 `FIX_INTENTS_DB_REQUIRED=true node scripts/verify-progressive-execution.mjs -t "immutable fix intents"` exercises concurrent first-fix recording, database immutability, distinct later repairs, exact worker reconciliation, completed replay and changed-payload refusal in migrated disposable PostgreSQL and isolated Redis. This local fixture does not establish deployed migration, production queue or external-provider behavior.
 
 Targeted Outcome recovery consumes a completed assessment from the exact tenant RunRequest, attempt, source Audit and Outcome. Required binding keys, environment and recorded scope must match the failure, with positive execution evidence. Reconciliation projects those assessments before issuing the fix verdict. Missing, blocked, changed or unrelated scope remains inconclusive. Optional PageSpeed gaps do not invalidate a completed Checkout binding; legacy report comparisons keep their existing full-review coverage rules. A failed Outcome cannot resolve its Flag merely because a particular diagnostic row disappeared.
+
+## Local objective verification, 2026-10-26
+
+This is a local engineering evidence snapshot. It does not attest a deployed
+revision, real-provider acceptance, external-client acceptance or sustained live
+monitoring. The objective's six completion criteria were checked as follows.
+
+1. **URL-first monitoring and repair.** The native
+   `claimed-monitoring.integration.test.ts` path exercises signed anonymous
+   claim, retained Site and evidence identity, default uptime, owner views,
+   independent repair and recurrence. Scheduling, completion and uptime database
+   fixtures separately exercise interruptions, explicit pause, restoration,
+   restored schedule permission and incident continuity. The compiled-runtime
+   fixture adds actual authenticated HTTP admission and repair through the built
+   web process and compiled worker under an ordinary owner account. Replayed
+   verification retains the original attempt and execution.
+2. **The complete current catalog.** `advertised-coverage.ts` maps all 108
+   catalog responsibilities: 80 public, seven uptime, and 21 requiring provider
+   or authorized lifecycle evidence. `catalog-evidence.test.ts` invokes real
+   evaluators for every required local scenario. Comparable repair requires
+   positive certified evidence for every returned facet; recurrence retains its
+   original failure identity. Native HTTP, Chromium and worker scenarios provide
+   separate collection and integration evidence. Heuristics, rolling field data
+   and provider context retain their narrower observation semantics. The six
+   Search Console and Analytics responsibilities remain explicitly marked
+   coming soon by the existing release policy.
+3. **Consistent facts and authority.** Current core contracts passed across
+   Sites, audit execution, uptime, integrations, CLI and MCP. Disposable database
+   and native transport fixtures cover tenant ownership, credential custody,
+   authorization revision, exact source scope, notification selection and
+   independent verification. The compiled HTTP fixture validates the client Site
+   and Flag schemas, the durable issue/source-occurrence relationship, and the
+   fixed state recorded by the worker. Missing evidence cannot certify repair.
+4. **Shared execution foundations.** Normal admission uses the durable request
+   and task ledger. Current and compatibility adapters share registered check
+   evaluators and comparison policies. Claims, writes, lease renewal and resource
+   cancellation share execution authority. Browser, parser, HTTP and provider
+   work remain independently bounded, with capacity retained until physical work
+   ends. Default setup and permitted schedule recovery share bounded upkeep;
+   cleanup reconciles exact unsettled operations instead of inventing success.
+   Module-boundary and product-contract guards passed.
+5. **The existing customer experience.** Site component checks and claim,
+   navigation and refresh hook checks passed. The compiled HTTP fixture validates
+   the same projection consumed by those surfaces. Monitoring intent and
+   operational errors remain separate. No additional dashboard, metric surface,
+   branding or homepage presentation was introduced for this work. Component
+   checks do not establish physical-device rendering or external usability proof.
+6. **Integrated local execution.** Full migrations and schema drift checks pass
+   in disposable PostgreSQL. Representative queue, worker, native HTTP/browser,
+   recovery and authorization scenarios pass on isolated services. Both web and
+   worker production builds pass. The compiled web/worker/parser fixture passes
+   with external provider credentials disabled. Typechecking and focused lint
+   pass. The latest core run passed 4,364 tests; gated database/native
+   scenarios are accounted for by their separate executions, not counted as
+   passing merely because a unit run skipped them.
+
+### Remaining provider and production verification
+
+- Real PageSpeed acceptance, quota behavior and returned measurements remain
+  unverified. Current primary Lighthouse formats were reviewed independently of
+  the local provider-response fixtures. A configured key is not provider proof.
+- Search Console and Analytics need configured OAuth clients, an authorized
+  matching validation property, actual consent/refresh/reporting evidence and
+  validation before their existing customer release gates can change. Local
+  fixtures establish contracts and custody, not live Google acceptance.
+- Live automatic account and Safe Signup proof still requires an explicitly
+  authorized controlled target, actual receiving-event processing, reversible
+  lifecycle and exact cleanup. Production automatic-account enablement remains
+  gated. Site Login and Password Reset remain outside the current supported
+  execution set.
+- Private storage needs real object write/read/delete and tenant-isolation proof.
+  Notification delivery needs an authorized validation mailbox, confirmed provider
+  acceptance and receiving evidence. Local SDK/socket fixtures do not prove
+  provider acceptance or inbox delivery.
+- Deployed migrations, web and worker revision agreement, the Linux container
+  runtime, naturally scheduled monitoring and extended incident/recurrence
+  observation require their own evidence. Nothing in this snapshot establishes
+  production readiness, sustained capacity or the separate paid-opening window.
+- Real external agent/client sessions retain a separate acceptance boundary from
+  the locally verified CLI and MCP protocols. Existing planned integrations,
+  repository execution and paid opening were not activated by these checks.
+
+No deployment, live customer mutation, real notification delivery, production
+feature activation or credential-bearing provider request was performed for
+these local verification steps.
+
+
+## Claim identity and customer-loop checkpoint, 2026-10-27
+
+The current implementation/evidence status is recorded in the [canonical completion checkpoint](product-masterplan.md#implementation-checkpoint-2026-10-27), alongside the remaining provider, experience and production requirements.
+
+- `ensureOwnedFlagIdentities` is the shared identity writer for claim and first repair. The claim transaction publishes current native observations before ownership/defaults become visible. Bounded conflict-safe inserts preserve existing proposals, verification decisions and event metadata. Claim replay creates no customer action and truncates no observations.
+- Current customer acceptance/rejection/handoff and identity publication share a Site row lock and transaction. A transfer or removal settles before authority is rechecked; an already-linked observation cannot skip that boundary. Independent source occurrence links remain historical resources.
+- Shared Site reads and Flag detail caches retain their actual viewer/scope lifetime. Single and bundle controls share physical clipboard and acknowledgement behavior. The Outcome route observes the same composed live resource instead of refreshing only at admission.
+- Server-generated task, evidence and protocol URLs use the configured Node runtime origin. A compiled regression caught build-time public-URL inlining; final browser checks prove both copied reference prefixes and the authenticated original-report lookup.
+
+Final controlled browser evidence: `test-results/browser/site-plan-compiled-worker-32f9ac9b-87d5-4388-b8a0-221fe610c464/`. Final Linux evidence: `test-results/runtime/site-plan-linux-04f93b62/`. The latter supersedes the October 26 snapshot's untested local Linux boundary for the exercised native repair/migration/fixture-restore scope only. Neither establishes provider acceptance, real public URL entry, email delivery, production restore compatibility, sustained natural monitoring or a frozen/deployed release candidate. The current contrast exception remains explicitly accepted, and full-AA claims remain false.

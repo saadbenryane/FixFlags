@@ -4,14 +4,14 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
-import { analysisTaskWhere } from '@/lib/audit/progressive/contracts'
+import { analysisEvidenceTaskWhere } from '@/lib/audit/progressive/contracts'
 import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
 
 /** Prior observations omit comparison snapshots and full task artifacts. */
 export const siteObservationExecutionSelect = {
   where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' },
-    { targetKey: { startsWith: 'task:' }, workKind: 'browser' }] },
-  select: { id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
+    { workKind: 'browser' }] },
+  select: { recordKind: true, id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 /** Current conclusions additionally require their committed comparison. */
@@ -20,7 +20,7 @@ export const siteCoverageExecutionSelect = { ...siteObservationExecutionSelect,
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 export const categoryCoverageExecutionSelect = {
-  where: { OR: [...siteCoverageExecutionSelect.where.OR, analysisTaskWhere] },
+  where: { OR: [...siteCoverageExecutionSelect.where.OR, analysisEvidenceTaskWhere] },
   select: { ...siteCoverageExecutionSelect.select, workState: true, workDependencies: true },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 

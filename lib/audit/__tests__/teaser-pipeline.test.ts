@@ -158,7 +158,9 @@ describe('resolveAuditPipelineMode', () => {
 
 describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
   it('creates an anonymous teaser as a SINGLE-page audit and keeps the anon gates', async () => {
-    await createAndEnqueueAudit({ url: 'https://example.com', clientId: 'ip-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: 'https://example.com',
+    clientId: 'ip-1' })
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('SINGLE')
@@ -173,17 +175,18 @@ describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
   })
 
   it('forces SINGLE even when an anonymous caller requests full capture', async () => {
-    await createAndEnqueueAudit({
-      url: 'https://example.com',
-      auditMode: 'CRITICAL_PATH',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: 'https://example.com',
+    auditMode: 'CRITICAL_PATH' })
     expect(createdAuditData().auditMode).toBe('SINGLE')
   })
 })
 
 describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
   it('stores full capture and supported beta review depth for a signed-in new-URL audit', async () => {
-    await createAndEnqueueAudit({ url: 'https://example.com', userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: 'https://example.com',
+    userId: 'user-1' })
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('CRITICAL_PATH')
@@ -202,13 +205,9 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
       .mockResolvedValueOnce({ reviewDepth: 2 })
       .mockResolvedValueOnce({ projectId: 'project-1', scanAccessEncrypted: null })
 
-    await createAndEnqueueAudit({
-      url: 'https://example.com',
-      userId: 'user-1',
-      parentId: 'parent-1',
-      monitoringMode: 'FULL',
-      recheckTrigger: 'MANUAL',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', trigger: 'MANUAL', allowance: 'metered' },
+    url: 'https://example.com',
+    userId: 'user-1' })
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('CRITICAL_PATH')
@@ -221,7 +220,8 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
 describe('includeAi entitlement flow stays intact for anon creates', () => {
   it('resolves includeAi through the entitlement module for every create', async () => {
     const { resolveIncludeAiForNewAudit } = await import('@/lib/audit/ai-report-entitlement')
-    await createAndEnqueueAudit({ url: 'https://example.com' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: 'https://example.com' })
     expect(resolveIncludeAiForNewAudit as Mock).toHaveBeenCalledWith(null)
   })
 })

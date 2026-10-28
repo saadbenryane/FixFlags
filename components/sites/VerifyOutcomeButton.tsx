@@ -11,10 +11,14 @@ export function VerifyOutcomeButton({
   siteId,
   outcomeId,
   disabled,
+  running = false,
+  onRefresh,
 }: {
   siteId: string
   outcomeId: string
   disabled?: boolean
+  running?: boolean
+  onRefresh?: () => Promise<unknown>
 }) {
   const router = useRouter()
   const { busy, message, error, submit, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
@@ -24,14 +28,14 @@ export function VerifyOutcomeButton({
     const result = await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
         method: 'POST',
         headers: { 'Idempotency-Key': requestKey(intent) },
-      }, 'run'), () => C.outcome.started, () => router.refresh())
+      }, 'run'), () => C.outcome.started, onRefresh ?? (() => router.refresh()))
     if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') completeIntent(intent)
   }
 
   return (
     <div className="mt-4">
-      <Button variant="default" disabled={disabled || busy} onClick={() => void verify()}>
-        {busy ? C.outcome.verifying : C.outcome.verify}
+      <Button variant="default" disabled={disabled || busy || running} onClick={() => void verify()}>
+        {busy || running ? C.outcome.verifying : C.outcome.verify}
       </Button>
       <SiteActionFeedback message={message} error={error} siteId={siteId} />
     </div>

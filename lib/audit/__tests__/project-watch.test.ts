@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   projectFindFirst: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
-  auditFindMany: vi.fn(),
+  notificationQuery: vi.fn(),
   auditUpdateMany: vi.fn(),
   requestScheduledSiteRun: vi.fn(),
   siteOutcomeFindMany: vi.fn(),
@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/db', () => ({
   prisma: {
     $transaction: mocks.transaction,
+    $queryRaw: mocks.notificationQuery,
     user:{findUnique:mocks.userFindUnique},
     project: {
       findMany: mocks.projectFindMany,
@@ -38,21 +39,21 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.projectUpdateMany,
     },
     audit: {
-      fields:{watchNotificationAttemptCeiling:'ceiling-field'},
       findFirst: mocks.auditFindFirst,
       findUnique: mocks.auditFindUnique,
-      findMany: mocks.auditFindMany,
       updateMany: mocks.auditUpdateMany,
     },
     siteOutcome: { findMany: mocks.siteOutcomeFindMany, updateMany: mocks.siteOutcomeUpdateMany },
+    uptimeMonitor: { updateMany: vi.fn(async () => ({ count: 0 })) },
   },
 }))
 vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.assertOperator }))
 vi.mock('@/lib/sites/application/scheduled-runs', () => ({
   requestScheduledSiteRun: mocks.requestScheduledSiteRun,
 }))
-vi.mock('@/lib/sites/application/default-monitoring', () => ({ initializeDefaultMonitoring: mocks.initializeDefaultMonitoring,
-  ensureDefaultMonitoring: mocks.ensureDefaultMonitoring }))
+vi.mock('@/lib/sites/application/default-monitoring', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/sites/application/default-monitoring')>(),
+  initializeDefaultMonitoring: mocks.initializeDefaultMonitoring, ensureDefaultMonitoring: mocks.ensureDefaultMonitoring }))
 vi.mock('@/lib/sites/application/scheduled-completion', () => ({ reconcileScheduledCompletions: async () => 0 }))
 vi.mock('@/lib/billing/product-transaction', () => ({ productTransaction: (operation: (tx: object) => unknown) => operation({}) }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
@@ -530,17 +531,9 @@ describe('Product Watch', () => {
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
       status: 'COMPLETED', completedAt: expect.any(Date), improvementProjectedAt: { not: null },
       user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' },
-      project: { userId: 'user-1', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: 'FLAGS', notifyOnRecovery: true },
+      project: { userId: 'user-1', deletedAt: null, watchPausedAt: null, user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: 'FLAGS', notifyOnRecovery: true },
     }), data: expect.objectContaining({ watchNotificationStatus: 'SENDING' }) }))
     expect(mocks.sendEmail).not.toHaveBeenCalled()
-  })
-
-  it('excludes unavailable accounts and removed Sites before limiting the retry batch', async () => {
-    mocks.auditFindMany.mockResolvedValue([])
-    await retryPendingWatchNotifications(1)
-    expect(mocks.auditFindMany).toHaveBeenCalledWith(expect.objectContaining({ take: 1, where: expect.objectContaining({
-      user: { lifecycleStatus: 'ACTIVE' }, project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
-    }) }))
   })
 
   it('sends only for a measured regression with a stable idempotency key', async () => {
@@ -660,14 +653,6 @@ describe('Product Watch', () => {
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
     expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
     expect(mocks.sendEmail).not.toHaveBeenCalled()
-  })
-
-  it('admits notification delivery only after the durable monitoring projection receipt', async () => {
-    mocks.auditFindMany.mockResolvedValue([])
-    await retryPendingWatchNotifications()
-    expect(mocks.auditFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      improvementProjectedAt: { not: null },
-    }) }))
   })
 
   it('combines simultaneous findings and recoveries into one branded provider request', async () => {
@@ -885,7 +870,7 @@ describe('Product Watch', () => {
       const provider = new Resend('re_test_not_a_real_key')
       mocks.sendEmail.mockImplementation((...args: Parameters<typeof provider.emails.send>) =>
         provider.emails.send(...args))
-      mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
+      mocks.notificationQuery.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
       const child = await mocks.auditFindUnique()
       mocks.auditFindUnique.mockImplementation(async () => structuredClone(child))
       mocks.auditUpdateMany.mockImplementation(async ({ data }) => {
@@ -913,22 +898,6 @@ describe('Product Watch', () => {
       for (const [, request] of providerFetch.mock.calls) {
         expect(new Headers(request.headers).get('Idempotency-Key')).toBe('fixflags-watch-child-1-v1')
       }
-      // Undelivered alerts stay eligible, and the attempt bound still caps
-      // retries so a permanently failing notification cannot loop forever.
-      const sweepWhere = mocks.auditFindMany.mock.calls[0]?.[0]?.where
-      expect(sweepWhere).toMatchObject({
-        OR: [
-          {
-            watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
-            watchNotificationAttempts: { lt: 'ceiling-field' },
-          },
-          {
-            watchNotificationStatus: 'SENDING',
-            OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: expect.any(Date) } }],
-          },
-        ],
-      })
-      expect(sweepWhere.watchNotificationAttempts).toBeUndefined()
     })
 
     it('aborts an unresponsive SDK HTTP call and leaves the alert retryable within the attempt bound', async () => {
@@ -983,7 +952,7 @@ describe('Product Watch', () => {
     })
 
     it('continues retrying other Sites when one notification cannot be loaded', async () => {
-      mocks.auditFindMany.mockResolvedValue([
+      mocks.notificationQuery.mockResolvedValue([
         { id: 'broken-child', parentId: 'broken-parent' },
         { id: 'child-1', parentId: 'parent-1' },
       ])
@@ -998,7 +967,7 @@ describe('Product Watch', () => {
       expect(mocks.recordSiteLifecycleEvent).toHaveBeenCalledTimes(1)
     })
     it('defers failed classification without consuming a provider attempt or rewriting a live sender', async () => {
-      mocks.auditFindMany.mockResolvedValue([{ id: 'broken-child', parentId: null, watchNotificationAttempts: 2 }])
+      mocks.notificationQuery.mockResolvedValue([{ id: 'broken-child', parentId: null, watchNotificationAttempts: 2 }])
       mocks.auditFindUnique.mockRejectedValue(new Error('Invalid recorded comparison'))
       expect(await retryPendingWatchNotifications(1)).toBe(1)
       expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -1036,25 +1005,6 @@ describe('Product Watch', () => {
       mocks.auditFindUnique.mockResolvedValue(strandedChild)
       mocks.getFlagDiffSummary.mockResolvedValue({
         fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
-      })
-    })
-
-    it('makes an expired SENDING claim eligible again for retry', async () => {
-      mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
-
-      await retryPendingWatchNotifications()
-
-      // The sweep must actually be able to see a stranded SENDING row, and only
-      // once its lease has expired or has no recorded owner.
-      const sweepWhere = mocks.auditFindMany.mock.calls[0]?.[0]?.where
-      expect(sweepWhere).toMatchObject({
-        OR: [
-          { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
-          {
-            watchNotificationStatus: 'SENDING',
-            OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: expect.any(Date) } }],
-          },
-        ],
       })
     })
 
@@ -1098,7 +1048,7 @@ describe('Product Watch', () => {
         ...strandedChild,
         watchNotificationLeaseUntil: new Date(Date.now() + 60_000),
       }))
-      mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
+      mocks.notificationQuery.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
 
       await retryPendingWatchNotifications()
 

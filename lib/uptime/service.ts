@@ -55,7 +55,7 @@ function monitorSynchronization(monitor: UptimeMonitor, project: MonitoringProje
 export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
   const setupCutoff = clock.now()
   const initializing: Prisma.ProjectWhereInput = { ...(onlyProjectId ? { id: onlyProjectId } : {}),
-    user: { lifecycleStatus: 'ACTIVE' }, deletedAt: null, watchInterval: { not: null }, uptimeMonitor: null }
+    user: { lifecycleStatus: 'ACTIVE' }, deletedAt: null, watchPausedAt: null, watchInterval: { not: null }, uptimeMonitor: null }
   const projects = await prisma.project.findMany({
     where: { ...initializing, ...monitoringSetupDue(setupCutoff) },
     include: uptimeProjectInclude, orderBy: monitoringSetupOrder, take: limit,
@@ -83,7 +83,7 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
   }
   const selectedAt = clock.now()
   const due = await prisma.uptimeMonitor.findMany({
-    where: { ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: { user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchInterval: { not: null } },
+    where: { ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: { user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchPausedAt: null, watchInterval: { not: null } },
       OR: [{ nextProbeAt: { lte: selectedAt } }, { confirmationDueAt: { lte: selectedAt } }],
       AND: [{ OR: [{ leaseUntil: null }, { leaseUntil: { lt: selectedAt } }] }] },
     include: { project: { include: uptimeProjectInclude } },
@@ -106,7 +106,7 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
         confirmationDueAt: monitor.confirmationDueAt, pendingSlotAt: monitor.pendingSlotAt,
         OR: [{ leaseUntil: null }, { leaseUntil: { lt: attemptedAt } }],
         project: { id: monitor.projectId, userId: snapshot.project.userId, url: snapshot.project.url,
-          deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: { not: null } },
+          deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchPausedAt: null, watchInterval: { not: null } },
       }, data: { lastDispatchAttemptAt: attemptedAt } })
       if (!attempted.count) continue
       if (monitor.pendingFailureAt && monitor.pendingSlotAt && monitor.confirmationDueAt) {
@@ -138,7 +138,7 @@ export async function executeUptimeProbe(job: UptimeJob, observe: (url: string) 
     id: job.monitorId, version: job.version, enabled: true,
     OR: [{ leaseUntil: null }, { leaseUntil: { lt: claimedAt } }],
     project: { id: currentProject.id, userId: currentProject.user.id, url: currentProject.url, deletedAt: null,
-      user: { lifecycleStatus: 'ACTIVE' }, watchInterval: { not: null } },
+      user: { lifecycleStatus: 'ACTIVE' }, watchPausedAt: null, watchInterval: { not: null } },
     ...(job.attempt === 1 ? { nextProbeAt: { lte: claimedAt }, AND: [{ OR: [{ lastScheduledAt: null }, { lastScheduledAt: { lt: scheduledAt } }] }] }
       : { pendingSlotAt: scheduledAt, confirmationDueAt: { lte: claimedAt }, pendingFailureAt: { gt: new Date(claimedAt.getTime() - UPTIME_INTERVAL_MS) } }),
   }, data: { leaseUntil, leaseToken: token } })

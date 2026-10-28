@@ -7,7 +7,6 @@ import { requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { getOwnedRun } from '@/lib/sites/application/run-queries'
-import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { deleteAuditScreenshotAssets } from '@/lib/storage/screenshots'
 import { startWorker } from '@/lib/queue/worker'
 import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
@@ -77,7 +76,7 @@ localWorker('retained navigation obligations through installed execution', () =>
     audits.add(auditId)
     await vi.waitFor(async () => {
       // Provider, media and unrelated action work is explicitly unavailable.
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'browser', 'check', 'finalize', 'bindings', 'search', 'search-resources', 'discovery'] } },
       data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
@@ -85,12 +84,16 @@ localWorker('retained navigation obligations through installed execution', () =>
     }, { timeout, interval: 100 })
   }
   it('checks a retained failing URL beside its healthy discovery peer, independently verifies repair and recognizes recurrence', async () => {
-    const source = await createAndEnqueueAudit({ url: affected, userId })
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: affected,
+    userId })
     await complete(source.auditId)
-    const originalReceipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId,
+    const originalReceipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: source.auditId,
       targetKey: 'module:search-presentation', pageUrl: affected } })
     const projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } })).projectId!
-    const later = await createAndEnqueueAudit({ url: peer, userId })
+    const later = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: peer,
+    userId })
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: later.auditId } })).executionSpec)
       .toMatchObject({ monitoringPages: [peer, affected] })
     const before = requests.filter(url => url === affected).length
@@ -102,7 +105,7 @@ localWorker('retained navigation obligations through installed execution', () =>
     await complete(watch.auditId!)
     const pages = await prisma.auditPage.findMany({ where: { auditId: watch.auditId! }, select: { url: true, status: true } })
     expect(pages).toEqual(expect.arrayContaining([origin + '/', peer, affected].map(url => ({ url, status: 'COMPLETED' }))))
-    const browserTasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: watch.auditId!, workKind: 'browser' }, select: { pageUrl: true } })
+    const browserTasks = await prisma.auditExecutionTask.findMany({ where: { auditId: watch.auditId!, workKind: 'browser' }, select: { pageUrl: true } })
     expect(browserTasks.map(task => task.pageUrl).sort()).toEqual([origin + '/', peer, affected].sort())
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: watch.auditId!, checkId: 'title-missing' } })
     const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
@@ -124,19 +127,17 @@ localWorker('retained navigation obligations through installed execution', () =>
     const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: 'title-missing', pageUrl: affected } })
     expect(repeated).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: repeated.id } })).toMatchObject({ improvementId: occurrence.improvementId })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: originalReceipt.id } })).toEqual(originalReceipt)
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: originalReceipt.id } })).toEqual(originalReceipt)
   }, 240_000)
-  it('collects both admitted variants through the actual compatibility pipeline with local private media', async () => {
+  it('collects both admitted variants through progressive discovery with local private media', async () => {
     const peer = origin + '/legacy-pricing', affected = peer + '/'
-    const admitted = await createAndEnqueueAudit({ url: peer, userId, executionSpec: {
-      version: 1, scope: 'SITE', targetUrl: peer, environment: 'production', monitoringPages: [peer, affected],
-      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).map(([id, definition]) => [id, definition.version])),
-      outcomes: [], verificationTarget: null,
-    } })
+    const admitted = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: peer,
+    userId })
     await complete(admitted.auditId, 150_000)
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId } })
-    expect(audit.executionSpec).not.toHaveProperty('engine')
-    expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, targetKey: { startsWith: 'task:' }, workKind: 'browser' } })).toBe(0)
+    expect(audit.executionSpec).toHaveProperty('engine', 'progressive-v1')
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, targetKey: { startsWith: 'task:' }, workKind: 'browser' } })).toBeGreaterThan(0)
     expect(await prisma.auditPage.findMany({ where: { auditId: audit.id }, select: { url: true, status: true } }))
       .toEqual(expect.arrayContaining([{ url: peer, status: 'COMPLETED' }, { url: affected, status: 'COMPLETED' }]))
     expect(await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'title-missing', pageUrl: affected } }))

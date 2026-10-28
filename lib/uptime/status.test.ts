@@ -5,7 +5,7 @@ import { resultPresentation } from '@/lib/sites/presentation'
 import type { CoverageFact } from '@/lib/sites/coverage'
 
 const now = new Date('2026-10-20T12:00:00Z')
-const project = { id: 'site', url: 'https://example.com/', deletedAt: null, watchInterval: 'WEEKLY' as const,
+const project = { id: 'site', url: 'https://example.com/', deletedAt: null, watchInterval: 'WEEKLY' as const, watchPausedAt: null,
   watchNextRunAt: now, user: { id: 'owner', lifecycleStatus: 'ACTIVE' as const } }
 const monitor = { targetUrl: project.url, version: 1, incidents: [], enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: now, confirmationDueAt: null }
 const coverage: CoverageFact[] = [{ area: 'security', state: 'healthy', label: 'Recorded', detail: null, checkedAt: now.toISOString(), openFlagCount: 0, evidenced: true }]

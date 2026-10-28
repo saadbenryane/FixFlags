@@ -4,8 +4,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import * as transactions from '@/lib/billing/product-transaction'
 import { prisma } from '@/lib/db'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
-import { ensureDefaultMonitoring, initializeDefaultMonitoring } from '../default-monitoring'
+import { ensureDefaultMonitoring, initializeDefaultMonitoring, MONITORING_SCHEDULE_UNAVAILABLE } from '../default-monitoring'
 import { removeSite } from '../settings-commands'
+import * as betaPolicy from '@/lib/billing/beta-policy'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 
@@ -179,5 +180,29 @@ run('automatic monitoring with migrated PostgreSQL', () => {
       expect(await prisma.project.findUniqueOrThrow({ where: { id: paused.id } })).toMatchObject({ watchInterval: null, watchNextRunAt: null })
       expect(await prisma.siteOutcome.count({ where: { projectId: paused.id } })).toBe(0)
     } finally { await prisma.user.delete({ where: { id: inactiveUser } }) }
+  })
+  it('moves past a still-disallowed cadence while preserving paused, leased and unrelated halted clocks', async () => {
+    const beta = vi.spyOn(betaPolicy, 'hasOpenBetaAccess').mockReturnValue(false)
+    const states = ['disallowed', 'allowed', 'paused', 'leased', 'unrelated'] as const
+    const sites = await Promise.all(states.map((state, index) => prisma.project.create({ data: {
+      userId, name: state, url: 'https://' + state + '.example.test/', canonicalHost: state + '.example.test',
+      createdAt: new Date(1000 + index), watchInterval: state === 'disallowed' ? 'DAILY' : 'WEEKLY',
+      watchLastAttemptAt: now, watchLastRunAt: now, watchNextRunAt: null,
+      watchLastError: state === 'unrelated' ? 'Unknown operational failure' : MONITORING_SCHEDULE_UNAVAILABLE,
+      ...(state === 'paused' ? { watchPausedAt: now } : {}),
+      ...(state === 'leased' ? { watchLeaseUntil: new Date(now.getTime() + 600_000) } : {}),
+    } })))
+    try {
+      await initializeDefaultMonitoring(1, fixedClock(now))
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[0].id } }))
+        .toMatchObject({ watchNextRunAt: null, monitoringSetupRetryAt: new Date(now.getTime() + 60_000) })
+      await initializeDefaultMonitoring(1, fixedClock(now))
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[1].id } }))
+        .toMatchObject({ watchNextRunAt: now, watchLastError: null, watchLastAttemptAt: now, watchLastRunAt: now })
+      for (const site of sites.slice(2)) expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toEqual(site)
+    } finally {
+      beta.mockRestore()
+      await prisma.project.deleteMany({ where: { id: { in: sites.map(site => site.id) } } })
+    }
   })
 })

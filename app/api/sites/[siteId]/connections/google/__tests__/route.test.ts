@@ -14,12 +14,22 @@ vi.mock('@/lib/sites/connections/google', async importOriginal => ({
 }))
 
 import { DELETE, POST } from '../route'
+import { GoogleProviderError } from '@/lib/integrations/google-response'
 
-const connection = { id: 'connection-1', projectId: 'project-1', provider: 'ANALYTICS', status: 'CONNECTED',
+const connection = { id: 'connection-1', projectId: 'project-1', authorizedByUserId: 'owner', provider: 'ANALYTICS', status: 'CONNECTED',
   encryptedAccessToken: 'fixture-encrypted-access', encryptedRefreshToken: 'fixture-encrypted-refresh', tokenExpiresAt: new Date(0) }
 const context = { params: Promise.resolve({ siteId: 'project-1' }) }
 const request = (method: string, action?: string) => new Request('http://localhost/api/sites/project-1/connections/google', {
   method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'ANALYTICS', ...(action ? { action } : {}) }),
+})
+
+it('does not sync or revoke the former owner\'s retained grant for the current Site owner', async () => {
+  mocks.connection.mockResolvedValue({ ...connection, authorizedByUserId: 'former-owner' })
+  expect((await POST(request('POST', 'sync'), context)).status).toBe(409)
+  expect((await DELETE(request('DELETE'), context)).status).toBe(200)
+  expect(mocks.token).not.toHaveBeenCalled()
+  expect(mocks.update).not.toHaveBeenCalled()
+  expect(mocks.revoke).not.toHaveBeenCalled()
 })
 
 beforeEach(() => {
@@ -36,6 +46,26 @@ beforeEach(() => {
 })
 
 describe('Google connection action ownership', () => {
+  it.each(['PROVIDER_UNAVAILABLE', 'PROVIDER_QUOTA', 'MALFORMED_PROVIDER_RESPONSE'] as const)('does not revoke permission when refresh reports %s', async code => {
+    mocks.token.mockRejectedValue(new GoogleProviderError(code, 13_100))
+    const response = await POST(request('POST', 'sync'), context)
+    expect(response.status).toBe(503)
+    expect(response.headers.get('retry-after')).toBe('14')
+    expect(await response.json()).toMatchObject({ code, action: 'retry' })
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+  it.each(['AUTH_EXPIRED', 'PERMISSION_REFUSED'] as const)('requires reconnection only after explicit %s refusal', async code => {
+    mocks.token.mockRejectedValue(new GoogleProviderError(code))
+    expect((await POST(request('POST', 'sync'), context)).status).toBe(401)
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      project: expect.objectContaining({ userId: 'owner' }),
+    }), data: expect.objectContaining({ status: 'NEEDS_REAUTH' }) }))
+  })
+  it('keeps permission after an unclassified transport interruption', async () => {
+    mocks.token.mockRejectedValue(new Error('Authorization service transport failed'))
+    expect((await POST(request('POST', 'sync'), context)).status).toBe(503)
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
   it('refuses new setup and refresh while the integration is coming soon', async () => {
     integrationRelease.mockReturnValue('planned')
     const response = await POST(request('POST', 'sync'), context)

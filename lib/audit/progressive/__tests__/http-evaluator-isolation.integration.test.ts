@@ -78,10 +78,10 @@ run('independent evaluation through the installed workers', () => {
       const result = serializeArtifact('browser', { pageId: randomUUID(), metadata: parseMetadataFromHtml(html, pageUrl),
         snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: html, desktopFinalUrl: pageUrl,
           desktopBase64: null, mobileBase64: null, consoleErrors: [], captureStatus: { desktop: 'ok', mobile: 'pending' }, captureFailures: [] } })
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, targetKey: 'task:browser-' + index },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:browser-' + index },
         data: { workState: 'COMPLETED', status: 'COMPLETED', workResult: result } })
     }
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, targetKey: 'task:http' },
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:http' },
       data: { workState: 'COMPLETED', status: 'COMPLETED', workResult: serializeArtifact('http', { metadata: null, document: {
         url: input.pageUrl, finalUrl: input.pageUrl, status: 200, headers: {}, body: '', complete: true,
         reason: null, collectedAt: new Date().toISOString(), redirects: [],
@@ -137,14 +137,14 @@ run('independent evaluation through the installed workers', () => {
       failedAccessibilityAudits: [], diagnostics: { measurement: performanceMeasurement({ requestedUrl: input.pageUrl,
         finalUrl: input.pageUrl, lighthouseVersion: '13.0.0', configSettings: { formFactor: 'mobile', throttlingMethod: 'simulate' } }, 'mobile') },
       raw: {}, crux: null }
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, targetKey: 'task:speed' },
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:speed' },
       data: { workState: 'COMPLETED', status: 'COMPLETED', workResult: serializeArtifact('pagespeed', { desktop: null, mobile: measurement }) } })
     const ready = await reconcileTasks(audit.id)
     await dispatchReadyTasks(ready)
     await vi.waitFor(async () => {
       expect((await loadTasks(audit.id)).find(task => task.targetKey === 'task:mobile')).toMatchObject({ workState: 'COMPLETED' })
     }, { timeout: 3000, interval: 20 })
-    const receipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:mobile' } })
+    const receipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:mobile' } })
     expect(receipt.detail).toMatchObject({ complete: true, passed: scenario !== 'conversion-failure', execution: { checkVersions: checks } })
     const assertions = (receipt.detail as { assertions: Array<{ key: string }> }).assertions.map(assertion => assertion.key)
     if (area === 'performance') expect(assertions).not.toContain('tap-targets')

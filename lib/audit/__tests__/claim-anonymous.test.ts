@@ -13,6 +13,7 @@ const prismaMock = vi.hoisted(() => ({
     update: vi.fn(),
   },
   user: { findUnique: vi.fn() },
+  flag: { findMany: vi.fn() },
 }))
 const cookieStore = vi.hoisted(() => ({
   get: vi.fn(),
@@ -64,6 +65,7 @@ describe('claimAnonymousAudits', () => {
     prismaMock.project.findUnique.mockReset().mockResolvedValue({ id: 'project-1', userId: 'u1', productIntelligence: null, deletedAt: null })
     prismaMock.audit.findMany.mockResolvedValue([claimableAudit()])
     prismaMock.audit.update.mockResolvedValue({})
+    prismaMock.flag.findMany.mockResolvedValue([])
     prismaMock.audit.findUnique.mockResolvedValue({
       status: 'CHECKING',
       aiReviewAt: null,

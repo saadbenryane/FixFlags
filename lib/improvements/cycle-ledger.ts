@@ -84,3 +84,27 @@ export async function appendImprovementCycleEvent(
   })
 }
 
+/** Publish observed generation in bounded batches without recording a customer action. */
+export async function appendGeneratedImprovementCycleEvents(inputs: Array<Pick<CycleEventInput,
+  'projectId' | 'improvementId' | 'occurrenceId' | 'sourceAuditId' | 'idempotencyKey' | 'transport' | 'client' | 'actor'>>,
+  db: DbClient = prisma) {
+  for (let offset = 0; offset < inputs.length; offset += 500) {
+    const batch = inputs.slice(offset, offset + 500)
+    const key = (row: { improvementId: string; sourceAuditId: string }) => JSON.stringify([row.improvementId, row.sourceAuditId])
+    const unique = [...new Map(batch.map(row => [key(row), row])).values()]
+    await db.improvementCycle.createMany({ data: unique.map(row => ({ projectId: row.projectId,
+      improvementId: row.improvementId, occurrenceId: row.occurrenceId, sourceAuditId: row.sourceAuditId })), skipDuplicates: true })
+    const cycles = await db.improvementCycle.findMany({ where: { OR: unique.map(row => ({
+      improvementId: row.improvementId, sourceAuditId: row.sourceAuditId,
+    })) }, select: { id: true, improvementId: true, sourceAuditId: true } })
+    const byKey = new Map(cycles.map(row => [key(row), row.id]))
+    const data = batch.map(row => {
+      const cycleId = byKey.get(key(row))
+      if (!cycleId) throw new Error('Observed Flag cycle was not published')
+      return { cycleId, idempotencyKey: row.idempotencyKey, type: 'GENERATED' as const,
+        transport: row.transport, client: row.client, actor: row.actor }
+    })
+    await db.improvementCycleEvent.createMany({ data, skipDuplicates: true })
+  }
+}
+

@@ -54,7 +54,7 @@ export async function recoverProgressiveAudits(limit = 25) {
   const now = new Date()
   const pending = await prisma.audit.findMany({ where: {
     status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
-    verifierExecutions: { none: { workKind: { not: null } } },
+    executionTasks: { none: {} },
     dispatchNextAt: { lte: now },
   }, orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.min(100, Math.max(1, limit)), select: { id: true, dispatchNextAt: true } })
     .catch(error => { logger.error('Progressive admission sweep failed; existing graphs remain recoverable', error); return [] })
@@ -64,7 +64,7 @@ export async function recoverProgressiveAudits(limit = 25) {
       // reads and capacity waits cannot monopolize the next bounded pass.
       const admitted = await prisma.audit.updateMany({ where: { id: audit.id, dispatchNextAt: audit.dispatchNextAt,
         status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
-        verifierExecutions: { none: { workKind: { not: null } } } },
+        executionTasks: { none: {} } },
       data: { dispatchNextAt: new Date(now.getTime() + 10_000) } })
       if (admitted.count) await coordinateProgressiveAudit(audit.id)
     }
@@ -85,7 +85,7 @@ export function startProgressiveWorkers() {
       const taskId = job?.data?.taskId
       if (typeof taskId !== 'string') return
       // Dispatch otherwise leaves the unclaimed task quiet for half a minute.
-      void prisma.auditVerifierExecution.updateMany({
+      void prisma.auditExecutionTask.updateMany({
         where: { id: taskId, workState: 'READY', workDispatchState: 'SENT' },
         data: { workDispatchState: 'PENDING', workRetryAt: new Date(Date.now() + 1000) },
       }).catch(writeError => logger.error('Interrupted task could not be requeued', writeError, { resource, taskId }))

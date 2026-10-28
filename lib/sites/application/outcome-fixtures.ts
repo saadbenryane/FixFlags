@@ -5,6 +5,10 @@ import { prisma } from '@/lib/db'
 import { requestSiteRun } from './run-requests'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { encryptSecret } from '@/lib/security/crypto'
+import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
+import { fixtureOwnerCurrent } from '../domain/fixture-authority'
+import { productTransaction } from '@/lib/billing/product-transaction'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import {
   safeFormExecutionResultSchema,
   safeFormMappingSchema,
@@ -53,6 +57,8 @@ export class OutcomeFixtureError extends Error {
 
 const fixtureSelect = {
   id: true,
+  configuredByUserId: true,
+  project: { select: { userId: true } },
   name: true,
   targetUrl: true,
   fieldMapping: true,
@@ -71,6 +77,7 @@ const fixtureSelect = {
 
 function toView(row: Awaited<ReturnType<typeof findFixture>>): OutcomeFixtureView {
   if (!row) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+  const currentOwner = fixtureOwnerCurrent(row)
   return {
     id: row.id,
     name: row.name,
@@ -80,18 +87,31 @@ function toView(row: Awaited<ReturnType<typeof findFixture>>): OutcomeFixtureVie
     resetUrl: row.resetUrl,
     cleanupUrl: row.cleanupUrl,
     version: row.version,
-    lastDryRunVersion: row.lastDryRunVersion,
-    lastDryRunAt: row.lastDryRunAt?.toISOString() ?? null,
-    lastDryRunResult: row.lastDryRunResult,
-    authorizedAt: row.authorizedAt?.toISOString() ?? null,
+    lastDryRunVersion: currentOwner ? row.lastDryRunVersion : null,
+    lastDryRunAt: currentOwner ? row.lastDryRunAt?.toISOString() ?? null : null,
+    lastDryRunResult: currentOwner ? row.lastDryRunResult : null,
+    authorizedAt: currentOwner ? row.authorizedAt?.toISOString() ?? null : null,
     enabled: row.enabled,
     hasValues: true,
     hasHookSecret: Boolean(row.encryptedHookSecret),
   }
 }
 
-function findFixture(projectId: string, fixtureId: string) {
-  return prisma.outcomeFixture.findFirst({ where: { id: fixtureId, projectId }, select: fixtureSelect })
+function findFixture(projectId: string, fixtureId: string, db: Pick<Prisma.TransactionClient, 'outcomeFixture'> = prisma) {
+  return db.outcomeFixture.findFirst({ where: { id: fixtureId, projectId }, select: fixtureSelect })
+}
+
+/** Keep lifecycle and Site identity stable through the complete fixture write. */
+async function fixtureWrite<T>(projectId: string, userId: string, active: boolean,
+  write: (tx: Prisma.TransactionClient, project: { id: string; url: string }) => Promise<T>) {
+  return productTransaction(async tx => {
+    if (active) await requireActiveAccountForWrite(tx, userId)
+    else await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`
+    const [project] = await tx.$queryRaw<Array<{ id: string; url: string }>>`
+      SELECT id, url FROM projects WHERE id = ${projectId} AND "userId" = ${userId} AND "deletedAt" IS NULL FOR UPDATE`
+    if (!project) throw new OutcomeFixtureError('SITE_NOT_FOUND', 'Site not found.', 404)
+    return write(tx, project)
+  })
 }
 
 function normalizeFixtureInput(siteUrl: string, input: OutcomeFixtureInput) {
@@ -137,8 +157,8 @@ export async function listOutcomeFixtures(projectId: string): Promise<OutcomeFix
       audit: { select: { status: true, verifierExecutions: { where: { workKind: 'fixture-setup' }, take: 1,
         select: { workState: true, workErrorCode: true } } } } } })
   return rows.map(row => {
-    const run = runs.find(run => readExecutionSpec(run.executionSpec)?.fixtureSetup?.id === row.id &&
-      readExecutionSpec(run.executionSpec)?.fixtureSetup?.version === row.version)
+    const run = fixtureOwnerCurrent(row) ? runs.find(run => readExecutionSpec(run.executionSpec)?.fixtureSetup?.id === row.id &&
+      readExecutionSpec(run.executionSpec)?.fixtureSetup?.version === row.version) : undefined
     const task = run?.audit?.verifierExecutions[0]
     return { ...toView(row), setupRun: run ? { runId: run.id, auditId: run.auditId, version: row.version,
       state: run.status === 'FAILED' || run.audit?.status === 'FAILED' ? 'FAILED' : task?.workState ?? run.status, reason: task?.workErrorCode ?? run.errorCode } : null }
@@ -147,40 +167,43 @@ export async function listOutcomeFixtures(projectId: string): Promise<OutcomeFix
 
 export async function createOutcomeFixture(input: {
   projectId: string
-  siteUrl: string
+  userId: string
   fixture: OutcomeFixtureInput
 }): Promise<OutcomeFixtureView> {
-  const data = normalizeFixtureInput(input.siteUrl, input.fixture)
-  const row = await prisma.outcomeFixture.create({
-    data: { projectId: input.projectId, ...data, authorizedAt: null },
-    select: fixtureSelect,
+  return fixtureWrite(input.projectId, input.userId, true, async (tx, project) => {
+    const data = normalizeFixtureInput(project.url, input.fixture)
+    return toView(await tx.outcomeFixture.create({
+      data: { projectId: project.id, configuredByUserId: input.userId, ...data, authorizedAt: null }, select: fixtureSelect,
+    }))
   })
-  return toView(row)
 }
 
 export async function updateOutcomeFixture(input: {
   projectId: string
   fixtureId: string
-  siteUrl: string
+  userId: string
   fixture: OutcomeFixtureInput
 }): Promise<OutcomeFixtureView> {
-  const current = await findFixture(input.projectId, input.fixtureId)
-  if (!current) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
-  const data = normalizeFixtureInput(input.siteUrl, input.fixture)
-  const row = await prisma.outcomeFixture.update({
-    where: { id: current.id },
-    data: {
-      ...data,
-      version: { increment: 1 },
-      lastDryRunVersion: null,
-      lastDryRunAt: null,
-      lastDryRunResult: Prisma.DbNull,
-      authorizedAt: null,
-      enabled: true,
-    },
-    select: fixtureSelect,
+  return fixtureWrite(input.projectId, input.userId, true, async (tx, project) => {
+    const current = await findFixture(input.projectId, input.fixtureId, tx)
+    if (!current) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+    const data = normalizeFixtureInput(project.url, input.fixture)
+    const row = await tx.outcomeFixture.update({
+      where: { id: current.id },
+      data: {
+        ...data,
+        configuredByUserId: input.userId,
+        version: { increment: 1 },
+        lastDryRunVersion: null,
+        lastDryRunAt: null,
+        lastDryRunResult: Prisma.DbNull,
+        authorizedAt: null,
+        enabled: true,
+      },
+      select: fixtureSelect,
+    })
+    return toView(row)
   })
-  return toView(row)
 }
 
 /** Setup is admitted durably. A disconnected HTTP caller does not own execution. */
@@ -188,7 +211,9 @@ export async function dryRunOutcomeFixture(input: {
   projectId: string; fixtureId: string; userId: string; idempotencyKey?: string;
 }): Promise<OutcomeFixtureView> {
   const fixture = await findFixture(input.projectId, input.fixtureId)
-  if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+  if (!fixture || fixture.project.userId !== input.userId)
+    throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+  if (!fixtureOwnerCurrent(fixture)) throw new OutcomeFixtureError('FIXTURE_CHANGED', SITE_ACTION_COPY.fixtures.configurationRequired, 409)
   const run = await requestSiteRun({ projectId: input.projectId, userId: input.userId, outcomeIds: [], source: 'WEB',
     scope: 'FIXTURE_SETUP', fixtureId: input.fixtureId, idempotencyKey: input.idempotencyKey })
   const views = await listOutcomeFixtures(input.projectId)
@@ -197,54 +222,60 @@ export async function dryRunOutcomeFixture(input: {
   return { ...view, setupRun: view.setupRun ?? { runId: run.runId, auditId: run.auditId, version: fixture.version, state: 'QUEUED', reason: null } }
 }
 
-export async function authorizeOutcomeFixture(projectId: string, fixtureId: string): Promise<OutcomeFixtureView> {
-  const fixture = await findFixture(projectId, fixtureId)
-  if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
-  const result = safeFormExecutionResultSchema.safeParse(fixture.lastDryRunResult)
-  if (fixture.lastDryRunVersion !== fixture.version || !result.success || result.data.disposition !== 'SUCCEEDED' || result.data.detail.cleanupStatus !== 'succeeded') {
-    throw new OutcomeFixtureError('FIXTURE_DRY_RUN_REQUIRED', 'Complete a successful dry run of this exact fixture version before authorizing it.', 409)
-  }
-  const changed = await prisma.outcomeFixture.updateMany({
-    where: {
-      id: fixture.id,
-      projectId,
-      version: fixture.version,
-      lastDryRunVersion: fixture.version,
-      lastDryRunResult: { path: ['disposition'], equals: 'SUCCEEDED' },
-    },
-    data: { authorizedAt: new Date(), enabled: true },
+export async function authorizeOutcomeFixture(projectId: string, fixtureId: string, userId: string): Promise<OutcomeFixtureView> {
+  return fixtureWrite(projectId, userId, true, async tx => {
+    const fixture = await findFixture(projectId, fixtureId, tx)
+    if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+    if (fixture.configuredByUserId !== userId) throw new OutcomeFixtureError('FIXTURE_CHANGED', SITE_ACTION_COPY.fixtures.configurationRequired, 409)
+    const result = safeFormExecutionResultSchema.safeParse(fixture.lastDryRunResult)
+    if (fixture.lastDryRunVersion !== fixture.version || !result.success || result.data.disposition !== 'SUCCEEDED' || result.data.detail.cleanupStatus !== 'succeeded') {
+      throw new OutcomeFixtureError('FIXTURE_DRY_RUN_REQUIRED', 'Complete a successful dry run of this exact fixture version before authorizing it.', 409)
+    }
+    const changed = await tx.outcomeFixture.updateMany({
+      where: {
+        id: fixture.id,
+        projectId,
+        configuredByUserId: userId,
+        version: fixture.version,
+        lastDryRunVersion: fixture.version,
+        lastDryRunResult: { path: ['disposition'], equals: 'SUCCEEDED' },
+      },
+      data: { authorizedAt: new Date(), enabled: true },
+    })
+    if (changed.count !== 1) {
+      throw new OutcomeFixtureError('FIXTURE_CHANGED', 'The fixture changed before authorization. Run it again.', 409)
+    }
+    return toView(await findFixture(projectId, fixtureId, tx))
   })
-  if (changed.count !== 1) {
-    throw new OutcomeFixtureError('FIXTURE_CHANGED', 'The fixture changed before authorization. Run it again.', 409)
-  }
-  return toView(await findFixture(projectId, fixtureId))
 }
 
-export async function revokeOutcomeFixture(projectId: string, fixtureId: string): Promise<OutcomeFixtureView> {
-  const fixture = await findFixture(projectId, fixtureId)
-  if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
-  const row = await prisma.outcomeFixture.update({
-    where: { id: fixture.id },
-    // Revocation invalidates pending setup consent as well as bound verification.
-    data: { authorizedAt: null, version: { increment: 1 }, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: Prisma.DbNull },
-    select: fixtureSelect,
+export async function revokeOutcomeFixture(projectId: string, fixtureId: string, userId: string): Promise<OutcomeFixtureView> {
+  return fixtureWrite(projectId, userId, false, async tx => {
+    const fixture = await findFixture(projectId, fixtureId, tx)
+    if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+    const row = await tx.outcomeFixture.update({
+      where: { id: fixture.id },
+      // Revocation invalidates pending setup consent as well as bound verification.
+      data: { authorizedAt: null, version: { increment: 1 }, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: Prisma.DbNull },
+      select: fixtureSelect,
+    })
+    return toView(row)
   })
-  return toView(row)
 }
 
-export async function deleteOutcomeFixture(projectId: string, fixtureId: string): Promise<void> {
-  const fixture = await findFixture(projectId, fixtureId)
-  if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
-  const bindings = await prisma.outcomeExecutionBinding.findMany({
-    where: { mechanism: 'SAFE_FORM', outcome: { projectId } },
-    select: { id: true, config: true },
+export async function deleteOutcomeFixture(projectId: string, fixtureId: string, userId: string): Promise<void> {
+  return fixtureWrite(projectId, userId, false, async tx => {
+    const fixture = await findFixture(projectId, fixtureId, tx)
+    if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+    const bindings = await tx.outcomeExecutionBinding.findMany({
+      where: { mechanism: 'SAFE_FORM', outcome: { projectId } },
+      select: { id: true, config: true },
+    })
+    const boundIds = bindings.filter((binding) => {
+      const config = binding.config as { fixtureId?: unknown }
+      return config.fixtureId === fixtureId
+    }).map((binding) => binding.id)
+    await tx.outcomeExecutionBinding.updateMany({ where: { id: { in: boundIds } }, data: { enabled: false } })
+    await tx.outcomeFixture.delete({ where: { id: fixture.id } })
   })
-  const boundIds = bindings.filter((binding) => {
-    const config = binding.config as { fixtureId?: unknown }
-    return config.fixtureId === fixtureId
-  }).map((binding) => binding.id)
-  await prisma.$transaction([
-    prisma.outcomeExecutionBinding.updateMany({ where: { id: { in: boundIds } }, data: { enabled: false } }),
-    prisma.outcomeFixture.delete({ where: { id: fixture.id } }),
-  ])
 }

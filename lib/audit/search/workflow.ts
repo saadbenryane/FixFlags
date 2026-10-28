@@ -47,7 +47,7 @@ export async function priorSearchReceipt(auditId: string, pageUrl: string, evalu
 
 export async function persistSearchReceipt(receipt: SearchReceipt, module: 'search' | 'search-google' | 'search-cross-page' = 'search'): Promise<SearchReceipt> {
   const validated = searchReceiptSchema.parse(receipt)
-  const stored = await executionWrite(tx => tx.auditVerifierExecution.upsert({
+  const stored = await executionWrite(tx => tx.auditVerificationReceipt.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: validated.auditId, targetKey: `module:${module}`, scopeKey: `page:${validated.pageUrl}` } },
     create: { auditId: validated.auditId, targetKey: `module:${module}`, scopeKey: `page:${validated.pageUrl}`,
       source: 'SEARCH', pageUrl: validated.pageUrl, status: 'COMPLETED', detail: validated as Prisma.InputJsonValue,

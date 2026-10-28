@@ -72,10 +72,10 @@ run('interrupted body evidence through URL admission and installed workers', () 
   })
   async function complete(auditId: string) {
     await vi.waitFor(async () => {
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'check', 'finalize', 'search', 'search-resources', 'discovery'] } }, data: { workRecoveryUntil: new Date(0) } })
       if (phase === 'missing' && requests > 0)
-        await prisma.auditVerifierExecution.updateMany({ where: { auditId, workKind: 'http', workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
+        await prisma.auditExecutionTask.updateMany({ where: { auditId, workKind: 'http', workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
     }, { timeout: 45_000, interval: 100 })
@@ -95,17 +95,19 @@ run('interrupted body evidence through URL admission and installed workers', () 
       : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
   }
   it('flags actual header evidence without certifying incomplete content, verifies repair and preserves recurrence', async () => {
-    const source = await createAndEnqueueAudit({ url: pageUrl, userId })
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    userId })
     await complete(source.auditId)
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } }); projectId = audit.projectId!
-    const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
+    const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
     expect(task).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
     expect(httpArtifactSchema.parse(readArtifact(task.workResult, 'http').data)).toMatchObject({ metadata: null,
       document: { status: 200, complete: false, reason: 'response_body_unavailable', body: expect.stringContaining('Partial service page') } })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'security-csp-unsafe-inline' } })
     expect((await loadSiteHome(projectId))?.flags).toContainEqual(expect.objectContaining({ sourceFlagId: flag.id }))
     expect(await prisma.flag.count({ where: { auditId: source.auditId, checkId: 'page-http-error' } })).toBe(0)
-    const page = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:page-response' } })
+    const page = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:page-response' } })
     expect(page.detail).toMatchObject({ complete: false, passed: false })
     const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
     await verify(flag.id, 'unsafe', 'UNCHANGED')

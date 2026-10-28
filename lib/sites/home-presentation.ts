@@ -20,6 +20,7 @@ export function projectHomePresentation(input: {
   const watchState = watchBoardState({
     interval: site.watchInterval,
     nextRunAt: site.watchNextRunAt,
+    pausedAt: site.watchPausedAt,
     lastError: site.watchLastError,
     consecutiveFailures: site.watchConsecutiveFailures,
     now,

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Textarea } from '@/components/ui/textarea'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
-import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
+import { copyRepairPrompt } from '@/lib/sites/repair-prompt-client'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { useSiteAction } from '@/hooks/useSiteAction'
@@ -18,7 +18,11 @@ import { SiteActionFeedback } from './SiteActionFeedback'
 import { usePreparedRepairPrompt } from '@/hooks/usePreparedRepairPrompt'
 import { MAX_REPAIR_TASKS } from '@/lib/sites/repair-scope'
 
-export function SiteFixBundleButton({ siteId, area, flagIds, availability, presentation = 'button' }: { siteId: string; area?: SiteCardArea; flagIds?: string[]; availability: SiteActionAvailability; presentation?: 'button' | 'preview' }) {
+export function SiteFixBundleButton(props: Parameters<typeof SiteFixBundleContent>[0]) {
+  return <SiteFixBundleContent key={JSON.stringify([props.siteId, props.area, props.flagIds, props.availability])} {...props} />
+}
+
+function SiteFixBundleContent({ siteId, area, flagIds, availability, presentation = 'button' }: { siteId: string; area?: SiteCardArea; flagIds?: string[]; availability: SiteActionAvailability; presentation?: 'button' | 'preview' }) {
   const { busy, error, submit } = useSiteAction()
   const [copied, setCopied] = useState(false)
   const [manual, setManual] = useState<string | null>(null)
@@ -31,16 +35,7 @@ export function SiteFixBundleButton({ siteId, area, flagIds, availability, prese
     if (scopeTooLarge) return
     await submit(async () => {
       const bundle = await prepared.forCopy()
-      try { await navigator.clipboard.writeText(bundle.prompt) }
-      catch { setManual(bundle.prompt); return }
-      let recordFailed = false
-      for (let offset = 0; offset < bundle.tasks.length; offset += 4) {
-        const recorded = await Promise.allSettled(bundle.tasks.slice(offset, offset + 4).map(task => executeSiteAction(`/api/sites/${siteId}/flags/${encodeURIComponent(task.sourceFlagId)}/fix`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'copy', promptHash: task.promptHash }),
-        }, 'fixPrompt')))
-        if (recorded.some(result => result.status === 'rejected')) recordFailed = true
-      }
-      if (recordFailed) throw new SiteActionError(C.bundleRecordFailed)
+      if (!await copyRepairPrompt({ kind: 'bundle', siteId }, bundle)) { setManual(bundle.prompt); return }
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2500)
     }, () => null)

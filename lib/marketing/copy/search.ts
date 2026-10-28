@@ -24,6 +24,7 @@ export const SEARCH_COPY = {
     NOT_CONNECTED: 'Search Console is coming soon. Public website evidence remains available independently.',
     PROPERTY_MISMATCH: 'The connected Search Console property does not cover this exact URL.',
     AUTH_EXPIRED: 'This saved Search Console authorization expired. New setup is coming soon; earlier evidence retains its recorded date.',
+    AUTHORIZATION_CHANGED: 'The Search Console connection changed during this check. Run another check to use its current authorization.',
     PERMISSION_REFUSED: 'Google refused access to this saved property. New setup is coming soon; earlier evidence remains historical.',
     PROVIDER_QUOTA: 'Google’s request quota was reached. This evidence was not refreshed.',
     PROVIDER_UNAVAILABLE: 'Google’s evidence could not be read. Local website checks remain separate.',

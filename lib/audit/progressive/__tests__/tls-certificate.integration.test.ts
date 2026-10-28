@@ -81,15 +81,15 @@ run('public certificate findings through URL admission and installed workers', (
   })
   async function complete(auditId: string) {
     try { await vi.waitFor(async () => {
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'check', 'finalize', 'search', 'search-resources', 'discovery', 'bindings'] } }, data: { workRecoveryUntil: new Date(0) } })
       if (phase === 'unknown' && refusals.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE'))
-        await prisma.auditVerifierExecution.updateMany({ where: { auditId, workKind: { in: ['http', 'bindings'] }, workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
+        await prisma.auditExecutionTask.updateMany({ where: { auditId, workKind: { in: ['http', 'bindings'] }, workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
     }, { timeout: 45_000, interval: 100 }) }
     catch (error) {
-      console.info('Controlled certificate execution state', await prisma.auditVerifierExecution.findMany({ where: { auditId, workKind: { not: null } },
+      console.info('Controlled certificate execution state', await prisma.auditExecutionTask.findMany({ where: { auditId, workKind: { not: null } },
         select: { workKind: true, workState: true, workAttempts: true, workErrorCode: true } }))
       console.info('Controlled binding interruptions', await prisma.auditPipelineEvent.findMany({ where: { auditId, event: 'binding_attempt_interrupted' },
         select: { detail: true }, take: 3 }))
@@ -112,10 +112,12 @@ run('public certificate findings through URL admission and installed workers', (
       : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
   }
   it('preserves the failed redirect hop, refuses uncertain and downgraded repairs, then verifies HTTPS and recurrence', async () => {
-    const source = await createAndEnqueueAudit({ url: pageUrl, userId })
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    userId })
     await complete(source.auditId)
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } }); projectId = audit.projectId!
-    const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
+    const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
     const collected = httpArtifactSchema.parse(readArtifact(task.workResult, 'http').data).document
     expect(collected).toMatchObject({ url: pageUrl, finalUrl: secureUrl, redirects: [pageUrl], status: null, body: null, complete: false,
       transportFailure: { kind: 'tls-certificate', code: 'CERT_HAS_EXPIRED' } })
@@ -174,7 +176,7 @@ run('public certificate findings through URL admission and installed workers', (
       expect((await loadSiteFlagCopyTask(projectId, flag.id)).prompt).toMatch(/renew/i)
       expect(await prisma.outcomeBindingAttempt.findMany({ where: { auditId: source.auditId! }, orderBy: { attempt: 'asc' } }))
         .toMatchObject([{ disposition: 'FAILED', reason: 'certificate_expired' }, { disposition: 'FAILED', reason: 'certificate_expired' }])
-      expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'bindings' } }))
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'bindings' } }))
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
       const incident = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
       const assessment = await prisma.outcomeAssessment.findFirstOrThrow({ where: { runRequestId: source.runId, outcomeId: outcome.id } })

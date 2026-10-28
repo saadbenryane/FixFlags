@@ -230,6 +230,7 @@ runBrowser('keyboard collector in Chromium', () => {
   it('does not certify an outline matching its uniform surrounding background, and verifies a contrasting repair', async () => {
     await fixture('<style>body{padding:20px;background:white}button{outline:none;box-shadow:none}button:focus-visible{outline:3px solid white;outline-offset:2px}</style><button id="action">Action</button>')
     const observed = await collect(), original = runKeyboardChecks(observed).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original.evidenceTargets?.[0]).toMatchObject({ rect: expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }) })
     expect(observed.steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
     expect(original).toBeDefined()
     await context.close()
@@ -281,6 +282,10 @@ runBrowser('keyboard collector in Chromium', () => {
     ['ungenerated pseudo-element', '', 'button:focus-visible::after{background:blue;color:white}'],
     ['transparent outline', '', 'button:focus-visible{outline:3px solid color(srgb 0 0 1 / 0)}'],
     ['transparent shadow', '', 'button:focus-visible{box-shadow:0 0 0 3px color(srgb 0 0 1 / 0)}'],
+    ['unpainted border', '', 'button{border:0 solid red}button:focus-visible{border-color:blue}'],
+    ['zero-area child background', '<span style="display:inline-block;width:0;height:0"></span>', 'button:focus-visible span{background:blue}'],
+    ['zero-area pseudo background', '', 'button::after{content:"";display:block;width:0;height:0}button:focus-visible::after{background:blue}'],
+    ['undrawn text decoration', '', 'button{ text-decoration:none red }button:focus-visible{text-decoration-color:blue}'],
   ])('does not count a %s as a visible focus indicator', async (_name, child, style) => {
     await fixture(`<style>button{outline:none;box-shadow:none}${style}</style><button id="action">Action${child}</button>`)
     const evidence = await collect()
@@ -292,6 +297,16 @@ runBrowser('keyboard collector in Chromium', () => {
   it('recognizes generated pseudo-elements and painted shadows as focus indicators', async () => {
     await fixture('<style>button{outline:none;box-shadow:none}#pseudo:focus-visible::after{content:"";display:block;width:20px;height:3px;background:blue}#shadow:focus-visible{box-shadow:0 0 0 3px color(srgb 0 0 1 / 1)}</style><button id="pseudo">Pseudo</button><button id="shadow">Shadow</button>')
     expect((await collect()).steps.map(step => step.indicator)).toEqual(['styled', 'styled'])
+  })
+
+  it.each([
+    ['border color', 'button{border:2px solid transparent}button:focus-visible{border-color:blue}'],
+    ['border pattern', 'button{border:3px solid blue}button:focus-visible{border-style:dotted}'],
+    ['text decoration', 'button:focus-visible{text-decoration:underline blue}'],
+    ['generated background', 'button::after{content:"";display:block;width:0;height:3px}button:focus-visible::after{width:20px;background:blue}'],
+  ])('retains a painted %s as a focus-specific style', async (_name, style) => {
+    await fixture(`<style>button{outline:none;box-shadow:none}${style}</style><button id="action">Action</button>`)
+    expect(await collect()).toMatchObject({ focusPolicy: 'painted-properties-v2', steps: [{ indicator: 'styled' }] })
   })
 
   it('observes a persistent trap using forward, reverse, and Escape keys', async () => {

@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   attemptUpdate: vi.fn(),
   cycleUpsert: vi.fn(),
   cycleEventUpsert: vi.fn(),
+  cycleCreateMany: vi.fn(), cycleFindMany: vi.fn(), cycleEventCreateMany: vi.fn(),
   projectFindFirst: vi.fn(),
   transaction: vi.fn(),
   executeRaw: vi.fn(),
@@ -70,8 +71,8 @@ vi.mock('@/lib/db', () => ({
       findMany: mocks.attemptFindMany,
     },
     outcomeAssessment: { findFirst: mocks.assessmentFindFirst },
-    improvementCycle: { upsert: mocks.cycleUpsert },
-    improvementCycleEvent: { upsert: mocks.cycleEventUpsert },
+    improvementCycle: { upsert: mocks.cycleUpsert, createMany: mocks.cycleCreateMany, findMany: mocks.cycleFindMany },
+    improvementCycleEvent: { upsert: mocks.cycleEventUpsert, createMany: mocks.cycleEventCreateMany },
     project: { findFirst: mocks.projectFindFirst },
     $transaction: mocks.transaction,
   },
@@ -152,15 +153,16 @@ beforeEach(() => {
         },
         improvement: {
           createMany: mocks.improvementCreateMany,
+          findMany: mocks.improvementFindMany,
           upsert: mocks.improvementUpsert,
           findUniqueOrThrow: mocks.improvementFindUniqueOrThrow,
           update: mocks.improvementUpdate,
           updateMany: mocks.improvementUpdateMany,
         },
         improvementOccurrence: { upsert: mocks.occurrenceUpsert, createMany: mocks.occurrenceCreateMany,
-          findUniqueOrThrow: mocks.occurrenceFindUniqueOrThrow },
-        improvementCycle: { upsert: mocks.cycleUpsert },
-        improvementCycleEvent: { upsert: mocks.cycleEventUpsert },
+          findUniqueOrThrow: mocks.occurrenceFindUniqueOrThrow, findMany: mocks.occurrenceFindMany },
+        improvementCycle: { upsert: mocks.cycleUpsert, createMany: mocks.cycleCreateMany, findMany: mocks.cycleFindMany },
+        improvementCycleEvent: { upsert: mocks.cycleEventUpsert, createMany: mocks.cycleEventCreateMany },
         $executeRaw: mocks.executeRaw,
         $queryRaw: mocks.queryRaw,
       })
@@ -180,6 +182,9 @@ beforeEach(() => {
   mocks.occurrenceUpsert.mockResolvedValue({ id: 'occurrence-1' })
   mocks.cycleUpsert.mockResolvedValue({ id: 'cycle-1' })
   mocks.cycleEventUpsert.mockResolvedValue({ id: 'event-1' })
+  mocks.cycleCreateMany.mockResolvedValue({ count: 1 })
+  mocks.cycleFindMany.mockResolvedValue([{ id: 'cycle-1', improvementId: 'improvement-1', sourceAuditId: 'review-1' }])
+  mocks.cycleEventCreateMany.mockResolvedValue({ count: 1 })
   mocks.appendVerifiedLearning.mockImplementation((memory, learning) => ({
     ...memory,
     verifiedLearnings: [learning],
@@ -534,9 +539,9 @@ describe('recordFlagImprovementAttempt', () => {
   it.each([0, 1])('converges native first-fix materialization without rewriting existing proposals, inserted occurrence: %s', async inserted => {
     mocks.flagFindFirst.mockResolvedValue({ ...ownedFlag, improvementOccurrence: null })
     mocks.improvementCreateMany.mockResolvedValue({ count: 0 })
-    mocks.improvementFindUniqueOrThrow.mockResolvedValue({ id: 'improvement-1' })
+    mocks.improvementFindMany.mockResolvedValue([{ id: 'improvement-1', fingerprint: improvementFingerprint(ownedFlag) }])
     mocks.occurrenceCreateMany.mockResolvedValue({ count: inserted })
-    mocks.occurrenceFindUniqueOrThrow.mockResolvedValue({ id: 'occurrence-1', improvementId: 'improvement-1' })
+    mocks.occurrenceFindMany.mockResolvedValue([{ id: 'occurrence-1', improvementId: 'improvement-1', flagId: 'flag-1', auditId: 'review-1' }])
     mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
     mocks.attemptCreate.mockResolvedValue({ id: 'attempt-1' })
     const result = await recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'site',
@@ -546,10 +551,11 @@ describe('recordFlagImprovementAttempt', () => {
     expect(mocks.occurrenceCreateMany).toHaveBeenCalledWith(expect.objectContaining({ skipDuplicates: true }))
     expect(mocks.improvementUpsert).not.toHaveBeenCalled()
     expect(mocks.occurrenceUpsert).not.toHaveBeenCalled()
-    const generated = mocks.cycleEventUpsert.mock.calls.filter(([value]) => value.create.type === 'GENERATED')
-    expect(generated).toHaveLength(inserted)
+    expect(mocks.cycleEventCreateMany).toHaveBeenCalledWith({ data: [expect.objectContaining({
+      cycleId: 'cycle-1', type: 'GENERATED', idempotencyKey: 'generated:flag-1',
+    })], skipDuplicates: true })
     expect(mocks.flagFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: {
-      id: 'flag-1', audit: { userId: 'user-1', projectId: 'product-1', project: { userId: 'user-1' } },
+      id: 'flag-1', audit: { userId: 'user-1', projectId: 'product-1', project: { userId: 'user-1', deletedAt: null } },
     } }))
   })
 
@@ -580,9 +586,9 @@ describe('recordFlagImprovementAttempt', () => {
     const recorded = { ...ownedFlag, checkId: 'noindex-meta', fix: '', improvementOccurrence: null }
     mocks.flagFindFirst.mockResolvedValue(recorded)
     mocks.improvementCreateMany.mockResolvedValue({ count: 1 })
-    mocks.improvementFindUniqueOrThrow.mockResolvedValue({ id: 'improvement-1' })
+    mocks.improvementFindMany.mockResolvedValue([{ id: 'improvement-1', fingerprint: improvementFingerprint(recorded) }])
     mocks.occurrenceCreateMany.mockResolvedValue({ count: 1 })
-    mocks.occurrenceFindUniqueOrThrow.mockResolvedValue({ id: 'occurrence-1', improvementId: 'improvement-1' })
+    mocks.occurrenceFindMany.mockResolvedValue([{ id: 'occurrence-1', improvementId: 'improvement-1', flagId: 'flag-1', auditId: 'review-1' }])
     const result = await recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' })
     expect(result).toMatchObject({ action: 'HANDOFF_COPIED', attemptId: null })
     expect(recorded.fix).toBe('')
@@ -685,6 +691,7 @@ describe('recordOwnerFlagFeedbackDecision', () => {
     mocks.flagFindFirst
       .mockResolvedValueOnce(ownerDecisionFlag)
       .mockResolvedValueOnce(ownedAttemptFlag)
+      .mockResolvedValueOnce({ id: 'flag-1' })
     mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
     mocks.attemptCreate.mockResolvedValue({ id: 'attempt-1' })
 
@@ -713,6 +720,7 @@ describe('recordOwnerFlagFeedbackDecision', () => {
     mocks.flagFindFirst
       .mockResolvedValueOnce(ownerDecisionFlag)
       .mockResolvedValueOnce(ownedAttemptFlag)
+      .mockResolvedValueOnce({ id: 'flag-1' })
 
     await recordOwnerFlagFeedbackDecision({
       flagId: 'flag-1',

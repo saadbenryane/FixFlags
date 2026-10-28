@@ -14,6 +14,16 @@ describe('VerifyOutcomeButton', () => {
     refresh.mockClear()
   })
 
+  it('shows a running verification and prevents another submission', () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    render(<VerifyOutcomeButton siteId="site-1" outcomeId="outcome-1" running />)
+    const button = screen.getByRole('button', { name: 'Checking…' })
+    expect(button).toBeDisabled()
+    fireEvent.click(button)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('shows the reason the server gave when Verify cannot start', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: false,

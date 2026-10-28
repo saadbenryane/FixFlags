@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { AuditVerifierExecution, Prisma } from '@prisma/client'
+import type { AuditExecutionTask, Prisma } from '@prisma/client'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { loadOperations } from '../operations'
@@ -30,7 +30,7 @@ run('persistent operator execution history in PostgreSQL', () => {
     await prisma.$disconnect()
   })
   it('keeps old and partial failures inspectable without misclassifying inapplicability or rewriting history', async () => {
-    const expected: string[] = [], snapshots: AuditVerifierExecution[] = []
+    const expected: string[] = [], snapshots: AuditExecutionTask[] = []
     const samples: Array<{ fix: string; checkId: string | null; agentPrompt?: string; cursorPrompt?: string;
       attentionPolicy?: Prisma.InputJsonValue; expectedReady?: boolean }> = [
       { name: 'old-failure', state: 'EXHAUSTED' as const, status: 'FAILED' as const, auditStatus: 'FAILED' as const, keep: true },
@@ -47,7 +47,7 @@ run('persistent operator execution history in PostgreSQL', () => {
       const audit = await prisma.audit.create({ data: { userId: project.userId, projectId: project.id,
         url: project.url, status: sample.auditStatus, createdAt: old, completedAt: old,
         reportCompleteness: sample.auditStatus === 'COMPLETED' ? 'PARTIAL' : 'UNKNOWN' } })
-      const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:controlled',
+      const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:controlled',
         source: 'DETERMINISTIC', workKind: 'http', workState: sample.state, status: sample.status,
         workErrorCode: sample.keep ? 'CONTROLLED_INCOMPLETE' : null, updatedAt: old } })
       if (sample.keep) expected.push(task.id)
@@ -66,7 +66,7 @@ run('persistent operator execution history in PostgreSQL', () => {
       expect(row.action).toBeNull()
       expect(row.auditId).toBe(row.targetId)
     }
-    expect(await prisma.auditVerifierExecution.findMany({ where: { audit: { project: { userId: { in: [ownerId, inactiveId] } } } }, orderBy: { id: 'asc' } }))
+    expect(await prisma.auditExecutionTask.findMany({ where: { audit: { project: { userId: { in: [ownerId, inactiveId] } } } }, orderBy: { id: 'asc' } }))
       .toEqual(snapshots.sort((a, b) => a.id.localeCompare(b.id)))
     await expect(loadOperations({ ...actor, sessionId: 'revoked' }, { queue: 'tasks' })).rejects.toThrow('Administrator access is no longer available')
   })

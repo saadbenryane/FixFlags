@@ -88,10 +88,10 @@ export async function POST(req: NextRequest) {
     })
 
     const { auditId, siteId } = await createAndEnqueueAudit({
+      admission: { kind: 'new-check' },
       url,
       userId: session?.user?.id ?? null,
       auditMode: 'SINGLE',
-      monitoringMode: 'FULL',
       attribution,
       clientId: session?.user ? undefined : clientId,
     })

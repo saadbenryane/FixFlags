@@ -11,7 +11,7 @@ export type AdvertisedCoverage = {
   acceptance: {
     applicability: string;
     requiredObservations: readonly string[];
-    recovery: 'comparable_observation' | 'advisory_reassessment' | 'provider_reporting_window' | 'authorized_lifecycle' | 'scheduled_transition';
+    recovery: 'comparable_observation' | 'advisory_reassessment' | 'provider_reporting_window' | 'authorized_lifecycle' | 'scheduled_transition' | 'recorded_observation';
     scenarios: readonly ('working' | 'failing' | 'incomplete' | 'repaired' | 'recurring')[];
     proofEnvironments: readonly ('local_worker' | 'live_provider' | 'live_schedule')[];
   };
@@ -37,6 +37,7 @@ function acceptanceFor(id: string, evaluators: readonly CoverageEvaluator[], con
   const scheduled = /^uptime\.(schedule|incidents|history|recovery)$/.test(id)
   const providerWindow = id === 'performance.inp' || configuration === 'search_console' || configuration === 'analytics'
   const lifecycle = configuration === 'signup_fixture' || configuration === 'automatic_accounts'
+  const observation = id === 'uptime.provenance'
   return {
     applicability: applicability[configuration],
     requiredObservations: [...new Set(evaluators.flatMap(evaluator => {
@@ -44,9 +45,9 @@ function acceptanceFor(id: string, evaluators: readonly CoverageEvaluator[], con
       return kind === 'page' ? PAGE_CHECK_DEFINITIONS[module].requiredEvidence.map(source => `${evaluator}:${source}`)
         : [evaluator + ':recorded-observation']
     }))],
-    recovery: scheduled ? 'scheduled_transition' : providerWindow ? 'provider_reporting_window' : lifecycle ? 'authorized_lifecycle'
+    recovery: observation ? 'recorded_observation' : scheduled ? 'scheduled_transition' : providerWindow ? 'provider_reporting_window' : lifecycle ? 'authorized_lifecycle'
       : extent === 'heuristic' ? 'advisory_reassessment' : 'comparable_observation',
-    scenarios: extent === 'heuristic' ? ['working', 'failing', 'incomplete', 'repaired'] : ['working', 'failing', 'incomplete', 'repaired', 'recurring'],
+    scenarios: observation ? ['working', 'incomplete'] : extent === 'heuristic' ? ['working', 'failing', 'incomplete', 'repaired'] : ['working', 'failing', 'incomplete', 'repaired', 'recurring'],
     proofEnvironments: scheduled ? ['local_worker', 'live_schedule'] : providerWindow || configuration === 'pagespeed' || lifecycle
       ? ['local_worker', 'live_provider'] : ['local_worker'],
   }
@@ -105,7 +106,8 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
     'HTML canonical declarations use the active document base, while HTTP Link headers use the response URL. Collection and evaluation share the same parser and bounded rendered sections retain the native base. Historical detector corrections cannot certify repair; missing target responses and incomplete declarations remain unknown.'),
   ...entries(['search.indexing'], ['search:indexing']),
   ...entries(['search.robots'], ['search:crawl']),
-  ...entries(['search.sitemaps', 'search.links'], ['search:discovery']),
+  ...entries(['search.sitemaps'], ['search:discovery']),
+  ...entries(['search.links'], ['page:seo']),
   ...entries(['search.structured-data'], ['search:structured-data'], 'public', 'checked_scope', 'Detected entities and supported feature requirements do not promise Google eligibility or rich-result appearance.'),
   ...entries(['search.open-graph', 'search.favicon'], ['page:metadata']),
   ...entries(['search.preview-image'], ['page:og-image'], 'public', 'checked_scope',

@@ -29,14 +29,14 @@ localDatabase('monitoring responsibility with populated task history', () => {
           environment: 'production', monitoringPages: [root], checks: {}, outcomes: [], verificationTarget: null } })) })
       // Synthetic completed ledger rows model the query workload. They are not
       // observations or proof of twenty-four thousand actual check executions.
-      for (const auditId of sourceIds) await prisma.auditVerifierExecution.createMany({ data: Array.from({ length: taskCount }, (_, position) => ({
+      for (const auditId of sourceIds) await prisma.auditExecutionTask.createMany({ data: Array.from({ length: taskCount }, (_, position) => ({
         auditId, targetKey: 'task:p' + position, source: 'EXECUTION', workKind: position < 2 ? 'browser' : position < 4 ? 'flow' : position === 4 ? 'slow-replay' : position === 5 ? 'journeys' : 'check',
         workInput: position === 3 ? { module: 'pricing-navigation' } : {},
         pageUrl: position >= 1 && position <= 5 ? retained : root, workState: 'COMPLETED', status: 'COMPLETED' as const,
       })) })
       // The access path must not put an unbounded URL in a B-tree tuple and
       // introduce a new write failure for a previously accepted navigation.
-      await prisma.auditVerifierExecution.create({ data: { auditId: sourceIds[0], targetKey: 'task:long-url', source: 'EXECUTION',
+      await prisma.auditExecutionTask.create({ data: { auditId: sourceIds[0], targetKey: 'task:long-url', source: 'EXECUTION',
         workKind: 'browser', pageUrl: longUrl, workState: 'EXHAUSTED', status: 'FAILED' } })
       // Rebuild the actual migration over populated history, with a writer
       // held open. Another write must commit while the build waits for it.
@@ -46,7 +46,7 @@ localDatabase('monitoring responsibility with populated task history', () => {
       const release = new Promise<void>(resolve => { releaseWriter = resolve })
       const held = new Promise<void>(resolve => { writerHeld = resolve })
       const writer = prisma.$transaction(async tx => {
-        await tx.auditVerifierExecution.updateMany({ where: { auditId: sourceIds[0], targetKey: 'task:p2' }, data: { workRetryAt: new Date(0) } })
+        await tx.auditExecutionTask.updateMany({ where: { auditId: sourceIds[0], targetKey: 'task:p2' }, data: { workRetryAt: new Date(0) } })
         writerHeld()
         await release
       }, { timeout: 10_000 })
@@ -61,7 +61,7 @@ localDatabase('monitoring responsibility with populated task history', () => {
         }, { timeout: 2000, interval: 25 })
         await prisma.$transaction(async tx => {
           await tx.$executeRaw`SET LOCAL lock_timeout = '1s'`
-          expect(await tx.auditVerifierExecution.updateMany({ where: { auditId: sourceIds[0], targetKey: 'task:p3' },
+          expect(await tx.auditExecutionTask.updateMany({ where: { auditId: sourceIds[0], targetKey: 'task:p3' },
             data: { workRetryAt: new Date(1) } })).toMatchObject({ count: 1 })
         }, { timeout: 2000 })
       } finally {

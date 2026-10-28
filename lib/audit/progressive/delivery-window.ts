@@ -13,8 +13,8 @@ const select = { id: true, auditId: true, workKind: true, workInput: true, workS
 /** Bounded reservation projection, without transferring task artifacts. */
 export function reservedDeliveryQuery(resource: TaskQueue, taskId: string, now: Date) {
   return Prisma.sql`
-    SELECT delivery.id FROM audit_verifier_executions delivery JOIN audits a ON a.id = delivery."auditId"
-    WHERE delivery."targetKey" LIKE 'task:%' AND delivery.id <> ${taskId}
+    SELECT delivery.id FROM audit_execution_tasks delivery JOIN audits a ON a.id = delivery."auditId"
+    WHERE delivery.id <> ${taskId}
       AND (delivery."workState" = 'RUNNING' OR (delivery."workState" = 'READY'
         AND (delivery."workDispatchState" IN ('SENT', 'FAILED') OR delivery."workDispatchLeaseUntil" IS NOT NULL)))
       AND (delivery."workState" = 'RUNNING' OR delivery."workDispatchState" IN ('SENT', 'FAILED') OR delivery."workDispatchLeaseUntil" > ${now})
@@ -25,12 +25,12 @@ export function reservedDeliveryQuery(resource: TaskQueue, taskId: string, now: 
 /** Reserve delivery before contacting Redis. A lost acknowledgement retains its
  * existing reservation until reconciliation can inspect the same generation. */
 export async function claimTaskDelivery(taskId: string) {
-  const candidate = await prisma.auditVerifierExecution.findUnique({ where: { id: taskId }, select })
+  const candidate = await prisma.auditExecutionTask.findUnique({ where: { id: taskId }, select })
   if (!candidate?.workKind || candidate.workState !== 'READY') return null
   const resource = queueForTask(candidate.workKind as TaskKind, taskInputSchema.parse(candidate.workInput))
   return executionTransaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'task-delivery:' + resource}))`
-    const task = await tx.auditVerifierExecution.findUnique({ where: { id: taskId }, select })
+    const task = await tx.auditExecutionTask.findUnique({ where: { id: taskId }, select })
     if (!task?.workKind || task.workState !== 'READY') return null
     const input = taskInputSchema.parse(task.workInput), now = new Date()
     if (queueForTask(task.workKind as TaskKind, input) !== resource ||
@@ -47,12 +47,12 @@ export async function claimTaskDelivery(taskId: string) {
       if (occupied.length >= taskDeliveryWindow(resource)) {
         // Rotate saturated work so another resource in this graph can progress.
         // Waiting for delivery capacity is neither an attempt nor a failure.
-        await tx.auditVerifierExecution.updateMany({ where, data: { workRetryAt: now } })
+        await tx.auditExecutionTask.updateMany({ where, data: { workRetryAt: now } })
         return null
       }
     }
     const lease = new Date(now.getTime() + DELIVERY_RECHECK_MS)
-    const claimed = await tx.auditVerifierExecution.updateMany({ where,
+    const claimed = await tx.auditExecutionTask.updateMany({ where,
       data: { workDispatchLeaseUntil: lease, workDispatchState: 'FAILED' } })
     return claimed.count === 1 ? { task, input, resource, lease } : null
   })
@@ -77,7 +77,7 @@ export async function retireObsoleteTaskDeliveries(limit = 25): Promise<void> {
         ? [[job.id, { job, intent: parsed.data }] as const] : []
     })).values()]
     if (!deliveries.length) return
-    const records = await prisma.auditVerifierExecution.findMany({ where: { id: { in: deliveries.map(item => item.intent.taskId) } },
+    const records = await prisma.auditExecutionTask.findMany({ where: { id: { in: deliveries.map(item => item.intent.taskId) } },
       select: { id: true, auditId: true, workKind: true, workState: true, workGeneration: true, audit: { select: { status: true } } } })
     const byId = new Map(records.map(record => [record.id, record]))
     const retired = deliveries.filter(({ intent }) => {

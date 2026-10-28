@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { executionTransaction, executionWrite } from '@/lib/audit/execution-ownership'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { accessTokenForConnection, googleConnectionGrantScope } from '@/lib/sites/connections/google'
 import { searchPropertyCoversUrl } from '@/lib/sites/connections/report-scope'
-import { getGscAccessToken, inspectSearchUrl, querySearchAnalytics, SearchConsoleError, type SearchUrlInspection, type GscSearchRow } from '@/lib/integrations/google-search-console'
+import { getGscAccess, inspectSearchUrl, querySearchAnalytics, SearchConsoleError, type SearchUrlInspection, type GscSearchRow } from '@/lib/integrations/google-search-console'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { searchObservationSchema, searchReceiptSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { searchFindings } from './registry'
@@ -11,8 +11,10 @@ import { googleIndexObservations } from './google-index'
 
 type Failure = keyof typeof C.googleFailures
 type GoogleReceiptModule = 'search-google' | 'search-google-index' | 'search-google-performance'
-type GoogleAccess = { token: string; property: string; connectionId: string | null; legacyUserId: string | null; connectionScope?: Prisma.SiteConnectionWhereInput }
-type GoogleAdmission = { access: GoogleAccess | Failure; pageUrls: readonly string[] }
+type GoogleAccess = { token: string; property: string; projectId: string; userId: string } & (
+  { connectionId: string; legacyUserId: null; connectionScope: Prisma.SiteConnectionWhereInput } |
+  { connectionId: null; legacyUserId: string; legacyScope: Prisma.GscConnectionWhereInput })
+type GoogleAdmission = { access: GoogleAccess | Failure; pageUrls: readonly string[]; retryAfterMs?: number }
 
 function providerObservation(pageUrl: string, input: {
   checkId: string; source: 'google-index' | 'google-analytics'; disposition: SearchObservation['disposition'];
@@ -54,23 +56,38 @@ async function googleAdmission(projectId: string, userId: string, input: {
   const connection = await prisma.siteConnection.findUnique({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } } })
   if (connection) {
     // A revoked or refused Site connection never falls through to broader legacy credentials.
-    if (connection.status === 'REVOKED') return selected('NOT_CONNECTED')
+    if (connection.authorizedByUserId !== userId || connection.status === 'REVOKED') return selected('NOT_CONNECTED')
     if (connection.status === 'MISMATCH' || !connection.propertyId) return selected('PROPERTY_MISMATCH')
     if (!['CONNECTED', 'UNAVAILABLE'].includes(connection.status)) return selected('AUTH_EXPIRED')
     try {
-      const token = await accessTokenForConnection(connection)
-      return selected(token ? { token, property: connection.propertyId, connectionId: connection.id, legacyUserId: null,
-        connectionScope: googleConnectionGrantScope(connection) } : 'AUTH_EXPIRED')
-    } catch { return selected('AUTH_EXPIRED') }
+      const token = await accessTokenForConnection(connection, userId)
+      return selected(token ? { token, property: connection.propertyId, projectId, userId, connectionId: connection.id, legacyUserId: null,
+        connectionScope: { ...googleConnectionGrantScope(connection, userId), projectId, provider: 'SEARCH_CONSOLE', propertyId: connection.propertyId,
+          status: { in: ['CONNECTED', 'UNAVAILABLE'] }, project: { userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } } } : 'AUTH_EXPIRED')
+    } catch (error) { return { ...selected(failureCode(error)), retryAfterMs: error instanceof SearchConsoleError ? error.retryAfterMs : undefined } }
   }
-  const legacy = await prisma.gscConnection.findUnique({ where: { userId }, select: { siteUrl: true } })
+  const legacy = await prisma.gscConnection.findUnique({ where: { userId }, select: { id: true, siteUrl: true, refreshToken: true } })
   if (!legacy) return null
   // Account-level historical access is enrichment only for the pages it covers.
   // An unrelated Site must not refresh or require that credential.
   const pageUrls = input.requireConfiguredEvidence ? input.pageUrls : input.pageUrls.filter(url => searchPropertyCoversUrl(legacy.siteUrl, url))
   if (!pageUrls.length) return null
-  const token = await getGscAccessToken(userId)
-  return { pageUrls, access: token ? { token, property: legacy.siteUrl, connectionId: null, legacyUserId: userId } : 'AUTH_EXPIRED' }
+  let current
+  try { current = await getGscAccess(userId) }
+  catch (error) { return { pageUrls, access: failureCode(error), retryAfterMs: error instanceof SearchConsoleError ? error.retryAfterMs : undefined } }
+  if (!current) return { pageUrls, access: 'AUTH_EXPIRED' }
+  if (current.grant.id !== legacy.id || current.grant.siteUrl !== legacy.siteUrl) return { pageUrls, access: 'AUTHORIZATION_CHANGED' }
+  return { pageUrls, access: { token: current.token, property: legacy.siteUrl, projectId, userId, connectionId: null, legacyUserId: userId,
+    legacyScope: { id: legacy.id, userId, siteUrl: legacy.siteUrl, refreshToken: current.grant.refreshToken, user: { lifecycleStatus: 'ACTIVE' } } } }
+}
+
+/** Refreshing an access token retains the grant. Disconnect, reauthorization,
+ * property replacement and Site ownership changes invalidate pending reads. */
+async function googleAccessCurrent(access: GoogleAccess, client: Pick<Prisma.TransactionClient, 'siteConnection' | 'gscConnection' | 'project'> = prisma) {
+  if (access.connectionId !== null) return Boolean(await client.siteConnection.findFirst({ where: access.connectionScope, select: { id: true } }))
+  return Boolean(await client.project.findFirst({ where: { id: access.projectId, userId: access.userId, deletedAt: null,
+    user: { lifecycleStatus: 'ACTIVE' } }, select: { id: true } }) &&
+    await client.gscConnection.findFirst({ where: access.legacyScope, select: { id: true } }))
 }
 
 function failureCode(error: unknown): Failure {
@@ -86,6 +103,21 @@ async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null
     })
     const prior = searchReceiptSchema.safeParse(existing?.detail)
     if (prior.success) return prior.data
+    if (access) {
+      // Keep Project -> connection lock order. Revocation and transfer cannot
+      // cross the grant comparison and its evidence commit.
+      await tx.$queryRaw`SELECT id FROM projects WHERE id = ${access.projectId} FOR SHARE`
+      if (access.connectionId !== null) await tx.$queryRaw`SELECT id FROM site_connections WHERE id = ${access.connectionId} FOR UPDATE`
+      else await tx.$queryRaw`SELECT id FROM "GscConnection" WHERE "userId" = ${access.legacyUserId} FOR SHARE`
+      if (!await googleAccessCurrent(access, tx)) {
+        receipt = { ...receipt, complete: false, observations: [...new Set(receipt.observations.map(item => item.source))]
+          .filter((source): source is 'google-index' | 'google-analytics' => source === 'google-index' || source === 'google-analytics')
+          .map(source => failed(receipt.pageUrl, 'AUTHORIZATION_CHANGED', source, receipt.collectedAt)) }
+        access = null; inspection = null; rows = []
+      } else if (access.connectionId !== null && receipt.observations.some(item => ['AUTH_EXPIRED', 'PERMISSION_REFUSED'].includes(item.reason))) {
+        await tx.siteConnection.updateMany({ where: access.connectionScope, data: { status: 'NEEDS_REAUTH', statusDetail: C.googleFailures.AUTH_EXPIRED } })
+      }
+    }
     if (access && inspection?.indexStatusResult) {
       const status = inspection.indexStatusResult
       await tx.indexStatus.upsert({ where: { auditId_url: { auditId: receipt.auditId, url: receipt.pageUrl } },
@@ -98,12 +130,15 @@ async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null
           richResults: inspection.richResultsResult as Prisma.InputJsonValue | undefined },
         update: {} })
     }
-    if (access && rows.length) await tx.searchPerformance.createMany({ data: rows.map(row => ({
-      auditId: receipt.auditId, url: receipt.pageUrl, userId: access.legacyUserId, query: row.keys[0] ?? '',
-      clicks: Math.round(row.clicks), impressions: Math.round(row.impressions), ctr: row.ctr, position: row.position,
-      device: row.keys[2] ?? '', country: row.keys[3] ?? '', dateRange,
-    })) })
-    await tx.auditVerifierExecution.upsert({
+    if (access && rows.length) {
+      const userId = access.legacyUserId
+      await tx.searchPerformance.createMany({ data: rows.map(row => ({
+        auditId: receipt.auditId, url: receipt.pageUrl, userId, query: row.keys[0] ?? '',
+        clicks: Math.round(row.clicks), impressions: Math.round(row.impressions), ctr: row.ctr, position: row.position,
+        device: row.keys[2] ?? '', country: row.keys[3] ?? '', dateRange,
+      })) })
+    }
+    await tx.auditVerificationReceipt.upsert({
       where: { auditId_targetKey_scopeKey: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}` } },
       create: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}`, pageUrl: receipt.pageUrl,
         source: 'GOOGLE', status: applicable ? 'COMPLETED' : 'NOT_APPLICABLE', detail: receipt as Prisma.InputJsonValue,
@@ -132,6 +167,7 @@ export async function runGoogleSearchForAudit(input: {
   const pages = input.pages.slice(0, 24)
   const admission = audit.projectId && audit.userId ? await googleAdmission(audit.projectId, audit.userId,
     { pageUrls: pages.map(page => page.url), requireConfiguredEvidence: input.requireConfiguredEvidence }) : null
+  retryAfterMs = admission?.retryAfterMs
   const end = new Date(Date.now() - 24 * 60 * 60 * 1000), start = new Date(end.getTime() - 27 * 24 * 60 * 60 * 1000)
   const startDate = start.toISOString().slice(0, 10), endDate = end.toISOString().slice(0, 10), dateRange = `${startDate}/${endDate}`
   const receipts: SearchReceipt[] = []
@@ -147,6 +183,7 @@ export async function runGoogleSearchForAudit(input: {
     let inspection: SearchUrlInspection | null = null, rows: GscSearchRow[] = []
     const applicable = input.requireConfiguredEvidence === true || admission?.pageUrls.includes(page.url) === true
     const access = applicable ? admission?.access ?? null : null
+    if (access && typeof access !== 'string' && !providerRefusal && !await googleAccessCurrent(access)) providerRefusal = 'AUTHORIZATION_CHANGED'
     const refusal: Failure | null = access === null ? 'NOT_CONNECTED' : providerRefusal ?? (typeof access === 'string' ? access : !searchPropertyCoversUrl(access.property, page.url) ? 'PROPERTY_MISMATCH'
       : input.deadline - Date.now() < 1000 ? 'DEADLINE_EXHAUSTED' : null)
     if (refusal) observations.push(failed(page.url, refusal, 'google-index', collectedAt), failed(page.url, refusal, 'google-analytics', collectedAt))
@@ -187,10 +224,6 @@ export async function runGoogleSearchForAudit(input: {
         retryAfterMs = Math.max(retryAfterMs ?? 0, settled.reason.retryAfterMs ?? 0)
       const failedAccess = [...(index.status === 'rejected' ? [failureCode(index.reason)] : []), ...(performance.status === 'rejected' ? [failureCode(performance.reason)] : [])]
       providerRefusal = failedAccess.find(code => ['AUTH_EXPIRED', 'PERMISSION_REFUSED', 'PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE'].includes(code)) ?? null
-      const connectionId = access.connectionId
-      if (connectionId && failedAccess.some(code => code === 'AUTH_EXPIRED' || code === 'PERMISSION_REFUSED')) {
-        await executionWrite(tx => tx.siteConnection.updateMany({ where: { ...access.connectionScope, id: connectionId }, data: { status: 'NEEDS_REAUTH', statusDetail: C.googleFailures.AUTH_EXPIRED } }))
-      }
     }
     const selected = observations.filter(item => item.source === 'google-index' ? indexRequested : analyticsRequested)
     const receipt = searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: input.auditId, pageUrl: page.url, collectedAt,

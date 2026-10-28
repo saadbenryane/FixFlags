@@ -142,7 +142,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
     (banner.kind !== 'incomplete' || summaryNote))
 
   return (
-    <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} ownerId={view.site.userId} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
+    <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
       headerAction={<>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">

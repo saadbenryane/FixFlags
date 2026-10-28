@@ -4,10 +4,9 @@ import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { prisma } from '@/lib/db'
 import { dispatchAudit } from './dispatch'
 import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
-import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { resolveAuditAdmission, type AuditAdmission } from './admission'
 import type { SiteRecord } from '@/lib/sites/types'
 import { AuditStatus, Prisma } from '@prisma/client'
-import type { RecheckTrigger } from '@prisma/client'
 import {
   hasUnlimitedScans,
   isAdminUser,
@@ -46,53 +45,26 @@ import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
 import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domain-actor'
-import { assertScheduledClaim, staleScheduledClaim, type ScheduledRunClaim, type ScheduledClaimProject } from '@/lib/sites/application/scheduled-admission'
+import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
+import { assertScheduledClaim, staleScheduledClaim, type ScheduledClaimProject } from '@/lib/sites/application/scheduled-admission'
 
-export interface CreateAuditOptions {
+type AuditCreateContext = {
   url: string
   userId?: string | null
-  parentId?: string
-  recheckTrigger?: RecheckTrigger
-  skipUsageCount?: boolean
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
-  /** Always FULL. Legacy SUMMARY_ONLY enum value remains in Prisma but is never written. */
-  monitoringMode?: 'FULL'
   delayMs?: number
   attribution?: AuditAttribution
-  /**
-   * Client IP for the anonymous abuse ceiling and host rate limits. Abuse
-   * control only: this value is never persisted as a tenancy key and never
-   * identifies an anonymous Site board.
-   */
+  /** Abuse control only, never tenant identity. */
   clientId?: string
-  /**
-   * Private anonymous visitor identity. Owns the provisional Site board and
-   * scopes scan reuse, so one visitor can never be handed another's scan.
-   * Falls back to a per-request visitor key when a caller omits it.
-   */
+  /** Private anonymous Site identity. */
   visitorKey?: string
-  /** Preview/staging credentials for authenticated targets (signed-in only). */
   scanAccess?: ScanAccessConfig | null
-  /** When true, inherit Project.scanAccessEncrypted if scanAccess is omitted. */
   useProjectScanAccess?: boolean
-  /**
-   * Binds a targeted Flag verification to exactly one Review. The attempt must
-   * belong to the same owner, Project and parent Review. Duplicate requests
-   * resume that Review; an unrelated in-flight manual Review is never reused.
-   */
-  verificationAttemptId?: string
-  /** Targeted Outcome runs must own their Audit so their binding runs before finalization. */
-  reuseActiveManual?: boolean
-  /** Existing tenant-owned request attached atomically before the Audit job is enqueued. */
-  runRequestId?: string
-  runRequestAdmission?: Prisma.RunRequestUncheckedCreateInput
-  scheduledClaim?: ScheduledRunClaim
-  executionSpec?: ExecutionSpec
-  operator?: AdminDomainActor
-  /** Internal retry admission, authorized against this exact terminal Audit by its transport. */
-  retryParent?: boolean
 }
+export type CreateAuditOptions = AuditCreateContext & (
+  | { admission: Exclude<AuditAdmission, { kind: 'site-run' }> }
+  | { userId: string; admission: Extract<AuditAdmission, { kind: 'site-run' }> }
+)
 
 export interface CreateAuditResult {
   auditId: string
@@ -205,8 +177,10 @@ async function resolveStoredReviewDepth(options: {
 }
 
 export async function createAndEnqueueAudit(
-  options: CreateAuditOptions
+  input: CreateAuditOptions
 ): Promise<CreateAuditResult> {
+  if (input.admission?.kind === 'site-run' && !input.userId) throw new ParentAuditError('Site run admission requires its owner.', 400)
+  const options = { ...input, ...resolveAuditAdmission(input.admission) }
   const url = (await assertPublicNavigationUrl(options.url)).toString()
   const attribution = options.attribution
   const userId = options.userId ?? null
@@ -276,7 +250,7 @@ export async function createAndEnqueueAudit(
     auditMode: isAnonTeaser
       ? ('SINGLE' as const)
       : (options.auditMode ?? ('CRITICAL_PATH' as const)),
-    ...(options.parentId ? { monitoringMode: options.monitoringMode ?? ('FULL' as const) } : {}),
+    ...(options.parentId ? { monitoringMode: 'FULL' as const } : {}),
     status: 'QUEUED' as const,
     progress: PIPELINE_PROGRESS.QUEUED,
     executionSpec: { ...executionSpec, reviewDepth, scanAccess: { kind: resolvedScanAccess ? 'explicit' : 'public', origin: new URL(url).origin } } as Prisma.InputJsonValue,
@@ -329,7 +303,7 @@ export async function createAndEnqueueAudit(
         // admission may create or restore a Site through hostname resolution.
         const [ownedProject] = await tx.$queryRaw<Array<ScheduledClaimProject & { id: string; canonicalHost: string | null }>>`
           SELECT "id", "url", "canonicalHost", "watchInterval", "watchEveryMinutes",
-            "watchNextRunAt", "watchLastAttemptAt", "watchLeaseUntil" FROM "projects"
+            "watchNextRunAt", "watchLastAttemptAt", "watchLeaseUntil", "watchPausedAt" FROM "projects"
           WHERE "id" = ${options.runRequestAdmission.projectId} AND "userId" = ${userId}
             AND (${cleanup} OR "deletedAt" IS NULL)
           FOR UPDATE
@@ -506,20 +480,6 @@ export async function createAndEnqueueAudit(
         }
         await tx.runRequest.create({ data: { ...options.runRequestAdmission, auditId: created.id,
           executionSpec: data.executionSpec } })
-      }
-      if (options.runRequestId && !options.runRequestAdmission) {
-        const attached = await tx.runRequest.updateMany({
-          where: {
-            id: options.runRequestId,
-            projectId: projectId ?? undefined,
-            requestedByUserId: userId,
-            auditId: null,
-          },
-          data: { auditId: created.id },
-        })
-        if (attached.count !== 1) {
-          throw new ParentAuditError('Outcome run request not found', 404)
-        }
       }
       if (options.verificationAttemptId) {
         await tx.improvementAttempt.update({

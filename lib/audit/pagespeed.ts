@@ -134,6 +134,7 @@ async function runPageSpeed(
   }
 
   try {
+    const requestedAt = new Date()
     const res = await fetch(apiUrl.toString(), { signal: controller.signal })
     if (!res.ok) {
       const retry = res.headers.get('retry-after'), numeric = retry ? Number(retry) : NaN
@@ -148,7 +149,7 @@ async function runPageSpeed(
     const parsed = providerPayloadSchema.safeParse(await readBoundedJson(res, 8_000_000))
     if (!parsed.success) throw new PageSpeedError('PageSpeed returned an invalid measurement payload', { code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
     const data = parsed.data
-    const measurement = performanceMeasurement(data.lighthouseResult, strategy)
+    const measurement = performanceMeasurement(data.lighthouseResult, strategy, requestedAt)
     const reportedFactor = measurement.formFactor
     if ((data.lighthouseResult.requestedUrl !== undefined && performancePageKey(String(data.lighthouseResult.requestedUrl)) !== performancePageKey(url)) ||
       (['desktop', 'mobile'].includes(reportedFactor ?? '') && reportedFactor !== strategy))
@@ -187,7 +188,7 @@ async function runPageSpeed(
     opportunities.push(...tapTargetAudits.flatMap(audit => audit.score !== null && audit.score < 1
       ? [{ id: audit.id, title: audit.title, savings: 0, ...(audit.itemsCount ? { itemsCount: audit.itemsCount } : {}) }] : []))
 
-    const crux = collectCruxEvidence(data)
+    const crux = collectCruxEvidence(data, url)
 
     return {
       strategy,
@@ -242,11 +243,11 @@ export async function fetchPageSpeedData(url: string, signal?: AbortSignal, opti
     promises.push({ strategy: 'desktop', promise:
       (options.singleAttempt ? runPageSpeed(url, 'desktop', signal) : runPageSpeedWithRetry(url, 'desktop', signal))
         .then((result) => {
-          auditCache.set(desktopKey, result, 60 * 60 * 1000)
+          if (!signal?.aborted) auditCache.set(desktopKey, result, 60 * 60 * 1000)
           return result
         })
         .catch((err) => {
-          auditCache.set(desktopKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
+          if (!signal?.aborted) auditCache.set(desktopKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
           throw err
         })
     })
@@ -256,11 +257,11 @@ export async function fetchPageSpeedData(url: string, signal?: AbortSignal, opti
     promises.push({ strategy: 'mobile', promise:
       (options.singleAttempt ? runPageSpeed(url, 'mobile', signal) : runPageSpeedWithRetry(url, 'mobile', signal))
         .then((result) => {
-          auditCache.set(mobileKey, result, 60 * 60 * 1000)
+          if (!signal?.aborted) auditCache.set(mobileKey, result, 60 * 60 * 1000)
           return result
         })
         .catch((err) => {
-          auditCache.set(mobileKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
+          if (!signal?.aborted) auditCache.set(mobileKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
           throw err
         })
     })

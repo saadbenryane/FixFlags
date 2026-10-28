@@ -77,25 +77,6 @@ export function startWorker() {
         }
         const { auditId } = job.data as { auditId: string }
         await runAudit(auditId)
-        const terminal = await prisma.audit.findUnique({
-          where: { id: auditId },
-          select: { status: true, executionSpec: true },
-        })
-        if (terminal && readExecutionSpec(terminal.executionSpec)?.engine !== 'progressive-v1' && terminal.status !== 'COMPLETED' && terminal.status !== 'FAILED') {
-          await prisma.audit.update({
-            where: { id: auditId },
-            data: {
-              status: 'FAILED',
-              errorMsg: 'Audit worker finished without a terminal report state',
-              failureCode: 'AUDIT_JOB_NON_TERMINAL',
-              failureStage: terminal.status.toLowerCase(),
-              failureMetadata: { jobId: String(job.id) },
-            },
-          })
-          throw new UnrecoverableError(
-            `Audit ${auditId} finished in non-terminal state ${terminal.status}`
-          )
-        }
       } catch (err) {
         throw wrapAuditJobError(err)
       }

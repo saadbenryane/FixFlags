@@ -87,6 +87,7 @@ export const SITE_ACTION_COPY = {
   pageEvidenceScope: 'Page results from the selected check. Areas without sufficient evidence remain unverified.',
   historicalCheck: 'This historical identity has no supported assertion contract. Its recorded execution is retained, not converted into a successful check.',
   fixtures: {
+    configurationRequired: 'Replace this fixture’s configuration before running or authorizing it.',
     saved: 'Fixture saved. Run it safely before authorizing it.',
     dryRun: 'Dry run queued. Its result and cleanup will appear here.',
     pending: 'Dry run in progress. Authorization waits for a recorded result and successful cleanup.',

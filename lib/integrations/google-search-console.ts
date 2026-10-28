@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { readBoundedJson } from '@/lib/http/read-json'
+import { GoogleProviderError as SearchConsoleError, googleResponseFailure, readGoogleTokens } from './google-response'
+export { GoogleProviderError as SearchConsoleError, providerRetryDelay } from './google-response'
 
 const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
 const STATE_TTL_MS = 10 * 60 * 1000
@@ -63,20 +65,12 @@ export function buildGscAuthorizeUrl(state: string): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 
-interface GoogleTokenResponse {
-  access_token?: string
-  refresh_token?: string
-  expires_in?: number
-  token_type?: string
-  error?: string
-  error_description?: string
-}
-
 export async function exchangeCodeForGscTokens(
   code: string
 ): Promise<{ accessToken: string; refreshToken: string; expiresInSeconds: number }> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(10_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: process.env.GSC_CLIENT_ID ?? '',
@@ -86,14 +80,8 @@ export async function exchangeCodeForGscTokens(
       redirect_uri: gscCallbackUrl(),
     }),
   })
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`Google token exchange failed (${res.status}): ${body}`)
-  }
-  const data = (await res.json()) as GoogleTokenResponse
-  if (!data.access_token || !data.refresh_token || !data.expires_in) {
-    throw new Error(data.error_description || data.error || 'Google returned incomplete tokens')
-  }
+  const data = await readGoogleTokens(res)
+  if (!data.refresh_token) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
@@ -115,19 +103,28 @@ export async function listGscSites(accessToken: string): Promise<GscSiteEntry[]>
   return data.siteEntry ?? []
 }
 
-async function refreshAccessTokenIfNeeded(connection: {
+type GscCredentials = {
   id: string
+  userId: string
   accessToken: string
   refreshToken: string
   tokenExpiry: Date
-}): Promise<string> {
+  siteUrl: string
+}
+
+async function refreshAccessTokenIfNeeded(connection: GscCredentials): Promise<{ token: string; grant: GscCredentials }> {
+  const credentialScope = { id: connection.id, userId: connection.userId, accessToken: connection.accessToken,
+    refreshToken: connection.refreshToken, tokenExpiry: connection.tokenExpiry, user: { lifecycleStatus: 'ACTIVE' as const } }
+  if (!await prisma.gscConnection.findFirst({ where: credentialScope, select: { id: true } }))
+    throw new SearchConsoleError('AUTHORIZATION_CHANGED')
   if (Date.now() + TOKEN_REFRESH_BUFFER_MS < connection.tokenExpiry.getTime()) {
-    return decryptSecret(connection.accessToken)
+    return { token: decryptSecret(connection.accessToken), grant: connection }
   }
 
   const decryptedRefresh = decryptSecret(connection.refreshToken)
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(10_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: process.env.GSC_CLIENT_ID ?? '',
@@ -136,30 +133,30 @@ async function refreshAccessTokenIfNeeded(connection: {
       grant_type: 'refresh_token',
     }),
   })
-  if (!res.ok) {
-    throw new Error(`Google token refresh failed (${res.status})`)
-  }
-  const data = (await res.json()) as GoogleTokenResponse
-  if (!data.access_token || !data.expires_in || data.expires_in <= 0) {
-    throw new Error(data.error_description || data.error || 'Google returned incomplete refreshed credentials')
-  }
+  const data = await readGoogleTokens(res)
   const { encryptSecret } = await import('@/lib/security/crypto')
-  await prisma.gscConnection.update({
-    where: { id: connection.id },
-    data: {
-      accessToken: encryptSecret(data.access_token),
-      tokenExpiry: new Date(Date.now() + data.expires_in * 1000),
-      ...(data.refresh_token ? { refreshToken: encryptSecret(data.refresh_token) } : {}),
-    },
+  const refreshed = {
+    accessToken: encryptSecret(data.access_token),
+    tokenExpiry: new Date(Date.now() + data.expires_in * 1000),
+    ...(data.refresh_token ? { refreshToken: encryptSecret(data.refresh_token) } : {}),
+  }
+  const updated = await prisma.gscConnection.updateMany({
+    where: credentialScope,
+    data: refreshed,
   })
-  return data.access_token
+  if (updated.count !== 1) throw new SearchConsoleError('AUTHORIZATION_CHANGED')
+  return { token: data.access_token, grant: { ...connection, ...refreshed } }
+}
+
+export async function getGscAccess(userId: string) {
+  const connection = await prisma.gscConnection.findUnique({ where: { userId } })
+  if (!connection) return null
+  return refreshAccessTokenIfNeeded(connection)
 }
 
 export async function getGscAccessToken(userId: string): Promise<string | null> {
-  const connection = await prisma.gscConnection.findUnique({ where: { userId } })
-  if (!connection) return null
   try {
-    return await refreshAccessTokenIfNeeded(connection)
+    return (await getGscAccess(userId))?.token ?? null
   } catch (err) {
     logger.error('GSC token refresh failed', err instanceof Error ? err : new Error(String(err)))
     return null
@@ -221,32 +218,11 @@ export async function querySearchAnalytics(
     }
   )
   if (!res.ok) {
-    throw await searchConsoleFailure(res)
+    throw await googleResponseFailure(res)
   }
   const parsed = searchRowsSchema.safeParse(await readBoundedJson(res, 1_000_000).catch(() => null))
   if (!parsed.success) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
   return parsed.data.rows ?? []
-}
-
-export class SearchConsoleError extends Error {
-  constructor(readonly code: 'AUTH_EXPIRED' | 'PERMISSION_REFUSED' | 'PROVIDER_QUOTA' | 'PROVIDER_UNAVAILABLE' | 'MALFORMED_PROVIDER_RESPONSE', readonly retryAfterMs?: number) {
-    super(code); this.name = 'SearchConsoleError'
-  }
-}
-
-async function searchConsoleFailure(response: Response): Promise<SearchConsoleError> {
-  const payload = await readBoundedJson(response, 16_384).catch(() => null) as { error?: { status?: string; errors?: Array<{ reason?: string }> } } | null
-  const quota = payload?.error?.status === 'RESOURCE_EXHAUSTED' ||
-    payload?.error?.errors?.some(item => ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'].includes(item.reason ?? ''))
-  return new SearchConsoleError(response.status === 429 || quota ? 'PROVIDER_QUOTA' : response.status === 401 ? 'AUTH_EXPIRED'
-    : response.status === 403 ? 'PERMISSION_REFUSED' : 'PROVIDER_UNAVAILABLE', providerRetryDelay(response.headers.get('retry-after')))
-}
-
-export function providerRetryDelay(value: string | null, now = Date.now()): number | undefined {
-  if (!value) return undefined
-  const seconds = Number(value)
-  const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(value) - now
-  return Number.isFinite(delay) && delay > 0 ? delay : undefined
 }
 
 const searchRowsSchema = z.object({ rows: z.array(z.object({
@@ -277,7 +253,7 @@ export async function inspectSearchUrl(accessToken: string, siteUrl: string, url
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ inspectionUrl: url, siteUrl }),
   })
-  if (!response.ok) throw await searchConsoleFailure(response)
+  if (!response.ok) throw await googleResponseFailure(response)
   const parsed = urlInspectionSchema.safeParse(await readBoundedJson(response, 1_000_000).catch(() => null))
   if (!parsed.success) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
   return parsed.data.inspectionResult

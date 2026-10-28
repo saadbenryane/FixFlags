@@ -25,7 +25,7 @@ export async function persistControlledNativeSource(
       throw new Error('Controlled collector method does not match the fixture declaration: ' + id)
   }
   return prisma.$transaction(async tx => {
-    const collection = await tx.auditVerifierExecution.create({ data: {
+    const collection = await tx.auditVerificationReceipt.create({ data: {
       auditId, targetKey: 'fixture:controlled-native:' + randomUUID(), scopeKey: 'controlled-source',
       source: 'DETERMINISTIC', status: 'COMPLETED',
       detail: JSON.parse(JSON.stringify({ kind: 'controlled-native-source', version: 1, methods, collectedAt: null, flags })) as Prisma.InputJsonValue,

@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["views"]
 }
 
 datasource db {
@@ -41,6 +42,9 @@ model User {
   deepReviewsUsed          Int                          @default(0)
   deepReviewsLimit         Int                          @default(1)
   gscConnection            GscConnection?
+  authorizedSiteConnections SiteConnection[]
+  authorizedScanAccessProjects Project[] @relation("ScanAccessAuthorizer")
+  configuredOutcomeFixtures OutcomeFixture[]
   accounts                 Account[]
   apiKeys                  ApiKey[]
   audits                   Audit[]
@@ -499,6 +503,8 @@ model OAuthRefreshToken {
 model SiteConnection {
   id                    String                 @id @default(cuid())
   projectId             String
+  /// The owner who authorized this grant, independent of later Site ownership.
+  authorizedByUserId    String?
   provider              SiteConnectionProvider
   externalAccount       String?
   propertyId            String?
@@ -514,10 +520,12 @@ model SiteConnection {
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorizedBy          User?                  @relation(fields: [authorizedByUserId], references: [id], onDelete: SetNull)
   facts                 SiteConnectionFact[]
 
   @@unique([projectId, provider])
   @@index([projectId])
+  @@index([authorizedByUserId])
   @@map("site_connections")
 }
 
@@ -562,6 +570,8 @@ model Project {
   ///    * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
   productIntelligence         Json?
   watchNextRunAt              DateTime?
+  /// Explicit monitoring intent, separate from analysis due time and allowance.
+  watchPausedAt               DateTime?
   monitoringSetupRetryAt      DateTime?
   watchLastRunAt              DateTime?
   /// *
@@ -584,6 +594,9 @@ model Project {
   /// *
   ///    * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
   scanAccessEncrypted         String?
+  /// The owner who supplied or revoked the current saved access decision.
+  scanAccessAuthorizedByUserId String?
+  scanAccessAuthorizedBy       User? @relation("ScanAccessAuthorizer", fields: [scanAccessAuthorizedByUserId], references: [id], onDelete: SetNull)
   audits                      Audit[]
   canvases                    ReportCanvas[]
   improvements                Improvement[]
@@ -608,6 +621,7 @@ model Project {
   @@index([watchNextRunAt])
   @@index([monitoringSetupRetryAt, createdAt, id])
   @@index([watchLeaseUntil])
+  @@index([scanAccessAuthorizedByUserId])
   @@map("projects")
 }
 
@@ -739,6 +753,8 @@ model Audit {
   sourceImprovementAttempts  ImprovementAttempt[]         @relation("ImprovementSourceReview")
   verificationAttempts       ImprovementAttempt[]         @relation("ImprovementVerificationReview")
   verifierExecutions         AuditVerifierExecution[]
+  verificationReceipts       AuditVerificationReceipt[]
+  executionTasks             AuditExecutionTask[]
   sourceImprovementCycles    ImprovementCycle[]           @relation("ImprovementCycleSourceReview")
   pipelineEvents             AuditPipelineEvent[]
   runRequests               RunRequest[]
@@ -1390,7 +1406,7 @@ model ImprovementAttempt {
   @@map("improvement_attempts")
 }
 
-model AuditVerifierExecution {
+model AuditExecutionTask {
   workState         AuditWorkState?
   workKind          String?
   workDependencies  String[]                @default([])
@@ -1419,12 +1435,73 @@ model AuditVerifierExecution {
   detail            Json?
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
-  audit             Audit                   @relation(fields: [auditId], references: [id], onDelete: Cascade)
-
+  audit Audit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  receipts AuditVerificationReceipt[]
   @@unique([auditId, targetKey, scopeKey])
+  @@unique([id, auditId])
   @@index([auditId, status])
   @@index([workState, workRetryAt])
+  @@map("audit_execution_tasks")
+}
+
+model AuditVerificationReceipt {
+  checkVersion Int?
+  executionGeneration Int?
+  id                String                  @id @default(cuid())
+  auditId           String
+  targetKey         String
+  source            String
+  checkId           String?
+  pageUrl           String?
+  scopeKey          String                  @default("product")
+  status            VerifierExecutionStatus
+  evidenceReference Json?
+  detail            Json?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  taskId String?
+  task AuditExecutionTask? @relation(fields: [taskId, auditId], references: [id, auditId], onDelete: NoAction)
+  audit Audit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  @@unique([auditId, targetKey, scopeKey])
+  @@index([auditId, status])
+  @@index([taskId, auditId])
   @@map("audit_verifier_executions")
+}
+
+/// Read-only composition for coverage and historical projections. Scheduling never writes this view.
+view AuditVerifierExecution {
+  recordKind String
+  workState         AuditWorkState?
+  workKind          String?
+  workDependencies  String[]
+  workInput         Json?
+  workResult        Json?
+  workToken         String?
+  workGeneration    Int?
+  workAttempts      Int?
+  workLeaseUntil    DateTime?
+  workRetryAt       DateTime?
+  workRecoveryUntil DateTime?
+  workErrorCode     String?
+  workDispatchState AuditDispatchState?
+  workDispatchLeaseUntil DateTime?
+  checkVersion Int?
+  executionGeneration Int?
+  id                String                  @unique
+  auditId           String
+  targetKey         String
+  source            String
+  checkId           String?
+  pageUrl           String?
+  scopeKey          String
+  status            VerifierExecutionStatus
+  evidenceReference Json?
+  detail            Json?
+  createdAt         DateTime
+  updatedAt         DateTime
+  audit Audit @relation(fields: [auditId], references: [id])
+  @@unique([auditId, targetKey, scopeKey])
+  @@map("audit_execution_evidence")
 }
 
 model ImprovementCycle {
@@ -2136,6 +2213,8 @@ model OutcomeExecutionBinding {
 model OutcomeFixture {
   id                  String   @id @default(cuid())
   projectId           String
+  /// The owner who supplied the executable configuration and secrets.
+  configuredByUserId  String?
   name                String
   targetUrl           String
   fieldMapping        Json
@@ -2155,8 +2234,10 @@ model OutcomeFixture {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  configuredBy        User?    @relation(fields: [configuredByUserId], references: [id], onDelete: SetNull)
 
   @@index([projectId, enabled])
+  @@index([configuredByUserId])
   @@map("outcome_fixtures")
 }
 

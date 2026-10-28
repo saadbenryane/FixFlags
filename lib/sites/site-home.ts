@@ -24,6 +24,7 @@ import type { SiteViewerActions } from './viewer-actions'
 
 export type SiteHomeView = {
   schemaVersion: 2
+  readScope?: 'overview' | 'settings'
   actions: SiteViewerActions
   counts: import('./scope-counts').SiteScopeCounts
   captures?: SiteCapture[]

@@ -28,11 +28,12 @@ function PageCard({ page }: { page: PageResult }) {
   </article>
 }
 
-export function SitePageResults({ pages }: { pages: readonly PageResult[] }) {
+export function SitePageResults({ pages, headingLevel = 2 }: { pages: readonly PageResult[]; headingLevel?: 2 | 3 }) {
   const attention = pages.filter(page => page.flags.length)
   const other = pages.filter(page => !page.flags.length)
+  const Heading = headingLevel === 2 ? 'h2' : 'h3'
   return <section className={styles.results}>
-    <h3>{attention.length ? C.pagesNeedAttention(attention.length) : C.noPageFlags}</h3>
+    <Heading className={styles.title}>{attention.length ? C.pagesNeedAttention(attention.length) : C.noPageFlags}</Heading>
     {attention.length ? <div className={styles.grid}>{attention.map(page => <PageCard key={page.url} page={page} />)}</div> : null}
     {other.length ? <details className={styles.other}><summary>{C.otherPages(other.length)}<ChevronDown size={16} aria-hidden /></summary><div className={styles.grid}>{other.map(page => <PageCard key={page.url} page={page} />)}</div></details> : null}
   </section>

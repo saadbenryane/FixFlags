@@ -114,6 +114,17 @@ retains the reference. Completed evidence remains immutable; one-off and public
 admissions remain independent. Legacy credential snapshots require a matching,
 currently authorized legacy Site grant before execution.
 
+Saved website access retains its authorizing owner separately from current Site
+ownership. A new owner gets public admission until supplying credentials; old
+borrowed Audit snapshots cannot become executable access. Supplying the same
+credentials under a different owner creates a fresh grant reference. New
+credentials require the active-account lock before the Site lock, while explicit
+revocation remains available to an inactive owner. Settings use the grant reader
+for both encrypted credentials and the public revocation marker. Removing access
+therefore remains a readable unconfigured state. The additive migration preserves
+retained decisions under the owner baseline at migration time, without recovering
+historical authorizer provenance. Original Audit ciphertext remains historical.
+
 Basic authentication and custom headers use the admitted grant's origin,
 including separately fetched flow destinations. Default cookies use its hostname
 without rebasing onto a foreign destination; explicit cookie domains and paths
@@ -149,7 +160,9 @@ that the server never returned an HTTP response.
 - Protected pages (`/admin/`, `/settings/`) are gated by the request proxy; server validates session on API routes.
 - admin role configured via `ADMIN_USER_IDS` env var
 - Newly created developer keys carry an explicit MCP permission set and a 30, 90, or 365 day expiry. The default is read-only evidence for 90 days. CLI device approval issues a 90-day key for the complete Fix → Verify workflow. Existing empty-scope account keys retain their historical full-access behavior until the owner replaces or revokes them; every non-empty scope set is enforced even without an OAuth audience.
+- CLI approval shares the active-account lock and developer-key limit with Settings, then locks the device code for one terminal decision. Device-code expiry can revoke only its approved, uncollected key in the same conditional transaction. A collected key keeps its own lifetime, including when another client starts login. Cleanup is bounded, and decryption failure cannot consume the one-use credential. Disposable database fixtures verify lifecycle, concurrent decisions, account refusal and token-handler collection; external CLI acceptance remains separate.
 - MCP host validation uses the configured app origin, not the incoming request URL or Host header as its authority. Loopback aliases are accepted only for an explicitly configured loopback app. Browser origins must match the configured protocol and port; nonbrowser clients may omit Origin.
+- MCP OAuth consumes an authorization code or rotates a refresh token in the same active-owner transaction that creates both replacement credentials. Failed writes roll back consumption, and competing exchanges retain one winner. Expiry is rechecked at consumption. Client metadata URLs use the shared public DNS and socket boundary, refuse redirects and incomplete or oversized JSON, and still require the exact declared client and redirect identities. Controlled database and native-socket fixtures cover these contracts; they do not establish external-client or production acceptance.
 
 ## Report access invariants
 
@@ -162,7 +175,7 @@ that the server never returned an HTTP response.
 - Repository-owned curated samples may ship versioned static Timeline fixtures because they contain no production report payload or private viewer data.
 - `/report/[id]` is the canonical report URL. Copy link preserves its access policy and does not grant access by itself.
 - Legacy `/share/[token]` reads remain compatibility-only. The product no longer creates or manages protected share links. Do not treat `ShareLink.passwordHash` as a live product contract.
-- Canvas is private to the report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
+- Retired Canvas records remain private historical data. Creation and management APIs are absent.
 
 ## Captured evidence access
 
@@ -177,6 +190,8 @@ that the server never returned an HTTP response.
 
 ## Monitoring controls
 
+- Safe Form configuration retains its supplying owner. Creation, replacement, authorization, revocation and deletion use short User then Site transactions and compare the current owner at the write. New configuration and authorization require an active account; revocation and deletion remain available to an inactive owner. Origin validation uses the locked Site URL. Setup, submission, current fixture views and Outcome comparability refuse another owner's configuration. Outcome binding changes recheck ownership and fixture permission under the same locks.
+- Safe Form replay checks every prior unsettled submission, rather than the most recent operation alone. Cleanup receipts match the exact operation, Site, fixture and version, including settlement recorded by a later recovery run. Each reconciliation makes at most two cleanup calls; uninspected work cannot grant replay. An admitted operation retains only its exact cleanup permission after setup or account availability changes. New reset and submission still require live authorization and execution ownership. Changed configuration cannot redirect cleanup through new hooks.
 - Shopify connection replacement and uninstall increment the authorization version; routine token renewal retains it. Refresh completion compares the exact admitted credentials and version before writing, so an old response cannot restore revoked credentials or replace a newer connection. Path publication, scheduling and advice use short guarded transactions in Project, Shop, Path lock order, with browser, provider and queue operations outside the transaction.
 - Shopify path history and its current receipt reference commit together. Late observations cannot replace a newer receipt, publish under a revoked connection or reschedule work. Alerts require that exact committed source and recheck the current connection and recipient before each provider call. Delivery metrics require provider acceptance; notification claims use the persisted attempt evidence. Each path attempt has a unique media namespace; confirmed rejection deletes only that attempt's artifacts.
 - Watch classification and completion timestamps require a completed, dated observation belonging to the current active Site owner. Conditional writes recheck that source and ownership, so stale readers cannot mark another owner's Site as checked. Direct notification delivery also requires the durable projection receipt. Classification and provider admission compare current recipient and preferences; accepted provider receipts remain fenced by the admitted attempt and lease. Watch and uptime freeze the exact provider body atomically with that permission-checked claim, comparing the previously selected payload. A delayed claim cannot start a provider request without its full bounded request window remaining.
@@ -191,13 +206,18 @@ that the server never returned an HTTP response.
 - Uptime history and incident projections require the Site owner. History cursors are scoped to the monitor, target generation, and selected window.
 - Queue jobs contain monitor references and schedule identities, never a caller-provided URL or tenant authority. Eligibility, ownership, target version, and monitoring state are rechecked before requests and persistence.
 - Basic uptime is included separately on every plan. Analysis cadence, billing grants and a halted next-analysis clock do not revoke reachability monitoring or its notifications. Current Site ownership, active account lifecycle, explicit monitoring intent, preferences and target generation remain enforced at execution and delivery boundaries.
+- Explicit monitoring pause is stored separately from cadence and next analysis time. Pause atomically disables uptime and invalidates probe leases, retaining incident history. Scheduling, admission, current status, completion recovery and alert claims compare that pause state. Already admitted provider calls retain their acceptance evidence; queued alerts cannot acquire new permission while paused. Resume retains the configured cadence, and removed-Site restoration clears the pause through owner admission. The additive migration recognizes known explicit pause markers without converting quota or halted-clock states into a pause; its timestamp is a migration baseline, not historical provenance.
 - Uptime uses strict public HTTP fetching even when development permits localhost for other analysis fixtures. DNS, redirect, size, and deadline guards remain enforced. Probes never replay browser credentials.
 - A successful HTTP observation can close only a reachability incident in the same target generation. It cannot verify or recover a Flag that requires rendered-page or browser evidence.
 
 ## Secrets management
 
 - All secrets are environment variables
+- Per-check Search Console evidence requires the current Site owner, property and admitted grant at commit. Project and connection locks fence transfer and revocation against that write. Changed authorization remains unknown and cannot certify repair. Legacy account token refresh also compares its original credential and active owner before writing; the returned token carries its resulting grant for the same evidence fence. Earlier committed observations remain historical evidence.
+- Site Google grants retain `authorizedByUserId` independently of current Site ownership. Token reads and refreshes, context publication, per-check Search admission and disconnect require that authorizer to remain the current owner. Upkeep excludes mismatches before its batch limit. Connection views hide a former owner's provider metadata and facts without deleting stored observations. Only a fresh OAuth callback can bind the new owner; it clears the former property identity before new context is published. The additive migration binds retained grants to their current owner as a compatibility baseline, not reconstructed historical authorization. Erasing an authorizer nulls that binding.
 - `.env.local` is gitignored
+- Shared Google OAuth and report failures retain bounded response interpretation, typed failure codes and retry delay without publishing raw provider error bodies. Temporary transport or provider failures cannot revoke a grant or require reconnection merely because an exception mentions authorization.
+- Google OAuth completion compares the admitted Site owner, active account and original target after code exchange, before creating or replacing credentials. Token refresh and provider context writes retain the expected owner from admission. Short transactions lock User, Project and connection in that order, with provider calls outside the transaction, so transfer, removal or lifecycle changes cannot cross the final permission comparison and credential or fact write. Initial and replacement grant refusals and delayed refresh/context ownership changes have disposable database proof.
 - No hardcoded secrets, tokens, or passwords in source
 - Site Google credentials are read and refreshed only against the current non-revoked credential snapshot on a non-deleted Site with an active owner. Refresh writes and context commits compare the admitted encrypted credentials and owner lifecycle, so a delayed operation cannot restore a disconnected grant, replace a newer connection's facts or publish context after suspension or erasure begins. Scheduled context upkeep excludes inactive owners before its bounded selection. Permission failures compare the original grant rather than a newly rotated access token. New authorization replaces the prior refresh credential, including clearing it when Google supplies none. Disconnect clears local credentials before requesting provider revocation.
 - Analytics reads filter the matched property to the owning Site's exact bare and www hostname aliases. Each stored observation records that property and hostname scope. Readers require it to match the current Site and connection; older unscoped observations remain stored but cannot supply Site traffic context. Page counts and Site audience aggregates stay separate, and missing provider metrics cannot become zero or clear a Flag. Page-specific context also requires the original reported pagePath dimension to match the stored path exactly. Legacy hostname-only page facts remain stored without page attribution; independently scoped Site audience totals retain their authority.
@@ -296,5 +316,17 @@ Product Signal ingestion is the explicit exception.
 - Resend receiving verifies raw-body Svix signatures with bounded timestamps, deduplicates provider email IDs, matches one exact active recipient, and retrieves content only from the fixed Resend API. Extracted same-origin verification data is encrypted with a 15-minute expiry.
 - Preference changes increment a revision. Account tasks check that revision, entitlement and execution ownership before privileged requests. Existing Safe Form fixture authorization and cleanup invariants remain independent.
 - Shared task deadlines revoke the handler's write authority through nested execution scopes, including asynchronous continuations. Guarded transactions check cancellation before and after their callback so expired work rolls back instead of publishing late state. Cancellation does not undo an external effect; protected retries still reconcile the original identity before another attempt.
+- Coordinator and task claims, writes, lease renewal and resource cancellation share the source Audit's current Site authority. A live token cannot borrow a new owner's entitlement or authorize account actions after transfer. The Site fence remains held through each guarded commit, and stale deliveries cannot consume a new generation or protected attempt. Cleanup retains its deletion and inactive-account exception only for the same owner. Anonymous checks may continue through a claim that attaches their original Audit to the claiming owner; fresh runs preserve Site test identities and automatic preferences. Disposable PostgreSQL and Chromium fixtures verify these boundaries locally.
 - Account and configured Signup request policies execute in the shared native boundary once per physical request hop, including HTTP redirects. Browser events retain the admitted execution's async context so permission transactions keep lease fences. Signup mutations require submission admission and a current exact-version fixture grant. External redirects cannot bypass the origin boundary, and suppressed telemetry cannot consume an account mutation or invalidate read-only inspection.
 - Rendered error documents may be retained only when inspecting an existing active or deleting account. Normal discovery and signup keep strict response capture, and challenge detection remains enforced. The disposable HTTPS lifecycle fixture uses an exact validation origin, temporary credentials and simulated receiving content; it neither sends email nor enables production lifecycle gates.
+
+## Task and verification custody
+
+Queue tasks and verification receipts occupy separate tables. Task claims,
+renewal and cancellation use the task table and retain the current Site and
+account authority fence. A receipt's optional task relationship includes its
+Audit ID, so another Audit's task cannot supply its source relationship. The
+combined coverage view is read-only in PostgreSQL and in the Prisma client.
+The migration preserves task identities, generations, artifacts, lease values
+and receipt provenance. Mixed-version writers are unsupported during this
+migration; follow the coordinated runtime procedure in DEVELOPMENT.md.

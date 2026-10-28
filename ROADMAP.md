@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-25
+reviewed_at: 2026-10-27
 supersedes: []
 ---
 
@@ -9,9 +9,11 @@ supersedes: []
 
 ## Current delivery: website public validation
 
-The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [current completion plan](docs/product-masterplan.md#current-completion-plan-2026-10-25) owns the dependency-ordered work, information architecture, refactoring boundaries, and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) preserves historical implementation and exact-candidate proof separately. Paid enrollment and customer-facing MCP/CLI are parked for this milestone. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
+The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [current completion plan](docs/product-masterplan.md#current-completion-plan-2026-10-26) owns the dependency-ordered work, information architecture, refactoring boundaries, and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) preserves historical implementation and exact-candidate proof separately. Paid enrollment and customer-facing MCP/CLI are parked for this milestone. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
 
-**Checkpoint, 2026-10-25:** the dashboard is merged at `557e9c22`, and public production health reports the same revision. Automatic accounts remain disabled, and current release acceptance is not established by the stale selected ledger. Follow the current completion plan rather than reusing an older candidate's status.
+**Checkpoint, 2026-10-26:** public health reports `8e4f3b3f`, with core prerequisites healthy and automatic accounts disabled. Substantial local execution, authorization, capability and monitoring improvements remain uncommitted and undeployed; their scoped evidence is recorded in [the audit pipeline](docs/audit-pipeline.md#local-objective-verification-2026-10-26). The selected release pointer names an older candidate whose referenced ledger is absent locally. Follow the current completion plan for customer-loop, provider, experience and current-candidate acceptance work.
+
+**Local implementation, 2026-10-27:** Site/Flag reads preserve viewer permission custody, repair controls share scope and clipboard ownership, claim publishes durable Flag identity atomically, and customer actions recheck ownership under the same transaction lock. Outcome completion uses the shared resource, copied task links use the runtime origin, and the Pages heading hierarchy and Outcome layout are corrected. The controlled browser repair/recurrence/second-recovery loop and packaged Linux migration/native-repair/fixture-restore checks pass locally. [The implementation checkpoint](docs/product-masterplan.md#implementation-checkpoint-2026-10-27) records exact proof scopes, retained failures and the owner's control contrast exception. The work remains uncommitted and undeployed; current-candidate, provider and production acceptance remain open.
 
 FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
 

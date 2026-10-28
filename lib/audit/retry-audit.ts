@@ -21,8 +21,14 @@ export async function retryAudit(auditId: string, viewer: AuditRetryViewer) {
     if (!current) throw new ParentAuditError('The retry was admitted but its current state is unavailable.', 503)
     return { status: current.status, auditId: admitted.auditId, siteId: audit.projectId, runId: admitted.runId, reused: admitted.reused }
   }
-  const admitted = await createAndEnqueueAudit({ url: audit.url, userId: audit.userId, parentId: audit.id,
-    retryParent: true, skipUsageCount: true, visitorKey: viewer.visitorKey, clientId: viewer.clientId,
-    auditMode: audit.auditMode, useProjectScanAccess: Boolean(audit.userId) })
+  const admitted = await createAndEnqueueAudit({
+    admission: { kind: 'retry', parentId: audit.id },
+    url: audit.url,
+    userId: audit.userId,
+    visitorKey: viewer.visitorKey,
+    clientId: viewer.clientId,
+    auditMode: audit.auditMode,
+    useProjectScanAccess: Boolean(audit.userId),
+  })
   return { status: admitted.status, auditId: admitted.auditId, siteId: admitted.siteId, reused: admitted.reused }
 }

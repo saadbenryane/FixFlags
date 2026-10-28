@@ -31,7 +31,8 @@ describe('advertised coverage registration', () => {
     expect(registry.size).toBe(108)
     for (const entry of registry.values()) {
       expect(entry.acceptance.requiredObservations.length).toBeGreaterThan(0)
-      expect(entry.acceptance.scenarios).toEqual(expect.arrayContaining(['working', 'failing', 'incomplete', 'repaired']))
+      expect(entry.acceptance.scenarios).toEqual(expect.arrayContaining(entry.acceptance.recovery === 'recorded_observation'
+        ? ['working', 'incomplete'] : ['working', 'failing', 'incomplete', 'repaired']))
       expect(entry.acceptance.proofEnvironments).toContain('local_worker')
     }
     expect(registry.get('performance.inp')?.acceptance).toMatchObject({ recovery: 'provider_reporting_window', proofEnvironments: ['local_worker', 'live_provider'] })
@@ -40,6 +41,8 @@ describe('advertised coverage registration', () => {
     expect(registry.get('accounts.deletion')?.evaluators).toEqual(['task:automatic-accounts'])
     expect(registry.get('uptime.history')?.evaluators).toEqual(['projection:uptime'])
     expect(registry.get('uptime.recovery')?.acceptance).toMatchObject({ recovery: 'scheduled_transition', proofEnvironments: ['local_worker', 'live_schedule'] })
+    expect(registry.get('uptime.provenance')?.acceptance).toMatchObject({ recovery: 'recorded_observation', scenarios: ['working', 'incomplete'] })
+    expect(registry.get('search.links')?.evaluators).toEqual(['page:seo'])
   })
   it('refuses a manifest that omits repair, source evidence, or live provider proof', () => {
     const changed = (id: string, fields: Record<string, unknown>) => ADVERTISED_COVERAGE.map(entry => entry.id === id
@@ -49,5 +52,6 @@ describe('advertised coverage registration', () => {
     expect(() => validateAdvertisedCoverage(changed('performance.inp', { proofEnvironments: ['local_worker'] }))).toThrow('Missing acceptance')
     expect(() => validateAdvertisedCoverage(changed('security.https', { requiredObservations: ['unrelated-source'] }))).toThrow('Missing acceptance')
     expect(() => validateAdvertisedCoverage(changed('uptime.recovery', { proofEnvironments: ['local_worker'] }))).toThrow('Missing acceptance')
+    expect(() => validateAdvertisedCoverage(changed('uptime.provenance', { recovery: 'comparable_observation' }))).toThrow('Missing acceptance')
   })
 })

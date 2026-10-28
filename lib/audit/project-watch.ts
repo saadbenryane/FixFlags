@@ -2,7 +2,7 @@ import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { AdminActionError } from '@/lib/admin/errors'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
-import { Prisma } from '@prisma/client'
+import { Prisma, type Audit } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
@@ -20,7 +20,7 @@ import {
   calcWatchNextRun,
   fromStoredWatchInterval,
 } from '@/lib/audit/watch-interval'
-import { ensureDefaultMonitoring, initializeDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { ensureDefaultMonitoring, initializeDefaultMonitoring, MONITORING_SCHEDULE_UNAVAILABLE } from '@/lib/sites/application/default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { reconcileScheduledCompletions } from '@/lib/sites/application/scheduled-completion'
 import { ACTIVE_RUN_STATUSES } from '@/lib/sites/application/run-leases'
@@ -93,6 +93,7 @@ export async function processDueProjectWatches(
       deletedAt: null,
       user: { lifecycleStatus: 'ACTIVE' },
       watchInterval: { not: null },
+      watchPausedAt: null,
       watchNextRunAt: { lte: selectedAt },
       OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: selectedAt } }],
     },
@@ -118,6 +119,7 @@ export async function processDueProjectWatches(
     const interval = fromStoredWatchInterval(project.watchInterval)
     if (!interval) continue
     const unchangedSchedule = { id: project.id, userId: project.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' as const },
+      watchPausedAt: null,
       watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null, watchNextRunAt: project.watchNextRunAt }
     const availableLease = { OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: attemptedAt } }] }
     let mutationScope: Prisma.ProjectWhereInput = { ...unchangedSchedule, ...availableLease,
@@ -149,7 +151,7 @@ export async function processDueProjectWatches(
       if (!effective.watchIntervals.includes(interval)) {
         await prisma.project.updateMany({
           where: mutationScope,
-          data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'This schedule is not available on your plan. Choose an available monitoring schedule.' },
+          data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: MONITORING_SCHEDULE_UNAVAILABLE },
         })
         continue
       }
@@ -272,7 +274,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       watchNotificationLeaseUntil: true,
       watchNotificationPayload: true,
       user: { select: { email: true, name: true, lifecycleStatus: true } },
-      project: { select: { userId: true, deletedAt: true, watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
+      project: { select: { userId: true, deletedAt: true, watchInterval: true, watchPausedAt: true, notificationLevel: true, notifyOnRecovery: true } },
     },
   })
   if (!child || child.status !== 'COMPLETED' || !child.completedAt || !child.userId ||
@@ -288,7 +290,8 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
   const currentEligibility: Prisma.AuditWhereInput = {
     ...completedSource,
     user: { lifecycleStatus: 'ACTIVE', email: child.user.email },
-    project: { ...currentOwner, notificationLevel: child.project.notificationLevel, notifyOnRecovery: child.project.notifyOnRecovery },
+    project: { ...currentOwner, watchPausedAt: child.project.watchPausedAt ?? null,
+      notificationLevel: child.project.notificationLevel, notifyOnRecovery: child.project.notifyOnRecovery },
   }
   await prisma.project.updateMany({
     where: { id: child.projectId, ...currentOwner, audits: { some: completedSource },
@@ -327,7 +330,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       },
     })
   }
-  if (regressCount === 0 && alertRecoveryCount === 0) {
+  if (child.project.watchPausedAt || regressCount === 0 && alertRecoveryCount === 0) {
     // A later opt-out can cancel due work, including an expired claim. It
     // cannot cancel a live provider call or rewrite confirmed acceptance.
     await prisma.audit.updateMany({
@@ -495,29 +498,30 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
 
 export async function retryPendingWatchNotifications(limit = 20): Promise<number> {
   const now = new Date()
-  const audits = await prisma.audit.findMany({
-    where: {
-      status: 'COMPLETED',
-      recheckTrigger: 'WATCH',
-      improvementProjectedAt: { not: null },
-      user: { lifecycleStatus: 'ACTIVE' },
-      project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
-      AND: [{ OR: [{ watchNotificationNextAttemptAt: null }, { watchNotificationNextAttemptAt: { lte: now } }] }],
-      // SENDING without a lease has no active owner. Claims below the
-      // ceiling can be retried; an exhausted final claim is terminalized.
-      OR: [
-        {
-          watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
-          watchNotificationAttempts: { lt: prisma.audit.fields.watchNotificationAttemptCeiling },
-        },
-        { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: now } }] },
-      ],
-    },
-    select: { id: true, parentId: true, watchNotificationAttempts: true,
-      watchNotificationStatus: true, watchNotificationLeaseUntil: true, watchNotificationNextAttemptAt: true },
-    take: limit,
-    orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
-  })
+  // Ownership equality must be checked before LIMIT. Otherwise historical
+  // observations from transferred Sites can permanently occupy the retry batch.
+  // Expired SENDING claims remain selectable at their ceiling so the sender can
+  // terminalize abandoned final attempts without making another provider call.
+  const audits = await prisma.$queryRaw<Array<Pick<Audit, 'id' | 'parentId' | 'watchNotificationAttempts' |
+    'watchNotificationStatus' | 'watchNotificationLeaseUntil' | 'watchNotificationNextAttemptAt'>>>(Prisma.sql`
+    SELECT a.id, a."parentId", a."watchNotificationAttempts", a."watchNotificationStatus",
+      a."watchNotificationLeaseUntil", a."watchNotificationNextAttemptAt"
+    FROM audits a
+    JOIN projects p ON p.id = a."projectId" AND p."userId" = a."userId"
+    JOIN users u ON u.id = a."userId"
+    WHERE a.status = 'COMPLETED' AND a."recheckTrigger" = 'WATCH'
+      AND a."completedAt" IS NOT NULL AND a."improvementProjectedAt" IS NOT NULL
+      AND p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE'
+      AND (a."watchNotificationNextAttemptAt" IS NULL OR a."watchNotificationNextAttemptAt" <= ${now})
+      AND (
+        (a."watchNotificationStatus" IN ('PENDING', 'FAILED')
+          AND a."watchNotificationAttempts" < a."watchNotificationAttemptCeiling")
+        OR (a."watchNotificationStatus" = 'SENDING'
+          AND (a."watchNotificationLeaseUntil" IS NULL OR a."watchNotificationLeaseUntil" <= ${now}))
+      )
+    ORDER BY a."updatedAt" ASC, a.id ASC
+    LIMIT ${limit}
+  `)
   for (const audit of audits) {
     try {
       await notifyWatchRegression(audit.parentId, audit.id)

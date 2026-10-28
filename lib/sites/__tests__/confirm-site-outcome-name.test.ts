@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   taskFindMany: vi.fn(),
 }))
 
-const tx = {
+const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
   $queryRaw: mocks.lockOutcome,
   siteOutcome: {
     findFirst: mocks.txFindFirst,
@@ -132,9 +132,10 @@ describe('confirmSiteOutcome semantic identity', () => {
 
     expect(mocks.transaction).toHaveBeenCalledTimes(1)
     const locks = mocks.lockOutcome.mock.calls.map(([query]) => Array.isArray(query) ? query.join('?') : query.sql as string)
-    expect(locks[0]).toContain('FROM projects')
-    expect(locks[1]).toContain('FROM audits')
-    expect(locks[2]).toContain('FROM "site_outcomes"')
+    expect(locks[0]).toContain('FROM users')
+    expect(locks[1]).toContain('FROM projects')
+    expect(locks[2]).toContain('FROM audits')
+    expect(locks[3]).toContain('FROM "site_outcomes"')
     expect(mocks.bindingUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ outcomeId: 'outcome-1', key: { not: 'checkout-browser-v1' } }),
       data: { enabled: false },

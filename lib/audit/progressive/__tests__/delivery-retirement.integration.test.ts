@@ -49,52 +49,52 @@ run('obsolete task delivery retirement with migrated PostgreSQL and Redis', () =
   it('reclaims a queued delivery after its execution fails without changing recorded history', async () => {
     const { audit, task, jobId, queue } = await admit()
     const failed = await prisma.audit.update({ where: { id: audit.id }, data: { status: 'FAILED', completedAt: new Date(), failureCode: 'CONTROLLED_FAILURE' } })
-    const recorded = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+    const recorded = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
     expect(await queue.getJob(jobId)).toBeDefined()
     await recoverProgressiveTasks()
     expect(await queue.getJob(jobId)).toBeUndefined()
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toEqual(failed)
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
   })
 
   it.each(['COMPLETED', 'BLOCKED', 'EXHAUSTED'] as const)('reclaims a delivery whose task is already %s', async workState => {
     const { audit, task, jobId, queue } = await admit()
-    const recorded = await prisma.auditVerifierExecution.update({ where: { id: task.id },
+    const recorded = await prisma.auditExecutionTask.update({ where: { id: task.id },
       data: { workState, status: workState === 'COMPLETED' ? 'COMPLETED' : 'FAILED', workErrorCode: 'CONTROLLED_RECORDED_STATE' } })
     await retireObsoleteTaskDeliveries()
     expect(await queue.getJob(jobId)).toBeUndefined()
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'CAPTURING' })
   })
 
   it.each(['READY', 'WAITING', 'RETRY_WAIT'] as const)('preserves an unconsumed delivery for live %s work', async workState => {
     const { task, jobId, queue } = await admit()
-    const recorded = await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workState } })
+    const recorded = await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState } })
     await retireObsoleteTaskDeliveries()
     expect(await queue.getJob(jobId)).toBeDefined()
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
   })
 
   it.each(['http', 'prescription', 'finalize'] as const)('retains completed-Audit permission for %s according to the shared completion contract', async kind => {
     const { audit, task, jobId, queue } = await admit(kind)
     const complete = await prisma.audit.update({ where: { id: audit.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
-    const recorded = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+    const recorded = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
     await retireObsoleteTaskDeliveries()
     expect(Boolean(await queue.getJob(jobId))).toBe(kind !== 'http')
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toEqual(complete)
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
   })
 
   it('removes a consumed generation while preserving its newly admitted retry', async () => {
     const { task, jobId, queue } = await admit()
-    await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workGeneration: 1, workAttempts: 1,
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workGeneration: 1, workAttempts: 1,
       workDispatchState: 'PENDING', workDispatchLeaseUntil: null, workRetryAt: new Date(0) } })
     expect(await dispatchTask(task.id)).toBe(true)
-    const recorded = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+    const recorded = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
     await Promise.all([retireObsoleteTaskDeliveries(), retireObsoleteTaskDeliveries()])
     expect(await queue.getJob(jobId)).toBeUndefined()
     expect(await queue.getJob(task.id + '-g2')).toBeDefined()
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
   })
 
   it('reclaims an orphaned delivery after its Audit and ledger have been removed', async () => {
@@ -111,11 +111,11 @@ run('obsolete task delivery retirement with migrated PostgreSQL and Redis', () =
     await retireObsoleteTaskDeliveries()
     expect(await queue.getJob(jobId)).toBeDefined()
     expect(await historical.getJob(jobId)).toBeDefined()
-    const recorded = await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workState: 'EXHAUSTED', status: 'FAILED' } })
+    const recorded = await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState: 'EXHAUSTED', status: 'FAILED' } })
     await retireObsoleteTaskDeliveries()
     expect(await queue.getJob(jobId)).toBeUndefined()
     expect(await historical.getJob(jobId)).toBeUndefined()
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
   })
 
   it('makes bounded progress past a full live window without a persistent sweep cursor', async () => {
@@ -166,14 +166,14 @@ run('obsolete task delivery retirement with migrated PostgreSQL and Redis', () =
     const { audit, task, jobId, queue } = await admit()
     await (await queue.getJob(jobId))!.remove()
     await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
-    await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workDispatchState: 'PENDING', workRetryAt: new Date(0) } })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workDispatchState: 'PENDING', workRetryAt: new Date(0) } })
     let release!: () => void
     const gate = new Promise<void>(resolve => { release = resolve })
     vi.spyOn(transport.queues.get('pagespeed')!, 'getJobs').mockImplementationOnce(async () => { await gate; return [] })
     const recovery = recoverProgressiveTasks()
     try {
       await vi.waitFor(async () => expect(await queue.getJob(jobId)).toBeDefined())
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workState: 'READY', workDispatchState: 'SENT', workAttempts: 0 })
     } finally { release(); await recovery }
   })
@@ -200,7 +200,7 @@ run('obsolete task delivery retirement with migrated PostgreSQL and Redis', () =
   it('preserves an active job when stale queued-state reads race with a worker claim', async () => {
     const { audit, task, jobId, queue } = await admit()
     await prisma.audit.update({ where: { id: audit.id }, data: { status: 'FAILED' } })
-    const recorded = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+    const recorded = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
     let release!: () => void, entered!: () => void
     const held = new Promise<void>(resolve => { release = resolve }), running = new Promise<void>(resolve => { entered = resolve })
     const connection = createWorkerRedis()
@@ -217,7 +217,7 @@ run('obsolete task delivery retirement with migrated PostgreSQL and Redis', () =
       await worker.waitUntilReady()
       await retireObsoleteTaskDeliveries()
       expect(await (await queue.getJob(jobId))!.getState()).toBe('active')
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toEqual(recorded)
     } finally { release(); await worker.close(); connection.disconnect(); await queue.pause() }
   })
 })

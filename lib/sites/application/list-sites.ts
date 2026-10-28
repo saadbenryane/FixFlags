@@ -270,6 +270,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
     const watchState = watchBoardState({
       interval: watchInterval ?? null,
       nextRunAt: project.watchNextRunAt,
+      pausedAt: project.watchPausedAt,
       lastError: project.watchLastError,
       consecutiveFailures: project.watchConsecutiveFailures,
       now,

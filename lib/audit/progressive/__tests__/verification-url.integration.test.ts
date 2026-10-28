@@ -80,7 +80,7 @@ run('exact recovery resource through saved publication and installed workers', (
   async function complete(auditId: string) {
     await vi.waitFor(async () => {
       // Keep unrelated providers, media and actions explicitly incomplete.
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'browser', 'check', 'finalize', 'search', 'search-resources', 'discovery'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
@@ -99,13 +99,15 @@ run('exact recovery resource through saved publication and installed workers', (
     expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR' : 'FLAG' })
   }
   it('refuses a healthy peer during partial publication, verifies the exact repair and recognizes recurrence', async () => {
-    const source = await createAndEnqueueAudit({ url: pageUrl, userId })
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    userId })
     await complete(source.auditId)
     projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } })).projectId!
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'title-missing' } })
     expect(flag).toMatchObject({ pageUrl })
     const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
-    const sourceReceipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:search-presentation', pageUrl } })
+    const sourceReceipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:search-presentation', pageUrl } })
 
     // Publish an interrupted broad run with real HTTP and Chromium observations
     // for the healthy peer only. The original resource remains unobserved.
@@ -129,7 +131,7 @@ run('exact recovery resource through saved publication and installed workers', (
       const receipt = searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: child.id, pageUrl: peerUrl,
         collectedAt: evidence.collectedAt, complete: true, observations: await evaluateSearch(evidence, null, ['presentation']) })
       expect(receipt.observations).toContainEqual(expect.objectContaining({ checkId: 'title-missing', source: 'rendered-dom', disposition: 'passed' }))
-      await prisma.auditVerifierExecution.create({ data: { auditId: child.id, targetKey: 'module:search-presentation',
+      await prisma.auditVerificationReceipt.create({ data: { auditId: child.id, targetKey: 'module:search-presentation',
         scopeKey: 'page:' + peerUrl, pageUrl: peerUrl, source: 'DETERMINISTIC', status: 'COMPLETED',
         evidenceReference: { kind: 'search-receipt', auditId: child.id }, detail: receipt } })
     } finally { session.disposeNetwork(); await session.page.context().close() }
@@ -148,6 +150,6 @@ run('exact recovery resource through saved publication and installed workers', (
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: occurrence.improvementId })
     expect(await getOwnedRun(userId, recurring.runId)).toMatchObject({ result: 'FLAG' })
     expect(requests).toContain(pageUrl); expect(requests).toContain(peerUrl)
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: sourceReceipt.id } })).toEqual(sourceReceipt)
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: sourceReceipt.id } })).toEqual(sourceReceipt)
   }, 180_000)
 })

@@ -1,4 +1,4 @@
-import type { Prisma, VerifierExecutionStatus, AuditVerifierExecution } from '@prisma/client'
+import type { Prisma, VerifierExecutionStatus, AuditVerificationReceipt } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { baseCheckId } from '@/lib/audit/flag-identity'
 import { AUDIT_CAPABILITIES } from '@/lib/audit/capability-matrix'
@@ -33,15 +33,16 @@ export async function recordVerifierExecution(input: {
   status: VerifierExecutionStatus
   evidenceReference?: Prisma.InputJsonValue
   detail?: Prisma.InputJsonValue
-}, db: DbClient = prisma): Promise<AuditVerifierExecution> {
+}, db: DbClient = prisma): Promise<AuditVerificationReceipt> {
   if (db === prisma && currentExecutionOwnership()) return executionWrite(tx => recordVerifierExecution(input, tx))
   const targetKey = verifierTargetKey(input)
   if (!targetKey) throw new Error('Verifier execution requires a stable target identity')
   const scopeKey = verifierScopeKey(input.pageUrl)
-  return db.auditVerifierExecution.upsert({
+  return db.auditVerificationReceipt.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: input.auditId, targetKey, scopeKey } },
     create: {
       auditId: input.auditId,
+      taskId: currentExecutionOwnership()?.taskId,
       targetKey,
       source: input.source,
       checkId: baseCheckId(input.checkId),
@@ -54,6 +55,7 @@ export async function recordVerifierExecution(input: {
       executionGeneration: currentExecutionOwnership()?.generation,
     },
     update: {
+      taskId: currentExecutionOwnership()?.taskId,
       source: input.source,
       checkId: baseCheckId(input.checkId),
       pageUrl: input.pageUrl,

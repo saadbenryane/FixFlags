@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errors } from 'playwright'
 
 const mocks = vi.hoisted(() => ({
-  owner: vi.fn(), admitted: vi.fn(), eventFindFirst: vi.fn(), eventCreate: vi.fn(), fixtureFindUnique: vi.fn(), fixtureFindFirst: vi.fn(),
+  owner: vi.fn(), admitted: vi.fn(), pending: vi.fn(), eventCreate: vi.fn(), fixtureFindUnique: vi.fn(), fixtureFindFirst: vi.fn(),
   assertPublicUrl: vi.fn(),
   getBrowser: vi.fn(),
   createAuditPage: vi.fn(),
@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: { outcomeFixture: { findFirst: mocks.fixtureFindFirst, findUniqueOrThrow: mocks.fixtureFindUnique },
-  audit: { findFirst: mocks.admitted }, auditPipelineEvent: { findFirst: mocks.eventFindFirst, create: mocks.eventCreate },
+  audit: { findFirst: mocks.admitted }, auditPipelineEvent: { create: mocks.eventCreate }, $queryRaw: mocks.pending,
   $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ outcomeFixture: { findFirst: mocks.fixtureFindFirst } }),
 } }))
 vi.mock('@/lib/audit/execution-ownership', async () => {
@@ -35,6 +35,8 @@ import { executeSafeFormFixture } from '@/lib/sites/application/safe-form-execut
 const fixture = {
   id: 'fixture-1',
   projectId: 'site-1',
+  configuredByUserId: 'owner',
+  project: { userId: 'owner' },
   targetUrl: 'https://example.com/signup',
   resetUrl: 'https://example.com/test/reset',
   cleanupUrl: 'https://example.com/test/cleanup',
@@ -56,7 +58,7 @@ describe('Safe Form executor', () => {
     mocks.assertPublicUrl.mockImplementation(async (url: string) => new URL(url))
     mocks.owner.mockReturnValue(null)
     mocks.fixtureFindUnique.mockResolvedValue(fixture)
-    mocks.eventFindFirst.mockResolvedValue(null)
+    mocks.pending.mockResolvedValue([])
     mocks.eventCreate.mockResolvedValue({})
     mocks.fixtureFindFirst.mockResolvedValue(fixture)
     mocks.getBrowser.mockResolvedValue({})
@@ -134,7 +136,7 @@ describe('Safe Form executor', () => {
 
   it('refuses an unresolved submission from a previous Audit before reset or another click', async () => {
     mocks.owner.mockReturnValue({ auditId: 'current', taskId: 'current-task', generation: 1 })
-    mocks.eventFindFirst.mockResolvedValueOnce({ detail: { operationId: 'previous:g2', fixtureId: fixture.id, fixtureVersion: 1 } }).mockResolvedValueOnce(null)
+    mocks.pending.mockResolvedValueOnce([{ executionId: 'previous:g2', detail: { operationId: 'previous:g2', fixtureId: fixture.id, fixtureVersion: 1 } }])
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })))
     const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: fixture.targetUrl, allowLocalhost: false })
     expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'protected_effect_unresolved' })
@@ -145,7 +147,7 @@ describe('Safe Form executor', () => {
 
   it('can proceed only after cleanup acknowledges the same settled previous operation', async () => {
     mocks.owner.mockReturnValue({ auditId: 'current', taskId: 'current-task', generation: 1 })
-    mocks.eventFindFirst.mockResolvedValueOnce({ detail: { operationId: 'previous:g2', fixtureId: fixture.id, fixtureVersion: 1 } }).mockResolvedValueOnce(null)
+    mocks.pending.mockResolvedValueOnce([{ executionId: 'previous:g2', detail: { operationId: 'previous:g2', fixtureId: fixture.id, fixtureVersion: 1 } }])
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ ok: true, settled: true, operationId: 'previous:g2' }))
       .mockImplementation(async () => Response.json({ ok: true })))
     const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: fixture.targetUrl, allowLocalhost: false })
@@ -156,7 +158,7 @@ describe('Safe Form executor', () => {
 
   it('does not replay an interrupted operation through edited fixture hooks', async () => {
     mocks.owner.mockReturnValue({ auditId: 'current', taskId: 'current-task', generation: 1 })
-    mocks.eventFindFirst.mockResolvedValueOnce({ detail: { operationId: 'previous:g2', fixtureId: fixture.id, fixtureVersion: 2 } }).mockResolvedValueOnce(null)
+    mocks.pending.mockResolvedValueOnce([{ executionId: 'previous:g2', detail: { operationId: 'previous:g2', fixtureId: fixture.id, fixtureVersion: 2 } }])
     vi.stubGlobal('fetch', vi.fn())
     const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: fixture.targetUrl, allowLocalhost: false })
     expect(result.reason).toBe('protected_effect_unresolved')

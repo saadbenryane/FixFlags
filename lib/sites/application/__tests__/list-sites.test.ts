@@ -222,9 +222,9 @@ describe('loadSiteSummaries', () => {
     const coverage = { environment: 'production', requiredBindings: ['signup'], bindings: [{ ...binding, fixture: { id: 'fixture', version: 4 } }] }
     mocks.outcomeFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, enabled: true, environment: 'production', staleAfterMinutes: 60,
       bindings: [binding], assessments: [{ state: 'CLEAR', assessedAt: new Date(), validUntil: new Date(Date.now() + 60_000), coverage }] })))
-    const fixture = { id: 'fixture', projectId: 'site-1', version: 4, enabled: true, authorizedAt: new Date(), lastDryRunVersion: 4 }
+    const fixture = { id: 'fixture', projectId: 'site-1', configuredByUserId: 'user-1', project: { userId: 'user-1' }, version: 4, enabled: true, authorizedAt: new Date(), lastDryRunVersion: 4 }
     for (const changed of [fixture, { ...fixture, version: 5 }, { ...fixture, enabled: false }, { ...fixture, authorizedAt: null },
-      { ...fixture, projectId: 'site-2' }]) {
+      { ...fixture, projectId: 'site-2' }, { ...fixture, project: { userId: 'new-owner' } }]) {
       mocks.fixtureFindMany.mockClear().mockResolvedValue([changed])
       expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state)
         .toBe(changed === fixture ? 'clear' : 'could_not_verify')

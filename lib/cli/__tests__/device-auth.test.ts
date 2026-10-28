@@ -11,7 +11,8 @@ const prisma = vi.hoisted(() => ({
       return state.authorization
     }),
     updateMany: vi.fn(async ({ where, data }) => {
-      if (state.authorization.status !== where.status) return { count: 0 }
+      if (typeof where.status === 'string' && state.authorization.status !== where.status) return { count: 0 }
+      if (where.status?.not === state.authorization.status) return { count: 0 }
       Object.assign(state.authorization, data)
       return { count: 1 }
     }),
@@ -20,6 +21,7 @@ const prisma = vi.hoisted(() => ({
     deleteMany: vi.fn(),
   },
   apiKey: { count: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+  $queryRaw: vi.fn(async () => [{ id: 'user-1' }]),
   $transaction: vi.fn(async (input) => (typeof input === 'function' ? input(prisma) : Promise.all(input))),
 }))
 
@@ -118,6 +120,7 @@ describe('CLI device authorization', () => {
     state.authorization = authorization({
       status: 'APPROVED',
       apiKeyId: 'key-1',
+      userId: 'user-1',
       encryptedCredential: 'encrypted:ff_live_uncollected',
       expiresAt: new Date(Date.now() - 1),
     })
@@ -126,7 +129,7 @@ describe('CLI device authorization', () => {
       code: 'EXPIRED_DEVICE_CODE',
     })
     expect(prisma.apiKey.updateMany).toHaveBeenCalledWith({
-      where: { id: 'key-1', revokedAt: null },
+      where: { id: 'key-1', userId: 'user-1', revokedAt: null },
       data: { revokedAt: expect.any(Date) },
     })
     expect(state.authorization.encryptedCredential).toBeNull()

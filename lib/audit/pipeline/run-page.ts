@@ -1,3 +1,4 @@
+/** Retired sequential orchestrator. Retained for existing isolated regression evidence, never runtime dispatch. */
 import { executionWrite, executionTransaction } from '@/lib/audit/execution-ownership'
 import { prisma } from '../../db'
 import { captureScreenshots, getAuditBrowser } from '../screenshot'
@@ -499,7 +500,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.axeViolations,
     true, undefined, { head, tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
       publicDocument: screenshots.originalDocument,
-      accessibilityEvidence: screenshots.accessibilityEvidence, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
+      accessibilityEvidence: screenshots.accessibilityEvidence, mobileAccessibility: screenshots.mobileAccessibility, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
   )
 
   const unfinishedModules = [...new Set([...failedModules, ...executions
@@ -514,7 +515,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       detail: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, ...execution, pageUrl: normalizedUrl }),
       evidenceReference: { auditId: ctx.auditId, pageUrl: normalizedUrl, module: execution.module },
     }
-    await executionWrite(tx => tx.auditVerifierExecution.upsert({
+    await executionWrite(tx => tx.auditVerificationReceipt.upsert({
       where: { auditId_targetKey_scopeKey: { auditId: ctx.auditId, targetKey, scopeKey } },
       create: { auditId: ctx.auditId, targetKey, scopeKey, ...receipt },
       update: receipt,

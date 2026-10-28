@@ -15,7 +15,7 @@ describe('sealed scan access permission', () => {
   it('keeps note changes authorized but never revives a revoked grant when the same secret is restored', async () => {
     const first = writeProjectAccessGrant(config, url)
     const grant = readProjectAccessGrant(first.payload, url)
-    const project = { id: 'site', url, userId: 'owner', deletedAt: null, scanAccessEncrypted: first.payload }
+    const project = { id: 'site', url, userId: 'owner', scanAccessAuthorizedByUserId: 'owner', deletedAt: null, scanAccessEncrypted: first.payload }
     const audit = { url, userId: 'owner', projectId: 'site', project, scanAccessEncrypted: encryptScanAccess(config),
       executionSpec: { ...spec, scanAccess: { kind: 'project', origin: grant.origin, projectId: 'site', reference: grant.reference } } }
     db.audit.findUnique.mockImplementation(async () => audit)
@@ -41,7 +41,7 @@ describe('sealed scan access permission', () => {
     await expect(admitScanAccess(db as never, { projectId: null, userId: null, targetUrl: url, explicit: config })).rejects.toBeInstanceOf(ScanAccessUnavailable)
   })
   it('does not replay legacy Audit ciphertext without a matching live Site grant', async () => {
-    const project = { id: 'site', url, userId: 'owner', deletedAt: null, scanAccessEncrypted: encryptScanAccess(config) as string | null }
+    const project = { id: 'site', url, userId: 'owner', scanAccessAuthorizedByUserId: 'owner', deletedAt: null, scanAccessEncrypted: encryptScanAccess(config) as string | null }
     db.audit.findUnique.mockImplementation(async () => ({ url, userId: 'owner', projectId: 'site', project,
       scanAccessEncrypted: encryptScanAccess(config), executionSpec: spec }))
     expect(await resolveAuditScanAccess('audit')).not.toBeNull()

@@ -10,6 +10,7 @@ import { isPublicIp } from './public-ip'
 import { PublicCertificateError, readCertificateFailure } from './tls-evidence'
 import { PublicResponseBodyError, type PublicHttpDocument } from './http-evidence'
 import { PublicRedirectError, isAutomaticRedirectStatus } from './redirect-evidence'
+import { currentExecutionOwnership } from './execution-ownership'
 export { isPublicIp } from './public-ip'
 
 const PUBLIC_PROTOCOLS = new Set(['http:', 'https:'])
@@ -192,27 +193,32 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
   publicOnly?: boolean; headers?: Record<string, string>; onRequestStart?: () => void;
 }, decodeBody: (bytes: Buffer, contentType?: string) => Body, requireHtml = false): Promise<Omit<PublicHttpDocument, 'body'> & { body: Body }> {
   const timeoutMs = options.timeoutMs ?? 5000, deadline = options.deadline ?? Infinity
+  const executionSignal = currentExecutionOwnership()?.signal
   const admissionExpiresAt = Math.min(deadline, Date.now() + timeoutMs)
-  const release = await publicHttpCapacity.acquire(AbortSignal.timeout(Math.max(1, admissionExpiresAt - Date.now())))
+  const admissionSignal = AbortSignal.timeout(Math.max(1, admissionExpiresAt - Date.now()))
+  const release = await publicHttpCapacity.acquire(executionSignal ? AbortSignal.any([admissionSignal, executionSignal]) : admissionSignal)
   const responseExpiresAt = Date.now() + timeoutMs
   const expiresAt = Math.min(deadline, responseExpiresAt)
   const controller = new AbortController()
+  const signal = executionSignal ? AbortSignal.any([controller.signal, executionSignal]) : controller.signal
   const timer = setTimeout(() => controller.abort(), Math.max(1, expiresAt - Date.now()))
   const redirects: string[] = []
   let uncertainRedirect = false
   const maxBytes = options.maxBytes ?? 1_000_000
   let requestInFlight = false
   try {
+    signal.throwIfAborted()
     if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
     options.onRequestStart?.()
-    let current = (await assertPublicAuditUrl(rawUrl, controller.signal, options.publicOnly)).toString()
+    let current = (await assertPublicAuditUrl(rawUrl, signal, options.publicOnly)).toString()
     const credentialOrigin = new URL(current).origin
     for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
+      signal.throwIfAborted()
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
       requestInFlight = true
       let response: Response
       try {
-        response = await fetch(current, { redirect: 'manual', signal: controller.signal, dispatcher: publicDispatcher,
+        response = await fetch(current, { redirect: 'manual', signal, dispatcher: publicDispatcher,
           headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml',
             ...(new URL(current).origin === credentialOrigin ? options.headers ?? {} : {}) } } as RequestInit & { dispatcher: Agent })
       } catch (error) {
@@ -227,7 +233,7 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
         requestInFlight = false
         if (!location) throw new Error('Redirect response is missing a location')
         uncertainRedirect ||= response.headers.has('set-cookie') || response.headers.has('cf-mitigated') || !isAutomaticRedirectStatus(response.status)
-        const next = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal, options.publicOnly)).toString()
+        const next = (await assertPublicAuditUrl(new URL(location, current).toString(), signal, options.publicOnly)).toString()
         if (hop === (options.maxRedirects ?? 5)) throw new PublicRedirectError({ finalUrl: current,
           statusCode: response.status, headers: Object.fromEntries(response.headers), redirects: [...redirects] }, uncertainRedirect,
         requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : undefined)
@@ -263,7 +269,7 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
         // Fetch already decodes HTTP Content-Encoding. A gzip sitemap file may
         // still contain compressed bytes, independently of its response headers.
         if (options.decodeGzip && collected[0] === 0x1f && collected[1] === 0x8b) {
-          const decoded = complete ? await readGzipDocument(collected, maxBytes, controller.signal) : { bytes: Buffer.alloc(0), complete: false }
+          const decoded = complete ? await readGzipDocument(collected, maxBytes, signal) : { bytes: Buffer.alloc(0), complete: false }
           documentBytes = decoded.bytes; complete = decoded.complete
         }
         const body = decodeBody(documentBytes, headers['content-type'])
@@ -284,7 +290,7 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
     }
     throw new Error(requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : 'Public evidence redirect limit exceeded')
   } catch (error) {
-    if (controller.signal.aborted && requestInFlight && responseExpiresAt <= deadline)
+    if (controller.signal.aborted && !executionSignal?.aborted && requestInFlight && responseExpiresAt <= deadline)
       throw new PublicRequestError('Public response timed out')
     throw error
   } finally { clearTimeout(timer); release() }

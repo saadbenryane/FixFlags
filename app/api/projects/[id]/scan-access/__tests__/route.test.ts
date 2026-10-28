@@ -8,17 +8,17 @@ const prismaMock = vi.hoisted(() => ({
 
 const getSession = vi.hoisted(() => vi.fn())
 const persistProjectScanAccess = vi.hoisted(() => vi.fn())
-const decryptScanAccess = vi.hoisted(() => vi.fn())
+const readProjectAccessGrant = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/audit/scan-access-store', () => ({ persistProjectScanAccess }))
+vi.mock('@/lib/audit/scan-access-grants', () => ({ readProjectAccessGrant }))
 vi.mock('@/lib/audit/scan-access', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/audit/scan-access')>()
   return {
     ...actual,
-    decryptScanAccess,
     redactScanAccessForClient: (config: { label?: string | null }) => ({
       label: config.label ?? null,
       hasHttpBasic: false,
@@ -42,9 +42,11 @@ describe('/api/projects/[id]/scan-access', () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.project.findFirst.mockResolvedValue({
       id: 'proj-1',
+      url: 'https://example.com/',
+      scanAccessAuthorizedByUserId: 'user-1',
       scanAccessEncrypted: 'enc',
     })
-    decryptScanAccess.mockReturnValue({ label: 'Staging', httpBasic: { username: 'u', password: 'p' } })
+    readProjectAccessGrant.mockReturnValue({ config: { label: 'Staging', httpBasic: { username: 'u', password: 'p' } } })
     persistProjectScanAccess.mockResolvedValue(undefined)
   })
 
@@ -103,7 +105,7 @@ describe('/api/projects/[id]/scan-access', () => {
     prismaMock.project.findFirst.mockResolvedValue(null)
     const res = await GET({} as NextRequest, { params })
     expect(res.status).toBe(404)
-    expect(decryptScanAccess).not.toHaveBeenCalled()
+    expect(readProjectAccessGrant).not.toHaveBeenCalled()
   })
 
 })

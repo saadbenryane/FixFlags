@@ -21,7 +21,7 @@ function row(assessment: unknown) {
 describe('history execution loading', () => {
   const shared = [
     { workKind: 'automatic-accounts', workState: 'COMPLETED' },
-    { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+    { workKind: 'browser' },
   ]
   it('keeps each recorded scope on its own execution filter', () => {
     expect(historyExecutionScope({ scope: 'SITE', version: 'old' })).toBe('SITE')

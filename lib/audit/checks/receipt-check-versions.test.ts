@@ -65,7 +65,7 @@ describe('recorded individual check versions', () => {
   it('persists each verifier with the actual admitted identity version and leaves omissions unresolved', async () => {
     const flags = ['no-privacy-policy', 'cookie-consent-absent'].map(checkId => ({ checkId, source: 'DETERMINISTIC', fingerprint: null, pageUrl, verificationRule: null, evidenceTargets: null }))
     const upsert = vi.fn()
-    const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue(flags.map(flag => ({ improvement: { occurrences: [{ flag }] } }))) }, auditVerifierExecution: { upsert } }
+    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue(flags.map(flag => ({ improvement: { occurrences: [{ flag }] } }))) }, auditVerifierExecution: { upsert } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt }, tx as never)
     expect(upsert.mock.calls.map(([value]) => ({ checkId: value.create.checkId, version: value.create.detail.checkVersion }))).toEqual([
       { checkId: 'no-privacy-policy', version: 1 }, { checkId: 'cookie-consent-absent', version: 2 },

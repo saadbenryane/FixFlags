@@ -68,7 +68,7 @@ run('fair completed projection recovery in PostgreSQL', () => {
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
       completedAt: audit.completedAt, reportCompleteness: 'PARTIAL', evidenceCoverage: {}, improvementProjectedAt: expect.any(Date),
     })
-    expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'projection:flag-comparison' } }))
+    expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'projection:flag-comparison' } }))
       .toMatchObject({ status: 'COMPLETED' })
     expect((await loadSiteHome(site.id))?.presentation.result.state).toBe('could_not_verify')
     expect(await prisma.flag.count({ where: { auditId: audit.id } })).toBe(0)

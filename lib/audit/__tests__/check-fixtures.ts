@@ -87,7 +87,8 @@ export function healthyMobilePs(overrides: Partial<PageSpeedResult> = {}): PageS
     ...overrides,
   }
 }
-export function pageSpeedMeasurementFixture(url: string, strategy: 'desktop' | 'mobile' = 'desktop') {
-  return performanceMeasurement({ requestedUrl: url, finalUrl: url, lighthouseVersion: '13.0.0',
-    configSettings: { formFactor: strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } } }, strategy)
+export function pageSpeedMeasurementFixture(url: string, strategy: 'desktop' | 'mobile' = 'desktop', overrides: Record<string, unknown> = {}) {
+  const requestedAt = new Date()
+  return performanceMeasurement({ requestedUrl: url, finalUrl: url, lighthouseVersion: '13.0.0', fetchTime: requestedAt.toISOString(),
+    configSettings: { formFactor: strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } }, ...overrides }, strategy, requestedAt)
 }

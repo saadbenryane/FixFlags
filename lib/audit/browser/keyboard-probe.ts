@@ -26,6 +26,7 @@ export const keyboardInteractionSchema = z.object({
 export type KeyboardInteraction = z.infer<typeof keyboardInteractionSchema>
 export const keyboardEvidenceSchema = z.object({
   version: z.literal(1), pageUrl: z.string().url(), collectedAt: z.string().datetime(),
+  focusPolicy: z.literal('painted-properties-v2').optional(),
   scope: captureObservationScopeSchema.optional(),
   complete: z.boolean(), reason: z.string().min(1).max(160), candidateCount: z.number().int().nonnegative(),
   steps: z.array(targetSchema).max(KEYBOARD_STEP_LIMIT),
@@ -125,7 +126,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       if (elements().nodes.some(el => el.matches('iframe,frame'))) limitations.push('embedded_frame_uninspected')
       if (candidates.length > 200) limitations.push('candidate_limit')
       const inspected = candidates.slice(0, 200)
-      const properties = ['outlineStyle', 'outlineWidth', 'outlineColor', 'outlineOffset', 'boxShadow', 'borderColor', 'borderWidth',
+      const properties = ['outlineStyle', 'outlineWidth', 'outlineColor', 'outlineOffset', 'boxShadow',
         'backgroundColor', 'color', 'textDecoration', 'opacity', 'transform'] as const
       const colorCanvas = document.createElement('canvas')
       colorCanvas.width = colorCanvas.height = 1
@@ -192,14 +193,28 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       function profile(el: Element) {
         const descendants = elements(el, 13)
         const nodes = descendants.nodes.filter(paintedInDocument)
-        const styles = nodes.flatMap(node => [getComputedStyle(node), ...['::before', '::after'].map(pseudo => getComputedStyle(node, pseudo))
-          .filter(style => !['none', 'normal'].includes(style.content) && style.display !== 'none' && style.visibility === 'visible' && parseFloat(style.opacity) !== 0)]
-          .map(style => ({ style, node })))
+        const styles = nodes.flatMap(node => [{ style: getComputedStyle(node), node, pseudo: false },
+          ...['::before', '::after'].map(pseudo => ({ style: getComputedStyle(node, pseudo), node, pseudo: true }))
+            .filter(({ style }) => !['none', 'normal'].includes(style.content) && style.display !== 'none' && style.visibility === 'visible' && parseFloat(style.opacity) !== 0)])
         let uncertainPaint = false
-        function signature({ style, node }: { style: CSSStyleDeclaration; node: Element }) {
+        function signature({ style, node, pseudo }: { style: CSSStyleDeclaration; node: Element; pseudo: boolean }) {
           const outline = paintedOutline(style, node)
           if (outline === null) uncertainPaint = true
-          return properties.map(key => {
+          const borders = (['Top', 'Right', 'Bottom', 'Left'] as const).map(side => {
+            const line = style[`border${side}Style`], width = style[`border${side}Width`], color = style[`border${side}Color`]
+            if (['none', 'hidden'].includes(line) || !(parseFloat(width) > 0)) return 'none'
+            const painted = paintedColor(color)
+            if (painted === null) uncertainPaint = true
+            return painted === false ? 'none' : [line, width, color].join(':')
+          })
+          // Declared colors do not paint an absent border, decoration or box.
+          // Pseudo-elements use their own resolved dimensions, not the parent's.
+          const rect = node.getBoundingClientRect()
+          const emptyBackground = pseudo ? style.display !== 'inline' && (
+            [style.width, style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth].every(value => parseFloat(value) === 0) ||
+            [style.height, style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth].every(value => parseFloat(value) === 0)
+          ) : rect.width === 0 || rect.height === 0
+          return [...borders, ...properties.map(key => {
             if (key.startsWith('outline')) {
               return outline ? style[key] : 'none'
             }
@@ -209,12 +224,14 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
               else if (colors.every(color => paintedColor(color) === false)) return 'none'
             }
             if (key === 'backgroundColor' || key === 'color') {
+              if (key === 'backgroundColor' && emptyBackground) return 'transparent'
               const painted = paintedColor(style[key])
               if (painted === null) uncertainPaint = true
               if (painted === false) return 'transparent'
             }
+            if (key === 'textDecoration' && style.textDecorationLine === 'none') return 'none'
             return style[key]
-          }).join('|')
+          })].join('|')
         }
         const recorded = styles.map(signature).join(';')
         return { signature: recorded, uncertainPaint,
@@ -558,7 +575,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       if (reason === 'document_boundary_observed') reason = 'focus_indicator_unresolved'
     }
     const capture = auditPageObservation(page)
-    return keyboardEvidenceSchema.parse({ version: 1, pageUrl, collectedAt, complete, reason, navigationComplete,
+    return keyboardEvidenceSchema.parse({ version: 1, focusPolicy: 'painted-properties-v2', pageUrl, collectedAt, complete, reason, navigationComplete,
       ...(capture && !capture.restricted && capture.scope.finalUrl === pageUrl ? { scope: capture.scope } : {}),
       candidateCount: initial.count, steps, trap, limitations: initial.limitations,
       interactionCount: openerCount, interactions })

@@ -33,13 +33,13 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
     const specification = readExecutionSpec(request.executionSpec)
     if (request.executionSpec != null && !specification) throw new Error('Invalid admitted execution specification')
     if (specification?.scope === 'ACCOUNT_CHECKS') {
-      const task = await prisma.auditVerifierExecution.findFirst({ where: { auditId, workKind: 'automatic-accounts' }, select: { workState: true, workErrorCode: true } })
+      const task = await prisma.auditExecutionTask.findFirst({ where: { auditId, workKind: 'automatic-accounts' }, select: { workState: true, workErrorCode: true } })
       await executionWrite(tx => tx.runRequest.updateMany({ where: { id: request.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
         data: { status: task?.workState === 'COMPLETED' ? 'COMPLETED' : 'FAILED', completedAt: new Date(), leaseUntil: null, errorCode: task?.workErrorCode ?? null } }))
       continue
     }
     if (specification?.scope === 'FIXTURE_SETUP') {
-      const task = await prisma.auditVerifierExecution.findFirst({ where: { auditId, workKind: 'fixture-setup' },
+      const task = await prisma.auditExecutionTask.findFirst({ where: { auditId, workKind: 'fixture-setup' },
         select: { workState: true, workErrorCode: true } })
       await executionWrite(tx => tx.runRequest.updateMany({ where: { id: request.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
         data: { status: task?.workState === 'COMPLETED' ? 'COMPLETED' : 'FAILED', completedAt: new Date(), leaseUntil: null,

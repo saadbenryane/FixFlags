@@ -213,7 +213,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         const observedUrl = definition.input === 'http' ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
-            deadline: context.deadline, destinations: nativeHttp.options, head, publicDocument: response?.document, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, renderedScope: snapshot?.renderedScope,
+            deadline: context.deadline, destinations: nativeHttp.options, head, publicDocument: response?.document, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, mobileAccessibility: snapshot?.mobileAccessibility, renderedScope: snapshot?.renderedScope,
             ...evidenceScope })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
         if (checked.executions.length !== 1 || checked.executions[0].module !== checkModule) throw new TaskFailure('EVALUATOR_NOT_REGISTERED', false)
@@ -261,9 +261,9 @@ export const evaluatorHandlers: TaskHandler[] = [
     async commit(context, artifact, tx) {
       const { receipt } = searchArtifactSchema.parse(artifact.data)
       const receiptModule = !context.input.module || context.input.module === 'summary' ? 'search' : context.input.module
-      if (context.input.module !== 'summary') await tx.auditVerifierExecution.upsert({
+      if (context.input.module !== 'summary') await tx.auditVerificationReceipt.upsert({
         where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl } },
-        create: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl,
+        create: { taskId: context.task.id, auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl,
           pageUrl: receipt.pageUrl, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
           evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receiptModule, pageUrl: receipt.pageUrl } }, update: {},
       })

@@ -18,6 +18,7 @@ import {
 } from '@/lib/sites/connections/google'
 import { decryptSecret } from '@/lib/security/crypto'
 import { SITE_CONNECTION_COPY as C } from '@/lib/marketing/copy/site-connections'
+import { GoogleProviderError } from '@/lib/integrations/google-response'
 
 const bodySchema = z.object({
   provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']),
@@ -63,11 +64,22 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     const connection = await prisma.siteConnection.findUnique({
       where: { projectId_provider: { projectId: owned.projectId, provider } },
     })
-    if (!connection || connection.status === 'REVOKED') return apiError('Connect this provider first.', 409)
-    const token = await accessTokenForConnection(connection).catch(() => null)
+    if (!connection || connection.authorizedByUserId !== owned.userId || connection.status === 'REVOKED') return apiError('Connect this provider first.', 409)
+    let token: string | null
+    try { token = await accessTokenForConnection(connection, owned.userId) }
+    catch (error) {
+      if (error instanceof GoogleProviderError && error.requiresReauthentication) token = null
+      else {
+        const response = apiError(C.retainedUnavailable, 503, {
+          code: error instanceof GoogleProviderError ? error.code : 'PROVIDER_UNAVAILABLE', action: 'retry' })
+        if (error instanceof GoogleProviderError && error.retryAfterMs)
+          response.headers.set('Retry-After', String(Math.ceil(error.retryAfterMs / 1000)))
+        return response
+      }
+    }
     if (!token) {
       const changed = await prisma.siteConnection.updateMany({
-        where: googleConnectionCredentialScope(connection),
+        where: googleConnectionCredentialScope(connection, owned.userId),
         data: { status: 'NEEDS_REAUTH', statusDetail: 'Reconnect this Google account to keep reading it.' },
       })
       if (changed.count !== 1) return apiError(C.changed, 409)
@@ -76,6 +88,7 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     const synced = await syncGoogleConnection({
       connectionId: connection.id,
       projectId: owned.projectId,
+      userId: owned.userId,
       provider,
       host: owned.host,
       siteUrl: owned.siteUrl,
@@ -98,9 +111,9 @@ export async function DELETE(request: Request, context: { params: Promise<{ site
     const connection = await prisma.siteConnection.findUnique({
       where: { projectId_provider: { projectId: owned.projectId, provider: parsed.data.provider } },
     })
-    if (!connection || connection.status === 'REVOKED') return NextResponse.json({ ok: true })
+    if (!connection || connection.authorizedByUserId !== owned.userId || connection.status === 'REVOKED') return NextResponse.json({ ok: true })
     const disconnected = await prisma.siteConnection.updateMany({
-      where: googleConnectionCredentialScope(connection),
+      where: googleConnectionCredentialScope(connection, owned.userId),
       data: {
         status: 'REVOKED',
         statusDetail: 'Disconnected. Earlier numbers stay labeled with the date they were read.',

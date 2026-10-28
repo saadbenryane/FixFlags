@@ -399,46 +399,13 @@ describe('startWorker', () => {
   })
 })
 
-describe('non-terminal audit state detection', () => {
-  it('marks audit as FAILED and throws UnrecoverableError when status is non-terminal', async () => {
+describe('progressive coordinator delivery', () => {
+  it('leaves independently queued task progress under its owning coordinator', async () => {
     const { startWorker } = await import('@/lib/queue/worker')
     startWorker()
     mocks.runAudit.mockResolvedValue(undefined)
-    prismaMocks.auditFindUnique.mockResolvedValue({ status: 'CHECKING' })
-    prismaMocks.auditUpdate.mockResolvedValue(undefined)
-
-    await expect(
-      capturedProcessor!(makeJob({ data: { auditId: 'a3' } }))
-    ).rejects.toThrow(UnrecoverableError)
-
-    expect(prismaMocks.auditUpdate).toHaveBeenCalledWith({
-      where: { id: 'a3' },
-      data: expect.objectContaining({
-        status: 'FAILED',
-        failureCode: 'AUDIT_JOB_NON_TERMINAL',
-      }),
-    })
-  })
-
-  it('does not mark FAILED when audit reaches COMPLETED', async () => {
-    const { startWorker } = await import('@/lib/queue/worker')
-    startWorker()
-    mocks.runAudit.mockResolvedValue(undefined)
-    prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
-
-    await capturedProcessor!(makeJob({ data: { auditId: 'a4' } }))
-
-    expect(prismaMocks.auditUpdate).not.toHaveBeenCalled()
-  })
-
-  it('does not mark FAILED when audit reaches FAILED', async () => {
-    const { startWorker } = await import('@/lib/queue/worker')
-    startWorker()
-    mocks.runAudit.mockResolvedValue(undefined)
-    prismaMocks.auditFindUnique.mockResolvedValue({ status: 'FAILED' })
-
-    await capturedProcessor!(makeJob({ data: { auditId: 'a5' } }))
-
+    await capturedProcessor!(makeJob({ data: { auditId: 'a3' } }))
+    expect(mocks.runAudit).toHaveBeenCalledWith('a3')
     expect(prismaMocks.auditUpdate).not.toHaveBeenCalled()
   })
 })

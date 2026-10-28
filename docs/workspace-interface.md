@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-24
+reviewed_at: 2026-10-26
 supersedes: []
 ---
 
@@ -59,7 +59,7 @@ Site identity, monitoring, and one current result lead. The Flag count is that r
 - Timeline owns recorded checks, findings, rechecks and verified recoveries. Monitoring cadence and pause/resume belong in Settings. A Flag-per-check graph supports the history when enough evidence exists. Do not fabricate trend points before two completed checks exist.
 - Timeline and Integrations replace the board content inside the persistent Site shell. They do not open in a modal.
 - Integrations use recognizable logos and plain states such as Connected, Suggested, or Available. Connections add context and do not establish recovery.
-- Do not use horizontal or vertical divider lines. Use spacing, surface tone, type, and flagged-category outlines to establish hierarchy. A temporary countdown bar communicates confirmation duration.
+- Do not use horizontal or vertical divider lines or card outlines. Use spacing, surface tone and typography to establish hierarchy, following [DESIGN.md](../DESIGN.md). A temporary countdown bar communicates confirmation duration.
 
 Do not force a green overall label when an important Outcome is unverified or stale. A Site can be reachable while Checkout fails. A security or HTTP signal can fail without proving Checkout failed. Distinguish Outcome health from raw signal/category health.
 

@@ -16,7 +16,7 @@ export const uptimeStatusMonitorSelect = {
 
 /** Account summaries read status with the Site row, without probe history. */
 export const uptimeStatusProjectSelect = {
-  id: true, url: true, deletedAt: true, watchInterval: true, watchNextRunAt: true,
+  id: true, url: true, deletedAt: true, watchInterval: true, watchNextRunAt: true, watchPausedAt: true,
   user: { select: { id: true, lifecycleStatus: true } },
   uptimeMonitor: { select: uptimeStatusMonitorSelect },
 } as const

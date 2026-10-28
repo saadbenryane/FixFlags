@@ -1,7 +1,7 @@
 import { describe, it, vi, expect, beforeEach, type Mock } from 'vitest'
 
 const { prismaMock, captureMock, slowReplayMock } = vi.hoisted(() => ({
-  prismaMock: {
+  prismaMock: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
     audit: { findUnique: vi.fn(), update: vi.fn() },
     auditVerifierExecution: { upsert: vi.fn() },
     auditPage: {

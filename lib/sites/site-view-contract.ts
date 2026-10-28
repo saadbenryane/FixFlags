@@ -44,6 +44,7 @@ const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableT
 /** Full client projection contract. A malformed refresh cannot replace recorded evidence. */
 export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   schemaVersion: z.literal(2),
+  readScope: z.enum(['overview', 'settings']).optional(),
   actions: z.object({ ownership: z.enum(['owner', 'provisional']),
     check: z.enum(['available', 'sign_in', 'claim']), copy: z.enum(['available', 'sign_in', 'claim']),
     monitoring: z.enum(['available', 'sign_in', 'claim']), integrations: z.enum(['available', 'sign_in', 'claim']),
@@ -64,7 +65,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   site: z.object({ siteId: text, kind: z.enum(['project', 'provisional']), url: text, canonicalHost: text, name: text,
     projectId: nullableText, provisionalSiteId: nullableText, primaryAuditId: nullableText,
     watchInterval: watchIntervalSchema.nullable(), watchEveryMinutes: count.nullable().optional(),
-    watchNextRunAt: date, watchLastRunAt: date, watchLastError: nullableText, watchConsecutiveFailures: count, userId: nullableText }),
+    watchNextRunAt: date, watchPausedAt: date.optional().default(null), watchLastRunAt: date, watchLastError: nullableText, watchConsecutiveFailures: count, userId: nullableText }),
   presentation: z.object({
     identity: z.object({ siteId: text, name: text, host: text,
       preview: z.object({ url: text, pageUrl: text, viewport: text, recordedAt: nullableTime }).nullable() }),

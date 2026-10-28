@@ -46,6 +46,7 @@ export type PageCheckContext = {
   consoleCoverage?: ConsoleCoverage;
   head?: HeadMetadataObservation;
   renderedCopy?: RenderedCopy | null; accessibilityEvidence?: AccessibilityEvidence; renderedScope?: CaptureObservationScope;
+  mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
   publicDocument?: PublicDocument;
@@ -119,7 +120,7 @@ export const PAGE_CHECKS = registerPageEvaluators([
     return runOgImageUrlCheck(c.url, metadata, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline })
   } },
   { id: 'accessibility', evaluate: c => {
-    const checked = evaluateAccessibility({ metadata: c.metadata, evidence: c.accessibilityEvidence, scope: c.renderedScope,
+    const checked = evaluateAccessibility({ metadata: c.metadata, evidence: c.accessibilityEvidence, mobileAccessibility: c.mobileAccessibility, scope: c.renderedScope,
       axe: c.axe, pagespeed: c.desktop ?? c.mobile })
     checked.assertions.forEach(c.record)
     Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation })

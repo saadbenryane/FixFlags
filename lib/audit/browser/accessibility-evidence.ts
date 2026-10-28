@@ -9,6 +9,7 @@ export const accessibilityEvidenceSchema = z.object({
     nodes: z.number().int().nonnegative() }).strict()).max(300),
 }).strict()
 export type AccessibilityEvidence = z.infer<typeof accessibilityEvidenceSchema>
+export type MobileAccessibilityCapture = { evidence?: AccessibilityEvidence; violations?: AxeViolation[] }
 
 /** Engine internals include transient undefined fields, which are not durable
  * JSON evidence. Keep the exact contract consumed by findings and fix prompts. */

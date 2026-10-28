@@ -33,7 +33,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       AND: [analysisEnvironmentWhere(input.environment)] },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true, url: true, executionSpec: true, pages: {
         orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 24, select: { url: true } },
-        verifierExecutions: { where: { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+        verifierExecutions: { where: { workKind: 'browser' },
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 24, select: { targetKey: true, workKind: true, pageUrl: true } } } })
     if (input.scope === 'CATEGORY') {
       if (!source) throw new SiteRunRefusal('Run a website check before rechecking a category.', 409)

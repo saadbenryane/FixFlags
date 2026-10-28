@@ -86,7 +86,7 @@ run('Cross-page preview worker verification', () => {
   }
   it('keeps original page comparisons through partial evidence, repair and same-incident recurrence', async () => {
     const before = await category('preview-failure')
-    const largeBrowser = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: before, workKind: 'browser', pageUrl: urls[2] } })
+    const largeBrowser = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: before, workKind: 'browser', pageUrl: urls[2] } })
     expect(largeBrowser.workResult).toMatchObject({ data: { metadata: null, preview: { version: 1, titleComplete: true, descriptionComplete: true },
       snapshot: { desktopHtml: null, desktopHtmlTruncated: true } } })
     const duplicate = await prisma.flag.findFirstOrThrow({ where: { auditId: before, checkId: 'search-duplicate-title' } })
@@ -108,16 +108,16 @@ run('Cross-page preview worker verification', () => {
       if (state === 'without-titles') {
         expect(attempt.comparable).toBe(false)
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).not.toMatchObject({ status: 'FIXED' })
-        const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: result.auditId!, targetKey: 'module:corridor' } })
+        const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: result.auditId!, targetKey: 'module:corridor' } })
         expect(receipts.flatMap(receipt => checkReceiptSchema.parse(receipt.detail).assertions).filter(assertion => assertion.key === 'preview-titles'))
           .toEqual(expect.arrayContaining([expect.objectContaining({ complete: true, disposition: 'observed', passed: false })]))
       }
-      const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: result.auditId!, targetKey: { startsWith: 'task:' } } })
+      const tasks = await prisma.auditExecutionTask.findMany({ where: { auditId: result.auditId!, targetKey: { startsWith: 'task:' } } })
       expect(tasks.map(task => task.workKind).sort()).toEqual(['browser', 'browser', 'browser', 'cross-page', 'finalize'])
       if (state === 'healthy') {
-        const proof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: result.auditId!, targetKey: 'check:corridor-og-title-drift' } })
+        const proof = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: result.auditId!, targetKey: 'check:corridor-og-title-drift' } })
         expect(checkVerifierSchema.parse(proof.detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom', checkVersion: 2 })
-        const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: result.auditId!, targetKey: 'module:corridor' } })
+        const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: result.auditId!, targetKey: 'module:corridor' } })
         expect(receipts.flatMap(receipt => checkReceiptSchema.parse(receipt.detail).assertions).filter(assertion => assertion.key === 'preview-titles')).toHaveLength(3)
       }
     }
@@ -130,7 +130,7 @@ run('Cross-page preview worker verification', () => {
     await complete(removedRun.auditId!)
     expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: removedFix.attemptId } }))
       .toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
-    const removedReceipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: removedRun.auditId!, targetKey: 'module:corridor' } })
+    const removedReceipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: removedRun.auditId!, targetKey: 'module:corridor' } })
     expect(removedReceipts.flatMap(receipt => checkReceiptSchema.parse(receipt.detail).assertions).filter(assertion => assertion.key === 'preview-descriptions'))
       .toEqual(expect.arrayContaining([expect.objectContaining({ complete: true, disposition: 'observed', passed: false })]))
     mode = 'healthy'
@@ -140,7 +140,7 @@ run('Cross-page preview worker verification', () => {
       verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: description.pageUrl!, checkId: description.checkId!, attemptId: descriptionFix.attemptId, parentAuditId: before } })
     await complete(descriptionRun.auditId!)
     expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: descriptionFix.attemptId } })).toMatchObject({ outcome: 'IMPROVED' })
-    const descriptionProof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: descriptionRun.auditId!, targetKey: 'check:corridor-og-description-drift' } })
+    const descriptionProof = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: descriptionRun.auditId!, targetKey: 'check:corridor-og-description-drift' } })
     expect(checkVerifierSchema.parse(descriptionProof.detail)).toMatchObject({ verdict: 'passed', assertion: { key: 'preview-descriptions' } })
     mode = 'failed'
     const recurring = await category('preview-recurrence')

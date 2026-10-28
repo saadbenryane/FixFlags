@@ -18,6 +18,8 @@ import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { collectionHandlers } from '../collectors'
 import * as deliveryWindow from '../delivery-window'
 import { taskDeliveryWindow } from '../queues'
+import { safeFetchDocument } from '../../url'
+import { publicHttpCapacity } from '../capacity'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -61,7 +63,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
 
   afterEach(async () => {
     // Each case owns its own reservation cohort, including paused deliveries.
-    await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.count({ where: { auditId: { in: auditIds }, workState: 'RUNNING' } })).toBe(0))
+    await vi.waitFor(async () => expect(await prisma.auditExecutionTask.count({ where: { auditId: { in: auditIds }, workState: 'RUNNING' } })).toBe(0))
     await prisma.audit.deleteMany({ where: { id: { in: auditIds.splice(0) } } })
   })
 
@@ -72,7 +74,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       scope: 'page:' + position, input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies: [] })))
     // Ensure graph order and due times are explicit rather than relying on CUID ordering.
     const base = Date.now() - 10_000
-    for (const [index, kind] of kinds.entries()) await prisma.auditVerifierExecution.update({
+    for (const [index, kind] of kinds.entries()) await prisma.auditExecutionTask.update({
       where: { auditId_targetKey_scopeKey: { auditId: audit.id, targetKey: 'task:p' + index + ':' + kind, scopeKey: 'page:' + index } },
       data: { createdAt: new Date(base + index), workRetryAt: new Date(base) },
     })
@@ -104,15 +106,15 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       expect(await dispatchTask(tasks[0].id)).toBe(false)
       await Promise.all(tasks.slice(1).map(task => dispatchTask(task.id)))
     } finally { lost.mockRestore() }
-    const reserved = await prisma.auditVerifierExecution.findMany({ where: { auditId: audit.id,
+    const reserved = await prisma.auditExecutionTask.findMany({ where: { auditId: audit.id,
       workDispatchState: { in: ['SENT', 'FAILED'] } } })
     expect(reserved).toHaveLength(window)
     expect(await queue.getJob(tasks[0].id + '-g1')).not.toBeNull()
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
       .toMatchObject({ workDispatchState: 'FAILED', workGeneration: 0, workAttempts: 0 })
-    const waiting = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workDispatchState: 'PENDING' } })
+    const waiting = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workDispatchState: 'PENDING' } })
     expect(waiting).toMatchObject({ workState: 'READY', workAttempts: 0, workErrorCode: null, workDispatchLeaseUntil: null })
-    await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+    await prisma.auditExecutionTask.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
     expect(await dispatchTask(tasks[0].id)).toBe(true)
     const counts = await queue.getJobCounts('waiting', 'prioritized')
     expect(counts.waiting + counts.prioritized).toBe(window)
@@ -122,7 +124,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       // Completion frees capacity and drains waiting work through the ordinary
       // engine handoff, without another timer or a manually admitted retry.
       await completed(waiting.id)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
         .toMatchObject({ workState: 'COMPLETED', workGeneration: 1, workAttempts: 1 })
     } finally { await worker.close() }
   })
@@ -155,9 +157,9 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       }
       await dispatchReadyTasks(await reconcileTasks(audit.id))
       await vi.waitFor(async () => {
-        for (const kind of ['pagespeed', 'google']) expect(await prisma.auditVerifierExecution.findUniqueOrThrow({
+        for (const kind of ['pagespeed', 'google']) expect(await prisma.auditExecutionTask.findUniqueOrThrow({
           where: { id: tasks.find(task => task.workKind === kind)!.id } })).toMatchObject({ workState: 'RUNNING', workAttempts: 1 })
-        for (const kind of ['judge', 'http']) expect(await prisma.auditVerifierExecution.findUniqueOrThrow({
+        for (const kind of ['judge', 'http']) expect(await prisma.auditExecutionTask.findUniqueOrThrow({
           where: { id: tasks.find(task => task.workKind === kind)!.id } })).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
       }, { timeout: 10_000, interval: 25 })
       expect(calls.sort()).toEqual(['google', 'http', 'judge', 'pagespeed'])
@@ -192,7 +194,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       release(); await completed(task.id)
       await vi.waitFor(async () => expect(await Promise.all([historical.getState(), canonical.getState()])).toEqual(['completed', 'completed']))
       expect(evaluations).toBe(1)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
         createdAt: task.createdAt, workAttempts: 1, workGeneration: 1, workState: 'COMPLETED' })
     } finally { release(); await Promise.all(localWorkers.map(worker => worker.close())) }
   })
@@ -225,14 +227,14 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       const startedAt = Date.now()
       execution = executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, selected)
       await vi.waitFor(async () => {
-        const running = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+        const running = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
         expect(running.workState).toBe('RUNNING')
         expect(running.workLeaseUntil!.getTime()).toBeGreaterThan(startedAt + 110_000)
       }, { timeout: 45_000, interval: 1000 })
       await execution
       expect(Date.now() - startedAt).toBeGreaterThanOrEqual(95_000)
       expect(requests).toBe(1)
-      const settled = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+      const settled = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
       expect(settled).toMatchObject({ createdAt: task.createdAt, workAttempts: 1, workGeneration: 1, workState: 'COMPLETED',
         workResult: { data: { desktop: { score: 85, lcp: 2500, cls: 0.01 } } } })
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
@@ -257,7 +259,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
         return serializeArtifact('pagespeed', { controlledExecution: true })
       } }]])
     await executeTask({ auditId: audit.id, taskId: primary.id, generation: 1 }, selected)
-    const retry = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: primary.id } })
+    const retry = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: primary.id } })
     expect(retry).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 })
     await new Promise(resolve => setTimeout(resolve, Math.max(0, retry.workRetryAt!.getTime() - Date.now()) + 10))
     await persistTaskPlan(audit.id, [
@@ -286,8 +288,8 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
           .toMatchObject({ workState: 'COMPLETED' })
       }, { timeout: 10_000, interval: 25 })
       expect(sequence).toEqual([primary.id, linked.id, primary.id])
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: primary.id } })).toMatchObject({ workAttempts: 2, workGeneration: 2 })
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: linked.id } })).toMatchObject({ workAttempts: 1, workGeneration: 1 })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: primary.id } })).toMatchObject({ workAttempts: 2, workGeneration: 2 })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: linked.id } })).toMatchObject({ workAttempts: 1, workGeneration: 1 })
     } finally { await queue.resume(); await worker?.close() }
   }, 25_000)
 
@@ -301,14 +303,14 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     await persistTaskPlan(audit.id, plans)
     const before = await loadTaskGraph(audit.id)
     expect(before).toHaveLength(MAX_TASKS_PER_AUDIT)
-    const completed = await prisma.auditVerifierExecution.update({ where: { id: before[0].id }, data: {
+    const completed = await prisma.auditExecutionTask.update({ where: { id: before[0].id }, data: {
       workState: 'COMPLETED', status: 'COMPLETED', workAttempts: 2, workGeneration: 3,
       workResult: serializeArtifact('http', { observed: 'original immutable evidence' }),
     } })
     await persistTaskPlan(audit.id, plans)
     const after = await loadTaskGraph(audit.id)
     expect(after.map(task => task.id).sort()).toEqual(before.map(task => task.id).sort())
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: completed.id } })).toEqual(completed)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: completed.id } })).toEqual(completed)
   })
 
   it('retains both concurrent discoveries when a later admission carries an older summary graph', async () => {
@@ -345,7 +347,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     const input = { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }
     await persistTaskPlan(audit.id, initialTaskPlan(executionSpecSchema.parse(audit.executionSpec)))
     const handler = lifecycleHandlers.find(handler => handler.kind === 'discovery')!
-    const context = { audit, task: await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'discovery' } }),
+    const context = { audit, task: await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'discovery' } }),
       input, deadline: Date.now() + 45_000, dependencies: new Map() }
     const collect = vi.spyOn(openChecks, 'openCheckDestinations').mockRejectedValueOnce(new Error('Controlled interruption after graph admission'))
     try {
@@ -376,13 +378,13 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       .mockImplementation(add)
     try {
       await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
-      const pending = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+      const pending = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
       expect(pending).toMatchObject({ workState: 'READY', workDispatchState: 'FAILED', workAttempts: 0 })
       expect(await queue.getJob(pending.id + '-g1')).toBeUndefined()
       for (let pass = 0; pass < 2; pass++) {
-        await prisma.auditVerifierExecution.update({ where: { id: pending.id }, data: { workRetryAt: new Date(0) } })
+        await prisma.auditExecutionTask.update({ where: { id: pending.id }, data: { workRetryAt: new Date(0) } })
         await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
         expect(await recoverProgressiveTasks()).toBeGreaterThan(0)
         const delivery = (await queue.getJob(pending.id + '-g1'))!
@@ -392,7 +394,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED',
         completedAt: original.completedAt, triageAt: original.triageAt, verdict: original.verdict, score: original.score,
         aiReviewAt: null, evidenceCoverage: original.evidenceCoverage })
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(1)
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(1)
     } finally { unavailable.mockRestore(); await prisma.user.delete({ where: { id: userId } }) }
   })
 
@@ -435,16 +437,112 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     try {
       await running
       await dispatchTask(tasks[1].id)
-      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[1].id } }))
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[1].id } }))
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 }), { timeout: 2000, interval: 25 })
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
         .toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1, workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
     } finally { release(); await late; await worker.close() }
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
       .toMatchObject({ workState: 'RETRY_WAIT', workResult: null })
     expect(denied).toHaveLength(2)
     expect(denied.every(error => error instanceof ExecutionOwnershipLost)).toBe(true)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null })
+  })
+
+  it.each(['deadline', 'replacement'] as const)('cancels native HTTP on task %s and admits independent work', async mode => {
+    const { tasks } = await admission(['http', 'http'])
+    let closed = false
+    const requested: string[] = []
+    const server = createServer((request, response) => {
+      requested.push(request.url!)
+      response.setHeader('content-type', 'text/html')
+      if (request.url === '/current') response.end('<html>Current observation</html>')
+      else { response.write('<html>Incomplete observation'); response.on('close', () => { closed = true }) }
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const origin = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    vi.stubEnv('DEV_ALLOW_LOCALHOST', 'true')
+    const releases: Array<() => void> = []
+    for (let index = 1; index < publicHttpCapacity.capacity; index++) releases.push(await publicHttpCapacity.acquire())
+    const selected = new Map<string, TaskHandler>([['http', { kind: 'http', replay: 'read_only',
+      timeoutMs: (_audit, input) => input.module === 'obsolete' && mode === 'deadline' ? 500 : 5000,
+      validateResult: () => {}, evaluate: async context => {
+        const document = await safeFetchDocument(origin + (context.task.id === tasks[0].id ? '/obsolete' : '/current'), { timeoutMs: 4000 })
+        return serializeArtifact('http', { observed: document.complete })
+      } }]])
+    await prisma.auditExecutionTask.update({ where: { id: tasks[0].id },
+      data: { workInput: { ...(tasks[0].workInput as object), module: 'obsolete' } } })
+    const worker = await startHttpWorker(selected)
+    try {
+      await dispatchTask(tasks[0].id)
+      await vi.waitFor(() => expect(requested).toEqual(['/obsolete']), { timeout: 3000, interval: 10 })
+      if (mode === 'replacement') await prisma.auditExecutionTask.update({ where: { id: tasks[0].id },
+        data: { workState: 'EXHAUSTED', status: 'FAILED', workGeneration: { increment: 1 }, workToken: 'replacement', workLeaseUntil: null } })
+      await dispatchTask(tasks[1].id)
+      await vi.waitFor(() => expect(closed).toBe(true), { timeout: 2000, interval: 20 })
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[1].id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: { data: { observed: true } } }), { timeout: 2000, interval: 20 })
+      expect(requested).toEqual(['/obsolete', '/current'])
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject(mode === 'deadline'
+          ? { workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null }
+          : { workState: 'EXHAUSTED', workGeneration: 2, workToken: 'replacement', workResult: null })
+      expect(publicHttpCapacity.running).toBe(releases.length)
+    } finally {
+      server.closeAllConnections()
+      releases.forEach(release => release())
+      await worker.close()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('cancels an expired native PageSpeed request before the next worker observation', async () => {
+    const { audit, tasks } = await admission(['pagespeed', 'pagespeed'])
+    let closed = false
+    const requested: string[] = []
+    const server = createServer((request, response) => {
+      requested.push(request.url!)
+      if (request.url === '/obsolete') { response.on('close', () => { closed = true }); return }
+      response.setHeader('content-type', 'application/json')
+      response.end(JSON.stringify({ lighthouseResult: { requestedUrl: audit.url, finalUrl: audit.url, lighthouseVersion: '13.5.0',
+        configSettings: { formFactor: 'desktop' }, categories: { performance: { score: 0.85 } },
+        audits: { 'largest-contentful-paint': { numericValue: 2500 }, 'cumulative-layout-shift': { numericValue: 0.01 } } } }))
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const origin = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    const nativeFetch = globalThis.fetch
+    const transport = vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) => {
+      const target = new URL(String(url))
+      if (target.origin !== 'https://www.googleapis.com') throw new Error('External transport unavailable in this fixture')
+      return nativeFetch(origin + (target.searchParams.get('url')?.endsWith('/obsolete') ? '/obsolete' : '/current'), options)
+    })
+    await prisma.auditExecutionTask.update({ where: { id: tasks[0].id },
+      data: { workInput: { ...(tasks[0].workInput as object), pageUrl: audit.url + 'obsolete' } } })
+    const handler = collectionHandlers.find(handler => handler.kind === 'pagespeed')!
+    const selected = new Map<string, TaskHandler>([['pagespeed', { ...handler,
+      timeoutMs: (_audit, input) => input.pageUrl.endsWith('/obsolete') ? 500 : 5000 }]])
+    const connection = createWorkerRedis()
+    connections.push(connection)
+    const worker = new Worker(dispatch.queues.get('pagespeed')!.name, job => executeTask(job.data, selected), { connection })
+    workers.push(worker)
+    try {
+      await worker.waitUntilReady()
+      await dispatchTask(tasks[0].id)
+      await vi.waitFor(() => expect(requested).toEqual(['/obsolete']), { timeout: 3000, interval: 10 })
+      await dispatchTask(tasks[1].id)
+      await vi.waitFor(() => expect(closed).toBe(true), { timeout: 2000, interval: 20 })
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[1].id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: { data: { desktop: { score: 85 } } } }), { timeout: 3000, interval: 20 })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
+      expect(requested).toEqual(['/obsolete', '/current'])
+    } finally {
+      server.closeAllConnections()
+      await worker.close()
+      transport.mockRestore()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+    }
   })
 
   it('rolls back a commit that crosses the task deadline before releasing later work', async () => {
@@ -459,7 +557,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     }]])
     await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null, score: null })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
       .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'task_observation_committed' } })).toBe(0)
   })
@@ -479,7 +577,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     }]])
     await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null, score: null })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
       .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
   })
 
@@ -490,12 +588,12 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     }]])
     for (let generation = 1; generation <= TASK_CRASH_LIMIT; generation++) {
       await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation }, selected)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({
         workAttempts: generation, workState: generation < TASK_CRASH_LIMIT ? 'RETRY_WAIT' : 'EXHAUSTED', workResult: null,
         workErrorCode: 'TASK_DEADLINE_EXCEEDED',
       })
       if (generation < TASK_CRASH_LIMIT) {
-        await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+        await prisma.auditExecutionTask.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
         expect(await reconcileTasks(audit.id)).toContain(tasks[0].id)
       }
     }
@@ -516,10 +614,10 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     }]])
     try {
       await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
-      await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+      await prisma.auditExecutionTask.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
       await reconcileTasks(audit.id)
       await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 2 }, selected)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({
         workState: phase === 'refused' ? 'BLOCKED' : 'RETRY_WAIT',
         workErrorCode: phase === 'refused' ? 'PROTECTED_EFFECT_UNRESOLVED' : 'TASK_DEADLINE_EXCEEDED', workResult: null,
       })
@@ -541,20 +639,20 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
     expect(calls).toBe(0)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'JUDGING', progress: 70 })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
       .toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 0, workErrorCode: 'EXECUTION_BUSY' })
     await prisma.audit.update({ where: { id: audit.id }, data: { executionLeaseUntil: new Date(0) } })
-    await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+    await prisma.auditExecutionTask.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
     expect(await reconcileTasks(audit.id)).toContain(tasks[0].id)
     await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
     expect(calls).toBe(1)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED', progress: 100, completedAt })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
   })
 
   it('prioritizes unsent work and rotates due delivery checks without graph-order starvation', async () => {
     const { audit, tasks } = await admission([...Array<TaskKind>(16).fill('browser'), 'http'])
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, workKind: 'browser' },
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, workKind: 'browser' },
       data: { workDispatchState: 'SENT', workRetryAt: new Date(Date.now() - 1000) } })
     expect((await reconcileTasks(audit.id))[0]).toBe(tasks[16].id)
     const checked = new Set<string>()
@@ -568,11 +666,11 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
 
   it('skips active dispatch leases and resumes their delivery after expiration', async () => {
     const { audit, tasks } = await admission([...Array<TaskKind>(8).fill('browser'), 'http'])
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, workKind: 'browser' },
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, workKind: 'browser' },
       data: { workDispatchLeaseUntil: new Date(Date.now() + 30_000) } })
     expect(await reconcileTasks(audit.id)).toEqual([tasks[8].id])
     await dispatchReadyTasks(await reconcileTasks(audit.id))
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, workKind: 'browser' },
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, workKind: 'browser' },
       data: { workDispatchLeaseUntil: new Date(0) } })
     expect(await dispatchReadyTasks(await reconcileTasks(audit.id))).toBe(8)
   })
@@ -583,7 +681,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(await dispatchTask(task.id)).toBe(true)
     expect(await reconcileTasks(audit.id)).toEqual([])
     await (await queue.getJob(task.id + '-g1'))!.remove()
-    await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
     expect(await dispatchReadyTasks(await reconcileTasks(audit.id))).toBe(1)
     const worker = await startHttpWorker()
     try { await completed(task.id) } finally { await worker.close() }
@@ -591,7 +689,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
 
   it('claims a concurrent dispatch once, including a legacy null due time', async () => {
     const { tasks } = await admission(['http'])
-    await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: null } })
+    await prisma.auditExecutionTask.update({ where: { id: tasks[0].id }, data: { workRetryAt: null } })
     expect((await Promise.all(Array.from({ length: 8 }, () => dispatchTask(tasks[0].id)))).filter(Boolean)).toHaveLength(1)
     expect(await dispatch.queues.get('http')!.getJob(tasks[0].id + '-g1')).not.toBeNull()
   })
@@ -607,7 +705,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     try {
       expect(await dispatchReadyTasks(tasks.map(task => task.id))).toBe(7)
       for (const task of tasks.slice(1)) await completed(task.id)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } }))
         .toMatchObject({ workState: 'READY', workAttempts: 0, workDispatchState: 'PENDING' })
       claim.mockRestore()
       expect(await dispatchTask(tasks[0].id)).toBe(true)
@@ -628,7 +726,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     try {
       expect(await recoverProgressiveTasks(2)).toBe(1)
       await completed(healthy.tasks[0].id)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: broken.tasks[0].id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: broken.tasks[0].id } }))
         .toMatchObject({ workState: 'READY', workAttempts: 0 })
       failure.mockRestore()
       await prisma.audit.update({ where: { id: broken.audit.id }, data: { dispatchNextAt: new Date(0) } })
@@ -723,23 +821,23 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
   it.each(['expired', 'crashed', 'retryable-crash'] as const)('reconciles %s dependencies before releasing a dependent that precedes them in stored order', async phase => {
     const { audit, tasks } = await admission(['http', 'finalize'])
     const source = tasks.find(task => task.workKind === 'http')!, dependent = tasks.find(task => task.workKind === 'finalize')!
-    await prisma.auditVerifierExecution.update({ where: { id: dependent.id }, data: {
+    await prisma.auditExecutionTask.update({ where: { id: dependent.id }, data: {
       workState: 'WAITING', workDependencies: [source.targetKey.slice(5)], createdAt: new Date(0),
     } })
-    await prisma.auditVerifierExecution.update({ where: { id: source.id }, data: phase === 'expired'
+    await prisma.auditExecutionTask.update({ where: { id: source.id }, data: phase === 'expired'
       ? { workRecoveryUntil: new Date(0) }
       : { workState: 'RUNNING', workToken: 'lost-worker', workGeneration: 1, workAttempts: phase === 'crashed' ? 3 : 1, workLeaseUntil: new Date(0) } })
     const ready = await reconcileTasks(audit.id)
     if (phase === 'retryable-crash') {
       expect(ready).not.toContain(dependent.id)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: source.id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: source.id } }))
         .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'WORKER_INTERRUPTED' })
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'WAITING' })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'WAITING' })
     } else {
       expect(ready).toContain(dependent.id)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: source.id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: source.id } }))
         .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: phase === 'expired' ? 'RECOVERY_EXHAUSTED' : 'WORKER_INTERRUPTED' })
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'READY' })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'READY' })
     }
   })
 
@@ -753,14 +851,14 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     const delayedResponse = vi.spyOn(queue, 'add').mockImplementation(async (...args) => {
       const job = await add(...args)
       await vi.waitFor(async () => {
-        expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT' })
+        expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT' })
       }, { timeout: 10_000, interval: 25 })
       if (response === 'uncertain') throw new Error('Redis acknowledgement lost')
       return job
     })
     try {
       expect(await dispatchTask(task.id)).toBe(response === 'acknowledged')
-      const saved = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+      const saved = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })
       expect(saved).toMatchObject({ workState: 'RETRY_WAIT', workGeneration: 1, workAttempts: 1,
         workDispatchState: 'PENDING', workDispatchLeaseUntil: null, workErrorCode: 'PROVIDER_QUOTA' })
       expect(saved.workRetryAt!.getTime()).toBeGreaterThan(Date.now() + 100_000)

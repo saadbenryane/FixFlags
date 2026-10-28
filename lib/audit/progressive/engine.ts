@@ -7,7 +7,7 @@ import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask, priorityForTask } from './queues'
 import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettledPrescriptionCost, settleFailedFinalization, settlePrescriptionAudit } from './incomplete'
-import { executionTransaction, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
+import { executionTransaction, lockExecutionSite, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
   retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind } from './contracts'
@@ -61,7 +61,7 @@ export async function persistTaskPlan(auditId: string, plans: TaskPlan[]) {
   return executionTransaction(async tx => {
     const parent = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
     if (!parent.length) throw new Error('Execution not found')
-    const existing = await tx.auditVerifierExecution.findMany({ where: { auditId, targetKey: { startsWith: 'task:' } },
+    const existing = await tx.auditExecutionTask.findMany({ where: { auditId },
       select: { id: true, targetKey: true, scopeKey: true, workKind: true, workInput: true, workDependencies: true, workState: true },
       take: MAX_TASKS_PER_AUDIT + 1 })
     const existingByKey = new Map(existing.map(task => [task.targetKey.slice(5), task]))
@@ -84,27 +84,27 @@ export async function persistTaskPlan(auditId: string, plans: TaskPlan[]) {
       }
     }
     validateTaskGraph([...effective.values()])
-    if (additions.length) await tx.auditVerifierExecution.createMany({ data: additions.map(plan => ({
+    if (additions.length) await tx.auditExecutionTask.createMany({ data: additions.map(plan => ({
       auditId, targetKey: 'task:' + plan.key, scopeKey: plan.scope, pageUrl: plan.input.pageUrl, source: 'EXECUTION', status: 'PENDING',
       workKind: plan.kind, workInput: plan.input, workDependencies: plan.dependencies,
       workState: plan.dependencies.length ? 'WAITING' : 'READY', workRetryAt: new Date(), workDispatchState: 'PENDING',
     })), skipDuplicates: true })
-    for (const update of updates) await tx.auditVerifierExecution.updateMany({
+    for (const update of updates) await tx.auditExecutionTask.updateMany({
       where: { id: update.id, workState: 'WAITING' }, data: { workDependencies: update.dependencies },
     })
     await recordProgress(tx, auditId, { kind: 'plan', state: 'admitted' })
   })
 }
 export async function loadTasks(auditId: string) {
-  const tasks = await prisma.auditVerifierExecution.findMany({
-    where: { auditId, targetKey: { startsWith: 'task:' } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: MAX_TASKS_PER_AUDIT + 1,
+  const tasks = await prisma.auditExecutionTask.findMany({
+    where: { auditId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: MAX_TASKS_PER_AUDIT + 1,
   })
   if (tasks.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
   return tasks
 }
 
 export async function loadTaskGraph(auditId: string) {
-  const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId, targetKey: { startsWith: 'task:' } },
+  const tasks = await prisma.auditExecutionTask.findMany({ where: { auditId },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: MAX_TASKS_PER_AUDIT + 1,
     omit: { workResult: true, detail: true, evidenceReference: true } })
   if (tasks.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
@@ -120,7 +120,7 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
     if (resource === 'browser' && !getBrowserDiagnostics().connected && !(await readWorkerHeartbeat().catch(() => null))?.browserOk) {
       await executionTransaction(async tx => {
         await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${task.auditId} FOR UPDATE`
-        const updated = await tx.auditVerifierExecution.updateMany({ where: dispatchOwner,
+        const updated = await tx.auditExecutionTask.updateMany({ where: dispatchOwner,
           data: { workState: 'RETRY_WAIT', workDispatchLeaseUntil: null, workDispatchState: 'PENDING',
             workRetryAt: new Date(Date.now() + 20_000), workErrorCode: 'BROWSER_UNHEALTHY',
             workRecoveryUntil: task.workRecoveryUntil ?? new Date(Date.now() + 30 * 60_000) } })
@@ -138,11 +138,11 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
         priority: priorityForTask(task.workKind as TaskKind, input, task.workAttempts) })
     // A delivered job can wait in a busy queue without occupying every recovery
     // batch. Recheck later so a lost Redis delivery still gets reconstructed.
-    await prisma.auditVerifierExecution.updateMany({ where: dispatchOwner,
+    await prisma.auditExecutionTask.updateMany({ where: dispatchOwner,
       data: { workDispatchState: 'SENT', workDispatchLeaseUntil: null, workRetryAt: new Date(Date.now() + DELIVERY_RECHECK_MS) } })
     return true
   } catch {
-    await prisma.auditVerifierExecution.updateMany({ where: dispatchOwner,
+    await prisma.auditExecutionTask.updateMany({ where: dispatchOwner,
       data: { workDispatchState: 'FAILED', workDispatchLeaseUntil: null, workRetryAt: new Date(Date.now() + 5000),
         workErrorCode: 'QUEUE_UNAVAILABLE' } })
     return false
@@ -164,7 +164,7 @@ export async function reconcileTasks(auditId: string) {
     if ((now.getTime() >= taskUntil || task.workRecoveryUntil && now >= task.workRecoveryUntil) && task.workKind !== 'finalize') {
       const settled = await executionTransaction(async tx => {
         await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
-        const updated = await tx.auditVerifierExecution.updateMany({
+        const updated = await tx.auditExecutionTask.updateMany({
           where: { id: task.id, workGeneration: task.workGeneration, workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } },
           data: { workState: 'EXHAUSTED', status: 'FAILED', workToken: null, workLeaseUntil: null, workErrorCode: 'RECOVERY_EXHAUSTED' },
         })
@@ -186,7 +186,7 @@ export async function reconcileTasks(auditId: string) {
         attempts: task.workAttempts, crash: true, retryable: true })
       const settled = await executionTransaction(async tx => {
         await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
-        const updated = await tx.auditVerifierExecution.updateMany({
+        const updated = await tx.auditExecutionTask.updateMany({
           where: { id: task.id, workToken: task.workToken, workGeneration: task.workGeneration, workState: 'RUNNING', workLeaseUntil: { lte: now } },
           data: { workState: decision.retry ? 'RETRY_WAIT' : 'EXHAUSTED', status: 'FAILED', workToken: null,
             workLeaseUntil: null, workRecoveryUntil: new Date(decision.until), workRetryAt: new Date(decision.nextAt),
@@ -217,7 +217,7 @@ export async function reconcileTasks(auditId: string) {
     if (audit.status === 'COMPLETED' && !runsAfterCompletion(task.workKind)) continue
     const dependenciesSettled = task.workDependencies.every(key => taskIsSettled(byKey.get(key)?.workState ?? null))
     if (task.workState === 'WAITING' && dependenciesSettled || task.workState === 'RETRY_WAIT' && task.workRetryAt && task.workRetryAt <= now) {
-      const changed = await prisma.auditVerifierExecution.updateMany({
+      const changed = await prisma.auditExecutionTask.updateMany({
         where: { id: task.id, workGeneration: task.workGeneration, workState: task.workState },
         data: { workState: 'READY', status: 'PENDING', workRetryAt: now, workDispatchState: 'PENDING' },
       })
@@ -251,8 +251,8 @@ export async function reconcileTasks(auditId: string) {
 
 export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>) {
   const job = taskJobSchema.parse(rawJob)
-  const original = await prisma.auditVerifierExecution.findFirst({
-    where: { id: job.taskId, auditId: job.auditId, targetKey: { startsWith: 'task:' } }, include: { audit: true },
+  const original = await prisma.auditExecutionTask.findFirst({
+    where: { id: job.taskId, auditId: job.auditId }, include: { audit: true },
   })
   if (!original || !original.workKind || original.audit.status === 'FAILED' ||
     original.audit.status === 'COMPLETED' && !runsAfterCompletion(original.workKind)) return
@@ -261,17 +261,14 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const token = randomUUID(), now = new Date()
   const input = taskInputSchema.parse(original.workInput)
   const claimed = await executionTransaction(async tx => {
-    const projects = await tx.$queryRaw<Array<{ deletedAt: Date | null }>>`
-      SELECT p."deletedAt" FROM "projects" p JOIN "audits" a ON a."projectId" = p."id"
-      WHERE a."id" = ${job.auditId} FOR SHARE OF p`
-    if (projects.some(project => project.deletedAt)) return { count: 0 }
+    if (!await lockExecutionSite(tx, job.auditId)) return { count: 0 }
     await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${job.auditId} FOR UPDATE`
-    await tx.$queryRaw`SELECT "id" FROM "audit_verifier_executions" WHERE "id" = ${original.id} FOR UPDATE`
+    await tx.$queryRaw`SELECT "id" FROM "audit_execution_tasks" WHERE "id" = ${original.id} FOR UPDATE`
     if (original.workKind === 'prescription') {
       const audit = await tx.audit.findUniqueOrThrow({ where: { id: job.auditId },
         select: { executionLeaseUntil: true, status: true, triageAt: true, completedAt: true } })
       if (audit.executionLeaseUntil && audit.executionLeaseUntil > now) {
-        await tx.auditVerifierExecution.updateMany({ where: { id: original.id, workState: 'READY', workGeneration: job.generation - 1 },
+        await tx.auditExecutionTask.updateMany({ where: { id: original.id, workState: 'READY', workGeneration: job.generation - 1 },
           data: { workState: 'RETRY_WAIT', workRetryAt: new Date(Math.min(audit.executionLeaseUntil.getTime(), now.getTime() + 5000)),
             workErrorCode: 'EXECUTION_BUSY', workDispatchState: 'PENDING', workDispatchLeaseUntil: null } })
         return { count: 0 }
@@ -282,16 +279,16 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
     }
     if (input.fixtureId) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'fixture:' + input.fixtureId}))`
-      const activeFixture = await tx.auditVerifierExecution.findFirst({ where: { id: { not: original.id },
+      const activeFixture = await tx.auditExecutionTask.findFirst({ where: { id: { not: original.id },
         workState: 'RUNNING', workLeaseUntil: { gt: now }, workInput: { path: ['fixtureId'], equals: input.fixtureId } }, select: { id: true } })
       if (activeFixture) {
-        await tx.auditVerifierExecution.updateMany({ where: { id: original.id, workState: 'READY', workGeneration: job.generation - 1 },
+        await tx.auditExecutionTask.updateMany({ where: { id: original.id, workState: 'READY', workGeneration: job.generation - 1 },
           data: { workState: 'RETRY_WAIT', workRetryAt: new Date(Date.now() + 5000), workErrorCode: 'FIXTURE_BUSY', workDispatchState: 'PENDING', workDispatchLeaseUntil: null } })
         await recordProgress(tx, job.auditId, { taskId: original.id, kind: original.workKind!, state: 'RETRY_WAIT' })
         return { count: 0 }
       }
     }
-    return tx.auditVerifierExecution.updateMany({
+    return tx.auditExecutionTask.updateMany({
     where: { id: original.id, auditId: job.auditId, workState: 'READY', workGeneration: job.generation - 1,
       audit: { status: { not: 'FAILED' } },
       OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: { in: [...COMPLETION_TASK_KINDS] } }] },
@@ -300,7 +297,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
     })
   })
   if (claimed.count !== 1) return
-  const task = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: original.id } })
+  const task = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: original.id } })
   const owner = { auditId: job.auditId, taskId: task.id, token, generation: job.generation }
   await withExecutionOwnership(owner, async () => {
     try {
@@ -313,7 +310,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
     })
       const requiredKeys = ['finalize', 'discovery', 'cross-page', 'bindings'].includes(handler.kind) ? []
         : handler.kind === 'judge' ? task.workDependencies.filter(key => key.endsWith(':browser') || key.endsWith(':captures')) : task.workDependencies
-      const tasks = requiredKeys.length ? await prisma.auditVerifierExecution.findMany({ where: { auditId: job.auditId,
+      const tasks = requiredKeys.length ? await prisma.auditExecutionTask.findMany({ where: { auditId: job.auditId,
         targetKey: { in: requiredKeys.map(key => 'task:' + key) } }, take: requiredKeys.length }) : []
       const byKey = new Map(tasks.map(item => [item.targetKey.slice(5), item]))
       const input = taskInputSchema.parse(task.workInput)
@@ -341,7 +338,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
               collectedAt: result.collectedAt, evidenceReference: task.id,
               ...(handler.kind === 'check' || handler.kind === 'search' || handler.kind === 'google' ? { observations: result.data } : {}) },
           } })
-          await tx.auditVerifierExecution.update({ where: { id: task.id }, data: {
+          await tx.auditExecutionTask.update({ where: { id: task.id }, data: {
             workResult: result as Prisma.InputJsonValue, workState: 'COMPLETED', status: 'COMPLETED',
             workErrorCode: null, workLeaseUntil: null,
           } })
@@ -364,7 +361,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
             detail: { version: 1, taskId: task.id, generation: job.generation, kind: handler.kind,
               code: error.code, httpStatus: error.httpStatus, contentType: error.contentType, finalUrl: error.finalUrl },
           } })
-          await tx.auditVerifierExecution.update({ where: { id: task.id }, data: {
+          await tx.auditExecutionTask.update({ where: { id: task.id }, data: {
             workState: decision.retry ? 'RETRY_WAIT' : failure.retryable ? 'EXHAUSTED' : 'BLOCKED',
             status: failure.code.endsWith('_NOT_APPLICABLE') ? 'NOT_APPLICABLE' : 'FAILED',
             workRetryAt: new Date(decision.nextAt), workRecoveryUntil: new Date(decision.until), workLeaseUntil: null,
@@ -423,8 +420,8 @@ async function recoverActiveTaskGraphs(limit: number) {
     where: { status: { not: 'FAILED' },
       startedAt: { not: null },
       OR: [{ executionSpec: { path: ['engine'], equals: 'progressive-v1' }, OR: [{ status: { not: 'COMPLETED' } },
-        { verifierExecutions: { some: { workKind: 'finalize', workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } } } }] },
-        { verifierExecutions: { some: { workKind: 'prescription', workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } } } }],
+        { executionTasks: { some: { workKind: 'finalize', workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } } } }] },
+        { executionTasks: { some: { workKind: 'prescription', workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } } } }],
       dispatchNextAt: { lte: new Date() } },
     orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.min(100, Math.max(1, limit)),
     select: { id: true },

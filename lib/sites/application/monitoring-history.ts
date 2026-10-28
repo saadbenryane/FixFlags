@@ -31,7 +31,7 @@ const historyExecutionSelect = { auditId: true, ...historyExecutionRelation.sele
 
 const sharedHistoryExecutionWhere: Prisma.AuditVerifierExecutionWhereInput[] = [
   { workKind: 'automatic-accounts', workState: 'COMPLETED' },
-  { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+  { workKind: 'browser' },
 ]
 
 /** Scope is read from the stored document. A snapshot that no longer parses still keeps its recorded scope. */
@@ -152,7 +152,7 @@ export async function loadMonitoringHistory(site: SiteRecord, selection?: Awaite
   const proofs = sourceIds.length ? await prisma.flag.findMany({ where: { id: { in: sourceIds }, audit: scope },
     select: { id: true, problem: true, auditId: true } }) : []
   const accountAuditIds = [...new Set([...timeline, ...trend].filter(audit => readExecutionSpec(audit.executionSpec)?.scope === 'ACCOUNT_CHECKS').map(audit => audit.id))]
-  const accountTasks = accountAuditIds.length ? await prisma.auditVerifierExecution.findMany({ where: { auditId: { in: accountAuditIds }, targetKey: 'task:automatic-accounts', workKind: 'automatic-accounts', workState: 'COMPLETED' },
+  const accountTasks = accountAuditIds.length ? await prisma.auditExecutionTask.findMany({ where: { auditId: { in: accountAuditIds }, targetKey: 'task:automatic-accounts', workKind: 'automatic-accounts', workState: 'COMPLETED' },
     select: { auditId: true, workResult: true } }) : []
   const accountResults = new Map(accountTasks.map(task => [task.auditId, task.workResult]))
   return { timeline: timeline.map(audit => projectHistory(audit, scoped.legacyIds, proofs, accountResults.get(audit.id))),

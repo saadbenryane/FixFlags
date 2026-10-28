@@ -46,7 +46,7 @@ run('bounded progressive graph admission across independent resource queues', ()
 
   afterEach(async () => {
     await vi.waitFor(async () => {
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: { in: audits }, workState: 'RUNNING' } })).toBe(0)
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: { in: audits }, workState: 'RUNNING' } })).toBe(0)
     })
     await prisma.audit.deleteMany({ where: { id: { in: audits.splice(0) } } })
   })
@@ -132,7 +132,7 @@ run('bounded progressive graph admission across independent resource queues', ()
     await Promise.all(pending.map(audit => coordinateProgressiveAudit(audit.id)))
     const started = await prisma.audit.findMany({ where: { id: { in: audits }, startedAt: { not: null } } })
     expect(started).toHaveLength(pending.length)
-    const delivered = await prisma.auditVerifierExecution.findMany({ where: { auditId: { in: audits }, workKind: 'pagespeed', workDispatchState: 'SENT' } })
+    const delivered = await prisma.auditExecutionTask.findMany({ where: { auditId: { in: audits }, workKind: 'pagespeed', workDispatchState: 'SENT' } })
     expect(delivered).toHaveLength(window)
     const waiting = pending.filter(audit => !delivered.some(task => task.auditId === audit.id))
     expect(waiting).toHaveLength(2)
@@ -145,9 +145,9 @@ run('bounded progressive graph admission across independent resource queues', ()
     expect((await loadTaskGraph(started[0].id)).map(task => task.id)).toEqual(before.map(task => task.id))
 
     await prisma.audit.update({ where: { id: delivered[0].auditId }, data: { status: 'FAILED' } })
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId: { in: waiting.map(audit => audit.id) }, workKind: 'pagespeed' }, data: { workRetryAt: new Date(0) } })
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: { in: waiting.map(audit => audit.id) }, workKind: 'pagespeed' }, data: { workRetryAt: new Date(0) } })
     await recoverProgressiveAudits(window + 2)
-    expect(await prisma.auditVerifierExecution.count({ where: { auditId: { in: waiting.map(audit => audit.id) }, workKind: 'pagespeed', workDispatchState: 'SENT' } })).toBe(1)
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: { in: waiting.map(audit => audit.id) }, workKind: 'pagespeed', workDispatchState: 'SENT' } })).toBe(1)
   })
 
   it('keeps availability independent when another resource delivery window is full', async () => {

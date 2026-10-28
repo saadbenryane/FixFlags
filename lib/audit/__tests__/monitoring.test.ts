@@ -10,9 +10,11 @@ const { createAndEnqueueAudit, prismaMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
-vi.mock('@/lib/audit/create-audit', () => ({
-  createAndEnqueueAudit,
-}))
+vi.mock('@/lib/audit/create-audit', async () => {
+  const { resolveAuditAdmission } = await import('@/lib/audit/admission')
+  return { createAndEnqueueAudit: (command: import('../create-audit').CreateAuditOptions) =>
+    createAndEnqueueAudit({ ...command, monitoringMode: 'FULL', ...resolveAuditAdmission(command.admission) }) }
+})
 vi.mock('@/lib/leads/attribution', () => ({
   buildAttribution: () => ({ source: 'DASHBOARD' }),
 }))

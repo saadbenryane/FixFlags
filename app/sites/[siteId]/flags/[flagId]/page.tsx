@@ -52,8 +52,10 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   const resolvedId = access.decision.site.siteId
   const ownsSite = access.decision.role === 'owner'
-  const detailPromise = loadSiteBoardFlag(resolvedId, flagId)
-  const homePromise = loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated })
+  const connectionViewsPromise = access.decision.site.projectId ? loadSiteConnectionViews(access.decision.site.projectId) : Promise.resolve(null)
+  void connectionViewsPromise.catch(() => undefined)
+  const detailPromise = loadSiteBoardFlag(resolvedId, flagId, access.decision.site)
+  const homePromise = loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated, site: access.decision.site, connections: connectionViewsPromise })
   const detail = await detailPromise
   if (!detail) {
     await homePromise.catch(() => undefined)
@@ -86,7 +88,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   }
   const [home, connectionViews] = await Promise.all([
     homePromise,
-    site.projectId ? loadSiteConnectionViews(site.projectId) : null,
+    connectionViewsPromise,
     recordOpening(),
   ])
   if (!home) notFound()
@@ -139,7 +141,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     : flag.problem
 
   return (
-    <SiteShell actions={home.actions} siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
+    <SiteShell actions={home.actions} siteId={resolvedId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground" asChild>

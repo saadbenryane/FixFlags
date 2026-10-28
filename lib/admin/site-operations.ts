@@ -15,7 +15,7 @@ export async function loadSiteOperations(now = new Date()) {
     missingGuidance,
   ] = await Promise.all([
     countMonitoringOperations(prisma, now),
-    prisma.auditVerifierExecution.count({ where: incompleteExecutionHistory() }),
+    prisma.auditExecutionTask.count({ where: incompleteExecutionHistory() }),
     prisma.siteTestAccount.count({
       where: accountsAwaitingAction(interrupted),
     }),

@@ -29,7 +29,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
       const prior = await source(root + 'first', spec(root + 'first', [root + 'first', root + 'missing/', root + 'plans?q=one/']))
       await prisma.auditPage.create({ data: { auditId: prior.id, url: root + 'recorded/', normalizedUrl: root + 'recorded/',
         status: 'FAILED', role: 'review', position: 0 } })
-      const planned = await prisma.auditVerifierExecution.create({ data: { auditId: prior.id, targetKey: 'task:planned-browser', workKind: 'browser',
+      const planned = await prisma.auditExecutionTask.create({ data: { auditId: prior.id, targetKey: 'task:planned-browser', workKind: 'browser',
         pageUrl: root + 'planned/?q=two', source: 'EXECUTION', status: 'FAILED', workState: 'EXHAUSTED' } })
       await source(root + 'current')
       const legacy = await source(root + 'legacy', Prisma.DbNull)
@@ -66,7 +66,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
       expect(staging).toEqual([root, root + 'staging', root + 'staging-missing'])
       expect(await prisma.auditPage.findMany({ where: { auditId: prior.id } })).toHaveLength(1)
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: failed.id } })).toMatchObject({ status: 'FAILED' })
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: planned.id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: planned.id } }))
         .toMatchObject({ workState: 'EXHAUSTED', status: 'FAILED' })
     } finally { await prisma.user.deleteMany({ where: { id: { in: [owner, otherOwner] } } }) }
   })
@@ -109,7 +109,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
       const task = (auditId: string, pageUrl: string, kind: string, module?: string) => ({ auditId, pageUrl, workKind: kind,
         targetKey: 'task:' + randomUUID(), source: 'EXECUTION' as const, status: 'FAILED' as const, workState: 'EXHAUSTED' as const,
         workInput: { pageUrl, ...(module ? { module } : {}) } })
-      await prisma.auditVerifierExecution.createMany({ data: [task(category.id, flow, 'flow'), task(category.id, flow, 'flow'),
+      await prisma.auditVerificationReceipt.createMany({ data: [task(category.id, flow, 'flow'), task(category.id, flow, 'flow'),
         task(category.id, journey, 'journeys'), task(category.id, pricing, 'flow', 'pricing-navigation'), task(performance.id, slow, 'slow-replay'),
         task(category.id, slow, 'flow', 'form-validation'), task(category.id, slow, 'flow', 'mobile-navigation'), task(category.id, slow, 'bindings'),
         task(diagnostic.id, flow, 'journeys'), task(staging.id, flow, 'slow-replay')] })
@@ -158,7 +158,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
       const request = await prisma.runRequest.create({ data: { projectId: project.id, auditId: legacy.id, source: 'WEB', environment: 'staging',
         idempotencyKey: 'legacy-staging', status: 'COMPLETED', executionSpec: { ...spec(preview, withFrozenEnvironment ? 'staging' : undefined), monitoringPages: [preview, peer, retained],
           monitoringBehaviors: [{ pageUrl: retained, behaviors: ['slow-replay'] }] } } })
-      await prisma.auditVerifierExecution.createMany({ data: ['browser', 'flow'].map(workKind => ({ auditId: legacy.id, workKind,
+      await prisma.auditExecutionTask.createMany({ data: ['browser', 'flow'].map(workKind => ({ auditId: legacy.id, workKind,
         targetKey: 'task:preview:' + workKind, pageUrl: peer, source: 'EXECUTION', status: 'FAILED' as const, workState: 'EXHAUSTED' as const })) })
       const input = { projectId: project.id, targetUrl: root, recorded: [] }
       expect(await monitoringResponsibility({ ...input, environment: 'production' })).toEqual([root, production])

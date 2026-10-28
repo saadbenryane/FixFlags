@@ -86,6 +86,30 @@ describe('open-check', () => {
     expect(result.shouldFlagDead).toBe(true)
   })
 
+  it.each([
+    '<script>window.fallback = "<h1>Page not found</h1>"</script>',
+    '<script type="application/json">{"error":"404"}</script>',
+    '<template><h1>Page not found</h1></template>',
+    '<noscript><h1>Page not found</h1></noscript>',
+    '<svg><title>404 fallback symbol</title></svg>',
+    '<style>.error::after { content: "404" }</style>',
+  ])('keeps dormant or non-content missing-page wording out of GET conclusions: %s', async dormant => {
+    const html = '<!doctype html><html><head><title>Useful service</title></head><body>' + dormant +
+      '<main><h1>Useful service</h1><p>Choose a service for your team.</p></main></body></html>'
+    expect(detectSoft404(html, 200)).toBe(false)
+    const result = await openCheckDestination('https://example.com/service', {
+      fetchImpl: async () => jsonResponse(200, html, { 'content-type': 'text/html' }, 'https://example.com/service'),
+    })
+    expect(result).toMatchObject({ outcome: 'reachable', shouldFlagDead: false })
+    expect(deadDestinationFlags([result], 'https://example.com/')).toEqual([])
+  })
+
+  it.each(['<h1>Page not found</h1>', '<h1>404</h1>', '<h1>Useful service</h1><p>We couldn&#39;t find this page.</p>'])(
+    'retains missing-page evidence in the active document: %s', missing => {
+      const html = '<!doctype html><html><head><title>Useful service</title></head><body><main>' + missing + '</main></body></html>'
+      expect(detectSoft404(html, 200)).toBe(true)
+    })
+
   it('does not Flag a timeout as a dead link', async () => {
     const fetchImpl: OpenCheckFetch = async () => {
       const error = new Error('Aborted')

@@ -8,6 +8,7 @@ import { setProjectWatch } from '../monitoring-settings'
 import { processDueProjectWatches } from '@/lib/audit/project-watch'
 import { requestSiteRun } from '../run-requests'
 import { dispatchAudit } from '@/lib/audit/dispatch'
+import * as betaPolicy from '@/lib/billing/beta-policy'
 
 const queue = vi.hoisted(() => ({ add: vi.fn(async () => ({ id: 'queued' })) }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => queue }))
@@ -45,6 +46,23 @@ run('scheduled admission against the current monitoring claim', () => {
     await prisma.runRequest.update({ where: { id: runId }, data: { context } })
     await prisma.project.update({ where: { id: projectId }, data: { watchNextRunAt: scheduledAt, watchLeaseUntil: null } })
   }
+
+  it('resumes an entitlement-halted schedule after its saved cadence is permitted again', async () => {
+    vi.spyOn(betaPolicy, 'hasOpenBetaAccess').mockReturnValue(false)
+    await prisma.project.update({ where: { id: projectId }, data: {
+      watchInterval: 'DAILY', watchLeaseUntil: null,
+    } })
+    expect(await processDueProjectWatches(5)).toEqual({ processed: 0, enqueued: 0, errors: 0 })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } }))
+      .toMatchObject({ watchInterval: 'DAILY', watchPausedAt: null, watchNextRunAt: null })
+    await prisma.user.update({ where: { id: userId }, data: { plan: 'TEAM', subscriptionStatus: 'ACTIVE' } })
+    expect(await processDueProjectWatches(5)).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } }))
+      .toMatchObject({ watchInterval: 'DAILY', watchPausedAt: null, watchNextRunAt: expect.any(Date) })
+    expect(await prisma.runRequest.findFirstOrThrow({ where: { projectId } }))
+      .toMatchObject({ source: 'WATCH', status: 'QUEUED' })
+    expect(queue.add).toHaveBeenCalledOnce()
+  })
 
   it('retries an actually exhausted dispatch receipt without certifying a website result', async () => {
     queue.add.mockRejectedValueOnce(new Error('Controlled queue outage'))

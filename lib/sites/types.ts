@@ -46,6 +46,7 @@ export type SiteRecord = {
   watchInterval: WatchInterval | null
   watchEveryMinutes?: number | null
   watchNextRunAt: Date | null
+  watchPausedAt: Date | null
   watchLastRunAt: Date | null
   watchLastError: string | null
   watchConsecutiveFailures: number

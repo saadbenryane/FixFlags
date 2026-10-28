@@ -1,5 +1,5 @@
 .results { display: grid; gap: 16px; min-width: 0; }
-.results h3 { font-size: 15px; font-weight: 600; }
+.title { font-size: 15px; font-weight: 600; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .page { min-width: 0; overflow: hidden; border-radius: var(--radius-board-card); background: hsl(var(--muted) / .35); }
 .page > :first-child { border-radius: 0; }

@@ -1,5 +1,6 @@
 import { expect, it, vi, afterEach } from 'vitest'
-import { performanceMeasurement, performanceMeasurementSchema } from '../performance-measurement'
+import { performanceConditionContext, performanceMeasurement, performanceMeasurementSchema, readPerformanceContext, scopePerformanceAssertions } from '../performance-measurement'
+import { healthyDesktopPs } from './check-fixtures'
 afterEach(() => vi.useRealTimers())
 it('retains only actual bounded provider measurement conditions', () => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-14T10:00:00Z'))
@@ -20,6 +21,27 @@ it('binds whitelisted measurement conditions without retaining provider URLs, qu
 })
 it('records unavailable historical conditions as unknown', () => {
   expect(performanceMeasurement({ fetchTime: 'not-a-date', lighthouseVersion: 12 }, 'desktop')).toMatchObject({ measuredAt: null, lighthouseVersion: null, formFactor: null, throttlingMethod: null })
+})
+it.each(['stale', 'future', 'missing', 'legacy', 'fresh'] as const)('qualifies provider timing independently of response receipt: %s', mode => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-26T12:02:00.000Z'))
+  const requestedAt = new Date('2026-10-26T12:00:00.000Z')
+  const measuredAt = mode === 'stale' ? '2026-10-25T12:01:00.000Z' : mode === 'future'
+    ? '2026-10-27T12:01:00.000Z' : '2026-10-26T12:01:00.000Z'
+  const measurement = performanceMeasurement({ requestedUrl: 'https://example.com/', finalUrl: 'https://example.com/',
+    lighthouseVersion: '13.0.0', ...(mode === 'missing' ? {} : { fetchTime: measuredAt }),
+    configSettings: { formFactor: 'desktop', throttlingMethod: 'simulate' } }, 'desktop', mode === 'legacy' ? undefined : requestedAt)
+  expect(measurement.scope).not.toBeNull()
+  const data = healthyDesktopPs({ diagnostics: { measurement } })
+  const context = performanceConditionContext(data, 'https://example.com/', 'lab:score')
+  expect(readPerformanceContext(context) !== null).toBe(mode === 'fresh')
+  // An unavailable time cannot erase the actual retained numbers or profile.
+  expect(data.score).toBe(90)
+  expect(measurement.measuredAt).toBe(mode === 'missing' ? null : measuredAt)
+  expect(performanceConditionContext(data, 'https://example.com/', context)).toBe(context)
+  const undated = { ...data, diagnostics: { measurement: { ...measurement, measuredAt: null } } }
+  expect(readPerformanceContext(performanceConditionContext(undated, 'https://example.com/', context))).toBeNull()
+  const assertion = { key: 'score', name: 'Lab score', expected: 'At least 90', observed: '90', passed: true, complete: true }
+  expect(scopePerformanceAssertions(data, 'https://example.com/', [assertion])[0].complete).toBe(mode === 'fresh')
 })
 it.each([
   ['https://example.com/pricing', 'https://example.com/pricing/'],

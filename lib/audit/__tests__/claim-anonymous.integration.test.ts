@@ -5,6 +5,8 @@ import { listSiteOutcomes, loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { claimAnonymousAudits } from '../claim-anonymous'
 import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
 import * as sites from '@/lib/sites/ensure-site'
+import * as ownedIdentity from '@/lib/improvements/owned-flag-identity'
+import { loadSiteFindings } from '@/lib/sites/flags'
 import { processDueProjectWatches } from '../project-watch'
 import { fixedClock } from '@/lib/time/clock'
 import { getAuditQueue } from '@/lib/queue/client'
@@ -133,7 +135,7 @@ run('anonymous claim with migrated PostgreSQL', () => {
     expect(await claimAnonymousAudits(userId)).toBe(1)
     await prisma.flag.update({ where: { id: finding.id }, data: { status: 'FIXED', resolvedInId: 'later-healthy-run' } })
     expect(await getFlagDiffSummary(null, auditId)).toEqual(before)
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: receipt.id } })).toEqual(receipt)
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: receipt.id } })).toEqual(receipt)
     expect(await claimAnonymousAudits(userId)).toBe(1)
     expect(await getFlagDiffSummary(null, auditId)).toEqual(before)
   })
@@ -224,5 +226,52 @@ run('anonymous claim with migrated PostgreSQL', () => {
       if (foreignProvisionalId) await prisma.provisionalSite.delete({ where: { id: foreignProvisionalId } })
       await prisma.user.deleteMany({ where: { id: foreignId } })
     }
+  })
+
+  it('publishes durable Flag identity with the claim and preserves it on replay without inventing a handoff', async () => {
+    const flag = await prisma.flag.create({ data: { auditId, checkId: 'buttons-no-text', source: 'DETERMINISTIC',
+      rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'A button has no accessible name',
+      evidence: 'The recorded action has no accessible name', fix: 'Give the existing button an aria-label.',
+      whyItMatters: 'Its action is unclear', confidence: 1, pageUrl: url, position: 0 } })
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+    const site = await sites.loadSiteRecord(projectId)
+    expect(site).toBeTruthy()
+    expect((await loadSiteFindings(site!)).flags.find(item => item.sourceFlagId === flag.id)?.id).toBe(occurrence.improvementId)
+    expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId }, type: 'HANDOFF_COPIED' } })).toBe(0)
+    await prisma.improvement.update({ where: { id: occurrence.improvementId }, data: { status: 'VERIFIED' } })
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.improvementOccurrence.count({ where: { flagId: flag.id } })).toBe(1)
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: occurrence.improvementId } })).toMatchObject({ status: 'VERIFIED' })
+    expect(await prisma.improvementCycleEvent.count({ where: { idempotencyKey: 'generated:' + flag.id, type: 'GENERATED' } })).toBe(1)
+  })
+
+  it('rolls back the claim and retains the creator cookie when durable Flag publication fails', async () => {
+    const flag = await prisma.flag.create({ data: { auditId, checkId: 'buttons-no-text', source: 'DETERMINISTIC',
+      rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'An action has no name',
+      evidence: 'Recorded action', fix: 'Name the action', whyItMatters: 'Its purpose is unclear', confidence: 1, position: 0 } })
+    vi.spyOn(ownedIdentity, 'ensureOwnedFlagIdentities').mockRejectedValueOnce(new Error('Identity publication interrupted'))
+    await expect(claimAnonymousAudits(userId)).rejects.toThrow('Identity publication interrupted')
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId: null, projectId: null })
+    expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: null })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchInterval: null })
+    expect(await prisma.improvementOccurrence.count({ where: { flagId: flag.id } })).toBe(0)
+    expect(cookies.delete).not.toHaveBeenCalled()
+  })
+
+  it('claims every recorded observation across identity batches without duplicating or truncating history', async () => {
+    await prisma.flag.createMany({ data: Array.from({ length: 501 }, (_, index) => ({ auditId,
+      checkId: `buttons-no-text::page:${index}`, source: 'DETERMINISTIC' as const,
+      rubric: 'EXPERIENCE' as const, severity: 'IMPORTANT' as const, problem: 'A button has no accessible name',
+      evidence: 'Recorded button on page ' + index, fix: 'Name the existing action.', whyItMatters: 'Its purpose is unclear',
+      confidence: 1, pageUrl: url + index, position: index })) })
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.improvement.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.improvementOccurrence.count({ where: { auditId } })).toBe(501)
+    expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId }, type: 'GENERATED' } })).toBe(501)
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.improvementOccurrence.count({ where: { auditId } })).toBe(501)
+    expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId }, type: 'GENERATED' } })).toBe(501)
+    expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId }, type: 'HANDOFF_COPIED' } })).toBe(0)
   })
 })

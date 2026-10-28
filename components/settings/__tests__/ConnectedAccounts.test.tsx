@@ -87,4 +87,17 @@ describe('ConnectedAccounts', () => {
     expect(screen.queryByText('Work laptop')).not.toBeInTheDocument()
     expect(screen.getByText(AUTH.security.enabledBadge)).toBeInTheDocument()
   })
+
+  it('retains backup-code enrollment with the discriminated auth response', async () => {
+    authClient.passkey.listUserPasskeys.mockResolvedValue({ data: [{ id: 'pk_1', createdAt: '2026-10-28T00:00:00Z' }], error: null })
+    authClient.twoFactor.enable.mockResolvedValue({ data: { method: 'totp', backupCodes: ['fixture-backup-code'] }, error: null })
+    render(<ConnectedAccounts email="owner@example.test" emailVerified hasPassword={false} passkeyCount={1}
+      linkedProviders={[]} twoFactorEnabled={false} />)
+    const enable = screen.getByRole('button', { name: AUTH.security.enableCta })
+    await waitFor(() => expect(enable).toBeEnabled())
+    fireEvent.click(enable)
+    expect(await screen.findByText('fixture-backup-code')).toBeVisible()
+    expect(authClient.twoFactor.enable).toHaveBeenCalledWith({ password: undefined, method: 'totp' })
+    expect(screen.getByText(AUTH.security.enabledBadge)).toBeVisible()
+  })
 })

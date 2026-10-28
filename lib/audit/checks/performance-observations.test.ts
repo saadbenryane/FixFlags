@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { healthyDesktopPs, healthyMeta, healthyMobilePs } from '../__tests__/check-fixtures'
+import { healthyDesktopPs, healthyMeta, healthyMobilePs, pageSpeedMeasurementFixture } from '../__tests__/check-fixtures'
 import { readResourceAudits } from '../pagespeed-opportunities'
 import { runAllChecks } from './index'
 import { recordCheckObservations } from './observations'
@@ -12,8 +12,9 @@ const resources = readResourceAudits({
   'unused-css-rules': { score: 1, details: { overallSavingsBytes: 0 } },
   'image-delivery-insight': { score: 1, details: { debugData: { wastedBytes: 0 } } },
 })
-const desktop = healthyDesktopPs({ resourceAudits: resources })
-const mobile = healthyMobilePs({ resourceAudits: resources, tapTargetAudits: [{ id: 'target-size', title: 'Target size', score: 1 }] })
+const desktop = healthyDesktopPs({ resourceAudits: resources, diagnostics: { measurement: pageSpeedMeasurementFixture(url) } })
+const mobile = healthyMobilePs({ resourceAudits: resources, diagnostics: { measurement: pageSpeedMeasurementFixture(url, 'mobile') },
+  tapTargetAudits: [{ id: 'target-size', title: 'Target size', score: 1 }] })
 
 describe('shared performance measurement conclusions', () => {
   it.each(['performance', 'mobile'])('records missing and invalid lab vitals in %s without claiming a pass', module => {

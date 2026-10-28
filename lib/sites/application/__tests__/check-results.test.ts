@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
 const { findMany, findFirst, transaction, queryRaw } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null), transaction: vi.fn(), queryRaw: vi.fn().mockResolvedValue([]) }))
-vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany, findFirst }, $transaction: transaction } }))
+vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { findMany, findFirst }, $transaction: transaction } }))
 import { loadSiteCheckResults, loadSiteCheckResultPage, CHECK_RESULT_PAGE_SIZE } from '../check-results'
 
 describe('Site result access and provenance', () => {
@@ -26,7 +26,7 @@ describe('Site result access and provenance', () => {
       .rejects.toThrow('Invalid check history cursor')
   })
   beforeEach(() => { vi.clearAllMocks(); findMany.mockReset().mockResolvedValue([]); findFirst.mockReset().mockResolvedValue(null); queryRaw.mockReset().mockResolvedValue([])
-    transaction.mockImplementation(operation => operation({ auditVerifierExecution: { findMany, findFirst }, $queryRaw: queryRaw })) })
+    transaction.mockImplementation(operation => operation({get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { findMany, findFirst }, $queryRaw: queryRaw })) })
   it('never reads receipts by host or by a missing provisional identity', async () => {
     await loadSiteCheckResults({ projectId: 'site-1' } as SiteRecord, 'latest')
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({

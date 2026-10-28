@@ -20,13 +20,14 @@ export function runKeyboardChecks(evidence: KeyboardEvidence): { flags: Determin
   const pageUrl = evidence.scope?.pageUrl ?? evidence.pageUrl
   const prefix = scopeKey !== 'unknown' ? `keyboard:${capturePageKey(evidence.scope!.pageUrl)}:${scopeKey}:` : 'keyboard:unknown:'
   const scopedContext = (phase = 'page_load') => phase.startsWith(prefix) ? phase : prefix + phase
-  const locations = (steps: Array<Pick<typeof targets[number], 'selector' | 'label' | 'rect'>>, context?: string) => steps.map(step => ({ kind: 'element' as const, source: 'measured' as const,
+  const focusContext = (phase?: string) => scopedContext(phase) + (evidence.focusPolicy ? ':focus:' + evidence.focusPolicy : '')
+  const locations = (steps: Array<Pick<typeof targets[number], 'selector' | 'label' | 'rect'>>, context?: string, includeRect = context === undefined) => steps.map(step => ({ kind: 'element' as const, source: 'measured' as const,
     device: 'desktop' as const, selector: step.selector,
-    ...(!context && Object.values(step.rect).every(value => value >= 0 && value <= 1) && step.rect.width >= 0.01 && step.rect.height >= 0.01 ? { rect: step.rect } : {}),
+    ...(includeRect && Object.values(step.rect).every(value => value >= 0 && value <= 1) && step.rect.width >= 0.01 && step.rect.height >= 0.01 ? { rect: step.rect } : {}),
     label: step.label || 'Keyboard control', context: scopedContext(context) }))
   const verificationRule = 'Keyboard probe: repeat navigation on this page and inspect the same recorded controls before certifying the repair.'
   function focusObservations(controls: typeof targets, context?: string, name = 'Focus indicators on exercised controls') {
-    context = scopedContext(context)
+    context = focusContext(context)
     for (const indicator of ['styled', 'missing', 'unknown'] as const) {
       const observed = controls.filter(step => step.indicator === indicator)
       if (!observed.length) continue
@@ -40,7 +41,7 @@ export function runKeyboardChecks(evidence: KeyboardEvidence): { flags: Determin
     problem: `${missing.length} keyboard control${missing.length === 1 ? ' has' : 's have'} no observed focus indicator`,
     evidence: `Tab actually focused ${missing.map(step => step.label || step.selector).slice(0, 5).join(', ')}. No visible outline or focus-related style change was recorded. This inspects computed styles, not focus contrast or every visual effect.`,
     fix: '1. Add a visible :focus-visible outline or another clear focus indicator to the recorded controls.\n2. Preserve their current layout and labels.\n3. Use Tab and Shift+Tab to check that focus remains visible, including when scrolled.',
-    confidence: 0.9, source: 'DETERMINISTIC', pageUrl, verificationRule, evidenceTargets: locations(missing) })
+    confidence: 0.9, source: 'DETERMINISTIC', pageUrl, verificationRule, evidenceTargets: locations(missing, focusContext(), true) })
   if (evidence.trap === 'blocked') flags.push({ checkId: 'keyboard-nav-trap', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
     problem: 'Keyboard navigation is stuck in a repeated focus cycle',
     evidence: `Tab repeated the recorded controls, Shift+Tab remained in the cycle, and Escape did not exit. ${evidence.candidateCount - targets.length} other eligible controls remained unvisited.`,
@@ -137,7 +138,7 @@ export function runKeyboardChecks(evidence: KeyboardEvidence): { flags: Determin
       problem: 'Keyboard controls in an opened popup have no observed focus indicator',
       evidence: `${name}: focus reached ${missingStyles.map(step => step.label).join(', ')} inside the opened ${interaction.kind}, without a visible outline or recorded focus-style change.`,
       fix: '1. Preserve the popup design and add a clear :focus-visible style to the recorded controls.\n2. Test the styles after opening the same popup with the keyboard.\n3. Repeat its navigation and dismissal.',
-      confidence: 0.9, source: 'DETERMINISTIC', pageUrl, verificationRule, evidenceTargets: locations(missingStyles, context) })
+      confidence: 0.9, source: 'DETERMINISTIC', pageUrl, verificationRule, evidenceTargets: locations(missingStyles, focusContext(context)) })
     focusObservations(interaction.steps, context, `${name}: exercised popup focus styles`)
   }
   // A page can have several failures with the same check identity. Preserve all

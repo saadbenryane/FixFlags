@@ -53,8 +53,8 @@ run('unresolved claimed findings with migrated PostgreSQL', () => {
       name: 'Assertion ' + index, passed: true, expected: 'Present', observed: 'Recorded', context: String(index) })) }
     const data = { targetKey: 'module:metadata', scopeKey: 'product', source: 'DETERMINISTIC' as const,
       status: 'COMPLETED' as const, pageUrl, detail }
-    const row = await prisma.auditVerifierExecution.create({ data: { ...data, auditId: laterAuditId } })
-    await prisma.auditVerifierExecution.create({ data: { ...data, auditId: foreignAuditId } })
+    const row = await prisma.auditVerificationReceipt.create({ data: { ...data, auditId: laterAuditId } })
+    await prisma.auditVerificationReceipt.create({ data: { ...data, auditId: foreignAuditId } })
     const filter = { area: 'search' as const, pageUrl }
     const first = await loadSiteCheckResultPage(site, laterAuditId, undefined, new Map(), filter, true)
     expect(first.results).toHaveLength(100)
@@ -64,7 +64,7 @@ run('unresolved claimed findings with migrated PostgreSQL', () => {
     expect(second.total).toBe(121)
     expect(second.nextCursor).toBeNull()
     detail.assertions[1].observed = 'Updated recorded fact'
-    await prisma.auditVerifierExecution.update({ where: { id: row.id }, data: { detail } })
+    await prisma.auditVerificationReceipt.update({ where: { id: row.id }, data: { detail } })
     await expect(loadSiteCheckResultPage(site, laterAuditId, first.nextCursor!, new Map(), filter, true))
       .rejects.toThrow('Check evidence selection changed')
   })

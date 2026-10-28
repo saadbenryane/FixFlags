@@ -38,7 +38,7 @@ describe('dashboard reading and handoff', () => {
       { url: 'https://example.com/problem', label: '/problem', status: 'COMPLETED', flags: [{ id: 'one', title: 'Page is unavailable', onOpen: open }] },
       { url: 'https://example.com/about', label: '/about', status: 'COMPLETED', flags: [] },
     ]} />)
-    expect(screen.getByRole('heading', { name: '1 page needs attention' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: '1 page needs attention' })).toBeVisible()
     expect(screen.getByText('/about')).not.toBeVisible()
     fireEvent.click(screen.getByText('1 other page', { selector: 'summary' }))
     expect(screen.getByText('/about')).toBeVisible()

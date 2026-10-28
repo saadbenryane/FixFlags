@@ -8,7 +8,7 @@ import type { TaskContext } from '../registry'
 import { healthyMeta } from '../../__tests__/check-fixtures'
 
 const boundary = vi.hoisted(() => ({ parse: vi.fn(), capture: vi.fn(), document: vi.fn(), access: vi.fn(), consumers: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany: boundary.consumers } } }))
+vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { findMany: boundary.consumers } } }))
 vi.mock('../cpu', async importOriginal => ({ ...await importOriginal<typeof import('../cpu')>(), parseMetadataIsolated: boundary.parse }))
 vi.mock('../../screenshot', () => ({ captureScreenshots: boundary.capture, getAuditBrowser: vi.fn() }))
 vi.mock('../../search/collect', async importOriginal => ({ ...await importOriginal<typeof import('../../search/collect')>(), collectDocument: boundary.document }))

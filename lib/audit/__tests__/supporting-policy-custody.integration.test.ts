@@ -48,7 +48,7 @@ run('Search policy custody through incremental database publication', () => {
         : state === 'missing' ? { rendered: document(absent) } : {})
       const receipt = searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: child.id, pageUrl: PAGE,
         collectedAt: input.collectedAt, complete: state !== 'unavailable', observations: await evaluateSearch(input, null, ['presentation']) })
-      await prisma.auditVerifierExecution.create({ data: { auditId: child.id, targetKey: 'module:search-presentation',
+      await prisma.auditVerificationReceipt.create({ data: { auditId: child.id, targetKey: 'module:search-presentation',
         scopeKey: 'page:' + PAGE, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue } })
       const executions = await prisma.auditVerifierExecution.findMany({ where: { auditId: child.id },
         select: { targetKey: true, scopeKey: true, status: true, evidenceReference: true, detail: true } })

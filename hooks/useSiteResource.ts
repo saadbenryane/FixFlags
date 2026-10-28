@@ -9,49 +9,68 @@ import { readSiteProjectionNotice, type SiteProjectionNotice } from '@/lib/sites
 
 const READ_TIMEOUT_MS = 15_000
 export type SiteResourceUpdate = { type: 'projection'; notice: SiteProjectionNotice } | { type: 'reconnected' }
+type ReadOwner = { siteId: string; viewerScope: string; readScope: string }
+
+function viewerScope(view: SiteHomeView): string {
+  return `${view.actions.ownership}:${view.actions.copy}`
+}
 
 export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?: (update: SiteResourceUpdate) => void) {
-  const [streamFailure, setStreamFailure] = useState<string | null>(null)
-  const [readFailure, setReadFailure] = useState<string | null>(null)
-  const latestRead = useRef<{ siteId: string; promise: Promise<SiteHomeView> } | null>(null)
-  const activeSite = useRef<string | null>(siteId)
+  const scope = viewerScope(initial)
+  const readScope = initial.readScope ?? 'overview'
+  const owner = useMemo<ReadOwner>(() => ({ siteId, viewerScope: scope, readScope }), [siteId, scope, readScope])
+  const [streamFailure, setStreamFailure] = useState<ReadOwner | null>(null)
+  const [readFailure, setReadFailure] = useState<ReadOwner | null>(null)
+  const latestRead = useRef<{ owner: ReadOwner; promise: Promise<SiteHomeView> } | null>(null)
+  const activeOwner = useRef<ReadOwner | null>(owner)
+  const requests = useRef(new Set<AbortController>())
   const updateObserver = useRef(onUpdate)
   useLayoutEffect(() => {
-    activeSite.current = siteId; updateObserver.current = onUpdate
-    return () => { activeSite.current = null }
-  }, [siteId, onUpdate])
-  const endpoint = `/api/sites/${siteId}`
+    activeOwner.current = owner
+    const pending = requests.current
+    return () => {
+      activeOwner.current = null; latestRead.current = null
+      for (const request of pending) request.abort()
+      pending.clear()
+    }
+  }, [owner])
+  useLayoutEffect(() => { updateObserver.current = onUpdate }, [onUpdate])
+  const endpoint = `/api/sites/${siteId}${readScope === 'settings' ? '?scope=settings' : ''}`
   // Public and owner projections must never share a cached repair payload.
-  const viewerScope = `${initial.actions.ownership}:${initial.actions.copy}`
-  const cacheKey = useMemo(() => [endpoint, viewerScope] as const, [endpoint, viewerScope])
+  const cacheKey = useMemo(() => [endpoint, scope] as const, [endpoint, scope])
   const read = useCallback((url: string) => {
-    // Settle superseded reads from the newest read of this Site. SWR fences
-    // stale data, but an older rejection can still overwrite its cached error
-    // and suspend polling after a successful action refresh.
+    // Only reads owned by the same committed viewer can settle from each other.
+    // Claim, navigation and unmount retire requests before they can publish.
     const pending: Promise<SiteHomeView> = Promise.resolve().then(async () => {
+      if (activeOwner.current !== owner) throw new Error(SITE_ACTION_COPY.updatesDisconnected)
       const controller = new AbortController()
+      requests.current.add(controller)
       const timer = setTimeout(() => controller.abort(), READ_TIMEOUT_MS)
       try {
         const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
         if (!response.ok) throw new Error(SITE_ACTION_COPY.updatesDisconnected)
-        return readSiteHomeView(await response.json(), siteId)
-      } finally { clearTimeout(timer) }
+        const view = readSiteHomeView(await response.json(), siteId)
+        if (activeOwner.current !== owner || controller.signal.aborted || viewerScope(view) !== owner.viewerScope || (view.readScope ?? 'overview') !== owner.readScope) {
+          throw new Error(SITE_ACTION_COPY.updatesDisconnected)
+        }
+        return view
+      } finally { clearTimeout(timer); requests.current.delete(controller) }
     }).then(view => {
-      if (activeSite.current === siteId && latestRead.current?.siteId === siteId) {
+      if (activeOwner.current === owner && latestRead.current?.owner === owner) {
         if (latestRead.current.promise !== pending) return latestRead.current.promise
         setReadFailure(null)
       }
       return view
     }, error => {
-      if (activeSite.current === siteId && latestRead.current?.siteId === siteId) {
+      if (activeOwner.current === owner && latestRead.current?.owner === owner) {
         if (latestRead.current.promise !== pending) return latestRead.current.promise
-        setReadFailure(siteId)
+        setReadFailure(owner)
       }
       throw error
     })
-    if (activeSite.current === siteId) latestRead.current = { siteId, promise: pending }
+    if (activeOwner.current === owner) latestRead.current = { owner, promise: pending }
     return pending
-  }, [siteId])
+  }, [siteId, owner])
   const resource = useSWR<SiteHomeView>(cacheKey, ([url]) => read(url), {
     fallbackData: initial,
     refreshInterval: (view) => {
@@ -74,7 +93,7 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
     let active = true
     let refreshTimer: ReturnType<typeof setTimeout> | undefined
     const updated = (event?: Event) => {
-      if (!active || activeSite.current !== siteId) return
+      if (!active || activeOwner.current !== owner) return
       clearTimeout(refreshTimer)
       refreshTimer = setTimeout(() => { void refresh().catch(() => { /* Retain the dated view and expose read failure. */ }) }, 150)
       const observer = updateObserver.current
@@ -88,20 +107,20 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
       // Catch up from the resource after reconnection, including missed scoped runs.
       if (!active) return
       void refresh().then(() => {
-        if (!active || activeSite.current !== siteId) return
-        setStreamFailure(previous => previous === siteId ? null : previous)
+        if (!active || activeOwner.current !== owner) return
+        setStreamFailure(previous => previous === owner ? null : previous)
         updateObserver.current?.({ type: 'reconnected' })
       })
-        .catch(() => { if (active) setStreamFailure(siteId) })
+        .catch(() => { if (active) setStreamFailure(owner) })
     })
-    events.addEventListener('error', () => { if (active) setStreamFailure(siteId) })
-    events.addEventListener('disconnected', () => { if (active) setStreamFailure(siteId) })
+    events.addEventListener('error', () => { if (active) setStreamFailure(owner) })
+    events.addEventListener('disconnected', () => { if (active) setStreamFailure(owner) })
     events.addEventListener('access-expired', () => {
       if (!active) return
-      setStreamFailure(siteId); active = false; clearTimeout(refreshTimer); events.close()
+      setStreamFailure(owner); active = false; clearTimeout(refreshTimer); events.close()
       void refresh().catch(() => { /* Retain dated evidence while access is unavailable. */ })
     })
     return () => { active = false; clearTimeout(refreshTimer); events.close() }
-  }, [siteId, initial.executionProgress?.eventCursor, refresh])
-  return { view: resource.data ?? initial, disconnected: streamFailure === siteId || readFailure === siteId || Boolean(resource.error), refresh }
+  }, [siteId, owner, initial.executionProgress?.eventCursor, refresh])
+  return { view: resource.data ?? initial, disconnected: streamFailure === owner || readFailure === owner || Boolean(resource.error), refresh }
 }

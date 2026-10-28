@@ -2,7 +2,7 @@ import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { openCheckDestinations, deadDestinationFlags, type OpenCheckObservation } from '../open-check'
 import { collectEligibleDestinations } from '../url-identity'
-import { destinationContext, displayDestination } from './destination-evidence'
+import { destinationContext, publicLinkContext, displayDestination } from './destination-evidence'
 import type { PageMetadata } from '../metadata'
 import { load } from 'cheerio'
 import type { RenderedSearchSnapshot } from '../search/rendered-snapshot'
@@ -60,7 +60,7 @@ export function publicLinkObservations(sourceUrl: string, urls: string[], result
     assertions.push({ key: 'public-destination', name: 'Public link response',
       expected: PUBLIC_DESTINATION_EXPECTED,
       observed: `${displayDestination(url)}: ${result ? result.status === null ? result.outcome : `GET HTTP ${result.status} (${result.outcome})` : 'not checked'}. Interactive behavior was not tested.`,
-      passed, complete: conclusive, context: destinationContext(sourceUrl, url) })
+      passed, complete: conclusive, context: publicLinkContext(sourceUrl, url) })
   }
   const flags: DeterministicFlag[] = deadDestinationFlags(observed, sourceUrl)
   return { flags, assertions, complete, limitation: inventoryComplete ? PUBLIC_LINK_LIMITATION

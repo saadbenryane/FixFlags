@@ -63,14 +63,12 @@ export async function startMonitoringAudit(
   }
 
   const { auditId, status, reused, parentId: parentAuditId, siteId } = await createAndEnqueueAudit({
+    admission: {
+      kind: 'update', parentId, trigger: options.trigger ?? 'MANUAL',
+      allowance: options.trigger === 'WATCH' ? 'included' : 'metered',
+    },
     url: parent!.url,
     userId: user?.id ?? null,
-    parentId,
-    // Promised Watch care is governed by SiteCarePolicy, not the legacy
-    // monthly Review counter. Manual update checks retain their normal meter.
-    skipUsageCount: options.trigger === 'WATCH',
-    monitoringMode: 'FULL',
-    recheckTrigger: options.trigger ?? 'MANUAL',
     delayMs: options.delayMs,
     clientId: options.clientId,
     attribution: buildAttribution({

@@ -38,9 +38,9 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       await prisma.$transaction(tx => commitFindings(context, initial, tx))
       const broad = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'hierarchy-no-headline' } })
       expect(broad.affectedPaths).toEqual([root, pricing])
-      await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:initial', source: 'DETERMINISTIC',
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:initial', source: 'DETERMINISTIC',
         status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult: initial } })
-      const healthyTask = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:healthy', source: 'DETERMINISTIC',
+      const healthyTask = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:healthy', source: 'DETERMINISTIC',
         status: 'RUNNING', workState: 'RUNNING', workKind: 'check' } })
       const healthyReceipt = { kind: 'site-module-check', version: 1, module: 'slop', pageUrl: root, passed: true, applicable: true, complete: true,
         assertions: [{ key: 'placeholder-patterns', name: 'Captured copy', expected: 'No placeholder patterns', observed: 'No placeholder patterns observed',
@@ -54,20 +54,20 @@ localDatabase('bounded PostgreSQL completion projection', () => {
         serializeArtifact('check', { flags: [], receipt: healthyReceipt }), observed)
         expect(read).not.toHaveBeenCalled()
       })
-      expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:slop' } }))
+      expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:slop' } }))
         .toMatchObject({ detail: healthyReceipt })
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: broad.id } })).toEqual(broad)
       const rootSpecific = serializeArtifact('check', { flags: [finding('h1-missing', root)] })
       await prisma.$transaction(tx => commitFindings(context, rootSpecific, tx))
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: broad.id } })).toMatchObject({ pageUrl: pricing, affectedPaths: [pricing] })
       const specific = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'h1-missing' } })
-      await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:root', source: 'DETERMINISTIC',
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:root', source: 'DETERMINISTIC',
         status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult: rootSpecific } })
       await prisma.$transaction(tx => commitFindings(context, serializeArtifact('check', { flags: [finding('h1-missing', pricing)] }), tx))
       expect(await prisma.flag.findMany({ where: { auditId: audit.id } })).toEqual([
         expect.objectContaining({ id: specific.id, checkId: 'h1-missing', affectedPaths: [pricing, root] }),
       ])
-      expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'task:initial' } }))
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'task:initial' } }))
         .toMatchObject({ workResult: initial })
     } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
   })
@@ -88,7 +88,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
         const broad = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: finding.checkId } })
         if (protection === 'feedback') await prisma.flagFeedback.create({ data: { flagId: broad.id, vote: 1, visitorToken: randomUUID() } })
         else await prisma.audit.update({ where: { id: audit.id }, data: { status: 'COMPLETED', finalizedAt: new Date() } })
-        await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:initial', source: 'DETERMINISTIC',
+        await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:initial', source: 'DETERMINISTIC',
           status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult: initial } })
         await prisma.$transaction(tx => commitFindings(context, serializeArtifact('check', { flags: [{ ...finding, checkId: 'h1-missing' }] }), tx))
         expect(await prisma.flag.findUnique({ where: { id: broad.id } })).not.toBeNull()
@@ -108,7 +108,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
     const rootArtifact = serializeArtifact('check', { flags: [finding('h1-missing', root), finding('hierarchy-no-headline', root)] })
     const pricingArtifact = serializeArtifact('check', { flags: [finding('hierarchy-no-headline', pricing)] })
     try {
-      await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:root', source: 'DETERMINISTIC',
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:root', source: 'DETERMINISTIC',
         pageUrl: root, status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult: rootArtifact } })
       const context = { audit: { id: audit.id } } as TaskContext
       await prisma.$transaction(tx => commitFindings(context, pricingArtifact, tx))
@@ -119,7 +119,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
         expect.objectContaining({ checkId: 'h1-missing', pageUrl: root, affectedPaths: [root] }),
         expect.objectContaining({ checkId: 'hierarchy-no-headline', pageUrl: pricing, affectedPaths: [pricing] }),
       ])
-      await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:pricing', source: 'DETERMINISTIC',
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:pricing', source: 'DETERMINISTIC',
         pageUrl: pricing, status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult: pricingArtifact } })
       await prisma.$transaction(tx => commitFindings(context, rootArtifact, tx))
       expect(await prisma.flag.findMany({ where: { auditId: audit.id }, select, orderBy: { checkId: 'asc' } })).toEqual(before)
@@ -135,10 +135,14 @@ localDatabase('bounded PostgreSQL completion projection', () => {
     await prisma.$transaction(async tx => {
       // A connection-local fixture shadows the public table. This test neither
       // applies pending migrations nor mutates existing customer records.
-      await tx.$executeRaw`CREATE TEMP TABLE audit_verifier_executions (
+      await tx.$executeRaw`CREATE TEMP TABLE audit_execution_tasks (
         "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "workKind" text,
         "workState" text, "status" text, "workInput" jsonb, "workResult" jsonb, "createdAt" timestamp,
         "detail" jsonb, "evidenceReference" jsonb
+      ) ON COMMIT DROP`
+      await tx.$executeRaw`CREATE TEMP TABLE audit_verifier_executions (
+        "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "status" text,
+        "taskId" text, "detail" jsonb, "evidenceReference" jsonb
       ) ON COMMIT DROP`
       const input = JSON.stringify({ position: 0, pageUrl: url, primary: true, role: 'primary' })
       const browser = JSON.stringify(serializeArtifact('browser', { pageId: 'page', metadata,
@@ -157,7 +161,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       const journey = JSON.stringify(serializeArtifact('journeys', { flags: [journeyFlag],
         overlayReceipts: [{ unprojected: 'x'.repeat(1_100_000) }] }))
       for (const [kind, result] of [['browser', browser], ['http', http], ['check', check], ['journeys', journey]]) {
-        await tx.$executeRaw`INSERT INTO audit_verifier_executions
+        await tx.$executeRaw`INSERT INTO audit_execution_tasks
           ("id", "auditId", "pageUrl", "targetKey", "workKind", "workState", "status", "workInput", "workResult", "createdAt") VALUES (
           ${kind}, 'audit', ${url}, ${'task:p0:' + kind}, ${kind}, 'COMPLETED', 'COMPLETED', ${input}::jsonb, ${result}::jsonb, now())`
       }
@@ -166,14 +170,14 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       expect(pages[0]).toMatchObject({ pageId: 'page', url, metadata: { title: 'Projected page' },
         desktopScreenshot: false, flags: [flag, journeyFlag], failedModules: [] })
       const gap = JSON.stringify({ complete: false }), reference = JSON.stringify({ taskId: 'check' })
-      await tx.$executeRaw`INSERT INTO audit_verifier_executions ("id", "auditId", "pageUrl", "targetKey", "status", "detail", "evidenceReference")
-        VALUES ('gap', 'audit', 'https://example.com/redirected', 'module:performance', 'COMPLETED', ${gap}::jsonb, ${reference}::jsonb),
-          ('inapplicable', 'audit', ${url}, 'module:mobile', 'NOT_APPLICABLE', ${gap}::jsonb, ${reference}::jsonb)`
+      await tx.$executeRaw`INSERT INTO audit_verifier_executions ("id", "auditId", "pageUrl", "targetKey", "status", "detail", "evidenceReference", "taskId")
+        VALUES ('gap', 'audit', 'https://example.com/redirected', 'module:performance', 'COMPLETED', ${gap}::jsonb, ${reference}::jsonb, 'check'),
+          ('inapplicable', 'audit', ${url}, 'module:mobile', 'NOT_APPLICABLE', ${gap}::jsonb, ${reference}::jsonb, 'check')`
       const partial = await recordedPages('audit', url, tx)
       expect(partial).toHaveLength(1)
       expect(partial[0]).toMatchObject({ flags: [flag, journeyFlag], failedModules: ['performance'], metadata: { title: 'Projected page' } })
       expect(await recordedPages('audit', 'https://example.com/other', tx)).toEqual([])
-      await tx.$executeRaw`UPDATE audit_verifier_executions SET "workResult" = jsonb_set("workResult", '{data,metadata}', 'null'::jsonb)
+      await tx.$executeRaw`UPDATE audit_execution_tasks SET "workResult" = jsonb_set("workResult", '{data,metadata}', 'null'::jsonb)
         WHERE "workKind" IN ('browser', 'http')`
       const independent = await recordedPageEvidence('audit', url, tx)
       expect(independent).toHaveLength(1)
@@ -182,7 +186,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
         preview: { title: 'Native preview', titleComplete: true }, flags: [flag, journeyFlag], failedModules: ['performance'] })
       expect(JSON.stringify(independent)).not.toContain('unprojected')
       expect(await recordedPages('audit', url, tx)).toEqual([])
-      await tx.$executeRaw`UPDATE audit_verifier_executions SET "workResult" = jsonb_set("workResult", '{data,metadataFailure}',
+      await tx.$executeRaw`UPDATE audit_execution_tasks SET "workResult" = jsonb_set("workResult", '{data,metadataFailure}',
         '{"code":"PARSER_CRASH","attempts":2}'::jsonb) WHERE "workKind" IN ('browser', 'http')`
       expect((await recordedPageEvidence('audit', url, tx))[0]).toMatchObject({ metadata: null,
         flags: [flag, journeyFlag], failedModules: ['metadata', 'performance'] })

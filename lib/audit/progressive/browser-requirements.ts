@@ -6,7 +6,7 @@ const complete = { collectMobile: true, collectAccessibility: true }
 
 /** Read the admitted consumers, not the broader check catalog in ExecutionSpec.
  * Unknown or historical consumers retain complete collection. */
-export function browserCollectionRequirements(consumers: readonly Consumer[]) {
+export function browserCollectionRequirements(consumers: readonly Consumer[], checks?: Readonly<Record<string, number>>) {
   if (!consumers.length) return { ...complete }
   const result = { collectMobile: false, collectAccessibility: false }
   for (const consumer of consumers) {
@@ -16,7 +16,10 @@ export function browserCollectionRequirements(consumers: readonly Consumer[]) {
     const input = taskInputSchema.safeParse(consumer.workInput)
     const definition = input.success && input.data.module ? PAGE_CHECK_DEFINITIONS[input.data.module] : null
     if (!definition) return { ...complete }
-    if (definition.input === 'accessibility') result.collectAccessibility = true
+    if (definition.input === 'accessibility') {
+      result.collectAccessibility = true
+      if (!checks || checks['axe-target-size']) result.collectMobile = true
+    }
     else if (definition.input === 'console') {
       // Its original desktop error window includes axe execution. Removing that
       // instrumentation cannot independently establish a console repair.

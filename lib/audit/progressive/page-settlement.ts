@@ -18,8 +18,8 @@ export async function settleRecordedPages(tx: Prisma.TransactionClient, auditId:
   const tasks = await tx.$queryRaw<Array<{ pageUrl: string; workResult: unknown }>>`
     SELECT "pageUrl", jsonb_set("workResult", '{data}', jsonb_build_object(
       'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata')) AS "workResult"
-    FROM "audit_verifier_executions"
-    WHERE "auditId" = ${auditId} AND "targetKey" LIKE 'task:%' AND "workKind" = 'browser'
+    FROM "audit_execution_tasks"
+    WHERE "auditId" = ${auditId} AND "workKind" = 'browser'
       AND "workState" = 'COMPLETED' AND "status" = 'COMPLETED'
       AND "pageUrl" = "workInput"->>'pageUrl'
     LIMIT ${MAX_TASKS_PER_AUDIT + 1}`

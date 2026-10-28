@@ -28,7 +28,7 @@ localDatabase('page settlement from committed native collection', () => {
       const partial = await page('partial', 8, 'PARTIAL'), malformed = await page('malformed', 9)
       const foreignPage = await prisma.auditPage.create({ data: { auditId: foreign.id, url: url + 'foreign', normalizedUrl: url + 'foreign',
         role: 'primary', position: 0, status: 'CHECKING' } })
-      const task = async (pageUrl: string, pageId: string, overrides: object = {}) => prisma.auditVerifierExecution.create({ data: {
+      const task = async (pageUrl: string, pageId: string, overrides: object = {}) => prisma.auditExecutionTask.create({ data: {
         auditId: audit.id, targetKey: 'task:' + randomUUID(), source: 'EXECUTION', workKind: 'browser', pageUrl,
         workInput: { pageUrl, position: 0, primary: false, role: 'review' }, status: 'COMPLETED', workState: 'COMPLETED',
         workResult: serializeArtifact('browser', { pageId, metadata }), ...overrides,

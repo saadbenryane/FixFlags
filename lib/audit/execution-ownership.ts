@@ -26,73 +26,98 @@ export function withExecutionSignal<T>(signal: AbortSignal, work: () => Promise<
 }
 
 export async function claimExecution(auditId: string, { projectionOnly = false, resume = false }: { projectionOnly?: boolean; resume?: boolean } = {}): Promise<ExecutionOwnership | null> {
-  assertExecutionActive(ownership.getStore())
+  const caller = ownership.getStore()
+  assertExecutionActive(caller)
   const token = randomUUID()
-  const now = new Date()
-  const claimed = await prisma.audit.updateMany({
-    where: { id: auditId, status: projectionOnly ? 'COMPLETED' : resume ? { notIn: ['COMPLETED', 'FAILED'] } : 'QUEUED',
-      ...(!projectionOnly ? resume ? {} : { startedAt: null } : { improvementProjectedAt: null }),
-      OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }] },
-    data: { executionToken: token, executionGeneration: { increment: 1 },
-      executionLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
+  return runTransaction(async tx => {
+    if (!await lockExecutionSite(tx, auditId)) return null
+    assertExecutionActive(caller)
+    const now = new Date()
+    const claimed = await tx.audit.updateMany({
+      where: { id: auditId, status: projectionOnly ? 'COMPLETED' : resume ? { notIn: ['COMPLETED', 'FAILED'] } : 'QUEUED',
+        ...(!projectionOnly ? resume ? {} : { startedAt: null } : { improvementProjectedAt: null }),
+        OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }] },
+      data: { executionToken: token, executionGeneration: { increment: 1 },
+        executionLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
+    })
+    if (claimed.count !== 1) return null
+    const audit = await tx.audit.findUniqueOrThrow({ where: { id: auditId }, select: { executionGeneration: true } })
+    assertExecutionActive(caller)
+    return { auditId, token, generation: audit.executionGeneration }
   })
-  if (claimed.count !== 1) return null
-  const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, select: { executionGeneration: true } })
-  return { auditId, token, generation: audit.executionGeneration }
 }
 
 const OWNERSHIP_WATCH_MS = 1_000
 
+// Cleanup keeps its lifecycle exception, never another tenant's authority.
+// These aliases are shared by the write fence and the read-only resource watch.
+const siteAuthority = Prisma.sql`a."userId" = p."userId" AND (
+  COALESCE(a."executionSpec"#>>'{scope}'='ACCOUNT_CHECKS' AND a."executionSpec"#>>'{accountChecks,mode}'='cleanup', false)
+  OR (p."deletedAt" IS NULL AND u."lifecycleStatus"='ACTIVE'))`
+
+function executionLease(owner: ExecutionOwnership) {
+  return owner.taskId ? Prisma.sql`e."id" = ${owner.taskId}
+    AND e."workToken" = ${owner.token} AND e."workGeneration" = ${owner.generation}
+    AND e."workLeaseUntil" > clock_timestamp() AND e."workState" = 'RUNNING'
+    AND a."status" != 'FAILED'
+    AND (a."status" != 'COMPLETED' OR e."workKind" IN ('finalize', 'prescription'))
+    AND (a."recoveryUntil" IS NULL OR a."recoveryUntil" > clock_timestamp() OR e."workKind" IN ('finalize', 'prescription'))`
+    : Prisma.sql`a."executionToken" = ${owner.token} AND a."executionGeneration" = ${owner.generation}
+      AND a."executionLeaseUntil" > clock_timestamp()`
+}
+
 /** The ledger can exhaust or replace an attempt while its browser work is still open. */
 async function executionStillOwned(owner: ExecutionOwnership): Promise<boolean> {
   if (owner.signal?.aborted) return false
-  if (owner.taskId) {
-    const task = await prisma.auditVerifierExecution.findFirst({
-      where: { id: owner.taskId, auditId: owner.auditId, workToken: owner.token,
-        workGeneration: owner.generation, workState: 'RUNNING' },
-      select: { id: true },
-    })
-    return task !== null
-  }
-  const audit = await prisma.audit.findFirst({
-    where: { id: owner.auditId, executionToken: owner.token, executionGeneration: owner.generation },
-    select: { id: true },
-  })
-  return audit !== null
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT a."id" FROM "audits" a
+    LEFT JOIN "projects" p ON p."id"=a."projectId"
+    LEFT JOIN "users" u ON u."id"=p."userId"
+    ${owner.taskId ? Prisma.sql`JOIN "audit_execution_tasks" e ON e."auditId"=a."id"` : Prisma.empty}
+    WHERE a."id"=${owner.auditId} AND ${executionLease(owner)}
+      AND (a."projectId" IS NULL OR (${siteAuthority}))
+  `
+  return rows.length === 1
 }
 
 export async function renewExecution(owner: ExecutionOwnership): Promise<boolean> {
   if (owner.signal?.aborted) return false
-  const now = new Date()
-  if (owner.taskId) {
-    const renewed = await prisma.auditVerifierExecution.updateMany({
-      where: { id: owner.taskId, auditId: owner.auditId, workToken: owner.token, workGeneration: owner.generation,
-        workState: 'RUNNING', workLeaseUntil: { gt: now } },
-      data: { workLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
+  try {
+    return await runTransaction(async tx => {
+      await assertExecutionOwner(tx, owner)
+      assertExecutionActive(owner)
+      const until = new Date(Date.now() + EXECUTION_LEASE_MS)
+      if (owner.taskId) {
+        await tx.auditExecutionTask.update({ where: { id: owner.taskId }, data: { workLeaseUntil: until } })
+      } else {
+        await tx.audit.update({ where: { id: owner.auditId }, data: { executionLeaseUntil: until } })
+      }
+      return true
     })
-    return renewed.count === 1
+  } catch (error) {
+    if (error instanceof ExecutionOwnershipLost) return false
+    throw error
   }
-  const renewed = await prisma.audit.updateMany({
-    where: { id: owner.auditId, executionToken: owner.token, executionGeneration: owner.generation,
-      executionLeaseUntil: { gt: now } },
-    data: { executionLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
-  })
-  return renewed.count === 1
 }
 
-/** The guard and the write share a transaction. The Site row is a shared fence.
- * The Audit row stays exclusive so status and score updates keep one order. */
-async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: ExecutionOwnership): Promise<void> {
-  assertExecutionActive(owner)
+/** Claims and writes retain this shared Site fence before locking the Audit. */
+export async function lockExecutionSite(tx: Prisma.TransactionClient, auditId: string): Promise<boolean> {
   // Commands and workers share Project -> Audit -> task lock order. Removal
   // can fence queued work without deadlocking an account reservation.
   // FOR SHARE blocks Site removal without queueing every observation behind
   // one project writer. The task row stays exclusive for its own commit.
-  const projects = await tx.$queryRaw<Array<{ id: string; deletedAt: Date | null; lifecycleStatus: string; cleanup: boolean }>>`
-    SELECT p."id", p."deletedAt", u."lifecycleStatus", (a."executionSpec"#>>'{scope}'='ACCOUNT_CHECKS' AND a."executionSpec"#>>'{accountChecks,mode}'='cleanup') AS cleanup FROM "projects" p JOIN "users" u ON u.id=p."userId" JOIN "audits" a ON a."projectId" = p."id"
-    WHERE a."id" = ${owner.auditId} FOR SHARE OF p
+  const projects = await tx.$queryRaw<Array<{ authorized: boolean | null }>>`
+    SELECT (${siteAuthority}) AS authorized FROM "projects" p JOIN "users" u ON u.id=p."userId" JOIN "audits" a ON a."projectId" = p."id"
+    WHERE a."id" = ${auditId} FOR SHARE OF p
   `
-  if (projects.some(project => !project.cleanup && (project.deletedAt || project.lifecycleStatus !== 'ACTIVE'))) throw new ExecutionOwnershipLost()
+  return projects.every(project => Boolean(project.authorized))
+}
+
+/** The guard and the write share a transaction. The Audit row stays exclusive
+ * so status and score updates keep one order. */
+async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: ExecutionOwnership): Promise<void> {
+  assertExecutionActive(owner)
+  if (!await lockExecutionSite(tx, owner.auditId)) throw new ExecutionOwnershipLost()
   if (owner.taskId) {
     // Writers lock the parent before the task to preserve one lock order.
     const parent = await tx.$queryRaw<Array<{ id: string }>>`
@@ -100,21 +125,16 @@ async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: Executi
     `
     if (parent.length !== 1) throw new ExecutionOwnershipLost()
     const task = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT e."id" FROM "audit_verifier_executions" e JOIN "audits" a ON a."id" = e."auditId"
-      WHERE e."id" = ${owner.taskId} AND e."auditId" = ${owner.auditId}
-        AND e."workToken" = ${owner.token} AND e."workGeneration" = ${owner.generation}
-        AND e."workLeaseUntil" > clock_timestamp() AND e."workState" = 'RUNNING'
-        AND (a."status" != 'COMPLETED' OR e."workKind" IN ('finalize', 'prescription'))
-        AND (a."recoveryUntil" IS NULL OR a."recoveryUntil" > clock_timestamp() OR e."workKind" IN ('finalize', 'prescription'))
+      SELECT e."id" FROM "audit_execution_tasks" e JOIN "audits" a ON a."id" = e."auditId"
+      WHERE a."id" = ${owner.auditId} AND ${executionLease(owner)}
       FOR UPDATE OF e
     `
     if (task.length !== 1) throw new ExecutionOwnershipLost()
     return
   }
   const rows = await tx.$queryRaw<Array<{ id: string }>>`
-    SELECT "id" FROM "audits"
-    WHERE "id" = ${owner.auditId} AND "executionToken" = ${owner.token}
-      AND "executionGeneration" = ${owner.generation} AND "executionLeaseUntil" > clock_timestamp()
+    SELECT a."id" FROM "audits" a
+    WHERE a."id" = ${owner.auditId} AND ${executionLease(owner)}
     FOR UPDATE
   `
   if (rows.length !== 1) throw new ExecutionOwnershipLost()
@@ -229,7 +249,7 @@ export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work:
     stopRenewing()
     signal.removeEventListener('abort', stopRenewing)
     if (owner.taskId) {
-      await prisma.auditVerifierExecution.updateMany({
+      await prisma.auditExecutionTask.updateMany({
         where: { id: owner.taskId, workToken: owner.token, workGeneration: owner.generation },
         data: { workLeaseUntil: new Date(0) },
       })

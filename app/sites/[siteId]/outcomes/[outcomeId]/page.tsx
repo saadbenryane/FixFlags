@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { OutcomeBindingResult } from '@/components/sites/OutcomeBindingResult'
-import { OutcomeEnabledControl } from '@/components/sites/OutcomeEnabledControl'
+import { SiteOutcomeActions } from '@/components/sites/SiteOutcomeActions'
 import { SiteShell } from '@/components/sites/SiteShell'
-import { VerifyOutcomeButton } from '@/components/sites/VerifyOutcomeButton'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy-barrel'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { customerMechanismLabel, flagMatchesOutcome, outcomeCoverageLabel, outcomeFreshnessDisclosure, outcomeStatusLabel } from '@/lib/sites/outcome-state'
@@ -35,26 +34,25 @@ export default async function OutcomeDetailPage({ params }: {
     <SiteShell
       actions={home.actions}
       siteId={home.site.siteId}
-      ownerId={home.site.userId}
       activeRoute="home"
       title={outcome.name}
-      description={outcome.expectation ?? outcome.summary}
+      description=""
       presentation={home.presentation}
+      analysisView={home}
       watch={home.watch}
-      checking={outcome.running}
     >
       <div className="mx-auto w-full max-w-4xl space-y-6">
         <Link href={`/sites/${home.site.siteId}`} className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">
           {OUTCOME_DETAIL_COPY.back}
         </Link>
 
-        <section className="rounded-2xl border border-border/80 bg-background p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+        <section className="rounded-card bg-muted/20 p-5 sm:p-6">
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="min-w-0">
               <p className="text-sm font-medium text-muted-foreground">{OUTCOME_DETAIL_COPY.state}</p>
               <p className="mt-1 text-2xl font-semibold" role="status">{status}</p>
               <p className="mt-2 text-sm text-muted-foreground">{outcome.summary}</p>
-              {outcome.recoveryAction ? <p className="mt-3 text-sm font-medium">{outcome.recoveryAction}</p> : null}
+              {outcome.recoveryAction && !outcome.running ? <p className="mt-3 text-sm font-medium">{outcome.recoveryAction}</p> : null}
               <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">{OUTCOME_DETAIL_COPY.expectedResult}</p>
               <p className="mt-1 text-sm">{outcome.expectation ?? 'No customer result has been confirmed yet.'}</p>
               <p className="mt-3 text-xs text-muted-foreground">{outcomeCoverageLabel(outcome.environment, outcome.bindings)}</p>
@@ -63,27 +61,20 @@ export default async function OutcomeDetailPage({ params }: {
                   ? <>{outcome.state === 'COULD_NOT_VERIFY' ? 'Last attempted' : 'Last verified'} <time dateTime={outcome.lastVerifiedAt ?? undefined}>{lastVerified}</time></>
                   : OUTCOME_DETAIL_COPY.neverVerified}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              {outcome.lastSuccessfulVerificationAt !== outcome.lastVerifiedAt ? <p className="mt-1 text-xs text-muted-foreground">
                 {OUTCOME_DETAIL_COPY.lastSuccessfulVerification}: {lastSuccessful
                   ? <time dateTime={outcome.lastSuccessfulVerificationAt ?? undefined}>{lastSuccessful}</time>
                   : 'None yet'}
-              </p>
+              </p> : null}
             </div>
-            <div className="flex min-w-0 max-w-full flex-col items-start gap-3 sm:items-end">
-              <VerifyOutcomeButton
-                siteId={home.site.siteId}
-                outcomeId={outcome.id}
-                disabled={!outcome.enabled || outcome.running || !outcome.bindings.some((binding) => binding.required)}
-              />
-              {access.decision.role === 'owner' ? (
-                <OutcomeEnabledControl siteId={home.site.siteId} outcomeId={outcome.id} enabled={outcome.enabled} running={outcome.running} />
-              ) : null}
+            <div className="flex min-w-0 flex-col items-start gap-3">
+              <SiteOutcomeActions siteId={home.site.siteId} initial={outcome} />
             </div>
           </div>
         </section>
 
-        {outcome.limitation ? (
-          <section className="rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="outcome-limitation-heading">
+        {outcome.limitation && outcome.limitation !== outcome.summary ? (
+          <section className="rounded-card bg-muted/20 p-5" aria-labelledby="outcome-limitation-heading">
             <h2 id="outcome-limitation-heading" className="text-lg font-semibold">{OUTCOME_DETAIL_COPY.limitationHeading}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{outcome.limitation}</p>
           </section>
@@ -95,7 +86,7 @@ export default async function OutcomeDetailPage({ params }: {
             {outcome.bindings.map((binding) => {
               const observed = binding.latestEvidence ? formatEvidenceTimestamp(binding.latestEvidence.createdAt) : null
               return (
-              <article key={binding.key} className="rounded-2xl border border-border/80 bg-background p-5">
+              <article key={binding.key} className="rounded-card bg-muted/20 p-5">
                 <p className="text-sm font-semibold">{customerMechanismLabel(binding.mechanism, binding.key)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{binding.required ? 'Required for Clear' : 'Supporting evidence'}</p>
                 {binding.latestEvidence ? (
@@ -156,7 +147,7 @@ export default async function OutcomeDetailPage({ params }: {
               {outcome.timeline.map((event) => {
                 const when = formatEvidenceTimestamp(event.at)
                 return (
-                <li key={event.id} className="rounded-card border border-border/70 p-4">
+                <li key={event.id} className="rounded-card bg-muted/20 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="text-sm font-medium">{event.title}</p>
                     {when ? <time className="text-xs text-muted-foreground" dateTime={event.at}>{when}</time> : null}
@@ -169,7 +160,7 @@ export default async function OutcomeDetailPage({ params }: {
           )}
         </section>
 
-        <details className="rounded-2xl border border-border/80 bg-background p-5">
+        <details className="rounded-card bg-muted/20 p-5">
           <summary className="cursor-pointer min-h-11 py-2 text-sm font-semibold">{OUTCOME_DETAIL_COPY.mechanismHeading}</summary>
           <p className="mt-2 text-sm text-muted-foreground">Environment: {outcome.environment}. {outcomeFreshnessDisclosure(outcome.state, outcome.staleAfterMinutes)}</p>
           <ul className="mt-3 space-y-1 text-xs text-muted-foreground">

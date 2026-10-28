@@ -119,6 +119,13 @@ export function moduleBoundaryFailures({ sources, existingFiles = new Set() }) {
         }
       }
     }
+    if (!/(?:__tests__|\.test\.|\.spec\.)/.test(file)) {
+      for (const specifier of imports) {
+        if (resolveLocalImport(file, specifier, sources) === 'lib/audit/pipeline/run-page.ts') {
+          failures.push(`${file} imports the retired sequential audit orchestrator`)
+        }
+      }
+    }
     if (CORE_ROUTE_ADAPTERS.has(file)) {
       for (const specifier of imports) {
         if (DATABASE_IMPORT.test(specifier)) {

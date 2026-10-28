@@ -14,7 +14,7 @@ export type ScheduledRunClaim = {
 }
 
 export type ScheduledClaimProject = Pick<Project, 'url' | 'watchInterval' | 'watchEveryMinutes' |
-  'watchNextRunAt' | 'watchLastAttemptAt' | 'watchLeaseUntil'>
+  'watchNextRunAt' | 'watchLastAttemptAt' | 'watchLeaseUntil' | 'watchPausedAt'>
 
 export function staleScheduledClaim(): SiteRunRefusal {
   return new SiteRunRefusal('The monitoring schedule changed before this check could start.', 409, 'WATCH_CLAIM_CHANGED')
@@ -23,7 +23,7 @@ export function staleScheduledClaim(): SiteRunRefusal {
 /** Validate the exact claim against the Site locked by the admission transaction. */
 export function assertScheduledClaim(project: ScheduledClaimProject, claim: ScheduledRunClaim): void {
   const now = new Date()
-  if (claim.scheduledAt > now || project.url !== claim.targetUrl ||
+  if (project.watchPausedAt || claim.scheduledAt > now || project.url !== claim.targetUrl ||
     project.watchInterval !== toStoredWatchInterval(claim.interval) || project.watchEveryMinutes !== claim.everyMinutes ||
     project.watchNextRunAt?.getTime() !== claim.scheduledAt.getTime() ||
     project.watchLastAttemptAt?.getTime() !== claim.attemptedAt.getTime() ||

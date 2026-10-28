@@ -10,6 +10,8 @@ import { deferMonitoringSetup, monitoringSetupDue, monitoringSetupOrder } from '
 import { logger } from '@/lib/logger'
 import { systemClock, type Clock } from '@/lib/time/clock'
 
+export const MONITORING_SCHEDULE_UNAVAILABLE = 'This schedule is not available on your plan. Choose an available monitoring schedule.'
+
 function defaultCadence(policy: EffectiveEntitlements) {
   return (policy.plan !== 'FREE' || policy.sources.includes('ADMIN')) && policy.watchIntervals.includes('daily')
     ? 'daily' : policy.watchIntervals.includes('weekly') ? 'weekly' : null
@@ -19,17 +21,21 @@ function defaultCadence(policy: EffectiveEntitlements) {
 export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, projectId: string, userId: string, now = new Date(), options: { restored?: boolean } = {}) {
   const project = await tx.project.findFirst({
     where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
-    select: { id: true, url: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true,
-      watchLastAttemptAt: true, watchLastRunAt: true, watchLastError: true, monitoringSetupRetryAt: true,
+    select: { id: true, url: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true, watchPausedAt: true,
+      watchLastAttemptAt: true, watchLastRunAt: true, watchLastError: true, watchLeaseUntil: true, monitoringSetupRetryAt: true,
       user: { select: { id: true, role: true, plan: true, subscriptionStatus: true, lifecycleStatus: true,
         auditsLimit: true, deepReviewsLimit: true, licensedSiteQuantity: true,
         entitlementGrants: { where: { revokedAt: null, expiresAt: { gt: now } } } } } },
   })
   if (!project) return false
+  if (project.watchPausedAt && !options.restored) return false
   const policy = resolveEffectiveEntitlements(project.user, project.user.entitlementGrants, now)
   if (!policy.available) return false
   const cadence = fromStoredWatchInterval(project.watchInterval) ?? defaultCadence(policy)
   if (!cadence || !policy.watchIntervals.includes(cadence)) return false
+  const policyHalted = Boolean(project.watchInterval && !project.watchNextRunAt &&
+    project.watchLastError === MONITORING_SCHEDULE_UNAVAILABLE &&
+    (!project.watchLeaseUntil || project.watchLeaseUntil <= now))
   // Repeated admissions and worker upkeep retain explicit pauses. Only an
   // owner admission that actually restored a removed Site starts defaults again.
   if (!options.restored && !project.watchInterval && (project.watchLastError || project.watchLastAttemptAt || project.watchLastRunAt)) return false
@@ -43,12 +49,16 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
     // Keep identity, names, prior evidence and any owner-authored binding intact.
     update: {},
   })
-  if (!project.watchInterval) {
+  if (!project.watchInterval || policyHalted) {
     const changed = await tx.project.updateMany({
-      where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: null, watchNextRunAt: null,
-        watchLastAttemptAt: options.restored ? project.watchLastAttemptAt : null,
-        watchLastRunAt: options.restored ? project.watchLastRunAt : null, watchLastError: options.restored ? project.watchLastError : null },
-      data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: now,
+      where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: project.watchInterval, watchNextRunAt: null,
+        watchPausedAt: project.watchPausedAt ?? null,
+        watchLastAttemptAt: options.restored || policyHalted ? project.watchLastAttemptAt : null,
+        watchLastRunAt: options.restored || policyHalted ? project.watchLastRunAt : null,
+        watchLastError: options.restored || policyHalted ? project.watchLastError : null,
+        ...(policyHalted ? { watchEveryMinutes: project.watchEveryMinutes, watchLeaseUntil: project.watchLeaseUntil } : {}) },
+      data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: now, watchPausedAt: null,
+        ...(policyHalted ? { watchLeaseUntil: null, watchLastError: null } : {}),
         ...(options.restored ? { watchEveryMinutes: null, watchLeaseUntil: null, watchLastError: null, watchConsecutiveFailures: 0 } : {}),
         ...(project.monitoringSetupRetryAt ? { monitoringSetupRetryAt: null } : {}) },
     })
@@ -59,13 +69,18 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
   return true
 }
 
-/** Bounded worker upkeep covers existing Sites without a customer browser session. */
+/** Bounded upkeep initializes untouched Sites and retries schedules halted by
+ * policy. The saved cadence must be allowed again; owner pauses remain separate. */
 export async function initializeDefaultMonitoring(limit: number, clock: Clock = systemClock) {
   const selectedAt = clock.now()
   const eligible: Prisma.ProjectWhereInput = { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' },
-    watchInterval: null, watchNextRunAt: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null }
+    watchPausedAt: null, watchNextRunAt: null, OR: [
+      { watchInterval: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null },
+      { watchInterval: { not: null }, watchLastError: MONITORING_SCHEDULE_UNAVAILABLE,
+        OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lte: selectedAt } }] },
+    ] }
   const projects = await prisma.project.findMany({
-    where: { ...eligible, ...monitoringSetupDue(selectedAt) },
+    where: { AND: [eligible, monitoringSetupDue(selectedAt)] },
     select: { id: true, userId: true, url: true, monitoringSetupRetryAt: true }, orderBy: monitoringSetupOrder, take: limit,
   })
   for (const project of projects) {
