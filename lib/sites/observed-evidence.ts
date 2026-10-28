@@ -11,7 +11,7 @@ export type ObservedEvidence =
   | { kind: 'text'; text: string }
   | {
       kind: 'pages'
-      summary: string
+      summary: string | null
       trailing: string | null
       pages: ObservedPage[]
     }
@@ -84,7 +84,7 @@ export function presentObservedEvidence(text: string): ObservedEvidence {
   const highest = values.reduce((best, metric) => metric.value > best.value ? metric : best, values[0])
   const summary = shared && lowest && highest && lowest.value !== highest.value
     ? `${shared.label} ${lowest.raw}${shared.unit} to ${highest.raw}${shared.unit}.`
-    : pages[0]?.note || text
+    : shared ? pages[0]?.note ?? null : null
 
   return { kind: 'pages', summary, trailing, pages: presented }
 }

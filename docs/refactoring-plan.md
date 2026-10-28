@@ -138,7 +138,10 @@ task/receipt preservation hashes matched. Mixed-version writers remain
 unsupported, and the previous image alone is not a safe schema rollback. The
 [current completion plan](product-masterplan.md#current-completion-plan-2026-10-28)
 owns deployed status, the new idle-context investigation and remaining acceptance
-work. Actual production-backup restoration remains unverified.
+work. The actual production backup has since been restored and verified in the
+separately authorized private recovery environment, which was then deleted. The
+completion plan records its preserved data hashes and remaining backup-custody
+limits.
 
 Integration checks caught three fresh-receipt writers without their typed task
 relationship. These writers now retain that relationship; 37 focused writer

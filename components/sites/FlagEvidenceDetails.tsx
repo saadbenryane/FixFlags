@@ -12,7 +12,7 @@ function ObservedPageRow({ page }: { page: ObservedPage }) {
       {page.valueLabel ? <span className="shrink-0 font-medium tabular-nums">{page.valueLabel}</span> : null}
     </div>
     {page.share != null ? <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(12, Math.round(page.share * 100))}%` }} /></span> : null}
-    {page.valueLabel ? null : <p className="mt-1 break-words text-muted-foreground">{page.note}</p>}
+    {page.valueLabel ? null : <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">{page.note}</p>}
   </li>
 }
 
@@ -22,7 +22,7 @@ function ObservedFact({ text }: { text: string }) {
   const visible = presented.pages.slice(0, 4)
   const rest = presented.pages.slice(4)
   return <div className="space-y-3">
-    <p className="leading-relaxed">{presented.summary}</p>
+    {presented.summary ? <p className="leading-relaxed">{presented.summary}</p> : null}
     <ul className="space-y-3">{visible.map((page, index) => <ObservedPageRow key={`${page.url}:${index}`} page={page} />)}</ul>
     {presented.trailing ? <p className="text-xs text-muted-foreground">{presented.trailing}</p> : null}
     {rest.length ? <details>

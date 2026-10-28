@@ -5,6 +5,8 @@ import {
   createAndEnqueueAudit,
 } from '@/lib/audit/create-audit'
 import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
+import { RateLimitError, RateLimitUnavailableError } from '@/lib/security/rate-limit'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import {
   decryptScanAccess,
   encryptScanAccess,
@@ -417,6 +419,27 @@ describe('createAndEnqueueAudit', () => {
 
     expect(enforceAnonymousIpSoftCeiling).toHaveBeenCalledWith('ip-1')
   })
+
+  it('offers normal signup when the anonymous IP allowance is used without admitting another scan', async () => {
+    enforceAnonymousIpSoftCeiling.mockRejectedValueOnce(new RateLimitError(604800))
+
+    await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: AUDIT_URL, clientId: 'ip-1' }))
+      .rejects.toMatchObject({ name: 'AuditLimitError', code: 'AUTH_REQUIRED', action: 'signup',
+        message: PLAN_LIMIT_NOTICE.copy['anon-scan-limit'].body })
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
+    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+  })
+
+  it.each([new RateLimitUnavailableError(30), new Error('Admission unavailable')])(
+    'preserves an anonymous allowance infrastructure failure without treating it as a signup decision: %s', async error => {
+      enforceAnonymousIpSoftCeiling.mockRejectedValueOnce(error)
+
+      await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: AUDIT_URL, clientId: 'ip-1' }))
+        .rejects.toBe(error)
+      expect(prismaMock.audit.create).not.toHaveBeenCalled()
+      expect(queueAdd).not.toHaveBeenCalled()
+    })
 
   it('runs the full pipeline for signed-in checks and ensures the product project', async () => {
     resolveIncludeAiForNewAudit.mockResolvedValue(true)

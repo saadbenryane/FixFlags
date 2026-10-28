@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
@@ -188,6 +189,7 @@ test.describe('credentialed revenue journeys', () => {
     await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
     const originalCategory = page.getByRole('dialog')
     await expect(originalCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await originalCategory.locator('summary').filter({ hasText: SITE_DASHBOARD_COPY.checkDetails }).click()
     const continuation = originalCategory.getByRole('button', { name: 'Check again', exact: true }).last()
     await continuation.focus()
     await originalCategory.locator('[data-dialog-scroll]').evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
