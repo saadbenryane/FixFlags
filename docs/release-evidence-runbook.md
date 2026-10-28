@@ -36,6 +36,71 @@ If rollback is required, retain the failed deployment and logs, stop admitting p
 
 The final production receipt must link the actual retained-image observation and schema rehearsal. A prepared command or a healthy endpoint alone cannot close rollback readiness.
 
+## Independent encrypted database backups
+
+The maintained job is `ops/database-backup/backup.py`, packaged separately by
+`ops/database-backup/Dockerfile`. It is prepared, not activated. The October 28
+read-only production inspection found no Railway volume backup schedule or
+snapshot, and PostgreSQL `archive_mode=off`. The manually retained cutover dumps
+and completed isolated restore remain distinct evidence.
+
+Proposed activation uses a private bucket in a separate `fixflags-recovery`
+Railway project, with a daily 03:00 UTC job in the existing production project
+and 30 days of retention. This needs explicit approval for the persistent
+customer-data destination, ongoing storage/compute usage and recovery-key
+custody. The separate bucket must survive deleting the application project.
+Do not reuse capture credentials, export the full backup locally or activate
+this job under the temporary restore authorization.
+
+The job reads the production database through its private reference. PostgreSQL
+18 `pg_dump` streams directly into age encryption for an X25519 public recipient.
+Only encrypted bytes reach temporary disk or the bucket. The job has no private
+decryption key, application worker or mailbox. Dedicated S3 credentials must be
+restricted to the approved bucket. Configure `DATABASE_URL`,
+`BACKUP_S3_ENDPOINT`, `BACKUP_BUCKET`, `BACKUP_AGE_RECIPIENT`,
+`BACKUP_RETENTION_DAYS=30`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and the
+bucket's `AWS_DEFAULT_REGION` through service references and protected settings.
+Never commit their values. Configure the dedicated service with Dockerfile
+`ops/database-backup/Dockerfile`, daily cron `0 3 * * *`, restart policy `NEVER`,
+no application health check and no inherited application Config File. Its image
+entrypoint runs the job and exits. Use the supported service API or project IaC;
+new services cannot opt into the deprecated `railway.toml` mechanism. The
+application health check is not a job completion signal.
+
+A completed dump is uploaded, downloaded and hashed. Its stored manifest must
+match before retention removes this job's recognized objects older than the
+configured window. A failed dump, upload or verification cannot prune existing
+backups or issue a success receipt. Command deadlines also cover stalled
+transfers. Failures return a nonzero process status with sanitized output.
+Only the exact `fixflags/postgres/v1/` object naming contract is eligible for
+retention cleanup. Unknown names remain untouched.
+
+Keep the recovery private key independently from the backup job and credentials.
+Retain every key needed by the stored manifests; prove recovery with a replacement
+key before retiring an older key.
+For a restore, download the selected encrypted object only into an approved
+isolated recovery environment. Verify its SHA-256 and byte count against the
+stored manifest, decrypt with the retained age key and restore its custom-format
+archive into a separate compatible PostgreSQL service. Recheck schema history,
+application readability and retained evidence custody before any deliberate
+cutover. A verified upload does not prove recoverability until that restore is
+exercised. Never restore over the production database as a test.
+
+Local checks: `python3 -m unittest discover -s ops/database-backup -p 'test_*.py'`
+exercises failed dumps, corrupt remote bytes/manifests, deadline handling,
+temporary-file cleanup and retention ordering. The packaged PostgreSQL 18 job
+also passes a native synthetic rehearsal using
+actual age encryption and AWS CLI against verified local TLS storage, followed
+by decryption and restore into a separate database with matching task/receipt
+custody. The fixture and key are deleted. This does not activate or certify
+production retention.
+
+Railway documents that volume deletion removes its snapshots in its
+[backup reference](https://docs.railway.com/volumes/backups). Its
+[PostgreSQL recovery guide](https://docs.railway.com/guides/postgres-backups-restores)
+separates volume snapshots, WAL archiving and portable logical dumps. Preserve
+those failure-domain distinctions when reporting recovery protection.
+
 ## Historical migration custody
 
 Production retains `20260723081407_scan_access` with a historical `manual-resolve` marker. That marker does not prove which SQL executed. Preserve it unchanged. The archived Git source contains drop/add statements and must not be restored to the active migration directory or replayed. The current migration history explicitly retains a no-op successor and creates the modern `scanAccessEncrypted` columns for fresh installs.
