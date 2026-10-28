@@ -54,7 +54,7 @@ run('durable scan access grants', () => {
     const pending = await savedAudit(inherited), completed = await savedAudit(inherited, 'COMPLETED')
     const publicAudit = await savedAudit(await admitScanAccess(prisma, { projectId: site, userId: owner, targetUrl: url, useProject: false }))
     const oneOff = await savedAudit(await admitScanAccess(prisma, { projectId: site, userId: owner, targetUrl: url, explicit: config('ONE_OFF_SECRET') }))
-    const task = await prisma.auditVerifierExecution.create({ data: { auditId: pending.id, targetKey: 'task:browser', scopeKey: 'page:' + url,
+    const task = await prisma.auditExecutionTask.create({ data: { auditId: pending.id, targetKey: 'task:browser', scopeKey: 'page:' + url,
       source: 'DETERMINISTIC', workKind: 'browser', workState: 'RUNNING', status: 'RUNNING', workToken: 'original-worker', workGeneration: 1,
       workLeaseUntil: new Date(Date.now() + 90_000) } })
     await persistProjectScanAccess(site, owner, { ...config('OLD_SECRET'), label: 'Only the handoff note changed' })
@@ -107,13 +107,13 @@ run('durable scan access grants', () => {
           expect(await prisma.audit.findUnique({ where: { id: child.auditId } })).toMatchObject({ status: 'COMPLETED', improvementProjectedAt: expect.any(Date) })
         }, { timeout: 30_000, interval: 100 })
       } catch (error) {
-        const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: child.auditId, workKind: { not: null } },
+        const tasks = await prisma.auditExecutionTask.findMany({ where: { auditId: child.auditId, workKind: { not: null } },
           select: { workKind: true, workState: true, workErrorCode: true } })
         throw new Error('Worker did not finish: ' + JSON.stringify(tasks), { cause: error })
       }
       expect(observedToken).toBe('CURRENT_SECRET')
       expect(decryptScanAccess((await prisma.audit.findUniqueOrThrow({ where: { id: child.auditId } })).scanAccessEncrypted)).toEqual(config('CURRENT_SECRET'))
-      expect((await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: child.auditId, workKind: 'keyboard' } })).workState).toBe('COMPLETED')
+      expect((await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: child.auditId, workKind: 'keyboard' } })).workState).toBe('COMPLETED')
 
     } finally { transport.mockRestore() }
   }, 45_000)

@@ -34,7 +34,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
     const accounts = accountsAwaitingAction(interrupted)
     const [monitoring, taskCount, accountCount, guidanceCount] = await Promise.all([
       countMonitoringOperations(db, now),
-      db.auditVerifierExecution.count({ where: tasks }),
+      db.auditExecutionTask.count({ where: tasks }),
       db.siteTestAccount.count({ where: accounts }),
       countGuidanceGaps(db),
     ])
@@ -85,7 +85,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       }))
     if (queue === 'tasks')
       rows = (
-        await db.auditVerifierExecution.findMany({
+        await db.auditExecutionTask.findMany({
           where: tasks,
           ...slice,
           orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],

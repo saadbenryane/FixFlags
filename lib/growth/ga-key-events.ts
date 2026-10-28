@@ -9,7 +9,6 @@ export const GA4_KEY_EVENTS = [
   'signed_up',
   'audits_claimed',
   'fix_prompt_copied',
-  'recheck_completed',
   'completed_checkout',
 ] as const
 

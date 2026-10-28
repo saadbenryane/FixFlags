@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 supersedes: []
 ---
 
@@ -72,6 +72,18 @@ The final Linux ARM64 proof is `test-results/runtime/site-plan-linux-04f93b62/`,
 Failed attempts remain retained. The first UI URL entry correctly refused loopback. The continued fixture admits its target through the normal API with the existing explicit localhost fixture option, so `ordinaryUrlEntry` remains false. An early attempt with empty provider keys unintentionally reached normal unauthenticated PageSpeed quota retries; subsequent fixtures explicitly refuse provider transport and isolate external requests. Those refusals remain missing evidence. The credential-bearing PageSpeed probe previously rejected by automatic approval review remains unrun. Other retained attempts exposed fixture selector/admission mistakes, the claim identity defect, the Pages heading defect and the compiled URL defect; they are not accepted passes.
 
 Real public-target entry, external signup/email delivery, actual providers/private storage, public precision, naturally scheduled production monitoring, a frozen current candidate and production acceptance remain open. Before deployment, inventory any previously claimed unlinked observations and preserve exact historical source links when deciding whether a controlled backfill is needed. The screenshot review also observes the long mobile Integrations label wrapping within the six-item navigation. Its responsive treatment still needs review while preserving full labels and touch targets. Remaining state/zoom/device and customer-value work stays in the packages below.
+
+### Integration checkpoint, 2026-10-28
+
+The October 27 implementation and the authentication compatibility corrections shipped as `3f231e0c203c3b226749d15f454be5f935388695`. Both Railway services succeeded on that revision, five migrations applied, and public web/worker revision, readiness, browser, storage and uptime observations agreed. This is an ordinary deployment observation, not comprehensive website acceptance.
+
+The completed stability refactor is now integrated in the isolated deployment worktree. It removes unused workspaces, converges runtime execution on the progressive engine, replaces optional admission switches with explicit intent, separates overview and settings reads, and gives tasks and receipts distinct physical storage with a read-only evidence composition. Previously shipped auth, claim and viewer-custody corrections are preserved. Real repair verification exposed missing typed task links in derived receipts; the maintained writers now retain them. Historical-only client events remain identifiable, current Site lifecycle measurement remains durable, and the actual signup invitation retains its click event.
+
+The controlled compiled browser journey passes repair, recurrence and second recovery, native clipboard readback, legacy-password sign-in, passkey enrollment, fresh-session backup recovery and used-code refusal. Its verification receipt must reference the actual completed task in the same Audit. Forty-eight rendered observations cover light/dark compositions at 320, 375, 768 and 1280px, with the documented orange-control exception retained. Narrow navigation uses complete labels and 44px targets; the chat launcher follows measured bottom notices rather than a fixed navigation-height assumption. Native hit testing rejects obscured navigation targets. These remain agent-operated local fixtures, with API-admitted loopback and a seeded verified account. They do not establish public URL entry, delivered signup email, real providers, human usability or physical-device performance.
+
+Fresh migration history and drift checks pass on disposable PostgreSQL. Retained-row upgrades, claim replay, historical conclusions, task ownership, dispatch, independent settlement, scheduled admission and notification retry have scoped database evidence. A native regression first retained the missing task relationship, then passed after correction. The broader suite exposed retired client-event callers, one obsolete admission assertion and one asynchronous disclosure assertion; their corrected focused checks pass. Current source still requires a clean freeze and its own Linux image and deployment observations.
+
+The task-storage migration requires a coordinated runtime cutover. Drain and stop old writers before migration, then start web and worker from the new revision. The previous image is not schema-compatible after this migration; a normal image-only rollback is insufficient. Preserve a restorable database backup and explicit cutover evidence. Real-provider lifecycle, mailbox delivery, public precision, natural production monitoring and longer-term value evidence remain open. Google/Shopify activation, paid enrollment and automatic-account activation remain closed.
 
 ### Remaining gap register
 

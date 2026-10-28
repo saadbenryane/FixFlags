@@ -83,7 +83,7 @@ run('canonical HTTP authority through client navigation and installed workers', 
     await vi.waitFor(async () => {
       // These optional collection paths are deliberately unavailable. The
       // HTTP, browser and Search collectors below execute against the fixture.
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'browser', 'check', 'finalize', 'search', 'search-resources', 'discovery', 'cross-page'] } },
         data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
@@ -107,13 +107,15 @@ run('canonical HTTP authority through client navigation and installed workers', 
       : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
   }
   it('refuses borrowed rendered success, independently observes the canonical target, verifies repair and preserves recurrence', async () => {
-    const source = await createAndEnqueueAudit({ url: pageUrl, userId })
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    userId })
     await complete(source.auditId)
     projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } })).projectId!
-    const browser = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'browser', pageUrl } })
+    const browser = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'browser', pageUrl } })
     expect(browserArtifactSchema.parse(readArtifact(browser.workResult, 'browser').data).snapshot)
       .toMatchObject({ desktopFinalUrl: target, desktopHttpStatus: 200 })
-    const receipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:search-canonical' } })
+    const receipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:search-canonical' } })
     expect(searchReceiptSchema.parse(receipt.detail).observations).toContainEqual(expect.objectContaining({
       checkId: 'search-canonical-target', disposition: 'failed', observed: target + ': HTTP 404' }))
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'search-canonical-target' } })

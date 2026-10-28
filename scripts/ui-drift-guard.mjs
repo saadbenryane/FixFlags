@@ -156,20 +156,6 @@ if (siteSettings.includes('unavailableReason')) {
   violations.push('components/sites/SiteSettingsControls.tsx: unconfigured connection leaked into customer settings')
 }
 
-const reportShell = readFileSync(join(ROOT, 'components/audit/AuditReport.tsx'), 'utf8')
-const reportExplorerCount = (reportShell.match(/<LiveReportExplorer\b/g) ?? []).length
-if (reportExplorerCount !== 1) {
-  violations.push(
-    `components/audit/AuditReport.tsx: expected exactly one LiveReportExplorer, found ${reportExplorerCount}`
-  )
-}
-
-for (const removed of ['RubricsPanel', 'ReportMiniNav', 'CompletenessHeader']) {
-  if (reportShell.includes(removed)) {
-    violations.push(`components/audit/AuditReport.tsx: removed report chrome ${removed} returned`)
-  }
-}
-
 for (const removedPath of [
   'components/report/ProductSpineWorkspace.tsx',
   'components/report/LivingReviewEmulation.tsx',
@@ -181,13 +167,6 @@ for (const removedPath of [
   if (existsSync(join(ROOT, removedPath))) {
     violations.push(`${removedPath}: obsolete parallel Review architecture returned`)
   }
-}
-
-if (!reportShell.includes('<ReportPane')) {
-  violations.push('components/audit/AuditReport.tsx: completed reports must use ReportPane')
-}
-if (reportShell.includes('canUseTimeline')) {
-  violations.push('components/audit/AuditReport.tsx: Timeline permission is still conflated')
 }
 
 const outcomeHeader = readFileSync(join(ROOT, 'components/report/ReportOutcomeBar.tsx'), 'utf8')

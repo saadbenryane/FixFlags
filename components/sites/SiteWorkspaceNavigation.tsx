@@ -23,7 +23,7 @@ export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = tru
 }) {
   const root = useRef<HTMLElement>(null)
   useFixedBottomNotice(root, mobile, -10)
-  return <nav ref={root} aria-label={label} className={cn(mobile ? styles.mobileNavigation : styles.navigation, className, mobile && 'grid text-2xs', mobile && helpHref && styles.withHelp)}>
+  return <nav ref={root} aria-label={label} className={cn(mobile ? styles.mobileNavigation : styles.navigation, className, mobile && 'grid text-2xs')}>
     {SITE_ROUTES.filter(([id]) => id !== 'settings' || showSettings).map(([id, label, Icon]) => renderItem({ id, label, icon: Icon, selected: activeRoute === id,
       className: mobile ? cn('flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center text-2xs [overflow-wrap:anywhere]', activeRoute === id ? 'text-foreground' : 'text-muted-foreground') : cn(styles.navLink, activeRoute === id && styles.selected),
       content: <><Icon className="shrink-0" size={mobile ? 20 : 17} aria-hidden /><span className="min-w-0 max-w-full">{label}</span></>,

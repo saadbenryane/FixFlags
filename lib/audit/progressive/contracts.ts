@@ -13,8 +13,8 @@ export type TaskKind = z.infer<typeof taskKindSchema>
 export const COMPLETION_TASK_KINDS = ['finalize', 'prescription'] as const
 export function runsAfterCompletion(kind: string | null) { return COMPLETION_TASK_KINDS.some(value => value === kind) }
 /** Enrichment execution cannot change a website check's progress or health. */
-export const analysisTaskWhere = { targetKey: { startsWith: 'task:' },
-  OR: [{ workKind: null }, { workKind: { not: 'prescription' } }] }
+export const analysisTaskWhere = { OR: [{ workKind: null }, { workKind: { not: 'prescription' } }] }
+export const analysisEvidenceTaskWhere = { recordKind: 'task', ...analysisTaskWhere }
 export const taskInputSchema = z.object({
   pageUrl: z.string().url(), position: z.number().int().nonnegative().max(23),
   primary: z.boolean(), role: z.string().min(1).max(80), module: z.string().min(1).max(120).optional(),

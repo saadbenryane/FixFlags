@@ -4,7 +4,7 @@ import { loadMonitoringHistory } from '../monitoring-history'
 import { includeLegacySiteAnalyses } from '../analysis-scope'
 
 const reads = vi.hoisted(() => ({ audits: vi.fn(), executions: vi.fn(), flags: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: {
+vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
   audit: { findMany: reads.audits }, auditVerifierExecution: { findMany: reads.executions }, flag: { findMany: reads.flags },
 } }))
 

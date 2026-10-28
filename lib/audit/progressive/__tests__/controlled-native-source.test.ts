@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const fixture = vi.hoisted(() => ({ read: vi.fn(), create: vi.fn(), persist: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findUniqueOrThrow: fixture.read },
-  $transaction: async (work: (tx: unknown) => Promise<void>) => work({ auditVerifierExecution: { create: fixture.create } }) } }))
+  $transaction: async (work: (tx: unknown) => Promise<void>) => work({get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { create: fixture.create } }) } }))
 vi.mock('@/lib/audit/persist', () => ({ persistDeterministicFlags: fixture.persist }))
 import { persistControlledNativeSource } from './controlled-native-source'
 

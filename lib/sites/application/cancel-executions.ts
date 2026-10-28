@@ -16,7 +16,7 @@ export async function cancelSiteExecutions(tx: Prisma.TransactionClient, project
       data: { executionToken: null, executionLeaseUntil: null, executionGeneration: { increment: 1 } } })
     await tx.audit.updateMany({ where: { id: { in: auditIds }, projectId, status: { notIn: ['COMPLETED', 'FAILED'] } },
       data: { status: 'FAILED', completedAt: now, failureCode: errorCode, failureStage: scope?.stage ?? 'site-removal', errorMsg: errorMessage } })
-    await tx.auditVerifierExecution.updateMany({ where: { auditId: { in: auditIds }, workState: { in: ['WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'] } },
+    await tx.auditExecutionTask.updateMany({ where: { auditId: { in: auditIds }, workState: { in: ['WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'] } },
       data: { workState: 'BLOCKED', status: 'FAILED', workToken: null, workLeaseUntil: null, workGeneration: { increment: 1 },
         workDispatchLeaseUntil: null, workRetryAt: null, workErrorCode: errorCode } })
     const attempts = await tx.improvementAttempt.findMany({ where: { verificationAuditId: { in: auditIds }, outcome: null, improvement: { projectId } },

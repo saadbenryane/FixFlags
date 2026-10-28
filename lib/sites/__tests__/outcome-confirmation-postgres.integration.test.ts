@@ -354,7 +354,7 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
         checks: { 'no-https': 1, 'security-mixed-content': 1 }, outcomes: [], verificationTarget: null,
       } } })
     await prisma.auditPage.create({ data: { auditId: audit.id, url: site.url, normalizedUrl: site.url, role: 'primary', position: 0, status: 'COMPLETED' } })
-    await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'module:security', source: 'DETERMINISTIC', status: 'COMPLETED',
+    await prisma.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: 'module:security', source: 'DETERMINISTIC', status: 'COMPLETED',
       detail: { kind: 'site-module-check', version: 1, module: 'security', pageUrl: site.url, passed: true, applicable: true,
         assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Secure transport', observed: 'Secure transport', passed: true })) } } })
     const outcome = await prisma.siteOutcome.create({ data: { projectId, name: 'Page availability', slug: 'current-read', kind: 'AVAILABILITY',
@@ -481,13 +481,13 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     const before = await buildExecutionSpec({ ...input, outcomes: originalOutcomes })
     const audit = await prisma.audit.create({ data: { userId, projectId, url: input.targetUrl, status: 'CHECKING', executionSpec: before as Prisma.InputJsonValue } })
     const token = randomUUID()
-    const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:binding',
+    const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:binding',
       source: 'EXECUTION', status: 'RUNNING', workKind: 'bindings', workState: 'RUNNING', workToken: token,
       workGeneration: 1, workLeaseUntil: new Date(Date.now() + 90_000), workInput: {
         pageUrl: input.targetUrl, position: 0, primary: true, role: 'primary', outcomeId: created!.id,
         bindingKey: before.outcomes[0]!.bindings[0]!.key,
       } } })
-    const retained = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'retained-observation',
+    const retained = await prisma.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: 'retained-observation',
       source: 'DETERMINISTIC', status: 'COMPLETED', detail: { observation: 'Already recorded evidence' } } })
     const owner = { auditId: audit.id, taskId: task.id, token, generation: 1 }
     let signal: AbortSignal | undefined
@@ -500,13 +500,13 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
       await confirmSiteOutcome({ site, outcomeId: created!.id, confirmed: false })
       await stopped
       expect(signal!.aborted).toBe(true)
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } }))
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workState: 'BLOCKED', workToken: null, workErrorCode: 'OUTCOME_AUTHORIZATION_CHANGED' })
       await expect(withExecutionOwnership(owner, () => executionWrite(tx => tx.audit.update({
         where: { id: audit.id }, data: { status: 'COMPLETED' },
       })))).rejects.toBeInstanceOf(ExecutionOwnershipLost)
       expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).status).toBe('CHECKING')
-      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: retained.id } })).toEqual(retained)
+      expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: retained.id } })).toEqual(retained)
       await confirmSiteOutcome({ site, outcomeId: created!.id, confirmed: true, kind: 'AVAILABILITY' })
       const renewedOutcomes = await ownedOutcomes()
       const after = await buildExecutionSpec({ ...input, outcomes: renewedOutcomes })
@@ -515,7 +515,7 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
       expect(comparableOutcomeCoverage(admittedOutcomeCoverage(before, before.outcomes[0]!),
         admittedOutcomeCoverage(after, after.outcomes[0]!))).toBe(true)
     } finally {
-      if (!signal?.aborted) await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workState: 'BLOCKED', workToken: null } })
+      if (!signal?.aborted) await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState: 'BLOCKED', workToken: null } })
       await stopped
     }
   })

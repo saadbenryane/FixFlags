@@ -1,290 +1,74 @@
-import { describe, it, vi, expect, beforeEach, type Mock } from 'vitest'
-import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * Drives the real `runAudit` orchestrator with the heavy pipeline leaves
- * (capture, AI, persistence, finalize) mocked, so we can assert the state
- * machine itself: status transitions, fail-at-a-step, timeout, retry-after-crash,
- * and the AI-failure fallback. See QUALITY.md "Pipeline failures mid-audit".
- */
-
-const { prismaMock } = vi.hoisted(() => {
-  const prismaMock = {
-    audit: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    $queryRaw: vi.fn(async () => [{ id: 'audit-1', authorized: true }]),
-    runRequest: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
-    screenshot: { deleteMany: vi.fn() },
-    auditPage: { deleteMany: vi.fn() },
-    journeyReview: { deleteMany: vi.fn() },
-    flag: { deleteMany: vi.fn() },
-    $transaction: vi.fn(async (arg: unknown) => {
-      if (typeof arg === 'function') return (arg as (tx: unknown) => unknown)(prismaMock)
-      if (Array.isArray(arg)) return Promise.all(arg)
-      return arg
-    }),
+const { db } = vi.hoisted(() => {
+  const db = {
+    audit: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), updateMany: vi.fn() },
+    $queryRaw: vi.fn(),
+    runRequest: { findMany: vi.fn() },
+    $transaction: vi.fn(async (work: (tx: unknown) => unknown) => work(db)),
   }
-  return { prismaMock }
+  return { db }
+})
+const handlers = vi.hoisted(() => ({ coordinate: vi.fn(), deliver: vi.fn(), project: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: db }))
+vi.mock('@/lib/audit/progressive/runtime', () => ({ coordinateProgressiveAudit: handlers.coordinate }))
+vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueuePendingAiReview: handlers.deliver }))
+vi.mock('@/lib/audit/finalize', () => ({ persistImprovementCycle: handlers.project }))
+import { runAudit } from '../runner'
+
+const spec = { version: 1, engine: 'progressive-v1', targetUrl: 'https://example.com/', environment: 'production',
+  scope: 'SITE', checks: {}, outcomes: [], verificationTarget: null }
+beforeEach(() => {
+  vi.clearAllMocks()
+  db.audit.findUnique.mockResolvedValue({ id: 'audit', status: 'QUEUED', executionSpec: spec })
+  db.audit.findUniqueOrThrow.mockResolvedValue({ executionGeneration: 1 })
+  db.audit.updateMany.mockResolvedValue({ count: 1 })
+  db.$queryRaw.mockResolvedValue([{ id: 'audit', authorized: true }])
+  db.runRequest.findMany.mockResolvedValue([])
 })
 
-vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
-const prescriptionDelivery = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueuePendingAiReview: prescriptionDelivery }))
-vi.mock('@/lib/logger/context', () => ({
-  runWithContext: (_ctx: unknown, fn: () => unknown) => fn(),
-}))
-vi.mock('@/lib/audit/pipeline-log', () => ({
-  initPipelineLog: vi.fn(async (auditId: string) => ({
-    executionId: `${auditId}:1`,
-    traceId: 'trace-test',
-    attempt: 1,
-  })),
-  createPipelineEventSink: vi.fn(() => ({ log: vi.fn(async () => undefined) })),
-}))
-vi.mock('@/lib/audit/scan-access-store', () => ({
-  resolveAuditScanAccess: vi.fn(async () => null),
-}))
-vi.mock('@/lib/audit/gsc-integration', () => ({
-  pullGscDataForAudit: vi.fn(async () => undefined),
-}))
-vi.mock('@/lib/audit/checks/search-performance', () => ({
-  runSearchPerformanceChecks: vi.fn(async () => []),
-}))
-vi.mock('@/lib/audit/search/google', () => ({
-  runGoogleSearchForAudit: vi.fn(async () => ({ receipts: [], findings: [] })),
-}))
-vi.mock('@/lib/audit/search/workflow', () => ({
-  runCheckedPageSearch: vi.fn(async () => []),
-}))
-vi.mock('@/lib/audit/open-check', async original => ({
-  ...await original<typeof import('@/lib/audit/open-check')>(),
-  DEFAULT_OPEN_CHECK_CEILING: 80,
-  openCheckDestinations: vi.fn(async () => ({ results: [], truncated: false })),
-  deadDestinationFlags: vi.fn(() => []),
-}))
-vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
-  runJourneyReviewsForAudit: vi.fn(async () => 0),
-}))
-vi.mock('@/lib/audit/checks/corridor-consistency', () => ({
-  runCorridorConsistencyChecks: vi.fn(() => []),
-}))
-vi.mock('@/lib/audit/finalize', () => ({
-  persistFailedAuditCost: vi.fn(),
-  persistImprovementCycle: vi.fn(),
-}))
-vi.mock('@/lib/audit/pipeline/run-page', () => ({ runPage: vi.fn() }))
-vi.mock('@/lib/audit/persist', () => ({ persistDeterministicFlags: vi.fn() }))
-vi.mock('@/lib/audit/pipeline/finalize-from-outcome', () => ({
-  finalizeFromOutcome: vi.fn(),
-  retryPrimaryTriage: vi.fn(async (ctx: unknown, runs: unknown[]) => runs),
-}))
-vi.mock('@/lib/audit/pipeline/context', () => ({
-  sanitizeAuditErrorMessage: (msg: string) => msg,
-  tryPartialFinalize: vi.fn(() => false),
-}))
-vi.mock('@/lib/audit/pipeline/failure', () => ({
-  deriveAuditFailure: vi.fn(() => ({ failureCode: 'AUDIT_PIPELINE_FAILED', failureStage: 'capturing' })),
-}))
-
-import { persistDeterministicFlags } from '@/lib/audit/persist'
-import { runAudit } from '@/lib/audit/runner'
-import { runPage } from '@/lib/audit/pipeline/run-page'
-import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
-import { tryPartialFinalize } from '@/lib/audit/pipeline/context'
-import { persistImprovementCycle } from '@/lib/audit/finalize'
-
-function makeAudit(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'audit-1',
-    status: 'QUEUED',
-    url: 'https://example.com',
-    includeAi: false,
-    journeyReviewIncluded: false,
-    monitoringMode: null,
-    parentId: null,
-    auditMode: 'SINGLE',
-    reviewDepth: 1,
-    ...overrides,
-  }
-}
-
-function makePageRun(overrides: Record<string, unknown> = {}) {
-  return {
-    pageId: 'page-1',
-    url: 'https://example.com',
-    metadata: { pageText: '', links: [] },
-    desktop: null,
-    mobile: null,
-    desktopScreenshot: true,
-    mobileScreenshot: true,
-    flowScan: false,
-    flowResult: null,
-    desktopBase64: 'x',
-    mobileBase64: null,
-    flags: [],
-    failedModules: [],
-    triage: {},
-    detectedTech: [],
-    industryGuess: null,
-    ...overrides,
-  }
-}
-
-function updateStatuses(): string[] {
-  return prismaMock.audit.update.mock.calls.map(
-    (c: unknown[]) => (c[0] as { data: { status?: string } }).data.status ?? ''
-  )
-}
-
-describe('runAudit orchestrator', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    prescriptionDelivery.mockReset().mockResolvedValue(undefined)
-    prismaMock.audit.findUnique.mockResolvedValue(makeAudit())
-    prismaMock.audit.update.mockResolvedValue({})
-    prismaMock.audit.updateMany.mockResolvedValue({ count: 1 })
-    prismaMock.audit.findUniqueOrThrow.mockResolvedValue({ executionGeneration: 1 })
-    ;(runPage as Mock).mockResolvedValue(makePageRun())
-    ;(finalizeFromOutcome as Mock).mockImplementation(async () => {
-      prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))
-      return true
-    })
-    ;(tryPartialFinalize as Mock).mockResolvedValue(false)
+describe('single audit execution engine', () => {
+  it('delegates new checks to the progressive coordinator without running a second pipeline', async () => {
+    await runAudit('audit')
+    expect(handlers.coordinate).toHaveBeenCalledWith('audit')
+    expect(db.audit.updateMany).not.toHaveBeenCalled()
   })
-
-  it('executes every admitted navigation once across compatibility discovery passes', async () => {
-    const peer = 'https://example.com/pricing', affected = peer + '/'
-    prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ url: peer, reviewDepth: 3, executionSpec: {
-      version: 1, scope: 'SITE', targetUrl: peer, environment: 'production', monitoringPages: [peer, affected],
-      checks: {}, outcomes: [], verificationTarget: null,
-    } }))
-    ;(runPage as Mock).mockImplementation(async (_context, input: { url: string }) => makePageRun({ url: input.url }))
-    await runAudit('audit-1')
-    expect((runPage as Mock).mock.calls.map(([, input]) => input.url)).toEqual([peer, affected])
+  it('keeps failed checks terminal', async () => {
+    db.audit.findUnique.mockResolvedValue({ status: 'FAILED' })
+    await runAudit('audit')
+    expect(handlers.coordinate).not.toHaveBeenCalled()
+    expect(db.audit.updateMany).not.toHaveBeenCalled()
   })
-
-  it('resumes durable projection before returning an already-completed audit', async () => {
-    prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))
-
-    await runAudit('audit-1')
-
-    expect(persistImprovementCycle).toHaveBeenCalledWith('audit-1', null)
-    expect(prismaMock.audit.update).not.toHaveBeenCalled()
-    expect(runPage).not.toHaveBeenCalled()
+  it('resumes interrupted completed projections and pending prescription delivery', async () => {
+    db.audit.findUnique.mockResolvedValue({ status: 'COMPLETED', parentId: 'parent' })
+    await runAudit('audit')
+    expect(handlers.deliver).toHaveBeenCalledWith('audit')
+    expect(handlers.project).toHaveBeenCalledWith('audit', 'parent')
+    expect(handlers.coordinate).not.toHaveBeenCalled()
   })
-
-  it('retries prescription delivery after completion even when projection has already finished', async () => {
-    prescriptionDelivery.mockRejectedValueOnce(new Error('Queue unavailable'))
-    await expect(runAudit('audit-1')).rejects.toThrow('Queue unavailable')
-    expect(updateStatuses()).not.toContain('FAILED')
-    expect(tryPartialFinalize).not.toHaveBeenCalled()
-    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
-    prismaMock.audit.updateMany.mockResolvedValue({ count: 0 })
-    await runAudit('audit-1')
-    expect(prescriptionDelivery).toHaveBeenCalledTimes(2)
-    expect(runPage).toHaveBeenCalledTimes(1)
-    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
+  it('does not borrow another completion projection lease', async () => {
+    db.audit.findUnique.mockResolvedValue({ status: 'COMPLETED' })
+    db.audit.updateMany.mockResolvedValue({ count: 0 })
+    await runAudit('audit')
+    expect(handlers.deliver).toHaveBeenCalledWith('audit')
+    expect(handlers.project).not.toHaveBeenCalled()
   })
-
-  it('runs the happy path: CAPTURING -> finalizeFromOutcome, no FAILED', async () => {
-    await runAudit('audit-1')
-
-    const first = prismaMock.audit.update.mock.calls[0][0] as { data: { status: string } }
-    expect(first.data.status).toBe('CAPTURING')
-    const details = prismaMock.audit.update.mock.calls.map(
-      (c: unknown[]) => (c[0] as { data: { progressDetail?: string } }).data.progressDetail
-    )
-    expect(details).toContain('Reviewing this page')
-    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
-    expect(updateStatuses()).not.toContain('FAILED')
+  it.each([null, { version: 999 }, { ...spec, engine: undefined }])('retires an unfinished legacy admission without replaying work: %j', async executionSpec => {
+    db.audit.findUnique.mockResolvedValue({ status: 'CAPTURING', executionSpec })
+    await runAudit('audit')
+    expect(handlers.coordinate).not.toHaveBeenCalled()
+    expect(db.audit.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'FAILED', failureCode: 'LEGACY_EXECUTION_RETIRED' }),
+    }))
   })
-
-  it('marks the audit FAILED with the failure stage when capture throws, then rethrows', async () => {
-    prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.findUnique
-      .mockResolvedValueOnce(makeAudit())
-      .mockResolvedValue({ status: 'capturing' })
-    ;(runPage as Mock).mockRejectedValue(new Error('capture blew up'))
-
-    await expect(runAudit('audit-1')).rejects.toThrow('capture blew up')
-
-    const failed = prismaMock.audit.update.mock.calls.find(
-      (c: unknown[]) => (c[0] as { data: { status?: string } }).data.status === 'FAILED'
-    )
-    expect(failed).toBeTruthy()
-    expect((failed![0] as { data: { failureStage: string } }).data.failureStage).toBe('capturing')
+  it('does not retire a legacy delivery while another worker owns its lease', async () => {
+    db.audit.findUnique.mockResolvedValue({ status: 'CAPTURING', executionSpec: null })
+    db.audit.updateMany.mockResolvedValue({ count: 0 })
+    await runAudit('audit')
+    expect(db.runRequest.findMany).not.toHaveBeenCalled()
   })
-
-  it('partial-finalizes on a mid-run timeout instead of failing', async () => {
-    ;(runPage as Mock).mockRejectedValue(new AuditDeadlineError('capturing'))
-    ;(tryPartialFinalize as Mock).mockImplementation(async () => {
-      prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))
-      return true
-    })
-
-    await runAudit('audit-1')
-
-    expect(tryPartialFinalize).toHaveBeenCalledTimes(1)
-    expect(updateStatuses()).not.toContain('FAILED')
-  })
-
-  it('delegates finalize to finalizeFromOutcome after page runs complete (even with no triage)', async () => {
-    // runPage swallows LLM failures and returns with triage undefined; the
-    // runner must still call finalizeFromOutcome, never mark FAILED.
-    ;(runPage as Mock).mockResolvedValue(makePageRun({ triage: undefined }))
-
-    await runAudit('audit-1')
-
-    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
-    expect(tryPartialFinalize).not.toHaveBeenCalled()
-    expect(updateStatuses()).not.toContain('FAILED')
-  })
-
-  it('runs fresh capture for parented re-checks', async () => {
-    prismaMock.audit.findUnique.mockResolvedValue(
-      makeAudit({ parentId: 'parent-1', monitoringMode: 'FULL' })
-    )
-
-    await runAudit('audit-1')
-
-    const first = prismaMock.audit.update.mock.calls[0][0] as {
-      data: { status: string; progress: number }
-    }
-    expect(first.data.status).toBe('CAPTURING')
-    expect(runPage).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        url: 'https://example.com',
-        primary: true,
-        position: 0,
-      })
-    )
-    const pageArgs = (runPage as Mock).mock.calls[0][1] as Record<string, unknown>
-    expect(pageArgs).not.toHaveProperty('skipCapture')
-    expect(pageArgs).not.toHaveProperty('parentId')
-  })
-
-  it('fully reviews linked pages when stored reviewDepth is 2', async () => {
-    prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ reviewDepth: 2 }))
-    ;(runPage as Mock).mockImplementation(async (_ctx: unknown, input: { url: string }) =>
-      makePageRun({
-        url: input.url,
-        metadata: {
-          pageText: '',
-          links: [{ href: '/pricing', text: 'Pricing' }],
-        },
-      })
-    )
-
-    await runAudit('audit-1')
-
-    const urls = (runPage as Mock).mock.calls.map(
-      (call: unknown[]) => (call[1] as { url: string }).url
-    )
-    expect(urls[0]).toBe('https://example.com')
-    expect(urls).toContain('https://example.com/pricing')
-    expect(urls.length).toBeGreaterThan(1)
-    expect(persistDeterministicFlags).toHaveBeenCalled()
-    expect((persistDeterministicFlags as Mock).mock.calls.length).toBeGreaterThanOrEqual(2)
+  it('rejects a missing audit', async () => {
+    db.audit.findUnique.mockResolvedValue(null)
+    await expect(runAudit('missing')).rejects.toThrow('not found')
   })
 })

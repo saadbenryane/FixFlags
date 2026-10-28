@@ -8,7 +8,7 @@ import { SiteRunRefusal } from './run-refusal'
 
 export function admittedResponsibilityHash(spec: ExecutionSpec) {
   return createHash('sha256').update(canonicalIntent({ ...spec, outcomes: canonicalExecutionOutcomes(spec.outcomes),
-    scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
+    engine: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
 }
 
 type RetryActor = AdminDomainActor | { kind: 'owner'; userId: string }

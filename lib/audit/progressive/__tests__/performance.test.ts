@@ -289,7 +289,7 @@ describe('progressive Performance evidence', () => {
 
   it('keeps failed INP coverage in the same device scope as successful coverage', async () => {
     const upsert = vi.fn()
-    const tx = { auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient
+    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient
     await publishUnfinishedCoverage(tx, { id: 'task', auditId: 'audit', workKind: 'check',
       workInput: context(measurement(), 'performance', 'mobile').input }, 'PROVIDER_QUOTA')
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({

@@ -434,7 +434,7 @@ describe('comprehensive homepage experience', () => {
     const dialog = screen.getByRole('dialog')
     await waitFor(() => expect(within(dialog).getByText('Check details')).toBeVisible())
     fireEvent.click(within(dialog).getByText('Check details'))
-    expect(within(dialog).getByText('Recorded periods')).toBeVisible()
+    await waitFor(() => expect(within(dialog).getByText('Recorded periods')).toBeVisible())
     expect(within(dialog).getByText('Back online', { selector: 'strong' })).toBeVisible()
     fireEvent.click(within(dialog).getByRole('button', { name: '7 days' }))
     await waitFor(() => expect(within(dialog).getByText('Recorded periods').closest('details')!.querySelectorAll('ul li')).toHaveLength(56))

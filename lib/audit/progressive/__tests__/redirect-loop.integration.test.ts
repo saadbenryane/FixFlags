@@ -59,7 +59,7 @@ run('public redirect loop through URL admission and installed workers', () => {
   })
   async function complete(auditId: string) {
     await vi.waitFor(async () => {
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'check', 'finalize', 'bindings', 'search', 'search-resources', 'discovery'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
@@ -74,15 +74,17 @@ run('public redirect loop through URL admission and installed workers', () => {
     if (!result.ok || !('verificationAuditId' in result)) throw new Error('Verification was not admitted')
     await complete(result.verificationAuditId!)
     expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome, comparable: outcome !== 'INCONCLUSIVE' })
-    expect(await prisma.auditVerifierExecution.count({ where: { auditId: result.verificationAuditId!, workKind: 'browser' } })).toBe(0)
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: result.verificationAuditId!, workKind: 'browser' } })).toBe(0)
     const request = await prisma.runRequest.findFirstOrThrow({ where: { auditId: result.verificationAuditId! }, select: { id: true } })
     expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR' : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
   }
   it('flags a recorded loop, refuses uncertain endings, independently verifies repair and retains recurrence', async () => {
-    const source = await createAndEnqueueAudit({ url: pageUrl, userId })
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    userId })
     await complete(source.auditId)
     projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } })).projectId!
-    const recorded = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
+    const recorded = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
     expect(httpArtifactSchema.parse(readArtifact(recorded.workResult, 'http').data).document).toMatchObject({ url: pageUrl,
       status: 302, complete: false, body: null, reason: 'redirect_loop', redirects: expect.any(Array) })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'page-redirect-loop' } })
@@ -104,6 +106,6 @@ run('public redirect loop through URL admission and installed workers', () => {
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: occurrence.improvementId })
     expect(await getOwnedRun(userId, recurring.runId)).toMatchObject({ result: 'FLAG' })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: recorded.id } })).toEqual(recorded)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: recorded.id } })).toEqual(recorded)
   }, 150_000)
 })

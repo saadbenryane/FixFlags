@@ -188,7 +188,9 @@ describe('anonymous scan reuse and Site ownership', () => {
       primaryAuditId: 'audit-stranger',
     })
 
-    const result = await createAndEnqueueAudit({ url: URL_A, visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
 
     expect(result.reused).toBe(false)
     expect(result.auditId).not.toBe('audit-stranger')
@@ -204,7 +206,9 @@ describe('anonymous scan reuse and Site ownership', () => {
       primaryAuditId: 'audit-mine',
     })
 
-    const result = await createAndEnqueueAudit({ url: URL_A, visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
 
     expect(result.reused).toBe(true)
     expect(result.auditId).toBe('audit-mine')
@@ -221,7 +225,9 @@ describe('anonymous scan reuse and Site ownership', () => {
       primaryAuditId: 'audit-failed',
     })
 
-    const result = await createAndEnqueueAudit({ url: URL_A, visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
 
     expect(result.reused).toBe(false)
   })
@@ -234,17 +240,18 @@ describe('anonymous scan reuse and Site ownership', () => {
       primaryAuditId: 'audit-mine',
     })
 
-    await createAndEnqueueAudit({ url: URL_A, visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
 
     expect(mocks.state.trackedAnonIds).toEqual(['audit-mine'])
   })
 
   it('keys the Site board on the visitor identity, never on the request IP', async () => {
-    await createAndEnqueueAudit({
-      url: URL_A,
-      clientId: '203.0.113.9',
-      visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    clientId: '203.0.113.9',
+    visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
 
     expect(mocks.state.ensureSiteArgs?.sessionKey).toBe('anon-v1:aaaaaaaaaaaaaaaa')
     expect(mocks.state.ensureSiteArgs?.sessionKey).not.toContain('203.0.113.9')
@@ -253,8 +260,12 @@ describe('anonymous scan reuse and Site ownership', () => {
   it('never collapses unrelated visitors onto a shared key', async () => {
     // Two visitors, no proxy headers at all. The old code keyed both as
     // 'unknown' and put them on one shared board.
-    const first = await createAndEnqueueAudit({ url: URL_A, visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
-    const second = await createAndEnqueueAudit({ url: URL_A, visitorKey: 'anon-v1:bbbbbbbbbbbbbbbb' })
+    const first = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    visitorKey: 'anon-v1:aaaaaaaaaaaaaaaa' })
+    const second = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: URL_A,
+    visitorKey: 'anon-v1:bbbbbbbbbbbbbbbb' })
 
     expect(first.siteId).not.toBe(second.siteId)
     expect(mocks.state.provisionalFindUniqueArgs?.sessionKey_canonicalHost.sessionKey).toBe(

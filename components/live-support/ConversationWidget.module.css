@@ -1,7 +1,11 @@
+.launcher, .panel {
+  --conversation-bottom: max(calc(var(--floating-action-offset) + env(safe-area-inset-bottom)), calc(var(--bottom-notice-inset, 0px) + 16px));
+}
+
 .launcher {
   position: fixed;
   right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
-  bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
+  bottom: var(--conversation-bottom);
   z-index: var(--z-fab);
   width: 56px;
   height: 56px;
@@ -9,31 +13,21 @@
   box-shadow: var(--shadow-card);
 }
 
-.publicLauncher {
-  bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
-}
-
 .panel {
   position: fixed;
   right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
-  bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
+  bottom: var(--conversation-bottom);
   z-index: var(--z-fab);
   display: flex;
   flex-direction: column;
   width: min(25rem, calc(100vw - 2 * var(--floating-action-offset)));
-  height: min(35rem, calc(100dvh - 2 * var(--floating-action-offset)));
+  height: min(35rem, calc(100dvh - var(--floating-action-offset) - var(--conversation-bottom)));
   overflow: hidden;
   border-radius: var(--radius-card);
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   box-shadow: var(--shadow-raised);
   outline: none;
-}
-
-@media (max-width: 767px) {
-  .launcher:not(.publicLauncher) {
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 639px) {

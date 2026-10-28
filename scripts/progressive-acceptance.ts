@@ -39,19 +39,19 @@ async function main() {
   const interrupted = executeTask({ auditId: audit.id, taskId: slow.id, generation: 1 }, handlers)
   await running
   await executeTask({ auditId: audit.id, taskId: fast.id, generation: 1 }, handlers)
-  const fastResult = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: fast.id } })
+  const fastResult = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: fast.id } })
   assert.equal(fastResult.workState, 'COMPLETED')
-  assert.equal((await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: slow.id } })).workState, 'RUNNING')
+  assert.equal((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: slow.id } })).workState, 'RUNNING')
   assert.equal(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'task_observation_committed', executionId: fast.id } }), 1)
   // Simulated process loss: expire its physical lease while its late promise is still alive.
-  await prisma.auditVerifierExecution.update({ where: { id: slow.id }, data: { workLeaseUntil: new Date(0) } })
+  await prisma.auditExecutionTask.update({ where: { id: slow.id }, data: { workLeaseUntil: new Date(0) } })
   await reconcileTasks(audit.id)
-  assert.equal((await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: slow.id } })).workState, 'RETRY_WAIT')
-  await prisma.auditVerifierExecution.update({ where: { id: slow.id }, data: { workRetryAt: new Date(0) } })
+  assert.equal((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: slow.id } })).workState, 'RETRY_WAIT')
+  await prisma.auditExecutionTask.update({ where: { id: slow.id }, data: { workRetryAt: new Date(0) } })
   await reconcileTasks(audit.id)
   await executeTask({ auditId: audit.id, taskId: slow.id, generation: 2 }, handlers)
   unblock(); await interrupted
-  const replacement = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: slow.id } })
+  const replacement = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: slow.id } })
   assert.equal(replacement.workState, 'COMPLETED'); assert.equal(replacement.workGeneration, 2)
   assert.equal((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).progressDetail, 'generation-2')
   assert.equal(await prisma.auditPipelineEvent.count({ where: { executionId: slow.id, event: 'task_observation_committed' } }), 1)
@@ -59,14 +59,14 @@ async function main() {
   assert.equal(await prisma.auditPipelineEvent.count({ where: { executionId: fast.id, event: 'task_observation_committed' } }), 1)
   const customerFailure = (await loadTasks(audit.id)).find(task => task.targetKey === 'task:failure')!
   await executeTask({ auditId: audit.id, taskId: customerFailure.id, generation: 1 }, handlers)
-  const observedFailure = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: customerFailure.id } })
+  const observedFailure = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: customerFailure.id } })
   assert.equal(observedFailure.workState, 'COMPLETED')
   assert.equal((observedFailure.workResult as { data: { verdict: string } }).data.verdict, 'failed')
   await executeTask({ auditId: audit.id, taskId: customerFailure.id, generation: 1 }, handlers)
-  assert.equal((await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: customerFailure.id } })).workAttempts, 1)
+  assert.equal((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: customerFailure.id } })).workAttempts, 1)
   const refusal = (await loadTasks(audit.id)).find(task => task.targetKey === 'task:refusal')!
   await executeTask({ auditId: audit.id, taskId: refusal.id, generation: 1 }, handlers)
-  assert.equal((await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: refusal.id } })).workState, 'BLOCKED')
+  assert.equal((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: refusal.id } })).workState, 'BLOCKED')
   const flag = { checkId: 'og-image-missing', rubric: 'REACH', severity: 'IMPORTANT', problem: 'Fixture preview is missing',
     evidence: 'Recorded fixture fact', fix: 'Add a preview image', confidence: 0.95, source: 'DETERMINISTIC' as const, pageUrl: audit.url }
   await persistDeterministicFlags(audit.id, [flag], {})
@@ -74,7 +74,7 @@ async function main() {
   await persistDeterministicFlags(audit.id, [flag], {})
   const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: flag.checkId } })
   assert.equal(repeated.id, persisted.id); assert.equal(await prisma.flag.count({ where: { auditId: audit.id } }), 1)
-  assert.deepEqual((await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: fast.id } })).workResult, fastResult.workResult)
+  assert.deepEqual((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: fast.id } })).workResult, fastResult.workResult)
   // A lease alone cannot permit publication beyond the admitted recovery bound.
   const expired = await prisma.audit.create({ data: { url: audit.url, status: 'CAPTURING',
     recoveryUntil: new Date(Date.now() + 60_000), executionSpec: audit.executionSpec! } })
@@ -94,7 +94,7 @@ async function main() {
   await prisma.audit.update({ where: { id: expired.id }, data: { recoveryUntil: new Date(0) } })
   releaseDeadline(); await late; await reconcileTasks(expired.id)
   assert.equal((await prisma.audit.findUniqueOrThrow({ where: { id: expired.id } })).progressDetail, null)
-  assert.equal((await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: expiredTask.id } })).workState, 'EXHAUSTED')
+  assert.equal((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: expiredTask.id } })).workState, 'EXHAUSTED')
   assert.equal(await prisma.auditPipelineEvent.count({ where: { executionId: expiredTask.id, event: 'task_observation_committed' } }), 0)
   await prisma.audit.update({ where: { id: expired.id }, data: { status: 'FAILED', completedAt: new Date(), errorMsg: 'Recovery deadline fencing fixture only.' } })
   await prisma.audit.update({ where: { id: audit.id }, data: { status: 'FAILED', completedAt: new Date(),

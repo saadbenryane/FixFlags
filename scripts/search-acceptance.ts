@@ -68,7 +68,7 @@ async function main() {
     assert(improvement.id)
     const unrepaired = await execute(failure.audit.id)
     const proof = async (auditId: string) => {
-      const ledger = await prisma.auditVerifierExecution.findFirst({ where: { auditId, targetKey: 'check:title-missing' } })
+      const ledger = await prisma.auditVerificationReceipt.findFirst({ where: { auditId, targetKey: 'check:title-missing' } })
       return searchVerifierSchema.parse(ledger?.detail)
     }
     assert.equal((await proof(unrepaired.audit.id)).verdict, 'failed')
@@ -76,7 +76,7 @@ async function main() {
     const repair = await execute(failure.audit.id)
     assert.equal((await proof(repair.audit.id)).verdict, 'passed')
     await recordSearchVerifiers(repair.receipt)
-    assert.equal(await prisma.auditVerifierExecution.count({ where: { auditId: repair.audit.id, targetKey: 'check:title-missing' } }), 1)
+    assert.equal(await prisma.auditVerificationReceipt.count({ where: { auditId: repair.audit.id, targetKey: 'check:title-missing' } }), 1)
     broken = true
     const recurrence = await execute(repair.audit.id)
     assert.equal(recurrence.findings.find(item => item.checkId === 'title-missing')?.attentionPolicy?.kind, 'flag')
@@ -85,7 +85,7 @@ async function main() {
     assert(resultPage.nextCursor)
     const history = await loadSiteCheckResultPage({ projectId: site.id } as SiteRecord, recurrence.audit.id, resultPage.nextCursor)
     assert(history.results.every(item => item.historical && item.auditId !== recurrence.audit.id))
-    const ledger = await prisma.auditVerifierExecution.findMany({ where: { auditId: recurrence.audit.id, targetKey: 'module:search' } })
+    const ledger = await prisma.auditVerificationReceipt.findMany({ where: { auditId: recurrence.audit.id, targetKey: 'module:search' } })
     assert.deepEqual(resultPage.results, projectCheckResults(recurrence.audit.id, ledger))
     console.log(JSON.stringify({ status: 'passed', database: 'disposable', browser: 'Playwright',
       scenarios: ['original versus injected markup', 'failure', 'unrepaired verification', 'fresh recovery', 'recurrence', 'idempotent proof', 'current/history separation', 'shared projection'],

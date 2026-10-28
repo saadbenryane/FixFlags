@@ -121,7 +121,7 @@ run('Search provider authorization at evidence commit', () => {
         release()
         const completed = await settled
         expect(completed.error).toBeNull()
-        const saved = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:search-google' } })
+        const saved = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:search-google' } })
         const receipt = searchReceiptSchema.parse(saved.detail)
         if (phase === 'access-refresh') {
           expect(receipt.complete).toBe(true)

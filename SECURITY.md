@@ -176,7 +176,7 @@ that the server never returned an HTTP response.
 - Repository-owned curated samples may ship versioned static Timeline fixtures because they contain no production report payload or private viewer data.
 - `/report/[id]` is the canonical report URL. Copy link preserves its access policy and does not grant access by itself.
 - Legacy `/share/[token]` reads remain compatibility-only. The product no longer creates or manages protected share links. Do not treat `ShareLink.passwordHash` as a live product contract.
-- Canvas is private to the report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
+- Retired Canvas records remain private historical data. Creation and management APIs are absent.
 
 ## Captured evidence access
 
@@ -320,3 +320,14 @@ Product Signal ingestion is the explicit exception.
 - Coordinator and task claims, writes, lease renewal and resource cancellation share the source Audit's current Site authority. A live token cannot borrow a new owner's entitlement or authorize account actions after transfer. The Site fence remains held through each guarded commit, and stale deliveries cannot consume a new generation or protected attempt. Cleanup retains its deletion and inactive-account exception only for the same owner. Anonymous checks may continue through a claim that attaches their original Audit to the claiming owner; fresh runs preserve Site test identities and automatic preferences. Disposable PostgreSQL and Chromium fixtures verify these boundaries locally.
 - Account and configured Signup request policies execute in the shared native boundary once per physical request hop, including HTTP redirects. Browser events retain the admitted execution's async context so permission transactions keep lease fences. Signup mutations require submission admission and a current exact-version fixture grant. External redirects cannot bypass the origin boundary, and suppressed telemetry cannot consume an account mutation or invalidate read-only inspection.
 - Rendered error documents may be retained only when inspecting an existing active or deleting account. Normal discovery and signup keep strict response capture, and challenge detection remains enforced. The disposable HTTPS lifecycle fixture uses an exact validation origin, temporary credentials and simulated receiving content; it neither sends email nor enables production lifecycle gates.
+
+## Task and verification custody
+
+Queue tasks and verification receipts occupy separate tables. Task claims,
+renewal and cancellation use the task table and retain the current Site and
+account authority fence. A receipt's optional task relationship includes its
+Audit ID, so another Audit's task cannot supply its source relationship. The
+combined coverage view is read-only in PostgreSQL and in the Prisma client.
+The migration preserves task identities, generations, artifacts, lease values
+and receipt provenance. Mixed-version writers are unsupported during this
+migration; follow the coordinated runtime procedure in DEVELOPMENT.md.

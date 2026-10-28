@@ -99,7 +99,7 @@ try {
   receipt.status = 'failed'
   if (created) {
     const diagnosis = new PrismaClient({ datasourceUrl: disposable.toString() })
-    try { receipt.tasks = await diagnosis.auditVerifierExecution.findMany({
+    try { receipt.tasks = await diagnosis.auditExecutionTask.findMany({
       where: { workKind: { not: null } }, select: { targetKey: true, workKind: true, workState: true, workAttempts: true, workErrorCode: true, workRetryAt: true, workLeaseUntil: true },
     }) } finally { await diagnosis.$disconnect() }
   }

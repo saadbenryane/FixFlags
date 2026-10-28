@@ -261,9 +261,9 @@ export const evaluatorHandlers: TaskHandler[] = [
     async commit(context, artifact, tx) {
       const { receipt } = searchArtifactSchema.parse(artifact.data)
       const receiptModule = !context.input.module || context.input.module === 'summary' ? 'search' : context.input.module
-      if (context.input.module !== 'summary') await tx.auditVerifierExecution.upsert({
+      if (context.input.module !== 'summary') await tx.auditVerificationReceipt.upsert({
         where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl } },
-        create: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl,
+        create: { taskId: context.task.id, auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl,
           pageUrl: receipt.pageUrl, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
           evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receiptModule, pageUrl: receipt.pageUrl } }, update: {},
       })

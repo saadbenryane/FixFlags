@@ -131,7 +131,7 @@ export const collectionHandlers: TaskHandler[] = [
       const spec = readExecutionSpec(context.audit.executionSpec)
       const consoleObservationMs = requestedConsoleWindow(spec, pageUrl)
       const consumers = context.task.targetKey?.startsWith('task:')
-        ? await prisma.auditVerifierExecution.findMany({ where: { auditId: context.audit.id,
+        ? await prisma.auditExecutionTask.findMany({ where: { auditId: context.audit.id,
           workDependencies: { has: context.task.targetKey.slice(5) } },
           select: { workKind: true, workInput: true }, take: MAX_TASKS_PER_AUDIT + 1 }) : []
       if (consumers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('TASK_GRAPH_LIMIT', false)

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), task: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { runRequest: { findFirst: mocks.findFirst }, auditVerifierExecution: { findFirst: mocks.task } } }))
+vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  runRequest: { findFirst: mocks.findFirst }, auditVerifierExecution: { findFirst: mocks.task } } }))
 import { getOwnedRun } from '../run-queries'
 import type { FlagDiffSummary } from '@/lib/audit/flag-comparison'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'

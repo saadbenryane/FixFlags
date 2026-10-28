@@ -89,8 +89,12 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
 
   it('creates one countable first Review for two concurrent manual starts', async () => {
     const results = await Promise.all([
-      createAndEnqueueAudit({ url, userId }),
-      createAndEnqueueAudit({ url, userId }),
+      createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    userId }),
+      createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    userId }),
     ])
 
     expect(new Set(results.map((result) => result.auditId)).size).toBe(1)
@@ -105,8 +109,12 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
     const parent = await completedParent(`review-parent-${suffix}`)
 
     const results = await Promise.all([
-      createAndEnqueueAudit({ url, userId, parentId: parent.id }),
-      createAndEnqueueAudit({ url, userId, parentId: parent.id }),
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: parent.id, allowance: 'metered' },
+    url,
+    userId }),
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: parent.id, allowance: 'metered' },
+    url,
+    userId }),
     ])
 
     expect(new Set(results.map((result) => result.auditId)).size).toBe(1)
@@ -119,17 +127,13 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
   it('returns the active Review and its real parent for a conflicting request', async () => {
     const firstParent = await completedParent(`review-parent-a-${suffix}`)
     const secondParent = await completedParent(`review-parent-b-${suffix}`)
-    const active = await createAndEnqueueAudit({
-      url,
-      userId,
-      parentId: firstParent.id,
-    })
+    const active = await createAndEnqueueAudit({ admission: { kind: 'update', parentId: firstParent.id, allowance: 'metered' },
+    url,
+    userId })
 
-    const resumed = await createAndEnqueueAudit({
-      url,
-      userId,
-      parentId: secondParent.id,
-    })
+    const resumed = await createAndEnqueueAudit({ admission: { kind: 'update', parentId: secondParent.id, allowance: 'metered' },
+    url,
+    userId })
 
     expect(resumed).toMatchObject({
       auditId: active.auditId,
@@ -144,14 +148,12 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
     const parent = await completedParent(`review-parent-watch-${suffix}`)
 
     const [manual, watch] = await Promise.all([
-      createAndEnqueueAudit({ url, userId, parentId: parent.id }),
-      createAndEnqueueAudit({
-        url,
-        userId,
-        parentId: parent.id,
-        recheckTrigger: 'WATCH',
-        skipUsageCount: true,
-      }),
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: parent.id, allowance: 'metered' },
+    url,
+    userId }),
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: parent.id, trigger: 'WATCH', allowance: (true) ? 'included' : 'metered' },
+    url,
+    userId }),
     ])
 
     expect(manual.reused).toBe(false)
@@ -185,20 +187,28 @@ runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
   })
 
   it.each(['COMPLETED', 'CHECKING'] as const)('reuses the same visitor’s %s scan and refreshes claim access', async status => {
-    const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    const admitted = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId } }))
       .toMatchObject({ userId: null, isPublic: false })
     await prisma.audit.update({ where: { id: admitted.auditId }, data: { status, ...(status === 'COMPLETED' ? { completedAt: new Date() } : {}) } })
     queueAdd.mockClear(); trackAnonymousAuditId.mockClear()
-    const result = await createAndEnqueueAudit({ url, visitorKey })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
     expect(result).toEqual({ auditId: admitted.auditId, status, reused: true, parentId: null, siteId: admitted.siteId })
     expect(queueAdd).not.toHaveBeenCalled()
     expect(trackAnonymousAuditId).toHaveBeenCalledWith(admitted.auditId)
   })
 
   it('creates an independent board for a different visitor at the exact same URL', async () => {
-    const first = await createAndEnqueueAudit({ url, visitorKey })
-    const other = await createAndEnqueueAudit({ url, visitorKey: visitorKey + '-other' })
+    const first = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
+    const other = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey: visitorKey + '-other' })
     expect(other.reused).toBe(false)
     expect(other.auditId).not.toBe(first.auditId)
     expect(other.siteId).not.toBe(first.siteId)
@@ -206,7 +216,9 @@ runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
   })
 
   it('does not turn a retained board reference into anonymous access to an owned audit', async () => {
-    const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    const admitted = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
     const ownerId = 'anonymous-reuse-owner-' + randomUUID()
     await prisma.user.create({ data: { id: ownerId, email: ownerId + '@example.test' } })
     try {
@@ -214,7 +226,9 @@ runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
         userId: ownerId, isPublic: false, status: 'COMPLETED', completedAt: new Date(),
       } })
       trackAnonymousAuditId.mockClear()
-      const result = await createAndEnqueueAudit({ url, visitorKey })
+      const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
       expect(result.reused).toBe(false)
       expect(result.auditId).not.toBe(admitted.auditId)
       expect(trackAnonymousAuditId).toHaveBeenCalledWith(result.auditId)
@@ -227,11 +241,15 @@ runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
   })
 
   it('creates a new teaser on the same board when its own completed scan is older than one hour', async () => {
-    const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    const admitted = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
     await prisma.audit.update({ where: { id: admitted.auditId }, data: { status: 'COMPLETED',
       completedAt: new Date(Date.now() - 61 * 60 * 1000), createdAt: new Date(Date.now() - 62 * 60 * 1000) } })
     queueAdd.mockClear(); trackAnonymousAuditId.mockClear()
-    const result = await createAndEnqueueAudit({ url, visitorKey })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey })
     expect(result.reused).toBe(false)
     expect(result.auditId).not.toBe(admitted.auditId)
     expect(result.siteId).toBe(admitted.siteId)

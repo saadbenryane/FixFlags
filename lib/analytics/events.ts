@@ -67,6 +67,16 @@ export type FunnelEvent =
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared' | 'product'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
 
+/** Retained names for historical reports. Current Site lifecycle facts live in site-events.ts. */
+export const RETIRED_FUNNEL_EVENTS = [
+  'audit_completed',
+  'recheck_started',
+  'recheck_completed',
+  'report_prompts_unlocked',
+  'product_contract_saved',
+  'remember_shown',
+] as const satisfies readonly FunnelEvent[]
+
 export type AcquisitionTool = 'meta-preview' | 'placeholder-detector'
 export type ToolResultOutcome =
   | 'succeeded'

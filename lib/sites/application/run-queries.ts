@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { analysisTaskWhere } from '@/lib/audit/progressive/contracts'
+import { analysisEvidenceTaskWhere } from '@/lib/audit/progressive/contracts'
 import { currentOutcomeState } from '@/lib/sites/outcome-state'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { projectSiteAssessment, recordedDiagnosticConclusion, recordedAccountConclusion } from '../assessment'
@@ -19,7 +19,7 @@ export async function getOwnedRun(userId: string, runId: string) {
         verifierExecutions: { ...siteCoverageExecutionSelect,
           select: { ...siteCoverageExecutionSelect.select, workState: true, workDependencies: true },
           where: { OR: [...siteCoverageExecutionSelect.where.OR,
-            { ...analysisTaskWhere, audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } } }] } },
+            { ...analysisEvidenceTaskWhere, audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } } }] } },
         pages: { select: { url: true, status: true } },
         verificationAttempts: { select: { id: true, sourceAuditId: true, verificationAuditId: true,
           outcome: true, comparable: true, evidenceReference: true } },
@@ -49,7 +49,7 @@ export async function getOwnedRun(userId: string, runId: string) {
   const spec = readExecutionSpec(run.executionSpec)
   const broad = spec?.scope === 'SITE' || spec?.scope === 'CATEGORY'
   const diagnostic = recordedDiagnosticConclusion({ executionSpec: run.executionSpec, audit: run.audit })
-  const accountTask = spec?.scope === 'ACCOUNT_CHECKS' && run.auditId ? await prisma.auditVerifierExecution.findFirst({
+  const accountTask = spec?.scope === 'ACCOUNT_CHECKS' && run.auditId ? await prisma.auditExecutionTask.findFirst({
     where: { auditId: run.auditId, targetKey: 'task:automatic-accounts', workKind: 'automatic-accounts', workState: 'COMPLETED' },
     select: { workResult: true },
   }) : null

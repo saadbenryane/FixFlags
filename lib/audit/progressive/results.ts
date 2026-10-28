@@ -63,7 +63,7 @@ export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.Tran
   const spec = readExecutionSpec(executionSpec)
   const rows = await db.$queryRaw<Array<{ findings: unknown; taskId?: string; collectedAt?: string }>>`
     SELECT "workResult"->'data'->'flags' AS findings, "id" AS "taskId",
-      COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt" FROM "audit_verifier_executions"
+      COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt" FROM "audit_execution_tasks"
     WHERE "auditId" = ${auditId} AND "workState" = 'COMPLETED'
       AND "workKind" IN ('check', 'search', 'google', 'flow', 'overlays', 'journeys', 'slow-replay', 'cross-page', 'discovery', 'automatic-accounts')
       AND "workResult"->'data'->'flags' <> '[]'::jsonb
@@ -83,9 +83,9 @@ export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<
   if (allowedCheckIds && !receipt.assertions.length && CHECK_MODULES[receipt.module]?.area !== spec!.category!.area) return
   receipt = { ...receipt, ...summarizeCheckAssertions(receipt) }
   const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix
-  await tx.auditVerifierExecution.upsert({
+  await tx.auditVerificationReceipt.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey } },
-    create: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey,
+    create: { taskId: context.task.id, auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey,
       source: 'DETERMINISTIC', pageUrl: receipt.pageUrl, status: 'COMPLETED', checkVersion: receipt.execution?.checkVersion ?? 1,
       detail: receipt as Prisma.InputJsonValue, evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receipt.module, pageUrl: receipt.pageUrl } }, update: {},
   })

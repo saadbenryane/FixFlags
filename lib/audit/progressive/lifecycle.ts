@@ -1,6 +1,6 @@
 import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { journeyAssessmentSchema, hasIncompleteJourneyAssessment, type JourneyAssessment } from '../journey/evaluation-grounding'
-import { Prisma, type AuditVerifierExecution } from '@prisma/client'
+import { Prisma, type AuditExecutionTask } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -79,7 +79,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
   // Project metadata, media references and observations in PostgreSQL. Summary
   // readers never transfer whole-document HTML, network traces or sitemap bodies.
   // Discovery reuses only the bounded native anchor section and its observed base.
-  const tasksQuery = db.$queryRaw<Array<Pick<AuditVerifierExecution, 'id' | 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
+  const tasksQuery = db.$queryRaw<Array<Pick<AuditExecutionTask, 'id' | 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
     SELECT "id", "workKind", "workState", "status", "workInput",
       CASE WHEN "workKind" = 'browser' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata',
@@ -99,14 +99,14 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       WHEN "workKind" IN ('journeys', 'cross-page') THEN jsonb_set("workResult", '{data}', jsonb_build_object('flags', "workResult"->'data'->'flags'))
       WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'fixture-setup', 'automatic-accounts', 'finalize') THEN NULL
       ELSE "workResult" END AS "workResult"
-    FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" LIKE 'task:%'
+    FROM "audit_execution_tasks" WHERE "auditId" = ${auditId}
       ${pageUrl ? Prisma.sql`AND "pageUrl" = ${pageUrl}` : Prisma.empty}
     ORDER BY "createdAt", "id" LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
   const gapsQuery = db.$queryRaw<Array<{ pageUrl: string; targetKey: string }>>`
     SELECT DISTINCT COALESCE(task."pageUrl", receipt."pageUrl") AS "pageUrl", receipt."targetKey"
     FROM "audit_verifier_executions" receipt
-    LEFT JOIN "audit_verifier_executions" task ON task."id" = (receipt."evidenceReference"->>'taskId')
-      AND task."auditId" = receipt."auditId" AND task."targetKey" LIKE 'task:%'
+    LEFT JOIN "audit_execution_tasks" task ON task."id" = receipt."taskId"
+      AND task."auditId" = receipt."auditId"
     WHERE receipt."auditId" = ${auditId} AND receipt."targetKey" LIKE 'module:%'
       AND receipt."status" <> 'NOT_APPLICABLE' AND receipt."detail"->>'complete' = 'false'
       AND COALESCE(task."pageUrl", receipt."pageUrl") IS NOT NULL
@@ -417,7 +417,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
       const tasks = await loadTaskGraph(latest.id)
       const failed = tasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task => task.workKind ?? 'unknown')
-      const journeyAssessments = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id, workKind: 'journeys', workState: 'COMPLETED' },
+      const journeyAssessments = await prisma.auditExecutionTask.findMany({ where: { auditId: latest.id, workKind: 'journeys', workState: 'COMPLETED' },
         take: MAX_TASKS_PER_AUDIT, select: { workResult: true } })
       if (journeyAssessments.some(task => hasIncompleteJourneyAssessment(task.workResult))) failed.push('journey-evaluation')
       const incomplete = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id,
@@ -447,7 +447,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
       const pages = await recordedPageEvidence(latest.id), ctx = await pipelineContext(context)
       failed.push(...pages.flatMap(page => page.failedModules).filter(module => !failed.includes(module)))
-      const accountTask = await prisma.auditVerifierExecution.findFirst({ where: { auditId: latest.id, workKind: 'automatic-accounts', workState: 'COMPLETED' }, select: { workResult: true } })
+      const accountTask = await prisma.auditExecutionTask.findFirst({ where: { auditId: latest.id, workKind: 'automatic-accounts', workState: 'COMPLETED' }, select: { workResult: true } })
       if (accountTask?.workResult && pages[0]) {
         const accountFlags = z.array(flagSchema).parse(readArtifact(accountTask.workResult, 'automatic-accounts').data.flags ?? [])
         pages[0].flags.push(...accountFlags)

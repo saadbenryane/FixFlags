@@ -50,7 +50,7 @@ run('Site removal with real execution and persistence', () => {
     const execution = executeTask(job, handlers)
     try {
       await vi.waitFor(() => expect(evaluate).toHaveBeenCalledOnce())
-      const executing = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })
+      const executing = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: tasks[0].id } })
       await removeSite(owner)
       await expect(withExecutionOwnership({ auditId: audit.id, taskId: executing.id, token: executing.workToken!, generation: 1 },
         () => executionWrite(tx => tx.audit.update({ where: { id: audit.id }, data: { errorMsg: 'Stale write' } }))))

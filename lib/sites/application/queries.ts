@@ -77,10 +77,20 @@ async function loadLatestWatchAlert(projectId: string | null | undefined) {
     : null
 }
 
-export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean; viewerAuthenticated?: boolean; site?: SiteRecord | null } = {}): Promise<SiteHomeView | null> {
+type SiteReadOptions = {
+  ownerEvidence?: boolean
+  viewerAuthenticated?: boolean
+  site?: SiteRecord | null
+  readScope?: 'overview' | 'settings'
+  connections?: Promise<Awaited<ReturnType<typeof loadSiteConnectionViews>> | null>
+}
+
+export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}): Promise<SiteHomeView | null> {
   const site = options.site ?? await loadSiteRecord(siteId)
   if (!site) return null
+  if (site.siteId !== siteId) throw new Error('Site query identity mismatch')
   const now = new Date()
+  const settingsEvidence = options.readScope === 'settings' && options.ownerEvidence
 
   const selection = await loadSiteAnalysisSelection(site)
   // History only needs the site and its analysis selection, so it overlaps the
@@ -132,11 +142,11 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     audit?.id ? loadTechnologyProfile(audit.id) : null,
     trackingAudit ? loadTechnologyProfile(trackingAudit.id) : null,
     loadActiveSiteRuns(site, now),
-    site.projectId ? loadSiteConnectionViews(site.projectId) : null,
+    options.connections ?? (site.projectId ? loadSiteConnectionViews(site.projectId) : null),
     loadLatestWatchAlert(site.projectId),
     loadExecutionProgress(site, audit?.id ?? null),
-    site.projectId ? loadAccountChecksView(site.projectId) : undefined,
-    options.ownerEvidence && site.userId ? prisma.githubConnection.findUnique({ where: { userId: site.userId }, select: { githubLogin: true, revokedAt: true } }) : null,
+    settingsEvidence && site.projectId ? loadAccountChecksView(site.projectId) : undefined,
+    settingsEvidence && site.userId ? prisma.githubConnection.findUnique({ where: { userId: site.userId }, select: { githubLogin: true, revokedAt: true } }) : null,
   ])
   const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
   const pageCoverage = executionPageCoverage({ executionSpec: audit?.executionSpec, pages: checkedPages, executions: audit?.verifierExecutions })
@@ -205,6 +215,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
 
   return projectSiteHomeForViewer({
     schemaVersion: 2,
+    readScope: options.readScope ?? 'overview',
     actions: siteViewerActions(Boolean(options.ownerEvidence && site.projectId), options.viewerAuthenticated),
     counts: siteScopeCounts(flags, checkedPages, pageCount),
     captures, uptime,
@@ -258,7 +269,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
       },
     },
     settings: {
-      ...(options.ownerEvidence ? { github: { configured: isGithubRepoAccessConfigured(), status: github ? github.revokedAt ? 'revoked' as const : 'connected' as const : 'not_connected' as const, login: github?.githubLogin ?? null } } : {}),
+      ...(settingsEvidence ? { github: { configured: isGithubRepoAccessConfigured(), status: github ? github.revokedAt ? 'revoked' as const : 'connected' as const : 'not_connected' as const, login: github?.githubLogin ?? null } } : {}),
       ...(accountChecks ? { accountChecks } : {}),
       notificationLevel: projectSettings?.notificationLevel ?? null,
       notifyOnRecovery: projectSettings?.notifyOnRecovery ?? null,
@@ -288,8 +299,9 @@ function emptyConnection(provider: PublicConnection['provider']): PublicConnecti
   }
 }
 
-export async function loadSiteBoardFlag(siteId: string, flagId: string) {
-  const site = await loadSiteRecord(siteId)
+export async function loadSiteBoardFlag(siteId: string, flagId: string, resolvedSite?: SiteRecord) {
+  const site = resolvedSite ?? await loadSiteRecord(siteId)
+  if (site && site.siteId !== siteId) throw new Error('Site query identity mismatch')
   if (!site) return null
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) return null

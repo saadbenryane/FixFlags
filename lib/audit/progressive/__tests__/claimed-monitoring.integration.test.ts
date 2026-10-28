@@ -167,13 +167,13 @@ run('URL-first analysis through claim and monitored repair', () => {
     await vi.waitFor(async () => {
       // Provider acceptance is deliberately absent. Public collection, native
       // browser observations, evaluation and projection execute normally.
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' }, workKind: { in: ['pagespeed', 'google', 'judge'] } },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' }, workKind: { in: ['pagespeed', 'google', 'judge'] } },
         data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
-      expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId, workKind: 'finalize' } }))
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, workKind: 'finalize' } }))
         .toMatchObject({ workState: 'COMPLETED' })
-      if (browserRequired) expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId, workKind: 'browser' } }))
+      if (browserRequired) expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, workKind: 'browser' } }))
         .toMatchObject({ workState: 'COMPLETED', workResult: { data: { metadata: { renderedCopy: { complete: true } } } } })
     }, { timeout: 90_000, interval: 200 })
   }
@@ -201,7 +201,9 @@ run('URL-first analysis through claim and monitored repair', () => {
     }
   })
   it('keeps the original Site and evidence through signed claim, default uptime, independent repair and scheduled recurrence', async () => {
-    const anonymous = await createAndEnqueueAudit({ url: pageUrl, visitorKey: 'claimed-loop-' + randomUUID() })
+    const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    visitorKey: 'claimed-loop-' + randomUUID() })
     expect(anonymous.siteId).toMatch(/^p_/)
     expect(await readClaimedAnonymousIds()).toEqual([anonymous.auditId])
     await complete(anonymous.auditId)
@@ -441,29 +443,29 @@ run('URL-first analysis through claim and monitored repair', () => {
         expectedKeys = [...new Set(findings.map(flagKeyForRow))]
         await enqueuePendingAiReview(audit.id)
         if (interrupted) {
-          await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } }))
+          await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } }))
             .toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 }), { timeout: 10_000, interval: 50 })
           expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED',
             aiReviewAt: null, completedAt: committed.completedAt, reportCompleteness: 'PARTIAL', evidenceCoverage: committed.evidenceCoverage })
           expect((await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id } })).fix.length).toBeGreaterThan(0)
           completion!.mockRestore()
-          await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, workKind: 'prescription' }, data: { workRetryAt: new Date(0) } })
+          await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, workKind: 'prescription' }, data: { workRetryAt: new Date(0) } })
           await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
           await recoverProgressiveTasks()
         }
         await vi.waitFor(async () => {
-          const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+          const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
           expect(task).toMatchObject(primaryMissing ? { workState: 'BLOCKED', workErrorCode: 'PRESCRIPTION_PRIMARY_METADATA_MISSING' }
             : captureMissing ? { workState: 'RETRY_WAIT', workErrorCode: 'PRESCRIPTION_PRIMARY_CAPTURE_MISSING' }
             : incompletePrescriptions ? { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } : { workState: 'COMPLETED' })
         }, { timeout: 15_000, interval: 50 })
         if (captureMissing) {
           expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ failureCode: null, aiReviewAt: null })
-          const pending = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+          const pending = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
           // Expire this disposable fixture's recovery window, never production time.
-          await prisma.auditVerifierExecution.update({ where: { id: pending.id }, data: { workRecoveryUntil: new Date(0) } })
+          await prisma.auditExecutionTask.update({ where: { id: pending.id }, data: { workRecoveryUntil: new Date(0) } })
           await reconcileTasks(audit.id)
-          expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: pending.id } }))
+          expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: pending.id } }))
             .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: 'RECOVERY_EXHAUSTED' })
         }
         const settled = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
@@ -530,10 +532,10 @@ run('URL-first analysis through claim and monitored repair', () => {
       await getAuditTaskQueue('provider').pause()
       expect(await recoverPendingAiReviews()).toBe(1)
       await Promise.all(Array.from({ length: 8 }, () => enqueuePendingAiReview(audit.id)))
-      const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(1)
+      const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(1)
       await (await getAuditTaskQueue('provider').getJob(task.id + '-g1'))!.remove()
-      await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+      await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
       await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
       expect(await recoverProgressiveTasks()).toBeGreaterThan(0)
       expect(await getAuditTaskQueue('provider').getJob(task.id + '-g1')).toBeDefined()
@@ -551,29 +553,29 @@ run('URL-first analysis through claim and monitored repair', () => {
         .rejects.toThrow('no longer owns')
       release()
       await vi.waitFor(async () => {
-        expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 })
+        expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 })
         expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
           .toMatchObject({ ...preserved, failureCode: null })
         expect(await loadExecutionProgress(site, audit.id)).toBeNull()
       }, { timeout: 10_000, interval: 25 })
-      await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+      await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
       await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
       expect(await recoverProgressiveTasks()).toBeGreaterThan(0)
       await vi.waitFor(async () => expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
         .toMatchObject({ ...preserved, aiReviewAt: expect.any(Date), failureCode: null, errorMsg: null }), { timeout: 10_000, interval: 25 })
       expect(provider).toHaveBeenCalledTimes(2)
-      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } }))
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 2 }), { timeout: 5000, interval: 25 })
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: { not: null } } })).toBe(1)
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workKind: { not: null } } })).toBe(1)
       const enriched = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
       // Reproduce interruption after enrichment commits but before task ack.
-      await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workState: 'RUNNING', status: 'RUNNING',
+      await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState: 'RUNNING', status: 'RUNNING',
         workToken: 'lost-ack-owner', workLeaseUntil: new Date(0), workResult: Prisma.DbNull } })
       await reconcileTasks(audit.id)
-      await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+      await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
       await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
       expect(await recoverProgressiveTasks()).toBeGreaterThan(0)
-      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } }))
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 3 }), { timeout: 5000, interval: 25 })
       expect(provider).toHaveBeenCalledTimes(2)
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ aiReviewAt: enriched.aiReviewAt, completedAt })
@@ -586,12 +588,12 @@ run('URL-first analysis through claim and monitored repair', () => {
       { userId: null }, { includeAi: false }, { aiReviewAt: new Date() }]) {
       const audit = await prisma.audit.create({ data: { ...ready, ...changes } })
       await enqueuePendingAiReview(audit.id)
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(0)
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(0)
     }
     const audit = await prisma.audit.create({ data: { ...ready, includeAi: false } })
     const before = Date.now()
     await enqueueAiReview(audit.id, 5000)
-    const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+    const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
     expect(task.workRetryAt!.getTime()).toBeGreaterThanOrEqual(before + 5000)
     expect(await getAuditTaskQueue('provider').getJob(task.id + '-g1')).toBeUndefined()
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ includeAi: true })

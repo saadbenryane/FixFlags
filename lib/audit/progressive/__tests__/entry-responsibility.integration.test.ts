@@ -103,7 +103,7 @@ run('original entry responsibility after URL-first claim and monitoring admissio
   async function complete(auditId: string, keepPrimaryActions = false, keepJourneys = false) {
     await vi.waitFor(async () => {
       // Provider, media and unrelated action work stays explicitly unavailable.
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' }, OR: [
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' }, OR: [
         { workKind: { notIn: ['http', 'browser', 'check', 'finalize', 'bindings', 'search', 'search-resources', 'discovery', ...(keepPrimaryActions ? ['flow'] : []), ...(keepJourneys ? ['journeys'] : [])] } },
         ...(keepPrimaryActions ? ['form-validation', 'mobile-navigation', 'pricing-navigation'].map(module => ({ workKind: 'flow', workInput: { path: ['module'], equals: module } })) : []),
       ] }, data: { workRecoveryUntil: new Date(0) } })
@@ -119,7 +119,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     const owner = 'staging-verification-' + randomUUID(), target = origin + '/pricing/?plan=teams'
     fixtureOwners.push(owner)
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', role: 'admin', auditsLimit: 100 } })
-    const initial = await createAndEnqueueAudit({ url: origin + '/', userId: owner })
+    const initial = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: origin + '/',
+    userId: owner })
     await complete(initial.auditId)
     const site = (await loadSiteRecord(initial.siteId!))!
     repaired = false
@@ -165,7 +167,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     const owner = 'environment-parent-' + randomUUID(), target = origin + '/'
     fixtureOwners.push(owner)
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', role: 'admin', auditsLimit: 100 } })
-    const initial = await createAndEnqueueAudit({ url: target, userId: owner })
+    const initial = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: target,
+    userId: owner })
     await complete(initial.auditId)
     const site = (await loadSiteRecord(initial.siteId!))!
     brokenEntries.add(target)
@@ -206,7 +210,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', role: 'admin', auditsLimit: 100 } })
     discoveredInteraction = true; interactionRepaired = false
     try {
-      const initial = await createAndEnqueueAudit({ url: origin + '/', userId: owner })
+      const initial = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: origin + '/',
+    userId: owner })
       await complete(initial.auditId)
       expect(await prisma.auditPage.findFirst({ where: { auditId: initial.auditId, url: target } })).not.toBeNull()
       const site = (await loadSiteRecord(initial.siteId!))!
@@ -224,9 +230,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
       const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId: site.projectId!, source: 'WATCH' }, orderBy: { requestedAt: 'desc' } })
       expect((await prisma.audit.findUniqueOrThrow({ where: { id: watch.auditId! } })).executionSpec).toMatchObject({ scope: 'SITE' })
       await complete(watch.auditId!, true)
-      expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: watch.auditId!, workKind: 'flow', pageUrl: target,
+      expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: watch.auditId!, workKind: 'flow', pageUrl: target,
         targetKey: { endsWith: ':flow' } } })).not.toBeNull()
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: watch.auditId!, workKind: { in: ['journeys', 'slow-replay'] }, pageUrl: target } })).toBe(0)
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: watch.auditId!, workKind: { in: ['journeys', 'slow-replay'] }, pageUrl: target } })).toBe(0)
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: watch.auditId!, pageUrl: target, checkId: 'flow-cta-unclickable' } })
       expect((await loadSiteHome(site.siteId))?.flags).toContainEqual(expect.objectContaining({ sourceFlagId: flag.id }))
       expect(await getOwnedRun(owner, watch.id)).toMatchObject({ result: 'FLAG' })
@@ -256,7 +262,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     const owner = 'entry-action-responsibility-' + randomUUID(), target = origin + '/interaction-entry'
     fixtureOwners.push(owner)
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', role: 'admin', auditsLimit: 100 } })
-    const anonymous = await createAndEnqueueAudit({ url: target, visitorKey: 'entry-action-' + randomUUID() })
+    const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: target,
+    visitorKey: 'entry-action-' + randomUUID() })
     await complete(anonymous.auditId, true)
     const original = await prisma.flag.findFirstOrThrow({ where: { auditId: anonymous.auditId, checkId: 'flow-cta-unclickable', pageUrl: target } })
     expect(await claimAnonymousAudits(owner)).toBe(1)
@@ -268,8 +276,8 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: scheduled.auditId! } })).executionSpec).toMatchObject({ monitoringBehaviors: [origin + '/', target].map(pageUrl => ({ pageUrl, behaviors: ['flow', 'pricing-navigation', 'slow-replay', 'journeys'] })) })
     await complete(scheduled.auditId!, true, true)
     expect(await prisma.journeyReview.count({ where: { auditId: scheduled.auditId!, startUrl: target } })).toBeGreaterThan(0)
-    expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: scheduled.auditId!, workKind: 'journeys', pageUrl: target } })).toMatchObject({ workState: 'COMPLETED' })
-    expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: scheduled.auditId!, workKind: 'flow', pageUrl: target,
+    expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: scheduled.auditId!, workKind: 'journeys', pageUrl: target } })).toMatchObject({ workState: 'COMPLETED' })
+    expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: scheduled.auditId!, workKind: 'flow', pageUrl: target,
       targetKey: { endsWith: ':flow' } } })).not.toBeNull()
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: scheduled.auditId!, checkId: 'flow-cta-unclickable', pageUrl: target } })
     const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
@@ -292,7 +300,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ pageUrl: target, evidence: original.evidence })
   }, 180_000)
   it('keeps the exact entry page through signed claim, a due root check, independent repair and recurring monitoring', async () => {
-    const anonymous = await createAndEnqueueAudit({ url: entry, visitorKey: 'entry-' + randomUUID() })
+    const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: entry,
+    visitorKey: 'entry-' + randomUUID() })
     await complete(anonymous.auditId)
     const original = await prisma.audit.findUniqueOrThrow({ where: { id: anonymous.auditId }, include: { pages: true } })
     const sourceFlag = await prisma.flag.findFirstOrThrow({ where: { auditId: original.id, checkId: 'title-missing', pageUrl: entry } })
@@ -340,7 +350,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     brokenEntries.add(entries[0])
     const originals = []
     for (const url of entries) {
-      const admitted = await createAndEnqueueAudit({ url, visitorKey: 'independent-entry-' + randomUUID() })
+      const admitted = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey: 'independent-entry-' + randomUUID() })
       await complete(admitted.auditId)
       originals.push(await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId }, include: { pages: true, flags: true } }))
       expect(await claimAnonymousAudits(owner)).toBe(1)
@@ -387,7 +399,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     let release!: () => void
     heldEntry = { url, wait: new Promise<void>(resolve => { release = resolve }), release: () => release() }
     try {
-      const anonymous = await createAndEnqueueAudit({ url, visitorKey: 'inflight-entry-' + randomUUID() })
+      const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url,
+    visitorKey: 'inflight-entry-' + randomUUID() })
       expect((await prisma.audit.findUniqueOrThrow({ where: { id: anonymous.auditId } })).status).not.toBe('COMPLETED')
       expect(await claimAnonymousAudits(owner)).toBe(1)
       const site = (await loadSiteRecord(anonymous.siteId!))!
@@ -407,7 +421,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     fixtureOwners.push(owner)
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', role: 'admin', auditsLimit: 100 } })
     const source = origin + '/document-base-entry', destination = origin + '/document-base-destination/'
-    const anonymous = await createAndEnqueueAudit({ url: source, visitorKey: 'document-base-' + randomUUID() })
+    const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: source,
+    visitorKey: 'document-base-' + randomUUID() })
     await complete(anonymous.auditId)
     const original = await prisma.flag.findFirstOrThrow({ where: { auditId: anonymous.auditId, checkId: 'broken-internal-links', pageUrl: source } })
     expect(requests).toContain(destination)
@@ -441,7 +457,9 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', role: 'admin', auditsLimit: 100 } })
     browserRoutes = true
     const target = origin + '/#/pricing/', peer = origin + '/#/help'
-    const anonymous = await createAndEnqueueAudit({ url: target, visitorKey: 'browser-route-' + randomUUID() })
+    const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: target,
+    visitorKey: 'browser-route-' + randomUUID() })
     await complete(anonymous.auditId)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: anonymous.auditId } }))
       .toMatchObject({ url: target, executionSpec: { targetUrl: target } })
@@ -464,7 +482,7 @@ run('original entry responsibility after URL-first claim and monitoring admissio
       .toEqual(expect.arrayContaining([{ url: target }, { url: peer }]))
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: observed.auditId!, checkId: 'buttons-no-text', pageUrl: target } })
     const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
-    const proofs = await prisma.auditVerifierExecution.findMany({ where: { auditId: observed.auditId!, targetKey: 'module:accessibility',
+    const proofs = await prisma.auditVerificationReceipt.findMany({ where: { auditId: observed.auditId!, targetKey: 'module:accessibility',
       pageUrl: { in: [target, peer] } }, select: { pageUrl: true, scopeKey: true } })
     expect(proofs).toEqual(expect.arrayContaining([{ pageUrl: target, scopeKey: 'page:' + target }, { pageUrl: peer, scopeKey: 'page:' + peer }]))
     for (const outcome of ['UNCHANGED', 'IMPROVED'] as const) {
@@ -477,7 +495,7 @@ run('original entry responsibility after URL-first claim and monitoring admissio
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: verification.verificationAuditId! } })).toMatchObject({ url: target })
       await complete(verification.verificationAuditId!)
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome, comparable: true })
-      expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: verification.verificationAuditId!, targetKey: 'check:buttons-no-text' } }))
+      expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: verification.verificationAuditId!, targetKey: 'check:buttons-no-text' } }))
         .toMatchObject({ pageUrl: target, scopeKey: 'page:' + target })
     }
     repairedRoute = false

@@ -438,7 +438,7 @@ export async function persistFlagDiffSummary(parentAuditId: string | null, monit
     ? flagComparisonSchema.parse({ ...comparison, siteAssessment: await preparePublishedSiteAssessment(monitoringAuditId, comparison) })
     : comparison
   await executionTransaction(async tx => {
-    const record = await tx.auditVerifierExecution.upsert({ where: { auditId_targetKey_scopeKey: {
+    const record = await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: {
       auditId: monitoringAuditId, targetKey: FLAG_COMPARISON_TARGET, scopeKey: 'product',
     } }, update: {}, create: { auditId: monitoringAuditId, targetKey: FLAG_COMPARISON_TARGET,
       scopeKey: 'product', source: 'SYSTEM', status: 'COMPLETED',

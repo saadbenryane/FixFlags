@@ -54,7 +54,7 @@ describe('native page observation comparison', () => {
     const checkId = 'no-privacy-policy'
     const spec = { version: 1, engine: 'progressive-v1', targetUrl: url, environment: 'production', scope: 'SITE', checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null }
     const upsert = vi.fn()
-    const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
+    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     for (const [captured, comparable] of [[scope, true], [{ ...scope, access: 'credentialed:other' }, false],
       [{ ...scope, profile: 'different-viewport' }, false], [{ ...scope, finalUrl: url + 'login' }, false], [{ ...scope, access: 'credentialed:unknown' }, false]] as const) {
       const after = await inspect('<main><h1>Useful service</h1><a href="/privacy">Privacy policy</a></main>', captured)

@@ -171,7 +171,7 @@ describe('guarded public destination evidence', () => {
     expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: ctx.audit.executionSpec, flag,
       executions: [{ targetKey: 'module:auth-checkout', status: 'COMPLETED', detail: after.receipt }] })).toBe(true)
     const upsert = vi.fn()
-    const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag: { ...flag, source: 'DETERMINISTIC' } }] } }]) },
+    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag: { ...flag, source: 'DETERMINISTIC' } }] } }]) },
       auditVerifierExecution: { findMany: vi.fn().mockResolvedValue([]), upsert } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: after.receipt }, tx as never)
     expect(upsert.mock.calls[0][0].create.detail).toMatchObject({ verdict: 'passed', source: 'http' })

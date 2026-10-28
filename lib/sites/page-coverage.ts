@@ -9,7 +9,7 @@ function pageUrls(input: PageScope, spec: ExecutionSpec | null): string[] {
   const urls = new Set(spec?.scope === 'SITE' ? [spec.targetUrl, ...(spec.monitoringPages ?? [])] : [])
   for (const page of input.pages) if (page.url) urls.add(page.url)
   for (const task of input.executions ?? []) {
-    if (task.targetKey.startsWith('task:') && task.workKind === 'browser' && task.pageUrl) urls.add(task.pageUrl)
+    if (task.workKind === 'browser' && task.pageUrl) urls.add(task.pageUrl)
   }
   return [...urls]
 }

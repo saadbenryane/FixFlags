@@ -43,7 +43,7 @@ run('execution Site authority', () => {
       ...(cleanup ? { executionSpec: { scope: 'ACCOUNT_CHECKS', accountChecks: { mode: 'cleanup' } } } : {}) } })
     const owner: ExecutionOwnership = { auditId: audit.id, token, generation: 1 }
     if (task) {
-      const row = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:account',
+      const row = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:account',
         source: 'DETERMINISTIC', status: 'RUNNING', workKind: 'account', workState: 'RUNNING', workToken: token,
         workGeneration: 1, workLeaseUntil: new Date(Date.now() + 60_000) } })
       owner.taskId = row.id
@@ -66,7 +66,7 @@ run('execution Site authority', () => {
   })
   it('refuses task admission without consuming a protected attempt after transfer', async () => {
     const { project, replacement, audit } = await fixture()
-    const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:http',
+    const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:http',
       source: 'DETERMINISTIC', status: 'PENDING', workKind: 'http', workState: 'READY',
       workInput: { pageUrl: project.url, position: 0, primary: true, role: 'primary' } } })
     const evaluate = vi.fn(async () => serializeArtifact('http', { observed: true }))
@@ -75,7 +75,7 @@ run('execution Site authority', () => {
     await prisma.project.update({ where: { id: project.id }, data: { userId: replacement.id } })
     await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, handlers)
     expect(evaluate).not.toHaveBeenCalled()
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
       .toMatchObject({ workState: 'READY', workGeneration: 0, workAttempts: 0, workToken: null })
   })
   it.each([false, true])('refuses to renew a transferred execution (task=%s)', async task => {
@@ -88,7 +88,7 @@ run('execution Site authority', () => {
     expect(await renewExecution(owner)).toBe(true)
     expect(await renewExecution({ ...owner, token: 'obsolete-token' })).toBe(false)
     expect(await renewExecution({ ...owner, generation: 0 })).toBe(false)
-    if (owner.taskId) await prisma.auditVerifierExecution.update({ where: { id: owner.taskId }, data: { workLeaseUntil: new Date(0) } })
+    if (owner.taskId) await prisma.auditExecutionTask.update({ where: { id: owner.taskId }, data: { workLeaseUntil: new Date(0) } })
     else await prisma.audit.update({ where: { id: audit.id }, data: { executionLeaseUntil: new Date(0) } })
     expect(await renewExecution(owner)).toBe(false)
   })

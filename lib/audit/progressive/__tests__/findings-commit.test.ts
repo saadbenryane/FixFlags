@@ -87,11 +87,11 @@ describe('finding publication cost', () => {
       execution: { auditId: 'original', taskId: 'task', checkVersion: 2, source: 'rendered-dom', collectedAt: '2026-10-16T10:00:00.000Z' } })
     const upsert = vi.fn()
     await commitCheckReceipt({ audit: { id: 'original', parentId: null, executionSpec: spec }, task: { id: 'task' }, input: { primary: true } } as TaskContext, receipt,
-      { auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient)
+      {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient)
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ checkVersion: 2, detail: expect.objectContaining({ complete: false, passed: false }) }), update: {} }))
     upsert.mockClear()
     await commitCheckReceipt({ audit: { id: 'original', parentId: null, executionSpec: spec }, task: { id: 'task' }, input: {} } as TaskContext,
-      checkReceiptSchema.parse({ ...receipt, module: 'console', assertions: [] }), { auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient)
+      checkReceiptSchema.parse({ ...receipt, module: 'console', assertions: [] }), {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient)
     expect(upsert).not.toHaveBeenCalled()
   })
 

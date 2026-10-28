@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { executionTransaction } from '@/lib/audit/execution-ownership'
+import { currentExecutionOwnership, executionTransaction } from '@/lib/audit/execution-ownership'
 import { accessTokenForConnection, googleConnectionGrantScope } from '@/lib/sites/connections/google'
 import { searchPropertyCoversUrl } from '@/lib/sites/connections/report-scope'
 import { getGscAccess, inspectSearchUrl, querySearchAnalytics, SearchConsoleError, type SearchUrlInspection, type GscSearchRow } from '@/lib/integrations/google-search-console'
@@ -138,9 +138,9 @@ async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null
         device: row.keys[2] ?? '', country: row.keys[3] ?? '', dateRange,
       })) })
     }
-    await tx.auditVerifierExecution.upsert({
+    await tx.auditVerificationReceipt.upsert({
       where: { auditId_targetKey_scopeKey: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}` } },
-      create: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}`, pageUrl: receipt.pageUrl,
+      create: { taskId: currentExecutionOwnership()?.taskId, auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}`, pageUrl: receipt.pageUrl,
         source: 'GOOGLE', status: applicable ? 'COMPLETED' : 'NOT_APPLICABLE', detail: receipt as Prisma.InputJsonValue,
         evidenceReference: { auditId: receipt.auditId, pageUrl: receipt.pageUrl, connectionId: access?.connectionId ?? null,
           property: access?.property ?? null, dateRange, inspectionResultLink: inspection?.inspectionResultLink ?? null } },

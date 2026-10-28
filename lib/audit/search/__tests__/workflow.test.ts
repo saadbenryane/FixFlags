@@ -4,7 +4,7 @@ import { assessSearchRecovery } from '../recovery'
 import { searchReceiptSchema, type SearchReceipt } from '../contracts'
 import { evidence, markup, PAGE, document } from './fixtures'
 
-const db = vi.hoisted(() => ({
+const db = vi.hoisted(() => ({get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
   audit: { findUnique: vi.fn() },
   improvementAttempt: { findMany: vi.fn() },
   auditVerifierExecution: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
@@ -23,13 +23,13 @@ function pending(checkId: string, policy: unknown) {
   } }] } }])
 }
 function proof() {
-  return db.auditVerifierExecution.upsert.mock.calls.at(-1)?.[0].create.detail
+  return db.auditVerificationReceipt.upsert.mock.calls.at(-1)?.[0].create.detail
 }
 beforeEach(() => {
   vi.clearAllMocks()
   db.audit.findUnique.mockResolvedValue({ parentId: 'source' })
   db.improvementAttempt.findMany.mockResolvedValue([])
-  db.auditVerifierExecution.upsert.mockImplementation(async ({ create }) => ({ detail: create.detail }))
+  db.auditVerificationReceipt.upsert.mockImplementation(async ({ create }) => ({ detail: create.detail }))
 })
 describe('fresh Search verification and history', () => {
   it('preserves previous progressive evaluator receipts for policy regression checks', async () => {
@@ -116,7 +116,7 @@ describe('fresh Search verification and history', () => {
     const flag = searchFindings(broken.observations).find(item => item.checkId === 'search-structured-feature')!
     pending(flag.checkId, flag.attentionPolicy)
     await recordSearchVerifiers(await receipt())
-    expect(db.auditVerifierExecution.upsert).not.toHaveBeenCalled()
+    expect(db.auditVerificationReceipt.upsert).not.toHaveBeenCalled()
   })
   it('verifies repaired declared sitemap syntax and target availability using stable identities', async () => {
     for (const checkId of ['sitemap-missing', 'search-sitemap-invalid']) {
@@ -149,14 +149,14 @@ describe('fresh Search verification and history', () => {
     })
     expect(assessSearchRecovery(corrected, flag.checkId, flag.attentionPolicy)).toMatchObject({ verdict: 'unknown', comparable: false })
     await recordSearchVerifiers(corrected)
-    expect(db.auditVerifierExecution.upsert).not.toHaveBeenCalled()
+    expect(db.auditVerificationReceipt.upsert).not.toHaveBeenCalled()
     expect(flag.evidence).toContain(originalTarget)
   })
   it('retains the originating receipt on a repeated persistence attempt', async () => {
     const first = await receipt()
-    db.auditVerifierExecution.upsert.mockResolvedValueOnce({ detail: first })
+    db.auditVerificationReceipt.upsert.mockResolvedValueOnce({ detail: first })
     expect(await persistSearchReceipt(await receipt('<title>Changed later</title>'))).toEqual(first)
-    expect(db.auditVerifierExecution.upsert).toHaveBeenLastCalledWith(expect.objectContaining({ update: {} }))
+    expect(db.auditVerificationReceipt.upsert).toHaveBeenLastCalledWith(expect.objectContaining({ update: {} }))
   })
 })
 

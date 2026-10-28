@@ -426,9 +426,9 @@ export async function recordAssertionVerifiers(input: {
       verdict: assertion.passed ? 'passed' : 'failed', assertion })
     const targetKey = verifierTargetKey(flag)!
     const scopeKey = verifierScopeKey(resource ? receipt.pageUrl : flag.pageUrl)
-    await tx.auditVerifierExecution.upsert({
+    await tx.auditVerificationReceipt.upsert({
       where: { auditId_targetKey_scopeKey: { auditId: input.auditId, targetKey, scopeKey } },
-      create: { auditId: input.auditId, targetKey, scopeKey, checkId, source: flag.source, pageUrl: resource ? receipt.pageUrl : flag.pageUrl,
+      create: { taskId: detail.taskId, auditId: input.auditId, targetKey, scopeKey, checkId, source: flag.source, pageUrl: resource ? receipt.pageUrl : flag.pageUrl,
         status: 'COMPLETED', checkVersion: detail.checkVersion, detail: detail as Prisma.InputJsonValue,
         evidenceReference: { auditId: input.auditId, taskId: detail.taskId, pageUrl: detail.pageUrl,
           assertion: assertion.key, source: detail.source, collectedAt: detail.collectedAt, ...(supportingTasks.length ? { supportingTasks } : {}) } },

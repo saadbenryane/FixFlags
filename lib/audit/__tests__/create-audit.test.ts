@@ -173,22 +173,27 @@ describe('createAndEnqueueAudit', () => {
     betaPolicy.enabled = true
     rollUserUsagePeriod.mockResolvedValue(signedInUser({ auditsUsed: 1000 }))
     wouldBlockNewCheckWithCredits.mockResolvedValue({ allowed: false, code: 'UPGRADE_REQUIRED' })
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(wouldBlockNewCheckWithCredits).not.toHaveBeenCalled()
     expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ reviewDepth: 3 }) }))
   })
 
   it('refuses using an owned parent to attach a different website', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED', projectId: 'other-project', scanAccessEncrypted: null })
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })).rejects.toThrow('same Site')
+    await expect(createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })).rejects.toThrow('same Site')
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
   })
 
   it('clears old fixture approval and creates its private setup Audit and request inside one admission transaction', async () => {
     const executionSpec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: AUDIT_URL, environment: 'production',
       scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: 'fixture', version: 2 }, checks: {}, outcomes: [], verificationTarget: null }
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', skipUsageCount: true, reuseActiveManual: false, executionSpec,
-      runRequestId: 'setup-run', runRequestAdmission: { id: 'setup-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'setup' } })
+    await createAndEnqueueAudit({ admission: { kind: 'site-run', request: { id: 'setup-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'setup' }, executionSpec: executionSpec },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.outcomeFixture.updateMany).toHaveBeenCalledWith({ where: { id: 'fixture', projectId: 'project-1', version: 2, enabled: true },
       data: { authorizedAt: null, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: Prisma.DbNull } })
     expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isPublic: false, skipUsageCount: true }) }))
@@ -198,26 +203,26 @@ describe('createAndEnqueueAudit', () => {
 
   it('refuses attaching a Site command to a parent from another Site', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', projectId: 'other-project', status: 'COMPLETED' })
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1', runRequestId: 'run',
-      runRequestAdmission: { id: 'run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'parent' },
-    })).rejects.toThrow('same Site')
+    await expect(createAndEnqueueAudit({ admission: { kind: 'site-run', parentId: 'parent-1', request: { id: 'run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'parent' }, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'SITE', checks: {}, outcomes: [], verificationTarget: null } },
+    url: AUDIT_URL,
+    userId: 'user-1' })).rejects.toThrow('same Site')
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
   })
 
   it('refuses a changed fixture before creating its durable RunRequest or dispatching work', async () => {
     prismaMock.outcomeFixture.updateMany.mockResolvedValue({ count: 0 })
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', skipUsageCount: true, reuseActiveManual: false,
-      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'FIXTURE_SETUP',
-        fixtureSetup: { id: 'fixture', version: 2 }, checks: {}, outcomes: [], verificationTarget: null },
-      runRequestId: 'setup-run', runRequestAdmission: { id: 'setup-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'setup' },
-    })).rejects.toMatchObject({ status: 409 })
+    await expect(createAndEnqueueAudit({ admission: { kind: 'site-run', request: { id: 'setup-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'setup' }, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'FIXTURE_SETUP',
+        fixtureSetup: { id: 'fixture', version: 2 }, checks: {}, outcomes: [], verificationTarget: null } },
+    url: AUDIT_URL,
+    userId: 'user-1' })).rejects.toMatchObject({ status: 409 })
     expect(prismaMock.runRequest.create).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
   })
 
   it('creates a reduced single-page teaser for anonymous visitors and tracks the cookie', async () => {
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL })
 
     expect(result).toEqual({
       auditId: 'audit-1',
@@ -275,7 +280,8 @@ describe('createAndEnqueueAudit', () => {
         'You’ve used your free scan. Create a free account for fix prompts and more checks.',
     })
 
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL })).rejects.toMatchObject({
+    await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL })).rejects.toMatchObject({
       name: 'AuditLimitError',
       code: 'AUTH_REQUIRED',
       action: 'signup',
@@ -295,7 +301,9 @@ describe('createAndEnqueueAudit', () => {
       parentId: null,
     })
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-1' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    clientId: 'ip-1' })
 
     expect(result).toEqual({
       auditId: 'recent-public',
@@ -327,7 +335,8 @@ describe('createAndEnqueueAudit', () => {
       parentId: null,
     })
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL })
 
     expect(result).toEqual({
       auditId: 'live-public',
@@ -362,7 +371,9 @@ describe('createAndEnqueueAudit', () => {
       userId: null,
     })
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-2' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    clientId: 'ip-2' })
 
     expect(rotateVisitorKey).toHaveBeenCalledOnce()
     expect(result).toMatchObject({ auditId: 'audit-1', reused: false, siteId: 'p_fresh' })
@@ -379,7 +390,9 @@ describe('createAndEnqueueAudit', () => {
     // resolving null is exactly that state.
     prismaMock.provisionalSite.findUnique.mockResolvedValueOnce(null)
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-2' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    clientId: 'ip-2' })
 
     expect(result.reused).toBe(false)
     expect(result.auditId).toBe('audit-1')
@@ -398,7 +411,9 @@ describe('createAndEnqueueAudit', () => {
   })
 
   it('enforces the IP soft ceiling for anonymous creates with a client id', async () => {
-    await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    clientId: 'ip-1' })
 
     expect(enforceAnonymousIpSoftCeiling).toHaveBeenCalledWith('ip-1')
   })
@@ -409,7 +424,9 @@ describe('createAndEnqueueAudit', () => {
       signedInUser({ plan: 'BUILDER', deepReviewsLimit: 3, deepReviewsUsed: 0 })
     )
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(result).toEqual({
       auditId: 'audit-1',
@@ -448,7 +465,9 @@ describe('createAndEnqueueAudit', () => {
       parentId: 'actual-parent',
     })
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(result).toEqual({
       auditId: 'active-review',
@@ -478,7 +497,9 @@ describe('createAndEnqueueAudit', () => {
     rollUserUsagePeriod.mockResolvedValue(
       signedInUser({ plan: 'BUILDER', deepReviewsUsed: 3, deepReviewsLimit: 3 })
     )
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ journeyReviewIncluded: true }),
@@ -496,7 +517,9 @@ describe('createAndEnqueueAudit', () => {
       error: 'New URL check limit reached. Upgrade to continue.',
     })
 
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })).rejects.toMatchObject(
+    await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })).rejects.toMatchObject(
       {
         name: 'AuditLimitError',
         code: 'UPGRADE_REQUIRED',
@@ -513,7 +536,9 @@ describe('createAndEnqueueAudit', () => {
     )
     prismaMock.audit.count.mockResolvedValueOnce(0)
 
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(wouldBlockNewCheckWithCredits).toHaveBeenCalledWith(
       expect.objectContaining({ plan: 'FREE' }),
@@ -522,7 +547,10 @@ describe('createAndEnqueueAudit', () => {
   })
 
   it('keeps non-Watch skipUsageCount retries inside the manual Review lock', async () => {
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', skipUsageCount: true })
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'FAILED', projectId: 'project-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'retry', parentId: 'parent-1' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
     expect(wouldBlockNewCheckWithCredits).not.toHaveBeenCalled()
@@ -543,13 +571,9 @@ describe('createAndEnqueueAudit', () => {
         projectId: 'project-1',
         scanAccessEncrypted: null,
       })
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      parentId: 'parent-1',
-      recheckTrigger: 'WATCH',
-      skipUsageCount: false,
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', trigger: 'WATCH', allowance: (false) ? 'included' : 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
@@ -561,7 +585,8 @@ describe('createAndEnqueueAudit', () => {
   it('requires sign-in to continue from an existing report', async () => {
     prismaMock.audit.findUnique.mockResolvedValueOnce({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED' })
     await expect(
-      createAndEnqueueAudit({ url: AUDIT_URL, parentId: 'parent-1' })
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL })
     ).rejects.toMatchObject({ name: 'ParentAuditError', status: 401 })
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
   })
@@ -570,8 +595,10 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: null, status: 'FAILED', reviewDepth: 1, isPublic: false })
     prismaMock.provisionalSite.findUnique.mockResolvedValue({ primaryAuditId: 'parent-1' })
     ensureSiteForAudit.mockResolvedValue({ siteId: 'p_existing', kind: 'provisional', projectId: null, userId: null })
-    await createAndEnqueueAudit({ url: AUDIT_URL, parentId: 'parent-1', retryParent: true,
-      skipUsageCount: true, visitorKey: 'original-private-visitor', auditMode: 'SINGLE' })
+    await createAndEnqueueAudit({ admission: { kind: 'retry', parentId: 'parent-1' },
+    url: AUDIT_URL,
+    visitorKey: 'original-private-visitor',
+    auditMode: 'SINGLE' })
     expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       parentId: 'parent-1', isPublic: false, skipUsageCount: true, auditMode: 'SINGLE', reviewDepth: 1,
     }) }))
@@ -583,14 +610,18 @@ describe('createAndEnqueueAudit', () => {
 
   it('does not permit a failed parent on an ordinary recheck', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'FAILED', reviewDepth: 1, isPublic: false })
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })).rejects.toMatchObject({ status: 400 })
+    await expect(createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })).rejects.toMatchObject({ status: 400 })
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
   })
 
   it('rejects re-checks on missing, foreign, or incomplete parents', async () => {
     prismaMock.audit.findUnique.mockResolvedValueOnce(null)
     await expect(
-      createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     ).rejects.toMatchObject({ name: 'ParentAuditError', status: 404 })
 
     prismaMock.audit.findUnique.mockResolvedValueOnce({
@@ -599,7 +630,9 @@ describe('createAndEnqueueAudit', () => {
       status: 'COMPLETED',
     })
     await expect(
-      createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     ).rejects.toMatchObject({ name: 'ParentAuditError', status: 403 })
 
     prismaMock.audit.findUnique.mockResolvedValueOnce({
@@ -608,7 +641,9 @@ describe('createAndEnqueueAudit', () => {
       status: 'CHECKING',
     })
     await expect(
-      createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })
+      createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     ).rejects.toMatchObject({ name: 'ParentAuditError', status: 400 })
 
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
@@ -623,12 +658,9 @@ describe('createAndEnqueueAudit', () => {
       scanAccessEncrypted: null,
     })
 
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      parentId: 'parent-1',
-      recheckTrigger: 'WATCH',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', trigger: 'WATCH', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock)
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
@@ -654,11 +686,9 @@ describe('createAndEnqueueAudit', () => {
       scanAccessEncrypted: null,
     })
 
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      parentId: 'parent-1',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -670,35 +700,44 @@ describe('createAndEnqueueAudit', () => {
     })
   })
 
-  it('creates owned Site executions privately and attaches the tenant request before enqueue', async () => {
-    prismaMock.runRequest.updateMany.mockResolvedValue({ count: 1 })
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', runRequestId: 'run-1' })
+  it('creates an owned Site request and its execution atomically before enqueue', async () => {
+    await createAndEnqueueAudit({ admission: { kind: 'site-run', request: { id: 'run-1', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'private-site' },
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'SITE', checks: {}, outcomes: [], verificationTarget: null } },
+      url: AUDIT_URL, userId: 'user-1' })
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
-    expect(prismaMock.runRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'run-1', projectId: 'project-1', requestedByUserId: 'user-1', auditId: null } }))
+    expect(prismaMock.runRequest.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ id: 'run-1', auditId: 'audit-1' }) }))
+    expect(prismaMock.runRequest.updateMany).not.toHaveBeenCalled()
   })
 
   it('creates the first signed-in analysis privately before a Site request exists', async () => {
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
   })
 
   it('keeps an ordinary owned recheck private when its historical parent is public', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED',
       projectId: 'project-1', scanAccessEncrypted: null, isPublic: true })
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
   })
 
   it('preserves public evidence visibility for an explicit retry of a public failed report', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'FAILED',
       projectId: 'project-1', scanAccessEncrypted: null, reviewDepth: 1, isPublic: true })
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1', retryParent: true,
-      skipUsageCount: true, reuseActiveManual: false })
+    await createAndEnqueueAudit({ admission: { kind: 'retry', parentId: 'parent-1' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(true)
   })
 
   it('creates the anonymous first analysis privately and tracks its creator claim', async () => {
-    await createAndEnqueueAudit({ url: AUDIT_URL, visitorKey: 'private-visitor' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    visitorKey: 'private-visitor' })
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
     expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
   })
@@ -715,11 +754,9 @@ describe('createAndEnqueueAudit', () => {
       scanAccessEncrypted: encrypted,
     })
 
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      parentId: 'parent-1',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     const created = prismaMock.audit.create.mock.calls[0][0].data
     expect(decryptScanAccess(created.scanAccessEncrypted)).toEqual(config)
@@ -729,7 +766,10 @@ describe('createAndEnqueueAudit', () => {
   it.each([{ scanAccess: null }, { useProjectScanAccess: false }])('seals a public access decision despite configured Site credentials: %s', async options => {
     prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', url: AUDIT_URL, deletedAt: null,
       scanAccessEncrypted: encryptScanAccess({ headers: { Authorization: 'SECRET' } }) })
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', ...options })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1',
+    ...options })
     expect(prismaMock.audit.create.mock.calls[0][0].data).toMatchObject({ scanAccessEncrypted: null,
       executionSpec: { scanAccess: { kind: 'public', origin: 'https://example.com' } } })
   })
@@ -741,21 +781,20 @@ describe('createAndEnqueueAudit', () => {
       scanAccessEncrypted: encryptScanAccess(inheritedConfig),
     })
 
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      scanAccess: explicitConfig,
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1',
+    scanAccess: explicitConfig })
 
     const created = prismaMock.audit.create.mock.calls[0][0].data
     expect(decryptScanAccess(created.scanAccessEncrypted)).toEqual(explicitConfig)
   })
 
   it('carries attribution fields onto the audit row', async () => {
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      attribution: {
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1',
+    attribution: {
         normalizedDomain: 'example.com',
         source: 'HOMEPAGE',
         referrer: null,
@@ -764,8 +803,7 @@ describe('createAndEnqueueAudit', () => {
         utmCampaign: null,
         gclid: null,
         fbclid: null,
-      },
-    })
+      } })
 
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -786,7 +824,8 @@ describe('createAndEnqueueAudit', () => {
     const queueError = new Error('queue down')
     queueAdd.mockRejectedValueOnce(queueError)
 
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL })).resolves.toMatchObject({ auditId: 'audit-1', status: 'QUEUED' })
+    await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL })).resolves.toMatchObject({ auditId: 'audit-1', status: 'QUEUED' })
     expect(prismaMock.audit.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         dispatchError: 'Queue admission is temporarily unavailable.',
@@ -809,7 +848,9 @@ describe('createAndEnqueueAudit', () => {
       return op(prismaMock)
     })
 
-    const result = await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    const result = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
 
     expect(result).toEqual({
       auditId: 'audit-1',
@@ -825,7 +866,9 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.$transaction.mockRejectedValueOnce(new Error('db unreachable'))
 
     await expect(
-      createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+      createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     ).rejects.toThrow('db unreachable')
   })
 
@@ -834,7 +877,8 @@ describe('createAndEnqueueAudit', () => {
       new Error('Enter a valid URL like https://yoursite.com')
     )
 
-    await expect(createAndEnqueueAudit({ url: 'not-a-url' })).rejects.toThrow(
+    await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: 'not-a-url' })).rejects.toThrow(
       'Enter a valid URL'
     )
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
@@ -842,7 +886,8 @@ describe('createAndEnqueueAudit', () => {
   })
 
   it('stores reviewDepth 1 for anonymous teasers and Free accounts', async () => {
-    await createAndEnqueueAudit({ url: AUDIT_URL })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ reviewDepth: 1 }),
       select: { id: true, parentId: true },
@@ -850,7 +895,9 @@ describe('createAndEnqueueAudit', () => {
 
     prismaMock.audit.create.mockClear()
     prismaMock.user.findUnique.mockResolvedValue(signedInUser({ plan: 'FREE' }))
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ reviewDepth: 1 }),
       select: { id: true, parentId: true },
@@ -859,9 +906,9 @@ describe('createAndEnqueueAudit', () => {
 
   it('attaches the consented journey key only to lifecycle telemetry', async () => {
     const journeyId = `ffj_${'d'.repeat(32)}`
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      attribution: {
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    attribution: {
         normalizedDomain: 'example.com',
         source: 'HOMEPAGE',
         referrer: null,
@@ -871,8 +918,7 @@ describe('createAndEnqueueAudit', () => {
         gclid: null,
         fbclid: null,
         journeyId,
-      },
-    })
+      } })
 
     expect(prismaMock.siteLifecycleEvent.upsert).toHaveBeenCalledWith({
       where: { idempotencyKey: 'analyze_started:audit-1' },
@@ -893,7 +939,9 @@ describe('createAndEnqueueAudit', () => {
 
   it('stores reviewDepth from the owner plan for Pro and Studio', async () => {
     prismaMock.user.findUnique.mockResolvedValue(signedInUser({ plan: 'BUILDER' }))
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ reviewDepth: 2 }),
       select: { id: true, parentId: true },
@@ -901,7 +949,9 @@ describe('createAndEnqueueAudit', () => {
 
     prismaMock.audit.create.mockClear()
     prismaMock.user.findUnique.mockResolvedValue(signedInUser({ plan: 'TEAM' }))
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ reviewDepth: 3 }),
       select: { id: true, parentId: true },
@@ -917,12 +967,9 @@ describe('createAndEnqueueAudit', () => {
       scanAccessEncrypted: null,
       reviewDepth: 3,
     })
-    await createAndEnqueueAudit({
-      url: AUDIT_URL,
-      userId: 'user-1',
-      parentId: 'parent-1',
-      recheckTrigger: 'WATCH',
-    })
+    await createAndEnqueueAudit({ admission: { kind: 'update', parentId: 'parent-1', trigger: 'WATCH', allowance: 'metered' },
+    url: AUDIT_URL,
+    userId: 'user-1' })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ reviewDepth: 3, parentId: 'parent-1' }),
       select: { id: true, parentId: true },

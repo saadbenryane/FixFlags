@@ -1,6 +1,6 @@
 import { sumPrescriptionResponses } from '../prescription-usage'
 import { getUserFacingAuditError } from '../user-facing-errors'
-import { Prisma, type AuditVerifierExecution } from '@prisma/client'
+import { Prisma, type AuditExecutionTask } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -27,7 +27,7 @@ export function prescriptionSettlement(tasks: readonly { workState: string | nul
 
 /** Publish review completion only after every prescription task has finished. */
 export async function settlePrescriptionAudit(tx: Prisma.TransactionClient, auditId: string) {
-  const tasks = await tx.auditVerifierExecution.findMany({
+  const tasks = await tx.auditExecutionTask.findMany({
     where: { auditId, workKind: 'prescription' },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: { workState: true, workErrorCode: true },
@@ -92,7 +92,7 @@ export function summedPrescriptionUsage(tasks: readonly { workState: string | nu
 
 /** Record the summed prescription cost after the task transaction commits. A zero or legacy result leaves the existing cost alone. */
 export async function recordSettledPrescriptionCost(auditId: string) {
-  const tasks = await prisma.auditVerifierExecution.findMany({
+  const tasks = await prisma.auditExecutionTask.findMany({
     where: { auditId, workKind: 'prescription' },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: { workState: true, workResult: true },
@@ -121,7 +121,7 @@ export function logUnrecordedPrescriptionCost(auditId: string, error: unknown) {
   logger.error('Prescription cost was not recorded', error, { auditId })
 }
 
-type CoverageTask = Pick<AuditVerifierExecution, 'id' | 'auditId' | 'workKind' | 'workInput'>
+type CoverageTask = Pick<AuditExecutionTask, 'id' | 'auditId' | 'workKind' | 'workInput'>
 export async function settleFailedFinalization(tx: Prisma.TransactionClient, task: CoverageTask) {
   if (task.workKind !== 'finalize') return
   await settleRecordedPages(tx, task.auditId)
@@ -151,9 +151,9 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
     const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '')
     const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: executionModule,
       pageUrl: input.pageUrl, passed: false, applicable: true, failed: true, assertions: [] })
-    await tx.auditVerifierExecution.upsert({ where: { auditId_targetKey_scopeKey: {
+    await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: {
       auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey } },
-      create: { auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey,
+      create: { taskId: task.id, auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey,
         pageUrl: input.pageUrl, source: 'DETERMINISTIC', status: 'FAILED', checkVersion: 1, detail: receipt,
         evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
   }
@@ -164,9 +164,9 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
     for (const raw of detail?.receipts ?? []) {
       const receipt = searchReceiptSchema.parse(raw)
       const name = input.module === 'google-performance' ? 'search-google-performance' : 'search-google-index'
-      await tx.auditVerifierExecution.upsert({ where: { auditId_targetKey_scopeKey: {
+      await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: {
         auditId: task.auditId, targetKey: 'module:' + name, scopeKey: 'page:' + input.pageUrl } },
-        create: { auditId: task.auditId, targetKey: 'module:' + name, scopeKey: 'page:' + input.pageUrl,
+        create: { taskId: task.id, auditId: task.auditId, targetKey: 'module:' + name, scopeKey: 'page:' + input.pageUrl,
           pageUrl: input.pageUrl, source: 'GOOGLE', status: 'FAILED', checkVersion: 1, detail: receipt,
           evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
     }

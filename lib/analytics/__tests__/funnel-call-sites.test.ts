@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
+import { RETIRED_FUNNEL_EVENTS } from '@/lib/analytics/events'
 import {
   findFunnelCallSites,
   missingFunnelCallSites,
@@ -15,7 +16,7 @@ describe('funnel call sites', () => {
     assert.ok(events.includes('marketing_page_view'))
   })
 
-  it('has at least one call site for every FunnelEvent', () => {
+  it('has a current caller for every active event while retaining retired names', () => {
     const missing = missingFunnelCallSites()
     const sites = findFunnelCallSites()
     assert.deepEqual(
@@ -29,10 +30,15 @@ describe('funnel call sites', () => {
     )
 
     for (const event of parseFunnelEvents()) {
+      if ((RETIRED_FUNNEL_EVENTS as readonly string[]).includes(event)) continue
       assert.ok(
         (sites.get(event)?.length ?? 0) > 0,
         `${event} should have a call site`,
       )
+    }
+    for (const event of RETIRED_FUNNEL_EVENTS) {
+      assert.ok(parseFunnelEvents().includes(event), `${event} must retain its historical identity`)
+      assert.deepEqual(sites.get(event), [], `${event} must not be emitted by a current caller`)
     }
   })
 })

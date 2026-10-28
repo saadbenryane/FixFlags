@@ -40,7 +40,12 @@ vi.mock('@/lib/db', () => ({
     audit: { findFirst: mocks.auditFindFirst },
   },
 }))
-vi.mock('@/lib/audit/create-audit', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/audit/create-audit')>(), createAndEnqueueAudit: mocks.createAudit }))
+vi.mock('@/lib/audit/create-audit', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/audit/create-audit')>()
+  const { resolveAuditAdmission } = await import('@/lib/audit/admission')
+  return { ...actual, createAndEnqueueAudit: (command: Parameters<typeof actual.createAndEnqueueAudit>[0]) =>
+    mocks.createAudit({ ...command, ...resolveAuditAdmission(command.admission) }) }
+})
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),

@@ -9,7 +9,7 @@ import {
 describe('verifier execution provenance', () => {
   it('does not use ordinary page capture as slow connection proof', async () => {
     const upsert = vi.fn()
-    const db = { audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'before' }) }, improvementAttempt: {
+    const db = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'before' }) }, improvementAttempt: {
       findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: ['slow-3g-blank-screen', 'slow-3g-cta-delayed'].map(checkId => ({
         flag: { source: 'DETERMINISTIC', checkId, pageUrl: 'https://example.com/', fingerprint: null },
       })) } }]),
@@ -27,7 +27,7 @@ describe('verifier execution provenance', () => {
       pageUrl: 'https://example.com/#pricing',
       status: 'COMPLETED',
       evidenceReference: { run: 'checker-run-1' },
-    }, { auditVerifierExecution: { upsert } } as never)
+    }, {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as never)
 
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: {
@@ -51,7 +51,7 @@ describe('verifier execution provenance', () => {
 
   it('records positive coverage only for the exact targeted page checker', async () => {
     const upsert = vi.fn().mockResolvedValue({ id: 'execution-1' })
-    const db = {
+    const db = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
       audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'review-1' }) },
       improvementAttempt: {
         findMany: vi.fn().mockResolvedValue([
@@ -103,7 +103,7 @@ describe('verifier execution provenance', () => {
 
   it('records failed coverage when the applicable checker run was degraded', async () => {
     const upsert = vi.fn().mockResolvedValue({ id: 'execution-1' })
-    const db = {
+    const db = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
       audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'review-1' }) },
       improvementAttempt: {
         findMany: vi.fn().mockResolvedValue([{
@@ -138,7 +138,7 @@ describe('verifier execution provenance', () => {
 
   it('does not certify a PageSpeed verifier when PageSpeed evidence is unavailable', async () => {
     const upsert = vi.fn().mockResolvedValue({ id: 'execution-1' })
-    const db = {
+    const db = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
       audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'review-1' }) },
       improvementAttempt: {
         findMany: vi.fn().mockResolvedValue([{

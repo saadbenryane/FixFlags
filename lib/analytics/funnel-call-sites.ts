@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { RETIRED_FUNNEL_EVENTS } from './events'
 
 const ROOT = process.cwd()
 
@@ -78,7 +79,8 @@ export function findFunnelCallSites(): Map<string, string[]> {
 }
 
 export function missingFunnelCallSites(): string[] {
+  const retired = new Set<string>(RETIRED_FUNNEL_EVENTS)
   return [...findFunnelCallSites()]
-    .filter(([, files]) => files.length === 0)
+    .filter(([event, files]) => !retired.has(event) && files.length === 0)
     .map(([event]) => event)
 }

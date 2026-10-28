@@ -112,7 +112,7 @@ export function ConversationWidget(props: ConversationWidgetProps) {
   const unread = data?.session?.unreadByVisitor ?? 0
 
   return <>
-    <Button ref={launcher} size="icon" variant="ink" className={cn(styles.launcher, props.supportOnly && styles.publicLauncher, open && 'hidden')}
+    <Button ref={launcher} size="icon" variant="ink" className={cn(styles.launcher, open && 'hidden')}
       aria-label={openLabel} aria-expanded={open} aria-controls="site-chat-window"
       onClick={() => ownsSite ? selectQuestions() : selectSupport()}>
       <MessageCircle className="!h-6 !w-6" aria-hidden />

@@ -53,7 +53,9 @@ run('independent website admission under PostgreSQL contention', () => {
 
   it('creates five first Sites concurrently with exactly one automatic availability binding for each owner', async () => {
     await prisma.project.deleteMany({ where: { userId: { in: owners.map(owner => owner.userId) } } })
-    const results = await Promise.all(owners.map(owner => createAndEnqueueAudit({ userId: owner.userId, url: 'https://example.com/' })))
+    const results = await Promise.all(owners.map(owner => createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    userId: owner.userId,
+    url: 'https://example.com/' })))
     expect(new Set(results.map(result => result.auditId)).size).toBe(owners.length)
     for (const owner of owners) {
       const sites = await prisma.project.findMany({ where: { userId: owner.userId }, include: { siteOutcomes: { include: { bindings: true } } } })

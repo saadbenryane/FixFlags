@@ -64,7 +64,7 @@ run('scheduled completion after cadence advancement', () => {
     expect(request.executionSpec).toMatchObject({ scope })
     older ??= await createOlder()
     const kind = scope === 'SITE' ? 'browser' : 'bindings'
-    await prisma.auditVerifierExecution.create({ data: { auditId: request.auditId!, targetKey: 'task:p0:' + kind, source: 'EXECUTION',
+    await prisma.auditExecutionTask.create({ data: { auditId: request.auditId!, targetKey: 'task:p0:' + kind, source: 'EXECUTION',
       workKind: kind, workState: 'EXHAUSTED', status: 'FAILED', workErrorCode: 'RECOVERY_EXHAUSTED' } })
     await prisma.audit.update({ where: { id: request.auditId! }, data: { status: 'COMPLETED', completedAt: new Date(), reportCompleteness: 'PARTIAL' } })
     await prisma.runRequest.update({ where: { id: request.id }, data: { status: 'COMPLETED', completedAt: new Date(), leaseUntil: null } })
@@ -100,7 +100,7 @@ run('scheduled completion after cadence advancement', () => {
   ] as const)('preserves interruption meaning across SQL selection and conditional settlement: %j', async ({ interrupted, ...task }) => {
     const request = await admit(2)
     const due = (await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).watchNextRunAt
-    await prisma.auditVerifierExecution.create({ data: { ...task, auditId: request.auditId!, source: 'EXECUTION' } })
+    await prisma.auditVerificationReceipt.create({ data: { ...task, auditId: request.auditId!, source: 'EXECUTION' } })
     const [sql] = await prisma.$queryRaw<Array<{ interrupted: boolean }>>(Prisma.sql`SELECT ${interruptedAnalysisWorkSql} AS interrupted
       FROM audits "source" WHERE "source".id = ${request.auditId!}`)
     expect(sql.interrupted).toBe(interrupted)

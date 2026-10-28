@@ -106,7 +106,7 @@ run('sitemap URL identity through the application and installed workers', () => 
   }
   it('detects the real indexing conflict, independently repairs it and preserves resource recovery and recurrence', async () => {
     const baseline = await category('sitemap-baseline')
-    const rows = await prisma.auditVerifierExecution.findMany({ where: { auditId: baseline.auditId!, targetKey: 'module:search-indexing' } })
+    const rows = await prisma.auditVerificationReceipt.findMany({ where: { auditId: baseline.auditId!, targetKey: 'module:search-indexing' } })
     expect(rows).toHaveLength(1)
     expect(searchReceiptSchema.parse(rows[0].detail).observations).toContainEqual(expect.objectContaining({
       checkId: 'robots-blocks-indexing', reason: 'sitemap_indexing_conflict', disposition: 'failed', checkVersion: 3 }))

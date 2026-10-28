@@ -44,6 +44,7 @@ const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableT
 /** Full client projection contract. A malformed refresh cannot replace recorded evidence. */
 export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   schemaVersion: z.literal(2),
+  readScope: z.enum(['overview', 'settings']).optional(),
   actions: z.object({ ownership: z.enum(['owner', 'provisional']),
     check: z.enum(['available', 'sign_in', 'claim']), copy: z.enum(['available', 'sign_in', 'claim']),
     monitoring: z.enum(['available', 'sign_in', 'claim']), integrations: z.enum(['available', 'sign_in', 'claim']),

@@ -22,7 +22,7 @@ vi.mock('@/lib/db', () => {
     }),
     upsert: vi.fn(async ({ create }) => { stubs.persisted.set(create.auditId + create.scopeKey, create.detail); return create }),
   }
-  const tx = { $executeRaw: vi.fn(), auditVerifierExecution: ledger,
+  const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  $executeRaw: vi.fn(), auditVerifierExecution: ledger,
     $queryRaw: vi.fn(async () => []), project: { findFirst: vi.fn(async () => ({ id: 'site' })) },
     siteConnection: { findUnique: stubs.connection, findFirst: vi.fn(async () => ({ id: 'connection' })), updateMany: stubs.update },
     gscConnection: { findUnique: stubs.legacy, findFirst: stubs.legacy },
@@ -62,7 +62,7 @@ describe('owner-scoped Google evidence', () => {
     await run()
     expect(stubs.legacyToken).not.toHaveBeenCalled()
     expect(stubs.inspect).not.toHaveBeenCalled()
-    expect(prisma.auditVerifierExecution.upsert).toHaveBeenCalledWith(expect.objectContaining({
+    expect(prisma.auditVerificationReceipt.upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ status: 'NOT_APPLICABLE' }),
     }))
   })
@@ -73,7 +73,7 @@ describe('owner-scoped Google evidence', () => {
     const result = await runGoogleSearchForAudit({ auditId: 'audit', userId: 'owner', sections: ['index'],
       pages: [{ url: PAGE }, { url: PAGE + 'private/' }], deadline: Date.now() + 10_000 })
     expect(result.receipts[0].observations[0]).toMatchObject({ disposition: 'unknown', reason: 'NOT_CONNECTED' })
-    const receipts = vi.mocked(prisma.auditVerifierExecution.upsert).mock.calls.map(([input]) => input.create)
+    const receipts = vi.mocked(prisma.auditVerificationReceipt.upsert).mock.calls.map(([input]) => input.create)
     expect(receipts.map(receipt => [receipt.pageUrl, receipt.status])).toEqual([[PAGE, 'NOT_APPLICABLE'], [PAGE + 'private/', 'COMPLETED']])
     expect(stubs.inspect).toHaveBeenCalledTimes(valid ? 1 : 0)
     if (valid) expect(stubs.inspect.mock.calls[0][2]).toBe(PAGE + 'private/')
@@ -86,7 +86,7 @@ describe('owner-scoped Google evidence', () => {
     expect(stubs.connection).not.toHaveBeenCalled()
     expect(stubs.legacy).not.toHaveBeenCalled()
     expect(stubs.inspect).not.toHaveBeenCalled()
-    expect(prisma.auditVerifierExecution.upsert).toHaveBeenCalledWith(expect.objectContaining({
+    expect(prisma.auditVerificationReceipt.upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ status: 'NOT_APPLICABLE' }),
     }))
   })
@@ -95,7 +95,7 @@ describe('owner-scoped Google evidence', () => {
     const result = await run()
     expect(result.receipts[0]).toMatchObject({ complete: false,
       observations: expect.arrayContaining([expect.objectContaining({ disposition: 'unknown', reason: 'NOT_CONNECTED' })]) })
-    expect(prisma.auditVerifierExecution.upsert).toHaveBeenCalledWith(expect.objectContaining({
+    expect(prisma.auditVerificationReceipt.upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ status: 'NOT_APPLICABLE' }),
     }))
     expect(stubs.inspect).not.toHaveBeenCalled()
@@ -106,7 +106,7 @@ describe('owner-scoped Google evidence', () => {
     const result = await runGoogleSearchForAudit({ auditId: 'audit', userId: 'owner', pages: [{ url: PAGE }],
       deadline: Date.now() + 10_000, requireConfiguredEvidence: true })
     expect(result.receipts[0].complete).toBe(false)
-    expect(prisma.auditVerifierExecution.upsert).toHaveBeenCalledWith(expect.objectContaining({
+    expect(prisma.auditVerificationReceipt.upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ status: 'COMPLETED' }),
     }))
     expect(stubs.inspect).not.toHaveBeenCalled()
@@ -129,7 +129,7 @@ describe('owner-scoped Google evidence', () => {
     expect(result.receipts[0].observations[0].reason).toBe('NOT_CONNECTED')
     expect(stubs.legacy).not.toHaveBeenCalled()
     expect(stubs.inspect).not.toHaveBeenCalled()
-    expect(prisma.auditVerifierExecution.upsert).toHaveBeenCalledWith(expect.objectContaining({
+    expect(prisma.auditVerificationReceipt.upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ status: 'COMPLETED' }),
     }))
   })

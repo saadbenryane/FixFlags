@@ -5,7 +5,7 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
 
 export async function GET(
-  _req: Request,
+  request: Request,
   context: { params: Promise<{ siteId: string }> }
 ) {
   try {
@@ -13,7 +13,8 @@ export async function GET(
     const access = await requireSiteAccess(siteId)
     if (!access.ok) return apiError(access.message, access.status)
 
-    const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
+    const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated, site: access.decision.site,
+      readScope: new URL(request.url).searchParams.get('scope') === 'settings' && access.decision.role === 'owner' ? 'settings' : 'overview' })
     if (!home) return apiError('Site not found', 404)
     return NextResponse.json(home, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {

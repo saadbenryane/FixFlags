@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   taskFindMany: vi.fn(),
 }))
 
-const tx = {
+const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
   $queryRaw: mocks.lockOutcome,
   siteOutcome: {
     findFirst: mocks.txFindFirst,

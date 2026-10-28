@@ -19,6 +19,8 @@ The accepted current milestone is the website app with one-website open-beta acc
 
 FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
 
+**Integrated completion work, 2026-10-28:** `3f231e0c` shipped successfully to web and worker. The finished stability refactor is integrated locally with that release's auth/custody corrections. Native repair verification now requires a typed task relationship, and mobile navigation and chat share the measured bottom inset. The [integration checkpoint](docs/product-masterplan.md#integration-checkpoint-2026-10-28) separates current local proof, the coordinated schema cutover and remaining external acceptance. This integration has not yet been deployed.
+
 The authoritative implementation detail, capability mapping, MCP contract, migration, and launch checklist live in [docs/product-masterplan.md](docs/product-masterplan.md). This file is the dependency-ordered delivery view. Current code truth remains [PRODUCT.md](PRODUCT.md).
 
 ## Architectural spine

@@ -4,7 +4,7 @@ import { describe, it, vi, beforeEach, expect } from 'vitest'
 import type { FlagStatus, Severity } from '@prisma/client'
 
 const { prismaMock } = vi.hoisted(() => ({
-  prismaMock: {
+  prismaMock: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
     flag: {
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
@@ -103,10 +103,10 @@ describe('completed comparison facts', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
     prismaMock.audit.findUnique.mockReset()
-    prismaMock.auditVerifierExecution.upsert.mockReset()
+    prismaMock.auditVerificationReceipt.upsert.mockReset()
     prismaMock.$transaction.mockImplementation(async fn => fn(prismaMock))
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: 'parent', verifierExecutions: [] })
-    prismaMock.auditVerifierExecution.upsert.mockImplementation(async input => ({ status: 'COMPLETED', detail: input.create.detail }))
+    prismaMock.auditVerificationReceipt.upsert.mockImplementation(async input => ({ status: 'COMPLETED', detail: input.create.detail }))
   })
   it.each(['newIssues', 'unchanged', 'inconclusive', 'fixed'] as const)('retains unavailable source evidence through %s without copying private observations', async bucket => {
     const unreadable = { version: 999, items: [{ evidence: 'Private unavailable source' }] }
@@ -118,7 +118,7 @@ describe('completed comparison facts', () => {
     prismaMock.flag.findMany.mockResolvedValueOnce(bucket === 'newIssues' ? [] : [original])
       .mockResolvedValueOnce(absent ? [] : [current])
     await persistFlagDiffSummary('parent', 'child')
-    const summary = prismaMock.auditVerifierExecution.upsert.mock.calls[0][0].create.detail.summary
+    const summary = prismaMock.auditVerificationReceipt.upsert.mock.calls[0][0].create.detail.summary
     expect(summary[bucket]).toMatchObject([{ id: absent ? 'before' : 'after', supportingEvidenceUnreadable: true }])
     expect(comparisonEvidenceComplete(summary)).toBe(false)
     expect(JSON.stringify(summary)).not.toContain('Private unavailable source')
@@ -127,20 +127,20 @@ describe('completed comparison facts', () => {
   it('retains an unchanged failure after later monitoring resolves or regresses its Flag rows', async () => {
     prismaMock.flag.findMany.mockResolvedValueOnce([flag({ id: 'before' })]).mockResolvedValueOnce([flag({ id: 'after' })])
     await persistFlagDiffSummary('parent', 'child')
-    const input = prismaMock.auditVerifierExecution.upsert.mock.calls[0][0]
+    const input = prismaMock.auditVerificationReceipt.upsert.mock.calls[0][0]
     expect(input).toMatchObject({ update: {}, create: { targetKey: FLAG_COMPARISON_TARGET, scopeKey: 'product', status: 'COMPLETED' } })
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: 'parent',
       verifierExecutions: [{ status: 'COMPLETED', detail: input.create.detail }] })
     prismaMock.flag.findMany.mockRejectedValue(new Error('Later mutable Flag history was read'))
     expect(await getFlagDiffSummary('parent', 'child')).toMatchObject({ unchanged: [{ id: 'after', status: 'OPEN' }], fixed: [], regressed: [] })
     await persistFlagDiffSummary('parent', 'child')
-    expect(prismaMock.auditVerifierExecution.upsert).toHaveBeenCalledTimes(1)
+    expect(prismaMock.auditVerificationReceipt.upsert).toHaveBeenCalledTimes(1)
   })
   it('preserves first-run alerts when later recovery changes the underlying Flag status', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: null, verifierExecutions: [] })
     prismaMock.flag.findMany.mockResolvedValue([flag({ id: 'first' })])
     await persistFlagDiffSummary(null, 'child')
-    const detail = prismaMock.auditVerifierExecution.upsert.mock.calls[0][0].create.detail
+    const detail = prismaMock.auditVerificationReceipt.upsert.mock.calls[0][0].create.detail
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: null,
       verifierExecutions: [{ status: 'COMPLETED', detail }] })
     prismaMock.flag.findMany.mockResolvedValue([flag({ id: 'first', status: 'FIXED' })])
@@ -160,16 +160,16 @@ describe('completed comparison facts', () => {
     await expect(persistFlagDiffSummary('parent', 'child')).rejects.toThrow(/completed execution/)
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), parentId: 'parent' })
     await expect(persistFlagDiffSummary('different', 'child')).rejects.toThrow(/original parent/)
-    expect(prismaMock.auditVerifierExecution.upsert).not.toHaveBeenCalled()
+    expect(prismaMock.auditVerificationReceipt.upsert).not.toHaveBeenCalled()
   })
   it('preserves the first committed comparison when concurrent projection or retry reaches the same ledger key', async () => {
     const original = { kind: 'flag-comparison', version: 1, auditId: 'child', parentAuditId: 'parent',
       summary: { fixed: [], inconclusive: [], unchanged: [{ id: 'original', checkId: 'cta-dead-link', problem: 'Primary CTA is a dead link',
         rubric: 'EXPERIENCE', severity: 'IMPORTANT', status: 'OPEN' }], regressed: [], newIssues: [] } }
     prismaMock.flag.findMany.mockResolvedValue([])
-    prismaMock.auditVerifierExecution.upsert.mockResolvedValue({ status: 'COMPLETED', detail: original })
+    prismaMock.auditVerificationReceipt.upsert.mockResolvedValue({ status: 'COMPLETED', detail: original })
     await persistFlagDiffSummary('parent', 'child')
-    expect(prismaMock.auditVerifierExecution.upsert.mock.calls[0][0].update).toEqual({})
+    expect(prismaMock.auditVerificationReceipt.upsert.mock.calls[0][0].update).toEqual({})
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: 'parent',
       verifierExecutions: [{ status: 'COMPLETED', detail: original }] })
     expect(await getFlagDiffSummary('parent', 'child')).toMatchObject({ unchanged: [{ id: 'original' }] })
@@ -178,7 +178,7 @@ describe('completed comparison facts', () => {
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: null, parentId: null, verifierExecutions: [] })
     prismaMock.flag.findMany.mockResolvedValue([flag({ id: 'anonymous-flag' })])
     await persistFlagDiffSummary(null, 'anonymous-audit')
-    const detail = prismaMock.auditVerifierExecution.upsert.mock.calls[0][0].create.detail
+    const detail = prismaMock.auditVerificationReceipt.upsert.mock.calls[0][0].create.detail
     expect(detail).not.toHaveProperty('projectId')
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'claimed-site', parentId: null,
       verifierExecutions: [{ status: 'COMPLETED', detail }] })

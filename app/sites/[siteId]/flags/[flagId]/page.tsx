@@ -52,8 +52,10 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   const resolvedId = access.decision.site.siteId
   const ownsSite = access.decision.role === 'owner'
-  const detailPromise = loadSiteBoardFlag(resolvedId, flagId)
-  const homePromise = loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated })
+  const connectionViewsPromise = access.decision.site.projectId ? loadSiteConnectionViews(access.decision.site.projectId) : Promise.resolve(null)
+  void connectionViewsPromise.catch(() => undefined)
+  const detailPromise = loadSiteBoardFlag(resolvedId, flagId, access.decision.site)
+  const homePromise = loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated, site: access.decision.site, connections: connectionViewsPromise })
   const detail = await detailPromise
   if (!detail) {
     await homePromise.catch(() => undefined)
@@ -86,7 +88,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   }
   const [home, connectionViews] = await Promise.all([
     homePromise,
-    site.projectId ? loadSiteConnectionViews(site.projectId) : null,
+    connectionViewsPromise,
     recordOpening(),
   ])
   if (!home) notFound()

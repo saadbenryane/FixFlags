@@ -20,14 +20,14 @@ describe('new linked retry admission', () => {
   })
   it('admits fresh work and leaves the terminal execution and all its evidence untouched', async () => {
     expect(await retryAudit('before', owner)).toEqual({ auditId: 'after', status: 'QUEUED', siteId: 'site', reused: false })
-    expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ parentId: 'before', retryParent: true,
-      url: prior.url, userId: 'owner', skipUsageCount: true, useProjectScanAccess: true }))
+    expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ admission: { kind: 'retry', parentId: 'before' },
+      url: prior.url, userId: 'owner', useProjectScanAccess: true }))
     expect(mocks.update).not.toHaveBeenCalled()
   })
   it('keeps the anonymous browser identity and records a fresh linked execution', async () => {
     mocks.find.mockResolvedValue({ ...prior, userId: null, auditMode: 'SINGLE' })
     await retryAudit('before', { ...owner, userId: null, anonymousAuditIds: ['before'] })
-    expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ userId: null, visitorKey: 'visitor', parentId: 'before', auditMode: 'SINGLE' }))
+    expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ userId: null, visitorKey: 'visitor', admission: { kind: 'retry', parentId: 'before' }, auditMode: 'SINGLE' }))
   })
   it('refuses anonymous retry without its private Site identity even if a historical cookie names the Audit', async () => {
     mocks.find.mockResolvedValue({ ...prior, userId: null })

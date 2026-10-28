@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  prisma: {
+  prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
     $queryRaw: mocks.historicalPageScope,
     user: { findUnique: mocks.userFindUnique },
     outcomeFixture: { findFirst: mocks.fixtureFindFirst }, auditVerifierExecution: { findFirst: mocks.taskFindFirst },
@@ -48,7 +48,9 @@ vi.mock('@/lib/db', () => ({
 }))
 vi.mock('@/lib/audit/create-audit', async () => {
   const actual = await vi.importActual<typeof import('@/lib/audit/create-audit')>('@/lib/audit/create-audit')
-  return { ...actual, createAndEnqueueAudit: mocks.createAudit }
+  const { resolveAuditAdmission } = await import('@/lib/audit/admission')
+  return { ...actual, createAndEnqueueAudit: (command: Parameters<typeof actual.createAndEnqueueAudit>[0]) =>
+    mocks.createAudit({ ...command, ...resolveAuditAdmission(command.admission) }) }
 })
 vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),

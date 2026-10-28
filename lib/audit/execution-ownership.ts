@@ -73,7 +73,7 @@ async function executionStillOwned(owner: ExecutionOwnership): Promise<boolean> 
     SELECT a."id" FROM "audits" a
     LEFT JOIN "projects" p ON p."id"=a."projectId"
     LEFT JOIN "users" u ON u."id"=p."userId"
-    ${owner.taskId ? Prisma.sql`JOIN "audit_verifier_executions" e ON e."auditId"=a."id"` : Prisma.empty}
+    ${owner.taskId ? Prisma.sql`JOIN "audit_execution_tasks" e ON e."auditId"=a."id"` : Prisma.empty}
     WHERE a."id"=${owner.auditId} AND ${executionLease(owner)}
       AND (a."projectId" IS NULL OR (${siteAuthority}))
   `
@@ -88,7 +88,7 @@ export async function renewExecution(owner: ExecutionOwnership): Promise<boolean
       assertExecutionActive(owner)
       const until = new Date(Date.now() + EXECUTION_LEASE_MS)
       if (owner.taskId) {
-        await tx.auditVerifierExecution.update({ where: { id: owner.taskId }, data: { workLeaseUntil: until } })
+        await tx.auditExecutionTask.update({ where: { id: owner.taskId }, data: { workLeaseUntil: until } })
       } else {
         await tx.audit.update({ where: { id: owner.auditId }, data: { executionLeaseUntil: until } })
       }
@@ -125,7 +125,7 @@ async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: Executi
     `
     if (parent.length !== 1) throw new ExecutionOwnershipLost()
     const task = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT e."id" FROM "audit_verifier_executions" e JOIN "audits" a ON a."id" = e."auditId"
+      SELECT e."id" FROM "audit_execution_tasks" e JOIN "audits" a ON a."id" = e."auditId"
       WHERE a."id" = ${owner.auditId} AND ${executionLease(owner)}
       FOR UPDATE OF e
     `
@@ -249,7 +249,7 @@ export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work:
     stopRenewing()
     signal.removeEventListener('abort', stopRenewing)
     if (owner.taskId) {
-      await prisma.auditVerifierExecution.updateMany({
+      await prisma.auditExecutionTask.updateMany({
         where: { id: owner.taskId, workToken: owner.token, workGeneration: owner.generation },
         data: { workLeaseUntil: new Date(0) },
       })

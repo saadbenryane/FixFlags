@@ -56,10 +56,6 @@ import { safeContext,sameExecutionScope,sameSelection,type RunInput,type SiteRun
  * was unmetered, so the allowance only applied to the legacy new-URL path and a
  * Free Site could be re-checked without limit.
  */
-function consumesScanAllowance(scope: NonNullable<RunInput['scope']>, source: RunRequestSource): boolean {
-  return (scope === 'SITE' || scope === 'CATEGORY') && source !== 'WATCH'
-}
-
 export async function requestSiteRun(input: RunInput): Promise<{
   runId: string
   auditId: string | null
@@ -149,7 +145,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
 
   if (scope === 'CATEGORY' || scope === 'ACCOUNT_CHECKS' || scope === 'FIXTURE_SETUP') await requireExecutionReady(scope)
   const run = { id: randomUUID() }
-  const runAdmission: Prisma.RunRequestUncheckedCreateInput = {
+  const runAdmission: Prisma.RunRequestUncheckedCreateInput & { id: string } = {
         id: run.id,
         projectId: input.projectId,
         // Compatibility-only dual-write. The complete selection relation below
@@ -199,21 +195,15 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (parentAuditId && !parent)
       throw new SiteRunRefusal('Verification source is no longer available', 409)
     const started = await createAndEnqueueAudit({
+      admission: {
+        kind: 'site-run', parentId: parent?.id, request: runAdmission, executionSpec,
+        scheduledClaim: input.scheduledClaim, operator: input.operator,
+        verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
+      },
       url: executionSpec.targetUrl,
       userId: input.userId,
-      parentId: parent?.id,
-      recheckTrigger: input.source === 'WATCH' ? 'WATCH' : 'MANUAL',
       auditMode: input.source === 'WATCH' ? 'CRITICAL_PATH' : 'SINGLE',
-      monitoringMode: input.source === 'WATCH' ? 'FULL' : undefined,
-      skipUsageCount: !consumesScanAllowance(scope, input.source),
       useProjectScanAccess: !fixture,
-      verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
-      reuseActiveManual: false,
-      runRequestId: run.id,
-      runRequestAdmission: runAdmission,
-      scheduledClaim: input.scheduledClaim,
-      operator: input.operator,
-      executionSpec,
       attribution: buildAttribution({
         url: auditUrl,
         source: auditSource(input.source),

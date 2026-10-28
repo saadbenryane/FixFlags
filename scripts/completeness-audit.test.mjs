@@ -7,7 +7,7 @@ import {
   collectTrackedGeneratedArtifacts,
   criticalRouteBoundaryFailures,
   curatedSampleBundleFailures,
-  reportPaneCompositionIsCanonical,
+  savedEvidenceCompositionIsCanonical,
   railwayUsesStrictReadiness,
   runCompletenessAudit,
 } from './completeness-audit.mjs'
@@ -16,46 +16,12 @@ test('collectMcpTools extracts registered names without prose references', () =>
   assert.deepEqual(collectMcpTools("server.tool(\n 'ff_one', x)\n// ff_fake\nserver.tool('generate-two', y)"), ['ff_one', 'generate-two'])
 })
 
-test('Report pane composition guard follows resolved component structure', () => {
-  const source = `
-    const flagsSection = condition
-      ? <section className="whatever" id="report-flags"><LiveReportExplorer /></section>
-      : <section id="report-flags" />
-    const livingReportPanel = (
-      <ReportPane
-        explorer={flagsSection}
-        beforeExplorer={frameExtras}
-      />
-    )
-    return (
-      <ReportWorkspaceSplitShell
-        reportPanel={livingReportPanel}
-        reportHeader={<ReportOutcomeBar progress={progress} model={workspace} />}
-      />
-    )
-  `
-  assert.equal(reportPaneCompositionIsCanonical(source), true)
-  assert.equal(
-    reportPaneCompositionIsCanonical(
-      source.replace(
-        'explorer={flagsSection}',
-        'explorer={flagsSection} afterFrame={<ReportContextDisclosure />}',
-      ),
-    ),
-    false,
-  )
-  assert.equal(reportPaneCompositionIsCanonical(source.replaceAll('id="report-flags"', 'id="other"')), false)
-  assert.equal(reportPaneCompositionIsCanonical(source.replace('model={workspace}', 'model={other}')), false)
-})
-
-test('Report pane composition guard rejects malformed TSX instead of matching fragments', () => {
-  assert.equal(
-    reportPaneCompositionIsCanonical(`
-      <ReportWorkspaceSplitShell reportHeader={<ReportOutcomeBar model={workspace} />}
-      const text = '<ReportFinishPlan /><ReportContextDisclosure />'
-    `),
-    false,
-  )
+test('saved evidence guard rejects retired workspaces and malformed JSX', () => {
+  const source = 'export function View() { return <AuditShell><main><h2>Saved observations</h2><a>Analyze a website</a></main></AuditShell> }'
+  assert.equal(savedEvidenceCompositionIsCanonical(source), true)
+  assert.equal(savedEvidenceCompositionIsCanonical(source.replace('<main>', '<main><WorkspaceChatPanel />')), false)
+  assert.equal(savedEvidenceCompositionIsCanonical(source.replace('Saved observations', 'Score')), false)
+  assert.equal(savedEvidenceCompositionIsCanonical(source.slice(0, -20)), false)
 })
 
 test('repository sample bundle has complete distinct hashed captures', () => {

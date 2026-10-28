@@ -30,12 +30,13 @@ from importing database runtime modules, prevents core customer routes from
 bypassing application boundaries, detects runtime dependency cycles, and keeps
 parked Canvas APIs absent.
 
-The Review UI has one server-built `ReviewWorkspaceProjection`. Its union states
-are running, completed, partial, failed, forbidden, and curated sample. Access
-is decided once by the pure policy in `lib/auth/access-policy.ts`, then the same
-workspace shell renders the appropriately redacted projection. Product reads
-compose `ProductWorkspaceProjection`; Product mutations enter through the typed
-commands in `lib/products/application/commands.ts`.
+Customer Sites use the validated `SiteHomeView` projection. The overview omits
+account-management and GitHub settings reads; Settings requests that evidence
+explicitly. Viewer-scoped refreshes keep their own read scope and cancellation.
+Saved report links retain a sanitized observations view in
+`app/report/[id]/CompletedReportView.tsx`; the retired report, Product and Canvas
+workspaces have no runtime entrypoint. Existing report access policy and private
+historical data remain enforced.
 
 ## Directory structure
 
@@ -112,8 +113,10 @@ Each page in an audit progresses through these stages independently.
 
 | File | Role |
 |------|------|
-| `lib/audit/runner.ts` | Top-level `runAudit()` orchestrator |
-| `lib/audit/pipeline/run-page.ts` | Per-page Capture, Check, and Judge stage orchestration |
+| `lib/audit/runner.ts` | Delivery adapter for the progressive coordinator and interrupted completion projections |
+| `lib/audit/progressive/runtime.ts` | Graph admission, resource workers and bounded recovery |
+| `lib/audit/progressive/engine.ts` | Fenced task dispatch, claims, execution and settlement |
+| `lib/audit/retire-legacy-execution.ts` | Fenced terminal result for unfinished legacy admissions, without replay |
 | `lib/audit/pipeline/stages/judge-page.ts` | Typed Judge stage boundary |
 | `lib/audit/pipeline/types.ts` | Execution context and typed stage results |
 | `lib/audit/pipeline-log.ts` | Append-only execution event sink and reader |
@@ -227,8 +230,8 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 
 | Layer | Components |
 |-------|------------|
-| Canonical report workspace | `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
-| Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, explorer, report actions |
+| Current customer workspace | `components/sites/SiteBoard.tsx`, `lib/sites/application/queries.ts` |
+| Saved report compatibility | `app/report/[id]/CompletedReportView.tsx`, existing report access policy |
 | Improvement artifacts | `buildUnifiedPlanBundle()` aggregates live and repository Flags once; `buildFixArtifacts()` returns the complete ranked Fix List plus its bounded one-to-three item Finish Plan for report, API, export, task outcomes, MCP, and CLI |
 | Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Studio API + MCP `scanAccess` on check |
 | Deploy CI gate | `app/api/webhooks/railway/route.ts` (Authorization header, owned Site, shared RunRequest); see `docs/railway-deploy-check.md` |
@@ -280,7 +283,7 @@ Generate the current model count from `prisma/schema.prisma` with `grep -c '^mod
 
 Models span:
 - **Auth:** User, Session, Account, Verification
-- **Audit:** Audit, AuditPage, Screenshot, Flag, FlagFeedback, ReportRubric, AuditRunCost
+- **Audit:** Audit, AuditPage, Screenshot, Flag, FlagFeedback, ReportRubric, AuditRunCost, AuditExecutionTask, AuditVerificationReceipt
 - **Billing:** CreditPurchase, ProcessedStripeEvent
 - **Communications:** EmailLog, NewsletterSubscriber, Lead
 - **Support:** SupportTenant, SupportSession, SupportMessage
@@ -288,3 +291,26 @@ Models span:
 - **Graph:** Site, Page, Technology, SiteTechnology, Industry, Issue, IssueOccurrence, FixPrompt, BenchmarkSnapshot, Experiment, ToolUsage, GrowthArtifact
 - **MCP:** McpInteraction
 - **General:** ApiKey, Project, ShareLink
+
+## Execution persistence
+
+`AuditExecutionTask` owns queue delivery, claims, generations, deadlines,
+dependencies and artifacts. `AuditVerificationReceipt` owns verification facts.
+Its optional task relation requires the same Audit through a composite foreign
+key. Historical unbound receipts retain their original provenance.
+
+`AuditVerifierExecution` is a read-only PostgreSQL union view, enabled through
+Prisma's views feature, for existing coverage and historical projections. It
+records an explicit task/receipt discriminator. Scheduling and writes use the
+physical models; they never mutate this projection or classify rows by prefixes.
+
+The task-splitting migration preserves original task IDs and all recorded work.
+The sequential engine is no longer dispatched. Its concurrently edited source
+and focused regression fixture remain isolated by the module boundary guard.
+Unfinished old admissions retire with `LEGACY_EXECUTION_RETIRED` and retain their
+observations. Retrying admits new work through the current engine.
+
+`CreateAuditOptions` requires explicit admission intent. New checks, updates,
+retries and Site runs resolve into one transactional creation core. Site-run
+charging and reuse follow its admitted source and scope; owner, credential,
+fixture and schedule comparisons still occur at the commit boundary.

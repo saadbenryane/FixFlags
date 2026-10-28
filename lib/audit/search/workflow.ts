@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { assessSearchRecovery } from './recovery'
-import { executionWrite } from '@/lib/audit/execution-ownership'
+import { currentExecutionOwnership, executionWrite } from '@/lib/audit/execution-ownership'
 import { SEARCH_DEFINITIONS } from './definitions'
 import { collectSearchEvidence, type SearchResourceCache } from './collect'
 import { evaluateSearch, evaluateCheckedPageTitles, searchFindings } from './registry'
@@ -47,9 +47,9 @@ export async function priorSearchReceipt(auditId: string, pageUrl: string, evalu
 
 export async function persistSearchReceipt(receipt: SearchReceipt, module: 'search' | 'search-google' | 'search-cross-page' = 'search'): Promise<SearchReceipt> {
   const validated = searchReceiptSchema.parse(receipt)
-  const stored = await executionWrite(tx => tx.auditVerifierExecution.upsert({
+  const stored = await executionWrite(tx => tx.auditVerificationReceipt.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: validated.auditId, targetKey: `module:${module}`, scopeKey: `page:${validated.pageUrl}` } },
-    create: { auditId: validated.auditId, targetKey: `module:${module}`, scopeKey: `page:${validated.pageUrl}`,
+    create: { taskId: currentExecutionOwnership()?.taskId, auditId: validated.auditId, targetKey: `module:${module}`, scopeKey: `page:${validated.pageUrl}`,
       source: 'SEARCH', pageUrl: validated.pageUrl, status: 'COMPLETED', detail: validated as Prisma.InputJsonValue,
       evidenceReference: { auditId: validated.auditId, pageUrl: validated.pageUrl, module } },
     // A repeated projection cannot replace the observation that established this execution.

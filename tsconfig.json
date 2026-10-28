@@ -47,6 +47,10 @@
     "scripts",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "test-results",
+    "playwright-report",
+    "output",
+    "coverage"
   ]
 }

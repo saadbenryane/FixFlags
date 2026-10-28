@@ -12,7 +12,7 @@ vi.mock('@/lib/db', async () => {
     throw new Error('Use the disposable execution verifier')
   const { PrismaClient } = await import('@prisma/client')
   fixture.db = new PrismaClient()
-  return { prisma: fixture.db.$extends({ query: { async $queryRaw({ args, query }) {
+  return { prisma: fixture.db.$extends({ query: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  async $queryRaw({ args, query }) {
     fixture.reads++
     const rows = await query(args)
     if (Array.isArray(rows)) fixture.batches.push({ count: rows.length,
@@ -66,7 +66,7 @@ describe.skipIf(!enabled)('Recorded result history reads', () => {
       }
       const detail = { kind: 'site-module-check', version: 1, module: 'metadata', applicable: true, passed: true, complete: true,
         pageUrl: project.url, assertions: [{ key: 'title-presence', name: 'Page title', expected: 'A title is declared', observed: 'A title was recorded', passed: true, complete: true }] }
-      await db.auditVerifierExecution.createMany({ data: audits.flatMap(audit => Array.from({ length: 20 }, (_, index) => ({
+      await db.auditVerificationReceipt.createMany({ data: audits.flatMap(audit => Array.from({ length: 20 }, (_, index) => ({
         auditId: audit.id, targetKey: 'module:metadata', scopeKey: 'page:' + index, pageUrl: project.url + 'page-' + index,
         source: 'DETERMINISTIC', status: 'COMPLETED' as const, detail: { ...detail, pageUrl: project.url + 'page-' + index },
       }))) })
@@ -82,7 +82,7 @@ describe.skipIf(!enabled)('Recorded result history reads', () => {
       expect(fixture.reads).toBeLessThanOrEqual(20)
       const previousFingerprint = createHash('sha256')
       for (const phase of ['current', 'history'] as const) {
-        const rows = await db.auditVerifierExecution.findMany({ where: { audit: { projectId: project.id },
+        const rows = await db.auditVerificationReceipt.findMany({ where: { audit: { projectId: project.id },
           targetKey: { startsWith: 'module:' }, auditId: phase === 'current' ? audits.at(-1)!.id : { not: audits.at(-1)!.id } },
           orderBy: [{ audit: { createdAt: 'desc' } }, { createdAt: 'desc' }, { id: 'desc' }],
           select: { id: true, auditId: true, targetKey: true, pageUrl: true, source: true, status: true, detail: true, updatedAt: true } })
@@ -91,7 +91,7 @@ describe.skipIf(!enabled)('Recorded result history reads', () => {
       }
       expect(JSON.parse(Buffer.from(page.nextCursor!, 'base64url').toString()).evidence).toBe(previousFingerprint.digest('hex'))
       const oldest = await db.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audits[0].id } })
-      await db.auditVerifierExecution.update({ where: { id: oldest.id }, data: { updatedAt: oldest.updatedAt,
+      await db.auditVerificationReceipt.update({ where: { id: oldest.id }, data: { updatedAt: oldest.updatedAt,
         detail: { ...detail, pageUrl: oldest.pageUrl!, assertions: [{ ...detail.assertions[0], observed: 'A changed historical observation' }] } } })
       await expect(loadSiteCheckResultPage(site, audits.at(-1)!.id, page.nextCursor!, new Map(), { area: 'search' }, true))
         .rejects.toThrow('Check evidence selection changed')
@@ -106,7 +106,7 @@ describe.skipIf(!enabled)('Recorded result history reads', () => {
       const audit = await db.audit.create({ data: { userId: user.id, projectId: project.id, url: project.url, status: 'COMPLETED', completedAt: new Date() } })
       for (let index = 0; index < 3; index++) {
         const pageUrl = project.url + 'page-' + index
-        await db.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'module:metadata', scopeKey: 'page:' + index,
+        await db.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: 'module:metadata', scopeKey: 'page:' + index,
           pageUrl, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
             kind: 'site-module-check', version: 1, module: 'metadata', applicable: true, passed: true, complete: true, pageUrl,
             assertions: Array.from({ length: 180 }, (_, assertion) => ({ key: 'title-presence', name: 'Page title',
@@ -140,7 +140,7 @@ describe.skipIf(!enabled)('Recorded result history reads', () => {
       const anonymous = await db.audit.create({ data: { url: 'https://provisional.example/', isPublic: true, status: 'COMPLETED', completedAt: new Date() } })
       anonymousId = anonymous.id
       for (const audit of [...audits, anonymous]) {
-        await db.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'module:metadata', scopeKey: 'page:' + audit.url,
+        await db.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: 'module:metadata', scopeKey: 'page:' + audit.url,
           pageUrl: audit.url, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
             kind: 'site-module-check', version: 1, module: 'metadata', pageUrl: audit.url, applicable: true, passed: true, complete: true,
             assertions: [{ key: 'title-presence', name: 'Page title', expected: 'A title is declared', observed: 'Recorded title', passed: true, complete: true }],

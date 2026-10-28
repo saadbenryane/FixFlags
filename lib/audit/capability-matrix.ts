@@ -536,7 +536,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     status: 'live',
 
     verify: 'npm run test:unit -- lib/audit/__tests__/run-page-production-path.test.ts',
-    notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s. Wired in pipeline/run-page.ts.',
+    notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s. Collected by progressive action tasks.',
   },
 
   // EXPERIENCE - design language

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const transaction = vi.hoisted(() => vi.fn())
 const watchOwnership = vi.hoisted(() => vi.fn())
 const releaseTask = vi.hoisted(() => vi.fn(async () => ({ count: 0 })))
-vi.mock('@/lib/db', () => ({ prisma: {
+vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
   $transaction: transaction,
   $queryRaw: watchOwnership,
   auditVerifierExecution: { updateMany: releaseTask },

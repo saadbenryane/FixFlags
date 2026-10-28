@@ -9,7 +9,7 @@ import { readSiteProjectionNotice, type SiteProjectionNotice } from '@/lib/sites
 
 const READ_TIMEOUT_MS = 15_000
 export type SiteResourceUpdate = { type: 'projection'; notice: SiteProjectionNotice } | { type: 'reconnected' }
-type ReadOwner = { siteId: string; viewerScope: string }
+type ReadOwner = { siteId: string; viewerScope: string; readScope: string }
 
 function viewerScope(view: SiteHomeView): string {
   return `${view.actions.ownership}:${view.actions.copy}`
@@ -17,7 +17,8 @@ function viewerScope(view: SiteHomeView): string {
 
 export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?: (update: SiteResourceUpdate) => void) {
   const scope = viewerScope(initial)
-  const owner = useMemo<ReadOwner>(() => ({ siteId, viewerScope: scope }), [siteId, scope])
+  const readScope = initial.readScope ?? 'overview'
+  const owner = useMemo<ReadOwner>(() => ({ siteId, viewerScope: scope, readScope }), [siteId, scope, readScope])
   const [streamFailure, setStreamFailure] = useState<ReadOwner | null>(null)
   const [readFailure, setReadFailure] = useState<ReadOwner | null>(null)
   const latestRead = useRef<{ owner: ReadOwner; promise: Promise<SiteHomeView> } | null>(null)
@@ -34,7 +35,7 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
     }
   }, [owner])
   useLayoutEffect(() => { updateObserver.current = onUpdate }, [onUpdate])
-  const endpoint = `/api/sites/${siteId}`
+  const endpoint = `/api/sites/${siteId}${readScope === 'settings' ? '?scope=settings' : ''}`
   // Public and owner projections must never share a cached repair payload.
   const cacheKey = useMemo(() => [endpoint, scope] as const, [endpoint, scope])
   const read = useCallback((url: string) => {
@@ -49,7 +50,7 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
         const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
         if (!response.ok) throw new Error(SITE_ACTION_COPY.updatesDisconnected)
         const view = readSiteHomeView(await response.json(), siteId)
-        if (activeOwner.current !== owner || controller.signal.aborted || viewerScope(view) !== owner.viewerScope) {
+        if (activeOwner.current !== owner || controller.signal.aborted || viewerScope(view) !== owner.viewerScope || (view.readScope ?? 'overview') !== owner.readScope) {
           throw new Error(SITE_ACTION_COPY.updatesDisconnected)
         }
         return view

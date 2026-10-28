@@ -120,7 +120,7 @@ run('Google indexed-version worker observations', () => {
       const unconfigured = await category('google-unconfigured')
       const audit = await prisma.audit.findUniqueOrThrow({ where: { id: unconfigured.auditId! } })
       expect(audit.failedModules).not.toEqual(expect.arrayContaining(['search-google-index', 'search-google-performance']))
-      const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: unconfigured.auditId!, targetKey: { startsWith: 'module:search-google' } } })
+      const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: unconfigured.auditId!, targetKey: { startsWith: 'module:search-google' } } })
       expect(receipts).toHaveLength(4)
       expect(receipts.every(item => item.status === 'NOT_APPLICABLE')).toBe(true)
       for (const receipt of receipts) expect(searchReceiptSchema.parse(receipt.detail)).toMatchObject({ complete: false,
@@ -135,7 +135,7 @@ run('Google indexed-version worker observations', () => {
       const revoked = await category('google-revoked')
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: revoked.auditId! } })).toMatchObject({
         reportCompleteness: 'PARTIAL', failedModules: expect.arrayContaining(['search-google-index', 'search-google-performance']) })
-      const unavailable = await prisma.auditVerifierExecution.findMany({ where: { auditId: revoked.auditId!, targetKey: { startsWith: 'module:search-google' } } })
+      const unavailable = await prisma.auditVerificationReceipt.findMany({ where: { auditId: revoked.auditId!, targetKey: { startsWith: 'module:search-google' } } })
       expect(unavailable.every(item => item.status === 'COMPLETED')).toBe(true)
       expect(providerRequests).toBe(before)
     } finally {
@@ -161,7 +161,7 @@ run('Google indexed-version worker observations', () => {
     const baseline = await pendingBaseline.finally(() => recovery.stop())
     if (interruption) throw interruption
     expect(tokenRenewals).toBeGreaterThan(0)
-    const baselineReceipts = await prisma.auditVerifierExecution.findMany({ where: {
+    const baselineReceipts = await prisma.auditVerificationReceipt.findMany({ where: {
       auditId: baseline.auditId!, targetKey: { startsWith: 'module:search-google' } } })
     expect(baselineReceipts).toHaveLength(4)
     expect(baselineReceipts.every(receipt => searchReceiptSchema.parse(receipt.detail).complete)).toBe(true)
@@ -176,7 +176,7 @@ run('Google indexed-version worker observations', () => {
     expect(await loadSiteFlags(site)).toEqual(expect.arrayContaining([expect.objectContaining({ sourceFlagId: flag.id, checkId: 'indexing-failure' })]))
     expect(await sourceHistory()).toMatchObject({ result: 'FLAG', flagCount: 1,
       flags: [{ id: flag.id, title: flag.problem }] })
-    const saved = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { auditId_targetKey_scopeKey: {
+    const saved = await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { auditId_targetKey_scopeKey: {
       auditId: failure.auditId!, targetKey: 'module:search-google-index', scopeKey: 'page:' + pageUrl } } })
     expect(searchReceiptSchema.parse(saved.detail).observations.find(item => item.checkId === 'search-google-fetch'))
       .toMatchObject({ reason: 'google_soft_404_recorded', google: { property, pageFetchState: 'SOFT_404', lastCrawlAt: crawl } })
@@ -198,7 +198,7 @@ run('Google indexed-version worker observations', () => {
         expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome: phase === 'fresh' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: phase === 'fresh' })
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'fresh' ? 'FIXED' : 'OPEN' })
         if (disconnected) {
-          const provider = await prisma.auditVerifierExecution.findMany({ where: { auditId: check.auditId!, targetKey: 'module:search-google-index' } })
+          const provider = await prisma.auditVerificationReceipt.findMany({ where: { auditId: check.auditId!, targetKey: 'module:search-google-index' } })
           expect(provider).toHaveLength(2)
           expect(provider.every(item => item.status === 'COMPLETED' && !searchReceiptSchema.parse(item.detail).complete)).toBe(true)
           expect((await getOwnedRun(userId, check.runId))?.result).toBe('COULD_NOT_VERIFY')

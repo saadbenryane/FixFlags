@@ -85,14 +85,14 @@ run('redirected robots authority through URL admission and installed workers', (
   async function complete(auditId: string) {
     await vi.waitFor(async () => {
       // Unrelated providers, media and actions remain explicitly unavailable.
-      await prisma.auditVerifierExecution.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
+      await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { not: 'COMPLETED' },
         workKind: { notIn: ['http', 'browser', 'check', 'finalize', 'search', 'search-resources', 'discovery'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(auditId))
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
     }, { timeout: 60_000, interval: 100 })
   }
   async function crawl(auditId: string) {
-    const row = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId, targetKey: 'module:search-crawl' } })
+    const row = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'module:search-crawl' } })
     return { row, receipt: searchReceiptSchema.parse(row.detail) }
   }
   async function category(key: string) {
@@ -112,7 +112,9 @@ run('redirected robots authority through URL admission and installed workers', (
     expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR' : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
   }
   it('detects redirected crawl regression, refuses unchanged and unavailable rules, verifies repair and retains recurrence', async () => {
-    const baseline = await createAndEnqueueAudit({ url: pageUrl, userId })
+    const baseline = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
+    url: pageUrl,
+    userId })
     await complete(baseline.auditId)
     projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: baseline.auditId } })).projectId!
     expect((await crawl(baseline.auditId)).receipt.observations).toContainEqual(expect.objectContaining({ reason: 'crawl_allowed', disposition: 'passed' }))
@@ -121,7 +123,7 @@ run('redirected robots authority through URL admission and installed workers', (
     const recorded = await crawl(source.auditId!)
     expect(recorded.receipt.observations).toContainEqual(expect.objectContaining({ checkId: 'search-crawl-access', reason: 'crawl_policy_regressed',
       disposition: 'failed', evidence: [expect.objectContaining({ url: rulesUrl })] }))
-    const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'search-resources', workInput: { path: ['module'], equals: 'robots' } } })
+    const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'search-resources', workInput: { path: ['module'], equals: 'robots' } } })
     expect(resourceArtifactSchema.parse(readArtifact(task.workResult, 'search-resources').data).robots)
       .toMatchObject({ url: pageUrl + 'robots.txt', finalUrl: rulesUrl, redirects: [pageUrl + 'robots.txt'], status: 200, complete: true })
     expect(requests).toContain(rulesUrl)

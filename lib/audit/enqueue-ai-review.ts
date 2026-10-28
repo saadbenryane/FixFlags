@@ -30,16 +30,16 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<voi
         user: { select: { lifecycleStatus: true } }, project: { select: { deletedAt: true } } } })
     if (!audit || !['COMPLETED', 'JUDGING'].includes(audit.status) || !audit.userId || !audit.triageAt || !audit.completedAt || audit.aiReviewAt) return []
     if (audit.user?.lifecycleStatus !== 'ACTIVE' || audit.project?.deletedAt) return []
-    const existing = await tx.auditVerifierExecution.findMany({ where: { auditId, workKind: 'prescription' },
+    const existing = await tx.auditExecutionTask.findMany({ where: { auditId, workKind: 'prescription' },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true } })
     if (existing.length > 0) return existing.map(task => task.id)
     const flags = await tx.flag.findMany({ where: { auditId }, orderBy: [{ position: 'asc' }, { id: 'asc' }] })
     const plans = prescriptionTaskPlans(flags.map(flag => ({ flagKey: flagKeyForRow(flag) })))
-    const count = await tx.auditVerifierExecution.count({ where: { auditId, targetKey: { startsWith: 'task:' } } })
+    const count = await tx.auditExecutionTask.count({ where: { auditId } })
     if (count + plans.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
     const created: string[] = []
     for (const plan of plans) {
-      const task = await tx.auditVerifierExecution.create({ data: { auditId, ...prescriptionIdentity(plan.index),
+      const task = await tx.auditExecutionTask.create({ data: { auditId, ...prescriptionIdentity(plan.index),
         pageUrl: audit.url, source: 'EXECUTION', status: 'PENDING', workKind: 'prescription', workState: 'READY',
         workInput: { pageUrl: audit.url, primary: true, position: 0, role: 'prescription',
           prescriptionScope: freezePrescriptionScope(flags, plan.flagKeys), prescriptionContractVersion: 2,
@@ -65,7 +65,7 @@ export async function recoverPendingAiReviews(limit = 25): Promise<number> {
     completedAt: { not: null }, status: { in: ['COMPLETED', 'JUDGING'] }, user: { lifecycleStatus: 'ACTIVE' },
     AND: [{ OR: [{ projectId: null }, { project: { deletedAt: null } }] }],
     OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: new Date() } }],
-    verifierExecutions: { none: { workKind: 'prescription' } } },
+    executionTasks: { none: { workKind: 'prescription' } } },
     orderBy: [{ completedAt: 'asc' }, { id: 'asc' }], take: Math.max(1, Math.min(100, limit)), select: { id: true } })
   let admitted = 0
   for (const audit of audits) {

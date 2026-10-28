@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
 import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
 import styles from './SiteSignupPrompt.module.css'
+import { trackEvent } from '@/lib/analytics/events'
 
 /** A contextual invitation. Reading evidence never opens an account modal. */
 export function SiteSignupPrompt({ siteId, checking, paused = false }: {
@@ -16,6 +17,6 @@ export function SiteSignupPrompt({ siteId, checking, paused = false }: {
   return <section className={styles.prompt} aria-labelledby="save-site-heading">
     <div><h2 id="save-site-heading">{C.signupPrompt.title}</h2>
       <p>{C.signupPrompt.body}</p></div>
-    <Button asChild><Link href={`/sign-up?next=${next}`}>{C.access.save}</Link></Button>
+    <Button asChild><Link href={`/sign-up?next=${next}`} onClick={() => trackEvent('report_signup_cta_clicked', { from: 'value_strip' })}>{C.access.save}</Link></Button>
   </section>
 }

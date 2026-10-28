@@ -90,13 +90,14 @@ describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
     })
     expect(mocks.runCreate).not.toHaveBeenCalled()
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
-      runRequestAdmission: expect.objectContaining({
-        projectId: 'project-1', source: 'WEB', selections: undefined,
-        context: { action: 'run_site_care', outcomeAuthorization: { version: 1, outcomes: [] } },
+      admission: expect.objectContaining({ kind: 'site-run', parentId: 'audit-parent',
+        request: expect.objectContaining({ id: 'run-care', projectId: 'project-1', source: 'WEB', selections: undefined,
+          context: { action: 'run_site_care', outcomeAuthorization: { version: 1, outcomes: [] } },
+        }),
       }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
-      url: 'https://shop.example/', parentId: 'audit-parent', runRequestId: 'run-care',
+      url: 'https://shop.example/',
     }))
   })
 })

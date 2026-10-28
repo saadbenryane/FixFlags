@@ -372,3 +372,41 @@ it('refuses to cache an owner response under a visitor scope when the session ch
     expect(result.current.view.flags[0].fix).toBe('Private owner repair task')
   } finally { unmount() }
 })
+
+it('keeps settings reads separate from overview refresh and refuses the wrong projection scope', async () => {
+  const settings = siteViewFixture(); settings.outcomes = []; settings.readScope = 'settings'
+  const overview = { ...settings, readScope: 'overview' as const }
+  const fetch = vi.fn(async () => Response.json(overview))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource(settings.site.siteId, settings), { wrapper })
+  try {
+    await waitFor(() => expect(result.current.disconnected).toBe(true))
+    expect(fetch).toHaveBeenCalledWith(`/api/sites/${settings.site.siteId}?scope=settings`, expect.any(Object))
+    expect(result.current.view.readScope).toBe('settings')
+    fetch.mockImplementation(async () => Response.json(settings))
+    await act(async () => { await result.current.refresh() })
+    await waitFor(() => expect(result.current.disconnected).toBe(false))
+  } finally { unmount() }
+})
+
+it('retires a captured settings refresh when the same viewer moves to the overview', async () => {
+  const settings = siteViewFixture(); settings.outcomes = []; settings.readScope = 'settings'
+  const overview = { ...settings, readScope: 'overview' as const }
+  const fetch = vi.fn(async () => Response.json(settings))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, rerender, unmount } = renderHook(({ initial }) => useSiteResource(initial.site.siteId, initial),
+    { wrapper, initialProps: { initial: settings } })
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    const retired = result.current.refresh
+    fetch.mockClear(); fetch.mockImplementation(async () => Response.json(overview))
+    rerender({ initial: overview })
+    await waitFor(() => expect(result.current.view.readScope).toBe('overview'))
+    await expect(retired()).rejects.toThrow()
+    expect(fetch.mock.calls.every(([url]) => url === `/api/sites/${settings.site.siteId}`)).toBe(true)
+  } finally { unmount() }
+})

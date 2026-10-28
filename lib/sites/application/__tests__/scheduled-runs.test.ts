@@ -49,7 +49,7 @@ describe('automatic scheduled Site care', () => {
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ scope: 'OUTCOMES', outcomeIds: ['availability'], context: { cadence: 'hourly' } }))
     expect(mocks.recent.mock.calls[0][0].select.verifierExecutions.where).toEqual(interruptedAnalysisWorkWhere)
     expect(interruptedAnalysisWorkWhere).toEqual({
-      targetKey: { startsWith: 'task:' }, workState: 'EXHAUSTED', status: 'FAILED',
+      workState: 'EXHAUSTED', status: 'FAILED',
       OR: [{ workKind: null }, { workKind: { notIn: ['prescription', 'pagespeed', 'google', 'judge'] } }],
     })
     expect(mocks.recent.mock.calls[0][0].where.createdAt.gt).toEqual(new Date('2026-10-11T12:01:00Z'))

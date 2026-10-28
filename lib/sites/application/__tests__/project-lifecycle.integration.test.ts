@@ -62,7 +62,7 @@ run('legacy Project API uses the Site lifecycle with migrated PostgreSQL', () =>
     const historical = await prisma.audit.create({ data: { projectId, userId: owner, url, status: 'COMPLETED', completedAt: now, verdict: 'Recorded historical evidence' } })
     const pending = await prisma.audit.create({ data: { projectId, userId: owner, url, status: 'CHECKING', executionToken: 'fixture-execution',
       executionGeneration: 1, executionLeaseUntil: new Date(now.getTime() + 60_000) } })
-    const task = await prisma.auditVerifierExecution.create({ data: { auditId: pending.id, targetKey: 'task:http', scopeKey: 'fixture', source: 'http', status: 'RUNNING',
+    const task = await prisma.auditExecutionTask.create({ data: { auditId: pending.id, targetKey: 'task:http', scopeKey: 'fixture', source: 'http', status: 'RUNNING',
       workKind: 'http', workState: 'RUNNING', workToken: 'fixture-task', workGeneration: 1, workLeaseUntil: new Date(now.getTime() + 60_000), workInput: {} } })
     const run = await prisma.runRequest.create({ data: { projectId, source: 'WEB', idempotencyKey: randomUUID(), auditId: pending.id,
       requestedByUserId: owner, status: 'RUNNING', leaseUntil: new Date(now.getTime() + 60_000), selections: { create: { outcomeId: outcome.id } } } })
@@ -77,7 +77,7 @@ run('legacy Project API uses the Site lifecycle with migrated PostgreSQL', () =>
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ deletedAt: expect.any(Date), accountChecksEnabled: false })
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: run.id } })).toMatchObject({ status: 'FAILED', errorCode: 'SITE_REMOVED', leaseUntil: null })
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: pending.id } })).toMatchObject({ status: 'FAILED', executionToken: null, executionGeneration: 2 })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'BLOCKED', workToken: null, workGeneration: 2 })
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'BLOCKED', workToken: null, workGeneration: 2 })
     await expect(withExecutionOwnership({ auditId: pending.id, taskId: task.id, token: 'fixture-task', generation: 1 },
       () => executionWrite(tx => tx.audit.update({ where: { id: pending.id }, data: { verdict: 'Unauthorized late publication' } }))))
       .rejects.toBeInstanceOf(ExecutionOwnershipLost)

@@ -123,7 +123,7 @@ run('Observed Site page monitoring continuity', () => {
         .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 120_000, interval: 200 })
     } catch (error) {
       const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, select: { status: true, failureCode: true, progressDetail: true } })
-      const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId, targetKey: { startsWith: 'task:' }, workState: { not: 'COMPLETED' } },
+      const tasks = await prisma.auditExecutionTask.findMany({ where: { auditId, targetKey: { startsWith: 'task:' }, workState: { not: 'COMPLETED' } },
         select: { targetKey: true, workState: true, workErrorCode: true, workDependencies: true, workAttempts: true } })
       throw new Error('Monitoring projection did not settle: ' + JSON.stringify({ audit, tasks }), { cause: error })
     }
@@ -135,7 +135,7 @@ run('Observed Site page monitoring continuity', () => {
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! }, select: { failedModules: true } })).failedModules)
       .not.toEqual(expect.arrayContaining(['corridor']))
     expect(await prisma.auditPage.findFirst({ where: { auditId: first.auditId!, url: peer } })).not.toBeNull()
-    expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: first.auditId!, workKind: 'browser', pageUrl: origin + '/' } }))
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: first.auditId!, workKind: 'browser', pageUrl: origin + '/' } }))
       .toMatchObject({ workResult: { data: { metadata: null, snapshot: { desktopHtmlTruncated: true,
         renderedSearchSnapshot: { sections: { links: { complete: true } } } } } } })
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! } }))
@@ -177,13 +177,13 @@ run('Observed Site page monitoring continuity', () => {
     try {
       expect(await processDueProjectWatches(1, { onlyProjectId: siteId })).toMatchObject({ enqueued: 1, errors: 0 })
       const first = await prisma.runRequest.findFirstOrThrow({ where: { projectId: siteId, source: 'WATCH' } })
-      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: first.auditId!, pageUrl: peer,
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: first.auditId!, pageUrl: peer,
         workKind: 'browser', workState: 'READY' } })).not.toBeNull(), { timeout: 30_000, interval: 100 })
-      const interrupted = await prisma.auditVerifierExecution.updateMany({ where: { auditId: first.auditId!, pageUrl: peer,
+      const interrupted = await prisma.auditExecutionTask.updateMany({ where: { auditId: first.auditId!, pageUrl: peer,
         workKind: { in: ['browser', 'captures'] }, workState: 'READY' }, data: { workRecoveryUntil: new Date(0) } })
       expect(interrupted.count).toBe(2)
       await dispatchReadyTasks(await reconcileTasks(first.auditId!))
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: first.auditId!, pageUrl: peer,
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: first.auditId!, pageUrl: peer,
         workKind: { in: ['browser', 'captures'] }, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(2)
       pauseDiscoveredCollection = false; await getAuditTaskQueue('browser').resume()
       await complete(first.auditId!)
@@ -218,7 +218,7 @@ run('Observed Site page monitoring continuity', () => {
         .toMatchObject({ status: 'COMPLETED', reportCompleteness: 'PARTIAL' })
       await vi.waitFor(async () => expect(await prisma.project.findUniqueOrThrow({ where: { id: siteId } }))
         .toMatchObject({ watchConsecutiveFailures: 0, watchLastError: null }), { timeout: 10_000 })
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: first.auditId!, pageUrl: peer,
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: first.auditId!, pageUrl: peer,
         workKind: { in: ['browser', 'captures'] }, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(2)
     } finally { vi.useRealTimers(); pauseDiscoveredCollection = false; await getAuditQueue().resume(); await getAuditTaskQueue('browser').resume(); linked = true; repaired = false }
   }, 180_000)
@@ -238,14 +238,14 @@ run('Observed Site page monitoring continuity', () => {
       const gap = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'category-gap-interrupted' })
       expect(readExecutionSpec((await prisma.audit.findUniqueOrThrow({ where: { id: gap.auditId! } })).executionSpec))
         .toMatchObject({ monitoringPages: [origin + '/', peer] })
-      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: gap.auditId!, pageUrl: peer,
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: gap.auditId!, pageUrl: peer,
         workKind: 'browser', workState: { in: ['WAITING', 'READY'] } } })).not.toBeNull(), { timeout: 10_000, interval: 100 })
-      const interrupted = await prisma.auditVerifierExecution.updateMany({ where: { auditId: gap.auditId!, pageUrl: peer,
+      const interrupted = await prisma.auditExecutionTask.updateMany({ where: { auditId: gap.auditId!, pageUrl: peer,
         workKind: { in: ['browser', 'captures'] }, workState: { in: ['WAITING', 'READY'] } },
         data: { workRecoveryUntil: new Date(0) } })
       expect(interrupted.count).toBe(2)
       await dispatchReadyTasks(await reconcileTasks(gap.auditId!))
-      expect(await prisma.auditVerifierExecution.count({ where: { auditId: gap.auditId!, pageUrl: peer,
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: gap.auditId!, pageUrl: peer,
         workKind: { in: ['browser', 'captures'] }, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(2)
       await getAuditTaskQueue('browser').resume()
       await complete(gap.auditId!)
@@ -337,7 +337,7 @@ run('Observed Site page monitoring continuity', () => {
       await complete(source.auditId!)
       const original = await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId! } })
       expect(readExecutionSpec(original.executionSpec)).toMatchObject({ monitoringPages: [origin + '/', peer] })
-      const response = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId!, pageUrl: peer, workKind: 'http' } })
+      const response = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, pageUrl: peer, workKind: 'http' } })
       expect(response.workResult).toMatchObject({ data: { document: { url: peer, status: 503, complete: true } } })
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId!, checkId: 'page-http-error', pageUrl: peer } })
       expect(flag.evidence).toContain('503')
@@ -354,7 +354,7 @@ run('Observed Site page monitoring continuity', () => {
         expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({
           outcome: phase === 'failed' ? 'UNCHANGED' : phase === 'challenge' ? 'INCONCLUSIVE' : 'IMPROVED', comparable: phase !== 'challenge' })
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'healthy' ? 'FIXED' : 'OPEN' })
-        const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: verification.verificationAuditId!, targetKey: { startsWith: 'task:' } } })
+        const tasks = await prisma.auditExecutionTask.findMany({ where: { auditId: verification.verificationAuditId!, targetKey: { startsWith: 'task:' } } })
         expect(tasks.map(task => task.workKind).sort()).toEqual(['check', 'finalize', 'http'])
       }
       pageResponse = 'failed'

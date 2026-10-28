@@ -168,7 +168,7 @@ run('disposable HTTPS automatic account lifecycle', () => {
     expect(await prisma.siteTestAccount.findFirstOrThrow({ where: { projectId, purpose: 'disposable' } })).toMatchObject({ state: 'ACTIVE' })
     await check('account-lifecycle-unresolved-slot')
     expect(signupCount).toBe(3)
-    const artifacts = await prisma.auditVerifierExecution.findMany({ where: { auditId: first.auditId!, workKind: 'automatic-accounts' }, select: { workResult: true } })
+    const artifacts = await prisma.auditExecutionTask.findMany({ where: { auditId: first.auditId!, workKind: 'automatic-accounts' }, select: { workResult: true } })
     for (const account of accounts) expect(JSON.stringify(artifacts)).not.toContain(account.email)
     deletionBroken = false
     await prisma.project.update({ where: { id: projectId }, data: { accountChecksEnabled: false, accountCheckRevision: { increment: 1 } } })

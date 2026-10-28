@@ -5,7 +5,7 @@ import type { SiteRecord } from '../types'
 
 /** Only a recorded collector on this exact Audit and page supplies conditions. */
 export async function loadPerformanceEvidence(site: SiteRecord, auditId: string, pageUrl: string) {
-  const rows = await prisma.auditVerifierExecution.findMany({ where: { auditId, pageUrl, workKind: 'pagespeed', workState: 'COMPLETED',
+  const rows = await prisma.auditExecutionTask.findMany({ where: { auditId, pageUrl, workKind: 'pagespeed', workState: 'COMPLETED',
     audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
     orderBy: { createdAt: 'asc' }, take: 2, select: { workResult: true } })
   return rows.flatMap<PerformanceMeasurement>(row => {

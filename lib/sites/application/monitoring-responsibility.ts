@@ -53,8 +53,8 @@ export async function monitoringResponsibility(input: {
           FROM sources s JOIN "audit_pages" page ON page."auditId" = s."id"
         UNION ALL
         SELECT s."id", s."createdAt", s."url", task."pageUrl", 50, NULL::jsonb
-          FROM sources s JOIN "audit_verifier_executions" task ON task."auditId" = s."id"
-          WHERE task."targetKey" LIKE 'task:%' AND task."workKind" = 'browser' AND task."pageUrl" IS NOT NULL
+          FROM sources s JOIN "audit_execution_tasks" task ON task."auditId" = s."id"
+          WHERE task."workKind" = 'browser' AND task."pageUrl" IS NOT NULL
         UNION ALL
         SELECT s."id", s."createdAt", s."url", member.value #>> '{}', member.ordinality::int,
           jsonb_build_object('version', s."executionSpec"->'version', 'scope', s."executionSpec"->'scope',
@@ -112,8 +112,8 @@ export async function monitoringBehaviorResponsibility(input: {
         UNION ALL
         SELECT s."id", s."createdAt", s."url", task."pageUrl", CASE
           WHEN task."workKind" = 'flow' THEN COALESCE(task."workInput"->>'module', 'flow') ELSE task."workKind" END, NULL::jsonb
-          FROM sources s JOIN "audit_verifier_executions" task ON task."auditId" = s."id"
-          WHERE task."targetKey" LIKE 'task:%' AND task."pageUrl" IN (${Prisma.join(input.pages)})
+          FROM sources s JOIN "audit_execution_tasks" task ON task."auditId" = s."id"
+          WHERE task."pageUrl" IN (${Prisma.join(input.pages)})
             AND (task."workKind" IN ('slow-replay', 'journeys') OR task."workKind" = 'flow'
               AND ((task."workInput"->>'module') IS NULL OR task."workInput"->>'module' = 'pricing-navigation'))
         UNION ALL

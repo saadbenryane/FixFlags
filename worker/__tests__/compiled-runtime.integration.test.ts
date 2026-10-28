@@ -303,6 +303,12 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       await browserExpect(page.getByText(SITE_DASHBOARD_COPY.flagResolved, { exact: true })).toBeVisible({ timeout: 15_000 })
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: verification.attemptId } }))
         .toMatchObject({ outcome: 'IMPROVED', comparable: true })
+      const proof = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: {
+        auditId: verification.verificationAuditId, targetKey: 'check:buttons-no-text',
+      } })
+      expect(proof.taskId).toBeTruthy()
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: proof.taskId! } }))
+        .toMatchObject({ auditId: verification.verificationAuditId, workState: 'COMPLETED' })
 
       // Default monitoring can legitimately win admission after a repair.
       // Observe real settlement instead of disabling it or bypassing its lease.
@@ -322,6 +328,17 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
         await page.evaluate(() => document.fonts.ready)
         await page.mouse.move(0, 0)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        if (width < 768 && surface !== 'flag') {
+          const navigation = page.getByRole('navigation', { name: 'Mobile Site', exact: true })
+          await browserExpect(navigation).toBeVisible()
+          expect(await navigation.locator('a').evaluateAll(links => links.flatMap(link => {
+            const target = link.getBoundingClientRect(), label = link.querySelector('span')!
+            const text = label.getBoundingClientRect(), line = parseFloat(getComputedStyle(label).lineHeight)
+            const hit = document.elementFromPoint(target.left + target.width / 2, target.top + target.height / 2)
+            return target.width < 44 || target.height < 44 || label.scrollWidth > label.clientWidth + 1 || text.height > line + 1 || !hit || !link.contains(hit)
+              ? [link.textContent] : []
+          }))).toEqual([])
+        }
         await page.screenshot({ path: `${directory}/${surface}-${theme}-${width}.png`, fullPage: true })
         const result = await new AxeBuilder({ page: page as never }).analyze()
         const inspected = await inspectAccessibilityViolations(page, result.violations)
@@ -360,7 +377,7 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
           await page.setViewportSize({ width: 1280, height: 900 })
           await page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: surface, exact: true }).click()
           await browserExpect(page.getByRole('heading', { level: 1 })).toBeVisible()
-          for (const width of [1280, 375]) await inspectSurface(surface.toLowerCase(), theme, width)
+          for (const width of [1280, 768, 375, 320]) await inspectSurface(surface.toLowerCase(), theme, width)
         }
       }
       expect(accessibility.flatMap(sample => sample.failures)).toEqual([])

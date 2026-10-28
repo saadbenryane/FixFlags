@@ -34,7 +34,7 @@ run('prescription custody in PostgreSQL', () => {
         problem: 'Recorded title missing', whyItMatters: 'The affected page has no descriptive title.', confidence: 1, evidence: 'Original title observation ' + index, fix: '',
         pageUrl: 'https://example.com/page-' + index, source: 'DETERMINISTIC', position: index })) } }, include: { flags: true } })
     audits.push(audit.id)
-    const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:' + kind, scopeKey: 'custody',
+    const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:' + kind, scopeKey: 'custody',
       pageUrl: audit.url, source: 'EXECUTION', status: 'RUNNING', workKind: kind, workState: 'RUNNING', workToken: token, workGeneration: 1, workLeaseUntil: new Date(Date.now() + 60_000) } })
     const owner = { auditId: audit.id, taskId: task.id, token, generation: 1 }
     const output = (keys: string[]): PrescriptionOutput => ({ flagPrescriptions: keys.map(flagKey => ({ flagKey,
@@ -49,24 +49,24 @@ run('prescription custody in PostgreSQL', () => {
     const failure = { failureCode: 'FINALIZATION_INCOMPLETE' as const, failureStage: 'finalizing',
       errorMsg: 'Recorded results have an incomplete final projection.', failureMetadata: { phase: 'finalization', reason: 'projection_failed' } }
     await prisma.audit.update({ where: { id: f.audit.id }, data: failure })
-    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState,
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState,
       workErrorCode: workState === 'BLOCKED' ? 'AI_CONTRACT_INVALID' : null } })
     await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })
     expect(audit).toMatchObject(failure)
     expect(audit.aiReviewAt === null).toBe(workState !== 'COMPLETED')
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: f.task.id } }))
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: f.task.id } }))
       .toMatchObject({ workState, workErrorCode: workState === 'BLOCKED' ? 'AI_CONTRACT_INVALID' : null })
   })
 
   it('clears only its own recorded failure after guidance recovery', async () => {
     const f = await fixture()
-    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })
     await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({
       failureCode: 'AI_CONTRACT_INVALID', failureMetadata: { phase: 'prescription', reason: 'AI_CONTRACT_INVALID', version: 1 }, aiReviewAt: null,
     })
-    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED', workErrorCode: null } })
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED', workErrorCode: null } })
     await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({
       failureCode: null, failureStage: null, errorMsg: null, failureMetadata: null, aiReviewAt: expect.any(Date),
@@ -78,12 +78,12 @@ run('prescription custody in PostgreSQL', () => {
     const original = { reportCompleteness: 'PARTIAL' as const, failedModules: ['keyboard'],
       evidenceCoverage: { metadata: true, desktopScreenshot: true, mobileScreenshot: false } }
     await prisma.audit.update({ where: { id: f.audit.id }, data: original })
-    const sibling = await prisma.auditVerifierExecution.create({ data: { auditId: f.audit.id, targetKey: 'task:prescription:1',
+    const sibling = await prisma.auditExecutionTask.create({ data: { auditId: f.audit.id, targetKey: 'task:prescription:1',
       scopeKey: 'custody-sibling', pageUrl: f.audit.url, source: 'EXECUTION', status: 'RUNNING', workKind: 'prescription', workState: 'RUNNING' } })
-    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
     await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({ ...original, aiReviewAt: null })
-    await prisma.auditVerifierExecution.update({ where: { id: sibling.id }, data: { workState: 'COMPLETED' } })
+    await prisma.auditExecutionTask.update({ where: { id: sibling.id }, data: { workState: 'COMPLETED' } })
     await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
     const completed = await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })
     expect(completed).toMatchObject({ ...original, status: 'COMPLETED', aiReviewAt: expect.any(Date) })
@@ -96,7 +96,7 @@ run('prescription custody in PostgreSQL', () => {
     const failure = { failureCode: 'AI_CONTRACT_INVALID' as const, failureStage: 'judging',
       errorMsg: 'The original triage result is incomplete.', failureMetadata: { phase: 'triage', reason: 'invalid_original_assessment' } }
     await prisma.audit.update({ where: { id: f.audit.id }, data: failure })
-    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
     await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({ ...failure, aiReviewAt: expect.any(Date) })
   })
@@ -125,7 +125,7 @@ run('prescription custody in PostgreSQL', () => {
     const f = await fixture('judge')
     await withExecutionOwnership(f.owner, async () => {
       const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
-      await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
+      await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
       await expect(response({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5 })).rejects.toThrow('no longer owns')
     })
     await persistAuditRunCost(f.audit.id, { phase: 'triage', durationMs: 0, pagespeedCalls: 0,
@@ -244,7 +244,7 @@ run('prescription custody in PostgreSQL', () => {
       // The provider has been admitted, then its task is exhausted while the
       // external request is in flight. Late customer writes remain forbidden.
       const response = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
-      await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
+      await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
       await expect(response({ inputTokens: 20, outputTokens: 5, model: 'gpt-4o-mini' }))
         .rejects.toThrow('no longer owns')
     })
@@ -263,7 +263,7 @@ run('prescription custody in PostgreSQL', () => {
       const accepted = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
       await accepted({ inputTokens: 40, outputTokens: 10, model: 'gpt-4o-mini' })
     })
-    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })
     await recordSettledPrescriptionCost(f.audit.id)
     const cost = await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })
     expect(cost).toMatchObject({ prescriptionInputTokens: 60, prescriptionOutputTokens: 15 })
