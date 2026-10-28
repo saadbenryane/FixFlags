@@ -3579,9 +3579,15 @@ run('migrated progressive execution', () => {
       }, { timeout: 25_000, interval: 100 })
       await prisma.auditExecutionTask.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await resumeExternalQueues()
+      // This Watch discovers the six original destinations too. Its completion
+      // budget covers the complete seven-page native cohort.
       await vi.waitFor(async () => {
         expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
-      }, { timeout: 55_000, interval: 100 })
+      }, { timeout: 90_000, interval: 100 })
+      const collectedPages = await prisma.auditExecutionTask.findMany({ where: { auditId: recurrence.auditId!, workKind: 'browser' },
+        select: { workState: true } })
+      expect(collectedPages).toHaveLength(7)
+      expect(collectedPages.every(task => task.workState === 'COMPLETED')).toBe(true)
       const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: flag.checkId }, include: { improvementOccurrence: true } })
       const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
       expect(repeated).toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: original.improvementId, kind: 'REGRESSED' } })

@@ -271,7 +271,7 @@ Product Signal ingestion is the explicit exception.
 
 - Playwright: production Docker uses system Chromium (no browser download in image); local may use Playwright-managed browser
 - Next.js 16: regular updates, check security advisories
-- better-auth 1.6: relatively new auth library, audit updates
+- better-auth 1.7: monitor upstream security updates and preserve version-matched adapter contracts
 - BullMQ 5: relies on Redis security
 - Runtime packages: `npm run security:audit` blocks every moderate-or-higher advisory.
 - Build-only packages: the same gate accepts only exact reviewed advisory URLs and indirect dependency paths recorded in [docs/security/toolchain-risk.md](docs/security/toolchain-risk.md). A new advisory, direct dependency, runtime path, or dependency drift blocks release.

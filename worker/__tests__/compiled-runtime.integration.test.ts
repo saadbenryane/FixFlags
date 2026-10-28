@@ -24,6 +24,7 @@ import { AUDIT_ERRORS } from '@/lib/marketing/copy/errors'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
 import { AUTH } from '@/lib/marketing/copy/auth'
+import { ensureReleasePasswordAccount } from '@/lib/release/fixture-authentication'
 
 const authProof = process.env.COMPILED_AUTH_REQUIRED === 'true'
 const browserProof = authProof || process.env.COMPILED_BROWSER_REQUIRED === 'true'
@@ -204,7 +205,12 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
   it.skipIf(!browserProof)('uses ordinary browser sign-in, native clipboard and visible independent repair with recurrence', async () => {
     repaired = false
     await prisma.user.create({ data: { id: browserUserId, email: browserUserId + '@example.test', emailVerified: true, role: 'user' } })
-    await prisma.account.create({ data: { userId: browserUserId, accountId: browserUserId, providerId: 'credential', password: await hashPassword(password) } })
+    const fixturePassword = await hashPassword(password)
+    const legacyCredential = await prisma.account.create({ data: { userId: browserUserId,
+      accountId: browserUserId + '@example.test', providerId: 'credential', password: fixturePassword } })
+    const credential = await ensureReleasePasswordAccount(prisma, { userId: browserUserId, email: browserUserId + '@example.test', passwordHash: fixturePassword })
+    expect(credential).toMatchObject({ id: legacyCredential.id, accountId: browserUserId, userId: browserUserId })
+    expect(await prisma.account.count({ where: { userId: browserUserId, providerId: 'credential' } })).toBe(1)
     const directory = 'test-results/browser/site-plan-' + userId
     mkdirSync(directory, { recursive: true })
     const browser = await chromium.launch({ headless: true })
