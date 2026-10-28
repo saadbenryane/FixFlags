@@ -145,9 +145,10 @@ local `DATABASE_URL` with database-creation permission, Docker with `redis:7-alp
 and Chromium. It drops only the database and container it creates. It does not
 migrate or reset the configured local database, deploy, or run the app E2E suite.
 
-The `20261028230000_separate_execution_tasks` migration moves retained task
-rows into `audit_execution_tasks`, binds valid same-Audit receipt sources, removes
-task fields from receipt storage and creates the read-only coverage view.
+The `20261028230000_separate_execution_tasks` migration retains task storage
+in place as `audit_execution_tasks`, moves receipts into their dedicated table,
+binds valid same-Audit task sources and creates the read-only coverage view.
+Keeping the task table avoids rewriting large retained payloads during cutover.
 Before applying it in a deployed environment, drain and stop older web and worker
 processes. Apply the migration, then start both services from the same new
 revision. Do not run old writers against the migrated schema. This is a

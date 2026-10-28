@@ -1,20 +1,15 @@
 BEGIN;
 
-CREATE TABLE "audit_execution_tasks" (
-  "workState" "AuditWorkState",
-  "workKind" TEXT,
-  "workDependencies" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-  "workInput" JSONB,
-  "workResult" JSONB,
-  "workToken" TEXT,
-  "workGeneration" INTEGER NOT NULL DEFAULT 0,
-  "workAttempts" INTEGER NOT NULL DEFAULT 0,
-  "workLeaseUntil" TIMESTAMP(3),
-  "workRetryAt" TIMESTAMP(3),
-  "workRecoveryUntil" TIMESTAMP(3),
-  "workErrorCode" TEXT,
-  "workDispatchState" "AuditDispatchState",
-  "workDispatchLeaseUntil" TIMESTAMP(3),
+-- Preserve the larger task payload storage in place. Old writers must already
+-- be stopped before this coordinated cutover starts.
+ALTER TABLE "audit_verifier_executions" RENAME TO "audit_execution_tasks";
+ALTER TABLE "audit_execution_tasks" RENAME CONSTRAINT "audit_verifier_executions_pkey" TO "audit_execution_tasks_pkey";
+ALTER TABLE "audit_execution_tasks" RENAME CONSTRAINT "audit_verifier_executions_auditId_fkey" TO "audit_execution_tasks_auditId_fkey";
+ALTER INDEX "audit_verifier_executions_auditId_targetKey_scopeKey_key" RENAME TO "audit_execution_tasks_auditId_targetKey_scopeKey_key";
+ALTER INDEX "audit_verifier_executions_auditId_status_idx" RENAME TO "audit_execution_tasks_auditId_status_idx";
+ALTER INDEX "audit_verifier_executions_workState_workRetryAt_idx" RENAME TO "audit_execution_tasks_workState_workRetryAt_idx";
+
+CREATE TABLE "audit_verifier_executions" (
   "checkVersion" INTEGER,
   "executionGeneration" INTEGER,
   "id" TEXT NOT NULL,
@@ -29,55 +24,24 @@ CREATE TABLE "audit_execution_tasks" (
   "detail" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
-  CONSTRAINT "audit_execution_tasks_pkey" PRIMARY KEY ("id")
+  "taskId" TEXT,
+  CONSTRAINT "audit_verifier_executions_pkey" PRIMARY KEY ("id")
 );
 
-INSERT INTO "audit_execution_tasks" ("workState", "workKind", "workDependencies", "workInput", "workResult", "workToken", "workGeneration", "workAttempts", "workLeaseUntil", "workRetryAt", "workRecoveryUntil", "workErrorCode", "workDispatchState", "workDispatchLeaseUntil", "checkVersion", "executionGeneration", "id", "auditId", "targetKey", "source", "checkId", "pageUrl", "scopeKey", "status", "evidenceReference", "detail", "createdAt", "updatedAt")
-SELECT "workState", "workKind", "workDependencies", "workInput", "workResult", "workToken", "workGeneration", "workAttempts", "workLeaseUntil", "workRetryAt", "workRecoveryUntil", "workErrorCode", "workDispatchState", "workDispatchLeaseUntil", "checkVersion", "executionGeneration", "id", "auditId", "targetKey", "source", "checkId", "pageUrl", "scopeKey", "status", "evidenceReference", "detail", "createdAt", "updatedAt" FROM "audit_verifier_executions" WHERE "targetKey" LIKE 'task:%';
+INSERT INTO "audit_verifier_executions" ("checkVersion", "executionGeneration", "id", "auditId", "targetKey", "source", "checkId", "pageUrl", "scopeKey", "status", "evidenceReference", "detail", "createdAt", "updatedAt", "taskId")
+SELECT receipt."checkVersion", receipt."executionGeneration", receipt."id", receipt."auditId", receipt."targetKey", receipt."source", receipt."checkId", receipt."pageUrl", receipt."scopeKey", receipt."status", receipt."evidenceReference", receipt."detail", receipt."createdAt", receipt."updatedAt", task."id"
+FROM "audit_execution_tasks" receipt
+LEFT JOIN "audit_execution_tasks" task ON task."id" = receipt."evidenceReference"->>'taskId'
+  AND task."auditId" = receipt."auditId" AND task."targetKey" LIKE 'task:%'
+WHERE receipt."targetKey" NOT LIKE 'task:%';
 
-ALTER TABLE "audit_verifier_executions" ADD COLUMN "taskId" TEXT;
+DELETE FROM "audit_execution_tasks" WHERE "targetKey" NOT LIKE 'task:%';
 
-UPDATE "audit_verifier_executions" receipt SET "taskId" = task.id
-FROM "audit_execution_tasks" task
-WHERE receipt."evidenceReference"->>'taskId' = task.id AND receipt."auditId" = task."auditId"
-  AND receipt."targetKey" NOT LIKE 'task:%';
-
-DELETE FROM "audit_verifier_executions" WHERE "targetKey" LIKE 'task:%';
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workState";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workKind";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workDependencies";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workInput";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workResult";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workToken";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workGeneration";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workAttempts";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workLeaseUntil";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workRetryAt";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workRecoveryUntil";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workErrorCode";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workDispatchState";
-
-ALTER TABLE "audit_verifier_executions" DROP COLUMN "workDispatchLeaseUntil";
-
-CREATE UNIQUE INDEX "audit_execution_tasks_auditId_targetKey_scopeKey_key" ON "audit_execution_tasks"("auditId", "targetKey", "scopeKey");
 CREATE UNIQUE INDEX "audit_execution_tasks_id_auditId_key" ON "audit_execution_tasks"("id", "auditId");
-CREATE INDEX "audit_execution_tasks_auditId_status_idx" ON "audit_execution_tasks"("auditId", "status");
-CREATE INDEX "audit_execution_tasks_workState_workRetryAt_idx" ON "audit_execution_tasks"("workState", "workRetryAt");
+CREATE UNIQUE INDEX "audit_verifier_executions_auditId_targetKey_scopeKey_key" ON "audit_verifier_executions"("auditId", "targetKey", "scopeKey");
+CREATE INDEX "audit_verifier_executions_auditId_status_idx" ON "audit_verifier_executions"("auditId", "status");
 CREATE INDEX "audit_verifier_executions_taskId_auditId_idx" ON "audit_verifier_executions"("taskId", "auditId");
-ALTER TABLE "audit_execution_tasks" ADD CONSTRAINT "audit_execution_tasks_auditId_fkey" FOREIGN KEY ("auditId") REFERENCES "audits"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "audit_verifier_executions" ADD CONSTRAINT "audit_verifier_executions_auditId_fkey" FOREIGN KEY ("auditId") REFERENCES "audits"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "audit_verifier_executions" ADD CONSTRAINT "audit_verifier_executions_taskId_auditId_fkey" FOREIGN KEY ("taskId", "auditId") REFERENCES "audit_execution_tasks"("id", "auditId") ON DELETE NO ACTION ON UPDATE CASCADE;
 
 CREATE VIEW "audit_execution_evidence" AS

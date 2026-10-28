@@ -143,3 +143,10 @@ The deployment workspace also passed its separately authorized compiled browser
 journey, including repair, recurrence, receipt custody and mobile navigation.
 Real-provider delivery, email acceptance and representative-human usability
 remain separate evidence boundaries. They are not established by local fixtures.
+
+The final migration preserves the task table's physical identity and moves the
+smaller receipt set. A storage-identity regression first failed on the copy-based
+candidate. Its predecessor schema comes from the immutable historical migrations,
+independently of the migration being tested. Same-Audit receipt references cannot
+borrow a receipt as their task. The production inventory measured about 611 MB of
+task payload versus 199 MB of receipt detail before selecting this cutover path.
