@@ -12,7 +12,9 @@ type UptimeRead = Pick<Prisma.TransactionClient, '$queryRaw' | 'project'>
  * A Site with no monitor is applied separately: only a public check target is
  * an overdue probe. A retained private or local URL is not an uptime obligation. */
 function uptimeOperationSites(now: Date) {
-  const overdue = Prisma.sql`m."nextProbeAt" < ${new Date(now.getTime() - UPTIME_INTERVAL_MS)}`
+  // Explicit pause retains the old due stamp without an active probe promise.
+  const overdue = Prisma.sql`(m."nextProbeAt" < ${new Date(now.getTime() - UPTIME_INTERVAL_MS)}
+    AND (m.enabled OR p."watchPausedAt" IS NULL))`
   const staleBefore = new Date(now.getTime() - UPTIME_STALE_MS)
   const inconclusive = Prisma.sql`(m.enabled AND m.state = 'unknown'
     AND m."lastCheckedAt" >= ${staleBefore} AND m."lastCheckedAt" <= ${now}
@@ -32,7 +34,7 @@ function uptimeOperationSites(now: Date) {
 /** Missing monitors sort after every saved probe time, matching NULLS LAST. */
 async function missingPublicMonitorGaps(db: Pick<Prisma.TransactionClient, 'project'>, now: Date): Promise<UptimeGap[]> {
   const rows = await db.project.findMany({
-    where: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: { not: null },
+    where: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: { not: null }, watchPausedAt: null,
       uptimeMonitor: null, createdAt: { lt: monitoringOverdueBefore(now) } },
     select: { id: true, name: true, url: true, createdAt: true },
     orderBy: { id: 'asc' },

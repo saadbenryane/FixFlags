@@ -10,6 +10,7 @@ import { readMonitoringHealth } from '@/lib/health/monitoring'
 import { fixedClock } from '@/lib/time/clock'
 import { scheduleUptimeProbes } from '@/lib/uptime/service'
 import { loadUptimeSummary } from '@/lib/uptime/queries'
+import { setProjectWatch } from '../monitoring-settings'
 
 const uptimeQueue = vi.hoisted(() => ({ enqueue: vi.fn(async () => {}) }))
 vi.mock('@/lib/uptime/queue', () => ({ enqueueUptimeProbe: uptimeQueue.enqueue }))
@@ -35,6 +36,35 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     await prisma.user.delete({ where: { id: userId } })
   })
   afterAll(() => prisma.$disconnect())
+
+  it('does not call an explicitly paused disabled monitor overdue while retaining active obligations', async () => {
+    const now = new Date(), due = new Date(now.getTime() - 10 * 60_000)
+    await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
+    const sessionId = randomUUID()
+    await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
+    const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: now }
+    await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: now, createdAt: due } })
+    const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, state: 'online', nextProbeAt: due } })
+
+    expect(await setProjectWatch({ projectId, userId, action: 'pause' }, { clock: fixedClock(now) })).toMatchObject({ ok: true })
+    expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({ enabled: false, nextProbeAt: due })
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueUptimeProbes: 0 })
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(0)
+
+    await prisma.project.update({ where: { id: projectId }, data: { watchPausedAt: null } })
+    expect((await readMonitoringHealth(now)).overdueUptimeProbes).toBe(1)
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(1)
+    await prisma.project.update({ where: { id: projectId }, data: { watchPausedAt: now } })
+    await prisma.uptimeMonitor.update({ where: { id: monitor.id }, data: { enabled: true } })
+    expect((await readMonitoringHealth(now)).overdueUptimeProbes).toBe(1)
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(1)
+    await prisma.uptimeMonitor.delete({ where: { id: monitor.id } })
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueUptimeProbes: 0 })
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(0)
+    await prisma.project.update({ where: { id: projectId }, data: { watchPausedAt: null } })
+    expect((await readMonitoringHealth(now)).overdueUptimeProbes).toBe(1)
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(1)
+  })
 
   it('detects sustained inconclusive uptime without calling it an outage or an overdue execution', async () => {
     const now = new Date(), before = new Date(now.getTime() - 15 * 60_000)
@@ -217,7 +247,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect((await loadOperations(actor, { queue: 'schedules' })).rows.map(row => row.id)).not.toContain(projectId)
     expect((await loadSiteHome(projectId))?.watch.state).toBe('watching')
     expect((await loadSiteSummaries(userId))[0]?.presentation.monitoring.state).toBe('weekly')
-    await prisma.project.update({ where: { id: projectId }, data: { watchNextRunAt: null } })
+    expect(await setProjectWatch({ projectId, userId, action: 'pause' })).toMatchObject({ ok: true })
     expect((await loadSiteHome(projectId))?.watch.state).toBe('paused')
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: null, watchNextRunAt: scheduled.watchNextRunAt } })
     expect((await loadSiteHome(projectId))?.watch.state).toBe('off')
@@ -225,8 +255,8 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(operations.rows.map(row => row.id)).not.toContain(projectId)
     expect((await loadSiteOperations()).find(item => item.label === 'Overdue monitoring schedules')?.value).toBe(operations.total)
     expect(await readMonitoringHealth()).toMatchObject({ ok: true, overdueSchedules: 0, overdueUptimeProbes: 0 })
-    // Pausing broad analysis keeps its cadence and independent uptime care.
-    // Fully off care was checked above and has no probe obligation.
+    // An enabled uptime monitor retains its own obligation while broad care is
+    // paused. Fully off care was checked above and has no probe obligation.
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: null } })
     await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, enabled: true, nextProbeAt: scheduled.watchNextRunAt! } })
     const uptime = await loadOperations(actor, { queue: 'uptime' })
