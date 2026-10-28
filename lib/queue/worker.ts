@@ -26,7 +26,9 @@ function workerBrowserDiagnostics() {
   const browser = getBrowserDiagnostics()
   return {
     browserOk: browser.connected,
+    ...(browser.connected ? { lastBrowserConnectedAt: new Date().toISOString() } : {}),
     activeBrowserContexts: browser.activeContexts,
+    browserResources: browser.resources,
   }
 }
 
@@ -193,6 +195,11 @@ export function startWorker() {
   const tasks = startProgressiveWorkers()
   const uptime = startUptimeRuntime()
   const adminOperations = startAdminOperationRuntime()
+  const waitForAuditWorker = worker.waitUntilReady.bind(worker)
+  worker.waitUntilReady = async () => {
+    const [connection] = await Promise.all([waitForAuditWorker(), tasks.waitUntilReady(), uptime.waitUntilReady(), adminOperations.waitUntilReady()])
+    return connection
+  }
   void runBestEffort(
     () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }),
     { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },

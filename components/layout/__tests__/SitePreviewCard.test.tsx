@@ -48,8 +48,17 @@ describe('website capture preview', () => {
   it('does not substitute desktop evidence for a missing mobile capture', () => {
     const view = render(<SitePreviewCard host="example.com" captures={[captures[0]]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Mobile' }))
-    expect(screen.getByText('No screenshot yet')).toBeVisible()
+    expect(screen.getByText('No screenshot recorded')).toBeVisible()
     expect(view.container.querySelector('img')).toBeNull()
+  })
+  it('distinguishes admitted capture work from a terminal missing artifact', () => {
+    const view = render(<SitePreviewCard host="example.com" captures={[]} collectionState="pending" />)
+    expect(screen.getByText('Capturing screenshot…')).toBeVisible()
+    view.rerender(<SitePreviewCard host="example.com" captures={[]} collectionState="not_recorded" />)
+    expect(screen.getByText('No screenshot recorded')).toBeVisible()
+    expect(screen.queryByText('Capturing screenshot…')).not.toBeInTheDocument()
+    view.rerender(<SitePreviewCard host="example.com" captures={[]} collectionState="unavailable" />)
+    expect(screen.getByText('Screenshot unavailable')).toBeVisible()
   })
   it('shows failed image loading honestly instead of offering an empty enlargement', () => {
     const view = render(<SitePreviewCard host="example.com" captures={captures} />)

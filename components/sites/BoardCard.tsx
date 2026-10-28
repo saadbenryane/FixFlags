@@ -197,9 +197,11 @@ export function BoardCard({
     const recoveryText = incompleteReason && incompleteReason !== SITE_BOARD_COPY.cardCheckIncomplete && (previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail)) ? incompleteReason : null
     const rowMeta = <span className={styles.rowTrailing}>
       <span className={styles.rowStatus}>{visibleStatus || count > 0 ? <BoardStatus state={checking ? 'checking' : state} label={statusLabel} text={visibleStatus} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /> : null}</span>
-      {recoveryAction && !checking ? <span className={styles.rowRecheck}>{recoveryAction}</span> : null}
     </span>
-    const recovery = recoveryText && !checking ? <div className={styles.rowRecovery}><p>{recoveryText}</p></div> : null
+    const recovery = (recoveryText || recoveryAction) && !checking ? <div className={styles.rowRecovery}>
+      {recoveryText ? <p>{recoveryText}</p> : null}
+      {recoveryAction ? <span className={styles.rowRecheck}>{recoveryAction}</span> : null}
+    </div> : null
     if (previewFlags.length > 0) {
       const bounded = compact && Boolean(onOpen || href)
       const rowFlags = bounded ? visiblePreviewFlags : previewFlags
@@ -246,7 +248,7 @@ export function BoardCard({
 
   if (compact && count === 0) {
     const description = [...new Set([status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail].filter(Boolean))].join('. ')
-    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{checking ? SITE_BOARD_COPY.checking : flagCountLabel(0)}
+    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{checking ? SITE_BOARD_COPY.checking : state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}
       <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
     const compactClass = `${styles.card} ${styles.compactSummary}`
     return onOpen ? <InteractiveButton type="button" className={compactClass} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</InteractiveButton>

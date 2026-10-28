@@ -43,6 +43,35 @@ function dependencies(): WorkerRuntimeDependencies & {
 }
 
 describe('standalone worker runtime', () => {
+  it('acknowledges readiness only after consumers connect', async () => {
+    const deps = dependencies()
+    let connected!: () => void
+    deps.startWorker = () => ({ close: deps.closeWorker, waitUntilReady: () => new Promise<void>(resolve => { connected = resolve }) })
+    deps.onReady = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    const starting = runtime.start()
+    await vi.waitFor(() => expect(connected).toBeTypeOf('function'))
+    expect(deps.onReady).not.toHaveBeenCalled()
+    expect(deps.calls).not.toContain('scheduler:start')
+    connected()
+    await starting
+    expect(deps.onReady).toHaveBeenCalledOnce()
+  })
+
+  it('drains consumers when shutdown interrupts their readiness wait', async () => {
+    const deps = dependencies()
+    let waiting = false
+    deps.startWorker = () => ({ close: deps.closeWorker, waitUntilReady: () => { waiting = true; return new Promise<void>(() => {}) } })
+    deps.onReady = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    const starting = runtime.start()
+    await vi.waitFor(() => expect(waiting).toBe(true))
+    await runtime.shutdown()
+    await starting
+    expect(deps.onReady).not.toHaveBeenCalled()
+    expect(deps.closeWorker).toHaveBeenCalledOnce()
+  })
+
   it('starts consumers and recovery after core preflight without another diagnostic gate', async () => {
     const deps = dependencies()
     const runtime = createWorkerRuntime(deps)

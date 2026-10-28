@@ -5,8 +5,10 @@ import { analysisTaskWhere, taskInputSchema } from '@/lib/audit/progressive/cont
 import { categoryExecutionRecovery, executionRecovery, type ExecutionRecovery } from '../execution-recovery'
 import type { SiteCardArea } from '../card-areas'
 import { summarizeExecutionTasks, type ExecutionTaskSummary } from '../execution-summary'
+import { captureCollectionState, type CaptureCollectionState } from '../captures'
 
 export type ExecutionProgress = {
+  captureState?: CaptureCollectionState
   summary?: ExecutionTaskSummary
   recovery?: ExecutionRecovery | null
   categoryRecovery?: Partial<Record<SiteCardArea, ExecutionRecovery>>
@@ -39,11 +41,13 @@ export async function readSiteEvents(site: SiteRecord, after: bigint) {
 export async function loadExecutionProgress(site: SiteRecord, auditId: string | null): Promise<ExecutionProgress | null> {
   if (!auditId) return null
   const audit = await prisma.audit.findFirst({ where: { AND: [{ id: auditId }, siteAuditScope(site)] },
-    select: { recoveryUntil: true, executionTasks: { where: analysisTaskWhere,
+    select: { status: true, recoveryUntil: true, executionTasks: { where: analysisTaskWhere,
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 1200,
       select: { id: true, status: true, workState: true, workKind: true, workInput: true, workAttempts: true, workErrorCode: true, workRetryAt: true } } } })
   if (!audit?.executionTasks.length) return null
   const rows = audit.executionTasks
+  const captureState = captureCollectionState(audit.status, rows.filter(row => row.workKind === 'captures' && taskInputSchema.parse(row.workInput).primary)
+    .map(row => row.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : row.workState ?? 'UNKNOWN'))
   const counts = await prisma.auditExecutionTask.groupBy({
     by: ['status', 'workState', 'workErrorCode'], where: { auditId, ...analysisTaskWhere }, _count: { _all: true },
   })
@@ -57,7 +61,7 @@ export async function loadExecutionProgress(site: SiteRecord, auditId: string | 
       state: row.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : row.workState!, attempts: row.workAttempts,
       reason: row.workErrorCode, retryAt: row.workRetryAt?.toISOString() ?? null }
   })
-  return { summary, recovery: executionRecovery(tasks), categoryRecovery: categoryExecutionRecovery(tasks), total: summary.total, completed: summary.recorded,
+  return { captureState, summary, recovery: executionRecovery(tasks), categoryRecovery: categoryExecutionRecovery(tasks), total: summary.total, completed: summary.recorded,
     running: countState(['RUNNING']), pending: countState(['WAITING', 'READY']),
     recovering: summary.recovering, unknown: summary.limited + summary.failed,
     inapplicable: summary.notApplicable,

@@ -36,6 +36,12 @@ describe('BoardCard chrome', () => {
     rerender(<ProductBoardCard card={{ ...card, checkedAt: null, incompleteReason: null, answer: 'Not checked yet', status: 'Not checked yet' }} compact layout="row" />)
     expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
   })
+  it.each(['Not checked yet', 'Partially checked'])('shows the visible coverage state for a compact zero-count category: %s', status => {
+    render(<BoardCard compact name="Accessibility" icon="accessibility" state="unknown" status={status} answer="No confirmed Flags" />)
+    expect(screen.getByText(status, { selector: ':not(.sr-only)' })).toBeVisible()
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
+  })
+
   it('reduces a completed zero-Flag category to its name and count', () => {
     const open = vi.fn()
     render(<BoardCard compact name="Security" icon="security" state="healthy" status="Checked" answer="Pages use HTTPS" detail="Certificate checked" onOpen={open} />)
@@ -118,7 +124,7 @@ describe('BoardCard chrome', () => {
     expect(screen.queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     const action = screen.getByRole('button', { name: 'Check Search again' })
     const flags = screen.getByRole('list')
-    expect(action.compareDocumentPosition(flags) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(flags.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(action.parentElement?.closest('button, a')).toBeNull()
     fireEvent.click(action)
     expect(retry).toHaveBeenCalledOnce()

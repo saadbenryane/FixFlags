@@ -20,10 +20,11 @@ const WORKER_SHA = resolveCommitSha() ?? 'unknown'
 let redis: Redis | null = null
 let stopping = false
 let draining = false
+let runtimeReady = false
 let diagnostics: WorkerDiagnostics = {
   browserOk: false,
   activeBrowserContexts: 0,
-  lastSuccessfulBrowserProbeAt: null,
+  lastBrowserConnectedAt: null,
   uptimeReady: false, lastUptimeSweepAt: null,
   queueState: 'starting',
 }
@@ -41,7 +42,8 @@ export interface WorkerDiagnostics {
   lastUptimeSweepAt?: string | null
   browserOk: boolean
   activeBrowserContexts: number
-  lastSuccessfulBrowserProbeAt: string | null
+  browserResources?: import('../audit/browser/context-lifetime').AuditContextDiagnostics
+  lastBrowserConnectedAt: string | null
   queueState: 'starting' | 'idle' | 'active' | 'paused' | 'stopping'
 }
 
@@ -57,13 +59,18 @@ export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
   accountConfigurationFingerprint?: string | null
 }
 
+/** Private readiness acknowledgement to the process that owns this worker. */
+export function publishWorkerState(state: 'ready' | 'stopping') {
+  runtimeReady = state === 'ready'
+  if (process.connected && process.send) process.send({ type: 'fixflags-worker-state', state }, () => {})
+}
+
 /** Called by the worker process on start, idle tick, and each job lifecycle event. */
 export async function touchWorkerHeartbeat(
   update?: Partial<WorkerDiagnostics>
 ): Promise<void> {
   if (stopping) return
   diagnostics = { ...diagnostics, ...update, ...(draining ? { queueState: 'stopping' as const } : {}) }
-  if (update?.browserOk === true) diagnostics.lastSuccessfulBrowserProbeAt = new Date().toISOString()
   const record: WorkerHeartbeatRecord = {
     workerId: WORKER_ID,
     lastSeenMs: Date.now(),
@@ -82,6 +89,7 @@ export async function touchWorkerHeartbeat(
     'EX',
     HEARTBEAT_TTL_SECONDS
   )
+  if (runtimeReady && record.queueState !== 'starting') publishWorkerState(record.queueState === 'stopping' ? 'stopping' : 'ready')
 }
 
 export interface WorkerHeartbeatStatus {
@@ -101,7 +109,8 @@ export interface WorkerHeartbeatStatus {
     version: string
     sha: string
     supportedScopes?: string[]
-    lastSuccessfulBrowserProbeAt: string | null
+    lastBrowserConnectedAt: string | null
+    browserResources: import('../audit/browser/context-lifetime').AuditContextDiagnostics | null
     queueState: WorkerDiagnostics['queueState']
   }>
 }
@@ -237,7 +246,8 @@ export function aggregateWorkerHeartbeats(
       version: record.version ?? 'unknown',
       sha: record.sha ?? 'unknown',
       supportedScopes: Array.isArray(record.supportedScopes) ? record.supportedScopes.filter(scope => typeof scope === 'string') : [],
-      lastSuccessfulBrowserProbeAt: record.lastSuccessfulBrowserProbeAt ?? null,
+      lastBrowserConnectedAt: record.lastBrowserConnectedAt ?? null,
+      browserResources: record.browserResources ?? null,
       queueState: record.queueState ?? 'idle',
     })),
   }

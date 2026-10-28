@@ -5,10 +5,8 @@ import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 export const dynamic = 'force-dynamic'
 
 /**
- * Scanning readiness probe. Verifies the two subsystems that, when broken, make
- * every scan fail with the generic "site unreachable" error:
- *   - Chromium can actually launch and take a screenshot.
- *   - Screenshot storage (R2 in prod) is reachable.
+ * Reads dedicated-worker Chromium connectivity and probes capture storage.
+ * Browser connection is not evidence of a successful native capture.
  *
  * Always returns HTTP 200 with a per-subsystem snapshot so it never gates a
  * deploy, while making a broken scanner answerable with a single curl:

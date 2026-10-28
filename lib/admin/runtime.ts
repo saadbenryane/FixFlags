@@ -250,6 +250,7 @@ export function startAdminOperationRuntime() {
   scheduler.schedule(sweepAdminOperations, 1000)
   scheduler.schedule(sweepAdminOperations, 10_000, true)
   return {
+    waitUntilReady: () => worker.waitUntilReady(),
     async close() {
       await Promise.all([scheduler.stop(), worker.close()])
       await queue?.close()

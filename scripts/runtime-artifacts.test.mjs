@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, copyFileSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
+import { createServer } from 'node:http'
+import { once } from 'node:events'
+import { setTimeout as delay } from 'node:timers/promises'
 import { runtimeEntry } from './runtime-artifacts.mjs'
 
 function isolatedStartup(cwd) {
@@ -64,4 +67,35 @@ test('a failed migration prevents a valid production server from booting', () =>
     assert.equal(existsSync(marker),true)
     assert.equal(existsSync(boot),false)
   } finally { rmSync(cwd,{recursive:true,force:true}) }
+})
+
+test('worker HTTP readiness waits for the actual child and stops before draining finishes', { timeout: 15000 }, async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'ff-worker-readiness-')), ready = join(cwd, 'ready')
+  const reservation = createServer()
+  reservation.listen(0, '127.0.0.1'); await once(reservation, 'listening')
+  const port = reservation.address().port
+  await new Promise(resolve => reservation.close(resolve))
+  const script = isolatedStartup(cwd)
+  mkdirSync(join(cwd, 'node_modules/prisma/build'), { recursive: true })
+  writeFileSync(join(cwd, 'node_modules/prisma/build/index.js'), '')
+  mkdirSync(join(cwd, 'dist/worker'), { recursive: true })
+  writeFileSync(join(cwd, 'dist/worker/check-parser.js'), '')
+  writeFileSync(join(cwd, 'dist/worker/index.js'), `const fs = require('fs'); let sent = false;
+    setInterval(() => { if (!sent && fs.existsSync(${JSON.stringify(ready)})) { sent = true; process.send?.({type:'fixflags-worker-state',state:'ready'}) } }, 20);
+    process.on('SIGTERM', () => setTimeout(() => process.exit(0), 500));`)
+  const child = spawn(process.execPath, [script, 'worker'], { cwd, stdio: 'pipe',
+    env: { ...process.env, WORKER_HEALTH_PORT: String(port), DATABASE_URL: 'postgresql://fixture:fixture@localhost/fixture' } })
+  const exited = once(child, 'exit')
+  let errors = ''; child.stderr.on('data', chunk => { errors += chunk })
+  const read = async () => { try { const response = await fetch(`http://127.0.0.1:${port}`); return { http: response.status, ...await response.json() } } catch { return null } }
+  const eventually = async check => { for (let n = 0; n < 200; n++) { const result = await read(); if (check(result)) return result; await delay(20) } throw new Error('Worker health did not settle: ' + errors) }
+  try {
+    const starting = await eventually(value => value !== null)
+    assert.equal(starting.http, 503)
+    assert.equal(starting.state, 'starting')
+    writeFileSync(ready, 'ready')
+    assert.equal((await eventually(value => value?.http === 200)).state, 'ready')
+    child.kill('SIGTERM')
+    assert.equal((await eventually(value => value?.http === 503)).state, 'stopping')
+  } finally { child.kill('SIGTERM'); await exited; rmSync(cwd, { recursive: true, force: true }) }
 })

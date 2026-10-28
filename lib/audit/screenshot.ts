@@ -13,6 +13,7 @@ import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult, type FlowScanStep } from './flow/run-flow-scan'
 import { createAuditPage, settleAuditPage } from './browser/page-session'
+import { auditContextDiagnostics, type AuditContextDiagnostics } from './browser/context-lifetime'
 import { readLoadingUi, loadingUiInDocument, type LoadingUiSnapshot } from './browser/loading-ui'
 import { observeViewport } from './browser/viewport-observation'
 import { observeMotionWindow, collectReducedMotionWindow, type MotionWindow } from './browser/motion-observation'
@@ -119,11 +120,13 @@ export async function getBrowser(): Promise<Browser> {
 export function getBrowserDiagnostics(): {
   connected: boolean
   activeContexts: number
+  resources: AuditContextDiagnostics
 } {
   const browser = browserRuntime.peek()
   return {
     connected: Boolean(browser?.isConnected()),
     activeContexts: browser?.isConnected() ? browser.contexts().length : 0,
+    resources: auditContextDiagnostics(browser),
   }
 }
 

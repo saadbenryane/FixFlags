@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { browserCapacity } from '../../progressive/capacity'
 import { createAuditPage } from '../page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '../capture-profile'
-import { openAuditContext, CONTEXT_SETUP_TIMEOUT_MS } from '../context-lifetime'
+import { openAuditContext, auditContextDiagnostics, CONTEXT_SETUP_TIMEOUT_MS } from '../context-lifetime'
 import * as executions from '../../execution-ownership'
 
 function deferred<T>() {
@@ -26,6 +26,23 @@ const target = 'https://example.com/'
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('physical browser context lifetime', () => {
+  it('attributes owned, unowned and expired native contexts without inventing resource release', async () => {
+    vi.useFakeTimers()
+    const owned = controlledContext(), unowned = controlledContext()
+    const browser = controlledBrowser(async () => owned as unknown as BrowserContext)
+    browser.contexts.mockReturnValue([owned, unowned] as unknown as BrowserContext[])
+    owned.close.mockRejectedValue(new Error('Controlled physical close failure'))
+    const starting = browserCapacity.running
+    await openAuditContext(browser as unknown as Browser, {}, { deadline: Date.now() + 50, scope: 'task' }, async () => 'ready')
+    expect(auditContextDiagnostics(browser as unknown as Browser)).toMatchObject({ ownedContexts: 1, unownedContexts: 1,
+      expiredContexts: 0, reservedSlots: starting + 1, owners: [{ scope: 'task', state: 'prepared', expired: false }] })
+    await vi.advanceTimersByTimeAsync(60)
+    expect(auditContextDiagnostics(browser as unknown as Browser)).toMatchObject({ expiredContexts: 1,
+      reservedSlots: starting + 1, owners: [{ scope: 'task', state: 'close_failed', expired: true }] })
+    owned.emit('close'); browser.contexts.mockReturnValue([unowned] as unknown as BrowserContext[])
+    expect(auditContextDiagnostics(browser as unknown as Browser)).toMatchObject({ ownedContexts: 0, unownedContexts: 1,
+      expiredContexts: 0, reservedSlots: starting })
+  })
   it('rejects allocation at the deadline, retains its physical slot and closes a late context without creating a page', async () => {
     vi.useFakeTimers()
     const pending = deferred<BrowserContext>(), context = controlledContext(), browser = controlledBrowser(() => pending.promise)

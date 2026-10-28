@@ -15,8 +15,9 @@ function main() {
   for (const item of ADVERTISED_COVERAGE_REGISTRY.values()) if (item.extent === 'partial')
     console.log(`  Incomplete: ${item.id}. ${item.limitation}`)
   console.log(
-    `Capabilities: ${summary.totalCapabilities} (${summary.byStatus.live} live, ${summary.byStatus.partial} partial, ${summary.byStatus.planned} planned)\n`
+    `Implementation capabilities: ${summary.totalCapabilities} (${summary.byStatus.live} implemented, ${summary.byStatus.partial} partial, ${summary.byStatus.planned} planned)\n`
   )
+  console.log('Implementation status does not establish runtime eligibility, customer availability, consent or acceptance.\n')
 
   console.log('By tool:')
   for (const [tool, count] of [...summary.byTool.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
@@ -27,23 +28,22 @@ function main() {
     console.log(`\nChecks not yet mapped to a capability: ${summary.unmapped.join(', ')}`)
   }
 
-  console.log('\n--- Capabilities ---\n')
-  const col = { status: 8, tool: 18, dim: 12, category: 16 }
+  console.log('\nImplementation catalog\n')
+  const col = { status: 13, tool: 18, dim: 12, category: 16 }
   console.log(
     `${pad('STATUS', col.status)} ${pad('TOOL', col.tool)} ${pad('DIMENSION', col.dim)} ${pad('CATEGORY', col.category)} LABEL`
   )
-  console.log('-'.repeat(90))
 
   for (const cap of AUDIT_CAPABILITIES) {
     const checks =
       cap.checkIds.length > 0 ? ` [${cap.checkIds.join(', ')}]` : cap.notes ? ` (${cap.notes})` : ''
     console.log(
-      `${pad(cap.status, col.status)} ${pad(cap.tool, col.tool)} ${pad(cap.dimension, col.dim)} ${pad(cap.category, col.category)} ${cap.label}${checks}`
+      `${pad(cap.status === 'live' ? 'implemented' : cap.status, col.status)} ${pad(cap.tool, col.tool)} ${pad(cap.dimension, col.dim)} ${pad(cap.category, col.category)} ${cap.label}${checks}`
     )
     if (cap.verify) console.log(`         verify: ${cap.verify}`)
   }
 
-  console.log('\n--- Local iteration commands ---\n')
+  console.log('\nLocal iteration commands\n')
   console.log('  npm run demo:audit:offline   # HTML/metadata/copy (fastest)')
   console.log('  npm run demo:audit           # Live localhost rendered pages')
   console.log('  npm run demo:audit:flow      # CTA click flow on localhost')

@@ -35,7 +35,7 @@ export const SITE_WORKSPACE_COPY = {
   findings: 'Findings',
   siteMenu: 'Website navigation', accountMenu: 'Account navigation',
   preview: 'Website preview', desktop: 'Desktop', mobile: 'Mobile',
-  noCapture: 'No screenshot yet', captureUnavailable: 'Screenshot unavailable',
+  noCapture: 'No screenshot recorded', capturePending: 'Capturing screenshot…', captureUnavailable: 'Screenshot unavailable',
   latestCapture: 'Latest capture', previousCapture: 'Previous capture', timeUnknown: 'Capture time unavailable',
   openCapture: (host: string) => `Open captured page for ${host}`,
   analysisCadence: 'Website analysis', monitoringOff: 'Not scheduled',

@@ -81,14 +81,15 @@ vi.mock('@/lib/db', () => ({
 let capturedProcessor: ((job: any) => Promise<any>) | undefined
 let lastWorkerOpts: any
 
-vi.mock('@/lib/admin/runtime', () => ({ startAdminOperationRuntime: () => ({ close: vi.fn(async () => undefined) }) }))
+vi.mock('@/lib/admin/runtime', () => ({ startAdminOperationRuntime: () => ({ waitUntilReady: vi.fn(async () => undefined), close: vi.fn(async () => undefined) }) }))
 
-vi.mock('@/lib/uptime/runtime', () => ({ startUptimeRuntime: () => ({ close: vi.fn(async () => undefined) }) }))
+vi.mock('@/lib/uptime/runtime', () => ({ startUptimeRuntime: () => ({ waitUntilReady: vi.fn(async () => undefined), close: vi.fn(async () => undefined) }) }))
 
-vi.mock('@/lib/audit/progressive/runtime', () => ({ startProgressiveWorkers: () => ({ close: vi.fn(async () => undefined) }) }))
+vi.mock('@/lib/audit/progressive/runtime', () => ({ startProgressiveWorkers: () => ({ waitUntilReady: vi.fn(async () => undefined), close: vi.fn(async () => undefined) }) }))
 
 vi.mock('bullmq', () => {
   class FakeWorker {
+    waitUntilReady = vi.fn(async () => ({}))
     close = vi.fn(async () => undefined)
     constructor(_name: string, processor: any, opts: any) {
       capturedProcessor = processor
@@ -321,11 +322,12 @@ describe('startWorker', () => {
   it('touches heartbeat on initial start', async () => {
     const { startWorker } = await import('@/lib/queue/worker')
     startWorker()
-    expect(mocks.touchWorkerHeartbeat).toHaveBeenCalledWith({
+    expect(mocks.touchWorkerHeartbeat).toHaveBeenCalledWith(expect.objectContaining({
       browserOk: true,
       activeBrowserContexts: 0,
       queueState: 'idle',
-    })
+      lastBrowserConnectedAt: expect.any(String),
+    }))
   })
 
   it('records an observable startup heartbeat failure', async () => {

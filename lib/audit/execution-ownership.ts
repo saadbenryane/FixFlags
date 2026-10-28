@@ -248,16 +248,19 @@ export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work:
   } finally {
     stopRenewing()
     signal.removeEventListener('abort', stopRenewing)
+    // Scope completion retires dependent sockets, contexts and late work too.
+    // Physical resource owners retain their slots until native closure.
+    cancel.abort()
     if (owner.taskId) {
       await prisma.auditExecutionTask.updateMany({
         where: { id: owner.taskId, workToken: owner.token, workGeneration: owner.generation },
         data: { workLeaseUntil: new Date(0) },
       })
     } else {
-    await prisma.audit.updateMany({
-      where: { id: owner.auditId, executionToken: owner.token, executionGeneration: owner.generation },
-      data: { executionLeaseUntil: new Date(0) },
-    })
+      await prisma.audit.updateMany({
+        where: { id: owner.auditId, executionToken: owner.token, executionGeneration: owner.generation },
+        data: { executionLeaseUntil: new Date(0) },
+      })
     }
   }
 }

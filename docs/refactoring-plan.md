@@ -127,14 +127,18 @@ surface/theme/width observations pass locally, including unobstructed mobile
 navigation targets. Client events for retired screens retain historical names;
 current Site lifecycle facts keep their existing durable owner. The current
 signup invitation records its actual click. The approved orange/white contrast
-exception remains unchanged. Current-candidate Linux and production observations
-are still required.
+exception remains unchanged. Packaged Linux execution and the ordinary production
+deployment subsequently passed on `a7ab7ab8844718015ce763d692c66d87f935b1f7`.
+These observations do not establish provider, human or sustained monitoring
+acceptance.
 
-The authorized release is being integrated in the existing deployment workspace.
-The task-splitting schema requires a coordinated cutover: drain and stop older
-web/worker writers, migrate, then start both services from the same new revision.
-Mixed-version writers are unsupported. Completion requires successful web and
-worker deployments, matching live revisions, applied migrations and readiness.
+The authorized cutover completed after old web and worker writers stopped. Both
+new services succeeded on the same revision, the migration applied, and retained
+task/receipt preservation hashes matched. Mixed-version writers remain
+unsupported, and the previous image alone is not a safe schema rollback. The
+[current completion plan](product-masterplan.md#current-completion-plan-2026-10-28)
+owns deployed status, the new idle-context investigation and remaining acceptance
+work. Actual production-backup restoration remains unverified.
 
 Integration checks caught three fresh-receipt writers without their typed task
 relationship. These writers now retain that relationship; 37 focused writer

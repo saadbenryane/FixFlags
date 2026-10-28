@@ -84,11 +84,20 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       `)
       env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ''} --require=${providerRefusal}`.trim()
     }
-    worker = spawn(process.execPath, ['dist/worker/index.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const healthReservation = createServer()
+    await new Promise<void>(resolve => healthReservation.listen(0, '127.0.0.1', resolve))
+    const workerHealthPort = (healthReservation.address() as { port: number }).port
+    await new Promise<void>(resolve => healthReservation.close(() => resolve()))
+    worker = spawn(process.execPath, ['scripts/runtime-start.mjs', 'worker'], {
+      env: { ...env, WORKER_HEALTH_PORT: String(workerHealthPort) }, stdio: ['ignore', 'pipe', 'pipe'],
+    })
     const record = (chunk: Buffer) => { output = (output + chunk.toString()).slice(-24_000) }
     worker.stdout!.on('data', record); worker.stderr!.on('data', record)
     await vi.waitFor(async () => {
       if (worker!.exitCode !== null) throw new Error('Compiled worker exited: ' + output)
+      const health = await fetch('http://127.0.0.1:' + workerHealthPort, { signal: AbortSignal.timeout(2000) })
+      expect(health.status, output).toBe(200)
+      expect(await health.json()).toMatchObject({ state: 'ready' })
       expect(await readWorkerHeartbeat()).toMatchObject({ alive: true, browserOk: true })
     }, { timeout: 30_000, interval: 100 })
     if (webProof) {
@@ -328,6 +337,18 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
         await page.evaluate(() => document.fonts.ready)
         await page.mouse.move(0, 0)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        if (surface === 'overview') {
+          const overlaps = await page.locator('article').evaluateAll(articles => articles.flatMap(article => {
+            const title = article.querySelector('button[aria-label^="Open "]')
+            const action = [...article.querySelectorAll('button')].find(button => /^Check .+ again$/.test(button.textContent?.trim() ?? ''))
+            if (!title || !action) return []
+            const heading = title.getBoundingClientRect(), control = action.getBoundingClientRect(), card = article.getBoundingClientRect()
+            return heading.left < control.right && control.left < heading.right && heading.top < control.bottom && control.top < heading.bottom ||
+              control.left < card.left || control.right > card.right
+              ? [article.getAttribute('aria-label')] : []
+          }))
+          expect(overlaps).toEqual([])
+        }
         if (width < 768 && surface !== 'flag') {
           const navigation = page.getByRole('navigation', { name: 'Mobile Site', exact: true })
           await browserExpect(navigation).toBeVisible()

@@ -6,6 +6,11 @@ import { loadSiteCaptures, loadSiteCheckedPages } from '../captures'
 const shot = { url: '/api/screenshots/current/desktop.png', width: 1280, height: 720, recordedAt: new Date('2026-10-12T12:00:00Z'), audit: { url: 'https://example.com/' }, page: null }
 beforeEach(() => { find.mockReset(); findPages.mockReset() })
 describe('website capture provenance', () => {
+  it('keeps a retained capture previous after the latest check has finished without an image', async () => {
+    find.mockImplementation(async ({ where }) => where.auditId === 'prior' && where.device === 'DESKTOP' ? { ...shot, url: '/api/screenshots/prior/desktop.png' } : null)
+    const captures = await loadSiteCaptures('current', 'prior', false)
+    expect(captures[0]).toMatchObject({ auditId: 'prior', previous: true, url: '/api/screenshots/prior/desktop.png' })
+  })
   it('retains the recorded audit and device without substituting missing mobile evidence', async () => {
     find.mockImplementation(async ({ where }) => where.auditId === 'prior' && where.device === 'DESKTOP' ? shot : null)
     const captures = await loadSiteCaptures('current', 'prior', true)

@@ -84,6 +84,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
     events: z.array(z.object({ label: text, at: time })) }).optional(),
   recoveryUnavailable: z.boolean().optional(),
   executionProgress: z.object({ total: count, completed: count, running: count, pending: count, recovering: count,
+    captureState: z.enum(['pending', 'not_recorded', 'unavailable']).optional(),
     unknown: count, inapplicable: count, recoveryUntil: nullableTime, eventCursor: nullableText,
     recovery: recovery.nullable().optional(), categoryRecovery: z.partialRecord(area, recovery).optional(),
     summary: z.object({ total: count, recorded: count, limited: count, failed: count, notApplicable: count,

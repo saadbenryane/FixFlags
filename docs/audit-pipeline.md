@@ -2608,6 +2608,17 @@ Progressive recovery windows are not legacy `AUDIT_DEADLINE_MS` call budgets.
 | `GET /api/health/browser` | Chromium + R2 connectivity                                                                                                                                   |
 | `GET /api/health/worker`  | Redis + worker heartbeat                                                                                                                                     |
 
+The worker launcher's separate HTTP endpoint returns 503 until its child has
+connected every queue consumer, and again while stopping or after 45 seconds
+without child acknowledgement. This is process readiness, not provider acceptance.
+The application worker diagnostic endpoint retains its JSON diagnostic contract;
+monitoring must inspect its `ok` field rather than treating HTTP 200 as health.
+`lastBrowserConnectedAt` records connection observation only. Allocator diagnostics
+report owned, unowned and expired contexts plus reserved capacity. Opaque context
+IDs correlate with private allocation/release logs; public diagnostics include no
+target URLs, credentials or tenant identifiers. Physical slots remain held until
+native closure, including after execution-scope cancellation.
+
 ## Debugging runbook
 
 1. `curl https://fixflags.com/api/health/ready` — confirm `ok: true`
@@ -3024,7 +3035,7 @@ these local verification steps.
 
 ## Claim identity and customer-loop checkpoint, 2026-10-27
 
-The current implementation/evidence status is recorded in the [canonical completion checkpoint](product-masterplan.md#implementation-checkpoint-2026-10-27), alongside the remaining provider, experience and production requirements.
+This is the October 27 local checkpoint. The [current completion plan](product-masterplan.md#current-completion-plan-2026-10-28) records the later deployment, retained-row preservation, current runtime observation and remaining provider, experience and recovery requirements.
 
 - `ensureOwnedFlagIdentities` is the shared identity writer for claim and first repair. The claim transaction publishes current native observations before ownership/defaults become visible. Bounded conflict-safe inserts preserve existing proposals, verification decisions and event metadata. Claim replay creates no customer action and truncates no observations.
 - Current customer acceptance/rejection/handoff and identity publication share a Site row lock and transaction. A transfer or removal settles before authority is rechecked; an already-linked observation cannot skip that boundary. Independent source occurrence links remain historical resources.

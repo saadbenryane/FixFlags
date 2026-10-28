@@ -8,6 +8,7 @@ import {
   readWorkerHeartbeat,
   beginWorkerShutdown,
   WORKER_ID,
+  publishWorkerState,
 } from '../lib/queue/worker-heartbeat'
 import { prisma } from '../lib/db'
 import { createQueueRedis } from '../lib/queue/redis'
@@ -21,6 +22,8 @@ let localLease: Awaited<ReturnType<typeof acquireLocalWorkerLease>> | null = nul
 let localRedis: ReturnType<typeof createQueueRedis> | null = null
 
 const runtime = createWorkerRuntime({
+  onReady: () => publishWorkerState('ready'),
+  onStopping: () => publishWorkerState('stopping'),
   validateEnvironment: validateWorkerEnv,
   preflight: async () => {
     await prisma.$queryRaw`SELECT 1`

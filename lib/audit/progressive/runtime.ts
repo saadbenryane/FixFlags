@@ -92,7 +92,7 @@ export function startProgressiveWorkers() {
     })
     return worker
   })
-  return { close: async () => {
+  return { waitUntilReady: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: async () => {
     await Promise.all(workers.map(worker => worker.close()))
     await closeParserWorker()
   } }

@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: operations
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-28
 supersedes: []
 ---
 
@@ -231,8 +231,9 @@ that the server never returned an HTTP response.
 
 ## Production access
 
-- Railway deployment. No direct SSH or DB access without Railway dashboard.
-- Database: PostgreSQL 16, accessible only within Railway network.
+- Railway deployment. Use the authenticated Railway dashboard or CLI within the owner's authorized scope. Production mutations require explicit authorization; prefer read-only aggregate diagnostics for investigation.
+- Database: production Railway metadata identified PostgreSQL 18 on October 28, 2026. Local fixture versions are separate. Recheck the actual server before version-specific migration or restore work.
+- Customer URLs, captures, account identities, saved credentials, support content and backup archives are sensitive. Keep payloads out of Git, chat and general diagnostics. A production deployment permission does not authorize exporting full customer backups to a local machine.
 - Paid-opening evidence may query production Watch records only through the operator-supplied `RELEASE_WATCH_READ_DATABASE_URL`. The release command starts a read-only transaction, serializes only aggregate metrics and a database identity hash, and refuses the disposable release database.
 - Redis: accessible only within Railway network.
 - No admin accounts in code — seeded via `npm run db:seed` with dev-only credentials.
@@ -249,7 +250,7 @@ that the server never returned an HTTP response.
 
 ## Rate limiting
 
-`lib/security/rate-limit.ts` uses Redis counters. On Redis connection failure it **fails open** (allows the request) so a Redis outage does not take the product offline. This is an intentional availability tradeoff, not a silent bug. Anonymous teaser limits and the one-website beta allowance remain enforced in application code independent of Redis. Open beta access removes authenticated commercial usage quotas; ownership, permissions, execution deadlines, and concurrency guards still apply.
+`lib/security/rate-limit.ts` uses Redis counters with a caller-selected failure mode. The default permits requests during an outage; security-sensitive admissions explicitly select rejection when their abuse counters cannot be checked. Public check admission rejects unavailable Redis counters. Verify each caller's actual policy rather than assuming a global fail-open contract. The one-website beta allowance remains enforced in application code. Open beta access removes authenticated commercial usage quotas; ownership, permissions, execution deadlines and concurrency guards still apply.
 
 Product Signal ingestion is the explicit exception.
 
@@ -303,8 +304,8 @@ Product Signal ingestion is the explicit exception.
 
 ## Out of scope
 
-- Penetration testing (pre-revenue, no sensitive user data)
-- SOC2 / compliance (pre-revenue)
+- Formal external penetration testing has not been established. Application authorization, tenant isolation, secret handling and privacy verification remain required.
+- Formal SOC2 certification has not been established.
 - VPC / network isolation (Railway managed)
 - Secrets rotation policy (single founder, manual rotation)
 
