@@ -208,7 +208,7 @@ The website beta admits one website. Monitoring is enabled automatically when th
 - **Web service:** `FIXFLAGS_PROCESS_ROLE=web`; enqueues jobs and serves report reads without importing the worker
 - **Worker service:** `FIXFLAGS_PROCESS_ROLE=worker`; required dedicated process that owns Playwright, recovery, and browser shutdown
 - **Local development:** `npm run dev` starts exactly one web process and one worker with concurrency one
-- **Container:** Multi-stage Docker (Debian bookworm-slim + apt Chromium), with separate web and worker commands. `.railway/railway.ts` preserves production Dockerfile selection and strict readiness. Playwright launches system Chromium (`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`).
+- **Container:** Multi-stage Docker (Debian bookworm-slim + apt Chromium), with separate web and worker commands. Both use one pruned production dependency tree. Standalone tracing supplies application files without overlaying another dependency tree. `.railway/railway.ts` preserves production Dockerfile selection and strict readiness. Playwright launches system Chromium (`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`).
 - **Platform:** Railway (fly.io-compatible)
 - **Health:** `/api/health` (liveness), `/api/health/ready` (strict launch contract), `/api/health/worker` (heartbeat), `/api/health/browser` (Playwright+R2), `/api/health/ai?validate=1` (live provider credentials)
 
