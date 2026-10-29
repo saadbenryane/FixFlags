@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import railwayRuntime from '../.railway/railway.ts'
 import {
   collectMcpToolManifest,
   collectMcpTools,
@@ -9,6 +10,7 @@ import {
   curatedSampleBundleFailures,
   savedEvidenceCompositionIsCanonical,
   railwayUsesStrictReadiness,
+  productionDevelopmentImporters,
   runCompletenessAudit,
 } from './completeness-audit.mjs'
 
@@ -73,8 +75,48 @@ test('tracked generated clutter covers build and browser artifacts', () => {
 })
 
 test('Railway configuration requires strict readiness rather than liveness', () => {
-  assert.equal(railwayUsesStrictReadiness('[deploy]\nhealthcheckPath = "/api/health/ready"'), true)
-  assert.equal(railwayUsesStrictReadiness('[deploy]\nhealthcheckPath = "/api/health"'), false)
+  const configuration = railwayRuntime({ environment: 'production' })
+  assert.equal(railwayUsesStrictReadiness(configuration), true)
+  for (const name of ['FixFlags', 'FixFlags Worker']) {
+    const livenessOnly = {
+      ...configuration,
+      resources: configuration.resources.map(resource => resource.name === name
+        ? { ...resource, deploy: { ...resource.deploy, healthcheckPath: '/api/health' } }
+        : resource),
+    }
+    assert.equal(railwayUsesStrictReadiness(livenessOnly), false)
+  }
+  assert.equal(railwayUsesStrictReadiness({ resources: configuration.resources.slice(0, 1) }), false)
+})
+
+test('runtime migration preserves secrets, source policy and explicit worker admission', () => {
+  const configuration = railwayRuntime({ environment: 'production' })
+  assert.deepEqual(configuration.resources.map(resource => resource.name), ['FixFlags', 'FixFlags Worker'])
+  for (const resource of configuration.resources) {
+    assert.deepEqual(resource.build, { builder: 'DOCKERFILE', dockerfilePath: 'Dockerfile' })
+    assert.equal(resource.deploy.healthcheckTimeout, 300)
+    assert.equal(resource.deploy.restartPolicyType, 'ON_FAILURE')
+    assert.equal(resource.deploy.restartPolicyMaxRetries, 3)
+    assert.equal(resource.source.checkSuites, false)
+    for (const name of ['DATABASE_URL', 'REDIS_URL', 'BETTER_AUTH_SECRET', 'TOKEN_ENCRYPTION_KEY', 'ACCOUNT_CHECKS_ENABLED', 'RESEND_API_KEY']) {
+      assert.equal(resource.variables[name]?.type, 'preserve', `${resource.name}.${name}`)
+    }
+    assert.ok(Object.values(resource.variables).every(value => value.type === 'preserve'))
+  }
+  assert.equal(configuration.resources[1].deploy.startCommand, 'node scripts/runtime-start.mjs worker')
+  assert.throws(() => railwayRuntime({ environment: 'public-validation' }), /production only/)
+})
+
+test('production import boundary excludes tests while rejecting actual development imports', () => {
+  assert.deepEqual(productionDevelopmentImporters({
+    'lib/release/fixture-authentication.test.ts': "import { fixture } from '../../scripts/fixture.mjs'",
+    'lib/__tests__/fixture.ts': "import { fixture } from '../../e2e/fixture'",
+    'lib/ordinary.ts': "// import { example } from '@/scripts/example'\nimport { utility } from './utility'",
+    'app/api/example/route.ts': "import { fixture } from '@/scripts/fixture.mjs'",
+    'lib/source.ts': "export { fixture } from '../e2e/fixture'",
+    'worker/job.ts': "const fixture = require('../lib/release/example.test')",
+    'components/example.tsx': "const fixture = import('../lib/__tests__/fixture')",
+  }), ['app/api/example/route.ts', 'lib/source.ts', 'worker/job.ts', 'components/example.tsx'])
 })
 
 test('critical route adapters stay thin and persistence-free', () => {

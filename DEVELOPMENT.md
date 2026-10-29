@@ -291,7 +291,7 @@ Set `SEED_ADMIN_EMAIL` and a unique 12+ character `SEED_ADMIN_PASSWORD` in `.env
 
 ## Production deployment (Railway)
 
-Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not Nixpacks. Inside the image, `CMD` runs `node scripts/runtime-start.mjs web`. There is no `prestart` script. Shared migration admission coordinates each runtime before invoking the actual Prisma CLI (`node node_modules/prisma/build/index.js migrate deploy`). Prisma's internal lock remains enabled, and a failed migration blocks the server from booting. `npm start`, `npm run worker:start` and `npm run db:deploy` use the same admission path. PostgreSQL documents the transaction waits involved in [concurrent index creation](https://www.postgresql.org/docs/16/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY) and its [client disconnect checks](https://www.postgresql.org/docs/16/runtime-config-connection.html#GUC-CLIENT-CONNECTION-CHECK-INTERVAL).
+Railway builds through the root **Dockerfile**. [.railway/railway.ts](.railway/railway.ts) declares the production web and worker settings; [.railway/README.md](.railway/README.md) describes the local plan and apply workflow. Both services require strict readiness. Existing provider variables are preserved without copying their values into source. Inside the image, `CMD` runs `node scripts/runtime-start.mjs web`. There is no `prestart` script. Shared migration admission coordinates each runtime before invoking the actual Prisma CLI (`node node_modules/prisma/build/index.js migrate deploy`). Prisma's internal lock remains enabled, and a failed migration blocks the server from booting. `npm start`, `npm run worker:start` and `npm run db:deploy` use the same admission path. PostgreSQL documents the transaction waits involved in [concurrent index creation](https://www.postgresql.org/docs/16/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY) and its [client disconnect checks](https://www.postgresql.org/docs/16/runtime-config-connection.html#GUC-CLIENT-CONNECTION-CHECK-INTERVAL).
 
 ```bash
 # Local parity with Railway image (required when Dockerfile / package*.json change)
@@ -301,7 +301,7 @@ docker build -t fixflags:local .
 npm start
 # FIXFLAGS_PROCESS_ROLE=web; scripts/runtime-start.mjs applies Prisma migrations first
 
-# Required worker service from railway.worker.toml
+# Required worker service declared in .railway/railway.ts
 FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=2 npm run worker:start
 ```
 

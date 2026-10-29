@@ -24,6 +24,7 @@ tsconfig.tsbuildinfo
 .opencode
 .playwright-cli
 .github
+.railway
 
 # Documentation & knowledge (not needed in image)
 *.md

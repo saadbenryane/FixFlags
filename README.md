@@ -122,7 +122,7 @@ Outcome and Flag commands, authentication, and JSON output.
 
 ## Production deployment (Railway)
 
-Railway uses two required services from the same image: the **Web** service from `railway.toml` and the **Worker** service from `railway.worker.toml`. The web process serves HTTP and enqueues scans. The worker owns Playwright, audit execution, and recovery. When `Dockerfile` or `package*.json` change, run `docker build -t fixflags:local .` before push.
+Railway uses two required services from the same image, declared in [.railway/railway.ts](.railway/railway.ts). The web process serves HTTP and enqueues scans. The worker owns Playwright, audit execution, and recovery. Use [.railway/README.md](.railway/README.md) to review and apply runtime configuration locally. When `Dockerfile` or `package*.json` change, run `docker build -t fixflags:local .` before push.
 
 - Liveness: `GET /api/health`. Deployment promotion uses strict `GET /api/health/ready` and receives 503 until all launch-required subsystems are ready.
 - Worker/queue diagnostics: `GET /api/health/worker` (heartbeat age, Redis, queue depth). Use this to confirm the worker is alive.
@@ -133,7 +133,7 @@ Railway uses two required services from the same image: the **Web** service from
 
 **SSO:** Google/GitHub availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed** after credentials change. Production requires both provider pairs. Register `https://fixflags.com/api/auth/callback/google` and `https://fixflags.com/api/auth/callback/github`, then run `npm run auth:check`.
 
-Deploy at least one dedicated **Worker** service (`railway.worker.toml`, `npm run worker:build && npm run worker:start`). Additional workers consume the same Redis queue; recovery is Redis-lock guarded.
+Deploy at least one dedicated **Worker** service (`npm run worker:build && npm run worker:start`). The production definition preserves its explicit worker command and strict readiness. Additional workers consume the same Redis queue; recovery is Redis-lock guarded.
 
 Worker env: `FIXFLAGS_PROCESS_ROLE=worker` and `AUDIT_WORKER_CONCURRENCY` (default `1` locally and `2` in production).
 

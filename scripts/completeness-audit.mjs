@@ -1,11 +1,13 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import ts from 'typescript'
 
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const require = createRequire(import.meta.url)
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8')
 
 export function collectMcpTools(source) {
@@ -30,8 +32,39 @@ export function collectTrackedGeneratedArtifacts(files) {
   return files.filter((file) => GENERATED_ARTIFACT_PATTERN.test(file))
 }
 
-export function railwayUsesStrictReadiness(source) {
-  return /^healthcheckPath\s*=\s*["']\/api\/health\/ready["']\s*$/m.test(source)
+export function railwayUsesStrictReadiness(configuration) {
+  return ['FixFlags', 'FixFlags Worker'].every(name => {
+    const resource = configuration?.resources?.find(resource => resource.type === 'service' && resource.name === name)
+    return resource?.deploy?.healthcheckPath === '/api/health/ready'
+  })
+}
+
+const isTestModule = file => /(?:^|\/)__tests__\//.test(file) || /\.test(?:\.[cm]?[jt]sx?)?$/.test(file)
+const isProductionModule = file => !isTestModule(file) && (
+  /^(app|components|lib|worker)\/.+\.(?:ts|tsx)$/.test(file) || /^(instrumentation|middleware|proxy)\.ts$/.test(file)
+)
+
+export function productionDevelopmentImporters(sources) {
+  return Object.entries(sources).filter(([file, source]) => {
+    if (!isProductionModule(file)) return false
+    let blocked = false
+    const check = specifier => {
+      if (!specifier || !ts.isStringLiteralLike(specifier)) return
+      const value = specifier.text
+      const target = value.startsWith('@/') ? value.slice(2)
+        : value.startsWith('.') ? path.posix.normalize(path.posix.join(path.posix.dirname(file), value)) : null
+      if (target && (/^(scripts|e2e)\//.test(target) || isTestModule(target))) blocked = true
+    }
+    const visit = node => {
+      if (blocked) return
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) check(node.moduleSpecifier)
+      if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) check(node.arguments[0])
+      ts.forEachChild(node, visit)
+    }
+    visit(ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS))
+    return blocked
+  }).map(([file]) => file)
 }
 
 export function criticalRouteBoundaryFailures(routes, maxLines = 160) {
@@ -181,8 +214,8 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const clutter = collectTrackedGeneratedArtifacts(tracked)
   assert(clutter.length === 0, `Tracked generated dependencies/artifacts: ${clutter.slice(0, 5).join(', ')}`)
   assert(
-    railwayUsesStrictReadiness(read(root, 'railway.toml')),
-    'Railway web deployment must gate on /api/health/ready',
+    railwayUsesStrictReadiness(require(path.join(root, '.railway/railway.ts')).default({ environment: 'production' })),
+    'Railway web and worker deployments must gate on /api/health/ready',
   )
   const criticalRoutes = [
     'app/api/reports/[id]/chat/route.ts',
@@ -197,18 +230,14 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     cwd: root,
     encoding: 'utf8',
   }).split('\n')
-  const productionFiles = [...new Set([...tracked, ...untracked])].filter((file) =>
-    existsSync(path.join(root, file)) &&
-    (/^(app|components|lib|worker)\/.+\.(?:ts|tsx)$/.test(file) ||
-      /^(instrumentation|middleware|proxy)\.ts$/.test(file)),
-  )
-  const scriptImports = productionFiles.filter((file) => {
-    const source = read(root, file)
-    return /(?:from\s+|import\s*\()['"](?:@\/|\.\.\/)+scripts\//.test(source)
-  })
+  const productionFiles = [...new Set([...tracked, ...untracked])]
+    .filter(file => existsSync(path.join(root, file)) && isProductionModule(file))
+  const scriptImports = productionDevelopmentImporters(Object.fromEntries(
+    productionFiles.map(file => [file, read(root, file)]),
+  ))
   assert(
     scriptImports.length === 0,
-    `Production modules import development scripts: ${scriptImports.slice(0, 5).join(', ')}`,
+    `Production modules import development modules: ${scriptImports.slice(0, 5).join(', ')}`,
   )
 
   return {
