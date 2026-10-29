@@ -95,7 +95,7 @@ test('runtime migration preserves secrets, source policy and explicit worker adm
   for (const resource of configuration.resources) {
     assert.deepEqual(resource.build, { builder: 'DOCKERFILE', dockerfilePath: 'Dockerfile' })
     assert.equal(resource.deploy.healthcheckTimeout, 300)
-    assert.equal(resource.deploy.restartPolicyType, 'ON_FAILURE')
+    assert.equal(resource.deploy.restartPolicyType, undefined, 'Use the canonical omitted ON_FAILURE default')
     assert.equal(resource.deploy.restartPolicyMaxRetries, 3)
     assert.equal(resource.source.checkSuites, false)
     for (const name of ['DATABASE_URL', 'REDIS_URL', 'BETTER_AUTH_SECRET', 'TOKEN_ENCRYPTION_KEY', 'ACCOUNT_CHECKS_ENABLED', 'RESEND_API_KEY']) {

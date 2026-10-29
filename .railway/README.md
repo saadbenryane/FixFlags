@@ -39,6 +39,11 @@ failure restarts. The worker explicitly starts `node scripts/runtime-start.mjs
 worker`; the Docker image starts the web runtime. The shared launcher owns process
 roles, default worker concurrency, migration admission and graceful shutdown.
 
+Railway normalizes its default `ON_FAILURE` policy to an omitted field. Keep
+`restartPolicyType` omitted in the authoring form and verify the effective live
+policy is `ON_FAILURE` with three retries after applying. Declaring the default
+explicitly produces a repeated default-only plan difference.
+
 The superseded `railway.toml` and unused `railway.worker.toml` are removed. After a
 migration, verify both deployed revisions, strict readiness, fresh worker health,
 and a zero-change `railway config plan`.

@@ -7,7 +7,8 @@ export default defineRailway(ctx => {
     build: { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" },
     healthcheck: "/api/health/ready",
     healthcheckTimeout: 300,
-    deploy: { restartPolicyType: "ON_FAILURE" as const, restartPolicyMaxRetries: 3 },
+    // Railway omits its default ON_FAILURE policy from normalized state.
+    deploy: { restartPolicyMaxRetries: 3 },
   };
   const repository = github("saadbenryane/FixFlags", { checkSuites: false });
   const web = service("FixFlags", {
