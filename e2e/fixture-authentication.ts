@@ -7,10 +7,18 @@ export async function signInFixture(page: Page, email: string, password: string)
   await page.getByLabel('Password', { exact: true }).fill(password)
 
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const responsePending = page.waitForResponse(response =>
-      response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/auth/sign-in/email')
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    const response = await responsePending
+    const origin = new URL(page.url()).origin
+    const matchesSignIn = (url: string, method: string) => {
+      const target = new URL(url)
+      return method === 'POST' && target.origin === origin && target.pathname === '/api/auth/sign-in/email'
+    }
+    const [submitted, response] = await Promise.all([
+      page.waitForRequest(request => matchesSignIn(request.url(), request.method()), { timeout: 30_000 }),
+      page.waitForResponse(response => matchesSignIn(response.url(), response.request().method()), { timeout: 30_000 }),
+      page.getByRole('button', { name: 'Sign in', exact: true }).click(),
+    ])
+    expect(response.request() === submitted, 'Server acceptance must belong to the observed fixture submission').toBe(true)
+    expect(submitted.postDataJSON()?.email, 'The submitted identity must match the entered fixture').toBe(email.trim())
     if (response.status() !== 429) {
       expect(response.status(), 'Fixture sign-in must receive normal server acceptance').toBe(200)
       return
