@@ -81,7 +81,7 @@ export function SiteCategoryDetails({ selected, selectedFlags, selectedRecommend
               {selectedFlags.length ? <SiteFixBundleButton key={`${siteId}:${selected.id}`} siteId={siteId} area={selected.id} availability={view.actions.copy} presentation="preview" /> : null}
               <RecommendationList recommendations={selectedRecommendations} />
               {selected.incompleteReason ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card p-3 text-sm shadow-board"><p>{selected.incompleteReason.replace(/[.!?]?$/, '.')} {recoveryReplacesRecheck(view.executionProgress?.categoryRecovery?.[selected.id]) ? SITE_ACTION_COPY.recovery.setupBody : SITE_BOARD_COPY.cardRetryExplanation}</p>{checkAction(selected.id, Boolean(selected.incompleteReason) && view.actions.check === 'available')}</div> : null}
-              <details className="mt-2 rounded-card p-4 shadow-board">
+              <details data-site-check-details className="mt-2 rounded-card p-4 shadow-board">
               <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium"><FileCheck className="h-4 w-4 text-muted-foreground" aria-hidden />{C.checkDetails}</summary>
               <div className="mt-4 space-y-5">
               {!selected.incompleteReason ? checkAction(selected.id) : null}

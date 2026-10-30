@@ -11,7 +11,7 @@ const databaseSource = new URL(process.env.DATABASE_URL ?? '')
 if (!['localhost', '127.0.0.1'].includes(databaseSource.hostname)) throw new Error('Local PostgreSQL required')
 if (!existsSync('.next-e2e/standalone/server.js')) throw new Error('Build the current revision with scripts/next-build.mjs .next-e2e first')
 const journeySuite = process.argv[2] ?? 'e2e/category-recheck.spec.ts'
-if (!['e2e/category-recheck.spec.ts', 'e2e/customer-reliability.spec.ts', 'e2e/public-journeys.spec.ts'].includes(journeySuite)) throw new Error('Choose a supported local customer journey')
+if (!['e2e/category-recheck.spec.ts', 'e2e/customer-reliability.spec.ts', 'e2e/public-journeys.spec.ts', 'e2e/anonymous-claim.spec.ts'].includes(journeySuite)) throw new Error('Choose a supported local customer journey')
 const appPort = Number(process.env.FIXFLAGS_LOCAL_APP_PORT ?? 3145)
 const fixturePort = Number(process.env.FIXFLAGS_LOCAL_FIXTURE_PORT ?? 3146)
 if (![appPort, fixturePort].every(port => Number.isInteger(port) && port > 1024 && port < 65536) || appPort === fixturePort) throw new Error('Choose two distinct local verification ports')

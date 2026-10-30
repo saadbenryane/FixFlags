@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: architecture
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-30
 supersedes: []
 ---
 
@@ -9,11 +9,12 @@ supersedes: []
 
 Canonical reference for the FixFlags scan pipeline: stages, AI phases, degradation, recovery, and debugging.
 
-## Progressive execution candidate
+## Progressive execution
 
 New admissions snapshot `ExecutionSpec` with `engine: progressive-v1` on the existing
-Audit ledger. This describes the local implementation candidate, not deployed or
-release-accepted behavior. Historical Audits retain the legacy adapter below.
+Audit ledger. Historical Audits retain the legacy adapter below. The controlled
+fixture evidence described here establishes its stated local behavior. Deployment
+and operational health do not establish real-provider acceptance.
 
 Owned manual category rechecks use the same admission and progressive task ledger.
 `scope: category` selects Search, Performance, Conversion, Security, Tracking or

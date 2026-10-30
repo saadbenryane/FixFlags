@@ -341,8 +341,8 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'All Sites' })).toHaveCount(0)
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Open Pages', exact: true })).toBeVisible()
-  for (const name of ['Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
+  await expect(page.getByRole('link', { name: 'Pages', exact: true })).toBeVisible()
+  for (const name of ['Conversion', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility', 'Uptime']) {
     await expect(
       page.getByRole('button', { name: `Open ${name}`, exact: true })
     ).toBeVisible()

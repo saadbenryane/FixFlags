@@ -45,6 +45,9 @@ export function useSiteNavigationContinuity(siteId: string) {
           frame = requestAnimationFrame(() => {
             frame = undefined
             if (stopped || !container.isConnected) return
+            const checkDetails = container.querySelector<HTMLDetailsElement>('details[data-site-check-details]')
+            if (saved.checkDetailsOpen !== undefined && !checkDetails) return
+            if (checkDetails && saved.checkDetailsOpen !== undefined) checkDetails.open = saved.checkDetailsOpen
             const control = accountControl ?? container.querySelector<HTMLElement>(`[data-site-return-focus="${saved.focus}"]`)
             const target = control && !control.matches(':disabled,[aria-disabled="true"]') ? control : container
             window.scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' })
@@ -84,9 +87,11 @@ export function useSiteNavigationContinuity(siteId: string) {
       if (anchor.dataset.siteAuthContext === 'current') destination = source
       const sameContext = destination.pathname === source.pathname && destination.search === source.search && destination.hash === source.hash
       const dialog = sameContext ? anchor.closest<HTMLElement>('[role="dialog"][data-site-return-context="category"]') : null
+      const checkDetails = dialog?.querySelector<HTMLDetailsElement>('details[data-site-check-details]')
       const state: SiteContinuation = { version: 1, destination: destination.pathname + destination.search + destination.hash,
         recordedAt: Date.now(), x: sameContext ? Math.max(0, window.scrollX) : 0, y: sameContext ? Math.max(0, window.scrollY) : 0,
         dialogTop: dialog ? Math.max(0, dialog.querySelector<HTMLElement>('[data-dialog-scroll]')?.scrollTop ?? 0) : null,
+        ...(checkDetails ? { checkDetailsOpen: checkDetails.open } : {}),
         focus: sameContext ? siteReturnFocus(anchor.closest<HTMLElement>('[data-site-return-focus]')?.dataset.siteReturnFocus) : 'context' }
       try { sessionStorage.setItem(key, JSON.stringify(state)) } catch { /* Never block authentication when local storage is unavailable. */ }
     }

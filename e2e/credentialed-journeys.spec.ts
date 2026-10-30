@@ -187,11 +187,11 @@ test.describe('credentialed revenue journeys', () => {
     expect(reportId).toBeTruthy()
     await waitForReport(page.request, reportId!)
 
-    await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
+    await page.getByRole('button', { name: 'Open Search', exact: true }).click()
     const originalCategory = page.getByRole('dialog')
-    await expect(originalCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await expect(originalCategory.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
     await originalCategory.locator('summary').filter({ hasText: SITE_DASHBOARD_COPY.checkDetails }).click()
-    const continuation = originalCategory.getByRole('button', { name: 'Check again', exact: true }).last()
+    const continuation = originalCategory.getByRole('button', { name: /^Check(?: Search)? again$/ }).last()
     await continuation.focus()
     await originalCategory.locator('[data-dialog-scroll]').evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
     const beforeAuth = await originalCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY, destination: location.pathname + location.search + location.hash }))
@@ -206,9 +206,9 @@ test.describe('credentialed revenue journeys', () => {
     await page.waitForURL((url) => url.pathname === `/sites/${siteId}`, {
       timeout: 45_000,
     })
-    expect(new URL(page.url()).searchParams.get('category')).toBe('site')
+    expect(new URL(page.url()).searchParams.get('category')).toBe('search')
     const returnedCategory = page.getByRole('dialog')
-    await expect(returnedCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await expect(returnedCategory.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
     await expect.poll(() => returnedCategory.evaluate((node, before) =>
       node.contains(document.activeElement) && Math.abs(node.querySelector('[data-dialog-scroll]')!.scrollTop - before.dialogTop) <= 1 && Math.abs(scrollY - before.y) <= 1, beforeAuth), { timeout: 6000 }).toBe(true)
     const afterAuth = await returnedCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY,
@@ -218,8 +218,8 @@ test.describe('credentialed revenue journeys', () => {
     await page.keyboard.press('Escape')
     await expect(returnedCategory).toBeHidden()
     await page.goBack()
-    await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'site')
-    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'search')
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toBeHidden()
     await expect(page.getByRole('heading', { name: new RegExp(`^(?:${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|Settings|Flags)$`) })).toBeVisible()
