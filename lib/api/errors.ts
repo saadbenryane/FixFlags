@@ -55,7 +55,8 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
   // that omits the branch reports "could not start" for a limit that is simply
   // spent, which is both false and leaves the customer with nothing to do.
   if (err instanceof SiteRunRefusal || err instanceof ImprovementAttemptConflict) {
-    return apiError(err.message, err.status, { code: err.code, requestId })
+    return apiError(err.message, err.status, { code: err.code, requestId,
+      ...(err.code === 'REPAIR_CONTEXT_CHANGED' ? { action: 'prepare_new_prompt' } : {}) })
   }
 
   if (err instanceof AuditLimitError) {

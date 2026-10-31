@@ -51,6 +51,12 @@ describe('BoardCard chrome', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Security' }))
     expect(open).toHaveBeenCalledOnce()
   })
+  it.each(['Not checked yet', 'Partially checked', 'Out of date'])('shows %s visibly in compact cards instead of a passing zero', status => {
+    render(<BoardCard compact name="Accessibility" icon="accessibility" state="unknown" status={status}
+      answer="Recorded coverage is incomplete" onOpen={() => undefined} />)
+    expect(screen.getByText(status)).toBeVisible()
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
+  })
 
   it('shows the recorded priority beside each preview Flag', () => {
     render(<BoardCard compact showFlagPreview name="Pages" icon="site" state="problem" status="2 Flags" answer="Problems" flags={[

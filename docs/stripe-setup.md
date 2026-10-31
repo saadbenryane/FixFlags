@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: operations
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-31
 supersedes: []
 ---
 
@@ -11,7 +11,7 @@ Test vs live is determined only by key prefix (`sk_test_` / `sk_live_`) and matc
 
 ## Paid-launch posture
 
-Paid checkout is closed. The public offer is one free website verified weekly, then Pro at **$49 per website per month** verified every day. Studio is the same product for several websites, quoted and billed per website. Do not open checkout until blocker B5 in [the product masterplan](product-masterplan.md) is complete and the test-mode release stages pass.
+Paid checkout is closed throughout open beta. Resolved accounts receive the supported capabilities and monitoring schedules without commercial usage quotas; Free accounts can own one active website. Existing subscriptions and purchased credits remain preserved. Planned paid pricing is Pro at $49 and Studio at $99 per website per month, as defined in `lib/billing/beta-policy.ts`. Opening paid enrollment requires its separate [release gates](product-masterplan.md#separate-release-gates-and-broader-direction), production reliability/cost evidence and Stripe test-mode acceptance.
 
 The discount-tier implementation below is retained compatibility for waitlist records. It is not current public packaging and must not be activated without a new explicit commercial decision.
 
@@ -52,8 +52,8 @@ When `STRIPE_PAID_OPEN=true`, checkout is public; the tier promotion auto-applie
 
 | Product | Target | Env var | Notes |
 |---------|--------|---------|--------|
-| Pro | $49/website/mo | `STRIPE_BUILDER_PRICE_ID` | Create matching test/live recurring per-website prices before B5 can close |
-| Studio | Quoted per website | `STRIPE_TEAM_PRICE_ID` | Do not expose a generic checkout until the quoted per-website contract is explicit |
+| Pro | Planned $49/website/mo | `STRIPE_BUILDER_PRICE_ID` | Remains waitlisted during open beta; prepare matching prices for separate paid-opening acceptance |
+| Studio | Planned $99/website/mo | `STRIPE_TEAM_PRICE_ID` | Remains waitlisted during open beta; prepare matching prices for separate paid-opening acceptance |
 
 Legacy test IDs (2026-07-19, **$39 / $129**) are retained only to recognize active legacy subscriptions. Do not use them for new checkout sessions. Map them through `STRIPE_LEGACY_BUILDER_PRICE_IDS` and `STRIPE_LEGACY_TEAM_PRICE_IDS` until those subscriptions end or change.
 
@@ -65,7 +65,7 @@ Legacy test IDs (2026-07-19, **$39 / $129**) are retained only to recognize acti
 | Credit Pack +25 | `price_1Tv0h6AjciMDcWE1ShtiyPUu` | `STRIPE_CREDIT_PACK_25_ID` | $30 |
 | Credit Pack +50 | `price_1Tv0h7AjciMDcWE1XZWi26WU` | `STRIPE_CREDIT_PACK_50_ID` | $50 |
 
-Webhook (test): `https://fixflags.com/api/webhooks/stripe` — signing secret → `STRIPE_WEBHOOK_SECRET`.
+Webhook (test): `https://fixflags.com/api/webhooks/stripe`, signing secret → `STRIPE_WEBHOOK_SECRET`.
 
 **Discarded:** Older price IDs from account `acct_1SmkqdHLxDz5YKn1` (“OH Old”) must not be used.
 
@@ -135,4 +135,4 @@ curl -sS https://fixflags.com/api/health | jq '{billingConfigured, degraded, sta
 
 Expect `billingConfigured: true`. Test checkout with card `4242…`.
 
-Set `TOKEN_ENCRYPTION_KEY` before selling Agency GitHub repo scans.
+Repository scanning and automatic pull requests remain parked. GitHub account authorization does not enable repository execution or its sale.

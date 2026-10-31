@@ -1,5 +1,6 @@
 import type { Route } from 'next'
 import { SITE_URL } from '@/lib/marketing/copy/brand'
+import { MCP_PROTOCOL_VERSION, MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import {
   getEditorIntegration,
   type EditorIntegrationKey,
@@ -14,6 +15,7 @@ export interface EditorMcpConfiguration {
   location: string
   language: 'json' | 'toml' | 'text'
   value: string
+  credentialMode: 'environment' | 'bearer-token'
 }
 
 export function getMcpEndpoint(baseUrl: string = SITE_URL): string {
@@ -23,11 +25,12 @@ export function getMcpEndpoint(baseUrl: string = SITE_URL): string {
 export function buildEditorMcpConfiguration(
   editorKey: EditorIntegrationKey,
   baseUrl: string = SITE_URL,
-  apiKey: string = FIXFLAGS_API_KEY_PLACEHOLDER
+  apiKey?: string
 ): EditorMcpConfiguration {
   const editor = getEditorIntegration(editorKey)
   const url = getMcpEndpoint(baseUrl)
-  const authorization = `Bearer ${apiKey}`
+  const environmentToken = editorKey === 'claudeCode' ? '${FIXFLAGS_API_KEY}' : '${env:FIXFLAGS_API_KEY}'
+  const authorization = `Bearer ${apiKey ?? environmentToken}`
 
   if (editorKey === 'cursor' || editorKey === 'claudeCode') {
     return {
@@ -35,6 +38,7 @@ export function buildEditorMcpConfiguration(
       label: editorKey === 'cursor' ? 'mcp.json' : '.mcp.json',
       location: editor.setupLocation,
       language: 'json',
+      credentialMode: apiKey ? 'bearer-token' : 'environment',
       value: `${JSON.stringify(
         {
           mcpServers: {
@@ -57,6 +61,7 @@ export function buildEditorMcpConfiguration(
       label: 'mcp_config.json',
       location: editor.setupLocation,
       language: 'json',
+      credentialMode: apiKey ? 'bearer-token' : 'environment',
       value: `${JSON.stringify(
         {
           mcpServers: {
@@ -78,6 +83,7 @@ export function buildEditorMcpConfiguration(
       label: 'config.toml',
       location: editor.setupLocation,
       language: 'toml',
+      credentialMode: 'environment',
       value: `[mcp_servers.fixflags]
 url = "${url}"
 bearer_token_env_var = "${FIXFLAGS_API_KEY_ENV}"
@@ -90,21 +96,33 @@ bearer_token_env_var = "${FIXFLAGS_API_KEY_ENV}"
     label: 'Custom MCP server',
     location: editor.setupLocation,
     language: 'text',
+    credentialMode: 'bearer-token',
     value: `Name: FixFlags
 URL: ${url}
 Transport: Streamable HTTP
 Authentication: Bearer token
-Authorization: ${authorization}
+Authorization: Bearer ${apiKey ?? FIXFLAGS_API_KEY_PLACEHOLDER}
 `,
   }
 }
 
 export function buildMcpTestCurl(baseUrl: string = SITE_URL): string {
   const url = getMcpEndpoint(baseUrl)
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: {
+    name: MCP_TOOLS.getConnectionInfo.name, arguments: {}, _meta: {
+      'io.modelcontextprotocol/protocolVersion': MCP_PROTOCOL_VERSION,
+      'io.modelcontextprotocol/clientInfo': { name: 'fixflags-curl', version: '1.0.0' },
+      'io.modelcontextprotocol/clientCapabilities': {},
+    },
+  } })
   return `curl -s -X POST "${url}" \\
   -H "Content-Type: application/json" \\
+  -H "Accept: application/json" \\
+  -H "MCP-Protocol-Version: ${MCP_PROTOCOL_VERSION}" \\
+  -H "Mcp-Method: tools/call" \\
+  -H "Mcp-Name: ${MCP_TOOLS.getConnectionInfo.name}" \\
   -H "Authorization: Bearer $${FIXFLAGS_API_KEY_ENV}" \\
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"fixflags-curl","version":"1.0.0"}},"id":1}'`
+  -d '${body}'`
 }
 
 export function buildEditorSetupPath(editorKey: EditorIntegrationKey): Route {

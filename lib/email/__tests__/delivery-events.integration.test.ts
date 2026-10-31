@@ -1,0 +1,88 @@
+import { randomUUID } from 'node:crypto'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { prisma } from '@/lib/db'
+import { acceptEmailProviderEvent, emailRecipientHash, loadEmailDeliveryHistory, notificationRecipientAllowed, recordEmailAcceptance } from '../delivery-events'
+import { emailDeliveryState } from '../delivery-state'
+import { FROM_EMAIL } from '../from'
+import { maintainEmailDelivery } from '../maintenance'
+
+const run = process.env.NOTIFICATION_DB_REQUIRED === 'true' ? describe : describe.skip
+run('provider delivery facts and recovery', () => {
+  const users: string[] = [], providers: string[] = [], emails: string[] = []
+  beforeAll(() => {
+    const url = new URL(process.env.DATABASE_URL!)
+    if (!['localhost', '127.0.0.1'].includes(url.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(url.pathname)) throw new Error('Disposable notification database required')
+  })
+  afterEach(async () => {
+    await prisma.emailProviderEvent.deleteMany({ where: { providerId: { in: providers } } })
+    await prisma.emailSuppression.deleteMany({ where: { recipientHash: { in: emails.map(emailRecipientHash) } } })
+    await prisma.user.deleteMany({ where: { id: { in: users } } })
+    users.length = 0; providers.length = 0; emails.length = 0
+  })
+  afterAll(() => prisma.$disconnect())
+  async function fixture() {
+    const userId = randomUUID(), providerId = randomUUID(), email = userId + '@notification.test', at = new Date()
+    users.push(userId); providers.push(providerId); emails.push(email)
+    await prisma.user.create({ data: { id: userId, email, emailVerified: true } })
+    return { userId, providerId, email, channel: 'summary' as const, sourceId: randomUUID(), acceptedAt: at }
+  }
+  async function event(input: Awaited<ReturnType<typeof fixture>>, type: string, at: Date, id = randomUUID(), to = input.email) {
+    const payload = JSON.stringify({ type, created_at: at.toISOString(), data: { email_id: input.providerId, from: FROM_EMAIL, to: [to] } })
+    await acceptEmailProviderEvent(id, payload, new Date(at.getTime() + 1000))
+    return { id, payload }
+  }
+  it('deduplicates events, keeps facts in order and does not downgrade delivery to delayed', async () => {
+    const input = await fixture(); await recordEmailAcceptance(input)
+    const delivered = await event(input, 'email.delivered', input.acceptedAt)
+    await acceptEmailProviderEvent(delivered.id, delivered.payload)
+    await acceptEmailProviderEvent(delivered.id, JSON.stringify(JSON.parse(delivered.payload), null, 2))
+    await event(input, 'email.delivery_delayed', new Date(input.acceptedAt.getTime() - 1000))
+    const receipt = await prisma.emailDelivery.findUniqueOrThrow({ where: { providerId: input.providerId } })
+    expect(emailDeliveryState(receipt)).toBe('delivered')
+    expect(await prisma.emailProviderEvent.count({ where: { providerId: input.providerId } })).toBe(2)
+    expect((await loadEmailDeliveryHistory(input.userId))[0].state).toBe('delivered')
+    expect(await loadEmailDeliveryHistory('another-owner')).toEqual([])
+  })
+  it('reconciles an event received before acceptance is recorded, even after an idempotent retry', async () => {
+    const input = await fixture(), firstAttemptAt = input.acceptedAt
+    await event(input, 'email.delivered', firstAttemptAt)
+    await recordEmailAcceptance({ ...input, firstAttemptAt, acceptedAt: new Date(firstAttemptAt.getTime() + 10 * 60_000) })
+    expect(emailDeliveryState(await prisma.emailDelivery.findUniqueOrThrow({ where: { providerId: input.providerId } }))).toBe('delivered')
+  })
+  it.each(['email.bounced', 'email.complained'] as const)('suppresses only the known recipient after %s', async type => {
+    const input = await fixture(); await recordEmailAcceptance(input)
+    const other = randomUUID() + '@notification.test'; emails.push(other)
+    await event(input, type, input.acceptedAt, randomUUID(), other)
+    expect(await notificationRecipientAllowed(input.email)).toBe(true)
+    expect(await notificationRecipientAllowed(other)).toBe(true)
+    await event(input, type, input.acceptedAt)
+    expect(await notificationRecipientAllowed(input.email)).toBe(false)
+    expect(await notificationRecipientAllowed(other)).toBe(true)
+    await event(input, 'email.delivered', new Date(input.acceptedAt.getTime() + 1000))
+    expect(emailDeliveryState(await prisma.emailDelivery.findUniqueOrThrow({ where: { providerId: input.providerId } }))).toBe(type === 'email.bounced' ? 'bounced' : 'complained')
+  })
+  it('does not collect opens or let an unknown message suppress a recipient', async () => {
+    const input = await fixture()
+    await event(input, 'email.opened', input.acceptedAt)
+    expect(await prisma.emailProviderEvent.count({ where: { providerId: input.providerId } })).toBe(0)
+    await event(input, 'email.bounced', input.acceptedAt)
+    expect(await notificationRecipientAllowed(input.email)).toBe(true)
+  })
+  it('refuses a reused provider event identity with changed delivery facts', async () => {
+    const input = await fixture(); await recordEmailAcceptance(input)
+    const delivered = await event(input, 'email.delivered', input.acceptedAt)
+    const changed = { ...JSON.parse(delivered.payload), type: 'email.bounced' }
+    await expect(acceptEmailProviderEvent(delivered.id, JSON.stringify(changed))).rejects.toThrow('identity changed')
+    expect(await notificationRecipientAllowed(input.email)).toBe(true)
+  })
+  it('recovers delivery history from a committed source receipt after an interrupted projection', async () => {
+    const input = await fixture()
+    await prisma.notificationPreference.create({ data: { userId: input.userId, cadence: 'OFF' } })
+    await prisma.notificationDigest.create({ data: { id: input.sourceId, userId: input.userId, revision: 0, scheduledAt: input.acceptedAt,
+      status: 'SENT', providerId: input.providerId, sentAt: input.acceptedAt,
+      payload: { to: input.email, firstAttemptAt: input.acceptedAt.toISOString() } } })
+    await event(input, 'email.delivered', input.acceptedAt)
+    await maintainEmailDelivery(new Date(input.acceptedAt.getTime() + 1000))
+    expect((await loadEmailDeliveryHistory(input.userId))[0].state).toBe('delivered')
+  })
+})

@@ -140,11 +140,12 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   })
   const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' &&
     (banner.kind !== 'incomplete' || summaryNote))
+  const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
 
   return (
     <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
-      headerAction={<>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>}>
+      headerAction={viewMode === 'home' ? undefined : siteActions}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
         <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
@@ -173,7 +174,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <SiteOverviewWorkspace summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} capturePriority collectionState={view.executionProgress?.captureState} summaryItems={summaryItems}
+        <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} collectionState={view.executionProgress?.captureState} capturePriority summaryItems={summaryItems}
           notice={checking ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
             if (item.id === 'pages') { openWorkspace('pages'); return }

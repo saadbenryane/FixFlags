@@ -2640,7 +2640,7 @@ run('migrated progressive execution', () => {
       expect(providerRequests).toHaveLength(5)
       for (const request of providerRequests) {
         expect(request.key).toBe(`fixflags-watch-${auditId}-v1`)
-        expect(request.body).toMatchObject({ to: userId + '@example.test', subject: 'Needs attention on example.com: 1 Flag',
+        expect(request.body).toMatchObject({ to: userId + '@example.test', subject: 'example.com: 1 problem to review',
           html: expect.stringContaining(`/sites/${projectId}/flags/${flag.id}?source=watch-email`) })
       }
 

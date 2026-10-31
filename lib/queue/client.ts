@@ -7,6 +7,16 @@ import { TASK_QUEUES, type TaskQueue } from '@/lib/audit/progressive/queues'
 let _auditQueue: Queue | null = null
 let _auditRedis: Redis | null = null
 const taskQueues = new Map<TaskQueue, Queue>()
+let adminOperationsQueue: Queue | undefined
+
+/** Read the administrative lane without importing its privileged action handlers. */
+export function getAdminOperationQueue(): Queue {
+  if (!adminOperationsQueue) {
+    adminOperationsQueue = new Queue('admin-operations', { connection: getAuditRedis() })
+    adminOperationsQueue.on('error', error => logger.error('Admin queue diagnostics unavailable', { message: error.message }))
+  }
+  return adminOperationsQueue
+}
 
 export function getAuditTaskQueue(resource: TaskQueue): Queue {
   const existing = taskQueues.get(resource)

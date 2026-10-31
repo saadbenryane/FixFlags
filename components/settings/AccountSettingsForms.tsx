@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Route } from 'next'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy-barrel'
 import { Button } from '@/components/ui/button'
@@ -11,7 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Callout } from '@/components/ui/callout'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { useConfirm } from '@/components/ui/confirm-dialog'
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
+import { useSettingsDraft } from '@/hooks/useSettingsDraft'
 import { Field } from '@/components/ui/form-field'
 import {
   Dialog,
@@ -23,12 +23,14 @@ import {
 } from '@/components/ui/dialog'
 
 export function AccountSettingsForms({
+  ownerId,
   initialName,
   email,
   emailVerified,
   planName,
   isPaid,
 }: {
+  ownerId: string
   initialName: string
   email: string
   emailVerified: boolean
@@ -36,86 +38,17 @@ export function AccountSettingsForms({
   isPaid: boolean
 }) {
   const router = useRouter()
-  const { confirm, confirmDialog } = useConfirm()
-  const [name, setName] = useState(initialName)
-  const [savedName, setSavedName] = useState(initialName)
-  const [newEmail, setNewEmail] = useState(email)
-  const [savedEmail, setSavedEmail] = useState(email)
+  const draft = useSettingsDraft(ownerId, 'profile', { name: initialName, email })
+  const { name, email: newEmail } = draft.values
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const ac = AUTH.settings.account
 
-  const nameDirty = name.trim() !== savedName.trim()
-  const emailDirty = newEmail.trim() !== savedEmail
+  const nameDirty = name.trim() !== draft.saved.name.trim()
+  const emailDirty = newEmail.trim() !== draft.saved.email
   const dirty = nameDirty || emailDirty
 
-  useEffect(() => {
-    setName(initialName)
-    setSavedName(initialName)
-  }, [initialName])
-
-  useEffect(() => {
-    setNewEmail(email)
-    setSavedEmail(email)
-  }, [email])
-
-  useEffect(() => {
-    if (!dirty) return
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [dirty])
-
-  useEffect(() => {
-    if (!dirty) return
-
-    const onClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) return
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      const target = event.target
-      if (!(target instanceof Element)) return
-      const anchor = target.closest('a[href]')
-      if (!(anchor instanceof HTMLAnchorElement)) return
-      if (anchor.target === '_blank' || anchor.hasAttribute('download')) return
-      const href = anchor.getAttribute('href')
-      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
-        return
-      }
-      let next: URL
-      try {
-        next = new URL(anchor.href, window.location.href)
-      } catch {
-        return
-      }
-      if (next.origin !== window.location.origin) return
-      if (
-        next.pathname === window.location.pathname &&
-        next.search === window.location.search &&
-        next.hash === window.location.hash
-      ) {
-        return
-      }
-
-      event.preventDefault()
-      event.stopPropagation()
-      void (async () => {
-        const ok = await confirm({
-          title: ac.unsavedTitle,
-          description: ac.unsavedDescription,
-          confirmLabel: ac.unsavedLeave,
-          cancelLabel: ac.unsavedStay,
-        })
-        if (!ok) return
-        router.push(`${next.pathname}${next.search}${next.hash}` as Route)
-      })()
-    }
-
-    document.addEventListener('click', onClick, true)
-    return () => document.removeEventListener('click', onClick, true)
-  }, [dirty, confirm, router, ac.unsavedTitle, ac.unsavedDescription, ac.unsavedLeave, ac.unsavedStay])
+  const confirmDialog = useUnsavedChanges(draft.dirty, draft.discard)
 
   async function run(operation: () => Promise<{ error?: { message?: string } | null }>) {
     const result = await operation()
@@ -128,27 +61,29 @@ export function AccountSettingsForms({
 
   async function saveChanges(event: React.FormEvent) {
     event.preventDefault()
-    if (!dirty) return
+    if (!dirty || busy !== null) return
+    const submitted = draft.snapshot()
 
     setBusy('save')
     setError(null)
     try {
       if (nameDirty) {
-        if (!(await run(() => authClient.updateUser({ name: name.trim() })))) return
-        setSavedName(name.trim())
+        const confirmedName = submitted.values.name.trim()
+        if (!(await run(() => authClient.updateUser({ name: confirmedName })))) return
+        draft.acknowledge(submitted, { name: confirmedName })
       }
       if (emailDirty) {
         if (
           !(await run(() =>
             authClient.changeEmail({
-              newEmail: newEmail.trim(),
+              newEmail: submitted.values.email.trim(),
               callbackURL: '/settings',
             })
           ))
         ) {
           return
         }
-        setSavedEmail(newEmail.trim())
+        draft.acknowledge(submitted, { email: submitted.values.email.trim() })
       }
       if (emailDirty) {
         toast.success(ac.changeEmailSuccess)
@@ -156,6 +91,8 @@ export function AccountSettingsForms({
         toast.success(ac.saveSuccess)
       }
       router.refresh()
+    } catch {
+      setError(ac.errorFallback)
     } finally {
       setBusy(null)
     }
@@ -214,7 +151,8 @@ export function AccountSettingsForms({
               name="name"
               autoComplete="name"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              disabled={busy !== null}
+              onChange={(event) => draft.change({ name: event.target.value })}
             />
           )}
         </Field>
@@ -235,7 +173,8 @@ export function AccountSettingsForms({
               type="email"
               autoComplete="email"
               value={newEmail}
-              onChange={(event) => setNewEmail(event.target.value)}
+              disabled={busy !== null}
+              onChange={(event) => draft.change({ email: event.target.value })}
             />
           )}
         </Field>
@@ -249,6 +188,7 @@ export function AccountSettingsForms({
           >
             {ac.saveCta}
           </Button>
+          {draft.dirty ? <Button type="button" variant="ghost" disabled={busy !== null} onClick={draft.discard}>{ac.discardChanges}</Button> : null}
           {!emailVerified && (
             <Button
               type="button"

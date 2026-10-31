@@ -2,7 +2,8 @@ import { createServer } from 'node:http'
 import type { BrowserContext } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { browserCapacity } from '../progressive/capacity'
-import { closeBrowser, getAuditBrowser } from '../screenshot'
+import { closeBrowser, getAuditBrowser, getBrowserDiagnostics } from '../screenshot'
+import { probeBrowserRendering } from './health-probe'
 import { createAuditPage } from './page-session'
 import { DESKTOP_CAPTURE_PROFILE } from './capture-profile'
 import * as executions from '../execution-ownership'
@@ -28,6 +29,28 @@ native('native browser context lifetime isolation', () => {
     await new Promise<void>(resolve => server.close(() => resolve()))
   })
   const options = () => ({ profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, settle: false, deadline: Date.now() + 10_000 })
+
+  it('records a real offline render probe only after its physical context closes', async () => {
+    const browser = await getAuditBrowser()
+    const allocate = browser.newContext.bind(browser)
+    const spy = vi.spyOn(browser, 'newContext').mockImplementationOnce(async options => {
+      expect(options?.offline).toBe(true)
+      const context = await allocate(options)
+      const newPage = context.newPage.bind(context)
+      vi.spyOn(context, 'newPage').mockImplementationOnce(async () => {
+        expect(getBrowserDiagnostics().contextOwnership.probe).toBe(1)
+        return newPage()
+      })
+      return context
+    })
+    try {
+      const recordedAt = await probeBrowserRendering(browser)
+      expect(Number.isFinite(Date.parse(recordedAt))).toBe(true)
+      expect(browser.contexts()).toHaveLength(0)
+      expect(browserCapacity.running).toBe(0)
+      expect(getBrowserDiagnostics().contextOwnership.probe).toBe(0)
+    } finally { spy.mockRestore() }
+  })
 
   it('closes a delayed native allocation after its caller expires while a sibling page remains usable', async () => {
     const browser = await getAuditBrowser()

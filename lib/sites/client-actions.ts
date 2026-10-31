@@ -43,9 +43,10 @@ export const siteActionSchemas = {
     improvementId: z.string().min(1), sourceReviewId: z.string().min(1),
   }).passthrough() }).strict(),
   fixPromptPreparation: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1),
-    sourceFlagId: z.string().min(1), promptHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+    sourceFlagId: z.string().min(1), referenceFlagId: z.string().min(1).optional(), promptHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   fixBundle: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1), tasks: z.array(z.object({
     sourceFlagId: z.string().min(1), promptHash: z.string().regex(/^[a-f0-9]{64}$/),
+    referenceFlagId: z.string().min(1).optional(),
   }).strict()).min(1).max(MAX_REPAIR_TASKS) }).strict(),
   flagVerify: z.object({ ok: z.literal(true), accepted: z.literal(true), runId: z.string().min(1),
     runRequestId: z.string().min(1), verificationAuditId: z.string().min(1), siteId: z.string().min(1),

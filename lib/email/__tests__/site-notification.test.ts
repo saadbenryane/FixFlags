@@ -29,15 +29,15 @@ describe('combined Site notification', () => {
       checkedAt: new Date('2026-10-13T00:00:00Z'),
       regressions: [{ id: 'checkout', problem: 'Checkout failed' }, { id: 'title', problem: 'Search title is missing' }],
       recoveries: [{ id: 'repaired', problem: 'Image failed to load' }] })
-    expect(message.subject).toBe('Needs attention on example.com: 2 Flags')
+    expect(message.subject).toBe('example.com: 2 problems to review')
     for (const id of ['checkout', 'title', 'repaired']) {
       expect(message.html).toContain(`/sites/site-1/flags/${id}?source=watch-email`)
       expect(message.text).toContain(`/sites/site-1/flags/${id}?source=watch-email`)
     }
-    expect(message.html).toContain('Recovery verified')
+    expect(message.html).toContain('Fixes confirmed')
     expect(message.html).toContain(`background:${brandLight.brand}`)
     expect(message.html).toContain('/icon-192.png')
-    expect(message.html).toContain('Checked 2026-10-13T00:00:00.000Z.')
+    expect(message.html).toContain('Checked Oct 13, 2026, 12:00 AM UTC.')
   })
   it('escapes account names, finding text, and links while preserving plain text evidence', () => {
     const message = siteNotificationEmail({ projectId: 'site/<bad>', url: 'https://example.com', name: '<img src=x>', checkedAt: null,
@@ -51,8 +51,8 @@ describe('combined Site notification', () => {
   it('states verified recovery without presenting new failure or missing observations as recovery', () => {
     const message = siteNotificationEmail({ projectId: 'site', url: 'https://example.com', name: null, checkedAt: null,
       regressions: [], recoveries: [{ id: 'fixed', problem: 'The observed failure' }] })
-    expect(message.subject).toBe('Recovery verified on example.com')
-    expect(message.text).toContain('An independent check verified a recovery on example.com.')
+    expect(message.subject).toBe('example.com: Fix confirmed')
+    expect(message.text).toContain('We checked again and confirmed a fix on example.com.')
     expect(message.html).not.toContain('<h2 style="font-size:16px;">Needs attention</h2>')
   })
 })

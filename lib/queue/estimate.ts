@@ -1,10 +1,10 @@
-import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
+import { getAdminOperationQueue, getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { TASK_QUEUES, type TaskQueue } from '@/lib/audit/progressive/queues'
 
-/** Operational work includes bootstrap and every progressive execution lane. */
+/** Operational work includes bootstrap, progressive execution and administrative work. */
 export async function getWorkerExecutionCounts(): Promise<{ activeJobs: number; waitingJobs: number; delayedJobs: number }> {
-  const queues = [getAuditQueue(), ...(Object.keys(TASK_QUEUES) as TaskQueue[]).map(getAuditTaskQueue)]
+  const queues = [getAuditQueue(), ...(Object.keys(TASK_QUEUES) as TaskQueue[]).map(getAuditTaskQueue), getAdminOperationQueue()]
   const counts = await Promise.all(queues.map(async queue => {
     const [activeJobs, waitingJobs, prioritizedJobs, delayedJobs] = await Promise.all([
       queue.getActiveCount(), queue.getWaitingCount(), queue.getPrioritizedCount(), queue.getDelayedCount(),

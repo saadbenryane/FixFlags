@@ -31,7 +31,7 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
+import { loadSiteSummaries, loadSiteNotificationSummaries } from '@/lib/sites/application/list-sites'
 // These fixtures exercise assessment interpretation; native cases verify the ID selection.
 vi.mock('@/lib/sites/application/outcome-references', () => ({ loadOutcomeSummaryReferencesForProjects: async () => [
   { id: 'outcome-1', assessmentIds: ['assessment-1'] }, { id: 'outcome-2', assessmentIds: ['assessment-2'] },
@@ -52,6 +52,16 @@ function completedAudit(overrides: Record<string, unknown> = {}) {
 }
 
 describe('loadSiteSummaries', () => {
+  it('keeps email verdicts aligned with the board without reading unused capture payloads', async () => {
+    mocks.auditFindMany.mockReset().mockResolvedValue([completedAudit()])
+    const board = await loadSiteSummaries('user-1')
+    mocks.screenshotFindMany.mockClear()
+    const email = await loadSiteNotificationSummaries('user-1')
+    expect(email.map(site => ({ id: site.id, result: site.presentation.result, flags: site.presentation.flags,
+      coverage: site.presentation.coverage }))).toEqual(board.map(site => ({ id: site.id, result: site.presentation.result,
+      flags: site.presentation.flags, coverage: site.presentation.coverage })))
+    expect(mocks.screenshotFindMany).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.categoryIds.mockResolvedValue([])

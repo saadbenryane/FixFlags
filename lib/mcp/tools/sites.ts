@@ -18,6 +18,10 @@ import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/sta
 import { InvalidUptimeCursorError, loadUptimeHistory, loadUptimeSummary } from '@/lib/uptime/queries'
 import { uptimeCursorSchema, uptimeWindowSchema } from '@/lib/uptime/contracts'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
+import { buildSiteRepairBrief } from '@/lib/sites/repair-brief'
+import { getAppUrl } from '@/lib/get-app-url'
+import { repairBriefSchema, repairContextHashSchema, repairObservationOffsetSchema } from '@/lib/sites/repair-brief-contract'
+import { loadSiteRepairEvidence } from '@/lib/sites/application/repair-evidence'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
@@ -209,16 +213,26 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.getFlag.name,
     {
       description: MCP_TOOLS.getFlag.desc,
-      inputSchema: z.object({ siteId: z.string().min(1), flagId: z.string().min(1) }),
+      inputSchema: z.object({ siteId: z.string().min(1), flagId: z.string().min(1),
+        expectedContextHash: repairContextHashSchema.optional().describe('Context revision from a copied repair brief. Refuse changed evidence instead of silently switching tasks.'),
+        observationOffset: repairObservationOffsetSchema.optional().describe('Continue supporting observations using observationPage.nextOffset and the same expectedContextHash.'),
+        includeEvidence: z.boolean().optional().describe('Read recorded performance conditions and the exact source capture, when available. Images are bounded and returned as native image content.'),
+      }).refine(input => !input.observationOffset || Boolean(input.expectedContextHash), {
+        message: 'Continuing observations requires expectedContextHash', path: ['expectedContextHash'],
+      }),
+      outputSchema: z.object({ siteId: z.string(), repairBrief: repairBriefSchema, flag: z.object({}).passthrough() }).strict(),
       annotations: toolAnnotations(MCP_TOOLS.getFlag),
     },
-    async ({ siteId, flagId }) => {
+    async ({ siteId, flagId, expectedContextHash, observationOffset, includeEvidence }) => {
       try {
         const site = await ownedSite(user.id, siteId)
         const flag = await loadSiteFlagDetail(site, flagId)
         if (!flag) throw new Error('Flag not found')
-        return mcpStructuredResult({
+        const repairBrief = buildSiteRepairBrief(site.siteId, flag, getAppUrl(), flagId, observationOffset, expectedContextHash)
+        const attached = includeEvidence ? await loadSiteRepairEvidence(site, flag, `${repairBrief.links.json}&view=capture`) : null
+        const result = mcpStructuredResult({
           siteId: site.siteId,
+          repairBrief: attached ? repairBriefSchema.parse({ ...repairBrief, evidence: attached.evidence }) : repairBrief,
           flag: {
             flagId: flag.id,
             sourceFlagId: flag.sourceFlagId,
@@ -239,6 +253,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
             verifying: flag.verifying,
           },
         })
+        return attached?.image && attached.evidence.capture.state === 'available' && attached.evidence.capture.nativeImage ? { ...result, content: [...result.content,
+          { type: 'image' as const, mimeType: 'image/png' as const, data: attached.image.toString('base64') }] } : result
       } catch (error) {
         return mcpCoreError(error)
       }

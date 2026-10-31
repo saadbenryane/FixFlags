@@ -1,13 +1,40 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, copyFileSync, symlinkSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, copyFileSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, posix } from 'node:path'
 import { execFileSync, spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { setTimeout as delay } from 'node:timers/promises'
 import { runtimeEntry } from './runtime-artifacts.mjs'
+import { createWorkerHealth } from '../lib/runtime/worker-health.mjs'
+
+test('worker health requires fresh child readiness and cannot recover after shutdown', () => {
+  let now = 1000
+  const health = createWorkerHealth(() => now)
+  assert.deepEqual(health.snapshot(), { status: 'unavailable', state: 'starting', ready: false })
+  health.receive({ type: 'unrelated', state: 'ready' })
+  assert.equal(health.snapshot().ready, false)
+  health.receive({ type: 'fixflags-worker-state', state: 'ready' })
+  assert.deepEqual(health.snapshot(), { status: 'ok', state: 'ready', ready: true })
+  now += 45_001
+  assert.deepEqual(health.snapshot(), { status: 'unavailable', state: 'unresponsive', ready: false })
+  health.receive({ type: 'fixflags-worker-state', state: 'ready' })
+  assert.equal(health.snapshot().ready, true)
+  health.stop()
+  health.receive({ type: 'fixflags-worker-state', state: 'ready' })
+  assert.deepEqual(health.snapshot(), { status: 'unavailable', state: 'stopping', ready: false })
+})
+
+test('the packaged runtime includes every local module imported by its bootstrap', () => {
+  const source = readFileSync(new URL('runtime-start.mjs', import.meta.url), 'utf8')
+  const dockerfile = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8')
+  for (const match of source.matchAll(/['"](\.\.?\/[^'"]+\.mjs)['"]/g)) {
+    const dependency = posix.normalize(posix.join('scripts', match[1]))
+    assert.ok(dockerfile.includes(`/app/${dependency} ./${dependency}`), `Packaged runtime is missing ${dependency}`)
+  }
+})
 
 function isolatedStartup(cwd) {
   mkdirSync(join(cwd,'scripts'),{recursive:true})
@@ -15,6 +42,7 @@ function isolatedStartup(cwd) {
   mkdirSync(join(cwd,'node_modules/@next'),{recursive:true})
   for (const name of ['runtime-start.mjs','runtime-artifacts.mjs']) copyFileSync(new URL(name,import.meta.url),join(cwd,'scripts',name))
   copyFileSync(new URL('../lib/runtime/environment.mjs',import.meta.url),join(cwd,'lib/runtime/environment.mjs'))
+  copyFileSync(new URL('../lib/runtime/worker-health.mjs',import.meta.url),join(cwd,'lib/runtime/worker-health.mjs'))
   copyFileSync(new URL('../lib/runtime/migration-coordination.mjs',import.meta.url),join(cwd,'lib/runtime/migration-coordination.mjs'))
   mkdirSync(join(cwd,'node_modules/pg'),{recursive:true})
   writeFileSync(join(cwd,'node_modules/pg/package.json'),JSON.stringify({type:'module',exports:'./index.js'}))

@@ -63,9 +63,9 @@ export default async function OperatingPlanPage() {
     const caps = AUDIT_CAPABILITIES.filter((c) => c.dimension === dim)
     return {
       dimension: dim,
-      live: caps.filter((c) => c.status === 'live').length,
-      partial: caps.filter((c) => c.status === 'partial').length,
-      planned: caps.filter((c) => c.status === 'planned').length,
+      implemented: caps.filter((c) => c.implementation === 'implemented').length,
+      partial: caps.filter((c) => c.implementation === 'partial').length,
+      planned: caps.filter((c) => c.implementation === 'planned').length,
       total: caps.length,
     }
   })
@@ -126,16 +126,15 @@ export default async function OperatingPlanPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Scan roadmap build-out</SectionTitle>
+        <SectionTitle>Capability implementation inventory</SectionTitle>
         <p className="text-xs text-muted-foreground">
-          Live from <code className="font-mono">lib/audit/capability-matrix.ts</code> (source of
-          truth for docs/scan-roadmap.md). Run{' '}
+          Defined in <code className="font-mono">lib/audit/capability-matrix.ts</code> (implementation only, not release availability or per-run evidence). Run{' '}
           <code className="font-mono">npm run audit:capabilities</code> for the full breakdown.
         </p>
         <div className="grid grid-cols-3 gap-4">
-          <MetricCard label="Live" value={capSummary.byStatus.live} />
-          <MetricCard label="Partial" value={capSummary.byStatus.partial} />
-          <MetricCard label="Planned" value={capSummary.byStatus.planned} />
+          <MetricCard label="Implemented" value={capSummary.byImplementation.implemented} />
+          <MetricCard label="Partial" value={capSummary.byImplementation.partial} />
+          <MetricCard label="Planned" value={capSummary.byImplementation.planned} />
         </div>
         {capSummary.unmapped.length > 0 && (
           <p className="text-xs text-destructive">
@@ -153,7 +152,7 @@ export default async function OperatingPlanPage() {
               </CardHeader>
               <CardContent className="flex gap-2 flex-wrap">
                 <Badge variant="default" size="sm">
-                  {d.live} live
+                  {d.implemented} implemented
                 </Badge>
                 {d.partial > 0 && (
                   <Badge variant="secondary" size="sm">

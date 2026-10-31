@@ -27,9 +27,10 @@ export const UPTIME_COPY = {
   observedDuration: (minutes: number) => `Observed incident duration: ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,
   eventDown: 'Website reachability failed', eventRecovered: 'Website reachability recovered',
   email: {
-    downSubject: 'FixFlags confirmed your website is unreachable',
-    recoverySubject: 'FixFlags observed your website back online',
-    downBody: (url: string, at: string, href: string) => `Two availability probes could not reach ${url}. The failure was confirmed at ${at}.\n\nRecorded evidence: ${href}`,
-    recoveryBody: (url: string, at: string, href: string) => `An availability probe received a successful response from ${url} at ${at}. This confirms HTTP reachability, not rendered-page or browser verification.\n\nRecorded evidence: ${href}`,
+    downSubject: (host: string) => `${host} is not responding`,
+    recoverySubject: (host: string) => `${host} is responding again`,
+    downBody: (url: string, at: string) => `We tried twice and could not reach ${url}. Confirmed ${at}.\n\nOpen your website’s history to see what happened. Check your hosting service for an outage or a recent change.`,
+    recoveryBody: (url: string, at: string) => `We reached ${url} again at ${at}.\n\nYour website responded to our availability check. Open FixFlags to review the result. Other pages and features may still need checking.`,
+    action: 'View website status',
   },
 } as const

@@ -57,6 +57,7 @@ vi.mock('@/lib/audit/screenshot', () => ({
   getBrowserDiagnostics: mocks.getBrowserDiagnostics,
   getAuditBrowser: mocks.getAuditBrowser,
 }))
+vi.mock('@/lib/audit/browser/health-probe', () => ({ probeBrowserRendering: vi.fn(async () => '2026-10-29T10:00:00.000Z') }))
 
 const prismaMocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
@@ -122,6 +123,8 @@ function makeJob(overrides: Partial<{
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.getAuditBrowser.mockReset().mockResolvedValue({})
+  mocks.getBrowserDiagnostics.mockReturnValue({ connected: true, activeContexts: 0 })
   capturedProcessor = undefined
   lastWorkerOpts = undefined
   for (const key of Object.keys(mocks.capturedListeners)) {

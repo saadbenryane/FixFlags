@@ -26,6 +26,7 @@ import { projectHomePresentation } from '../home-presentation'
 import type { SiteHomeView } from '../site-home'
 import { loadPerformanceEvidence } from './performance-evidence'
 import { loadSiteCaptures, loadSiteCheckedPages } from './captures'
+import { siteCaptureAvailability } from '../captures'
 import { applyCardEvidence } from './card-evidence'
 import { loadCategoryEvidence } from './category-evidence'
 import { projectCurrentSiteEvidence } from './current-evidence'
@@ -218,7 +219,7 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
     readScope: options.readScope ?? 'overview',
     actions: siteViewerActions(Boolean(options.ownerEvidence && site.projectId), options.viewerAuthenticated),
     counts: siteScopeCounts(flags, checkedPages, pageCount),
-    captures, uptime,
+    captures, captureAvailability: siteCaptureAvailability(captures, audit), uptime,
     uptimeEvents: uptimeEvents?.map(event => ({ ...event, startedAt: event.startedAt.toISOString(), confirmedAt: event.confirmedAt.toISOString(), recoveredAt: event.recoveredAt?.toISOString() ?? null, supersededAt: event.supersededAt?.toISOString() ?? null })),
     inventoryPageCount: pageCount,
     activeRuns,

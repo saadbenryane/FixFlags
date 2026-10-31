@@ -13,12 +13,12 @@ describe('audit capability matrix', () => {
     )
   })
 
-  it('lists at least one live capability per rubric dimension', () => {
+  it('lists at least one implemented capability per rubric dimension', () => {
     for (const dimension of ['MESSAGE', 'EXPERIENCE', 'REACH'] as const) {
-      const live = AUDIT_CAPABILITIES.filter(
-        (c) => c.dimension === dimension && c.status === 'live'
+      const implemented = AUDIT_CAPABILITIES.filter(
+        (c) => c.dimension === dimension && c.implementation === 'implemented'
       )
-      assert.ok(live.length >= 3, `${dimension} should have multiple live capabilities`)
+      assert.ok(implemented.length >= 3, `${dimension} should have multiple implemented capabilities`)
     }
   })
 

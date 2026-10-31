@@ -15,6 +15,7 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { attemptHasActiveVerification, attemptProvesFlagRecovery } from '@/lib/improvements/attempt-state'
 import type { Prisma } from '@prisma/client'
 import type { AgentPrompts } from '@/lib/audit/flag-types'
+import { incidentSupportingEvidence } from './incident-supporting-evidence'
 
 const guidanceSelect = { fix: true, agentPrompt: true, cursorPrompt: true, claudePrompt: true,
   windsurfPrompt: true, lovablePrompt: true, boltPrompt: true } satisfies Prisma.FlagSelect
@@ -396,7 +397,7 @@ export async function loadSiteFlagDetail(
       audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' },
       OR: [{ id: flagId }, { improvementOccurrence: { improvementId: flagId } }],
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { improvementOccurrence: { include: { improvement: true } },
       ...guidanceInclude },
   })
@@ -404,9 +405,9 @@ export async function loadSiteFlagDetail(
   const incidentId = flagRow.improvementOccurrence?.improvement.id
   const occurrenceScope = incidentId ? await prisma.improvementOccurrence.findMany({
     where: { improvementId: incidentId, audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     select: { createdAt: true, flag: { select: { id: true, auditId: true, pageUrl: true, affectedPaths: true, status: true, resolvedInId: true,
-      checkId: true, fingerprint: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
+      source: true, evidence: true, checkId: true, fingerprint: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
   }) : []
   const recoveries = site.projectId ? (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
     flags: [flagRow, ...occurrenceScope.map(occurrence => occurrence.flag)] }])).get(site.projectId) : null
@@ -461,6 +462,7 @@ export async function loadSiteFlagDetail(
   const expectedBehavior = linkedOutcome?.expectation?.trim() || customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
   const affectedPaths = flagRow.id === flagId ? seed.affectedPaths : incidentAffectedPaths(activeScope)
+  const incidentEvidence = flagRow.id !== flagId && activeScope.length > 1 ? incidentSupportingEvidence(activeScope) : null
   const sourceStatus = flagRow.status === 'FIXED' && !provenRecovery ? 'UNVERIFIED'
     : siteFlagDetailStatus(improvement?.status, flagRow.status, Boolean(site.projectId && attempts.some(attempt =>
       attemptProvesFlagRecovery(attempt, site.projectId!, flagRow.auditId, flagRow.id))))
@@ -480,8 +482,8 @@ export async function loadSiteFlagDetail(
     outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
     evidenceContext: flagEvidenceContext(flagRow),
-    supportingObservations: publicSupportingObservations(flagRow.supportingObservations),
-    supportingEvidenceUnreadable: hasUnreadableStoredSupportingObservations(flagRow.supportingObservations),
+    supportingObservations: incidentEvidence?.observations ?? publicSupportingObservations(flagRow.supportingObservations),
+    supportingEvidenceUnreadable: incidentEvidence?.unreadable ?? hasUnreadableStoredSupportingObservations(flagRow.supportingObservations),
     verificationRule: flagRow.verificationRule,
     confidence: flagRow?.confidence ?? null,
     causeCertainty: flagRow?.causeCertainty ?? null,

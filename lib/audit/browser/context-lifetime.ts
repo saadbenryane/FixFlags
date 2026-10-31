@@ -6,8 +6,8 @@ import { logger } from '@/lib/logger'
 
 export const CONTEXT_SETUP_TIMEOUT_MS = 30_000
 
-type ContextOwner = { contextId: string; openedAt: number; deadline?: number; signal: AbortSignal; scope: 'task' | 'execution' | 'standalone';
-  state: 'preparing' | 'prepared' | 'closing' | 'close_failed' }
+type ContextOwner = { contextId: string; openedAt: number; deadline?: number; signal: AbortSignal; scope: 'task' | 'execution' | 'standalone' | 'probe';
+  closingAt?: number; state: 'preparing' | 'prepared' | 'closing' | 'close_failed' }
 const contextOwners = new WeakMap<BrowserContext, ContextOwner>()
 
 /** Operational lifecycle facts only. Never expose targets, credentials or tenant identifiers. */
@@ -16,6 +16,7 @@ export function auditContextDiagnostics(browser: Browser | null, now = Date.now(
   const owners = contexts.flatMap(context => {
     const owner = contextOwners.get(context)
     return owner ? [{ contextId: owner.contextId, scope: owner.scope, state: owner.state, ageMs: Math.max(0, now - owner.openedAt),
+      overdue: owner.closingAt !== undefined ? now > owner.closingAt + 30_000 : owner.deadline !== undefined && now > owner.deadline + 30_000,
       expired: owner.signal.aborted || owner.deadline !== undefined && now >= owner.deadline }] : []
   })
   return { ownedContexts: owners.length, unownedContexts: contexts.length - owners.length,
@@ -98,6 +99,12 @@ export async function openAuditContext<T>(
     catch (error) { releaseOnce(); throw error }
     owner.openedAt = Date.now()
     contextOwners.set(context, owner)
+    const nativeClose = context.close.bind(context)
+    context.close = async (...args) => {
+      owner.state = 'closing'; owner.closingAt ??= Date.now()
+      try { await nativeClose(...args) }
+      catch (error) { owner.state = 'close_failed'; throw error }
+    }
     logger.info('Native browser context allocated', { contextId: owner.contextId, scope: owner.scope, ...lifetime.owner })
     context.once('close', () => { stop(new Error('Audit browser context closed')); releaseOnce() })
     try {

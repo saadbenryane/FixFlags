@@ -13,6 +13,13 @@ import {
 import { CARE_HOME } from '@/lib/marketing/copy-barrel'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
+it('labels recorded repair alternatives as diagnostics rather than an observed action', () => {
+  const diagnostic = '#menu\nFix any of the following:\nElement has no accessible name'
+  expect(boardFlagPrompt({ problem: 'Button lacks a name', whyItMatters: 'Purpose is unavailable',
+    evidence: diagnostic, fix: 'Give the button a name' }))
+    .toContain(`Technical diagnostic (includes repair alternatives): ${diagnostic}`)
+})
+
 it('keeps every affected page in both individual and category repair instructions', () => {
   const pageUrl = 'https://example.com/original', affectedPaths = [pageUrl, 'https://example.com/other', pageUrl]
   const input = { problem: 'A control was covered', evidence: 'Controlled cover observations', whyItMatters: 'The control cannot be used',

@@ -25,6 +25,7 @@ export async function runNurtureSweep(): Promise<NurtureSweepResult> {
   const firstAuditNudgeCandidates = await prisma.user.findMany({
     where: {
       plan: 'FREE',
+      lifecycleStatus: 'ACTIVE', emailVerified: true, notificationPreference: { productTips: true },
       createdAt: { lte: oneDayAgo, gte: twoDaysAgo },
       audits: { none: {} },
     },
@@ -35,6 +36,7 @@ export async function runNurtureSweep(): Promise<NurtureSweepResult> {
   const monitoringCandidates = await prisma.user.findMany({
     where: {
       plan: 'FREE',
+      lifecycleStatus: 'ACTIVE', emailVerified: true, notificationPreference: { productTips: true },
       createdAt: { lte: twoDaysAgo, gte: threeDaysAgo },
     },
     select: { id: true },
@@ -44,6 +46,7 @@ export async function runNurtureSweep(): Promise<NurtureSweepResult> {
   const launchCandidates = await prisma.user.findMany({
     where: {
       plan: 'FREE',
+      lifecycleStatus: 'ACTIVE', emailVerified: true, notificationPreference: { productTips: true },
       createdAt: { lte: fiveDaysAgo, gte: sixDaysAgo },
     },
     select: { id: true },

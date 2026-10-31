@@ -223,6 +223,7 @@ export const AUTH = {
       unsavedDescription: 'Leave without saving? Your edits will be lost.',
       unsavedStay: 'Stay',
       unsavedLeave: 'Leave',
+      discardChanges: 'Discard changes',
       deleteCta: 'Delete account',
       deleteDescription: 'This permanently removes your reports, screenshots, projects, and account.',
       deletePasswordLabel: 'Password, if your account has one',

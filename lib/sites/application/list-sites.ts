@@ -59,6 +59,21 @@ async function loadWatchedOutcomeSummaries(projectIds: string[]) {
  * assessment state is read in one batch because it contributes to Site health.
  */
 export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> {
+  return (await loadAccountSiteSummaryFacts(userId)).map(({ id, name, hostname, presentation, lastUsefulChangeAt }) =>
+    ({ id, name, hostname, presentation, lastUsefulChangeAt }))
+}
+
+export type SiteNotificationSummary = SiteSummary & {
+  notification: { criticalCount: number; incomplete: boolean; offline: boolean }
+}
+
+export async function loadSiteNotificationSummaries(userId: string, now = new Date()): Promise<SiteNotificationSummary[]> {
+  return loadAccountSiteSummaryFacts(userId, now, false)
+}
+
+/** Email and the website board share current incidents, recovery proofs and
+ * coverage. A targeted check cannot replace the whole website's results. */
+async function loadAccountSiteSummaryFacts(userId: string, now = new Date(), includePreview = true): Promise<SiteNotificationSummary[]> {
   const projects = await prisma.project.findMany({
     where: { userId, deletedAt: null },
     orderBy: { updatedAt: 'desc' },
@@ -160,7 +175,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       where: { auditId: { in: auditIds } },
       select: { auditId: true, url: true, status: true },
     }),
-    prisma.screenshot.findMany({
+    includePreview ? prisma.screenshot.findMany({
       where: { auditId: { in: auditIds }, device: 'DESKTOP' },
       orderBy: { id: 'desc' },
       select: {
@@ -171,7 +186,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         audit: { select: { url: true, completedAt: true } },
         page: { select: { url: true, updatedAt: true } },
       },
-    }),
+    }) : [],
     prisma.flag.findMany({
       where: unboundSiteFindingWhere(projectIds),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -208,13 +223,12 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
     ...[...unboundByProject].map(([projectId, flags]) => ({ projectId, flags })),
   ])
   const outcomesByProject = groupBy(outcomes, outcome => outcome.projectId)
-  const now = new Date()
   const currentAssessments = new Map(outcomes.map((outcome, index) => [outcome, currentOutcomeAssessment({
     assessment: outcome.assessments[0] ?? null, bindings: bindingRevisions[index], environment: outcome.environment,
     staleAfterMinutes: outcome.staleAfterMinutes, now,
   })] as const))
 
-  return projects.map((project): SiteSummary => {
+  return projects.map((project): SiteNotificationSummary => {
     const watchInterval = fromStoredWatchInterval(project.watchInterval)
     const latest = latestByProject.get(project.id) ?? null
     const completed = latest?.status === 'COMPLETED' ? latest : completedByProject.get(project.id) ?? null
@@ -322,6 +336,9 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       hostname: project.canonicalHost,
       presentation,
       lastUsefulChangeAt: presentation.identity.preview?.recordedAt ?? checkedAt ?? project.updatedAt.toISOString(),
+      notification: { criticalCount: customerFlags.filter(flag => flag.severity === 'CRITICAL').length,
+        incomplete: !assessmentComplete || !pageCoverage.complete || !evidenceComplete,
+        offline: health.uptime?.state === 'FLAG' },
     }
   }).sort((left, right) => {
     const byRank = siteSortRank(left.presentation) - siteSortRank(right.presentation)

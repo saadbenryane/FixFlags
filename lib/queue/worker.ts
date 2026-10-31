@@ -19,6 +19,8 @@ import { reportOperationalError } from '../observability/report-error'
 import { startProgressiveWorkers } from '../audit/progressive/runtime'
 import { readExecutionSpec } from '../sites/domain/execution-spec'
 import { startAdminOperationRuntime } from '@/lib/admin/runtime'
+import { probeBrowserRendering } from '@/lib/audit/browser/health-probe'
+import { browserCapacity } from '@/lib/audit/progressive/capacity'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -29,6 +31,7 @@ function workerBrowserDiagnostics() {
     ...(browser.connected ? { lastBrowserConnectedAt: new Date().toISOString() } : {}),
     activeBrowserContexts: browser.activeContexts,
     browserResources: browser.resources,
+    contextOwnership: browser.contextOwnership,
   }
 }
 
@@ -96,6 +99,17 @@ export function startWorker() {
 
   let browserRecoveryRunning = false
   let closing = false
+  let probeRunning = false, lastProbeAttempt = 0
+  const probeController = new AbortController()
+  function probeBrowser() {
+    if (closing || probeRunning || browserRecoveryRunning || !workerBrowserDiagnostics().browserOk ||
+        browserCapacity.running > 0 || Date.now() - lastProbeAttempt < 60_000) return
+    probeRunning = true; lastProbeAttempt = Date.now()
+    void getAuditBrowser().then(browser => probeBrowserRendering(browser, probeController.signal))
+      .then(recordedAt => { if (!closing) return touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), lastSuccessfulBrowserProbeAt: recordedAt }) })
+      .catch(error => { if (!closing) logger.warn('Browser render probe failed', { message: error instanceof Error ? error.message : 'Probe failed' }) })
+      .finally(() => { probeRunning = false })
+  }
   function recoverBrowser() {
     if (closing || workerBrowserDiagnostics().browserOk || browserRecoveryRunning) return
     browserRecoveryRunning = true
@@ -104,7 +118,7 @@ export function startWorker() {
     void getAuditBrowser()
       .then(() => { if (!closing) return touchWorkerHeartbeat(workerBrowserDiagnostics()) })
       .catch(error => { if (!closing) logger.error('Worker browser recovery failed; independent work remains available', error) })
-      .finally(() => { browserRecoveryRunning = false })
+      .finally(() => { browserRecoveryRunning = false; probeBrowser() })
   }
   const heartbeatTimer = setInterval(() => {
     const diagnostics = workerBrowserDiagnostics()
@@ -113,6 +127,7 @@ export function startWorker() {
       { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
     )
     recoverBrowser()
+    probeBrowser()
   }, HEARTBEAT_INTERVAL_MS)
   heartbeatTimer.unref?.()
 
@@ -205,9 +220,11 @@ export function startWorker() {
     { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },
   )
   recoverBrowser()
+  probeBrowser()
   const closeAuditWorker = worker.close.bind(worker)
   worker.close = async force => {
     closing = true
+    probeController.abort(new Error('Worker stopping'))
     clearInterval(heartbeatTimer)
     await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()])
   }

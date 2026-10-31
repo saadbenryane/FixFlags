@@ -12,6 +12,7 @@ import {
 import type { CoverageFact, SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { includesRepairAlternatives } from '@/lib/audit/evidence-presentation'
 
 export const BROWSER_SOURCE = SITE_BOARD_COPY.browserSource
 
@@ -202,7 +203,7 @@ export function boardFlagPrompt(input: {
     paths.length > 1 ? `Affected pages:\n${paths.map(path => '- ' + path).join('\n')}` : null,
     input.journeyName ? `Outcome: ${input.journeyName}` : null,
     `Why it matters: ${input.whyItMatters}`,
-    input.evidence?.trim() ? `Evidence: ${input.evidence.trim()}` : null,
+    input.evidence?.trim() ? `${includesRepairAlternatives(input.evidence) ? 'Technical diagnostic (includes repair alternatives)' : 'Evidence'}: ${input.evidence.trim()}` : null,
     supportingObservationLines(input.supportingObservations).join('\n'),
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,
     `Fix: ${input.fix}`,

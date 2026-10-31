@@ -56,6 +56,8 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   counts: z.object({ flags: count, checkedPages: count, recordedPages: count, savedPages: count, categories: z.record(area, count), pages: z.record(text, count) }),
   captures: z.array(z.object({ auditId: text, device: z.enum(['desktop', 'mobile']), previous: z.boolean(),
     url: text, pageUrl: text, viewport: text, recordedAt: nullableTime })).max(2).optional(),
+  captureAvailability: z.object({ desktop: z.enum(['available', 'pending', 'not_recorded', 'unavailable']),
+    mobile: z.enum(['available', 'pending', 'not_recorded', 'unavailable']) }).optional(),
   uptime: uptimeSummarySchema.nullable().optional(),
   uptimeEvents: z.array(uptimeIncidentSchema).max(50).optional(),
   inventoryPageCount: count,

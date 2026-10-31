@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   refreshGoogleContext: vi.fn(),
 }))
 
+vi.mock('@/lib/email/delivery-events', () => ({ notificationRecipientAllowed: async () => true, projectEmailAcceptance: async () => {} }))
 vi.mock('@/lib/db', () => ({
   prisma: {
     $transaction: mocks.transaction,
@@ -624,10 +625,10 @@ describe('Product Watch', () => {
     await notifyWatchRegression(null, 'child-1')
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
     const message = mocks.sendEmail.mock.calls[0][0]
-    expect(message.subject).toBe('Needs attention on example.com: 1 Flag')
+    expect(message.subject).toBe('example.com: 1 problem to review')
     expect(message.text).toContain('Genuine recorded failure')
     expect(message.text).not.toContain('Unsupported')
-    expect(message.html).not.toContain('Recovery verified')
+    expect(message.html).not.toContain('Fixes confirmed')
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
       watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING',
     } }))
@@ -670,13 +671,13 @@ describe('Product Watch', () => {
     await notifyWatchRegression('parent-1', 'child-1')
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
     const message = mocks.sendEmail.mock.calls[0]![0]
-    expect(message.subject).toBe('Needs attention on example.com: 2 Flags')
+    expect(message.subject).toBe('example.com: 2 problems to review')
     for (const problem of ['Missing title', 'Recurrent metadata failure', 'Repaired title']) {
       expect(message.html).toContain(problem)
       expect(message.text).toContain(problem)
     }
     expect(message.html).toContain('/icon-192.png')
-    expect(message.html).toContain('Recovery verified')
+    expect(message.html).toContain('Fixes confirmed')
   })
 
   it('retries the recorded provider body even after names and templates change', async () => {
@@ -775,14 +776,14 @@ describe('Product Watch', () => {
       await notifyWatchRegression('parent-1', 'child-1')
       const message = mocks.sendEmail.mock.calls[0][0]
       expect(message.to).toBe('owner@example.test')
-      expect(message.subject).toContain('1 Flag')
+      expect(message.subject).toContain('1 problem to review')
       expect(message.html).toContain('/flags/critical?')
       expect(message.html).not.toContain('/flags/important?')
       expect(message.html).toContain('Checkout &lt;failed&gt;')
       expect(message.html).toContain('Owner &lt;img src=x&gt;')
       expect(message.html).not.toContain('<img src=x>')
       expect(message.text).toContain('Checkout <failed>')
-      expect(message.text).toContain('2026-10-10T12:00:00.000Z')
+      expect(message.text).toContain('Oct 10, 2026, 12:00 PM UTC')
     })
 
     it.each(['critical-only', 'disable-recovery'] as const)('revises a recorded message after %s and preserves that retry body', async preference => {

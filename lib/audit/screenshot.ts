@@ -19,6 +19,7 @@ import { observeViewport } from './browser/viewport-observation'
 import { observeMotionWindow, collectReducedMotionWindow, type MotionWindow } from './browser/motion-observation'
 import { applyMotionObservation } from './checks/motion-evidence'
 import { sharedBrowser } from './browser/shared-browser'
+import { browserContextInventory } from './browser/context-inventory'
 import { bindPublicBrowserProxy, startPublicBrowserProxy } from './browser/public-proxy'
 import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
@@ -121,12 +122,14 @@ export function getBrowserDiagnostics(): {
   connected: boolean
   activeContexts: number
   resources: AuditContextDiagnostics
+  contextOwnership: ReturnType<typeof browserContextInventory>
 } {
   const browser = browserRuntime.peek()
   return {
     connected: Boolean(browser?.isConnected()),
     activeContexts: browser?.isConnected() ? browser.contexts().length : 0,
     resources: auditContextDiagnostics(browser),
+    contextOwnership: browserContextInventory(browser),
   }
 }
 

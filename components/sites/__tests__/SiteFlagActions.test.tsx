@@ -25,6 +25,21 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  it('copies the selected incident scope while verification keeps its original source', async () => {
+    const fetchMock = copyResponse('Task for the selected incident')
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" referenceFlagId="incident-1" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt, exact: true }))
+    await act(async () => {})
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/sites/p_site/flags/incident-1/fix')
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'Named the existing control' } })
+    fetchMock.mockImplementationOnce(async () => ({ ok: true, json: async () => ({ ok: true,
+      siteId: 'p_site', flagId: 'flag-1', verificationAuditId: 'verification', projectId: 'p_site' }) }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }))
+    await act(async () => {})
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/sites/p_site/flags/flag-1/verify')
+  })
   it.each(['pending', 'unavailable'] as const)('keeps compact %s guidance concise while preserving verification', repairGuidance => {
     render(<SiteFlagActions compact repairGuidance={repairGuidance} initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     expect(screen.getByText(SITE_ACTION_COPY.repairGuidance[repairGuidance])).toBeVisible()
@@ -156,7 +171,9 @@ describe('SiteFlagActions', () => {
   it('keeps modal actions compact while preserving the full prompt and verification dialog', async () => {
     vi.stubGlobal('fetch', copyResponse('Canonical task with recorded evidence.'))
     render(<SiteFlagActions compact repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
-    expect(await screen.findByText('Canonical task with recorded evidence.', { selector: 'summary > span' })).toBeVisible()
+    expect(await screen.findByDisplayValue('Canonical task with recorded evidence.')).toBeInTheDocument()
+    expect(screen.getByLabelText('View prompt', { selector: 'summary' })).toHaveTextContent('View prompt')
+    expect(screen.getByLabelText('View prompt', { selector: 'summary' })).not.toHaveTextContent('Canonical task with recorded evidence.')
     expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.fixStep })).not.toBeInTheDocument()
     const preview = screen.getByLabelText('View prompt', { selector: 'summary' })
     fireEvent.click(preview)

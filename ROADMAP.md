@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-31
 supersedes: []
 ---
 
@@ -9,11 +9,15 @@ supersedes: []
 
 ## Current delivery: website public validation
 
-The accepted current milestone is the website app with one-website open-beta access. Finish the persistent Site, ordinary public entry and claim, grounded Flags, independent repair verification and unattended monitoring. The [current completion plan](docs/product-masterplan.md#current-completion-plan-2026-10-28) owns the dependency order, information architecture, refactoring boundaries and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) preserves historical exact-candidate proof. Paid enrollment and customer-facing MCP/CLI expansion remain parked. The broader independent-monitor roadmap below is context, not additional website acceptance scope.
+The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [current completion plan](docs/product-masterplan.md#required-delivery-order) owns the dependency-ordered work, information architecture, refactoring boundaries, and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) defines current-candidate acceptance. Paid enrollment and customer-facing MCP/CLI retain separate release gates. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
 
-**Deployed checkpoint, 2026-10-28:** `a7ab7ab8844718015ce763d692c66d87f935b1f7` is pushed to main and successfully deployed to web and worker. The complete stability refactor and earlier auth, claim, viewer, clipboard and responsive corrections are included. Migration preservation hashes match all 154,098 existing task rows and 131,702 receipts; the task table retains physical storage identity. Local compiled-browser and packaged Linux proof is distinct from real-provider, human and sustained-monitoring acceptance. The production backup has been parsed and hashed, but actual-data restoration remains unverified.
+**Source review, 2026-10-31:** `codex/completion-20261031` integrates the local repair, notification, browser/runtime and Settings work with the fifteen newer commits through deployed `aa90044d`. The original checkout is preserved. Integrated builds, focused tests, fresh migrations and an upgrade rehearsal pass locally. Browser acceptance, the full dependency-security gate, ordinary public customer proof, provider delivery, protected recovery and unattended production operation remain open. This review does not attest a deployment.
 
-**Fresh reassessment, 15:27–15:31 UTC:** readiness and monitoring obligations were healthy, but worker diagnostics repeatedly reported one active browser context with no queued/active work or unfinished Audit. This is a persistent operational discrepancy with cause and impact still unknown. Investigating its actual resource owner is first in the plan. Subsequent work closes the ordinary public customer loop, all 108 responsibilities' proof status, provider/delivery lifecycle, the experience matrix and recovery/acceptance. Automatic accounts and planned integration activations remain gated. The approved orange/white treatment and its contrast exception remain unchanged.
+Immediate order: integrate the existing candidate and migrations, resolve operational truth, prove ordinary entry and useful repair, close capability/provider evidence, finish the complete interface and navigation states, measure and streamline real hot paths, then accept one recoverable deployed candidate. The [dated checkpoint archive](docs/product-masterplan-history-2026-10-29.md) preserves earlier implementation and failed acceptance records. The current plan maps each remaining gap to its owner and completion criterion.
+
+FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
+
+Current code truth remains [PRODUCT.md](PRODUCT.md). The broader gates below describe separate architectural milestones and cannot expand the website-beta acceptance scope.
 
 ## Architectural spine
 
@@ -41,11 +45,13 @@ This is evolution, not replacement. `Project`, `Audit`, Playwright, checks, Jour
 
 ## Checkout slice status
 
+This is a retained implementation checkpoint. Its local release results do not certify the October 31 combined candidate; use the current completion plan for fresh proof requirements.
+
 The local implementation now connects Checkout, Safe Signup, and page-availability Outcomes → binding → tenant-scoped RunRequest → existing Audit/worker → independent evidence → assessment and durable Flag → targeted re-verification. Every initiator named above enters the same application command, including Shopify install as an integration trigger; an equivalence test asserts that. Safe Signup is confirmable only with a tenant-scoped fixture that uses accessible target descriptors, encrypted synthetic values, exact-origin reset and cleanup hooks, a successful dry run, and version-bound authorization. Login and Password reset remain unavailable. Per-Outcome pause preserves evidence while blocking new manual and scheduled selection, and cadence changes update the shared freshness policy without rewriting history. A binding is Flagged only on a confirmed failure, and every walk that ran is retained as an append-only attempt so a retry cannot erase an earlier RED. The Outcome page now owns expectation, assessment, coverage, freshness, evidence, limitations, active and resolved Flags, and run/fix/recovery history. The developer-key and CLI setup path is unparked, while public MCP discovery remains withheld. Watch reliability and daily-care economics now have one durable operational projection, including explicit collecting and unavailable states; the production cohort has not yet passed it. Additive migrations and the full local release gate pass. This is an implementation checkpoint, not a launch receipt: credentialed external-client proof, the exact-SHA production canary, the 14-day Watch window, and opening paid checkout remain open. The [release evidence runbook](docs/release-evidence-runbook.md) names each open gate.
 
-## Launch milestone: independent monitoring with MCP
+## Separate milestone: independent monitoring with MCP
 
-The first public milestone is one complete loop, not a collection of foundations:
+The broader machine-client milestone proves one complete loop:
 
 **change → verify → Flag → fix → verify → Clear**
 

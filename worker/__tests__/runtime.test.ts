@@ -72,6 +72,20 @@ describe('standalone worker runtime', () => {
     expect(deps.closeWorker).toHaveBeenCalledOnce()
   })
 
+  it('publishes readiness only after consumer connections and stops publication before draining', async () => {
+    const deps = dependencies()
+    let ready!: () => void
+    deps.startWorker = () => ({ close: deps.closeWorker, waitUntilReady: () => new Promise<void>(resolve => { ready = resolve }) })
+    deps.onReady = vi.fn(); deps.onStopping = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    const start = runtime.start()
+    await vi.waitFor(() => expect(ready).toBeDefined())
+    expect(deps.onReady).not.toHaveBeenCalled()
+    ready(); await start
+    expect(deps.onReady).toHaveBeenCalledOnce()
+    await runtime.shutdown()
+    expect(deps.onStopping).toHaveBeenCalledOnce()
+  })
   it('starts consumers and recovery after core preflight without another diagnostic gate', async () => {
     const deps = dependencies()
     const runtime = createWorkerRuntime(deps)

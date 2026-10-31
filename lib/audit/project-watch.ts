@@ -9,6 +9,7 @@ import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy-barrel'
 import { siteNotificationEmail } from '@/lib/email/site-notification'
+import { notificationRecipientAllowed, projectEmailAcceptance } from '@/lib/email/delivery-events'
 import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
 import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '@/lib/email/watch-delivery'
 import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
@@ -364,6 +365,12 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
     && child.watchNotificationLeaseUntil != null
     && child.watchNotificationLeaseUntil > deliveryNow
   if (leaseHeld) return
+  if (!await notificationRecipientAllowed(child.user!.email)) {
+    await prisma.audit.updateMany({ where: { ...currentEligibility, watchNotificationStatus: { not: 'SENT' },
+      OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: deliveryNow } }] },
+    data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null } })
+    return
+  }
 
   // A worker may die after the provider call on the final allowed claim. Once
   // that lease expires, another send could duplicate an accepted email, while
@@ -465,6 +472,8 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       },
     })
     if (recorded.count !== 1) return
+    await projectEmailAcceptance({ providerId, userId: child.userId!, email: message.to,
+      channel: 'watch', sourceId: childAuditId, acceptedAt: new Date(), firstAttemptAt: new Date(payload.firstAttemptAt!) })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await prisma.audit.updateMany({

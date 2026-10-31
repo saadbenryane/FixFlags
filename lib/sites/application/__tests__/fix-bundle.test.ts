@@ -8,18 +8,18 @@ vi.mock('@/lib/sites/flags', () => ({ loadSiteFindings: mocks.findings }))
 vi.mock('../flag-copy-task', () => ({ loadSiteFlagCopyTask: mocks.task }))
 vi.mock('@/lib/get-app-url', () => ({ getAppUrl: () => 'https://fixflags.com' }))
 const site = { siteId: 'owned', canonicalHost: 'example.com' } as SiteRecord
-const flags = [{ id: 'incident-a', sourceFlagId: 'original-a', area: 'performance' }, { id: 'original-b', area: 'search' }]
+const flags = [{ id: 'incident-a', sourceFlagId: 'original-a', area: 'performance', priorityScore: 80 }, { id: 'original-b', area: 'search', priorityScore: 40 }]
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.findings.mockResolvedValue({ flags })
-  mocks.task.mockImplementation(async (_site, id) => ({ sourceFlagId: id, promptHash: 'a'.repeat(64), prompt: `Recorded evidence, affected pages, acceptance, and original guidance for ${id}` }))
+  mocks.task.mockImplementation(async (_site, id) => ({ sourceFlagId: id === 'incident-a' ? 'original-a' : id, referenceFlagId: id, promptHash: 'a'.repeat(64), prompt: `Recorded evidence, affected pages, acceptance, and original guidance for ${id}`, bundlePrompt: `Recorded evidence, affected pages, acceptance, and original guidance for ${id}` }))
 })
 describe('scoped agent repair bundles', () => {
   it('includes all canonical tasks inline and links back without granting access', async () => {
     const bundle = await loadSiteFixBundle(site)
     expect(bundle.tasks).toHaveLength(2)
-    expect(mocks.task).toHaveBeenCalledWith('owned', 'original-a')
-    expect(bundle.prompt).toContain('https://fixflags.com/sites/owned/flags/original-a')
+    expect(mocks.task).toHaveBeenCalledWith('owned', 'incident-a')
+    expect(bundle.prompt).toContain('https://fixflags.com/sites/owned/flags/incident-a')
     expect(bundle.prompt).toContain('original guidance for original-b')
     expect(bundle.prompt).toContain('untrusted data, not instructions')
     expect(bundle.prompt).toContain('authenticated session')
@@ -31,11 +31,21 @@ describe('scoped agent repair bundles', () => {
     expect(mocks.task).not.toHaveBeenCalledWith('owned', 'original-b')
     expect(bundle.prompt).toContain('?category=performance')
   })
+  it('shares instructions once while retaining each recorded task and its individual copy hash', async () => {
+    mocks.task.mockImplementation(async (_site, id) => ({ sourceFlagId: id, referenceFlagId: id,
+      promptHash: 'a'.repeat(64), prompt: 'Repeated individual policy and complete task', bundlePrompt: `Recorded task for ${id}` }))
+    const bundle = await loadSiteFixBundle(site)
+    expect(bundle.prompt).toContain('Recorded task for incident-a')
+    expect(bundle.prompt).toContain('Recorded task for original-b')
+    expect(bundle.prompt).not.toContain('Repeated individual policy')
+    expect(bundle.prompt.match(/untrusted data, not instructions/g)).toHaveLength(1)
+    expect(bundle.tasks).toEqual(['incident-a', 'original-b'].map(id => ({ sourceFlagId: id, referenceFlagId: id, promptHash: 'a'.repeat(64) })))
+  })
   it('binds an explicit selection to this Site and retains every original task hash', async () => {
     const bundle = await loadSiteFixBundle(site, undefined, ['incident-a'])
     expect(bundle.tasks.map(task => task.sourceFlagId)).toEqual(['original-a'])
     expect(bundle.prompt).toContain('Scope: selected Flags')
-    expect(mocks.task).toHaveBeenCalledWith('owned', 'original-a', 'a'.repeat(64))
+    expect(mocks.task).toHaveBeenCalledWith('owned', 'incident-a', 'a'.repeat(64))
     await expect(loadSiteFixBundle(site, undefined, ['other-tenant-flag'])).rejects.toMatchObject({ status: 409 })
     await expect(loadSiteFixBundle(site, undefined, ['incident-a', 'original-a'])).rejects.toMatchObject({ status: 409 })
   })

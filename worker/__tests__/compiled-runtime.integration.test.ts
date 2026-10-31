@@ -25,6 +25,8 @@ import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
 import { AUTH } from '@/lib/marketing/copy/auth'
 import { ensureReleasePasswordAccount } from '@/lib/release/fixture-authentication'
+import { repairBriefSchema } from '@/lib/sites/repair-brief-contract'
+import { MCP_PROTOCOL_VERSION, MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 const authProof = process.env.COMPILED_AUTH_REQUIRED === 'true'
 const browserProof = authProof || process.env.COMPILED_BROWSER_REQUIRED === 'true'
@@ -298,7 +300,41 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       const prepared = await browserHttp('/api/sites/' + claimedProjectId + '/flags/' + flag.id + '/fix', { action: 'prepare' })
       writeFileSync(directory + '/repair-task.txt', prepared.prompt)
       expect(prepared.prompt).toContain('Recorded scan: ' + webOrigin + '/report/' + initialAuditId)
-      expect(prepared.prompt).toContain('Agent-readable scan JSON: ' + webOrigin + '/api/reports/' + initialAuditId)
+      const briefUrl = new URL(prepared.prompt.match(/^Agent-readable repair JSON: (.+)$/m)![1])
+      expect(briefUrl.origin).toBe(webOrigin)
+      const brief = repairBriefSchema.parse(await browserHttp(briefUrl.pathname + briefUrl.search))
+      expect(brief.siteId).toBe(claimedProjectId)
+      expect(brief.flag.sourceAuditId).toBe(initialAuditId)
+      expect(brief.flag.sourceFlagId).toBe(prepared.sourceFlagId)
+      expect(brief.retrieval.mcp.arguments.expectedContextHash).toBe(brief.contextHash)
+      expect((await fetch(briefUrl)).status).toBe(404)
+      const developerKey = await browserHttp('/api/api-keys', { name: 'Local repair acceptance', client: 'codex',
+        scopePreset: 'read_only', expiresInDays: 30 })
+      const keyBrief = await fetch(briefUrl, { headers: { Authorization: 'Bearer ' + developerKey.key } })
+      expect(keyBrief.status).toBe(200)
+      expect(keyBrief.headers.get('Cache-Control')).toBe('private, no-store')
+      expect(repairBriefSchema.parse(await keyBrief.json())).toEqual(brief)
+      const mcpRequest = async (name: string, args: object) => fetch(webOrigin + '/api/mcp', {
+        method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json',
+          Authorization: 'Bearer ' + developerKey.key, 'MCP-Protocol-Version': MCP_PROTOCOL_VERSION, 'Mcp-Method': 'tools/call', 'Mcp-Name': name },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args, _meta: {
+          'io.modelcontextprotocol/protocolVersion': MCP_PROTOCOL_VERSION,
+          'io.modelcontextprotocol/clientInfo': { name: 'local-repair-acceptance', version: '1.0.0' },
+          'io.modelcontextprotocol/clientCapabilities': {},
+        } } }),
+      })
+      const mcpRead = await mcpRequest(MCP_TOOLS.getFlag.name, brief.retrieval.mcp.arguments)
+      expect(mcpRead.status, await mcpRead.clone().text()).toBe(200)
+      expect((await mcpRead.json()).result.structuredContent.repairBrief).toEqual(brief)
+      const evidenceUrl = new URL(brief.links.evidence)
+      const withEvidence = repairBriefSchema.parse(await browserHttp(evidenceUrl.pathname + evidenceUrl.search))
+      expect(withEvidence.evidence).toMatchObject({ sourceFlagId: brief.flag.sourceFlagId, sourceAuditId: initialAuditId })
+      const mcpEvidence = await mcpRequest(MCP_TOOLS.getFlag.name, brief.retrieval.evidence.arguments)
+      expect(mcpEvidence.status, await mcpEvidence.clone().text()).toBe(200)
+      expect((await mcpEvidence.json()).result.structuredContent.repairBrief).toEqual(withEvidence)
+      const refusedWrite = await mcpRequest(MCP_TOOLS.recordFix.name, { siteId: claimedProjectId, flagId: flag.id,
+        idempotencyKey: 'read-only-must-refuse', changeSummary: 'Read-only key cannot claim a change' })
+      expect(refusedWrite.status).toBe(403)
       expect((await browserHttp('/api/reports/' + initialAuditId)).id).toBe(initialAuditId)
       await copy.click()
       await browserExpect(page.getByRole('button', { name: SITE_DASHBOARD_COPY.bundleCopied, exact: true })).toBeVisible()
@@ -402,11 +438,17 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
         }
         for (const surface of ['Overview', 'Pages', 'Timeline', 'Integrations', 'Settings']) {
           await page.setViewportSize({ width: 1280, height: 900 })
-          await page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: surface, exact: true }).click()
+          const destination = page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: surface, exact: true })
+          await destination.click()
+          await browserExpect(destination).toHaveAttribute('aria-current', 'page')
           await browserExpect(page.getByRole('heading', { level: 1 })).toBeVisible()
           for (const width of [1280, 768, 375, 320]) await inspectSurface(surface.toLowerCase(), theme, width)
         }
       }
+      // The launch gate is part of the candidate. Component checks exercise the
+      // unreleased setup; this compiled journey proves it remains undiscoverable.
+      const gatedSetup = await page.goto('/dashboard/mcp-setup?builder=codex')
+      expect(gatedSetup?.status()).toBe(404)
       expect(accessibility.flatMap(sample => sample.failures)).toEqual([])
       expect(runtimeErrors).toEqual([])
       // Observe this compiled page on local infrastructure. These are lab
@@ -434,8 +476,10 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       await browserExpect(page.getByRole('heading', { level: 1 })).toBeVisible()
       await page.evaluate(() => document.fonts.ready)
       await page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: 'Pages', exact: true }).click()
+      await browserExpect(page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: 'Pages', exact: true })).toHaveAttribute('aria-current', 'page')
       await browserExpect(page.getByRole('heading', { level: 1 })).toBeVisible()
       await page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: 'Overview', exact: true }).click()
+      await browserExpect(page.getByRole('navigation', { name: 'Site', exact: true }).getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page')
       await browserExpect(page.getByRole('heading', { level: 1 })).toBeVisible()
       const performance = await page.evaluate(() => ({
         ...(window as Window & { fixflagsLocalPerformance?: object }).fixflagsLocalPerformance,
