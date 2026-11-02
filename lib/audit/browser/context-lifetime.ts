@@ -3,6 +3,7 @@ import { browserCapacity } from '../progressive/capacity'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { randomUUID } from 'node:crypto'
 import { logger } from '@/lib/logger'
+import { registerBrowserContext, type BrowserContextOwner } from './context-inventory'
 
 export const CONTEXT_SETUP_TIMEOUT_MS = 30_000
 
@@ -28,7 +29,8 @@ export type AuditContextDiagnostics = ReturnType<typeof auditContextDiagnostics>
 export async function openAuditContext<T>(
   browser: Browser,
   contextOptions: BrowserContextOptions,
-  lifetime: { deadline?: number; signal?: AbortSignal; priority?: number; scope?: ContextOwner['scope']; owner?: { auditId: string; taskId?: string; generation: number } },
+  lifetime: { deadline?: number; signal?: AbortSignal; priority?: number; scope?: ContextOwner['scope'];
+    category?: BrowserContextOwner; owner?: { auditId: string; taskId?: string; generation: number } },
   prepare: (context: BrowserContext, assertActive: () => void) => Promise<T>,
 ): Promise<T> {
   const deadline = new AbortController()
@@ -99,6 +101,7 @@ export async function openAuditContext<T>(
     owner.openedAt = Date.now()
     contextOwners.set(context, owner)
     logger.info('Native browser context allocated', { contextId: owner.contextId, scope: owner.scope, ...lifetime.owner })
+    registerBrowserContext(context, lifetime.category ?? (lifetime.owner ? 'audit' : 'inspection'), hasDeadline ? deadlineAt : undefined)
     context.once('close', () => { stop(new Error('Audit browser context closed')); releaseOnce() })
     try {
       assertActive()

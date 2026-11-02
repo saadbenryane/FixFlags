@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { publicHttpCapacity } from '@/lib/audit/progressive/capacity'
 import { scheduleUptimeProbes, executeUptimeProbe } from './service'
-import { startUptimeWorker } from './queue'
+import { startUptimeWorker, enqueueUptimeProbe, uptimeJobId } from './queue'
+import { Queue } from 'bullmq'
+import { createQueueRedis } from '@/lib/queue/redis'
+import { UPTIME_INTERVAL_MS } from './domain'
 import { loadUptimeSummary } from './queries'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
@@ -17,6 +20,56 @@ vi.mock('@/lib/billing/beta-policy', async importOriginal => ({
 const run = process.env.UPTIME_TEST_DATABASE_URL && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
 
 run('native public HTTP probe under execution contention', () => {
+  it('completes an installed probe once when its Site is physically removed during the HTTP request', async () => {
+    const database = new URL(process.env.DATABASE_URL ?? '')
+    if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_uptime_test_[a-f0-9]{32}$/.test(database.pathname))
+      throw new Error('Use the disposable uptime execution verifier')
+    let requests = 0, projectId: string | undefined, userId: string | undefined
+    const server = createServer(async (_request, response) => {
+      requests++
+      try {
+        await prisma.project.delete({ where: { id: projectId! } })
+        response.statusCode = 503
+        response.end('Controlled response after Site removal')
+      } catch { response.statusCode = 500; response.end('Fixture removal failed') }
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const port = (server.address() as { port: number }).port, nativeFetch = globalThis.fetch
+    vi.stubGlobal('fetch', (input: string | URL | Request, options?: RequestInit) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      if (url.origin !== 'https://removed.example.com') throw new Error('External service unavailable in this fixture')
+      return nativeFetch(`http://127.0.0.1:${port}${url.pathname}`, options)
+    })
+    const connection = createQueueRedis(), queue = new Queue('uptime-probes', { connection })
+    const worker = startUptimeWorker(job => executeUptimeProbe(job))
+    try {
+      const identity = randomUUID()
+      const user = await prisma.user.create({ data: { email: `removed-${identity}@uptime-test.example` } })
+      userId = user.id
+      const project = await prisma.project.create({ data: { userId, name: 'Removed probe fixture', url: 'https://removed.example.com/',
+        canonicalHost: 'removed.example.com', watchInterval: 'WEEKLY', watchNextRunAt: new Date() } })
+      projectId = project.id
+      const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: project.url, nextProbeAt: new Date(0) } })
+      const now = new Date(), scheduledAt = new Date(Math.floor(now.getTime() / UPTIME_INTERVAL_MS) * UPTIME_INTERVAL_MS)
+      const job = { monitorId: monitor.id, version: monitor.version, attempt: 1 as const, scheduledAt: scheduledAt.toISOString() }
+      await enqueueUptimeProbe(job, now)
+      await vi.waitFor(async () => {
+        const delivered = await queue.getJob(uptimeJobId(job))
+        expect(await delivered?.getState()).toBe('completed')
+        expect(delivered?.attemptsMade).toBe(1)
+      }, { timeout: 10_000, interval: 25 })
+      expect(requests).toBe(1)
+      expect(await prisma.project.count({ where: { id: projectId } })).toBe(0)
+      expect(await prisma.uptimeMonitor.count({ where: { id: monitor.id } })).toBe(0)
+      expect(await prisma.uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(0)
+      expect((await queue.getJobs(['delayed', 'waiting', 'active'])).some(delivery => delivery.data.monitorId === monitor.id)).toBe(false)
+    } finally {
+      await worker.close(); await queue.close(); await connection.quit()
+      vi.unstubAllGlobals()
+      server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()))
+      if (userId) await prisma.user.deleteMany({ where: { id: userId } })
+    }
+  })
   it('keeps separately included uptime active when analysis grants expire, are revoked or leave a halted analysis schedule', async () => {
     const database = new URL(process.env.DATABASE_URL ?? '')
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_uptime_test_[a-f0-9]{32}$/.test(database.pathname))

@@ -46,9 +46,12 @@ describe('customer Flag projector on Site load', () => {
       fix: 'Fix the form endpoint', pageUrl: 'https://example.com/contact', status: 'OPEN' }])
     const owned = { kind: 'project', projectId: 'owned-site', primaryAuditId: 'later-partial-check' } as SiteRecord
     expect((await loadSiteFlags(owned)).map(flag => flag.id)).toEqual(['claimed-contact'])
-    expect(prisma.flag.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({
+    expect(prisma.flag.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
       audit: expect.objectContaining({ projectId: 'owned-site' }), improvementOccurrence: null,
     }) }))
+    expect(prisma.flag.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: {
+      id: { in: ['claimed-contact'] }, audit: { projectId: 'owned-site' },
+    } }))
   })
 
   it('keeps broken contact as a Flag and optional SEO meta as a Recommendation', async () => {

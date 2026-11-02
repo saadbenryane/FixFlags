@@ -12,6 +12,7 @@ export type TaskContext = {
 export type TaskHandler = {
   kind: TaskKind; replay: 'read_only' | 'idempotent' | 'protected';
   timeoutMs: number | ((audit: Audit, input: TaskInput) => number); evaluate(context: TaskContext): Promise<TaskArtifact>;
+  continuation?: boolean;
   validateResult(artifact: TaskArtifact): void;
   commit?(context: TaskContext, artifact: TaskArtifact, tx: Prisma.TransactionClient): Promise<void>;
   reconcile?(context: TaskContext): Promise<boolean>;

@@ -45,7 +45,6 @@ export interface EditorIntegrationDefinition {
   apiKeyClient: EditorIntegrationKey
   promptProfile: EditorPromptProfile
   cliManaged: boolean
-  oneClickInstall: boolean
   officialDocsUrl: string
   productionSmoke: 'pending' | 'verified'
 }
@@ -64,7 +63,6 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'lovable',
     promptProfile: 'lovable',
     cliManaged: false,
-    oneClickInstall: false,
     officialDocsUrl: 'https://docs.lovable.dev/integrations/mcp-servers',
     productionSmoke: 'pending',
   },
@@ -81,7 +79,6 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'bolt',
     promptProfile: 'bolt',
     cliManaged: false,
-    oneClickInstall: false,
     officialDocsUrl: 'https://support.bolt.new/building/using-bolt/connect-mcp',
     productionSmoke: 'pending',
   },
@@ -98,8 +95,7 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'cursor',
     promptProfile: 'cursor',
     cliManaged: true,
-    oneClickInstall: true,
-    officialDocsUrl: 'https://docs.cursor.com/context/model-context-protocol',
+    officialDocsUrl: 'https://cursor.com/docs/mcp',
     productionSmoke: 'pending',
   },
   {
@@ -115,7 +111,6 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'replit',
     promptProfile: 'universal',
     cliManaged: false,
-    oneClickInstall: false,
     officialDocsUrl: 'https://docs.replit.com/build/connect-via-mcp',
     productionSmoke: 'pending',
   },
@@ -132,8 +127,7 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'claudeCode',
     promptProfile: 'claude',
     cliManaged: true,
-    oneClickInstall: false,
-    officialDocsUrl: 'https://docs.anthropic.com/en/docs/claude-code/mcp',
+    officialDocsUrl: 'https://code.claude.com/docs/en/mcp',
     productionSmoke: 'pending',
   },
   {
@@ -149,7 +143,6 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'windsurf',
     promptProfile: 'windsurf',
     cliManaged: true,
-    oneClickInstall: false,
     officialDocsUrl: 'https://docs.windsurf.com/windsurf/cascade/mcp',
     productionSmoke: 'pending',
   },
@@ -166,7 +159,6 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'codex',
     promptProfile: 'universal',
     cliManaged: true,
-    oneClickInstall: false,
     officialDocsUrl: 'https://developers.openai.com/codex/mcp',
     productionSmoke: 'pending',
   },
@@ -183,7 +175,6 @@ export const EDITOR_INTEGRATIONS: readonly EditorIntegrationDefinition[] = [
     apiKeyClient: 'devin',
     promptProfile: 'universal',
     cliManaged: false,
-    oneClickInstall: false,
     officialDocsUrl: 'https://docs.devin.ai/work-with-devin/mcp',
     productionSmoke: 'pending',
   },

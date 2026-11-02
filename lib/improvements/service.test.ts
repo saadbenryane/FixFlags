@@ -770,7 +770,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false, journeyReviewAt: null, pages: [], runRequests: [],
       executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
         checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: null },
-      verifierExecutions: scenario === 'missing' ? [] : [{ targetKey: 'module:metadata', scopeKey: 'page:' + pageUrl,
+      verificationReceipts: scenario === 'missing' ? [] : [{ targetKey: 'module:metadata', scopeKey: 'page:' + pageUrl,
         status: 'COMPLETED', evidenceReference: { taskId: 'task' }, detail: { kind: 'site-module-check', version: 1, module: 'metadata', passed: true, applicable: true,
           pageUrl, execution: { auditId: 'after', taskId: 'task', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-12T12:00:00.000Z' },
           assertions: [{ key: 'viewport-presence', name: 'Viewport', expected: 'Present', observed: 'Present', passed: true }],
@@ -795,7 +795,7 @@ describe('reconcileImprovementVerification', () => {
       const startedAt = new Date('2026-10-11T12:00:00Z')
       mocks.auditFindUnique.mockResolvedValue({ id: 'after', parentId: 'gap', projectId: 'product-1', productContract: null,
         status: 'COMPLETED', startedAt, reportCompleteness: 'PARTIAL', evidenceCoverage: {}, failedModules: [],
-        pages: [], verifierExecutions: [], journeyReviewIncluded: false, journeyReviewAt: null,
+        pages: [], verificationReceipts: [], journeyReviewIncluded: false, journeyReviewAt: null,
         runRequests: [{ id: 'run', projectId: scenario === 'other-site' ? 'other' : 'product-1', status: 'COMPLETED', environment: 'production',
           verificationTarget: scenario === 'targeted' ? { kind: 'OUTCOME', attemptId: 'another-attempt' } : null,
           assessments: [{ outcomeId: 'signup-1', auditId: 'after', runRequestId: 'run', state: 'CLEAR', coverage, evidence: {
@@ -840,7 +840,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false, journeyReviewAt: null, pages: [],
       runRequests: [{ id: 'run', projectId: 'product-1', status: 'COMPLETED', environment: 'production', assessments: [],
         verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt-1', parentAuditId: 'review-1', checkId: targetedFlag.checkId, pageUrl } }],
-      verifierExecutions: verdict === 'missing' ? [] : [{ targetKey: 'check:checkout-link-dead', scopeKey: 'page:' + pageUrl,
+      verificationReceipts: verdict === 'missing' ? [] : [{ targetKey: 'check:checkout-link-dead', scopeKey: 'page:' + pageUrl,
         status: 'COMPLETED', evidenceReference: { taskId: 'check-task' }, detail: {
           kind: 'check-verifier', version: 1, auditId: 'review-2', taskId: 'check-task', checkId: targetedFlag.checkId,
           checkVersion: 1, pageUrl, source: 'http', collectedAt: '2026-10-11T12:00:00.000Z', comparable: true, verdict,
@@ -892,7 +892,7 @@ describe('reconcileImprovementVerification', () => {
         checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
       runRequests: [{ id: 'run', projectId: 'product-1', status: 'COMPLETED', environment: 'production', assessments: [],
         verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt-1', parentAuditId: 'review-1', checkId: original.checkId, pageUrl } }],
-      verifierExecutions: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
+      verificationReceipts: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
     })
     mocks.flagFindMany.mockResolvedValue(scenario === 'failed-peer' ? [{ ...original, id: 'child-peer', pageUrl: peer }] : [])
     mocks.occurrenceFindMany.mockResolvedValue([{ id: 'occurrence-1', auditId: 'review-1', improvementId: 'improvement-1', flagId: original.id,
@@ -931,7 +931,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false,
       journeyReviewAt: null,
       pages: [{ url: 'https://example.com', status: 'COMPLETED' }],
-      verifierExecutions: [{
+      verificationReceipts: [{
         targetKey: 'check:cta-dead-link',
         scopeKey: 'page:https://example.com',
         status: 'COMPLETED',
@@ -996,7 +996,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false,
       journeyReviewAt: null,
       pages: [{ url: 'https://example.com', status: 'PARTIAL' }],
-      verifierExecutions: [],
+      verificationReceipts: [],
     })
     mocks.flagFindMany.mockResolvedValue([])
     mocks.occurrenceFindMany.mockResolvedValue([{

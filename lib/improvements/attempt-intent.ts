@@ -3,6 +3,7 @@ import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 
 export type AttemptIntent = {
   userId: string; sourceAuditId: string; handoffReference?: string | null;
+  sourceFlagIds?: readonly string[];
   pullRequestReference?: string | null; commitReference?: string | null;
   deploymentReference?: string | null; changeSummary?: string | null;
 }
@@ -11,6 +12,7 @@ export const normalizedAttemptValue = (value?: string | null) => value?.trim() |
 /** Transport and presentation may change on a retry; the declared repair cannot. */
 export function attemptIntentHash(input: AttemptIntent) {
   return createHash('sha256').update(canonicalIntent({ userId: input.userId, sourceAuditId: input.sourceAuditId,
+    ...(input.sourceFlagIds?.length ? { sourceFlagIds: [...new Set(input.sourceFlagIds)].sort() } : {}),
     handoffReference: normalizedAttemptValue(input.handoffReference), pullRequestReference: normalizedAttemptValue(input.pullRequestReference),
     commitReference: normalizedAttemptValue(input.commitReference), deploymentReference: normalizedAttemptValue(input.deploymentReference),
     changeSummary: normalizedAttemptValue(input.changeSummary) })).digest('hex')

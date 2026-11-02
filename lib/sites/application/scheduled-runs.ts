@@ -9,6 +9,7 @@ import { SiteRunRefusal } from './run-refusal'
 import { commitScheduledRun } from './scheduled-completion'
 import { interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
 import { readExecutionSpec } from '../domain/execution-spec'
+import { loadRunRequestByKey } from './run-request-keys'
 
 /** Reusing an admission does not make a failed or missing execution viable. */
 function assertScheduledExecution(projectId: string, receipt: { status: string; audit: { projectId: string | null; status: string } | null } | null) {
@@ -33,9 +34,9 @@ export async function requestScheduledSiteRun(input: {
     return started
   }
   const key = `watch:${input.projectId}:${input.scheduledAt.toISOString()}:${input.interval}:${input.everyMinutes ?? ''}`
-  const existing = await prisma.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
+  const existing = await loadRunRequestByKey({
     projectId: input.projectId, source: 'WATCH', idempotencyKey: key,
-  } }, include: { selections: { select: { outcomeId: true } }, audit: { select: { projectId: true, status: true } } } })
+  })
   if (existing) {
     const spec = readExecutionSpec(existing.executionSpec)
     if (existing.environment !== 'production' || existing.verificationTarget != null ||

@@ -109,7 +109,10 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     return !key || selectedKeys.has(key)
   })
   const existingFlags = selectedRows.map((flag) => {
-    const supportingObservations = publicSupportingObservations(flag.supportingObservations)
+    const supportingObservations = publicSupportingObservations(flag.supportingObservations).map(item => ({
+      source: item.source, checkId: item.checkId, checkVersion: item.checkVersion, pageUrl: item.pageUrl,
+      evidence: item.evidence, recordedAt: item.recordedAt, references: item.references,
+    }))
     if (flag.supportingObservations != null && !supportingObservations.length)
       throw new JudgeContractError('Recorded supporting observations could not be read for prescription')
     return {

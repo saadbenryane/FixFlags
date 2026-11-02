@@ -382,6 +382,7 @@ export function scopedAssertionForTarget(input: {
 /** Called inside the task's fenced observation transaction, never from a read. */
 export async function recordAssertionVerifiers(input: {
   auditId: string; parentId: string | null; primary: boolean;
+  sourceFlagIds?: readonly string[];
   receipt: z.infer<typeof checkReceiptSchema>;
   allowedCheckIds?: readonly string[];
 }, tx: Prisma.TransactionClient): Promise<void> {
@@ -390,7 +391,8 @@ export async function recordAssertionVerifiers(input: {
   const attempts = await tx.improvementAttempt.findMany({
     where: { sourceAuditId: input.parentId, outcome: null }, take: 500, orderBy: { id: 'asc' },
     select: { improvement: { select: { occurrences: {
-      where: { auditId: input.parentId }, take: 100, orderBy: { id: 'asc' },
+      where: input.sourceFlagIds ? { flagId: { in: [...input.sourceFlagIds] } } : { auditId: input.parentId },
+      take: input.sourceFlagIds?.length ?? 100, orderBy: { id: 'asc' },
       select: { flag: { select: { checkId: true, source: true, fingerprint: true, pageUrl: true, verificationRule: true, evidenceTargets: true } } },
     } } } },
   })

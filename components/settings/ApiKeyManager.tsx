@@ -10,9 +10,12 @@ import { createApiKey, type CreatedApiKey } from '@/lib/api/api-key-client'
 import type { ApiKeyClient } from '@/lib/mcp/builders'
 import {
   DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS,
+  DEFAULT_DEVELOPER_KEY_SCOPE_PRESET,
+  DEVELOPER_KEY_SCOPE_PRESETS,
   DEVELOPER_KEY_EXPIRY_DAYS,
   developerKeyScopeLabel,
   type DeveloperKeyExpiryDays,
+  type DeveloperKeyScopePreset,
 } from '@/lib/mcp/developer-key-policy'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 
@@ -28,10 +31,11 @@ interface ApiKeySummary {
   createdAt: string
 }
 
-export function ApiKeyManager() {
+export function ApiKeyManager({ client = 'other', headingAs: KeysHeading = 'h2' }: { client?: ApiKeyClient; headingAs?: 'h2' | 'h3' }) {
   const [keys, setKeys] = useState<ApiKeySummary[]>([])
   const [name, setName] = useState('')
   const [expiresInDays, setExpiresInDays] = useState<DeveloperKeyExpiryDays>(DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS)
+  const [scopePreset, setScopePreset] = useState<DeveloperKeyScopePreset>(DEFAULT_DEVELOPER_KEY_SCOPE_PRESET)
   const [created, setCreated] = useState<CreatedApiKey | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -59,8 +63,8 @@ export function ApiKeyManager() {
     try {
       const next = await createApiKey({
         name,
-        client: 'other',
-        scopePreset: 'fix_and_verify',
+        client,
+        scopePreset,
         expiresInDays,
       })
       setCreated(next)
@@ -126,9 +130,15 @@ export function ApiKeyManager() {
             ))}
           </InteractiveSelect>
         </label>
-        <p className="text-sm text-muted-foreground md:col-span-2">
-          Access: <span className="font-medium text-foreground">{API_KEY_COPY.accessName}</span>. {API_KEY_COPY.accessDescription}
-        </p>
+        <label htmlFor="api-key-access" className="space-y-2 text-sm font-medium md:col-span-2">
+          {API_KEY_COPY.accessLabel}
+          <InteractiveSelect id="api-key-access" value={scopePreset}
+            onChange={event => setScopePreset(event.currentTarget.value as DeveloperKeyScopePreset)}
+            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm">
+            {DEVELOPER_KEY_SCOPE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+          </InteractiveSelect>
+          <span className="block text-sm font-normal text-muted-foreground">{DEVELOPER_KEY_SCOPE_PRESETS.find(preset => preset.id === scopePreset)?.description}</span>
+        </label>
         <Button type="submit" disabled={submitting || !name.trim()} className="min-h-11 md:col-span-2 md:w-fit">
           {submitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
@@ -164,7 +174,7 @@ export function ApiKeyManager() {
       </p>
 
       <div>
-        <h2 className="text-base font-semibold">Active keys</h2>
+        <KeysHeading className="text-base font-semibold">Active keys</KeysHeading>
         {loading ? (
           <p className="mt-3 text-sm text-muted-foreground">Loading keys…</p>
         ) : keys.length === 0 ? (

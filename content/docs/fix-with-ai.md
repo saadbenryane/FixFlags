@@ -9,6 +9,8 @@ A **fix prompt** is a message you can copy from a Flag. It tells your AI tool wh
 
 You can also send the prompt to your developer. Copying it does not change your website.
 
+Saved Site Flags include a report link and a focused JSON repair brief alongside the recorded task. The brief gives an authorized agent supporting evidence, affected pages and devices, and verification criteria. Private links require access. Large groups include continuation links. The agent must read every supporting observation page before implementing the grouped repair. If required context cannot be read, the agent should stop and report what is missing. Never paste an API key into a prompt.
+
 Prompts on the FixFlags homepage are examples. [Check your own website](/new) to get fixes for problems found there.
 
 ## Verify the fix

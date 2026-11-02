@@ -2,7 +2,7 @@ import { type TechnologyProfileStatus,type VisibleTechnology } from '@/lib/audit
 import { type WatchAlertDeliveryState } from '@/lib/audit/watch-notification'
 import { type SiteActivity } from '@/lib/sites/activity'
 import { type BoardCardView } from '@/lib/sites/board-card'
-import type { SiteCapture } from '@/lib/sites/captures'
+import type { SiteCapture, SiteCaptureAvailability } from '@/lib/sites/captures'
 import { type SiteCheckResult } from '@/lib/sites/check-results'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -28,6 +28,7 @@ export type SiteHomeView = {
   actions: SiteViewerActions
   counts: import('./scope-counts').SiteScopeCounts
   captures?: SiteCapture[]
+  captureAvailability?: SiteCaptureAvailability
   uptime?: UptimeSummary | null
   uptimeEvents?: UptimeIncidentView[]
   inventoryPageCount: number

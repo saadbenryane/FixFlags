@@ -42,7 +42,6 @@ export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTML
         <div className={t.emailCard}>
           <div className={t.emailSender}><Logo variant="mark" size="md" /><strong>{C.notifications.sender}</strong><Bell size={16} aria-hidden="true" /></div>
           <h3>{EMAIL.subject(C.notifications.host, 1)}</h3>
-          <p>{EMAIL.lead(C.notifications.host, 1, 0)}</p>
           <div className={t.emailFinding}><span aria-hidden="true" /><strong>{C.notifications.flag}</strong><span>/pricing</span></div>
           <InteractiveButton type="button" onClick={event => onOpenFlag(event.currentTarget)} className={t.emailAction}>{C.notifications.action}<ArrowRight size={16} aria-hidden="true" /></InteractiveButton>
         </div>

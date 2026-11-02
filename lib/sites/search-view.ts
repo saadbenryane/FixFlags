@@ -3,6 +3,7 @@ import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import type { BoardCardView } from './board-card'
 import { siteCoverageIsStale } from './evidence-freshness'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
+import { checkResultSourceLabel } from './check-results'
 
 /** One customer projection of persisted Search facts, shared by HTTP and MCP. */
 export function applySearchCardEvidence(card: BoardCardView, executions: Array<{ targetKey: string; detail: unknown }>, inFlight: boolean, now = new Date(), coverageMaxAgeMs?: number) {
@@ -13,6 +14,11 @@ export function applySearchCardEvidence(card: BoardCardView, executions: Array<{
   card.incompleteReason = card.incompleteReason ?? (!inFlight && !complete
     ? SITE_BOARD_COPY.cardCheckIncomplete
     : null)
+  const sources = receipts.flatMap(receipt => receipt.observations.filter(item => item.disposition !== 'unknown').flatMap(item => {
+    const label = checkResultSourceLabel(item.source, 'search')
+    return label ? [label] : []
+  }))
+  card.sources = [...new Set([...card.sources, ...sources])]
   // A confirmed problem stays visible even when other Search work is missing.
   if (card.openFlagCount > 0) return
   card.evidenced = evidence.evidenced
@@ -51,6 +57,4 @@ export function applySearchCardEvidence(card: BoardCardView, executions: Array<{
     card.detail = C.partial
   }
   if (inFlight) card.activity = 'checking'
-  const sources = receipts.flatMap(receipt => receipt.observations.filter(item => item.disposition !== 'unknown').map(item => C.sources[item.source]))
-  card.sources = [...new Set([...card.sources, ...sources])]
 }

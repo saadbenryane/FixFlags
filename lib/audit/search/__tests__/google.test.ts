@@ -4,7 +4,7 @@ const stubs = vi.hoisted(() => ({
   audit: vi.fn(), connection: vi.fn(), legacy: vi.fn(), update: vi.fn(), token: vi.fn(),
   inspect: vi.fn(), analytics: vi.fn(), legacyToken: vi.fn(), persisted: new Map<string, unknown>(), createRows: vi.fn(),
 }))
-vi.mock('@/lib/sites/connections/google', async importOriginal => ({ ...await importOriginal<object>(), accessTokenForConnection: stubs.token }))
+vi.mock('@/lib/sites/connections/google', async importOriginal => ({ ...await importOriginal<object>(), getGoogleConnectionAccess: stubs.token }))
 vi.mock('@/lib/integrations/google-search-console', async importOriginal => ({
   ...await importOriginal<object>(), inspectSearchUrl: stubs.inspect, querySearchAnalytics: stubs.analytics,
   getGscAccess: async (userId: string) => {
@@ -36,9 +36,9 @@ import { prisma } from '@/lib/db'
 beforeEach(() => {
   vi.clearAllMocks(); stubs.persisted.clear()
   stubs.audit.mockResolvedValue({ id: 'audit', projectId: 'site', parentId: null, userId: 'owner', project: { userId: 'owner' } })
-  stubs.connection.mockResolvedValue({ id: 'connection', authorizedByUserId: 'owner', status: 'CONNECTED', propertyId: 'https://example.com/',
+  stubs.connection.mockResolvedValue({ id: 'connection', authorizationId: 'fixture-authorization', authorizedByUserId: 'owner', status: 'CONNECTED', propertyId: 'https://example.com/',
     encryptedAccessToken: 'fixture-encrypted-access', encryptedRefreshToken: 'fixture-encrypted-grant', tokenExpiresAt: null })
-  stubs.token.mockResolvedValue('test-access')
+  stubs.token.mockImplementation(async () => ({ token: 'test-access', grant: await stubs.connection() }))
   stubs.legacy.mockResolvedValue(null)
   stubs.legacyToken.mockResolvedValue('fixture-legacy-access')
   stubs.inspect.mockResolvedValue({ indexStatusResult: { verdict: 'PASS', lastCrawlTime: '2026-10-01T00:00:00Z' },
@@ -170,8 +170,9 @@ describe('owner-scoped Google evidence', () => {
     const result = await run()
     expect(result.receipts[0].observations.some(item => item.reason === 'PERMISSION_REFUSED')).toBe(true)
     expect(stubs.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'connection', status: { in: ['CONNECTED', 'UNAVAILABLE'] },
-        projectId: 'site', propertyId: 'https://example.com/', encryptedRefreshToken: 'fixture-encrypted-grant' }),
+      where: { AND: [expect.objectContaining({ id: 'connection', status: { in: ['CONNECTED', 'UNAVAILABLE'] },
+        projectId: 'site', propertyId: 'https://example.com/', authorizationId: 'fixture-authorization' }),
+      expect.objectContaining({ encryptedAccessToken: 'fixture-encrypted-access', encryptedRefreshToken: 'fixture-encrypted-grant', tokenExpiresAt: null })] },
       data: expect.objectContaining({ status: 'NEEDS_REAUTH' }),
     }))
   })

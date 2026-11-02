@@ -5,8 +5,8 @@ import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 export const dynamic = 'force-dynamic'
 
 /**
- * Reads dedicated-worker Chromium connectivity and probes capture storage.
- * Browser connection is not evidence of a successful native capture.
+ * Worker connection and storage snapshot. Successful rendering is reported
+ * separately from connection state, using the actual worker probe timestamp.
  *
  * Always returns HTTP 200 with a per-subsystem snapshot so it never gates a
  * deploy, while making a broken scanner answerable with a single curl:
@@ -19,6 +19,7 @@ export async function GET() {
       ok: false,
       workerCount: 0,
       activeContexts: 0,
+      lastSuccessfulProbeAt: null as string | null,
       error: null as string | null,
     },
     storage: {
@@ -35,6 +36,9 @@ export async function GET() {
     result.browser.ok = heartbeat.alive && heartbeat.browserOk
     result.browser.workerCount = heartbeat.workerCount
     result.browser.activeContexts = heartbeat.activeBrowserContexts
+    const probes = heartbeat.workers.map(worker => worker.lastSuccessfulBrowserProbeAt)
+    result.browser.lastSuccessfulProbeAt = probes.length && probes.every(value => value && Number.isFinite(Date.parse(value)))
+      ? new Date(Math.min(...probes.map(value => Date.parse(value!)))).toISOString() : null
     if (!result.browser.ok) {
       result.browser.error = 'No live worker has confirmed Chromium readiness'
     }

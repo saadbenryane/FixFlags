@@ -1,3 +1,4 @@
+import { emailContent } from '@/lib/email/content'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { headers } from 'next/headers'
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
           from: FROM_EMAIL,
           to,
           subject: waitlistEmail.subject,
-          html: waitlistEmail.html(session?.user?.name ?? ''),
+          ...emailContent(waitlistEmail.html(session?.user?.name ?? '')),
         })
       }
       await notifyAdmin(`
@@ -173,7 +174,7 @@ export async function POST(req: NextRequest) {
           from: FROM_EMAIL,
           to: email,
           subject: waitlistEmail.subject,
-          html: waitlistEmail.html(''),
+          ...emailContent(waitlistEmail.html('')),
         })
       }
       await notifyAdmin(`
@@ -209,7 +210,7 @@ export async function POST(req: NextRequest) {
         from: FROM_EMAIL,
         to: capturedEmail,
         subject: waitlistEmail.subject,
-        html: waitlistEmail.html(session.user.name ?? ''),
+        ...emailContent(waitlistEmail.html(session.user.name ?? '')),
       })
     }
 

@@ -10,6 +10,10 @@ import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { AUTH } from '@/lib/marketing/copy-barrel'
 import { isGithubOAuthConfigured, isGoogleOAuthConfigured } from '@/lib/auth/env'
+import { EmailPreferences } from '@/components/settings/EmailPreferences'
+import { DEFAULT_NOTIFICATION_PREFERENCES, readNotificationPreferences, summaryCadence } from '@/lib/notifications/preferences'
+import { loadEmailDeliveryHistory, notificationRecipientAllowed } from '@/lib/email/delivery-events'
+import { monitored } from '@/lib/notifications/contracts'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -23,6 +27,8 @@ export default async function SettingsPage() {
       emailVerified: true,
       plan: true,
       twoFactorEnabled: true,
+      notificationPreference: true,
+      projects: { where: monitored, select: { watchInterval: true, watchEveryMinutes: true } },
       accounts: {
         select: { providerId: true, password: true },
       },
@@ -31,6 +37,7 @@ export default async function SettingsPage() {
   })
 
   if (!user) notFound()
+  const [history, recipientAllowed] = await Promise.all([loadEmailDeliveryHistory(session.user.id), notificationRecipientAllowed(user.email)])
 
   const settingsCopy = AUTH.settings
 
@@ -51,6 +58,8 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <AccountSettingsForms
+            key={session.user.id}
+            ownerId={session.user.id}
             initialName={user.name ?? ''}
             email={user.email}
             emailVerified={user.emailVerified}
@@ -72,6 +81,11 @@ export default async function SettingsPage() {
           ...(isGithubOAuthConfigured() ? ['github' as const] : []),
         ]}
       />
+
+      <EmailPreferences key={session.user.id} ownerId={session.user.id} initial={user.notificationPreference ? readNotificationPreferences(user.notificationPreference) : DEFAULT_NOTIFICATION_PREFERENCES}
+        nextSendAt={user.notificationPreference?.nextSendAt?.toISOString() ?? null} email={user.email}
+        emailVerified={user.emailVerified} hasMonitoredSites={user.projects.length > 0}
+        followCadence={summaryCadence(DEFAULT_NOTIFICATION_PREFERENCES, user.projects)} history={history} blocked={!recipientAllowed} />
 
       <Card variant="subtle" className="border-destructive/30">
         <CardHeader><CardTitle as="h2" className="text-base">Danger zone</CardTitle><CardDescription>Permanently remove this FixFlags account.</CardDescription></CardHeader>

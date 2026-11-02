@@ -3,8 +3,9 @@ import { beforeEach, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   main: { getActiveCount: vi.fn(), getWaitingCount: vi.fn(), getPrioritizedCount: vi.fn(), getDelayedCount: vi.fn() },
   tasks: vi.fn(),
+  admin: { getActiveCount: vi.fn(), getWaitingCount: vi.fn(), getPrioritizedCount: vi.fn(), getDelayedCount: vi.fn() },
 }))
-vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => mocks.main, getAuditTaskQueue: mocks.tasks }))
+vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => mocks.main, getAuditTaskQueue: mocks.tasks, getAdminOperationQueue: () => mocks.admin }))
 vi.mock('@/lib/queue/worker-heartbeat', () => ({ readWorkerHeartbeat: vi.fn() }))
 const { getWorkerExecutionCounts } = await import('../estimate')
 
@@ -14,6 +15,7 @@ beforeEach(() => {
   mocks.main.getWaitingCount.mockResolvedValue(1)
   mocks.main.getPrioritizedCount.mockResolvedValue(2)
   mocks.main.getDelayedCount.mockResolvedValue(0)
+  for (const method of Object.values(mocks.admin)) method.mockResolvedValue(0)
   mocks.tasks.mockImplementation(resource => ({
     getActiveCount: async () => resource === 'browser' ? 2 : resource === 'provider' ? 1 : 0,
     getWaitingCount: async () => resource === 'evaluate' ? 4 : 0,
@@ -30,4 +32,8 @@ it('counts active progressive work when the bootstrap queue is idle', async () =
 it('does not turn unavailable queue observations into zero work', async () => {
   mocks.main.getActiveCount.mockRejectedValue(new Error('Queue unavailable'))
   await expect(getWorkerExecutionCounts()).rejects.toThrow('Queue unavailable')
+})
+it('includes administrative browser work instead of declaring an idle worker', async () => {
+  mocks.admin.getActiveCount.mockResolvedValue(1)
+  expect((await getWorkerExecutionCounts()).activeJobs).toBe(4)
 })

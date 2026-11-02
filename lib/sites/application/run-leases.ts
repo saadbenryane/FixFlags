@@ -172,12 +172,25 @@ export async function recoverExpiredSiteRuns(reconcileAudit: (auditId: string) =
   const now = new Date()
   const sites = await prisma.runRequest.findMany({
     where: recoverableRunWhere(now),
-    select: { projectId: true }, orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }], take: 100,
+    select: { id: true, projectId: true, updatedAt: true },
+    orderBy: [{ updatedAt: 'asc' }, { requestedAt: 'asc' }, { id: 'asc' }], take: 100,
   })
   let recovered = 0
-  for (const projectId of new Set(sites.map(run => run.projectId))) {
-    try { recovered += await reclaimExpiredRuns(projectId, reconcileAudit) }
-    catch (error) { logger.error('Site run recovery interrupted; remaining Sites will continue', { projectId, error }) }
+  const attemptedSites = new Set<string>()
+  for (const run of sites) {
+    if (attemptedSites.has(run.projectId)) continue
+    attemptedSites.add(run.projectId)
+    try {
+      // Persist effort before fallible reconciliation so an interrupted oldest
+      // cohort yields to untouched Sites on the next pass, including restarts.
+      // This advances row activity, never a request or physical execution lease.
+      const attempted = await prisma.runRequest.updateMany({
+        where: { id: run.id, projectId: run.projectId, updatedAt: run.updatedAt, ...recoverableRunWhere(now) },
+        data: { updatedAt: new Date() },
+      })
+      if (attempted.count !== 1) continue
+      recovered += await reclaimExpiredRuns(run.projectId, reconcileAudit)
+    } catch (error) { logger.error('Site run recovery interrupted; remaining Sites will continue', { projectId: run.projectId, error }) }
   }
   return recovered
 }

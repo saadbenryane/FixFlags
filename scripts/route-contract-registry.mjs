@@ -35,6 +35,7 @@ function boundaryFor(file) {
   ) return 'parked'
   if (file === 'app/api/stripe/waitlist/route.ts') return 'public'
   if (file === 'app/api/demo-request/route.ts') return 'public'
+  if (file === 'app/api/email/unsubscribe/route.ts') return 'public'
   if (file === 'app/api/me/route.ts') return 'public'
   if (file === 'app/api/support/sessions/route.ts') return 'public'
   if (file === 'app/api/shopify/webhooks/route.ts') return 'webhook'

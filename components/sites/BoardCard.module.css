@@ -232,9 +232,20 @@
   .rowResultCopy strong { font-size: 15px; }
 }
 
-.card.compactSummary { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 14px 16px; background: hsl(var(--muted) / .45); box-shadow: none; text-decoration: none; }
-.compactSummary .title { flex: 1; font-size: 14px; font-weight: 500; }
-.clearCount { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; color: hsl(var(--muted-foreground)); font-size: 12px; }
+@container board-rows (max-width: 480px) {
+  .boardRow:has(.rowRecheck) { grid-template-columns: minmax(0, 1fr) auto; }
+  .boardRow:has(.rowRecheck) .rowTrailing { display: contents; }
+  .boardRow:has(.rowRecheck) .rowStatus { grid-column: 2; grid-row: 1; justify-self: end; }
+  .boardRow:has(.rowRecheck) .rowRecheck { grid-column: 1 / -1; grid-row: 2; justify-self: start; max-width: 100%; }
+  .boardRow:has(.rowRecheck) .rowRecheck :is(a, button) { max-width: 100%; min-height: 44px; height: auto; white-space: normal; text-align: left; }
+  .boardRow:has(.rowRecheck) :is(.rowResultAction, .rowFlagList) { grid-column: 1 / -1; grid-row: 3; }
+}
+
+.card.compactSummary { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 14px 16px; background: hsl(var(--muted) / .45); box-shadow: none; text-decoration: none; }
+.compactSummary .title { flex: 1 1 8rem; min-width: 0; font-size: 14px; font-weight: 500; }
+.clearCount { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 10px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.compactStatus { min-width: 0; overflow-wrap: anywhere; }
+.clearCount > svg, .clearCount > .signal { flex-shrink: 0; }
 .priority { display: block; margin-top: 3px; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 500; letter-spacing: 0; }
 .priority[data-priority='fix_first'] { color: hsl(var(--foreground)); font-weight: 600; }
 

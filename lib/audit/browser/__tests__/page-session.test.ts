@@ -41,7 +41,7 @@ describe('audit page session form evidence', () => {
     const page = { route: vi.fn(), on: (event: string, handler: (event?: unknown) => void) => callbacks.set(event, handler),
       once: (event: string, handler: () => void) => callbacks.set(event, handler),
       goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'), url: () => 'http://localhost:4100/' }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
+    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn(), close: vi.fn(async () => {}) }
     vi.useFakeTimers({ toFake: ['Date'] })
     try {
       vi.setSystemTime(100_000)
@@ -67,7 +67,7 @@ describe('audit page session form evidence', () => {
       on: vi.fn(), once: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'),
       url: () => 'http://localhost:4100/',
     }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
+    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn(), close: vi.fn(async () => {}) }
     const browser = Object.assign(new EventEmitter(), { newContext: vi.fn(async () => context) }) as unknown as Browser
     const session = await createAuditPage(browser, 'http://localhost:4100/', {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, settle: false,
@@ -82,7 +82,7 @@ describe('audit page session form evidence', () => {
     let socketHandler!: (socket: { close(): Promise<void> }) => Promise<void>
     const page = { route: vi.fn(),
       on: vi.fn(), once: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'), url: () => 'http://localhost:4100/' }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn(),
+    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn(), close: vi.fn(async () => {}),
       routeWebSocket: vi.fn(async (_pattern, handler) => { socketHandler = handler }) }
     const newContext = vi.fn(async () => context)
     const onSafetyRefusal = vi.fn()

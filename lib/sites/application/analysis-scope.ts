@@ -79,3 +79,16 @@ export function includeLegacySiteAnalyses(ids: string[]): Prisma.AuditWhereInput
       { executionSpec: { path: ['scope'], equals: 'FIXTURE_SETUP' } }] } },
   }] } : siteWideAnalysisAuditWhere
 }
+
+/** SQL counterpart of includeLegacySiteAnalyses for a claimed Site. The
+ * persisted primary relationship cannot admit other unscoped or targeted runs. */
+export const claimedSiteWideAnalysisSourceSql = Prisma.sql`(${siteWideAnalysisSourceSql} OR (
+  ("source"."executionSpec"->>'scope') IS NULL
+  AND EXISTS (SELECT 1 FROM "provisional_sites" site WHERE site."primaryAuditId" = "source".id
+    AND site."claimedProjectId" = "source"."projectId")
+  AND NOT EXISTS (SELECT 1 FROM "run_requests" request WHERE request."auditId" = "source".id AND (
+    (request."verificationTarget" IS NOT NULL AND request."verificationTarget" <> 'null'::jsonb)
+    OR request."executionSpec"->>'scope' = 'FIXTURE_SETUP'
+    OR EXISTS (SELECT 1 FROM "run_request_outcomes" selection WHERE selection."runRequestId" = request.id)
+  ))
+))`

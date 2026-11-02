@@ -167,6 +167,7 @@ describe('loadSiteSummaries', () => {
       }])
     const flag = { id: 'source-flag', auditId: 'source-audit', status: 'FIXED', resolvedInId: 'recovery', severity: 'IMPORTANT', confidence: 1,
       pageUrl: 'https://one.example/', ...runPerformanceChecks(measurement, null, 'https://one.example/')[0], rubric: 'PERFORMANCE', impactTag: 'PERFORMANCE' }
+    mocks.flagFindMany.mockImplementation(async args => args.select.audit ? [] : [flag])
     mocks.improvementFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, fingerprint: 'title', outcomeId: null,
       occurrences: [{ flag }] })))
     const sites = await loadSiteSummaries('user-1')
@@ -179,12 +180,23 @@ describe('loadSiteSummaries', () => {
     mocks.auditFindMany.mockReset().mockResolvedValue([audit])
     const flag = { id: 'later-flag', auditId: 'later-source', status: 'OPEN', resolvedInId: null, severity: 'IMPORTANT', confidence: 1,
       pageUrl: 'https://one.example/', checkId: 'broken-internal-links', rubric: 'REACH', impactTag: 'SEO' }
+    mocks.flagFindMany.mockImplementation(async args => args.select.audit ? [] : [flag])
     mocks.improvementFindMany.mockResolvedValue([{ projectId: 'site-1', status: 'VERIFIED', fingerprint: 'broken-link', outcomeId: null,
       occurrences: [{ flag }], attempts: [{ outcome: 'IMPROVED', comparable: true, sourceAuditId: 'older-source', verificationAuditId: 'repair',
         verificationAudit: { id: 'repair', projectId: 'site-1', parentId: 'older-source', status: 'COMPLETED' } }] }])
     const site = (await loadSiteSummaries('user-1')).find(value => value.id === 'site-1')!
     expect(site.presentation.flags.count).toBe(1)
     expect(site.presentation.result.state).toBe('flags')
+  })
+  it('keeps missing selected evidence incomplete rather than inventing a clear result', async () => {
+    const audit = completedAudit()
+    mocks.auditFindMany.mockReset().mockResolvedValue([audit])
+    mocks.improvementFindMany.mockResolvedValue([{ projectId: 'site-1', status: 'PROPOSED', fingerprint: 'missing-source', outcomeId: null,
+      occurrences: [{ flag: { id: 'deleted-flag', auditId: 'source', status: 'OPEN', severity: 'IMPORTANT', confidence: 1,
+        pageUrl: 'https://one.example/', checkId: 'broken-internal-links', rubric: 'REACH', impactTag: 'SEO' } }] }])
+    const site = (await loadSiteSummaries('user-1')).find(value => value.id === 'site-1')!
+    expect(site.presentation.flags.count).toBe(0)
+    expect(site.presentation.result.state).toBe('could_not_verify')
   })
   it('does not turn a current broad check Clear when an enabled watched result is unavailable', async () => {
     const audit = completedAudit()

@@ -26,7 +26,7 @@ export const keyboardInteractionSchema = z.object({
 export type KeyboardInteraction = z.infer<typeof keyboardInteractionSchema>
 export const keyboardEvidenceSchema = z.object({
   version: z.literal(1), pageUrl: z.string().url(), collectedAt: z.string().datetime(),
-  focusPolicy: z.literal('painted-properties-v2').optional(),
+  focusPolicy: z.enum(['painted-properties-v2', 'painted-properties-v3']).optional(),
   scope: captureObservationScopeSchema.optional(),
   complete: z.boolean(), reason: z.string().min(1).max(160), candidateCount: z.number().int().nonnegative(),
   steps: z.array(targetSchema).max(KEYBOARD_STEP_LIMIT),
@@ -197,6 +197,27 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
           ...['::before', '::after'].map(pseudo => ({ style: getComputedStyle(node, pseudo), node, pseudo: true }))
             .filter(({ style }) => !['none', 'normal'].includes(style.content) && style.display !== 'none' && style.visibility === 'visible' && parseFloat(style.opacity) !== 0)])
         let uncertainPaint = false
+        function colorSignature(color: string) {
+          const painted = paintedColor(color)
+          if (painted === null) uncertainPaint = true
+          return painted === false ? 'transparent' : color
+        }
+        function hasText(style: CSSStyleDeclaration, node: Element, pseudo: boolean) {
+          if (!(parseFloat(style.fontSize) > 0)) return false
+          const generated = /^['"](.*)['"]$/.exec(style.content)?.[1]?.trim()
+          const directText = [...node.childNodes].some(child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim())
+          const valueText = node instanceof HTMLInputElement ? Boolean(node.value) || ['submit', 'reset'].includes(node.type)
+            : node instanceof HTMLTextAreaElement ? Boolean(node.value)
+              : node instanceof HTMLSelectElement && [...node.selectedOptions].some(option => option.textContent?.trim())
+          return Boolean(pseudo ? generated : node instanceof HTMLElement && (directText || valueText))
+        }
+        function shadowSignature(shadow: string) {
+          if (shadow === 'none') return 'none'
+          const colors = shadow.match(/(?:rgba?|hsla?|color|lab|lch|oklab|oklch)\([^)]*\)/g)
+          if (!colors || colors.some(color => paintedColor(color) === null)) uncertainPaint = true
+          else if (colors.every(color => paintedColor(color) === false)) return 'none'
+          return shadow
+        }
         function signature({ style, node, pseudo }: { style: CSSStyleDeclaration; node: Element; pseudo: boolean }) {
           const outline = paintedOutline(style, node)
           if (outline === null) uncertainPaint = true
@@ -214,22 +235,29 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
             [style.width, style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth].every(value => parseFloat(value) === 0) ||
             [style.height, style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth].every(value => parseFloat(value) === 0)
           ) : rect.width === 0 || rect.height === 0
-          return [...borders, ...properties.map(key => {
+          const svg = !pseudo && (node instanceof SVGGeometryElement || node instanceof SVGTextContentElement &&
+            [...node.childNodes].some(child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()))
+          const svgPaint = svg ? [
+            style.fill === 'none' || rect.width === 0 || rect.height === 0 ? 'none' : colorSignature(style.fill),
+            style.stroke === 'none' || !(parseFloat(style.strokeWidth) > 0) || rect.width === 0 && rect.height === 0
+              ? 'none' : colorSignature(style.stroke),
+          ] : []
+          const text = hasText(style, node, pseudo)
+          return [...borders, ...svgPaint, text ? shadowSignature(style.textShadow) : 'none', ...properties.map(key => {
             if (key.startsWith('outline')) {
               return outline ? style[key] : 'none'
             }
-            if (key === 'boxShadow' && style.boxShadow !== 'none') {
-              const colors = style.boxShadow.match(/(?:rgba?|hsla?|color|lab|lch|oklab|oklch)\([^)]*\)/g)
-              if (!colors || colors.some(color => paintedColor(color) === null)) uncertainPaint = true
-              else if (colors.every(color => paintedColor(color) === false)) return 'none'
+            if (key === 'boxShadow') return shadowSignature(style.boxShadow)
+            // Chromium paints glyphs with text-fill-color, which can override
+            // color. Empty boxes and fixed-fill icons do not paint that property.
+            if (key === 'color') return text ? colorSignature(style.webkitTextFillColor || style.color) : 'none'
+            if (key === 'backgroundColor') return emptyBackground ? 'transparent' : colorSignature(style[key])
+            if (key === 'textDecoration') {
+              const decoratedText = text || !pseudo && styles.some(child => contains(node, child.node) && hasText(child.style, child.node, child.pseudo))
+              if (!decoratedText || style.textDecorationLine === 'none') return 'none'
+              const color = colorSignature(style.textDecorationColor)
+              return color === 'transparent' ? 'none' : [style.textDecorationLine, style.textDecorationStyle, color, style.textDecorationThickness].join(':')
             }
-            if (key === 'backgroundColor' || key === 'color') {
-              if (key === 'backgroundColor' && emptyBackground) return 'transparent'
-              const painted = paintedColor(style[key])
-              if (painted === null) uncertainPaint = true
-              if (painted === false) return 'transparent'
-            }
-            if (key === 'textDecoration' && style.textDecorationLine === 'none') return 'none'
             return style[key]
           })].join('|')
         }
@@ -575,7 +603,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       if (reason === 'document_boundary_observed') reason = 'focus_indicator_unresolved'
     }
     const capture = auditPageObservation(page)
-    return keyboardEvidenceSchema.parse({ version: 1, focusPolicy: 'painted-properties-v2', pageUrl, collectedAt, complete, reason, navigationComplete,
+    return keyboardEvidenceSchema.parse({ version: 1, focusPolicy: 'painted-properties-v3', pageUrl, collectedAt, complete, reason, navigationComplete,
       ...(capture && !capture.restricted && capture.scope.finalUrl === pageUrl ? { scope: capture.scope } : {}),
       candidateCount: initial.count, steps, trap, limitations: initial.limitations,
       interactionCount: openerCount, interactions })

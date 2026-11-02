@@ -1,7 +1,9 @@
 import { getAppUrl } from '@/lib/get-app-url'
 import { brandLight } from '@/lib/design/brand-spec'
 import { NOTIFICATION_EMAIL_COPY as C } from '@/lib/marketing/copy/notification-emails'
-import { emailButtonStyle, emailLayout, escapeEmailHtml } from './layout'
+import { emailButtonStyle, emailLayout, escapeEmailHtml, formatEmailDate } from './layout'
+import { emailContent } from './content'
+import { emailChangeBlock, emailNotificationHeading } from './notification-parts'
 
 type Finding = { id?: string; problem?: string }
 export function siteNotificationEmail(input: {
@@ -12,16 +14,27 @@ export function siteNotificationEmail(input: {
   const appUrl = getAppUrl()
   const href = (id?: string) => `${appUrl}/sites/${encodeURIComponent(input.projectId)}/flags${id ? `/${encodeURIComponent(id)}` : ''}?source=watch-email`
   const leadFlag = [...input.regressions, ...input.recoveries].find(flag => flag.id)
-  const lead = C.lead(host, input.regressions.length, input.recoveries.length)
-  const greeting = `Hi${input.name ? ` ${input.name}` : ''},`
-  const checked = input.checkedAt ? C.checked(input.checkedAt.toISOString()) : ''
-  const rows = (findings: Finding[], heading: string) => findings.length
-    ? `<h2 style="font-size:16px;">${heading}</h2><ul>${findings.filter(flag => flag.problem).map(flag => `<li><a href="${escapeEmailHtml(href(flag.id))}" style="color:${brandLight.link};">${escapeEmailHtml(flag.problem!)}</a></li>`).join('')}</ul>` : ''
-  const textRows = (findings: Finding[], heading: string) => findings.length
-    ? `\n${heading}\n${findings.filter(flag => flag.problem).map(flag => `- ${flag.problem}\n  ${href(flag.id)}`).join('\n')}\n` : ''
+  const heading = C.heading(input.regressions.length, input.recoveries.length)
+  const greeting = C.greeting(input.name?.slice(0, 120) ?? null)
+  const checked = input.checkedAt ? C.checked(formatEmailDate(input.checkedAt)) : ''
+  const visibleRegressions = input.regressions.slice(0, 8)
+  const visibleRecoveries = input.recoveries.slice(0, 8 - visibleRegressions.length)
+  const remaining = input.regressions.length + input.recoveries.length - visibleRegressions.length - visibleRecoveries.length
+  const preferencesUrl = `${appUrl}/sites/${encodeURIComponent(input.projectId)}/settings`
+  const regressions = visibleRegressions.map(flag => emailChangeBlock({
+    now: { text: flag.problem?.slice(0, 240) || C.missingProblem, href: href(flag.id) },
+  })).join('')
+  const recoveries = visibleRecoveries.map(flag => emailChangeBlock({
+    before: { label: C.before, text: flag.problem?.slice(0, 240) || C.previousProblem, href: href(flag.id) },
+    now: { label: C.now, text: C.recoveredResult }, improved: true,
+  })).join('')
+  const section = (title: string, content: string) => content
+    ? `<h2 style="margin:28px 0 8px;font-size:16px;">${title}</h2>${content}` : ''
+  const mixed = Boolean(regressions && recoveries)
+  const action = leadFlag?.id ? C.evidence : C.flags
+  const html = emailLayout(`<p style="margin:0 0 24px;">${escapeEmailHtml(greeting)}</p>${emailNotificationHeading(host, heading)}${mixed ? section(C.attention, regressions) + section(C.recovery, recoveries) : regressions + recoveries}${remaining ? `<p>${C.more(remaining)}</p>` : ''}${checked ? `<p style="font-size:13px;color:${brandLight.mutedForeground};">${escapeEmailHtml(checked)}</p>` : ''}<p style="margin:24px 0 0;"><a href="${escapeEmailHtml(href(leadFlag?.id))}" style="${emailButtonStyle}">${action}</a></p>`, { preview: heading, preferencesUrl })
   return {
-    subject: C.subject(host, input.regressions.length),
-    html: emailLayout(`<p>${escapeEmailHtml(greeting)}</p><p>${escapeEmailHtml(lead)}</p>${rows(input.regressions, C.attention)}${rows(input.recoveries, C.recovery)}${checked ? `<p>${escapeEmailHtml(checked)}</p>` : ''}<p><a href="${escapeEmailHtml(href(leadFlag?.id))}" style="${emailButtonStyle}">${leadFlag?.id ? C.evidence : C.flags}</a></p>`),
-    text: `${greeting}\n\n${lead}\n${textRows(input.regressions, C.attention)}${textRows(input.recoveries, C.recovery)}\n${checked}\n${C.evidence}: ${href(leadFlag?.id)}`,
+    subject: C.subject(host, input.regressions.length, input.recoveries.length),
+    ...emailContent(html),
   }
 }

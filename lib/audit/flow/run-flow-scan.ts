@@ -102,6 +102,7 @@ export interface RunFlowScanOptions {
   /** A repair checks the original recorded control rather than today's top CTA. */
   expectedActionContexts?: string[]
   expectedPricingContexts?: string[]
+  excludedActionContexts?: readonly string[]
   mode?: 'primary' | 'destination' | 'pricing'
   captureSteps?: boolean
   /** Optional asset prefix; each captured walk retains a distinct identity. */
@@ -201,7 +202,7 @@ async function runFlowScanWithinBudget(
 
   const landingUrl = page.url()
   const multiStep: MultiStepProbeResult | undefined = options.mode === 'pricing'
-    ? { ...await probePricingNav(page, options.overlayRecorder, options.expectedPricingContexts), mobileMenu: 'skipped', formValidation: 'skipped' }
+    ? { ...await probePricingNav(page, options.overlayRecorder, options.expectedPricingContexts, options.excludedActionContexts), mobileMenu: 'skipped', formValidation: 'skipped' }
     : options.mode ? undefined : await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation, includeMobileNavigation: options.includeMobileNavigation,
       includePricingNavigation: options.includePricingNavigation, overlayRecorder: options.overlayRecorder, overlayOnly: options.overlayOnly })
   if (options.mode === 'pricing' || page.url() !== landingUrl)
@@ -226,9 +227,10 @@ async function runFlowScanWithinBudget(
     return index == null ? [] : [Number(index)]
   }), originalActions.map(target => target.selector)) : undefined
   const cta = originalIndexes ? candidates.find(candidate => originalIndexes.includes(candidate.flowIdx)) ?? null
-    : options.expectedActionContexts ? candidates.find(candidate => candidate.context && options.expectedActionContexts!.includes(candidate.context)) ?? null : rankCtaCandidate(candidates)
+    : options.expectedActionContexts ? candidates.find(candidate => candidate.context && options.expectedActionContexts!.includes(candidate.context)) ?? null
+      : rankCtaCandidate(candidates.filter(candidate => !candidate.context || !options.excludedActionContexts?.includes(candidate.context)))
   if (!cta) {
-    return { status: options.expectedActionContexts ? 'skipped' : 'no_cta', steps, finalUrl: page.url(), multiStep, actionEvidence }
+    return { status: options.expectedActionContexts || candidates.length && options.excludedActionContexts?.length ? 'skipped' : 'no_cta', steps, finalUrl: page.url(), multiStep, actionEvidence }
   }
 
   const selector = flowCtaSelector(cta.flowIdx)

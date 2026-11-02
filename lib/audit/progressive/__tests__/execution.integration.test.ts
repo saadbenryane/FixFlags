@@ -74,6 +74,7 @@ import { POST as handleMcpPost } from '@/app/api/mcp/route'
 import { generateApiKey } from '@/lib/security/api-keys'
 import { getAppUrl } from '@/lib/get-app-url'
 import { MCP_PROTOCOL_VERSION, MCP_TOOLS } from '@/lib/mcp/tool-manifest'
+import { repairBriefSchema } from '@/lib/sites/repair-brief-contract'
 import { runSlowReplay } from '@/lib/audit/flow/slow-replay-probe'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
@@ -717,7 +718,7 @@ run('migrated progressive execution', () => {
     } else if (req.url === '/keyboard') {
       res.setHeader('content-type', 'text/html')
       res.end('<!doctype html><html lang="en"><head><title>Keyboard fixture</title><style>' +
-        '#first,#second{border:0 solid red;text-decoration:none red}#first:focus-visible,#second:focus-visible{border-color:blue;text-decoration-color:blue}' +
+        '#first,#second{border:0 solid red;text-decoration:none red;-webkit-text-fill-color:black}#first:focus-visible,#second:focus-visible{border-color:blue;text-decoration-color:blue;color:blue}' +
         '#first::after{content:"";display:block;width:0;height:0}#first:focus-visible::after{background:blue}' +
         '#first:focus-visible,#second:focus-visible {' +
         (focusRepaired ? 'outline:3px solid blue;outline-offset:2px' : 'outline:3px solid white;outline-offset:2px;box-shadow:none') +
@@ -1199,9 +1200,9 @@ run('migrated progressive execution', () => {
       expect(flag).toMatchObject({ source: 'DETERMINISTIC', pageUrl: origin + '/keyboard-entry',
         evidenceTargets: [{ selector: '#first', source: 'measured' }, { selector: '#second', source: 'measured' }] })
       expect(flag.fix).toContain(':focus-visible')
-      expect(JSON.stringify(flag.evidenceTargets)).toContain(':focus:painted-properties-v2')
+      expect(JSON.stringify(flag.evidenceTargets)).toContain(':focus:painted-properties-v3')
       const ineffective = await recordSiteFlagFix({ siteId: keyboardSiteId, flagId: flag.id, userId: keyboardUserId,
-        idempotencyKey: 'keyboard-unpainted-fix', changeSummary: 'Change declared border and decoration colors without painting a focus cue' })
+        idempotencyKey: 'keyboard-unpainted-fix', changeSummary: 'Change unused text, border and decoration colors without painting a focus cue' })
       const unchanged = await requestSiteRun({ projectId: keyboardSiteId, userId: keyboardUserId, outcomeIds: [], source: 'WEB',
         idempotencyKey: 'keyboard-unpainted-verification', verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: flag.pageUrl!,
           checkId: flag.checkId!, attemptId: ineffective.attemptId, parentAuditId: beforeId } })
@@ -2640,7 +2641,7 @@ run('migrated progressive execution', () => {
       expect(providerRequests).toHaveLength(5)
       for (const request of providerRequests) {
         expect(request.key).toBe(`fixflags-watch-${auditId}-v1`)
-        expect(request.body).toMatchObject({ to: userId + '@example.test', subject: 'Needs attention on example.com: 1 Flag',
+        expect(request.body).toMatchObject({ to: userId + '@example.test', subject: 'example.com: 1 problem to review',
           html: expect.stringContaining(`/sites/${projectId}/flags/${flag.id}?source=watch-email`) })
       }
 
@@ -4728,13 +4729,18 @@ run('migrated progressive execution', () => {
       await materializeAttentionForAudit(source.id)
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: finding.checkId }, include: { improvementOccurrence: true } })
       const flagId = flag.improvementOccurrence!.improvementId
-      expect((await invoke(MCP_TOOLS.getFlag.name, { siteId, flagId }, reader.raw)).flag).toMatchObject({
+      const retrieved = await invoke(MCP_TOOLS.getFlag.name, { siteId, flagId }, reader.raw)
+      expect(retrieved.flag).toMatchObject({
         sourceFlagId: flag.id, status: 'PROPOSED', verificationState: 'still_open', sourceAuditId: source.id, affectedPaths: [pageUrl],
       })
-      const change = { siteId, flagId, idempotencyKey: 'mcp-repair-intent', changeSummary: 'Restore the recorded response header' }
+      const brief = repairBriefSchema.parse(retrieved.repairBrief)
+      const change = { ...brief.verification.afterDeployment.arguments, idempotencyKey: 'mcp-repair-intent', changeSummary: 'Restore the recorded response header' }
       const denied = await call(reader.raw, MCP_TOOLS.recordFix.name, change)
       expect(denied.response.status).toBe(403)
       expect(denied.body.error).toMatchObject({ data: { code: 'INSUFFICIENT_SCOPE' } })
+      expect(await prisma.improvementAttempt.count({ where: { improvementId: flagId } })).toBe(0)
+      const changed = await call(writer.raw, MCP_TOOLS.recordFix.name, { ...change, expectedContextHash: '0'.repeat(64) })
+      expect(changed.body.result).toMatchObject({ isError: true, structuredContent: { error: { code: 'REPAIR_CONTEXT_CHANGED', action: 'prepare_new_prompt' } } })
       expect(await prisma.improvementAttempt.count({ where: { improvementId: flagId } })).toBe(0)
       const recorded = await invoke(MCP_TOOLS.recordFix.name, change)
       const next = recorded.next as { tool: string; arguments: Record<string, unknown> }
@@ -4751,6 +4757,7 @@ run('migrated progressive execution', () => {
         sourceFlagId: flag.id, status: 'FIXED', verificationState: 'verified', sourceAuditId: source.id,
         attempts: expect.arrayContaining([expect.objectContaining({ id: recorded.attemptId, outcome: 'IMPROVED', comparable: true })]),
       })
+      expect(await invoke(MCP_TOOLS.recordFix.name, change)).toMatchObject({ attemptId: recorded.attemptId, sourceAuditId: source.id, outcome: 'IMPROVED' })
       expect(await invoke(next.tool, next.arguments)).toMatchObject({ runId: accepted.runId, auditId: accepted.auditId })
       expect(await prisma.improvementAttempt.count({ where: { improvementId: flagId } })).toBe(1)
       expect(await prisma.runRequest.count({ where: { projectId: siteId } })).toBe(1)

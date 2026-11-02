@@ -10,6 +10,7 @@ import { commitFindings } from '../results'
 import type { TaskContext } from '../registry'
 import { evaluatorHandlers } from '../evaluators'
 import { finalizeDeterministicOnly } from '../../finalize'
+import { reconcileImprovementVerification } from '@/lib/improvements/verification'
 
 const localDatabase = process.env.PROGRESSIVE_PROJECTION_DB_REQUIRED === 'true' ? describe : describe.skip
 localDatabase('bounded PostgreSQL completion projection', () => {
@@ -17,6 +18,34 @@ localDatabase('bounded PostgreSQL completion projection', () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+  })
+  it('reads repair verdicts without loading collector journals or task diagnostics', async () => {
+    const owner = await prisma.user.create({ data: { email: randomUUID() + '@example.test' } })
+    const project = await prisma.project.create({ data: { userId: owner.id, name: 'Compact verification', url: 'https://example.com/', canonicalHost: 'example.com' } })
+    const before = await prisma.audit.create({ data: { projectId: project.id, url: project.url, status: 'COMPLETED' } })
+    const after = await prisma.audit.create({ data: { projectId: project.id, parentId: before.id, url: project.url, status: 'COMPLETED',
+      verificationReceipts: { create: [
+        ...['check:title-missing', 'module:metadata', 'ai:retained-fingerprint'].map(targetKey => ({
+          targetKey, source: 'DETERMINISTIC', status: 'COMPLETED' as const, detail: { observation: 'Retained verdict' },
+        })),
+        { targetKey: 'artifact:flow-control', source: 'DETERMINISTIC', status: 'COMPLETED', detail: { collector: 'x'.repeat(2_000_000) } },
+      ] }, executionTasks: { create: { targetKey: 'task:collector', source: 'DETERMINISTIC', status: 'COMPLETED',
+        detail: { diagnostic: 'x'.repeat(100_000) } } },
+    } })
+    const read = vi.spyOn(prisma.audit, 'findUnique')
+    try {
+      await expect(reconcileImprovementVerification({ parentAuditId: before.id, verificationAuditId: after.id })).resolves.toEqual([])
+      const index = read.mock.calls.findIndex(([input]) => input.where.id === after.id)
+      expect(index).toBeGreaterThanOrEqual(0)
+      const projected = await read.mock.results[index].value as unknown as { verificationReceipts: Array<{ targetKey: string }> }
+      expect(projected.verificationReceipts.map(row => row.targetKey).sort()).toEqual(['ai:retained-fingerprint', 'check:title-missing', 'module:metadata'])
+      expect(Buffer.byteLength(JSON.stringify(projected))).toBeLessThan(4096)
+    } finally {
+      read.mockRestore()
+      await prisma.audit.deleteMany({ where: { projectId: project.id } })
+      await prisma.project.delete({ where: { id: project.id } })
+      await prisma.user.delete({ where: { id: owner.id } })
+    }
   })
   it('retains recorded coverage gaps when a deterministic finalizer has every required collector', async () => {
     const audit = await prisma.audit.create({ data: { url: 'https://example.com/', status: 'FINALIZING', failedModules: ['performance'] } })
@@ -142,7 +171,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       ) ON COMMIT DROP`
       await tx.$executeRaw`CREATE TEMP TABLE audit_verifier_executions (
         "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "status" text,
-        "taskId" text, "detail" jsonb, "evidenceReference" jsonb
+        "taskId" text, "detail" jsonb, "evidenceReference" jsonb, "createdAt" timestamp DEFAULT now()
       ) ON COMMIT DROP`
       const input = JSON.stringify({ position: 0, pageUrl: url, primary: true, role: 'primary' })
       const browser = JSON.stringify(serializeArtifact('browser', { pageId: 'page', metadata,

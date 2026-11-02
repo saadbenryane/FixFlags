@@ -1,3 +1,4 @@
+import { emailContent } from '@/lib/email/content'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
@@ -60,20 +61,21 @@ async function sendDemoEmails(input: {
 
   if (notifyTo) {
     try {
-      const { error } = await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: notifyTo,
         subject: DEMO_EMAILS.notify.subject(planName),
-        html: DEMO_EMAILS.notify.html({
+        ...emailContent(DEMO_EMAILS.notify.html({
           name: input.name,
           email: input.email,
           website: input.website,
           planLabel: planName,
           siteCount: input.siteCount,
           note: input.note ?? null,
-        }),
+        })),
       })
       if (error) throw new Error(error.message)
+      if (!data?.id) throw new Error('Email provider did not confirm acceptance')
       notified = true
     } catch (error) {
       logger.warn('Could not send demo request notify email', error)
@@ -83,13 +85,14 @@ async function sendDemoEmails(input: {
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: input.email,
       subject: DEMO_EMAILS.confirm.subject,
-      html: DEMO_EMAILS.confirm.html(input.name, planName),
+      ...emailContent(DEMO_EMAILS.confirm.html(input.name, planName)),
     })
     if (error) throw new Error(error.message)
+      if (!data?.id) throw new Error('Email provider did not confirm acceptance')
     confirmed = true
   } catch (error) {
     logger.warn('Could not send demo request confirmation email', error)

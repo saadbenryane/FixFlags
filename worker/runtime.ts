@@ -24,6 +24,7 @@ export interface WorkerRuntimeDependencies {
   onReady?(): void
   onStopping?(): void
   shutdownMs?: number
+  publishState?(state: 'starting' | 'ready' | 'stopping'): void
 }
 
 /** Supervise startup and draining without exposing process globals to tests. */
@@ -33,9 +34,11 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   let shuttingDown = false, startPromise: Promise<void> | undefined, stopPromise: Promise<void> | undefined
   let interruptStartup!: () => void
   const interrupted = new Promise<void>(resolve => { interruptStartup = resolve })
+  let readinessTimer: ReturnType<typeof setInterval> | undefined
 
   async function runStart() {
     if (shuttingDown) return
+    dependencies.publishState?.('starting')
     dependencies.validateEnvironment()
     dependencies.logger.info('Worker starting')
     await dependencies.preflight()
@@ -45,6 +48,9 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     if (shuttingDown) return
     scheduler = dependencies.startScheduler()
     dependencies.onReady?.()
+    dependencies.publishState?.('ready')
+    readinessTimer = setInterval(() => dependencies.publishState?.('ready'), 10_000)
+    readinessTimer.unref?.()
     dependencies.logger.info('Worker ready, listening for audit jobs')
   }
   function start() { return startPromise ??= runStart() }
@@ -54,6 +60,8 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     shuttingDown = true
     interruptStartup()
     dependencies.onStopping?.()
+    clearInterval(readinessTimer)
+    dependencies.publishState?.('stopping')
     dependencies.logger.info('Worker stopping intake and draining active work')
     stopPromise = (async () => {
       const timeout = setTimeout(() => {

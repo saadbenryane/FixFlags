@@ -15,10 +15,11 @@ function main() {
   for (const item of ADVERTISED_COVERAGE_REGISTRY.values()) if (item.extent === 'partial')
     console.log(`  Incomplete: ${item.id}. ${item.limitation}`)
   console.log(
-    `Implementation capabilities: ${summary.totalCapabilities} (${summary.byStatus.live} implemented, ${summary.byStatus.partial} partial, ${summary.byStatus.planned} planned)\n`
+    `Capabilities: ${summary.totalCapabilities} (${summary.byImplementation.implemented} implemented, ${summary.byImplementation.partial} partial, ${summary.byImplementation.planned} planned)\n`
   )
   console.log('Implementation status does not establish runtime eligibility, customer availability, consent or acceptance.\n')
 
+  console.log('Implementation inventory only. Runtime eligibility, consent, release policy and actual execution evidence remain separate.\n')
   console.log('By tool:')
   for (const [tool, count] of [...summary.byTool.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     console.log(`  ${pad(tool, 18)} ${count}`)
@@ -28,17 +29,17 @@ function main() {
     console.log(`\nChecks not yet mapped to a capability: ${summary.unmapped.join(', ')}`)
   }
 
-  console.log('\nImplementation catalog\n')
-  const col = { status: 13, tool: 18, dim: 12, category: 16 }
+  console.log('\n--- Capabilities ---\n')
+  const col = { status: 12, tool: 18, dim: 12, category: 16 }
   console.log(
-    `${pad('STATUS', col.status)} ${pad('TOOL', col.tool)} ${pad('DIMENSION', col.dim)} ${pad('CATEGORY', col.category)} LABEL`
+    `${pad('IMPLEMENTATION', col.status)} ${pad('TOOL', col.tool)} ${pad('DIMENSION', col.dim)} ${pad('CATEGORY', col.category)} LABEL`
   )
 
   for (const cap of AUDIT_CAPABILITIES) {
     const checks =
       cap.checkIds.length > 0 ? ` [${cap.checkIds.join(', ')}]` : cap.notes ? ` (${cap.notes})` : ''
     console.log(
-      `${pad(cap.status === 'live' ? 'implemented' : cap.status, col.status)} ${pad(cap.tool, col.tool)} ${pad(cap.dimension, col.dim)} ${pad(cap.category, col.category)} ${cap.label}${checks}`
+      `${pad(cap.implementation, col.status)} ${pad(cap.tool, col.tool)} ${pad(cap.dimension, col.dim)} ${pad(cap.category, col.category)} ${cap.label}${checks}`
     )
     if (cap.verify) console.log(`         verify: ${cap.verify}`)
   }

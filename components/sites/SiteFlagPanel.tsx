@@ -34,13 +34,13 @@ export function SiteFlagPanel({ siteId, flagId, view, onClose, restoreFocus, ret
     {flag ? <>
       {flag.status === 'FIXED' ? <p role="status" className="rounded-control bg-muted/30 p-4 text-sm">{C.flagResolved}</p> : null}
       <section className="space-y-3" aria-label={SITE_BOARD_COPY.flagEvidence}>
-        <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior}
+        <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
           factsClassName="grid gap-3 text-sm sm:grid-cols-2 [&>div]:rounded-control [&>div]:bg-muted/30 [&>div]:p-4"
           observedLabel={flag.status === 'FIXED' ? C.previousObservation : undefined}
           supportingObservations={flag.supportingObservations.map(item => ({ ...item, references: item.references.map(reference => ({ ...reference, selector: reference.selector })) }))} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
       </section>
       {view.actions.copy === 'available' && !['FIXED', 'VERIFIED', 'DISMISSED'].includes(flag.status) ? <SiteFlagActions compact key={key}
-        siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
+        siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} referenceFlagId={flagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
         initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={flag.verifying} /> :
         view.actions.copy !== 'available' ? <SitePromptAccessActions availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
       <details className="text-sm"><summary className="flex min-h-11 cursor-pointer items-center font-medium">{C.evidenceDetails}</summary>

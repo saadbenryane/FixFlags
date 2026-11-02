@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url'
 
 const ALLOWED_TOOLCHAIN_ADVISORIES = new Map([
   ['braces', new Set(['https://github.com/advisories/GHSA-vfj7-8cjw-p6xm'])],
+  // Legacy ESLint adapters require minimatch's callable v3 API. These build-only
+  // callers use repository-owned glob patterns, never customer-supplied patterns.
+  // Runtime audit remains independent and does not accept this exception.
+  ['minimatch', new Set(['https://github.com/advisories/GHSA-g3hv-75wg-m249'])],
 ])
 
 export function inspectToolchainAudit(report) {

@@ -1,21 +1,41 @@
 import { describe, expect, it, vi } from 'vitest'
 const findMany = vi.hoisted(() => vi.fn().mockResolvedValue([]))
-const auditRead = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/db', () => ({ prisma: { audit: { findFirst: auditRead }, auditExecutionTask: { groupBy: vi.fn(async () => []) },
-  auditPipelineEvent: { findMany, findFirst: vi.fn(async () => null) } } }))
-import { loadExecutionProgress, readSiteEvents, decodeEventCursor, encodeEventCursor } from '../execution-progress'
+const progress = vi.hoisted(() => ({ audit: vi.fn(), tasks: vi.fn(), counts: vi.fn(), event: vi.fn().mockResolvedValue(null) }))
+vi.mock('@/lib/db', () => ({ prisma: { auditPipelineEvent: { findMany, findFirst: progress.event }, audit: { findFirst: progress.audit },
+  $queryRaw: progress.tasks, auditExecutionTask: { groupBy: progress.counts } } }))
+import { readSiteEvents, decodeEventCursor, encodeEventCursor, loadExecutionProgress } from '../execution-progress'
+import { MAX_TASKS_PER_AUDIT } from '@/lib/audit/progressive/contracts'
 import type { SiteRecord } from '@/lib/sites/types'
+import { cardExecution } from '@/lib/sites/card-execution'
 
 describe('Site progress read boundary', () => {
-  it('projects pending primary capture work independently from linked-page collection', async () => {
-    const task = (id: string, primary: boolean, workState: string) => ({ id, workKind: 'captures', status: 'COMPLETED', workState,
-      workInput: { pageUrl: 'https://example.com/' + id, position: primary ? 0 : 1, primary, role: primary ? 'primary' : 'linked' },
+  it('projects primary capture work independently from linked-page collection', async () => {
+    const task = (id: string, primary: boolean, workState: string) => ({ id, primary, workKind: 'captures', status: 'COMPLETED', workState,
+      pageUrl: 'https://example.com/' + id, module: null, device: null,
       workAttempts: 1, workErrorCode: null, workRetryAt: null })
     const site = { siteId: 'site-one', projectId: 'project-one' } as SiteRecord
-    auditRead.mockResolvedValue({ status: 'CHECKING', recoveryUntil: null, executionTasks: [task('primary', true, 'RUNNING'), task('linked', false, 'EXHAUSTED')] })
+    progress.audit.mockResolvedValue({ status: 'CHECKING', recoveryUntil: null })
+    progress.counts.mockResolvedValue([{ status: 'COMPLETED', workState: 'RUNNING', workErrorCode: null, _count: { _all: 2 } }])
+    progress.tasks.mockResolvedValue([task('primary', true, 'RUNNING'), task('linked', false, 'EXHAUSTED')])
     expect((await loadExecutionProgress(site, 'audit'))?.captureState).toBe('pending')
-    auditRead.mockResolvedValue({ status: 'CHECKING', recoveryUntil: null, executionTasks: [task('primary', true, 'COMPLETED'), task('linked', false, 'RUNNING')] })
+    progress.tasks.mockResolvedValue([task('primary', true, 'COMPLETED'), task('linked', false, 'RUNNING')])
     expect((await loadExecutionProgress(site, 'audit'))?.captureState).toBe('not_recorded')
+  })
+  it('keeps recovery from a late task visible across the complete supported graph', async () => {
+    const rows = Array.from({ length: MAX_TASKS_PER_AUDIT }, (_, index) => ({ id: 'task-' + index, status: 'COMPLETED', workState: 'COMPLETED',
+      workKind: 'check', pageUrl: 'https://example.com/', module: 'metadata', device: null,
+      workAttempts: 1, workErrorCode: null as string | null, workRetryAt: null }))
+    Object.assign(rows.at(-1)!, { status: 'FAILED', workState: 'BLOCKED', workErrorCode: 'STORAGE_NOT_CONFIGURED' })
+    Object.assign(rows.at(-2)!, { status: 'RUNNING', workState: 'RUNNING', workKind: 'pagespeed', module: null })
+    progress.audit.mockResolvedValue({ recoveryUntil: null })
+    progress.tasks.mockImplementation((_query: unknown, ...values: unknown[]) => Promise.resolve(rows.slice(0, Number(values.at(-1)))))
+    progress.counts.mockResolvedValue([{ status: 'COMPLETED', workState: 'COMPLETED', workErrorCode: null, _count: { _all: rows.length - 2 } },
+      { status: 'RUNNING', workState: 'RUNNING', workErrorCode: null, _count: { _all: 1 } },
+      { status: 'FAILED', workState: 'BLOCKED', workErrorCode: 'STORAGE_NOT_CONFIGURED', _count: { _all: 1 } }])
+    const result = await loadExecutionProgress({ siteId: 'site-one', projectId: 'project-one' } as SiteRecord, 'audit-one')
+    expect(result).toMatchObject({ total: MAX_TASKS_PER_AUDIT, recovery: { action: 'support', reasons: ['STORAGE_NOT_CONFIGURED'] } })
+    expect(result?.tasks).toHaveLength(100)
+    expect(cardExecution('performance', result)?.status).toBe('Running')
   })
   it('scopes owned events to the exact Project and bounds replay', async () => {
     await readSiteEvents({ siteId: 'site-one', projectId: 'project-one' } as SiteRecord, BigInt(7))

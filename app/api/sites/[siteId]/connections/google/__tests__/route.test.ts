@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const integrationRelease = vi.hoisted(() => vi.fn(() => 'available'))
 vi.mock('@/lib/integrations/release-policy', () => ({ integrationRelease }))
-const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), connection: vi.fn(), update: vi.fn(), token: vi.fn(), revoke: vi.fn() }))
+const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), connection: vi.fn(), update: vi.fn(), token: vi.fn(), sync: vi.fn(), revoke: vi.fn() }))
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: mocks.session } } }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.access }))
@@ -10,13 +10,14 @@ vi.mock('@/lib/db', () => ({ prisma: { siteConnection: { findUnique: mocks.conne
 vi.mock('@/lib/security/crypto', () => ({ decryptSecret: () => 'fixture-revocation-token' }))
 vi.mock('@/lib/sites/connections/google', async importOriginal => ({
   ...await importOriginal<object>(), googleConnectionConfigured: () => true,
-  accessTokenForConnection: mocks.token, liveGoogleClient: () => ({ revoke: mocks.revoke }),
+  getGoogleConnectionAccess: mocks.token, liveGoogleClient: () => ({ revoke: mocks.revoke }),
+  syncGoogleConnection: mocks.sync,
 }))
 
 import { DELETE, POST } from '../route'
 import { GoogleProviderError } from '@/lib/integrations/google-response'
 
-const connection = { id: 'connection-1', projectId: 'project-1', authorizedByUserId: 'owner', provider: 'ANALYTICS', status: 'CONNECTED',
+const connection = { id: 'connection-1', authorizationId: 'fixture-authorization', projectId: 'project-1', authorizedByUserId: 'owner', provider: 'ANALYTICS', status: 'CONNECTED',
   encryptedAccessToken: 'fixture-encrypted-access', encryptedRefreshToken: 'fixture-encrypted-refresh', tokenExpiresAt: new Date(0) }
 const context = { params: Promise.resolve({ siteId: 'project-1' }) }
 const request = (method: string, action?: string) => new Request('http://localhost/api/sites/project-1/connections/google', {
@@ -42,10 +43,21 @@ beforeEach(() => {
   mocks.connection.mockResolvedValue(connection)
   mocks.update.mockResolvedValue({ count: 1 })
   mocks.token.mockResolvedValue(null)
+  mocks.sync.mockResolvedValue({ status: 'CONNECTED', detail: 'Recorded provider context.' })
   mocks.revoke.mockResolvedValue(undefined)
 })
 
 describe('Google connection action ownership', () => {
+  it('passes the selected request token from the credential snapshot to context collection', async () => {
+    mocks.token.mockResolvedValue({ token: 'fixture-selected-access', grant: { ...connection,
+      encryptedAccessToken: 'fixture-selected-ciphertext', encryptedRefreshToken: 'fixture-rotated-ciphertext' } })
+    const response = await POST(request('POST', 'sync'), context)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ status: 'connected', detail: 'Recorded provider context.' })
+    expect(mocks.sync).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'fixture-selected-access',
+      connectionId: connection.id, userId: 'owner' }))
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
   it.each(['PROVIDER_UNAVAILABLE', 'PROVIDER_QUOTA', 'MALFORMED_PROVIDER_RESPONSE'] as const)('does not revoke permission when refresh reports %s', async code => {
     mocks.token.mockRejectedValue(new GoogleProviderError(code, 13_100))
     const response = await POST(request('POST', 'sync'), context)

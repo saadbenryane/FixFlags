@@ -301,6 +301,63 @@ describe('durable bounded work contracts', () => {
     validateTaskGraph(graph)
   })
 
+  it('isolates distinct original controls on each repair page while sharing collector dependencies', () => {
+    const peer = 'https://example.com/other'
+    for (const [checkId, prefix, module] of [['flow-form-no-validation', 'form:', 'form-validation'],
+      ['flow-cta-404', 'flow:control:', undefined], ['flow-pricing-nav-broken', 'flow:pricing:v1:', 'pricing-navigation']] as const) {
+      const contexts = ['a', 'b'].map(value => prefix + value.repeat(64))
+      const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+        scope: 'DIAGNOSTIC', checks: { [checkId]: 1 }, outcomes: [],
+        verificationScopes: [{ pageUrl: input.pageUrl, phases: [module === 'form-validation' ? 'page_load' : 'public_action'], actionContexts: [...contexts, contexts[0]] },
+          { pageUrl: peer, phases: [module === 'form-validation' ? 'page_load' : 'public_action'], actionContexts: [prefix + 'c'.repeat(64)] }],
+        verificationTarget: { kind: 'DIAGNOSTIC', checkId, pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+      const controls = graph.filter(task => task.kind === 'flow')
+      expect(controls.filter(task => task.input.pageUrl === input.pageUrl).flatMap(task => task.input.verificationContexts ?? [])).toEqual(contexts)
+      expect(controls.filter(task => task.input.pageUrl === peer)).toHaveLength(1)
+      expect(controls.every(task => task.input.module === module)).toBe(true)
+      expect(graph.find(task => task.kind === 'finalize')!.dependencies).toEqual(graph.filter(task => task.kind !== 'finalize').map(task => task.key))
+      if (!module) {
+        expect(graph.filter(task => task.kind === 'browser')).toHaveLength(2)
+        expect(controls.filter(task => task.input.pageUrl === input.pageUrl).every(task => task.dependencies.includes('p0:browser'))).toBe(true)
+      } else expect(graph.some(task => task.kind === 'browser')).toBe(false)
+      validateTaskGraph(graph)
+    }
+  })
+
+  it('keeps discovery and known control tasks in the ordinary care graph and waits for both before explanation', () => {
+    const contexts = ['form:', 'flow:control:', 'flow:pricing:v1:'].map((prefix, index) => prefix + String(index).repeat(64))
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+      scope: 'SITE', checks: { 'flow-form-no-validation': 1, 'flow-cta-404': 1, 'flow-pricing-nav-broken': 1 }, outcomes: [], verificationTarget: null,
+      monitoringBehaviors: [{ pageUrl: input.pageUrl, behaviors: ['flow', 'pricing-navigation'], actionContexts: contexts }] })
+    const graph = initialTaskPlan(spec), actions = graph.filter(task => task.kind === 'flow')
+    expect(actions.flatMap(task => task.input.verificationContexts ?? []).sort()).toEqual(contexts.toSorted())
+    expect(actions).toHaveLength(3)
+    const judge = graph.find(task => task.kind === 'judge')!, finalize = graph.find(task => task.kind === 'finalize')!
+    expect(judge.dependencies).toEqual(expect.arrayContaining(actions.map(task => task.key)))
+    expect(finalize.dependencies).toEqual(expect.arrayContaining(actions.map(task => task.key)))
+    validateTaskGraph(graph)
+    expect(executionSpecSchema.safeParse({ ...spec, monitoringBehaviors: [{ pageUrl: input.pageUrl, behaviors: [], actionContexts: [contexts[0]] }] }).success).toBe(true)
+    for (const scope of [{ pageUrl: input.pageUrl, behaviors: [] }, { pageUrl: input.pageUrl, behaviors: [], actionContexts: [] },
+      { pageUrl: input.pageUrl, behaviors: ['flow'], actionContexts: [contexts[0], contexts[0]] },
+      { pageUrl: 'https://foreign.example/', behaviors: [], actionContexts: [contexts[0]] }])
+      expect(executionSpecSchema.safeParse({ ...spec, monitoringBehaviors: [scope] }).success).toBe(false)
+  })
+
+  it('retains every original control without growing the 24-page execution graph or weakening its fixed task limit', () => {
+    const base = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
+      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).map(([id, check]) => [id, check.version])), outcomes: [], verificationTarget: null,
+      reviewDepth: 2 as const, monitoringPages: [input.pageUrl, ...Array.from({ length: 23 }, (_, index) => input.pageUrl + (index + 1))],
+      monitoringEntryPages: [input.pageUrl, ...Array.from({ length: 23 }, (_, index) => input.pageUrl + (index + 1))] }
+    const baseline = initialTaskPlan(base)
+    for (const count of [200, 5000]) {
+      const contexts = Array.from({ length: count }, (_, index) => 'flow:control:' + index.toString(16).padStart(64, '0'))
+      const graph = initialTaskPlan({ ...base, monitoringBehaviors: [{ pageUrl: input.pageUrl, behaviors: ['flow'], actionContexts: contexts }] })
+      expect(graph).toHaveLength(baseline.length)
+      expect(graph.find(task => task.key === 'p0:flow')!.input.verificationContexts).toEqual(contexts)
+      validateTaskGraph(graph)
+    }
+  })
+
   it('rechecks all affected section-link documents with only browser evidence and the section evaluator', () => {
     const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
       scope: 'DIAGNOSTIC', checks: { 'broken-page-anchors': 1 }, outcomes: [],

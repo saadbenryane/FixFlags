@@ -77,6 +77,11 @@ export const PRIVACY_SECTIONS = {
     body:
       'Owned Sites, Flags, verification attempts, Agent threads, support context and connections are private to their owner. New anonymous analyses are private to their creator, and signup preserves the same evidence in their account. Historical public reports retain their access policy. A copied link does not grant private access. Public Flag sharing is unavailable.',
   },
+  email: {
+    title: 'Email preferences and delivery',
+    body:
+      'Account settings control your website summaries and optional product tips. Website settings control alerts for each Site. Product tips are off by default, and their unsubscribe link does not change website alerts or account messages. We record email sending and delivery results, including delivery failures and spam reports, to operate these updates. We keep a limited block record for addresses that reject mail or report spam. FixFlags does not collect email open or click events.',
+  },
   thirdParties: {
     title: 'Third parties',
     body:

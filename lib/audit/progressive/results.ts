@@ -10,6 +10,7 @@ import type { TaskContext } from './registry'
 import type { TaskArtifact } from './contracts'
 import { observationsForFlag, supportingObservationsSchema } from '../flag-observations'
 import { nativeHttpEvidenceSchema } from '../native-http-evidence'
+import { CONTROL_OBSERVATION_TARGET } from './control-progress'
 
 export const flagSchema = z.object({
   checkId: z.string().min(1), rubric: z.enum(['MESSAGE', 'EXPERIENCE', 'REACH']),
@@ -63,11 +64,16 @@ export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.Tran
   const spec = readExecutionSpec(executionSpec)
   const rows = await db.$queryRaw<Array<{ findings: unknown; taskId?: string; collectedAt?: string }>>`
     SELECT "workResult"->'data'->'flags' AS findings, "id" AS "taskId",
-      COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt" FROM "audit_execution_tasks"
+      COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt", "createdAt", "id" FROM "audit_execution_tasks"
     WHERE "auditId" = ${auditId} AND "workState" = 'COMPLETED'
       AND "workKind" IN ('check', 'search', 'google', 'flow', 'overlays', 'journeys', 'slow-replay', 'cross-page', 'discovery', 'automatic-accounts')
       AND "workResult"->'data'->'flags' <> '[]'::jsonb
-    ORDER BY "createdAt", "id" LIMIT 1200`
+      AND ("workInput"->'verificationContexts') IS NULL
+    UNION ALL
+    SELECT detail->'data'->'flags' AS findings, "taskId",
+      COALESCE(detail->'data'->'receipt'->'execution'->>'collectedAt', detail->>'collectedAt') AS "collectedAt", "createdAt", "id"
+      FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" = ${CONTROL_OBSERVATION_TARGET}
+        AND status = 'COMPLETED' AND detail->'data'->'flags' <> '[]'::jsonb ORDER BY "createdAt", "id"`
   return rows.flatMap(row => row.findings == null ? [] : z.array(flagSchema).max(500).parse(row.findings).map(flag => ({
     ...flag, supportingObservations: observationsForFlag(flag, row.taskId ? { auditId, taskId: row.taskId,
       checkVersion: spec?.checks[flag.checkId.split('::page:')[0]] ?? null, collectedAt: row.collectedAt } : undefined),
@@ -82,12 +88,13 @@ export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<
     flags: [], assertions: receipt.assertions, scope: { area: spec.category.area, allowedCheckIds } }).assertions }
   if (allowedCheckIds && !receipt.assertions.length && CHECK_MODULES[receipt.module]?.area !== spec!.category!.area) return
   receipt = { ...receipt, ...summarizeCheckAssertions(receipt) }
-  const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix
+  const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix + (context.input.verificationContext ? ':control:' + context.input.verificationContext : '')
   await tx.auditVerificationReceipt.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey } },
     create: { taskId: context.task.id, auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey,
       source: 'DETERMINISTIC', pageUrl: receipt.pageUrl, status: 'COMPLETED', checkVersion: receipt.execution?.checkVersion ?? 1,
       detail: receipt as Prisma.InputJsonValue, evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receipt.module, pageUrl: receipt.pageUrl } }, update: {},
   })
-  await recordAssertionVerifiers({ auditId: context.audit.id, parentId: context.audit.parentId, primary: context.input.primary, receipt, allowedCheckIds }, tx)
+  await recordAssertionVerifiers({ auditId: context.audit.id, parentId: context.audit.parentId, primary: context.input.primary,
+    sourceFlagIds: spec?.verificationSourceFlagIds, receipt, allowedCheckIds }, tx)
 }

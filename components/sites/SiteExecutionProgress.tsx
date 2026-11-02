@@ -4,8 +4,8 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 export function SiteExecutionProgress({ progress, compact = false }: { progress: ExecutionProgress; compact?: boolean }) {
   const copy = SITE_ACTION_COPY.execution
-  const state = (value: string) => copy.states[value as keyof typeof copy.states] ?? value
-  const kind = (value: string) => copy.kinds[value as keyof typeof copy.kinds] ?? value
+  const state = (value: string) => copy.states[value as keyof typeof copy.states] ?? copy.states.BLOCKED
+  const kind = (value: string) => copy.kinds[value as keyof typeof copy.kinds] ?? copy.title
   const summary = progress.summary
   const active = summary ? summary.state === 'active' : progress.pending + progress.running + progress.recovering > 0
   const label = [copy.recorded(summary?.recorded ?? progress.completed),

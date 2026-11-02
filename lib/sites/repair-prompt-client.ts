@@ -8,14 +8,14 @@ export type RepairPromptScope = { siteId: string } & (
   | { kind: 'flag'; flagId: string }
   | { kind: 'bundle'; area?: SiteCardArea; flagIds?: string[] }
 )
-export type PreparedRepairPrompt = { prompt: string; tasks: Array<{ sourceFlagId: string; promptHash: string }> }
+export type PreparedRepairPrompt = { prompt: string; tasks: Array<{ sourceFlagId: string; promptHash: string; referenceFlagId?: string }> }
 
 export async function prepareRepairPrompt(scope: RepairPromptScope, signal: AbortSignal): Promise<PreparedRepairPrompt> {
   if (scope.kind === 'flag') {
     const task = await executeSiteAction(`/api/sites/${encodeURIComponent(scope.siteId)}/flags/${encodeURIComponent(scope.flagId)}/fix`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'prepare' }), signal,
     }, 'fixPromptPreparation')
-    return { prompt: task.prompt, tasks: [{ sourceFlagId: task.sourceFlagId, promptHash: task.promptHash }] }
+    return { prompt: task.prompt, tasks: [{ sourceFlagId: task.sourceFlagId, promptHash: task.promptHash, referenceFlagId: task.referenceFlagId }] }
   }
   return executeSiteAction(`/api/sites/${encodeURIComponent(scope.siteId)}/fix-prompt`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -31,7 +31,7 @@ export async function copyRepairPrompt(scope: RepairPromptScope, prepared: Prepa
   const failures: unknown[] = []
   for (let offset = 0; offset < prepared.tasks.length; offset += 4) {
     const results = await Promise.allSettled(prepared.tasks.slice(offset, offset + 4).map(task =>
-      executeSiteAction(`/api/sites/${encodeURIComponent(scope.siteId)}/flags/${encodeURIComponent(task.sourceFlagId)}/fix`, {
+      executeSiteAction(`/api/sites/${encodeURIComponent(scope.siteId)}/flags/${encodeURIComponent(task.referenceFlagId ?? task.sourceFlagId)}/fix`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'copy', promptHash: task.promptHash }),
       }, 'fixPrompt')))

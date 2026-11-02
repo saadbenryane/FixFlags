@@ -31,17 +31,18 @@ describe('Flag identity', () => {
     expect(consolidateFlagsByCheck(ai)).toHaveLength(2)
   })
 
-  it('preserves public observation views without reintroducing comparison context or provenance', () => {
+  it('preserves public source references without reintroducing private comparison context', () => {
     const original = { source: 'DETERMINISTIC', checkId: 'buttons-no-text', pageUrl: 'https://example.com/',
       evidence: 'Recorded control has no name', verificationRule: 'private-rule',
       evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const,
         label: 'Control', context: 'private-context' }] }
     const visible = publicSupportingObservations(observationsForFlag(original,
-      { auditId: 'private-audit', taskId: 'private-task', collectedAt: '2026-10-17T03:00:00.000Z', checkVersion: 1 }))
+      { auditId: 'source-audit', taskId: 'private-task', collectedAt: '2026-10-17T03:00:00.000Z', checkVersion: 1 }))
     const result = consolidateFlagsByCheck([{ ...original, id: 'public', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
       problem: 'Unnamed control', supportingObservations: visible }])
     expect(result[0]!.supportingObservations).toEqual(visible)
-    expect(JSON.stringify(result[0]!.supportingObservations)).not.toMatch(/private-context|private-audit|private-task|private-rule/)
+    expect(visible[0].sourceAuditId).toBe('source-audit')
+    expect(JSON.stringify(result[0]!.supportingObservations)).not.toMatch(/private-context|private-task|private-rule/)
   })
 
   it('removes page occurrence suffixes without losing the durable check', () => {

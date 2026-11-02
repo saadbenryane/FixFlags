@@ -48,7 +48,7 @@ export default async function OperationsPage({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
               <h2 className="font-semibold break-all">
-                <Link href={`/admin/sites/${row.siteId}`}>{row.label}</Link>
+                <Link href={row.userId ? `/admin/users/${encodeURIComponent(row.userId)}` : `/admin/sites/${row.siteId}`}>{row.label}</Link>
               </h2>
               <p className="text-sm">{row.state}</p>
               <p className="text-sm text-muted-foreground">{adminDate(row.at)}</p>

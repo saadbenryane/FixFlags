@@ -1,14 +1,9 @@
 import { SEARCH_DEFINITIONS } from '@/lib/audit/search/definitions'
-import { searchReceiptSchema } from '@/lib/audit/search/contracts'
+import { searchReceiptSchema, type SearchObservation, type SearchReceipt } from '@/lib/audit/search/contracts'
 
 /** A missing alternate source stays on its own observation. It does not erase
  * the same check once another source recorded a result. */
 const ALTERNATE_SOURCE_UNAVAILABLE = new Set(['document_truncated', 'required_evidence_unavailable', 'capture_unavailable'])
-
-function coveredAlternateGap(observations: Array<{ checkId: string; source: string; disposition: string; reason: string }>, item: { checkId: string; source: string; disposition: string; reason: string }) {
-  return item.disposition === 'unknown' && ALTERNATE_SOURCE_UNAVAILABLE.has(item.reason) && observations.some(other =>
-    other.checkId === item.checkId && other.source !== item.source && other.disposition !== 'unknown')
-}
 
 /** Recorded local responsibilities define Search completeness. Provider evidence
  * enriches this scope without becoming a prerequisite for public checks. */
@@ -22,20 +17,31 @@ export function searchEvidence(executions: Array<{ targetKey: string; detail?: u
   if (!receipts.length) return null
   const modulesByPage = new Map<string, Set<string>>()
   for (const entry of entries) {
-    const modules = modulesByPage.get(entry.receipt.pageUrl) ?? new Set<string>()
+    const scope = JSON.stringify([entry.receipt.auditId, entry.receipt.pageUrl])
+    const modules = modulesByPage.get(scope) ?? new Set<string>()
     modules.add(entry.targetKey)
-    modulesByPage.set(entry.receipt.pageUrl, modules)
+    modulesByPage.set(scope, modules)
   }
   const missing = [...modulesByPage.values()].flatMap(modules => modules.has('module:search') ? []
     : localDefinitions.filter(definition => !modules.has('module:search-' + definition.evaluator)))
-  const observations = receipts.flatMap(receipt => receipt.observations)
-  const blocking = observations.filter(item => item.disposition === 'unknown' && !coveredAlternateGap(observations, item))
+  // Alternate sources can cover the same recorded responsibility, never a
+  // different page, execution or detector. Index once rather than comparing
+  // every unavailable observation with the entire multi-page inventory.
+  const scopeKey = (receipt: SearchReceipt, item: SearchObservation) => JSON.stringify([receipt.auditId, item.pageUrl, item.checkId, item.checkVersion])
+  const sourcesByScope = new Map<string, Set<SearchObservation['source']>>()
+  for (const receipt of receipts) for (const item of receipt.observations) {
+    if (item.disposition === 'unknown') continue
+    const key = scopeKey(receipt, item), sources = sourcesByScope.get(key) ?? new Set<SearchObservation['source']>()
+    sources.add(item.source); sourcesByScope.set(key, sources)
+  }
+  const coveredAlternateGap = (receipt: SearchReceipt, item: SearchObservation) =>
+    ALTERNATE_SOURCE_UNAVAILABLE.has(item.reason) &&
+    [...sourcesByScope.get(scopeKey(receipt, item)) ?? []].some(source => source !== item.source)
   const receiptOpen = receipts.some(receipt => {
-    if (receipt.complete) return false
     const unknowns = receipt.observations.filter(item => item.disposition === 'unknown')
-    return !unknowns.length || unknowns.some(item => !coveredAlternateGap(observations, item))
+    return !receipt.complete && !unknowns.length || unknowns.some(item => !coveredAlternateGap(receipt, item))
   })
-  const complete = missing.length === 0 && !receiptOpen && blocking.length === 0
+  const complete = missing.length === 0 && !receiptOpen
   const excluded = receipts.some(receipt => receipt.observations.some(item =>
     item.reason === 'declared_indexing_exclusion' || item.reason === 'declared_crawl_restriction'))
   return { receipts, complete, excluded,

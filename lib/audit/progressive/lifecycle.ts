@@ -4,6 +4,7 @@ import { Prisma, type AuditExecutionTask } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { diagnosticSourceWhere } from '@/lib/sites/domain/verification-source'
 import { executionWrite } from '../execution-ownership'
 import { loadTaskGraph, persistTaskPlan } from './engine'
 import { serializeArtifact, readArtifact, TaskFailure, prescriptionResultSchema, type TaskPlan, type TaskArtifact, MAX_TASKS_PER_AUDIT } from './contracts'
@@ -11,6 +12,7 @@ import { pageTaskPlan } from './graph'
 import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, screenshotSnapshotSchema } from './snapshots'
 import { browserEvidence, captureEvidence, searchArtifactSchema } from './evaluators'
 import { flagSchema, commitFindings, recordedTaskFindings } from './results'
+import { CONTROL_OBSERVATION_TARGET } from './control-progress'
 import { asReviewDepth, planReviewTargets, openCheckCeilingForDepth, buildReviewCoverage } from '../review-depth'
 import { openCheckDestinations } from '../open-check'
 import { navigationDestinationKey } from '../url-identity'
@@ -112,7 +114,12 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       AND COALESCE(task."pageUrl", receipt."pageUrl") IS NOT NULL
       ${pageUrl ? Prisma.sql`AND COALESCE(task."pageUrl", receipt."pageUrl") = ${pageUrl}` : Prisma.empty}
     LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
-  const [tasks, gaps] = await Promise.all([tasksQuery, gapsQuery])
+  const controlFindingsQuery = db.$queryRaw<Array<{ pageUrl: string; findings: unknown }>>`
+    SELECT "pageUrl", detail->'data'->'flags' AS findings FROM "audit_verifier_executions"
+      WHERE "auditId" = ${auditId} AND "targetKey" = ${CONTROL_OBSERVATION_TARGET} AND status = 'COMPLETED'
+        AND detail->'data'->'flags' <> '[]'::jsonb ${pageUrl ? Prisma.sql`AND "pageUrl" = ${pageUrl}` : Prisma.empty}
+      ORDER BY "createdAt", "id"`
+  const [tasks, gaps, controlFindings] = await Promise.all([tasksQuery, gapsQuery, controlFindingsQuery])
   if (tasks.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
   if (gaps.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
   const positions = [...new Set(tasks.flatMap(task => {
@@ -149,11 +156,11 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       output: { ...judged.triage.output, newFlags: judged.triage.output.newFlags.map(flag => admitAiObservation(flag, {
         auditId, taskId: judgeTask.id, collectedAt: judgeArtifact.collectedAt,
       })) } } : undefined
-    const flags = pageTasks.filter(task => task.workState === 'COMPLETED' && task.workResult).flatMap(task => {
+    const url = (pageTasks[0].workInput as { pageUrl: string }).pageUrl
+    const flags = [...pageTasks.filter(task => task.workState === 'COMPLETED' && task.workResult && !(task.workInput as { verificationContexts?: unknown }).verificationContexts).flatMap(task => {
       const artifact = readArtifact(task.workResult, task.workKind as TaskArtifact['kind'])
       return artifact.data.flags ? z.array(flagSchema).parse(artifact.data.flags) : []
-    })
-    const url = (pageTasks[0].workInput as { pageUrl: string }).pageUrl
+    }), ...controlFindings.filter(row => row.pageUrl === url).flatMap(row => z.array(flagSchema).max(500).parse(row.findings))]
     pages.push({ pageId: browser?.pageId ?? '', url, metadata: metadata ?? null, primary: (pageTasks[0].workInput as { primary?: boolean }).primary === true,
       preview: browser?.preview ?? undefined, desktop: speed?.desktop ?? null, mobile: speed?.mobile ?? null,
       navigation: capturedPageLinks(browser?.snapshot, browser?.metadata ?? null) ?? capturedPageLinks({
@@ -349,8 +356,8 @@ export const lifecycleHandlers: TaskHandler[] = [
       if (!metadata) throw new TaskFailure('JOURNEY_PAGE_UNAVAILABLE', false)
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
       const phases = spec?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.overlayPhases?.filter(phase => phase.startsWith('journey_'))
-      const sources = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: { auditId: target.parentAuditId,
-        audit: { projectId: context.audit.projectId }, checkId: target.checkId }, take: 100, select: { evidenceTargets: true, verificationRule: true } })
+      const sources = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(spec, context.audit.projectId),
+        take: spec?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true } })
         : context.audit.projectId ? await prisma.flag.findMany({ where: { auditId: { not: context.audit.id },
           audit: { projectId: context.audit.projectId, status: 'COMPLETED' }, verificationRule: JOURNEY_VERIFICATION_RULE },
           orderBy: { createdAt: 'desc' }, take: 100, select: { evidenceTargets: true, verificationRule: true } }) : []

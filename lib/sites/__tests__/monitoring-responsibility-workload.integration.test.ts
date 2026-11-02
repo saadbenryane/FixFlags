@@ -1,5 +1,4 @@
 import { randomBytes, randomUUID } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -38,10 +37,13 @@ localDatabase('monitoring responsibility with populated task history', () => {
       // introduce a new write failure for a previously accepted navigation.
       await prisma.auditExecutionTask.create({ data: { auditId: sourceIds[0], targetKey: 'task:long-url', source: 'EXECUTION',
         workKind: 'browser', pageUrl: longUrl, workState: 'EXHAUSTED', status: 'FAILED' } })
-      // Rebuild the actual migration over populated history, with a writer
+      // Rebuild the installed index over populated history, with a writer
       // held open. Another write must commit while the build waits for it.
+      const [installed] = await prisma.$queryRaw<Array<{ definition: string }>>`
+        SELECT pg_get_indexdef('audit_verifier_admitted_scope_idx'::regclass) AS definition`
+      expect(installed.definition).toContain(' ON public.audit_execution_tasks ')
       await prisma.$executeRaw`DROP INDEX "audit_verifier_admitted_scope_idx"`
-      const migration = readFileSync(new URL('../../../prisma/migrations/20261021110000_admitted_scope_index/migration.sql', import.meta.url), 'utf8')
+      const rebuild = installed.definition.replace(/^CREATE INDEX /, 'CREATE INDEX CONCURRENTLY ')
       let releaseWriter!: () => void, writerHeld!: () => void
       const release = new Promise<void>(resolve => { releaseWriter = resolve })
       const held = new Promise<void>(resolve => { writerHeld = resolve })
@@ -51,12 +53,12 @@ localDatabase('monitoring responsibility with populated task history', () => {
         await release
       }, { timeout: 10_000 })
       await held
-      const building = prisma.$executeRawUnsafe(migration).then(() => ({ ok: true as const }), error => ({ ok: false as const, error }))
+      const building = prisma.$executeRawUnsafe(rebuild).then(() => ({ ok: true as const }), error => ({ ok: false as const, error }))
       try {
         await vi.waitFor(async () => {
           const progress = await prisma.$queryRaw<Array<{ phase: string }>>`
             SELECT phase FROM pg_stat_progress_create_index
-            WHERE datname = current_database() AND relid = 'audit_verifier_executions'::regclass`
+            WHERE datname = current_database() AND relid = 'audit_execution_tasks'::regclass`
           expect(progress.some(row => row.phase.includes('waiting for writers'))).toBe(true)
         }, { timeout: 2000, interval: 25 })
         await prisma.$transaction(async tx => {
@@ -71,7 +73,7 @@ localDatabase('monitoring responsibility with populated task history', () => {
         if (!result.ok) throw result.error
       }
       await prisma.$executeRaw`ANALYZE "audits"`
-      await prisma.$executeRaw`ANALYZE "audit_verifier_executions"`
+      await prisma.$executeRaw`ANALYZE "audit_execution_tasks"`
       const read = vi.fn(prisma.$queryRaw.bind(prisma))
       expect(await monitoringResponsibility({ projectId: project.id, environment: 'production', targetUrl: root, recorded: [] },
         { $queryRaw: <T>(query: TemplateStringsArray | Prisma.Sql, ...values: unknown[]) => read(query, ...values) as Promise<T> }))
@@ -82,7 +84,7 @@ localDatabase('monitoring responsibility with populated task history', () => {
       const query = Prisma.sql(strings as unknown as TemplateStringsArray, ...parameters)
       const [result] = await prisma.$queryRaw<Array<{ 'QUERY PLAN': Array<{ Plan: Plan; 'Execution Time': number }> }>>`
         EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`
-      const report = result['QUERY PLAN'][0], scans = nodes(report.Plan).filter(plan => plan['Relation Name'] === 'audit_verifier_executions')
+      const report = result['QUERY PLAN'][0], scans = nodes(report.Plan).filter(plan => plan['Relation Name'] === 'audit_execution_tasks')
       // EXPLAIN rounds per-loop averages. This workload guard estimates tuple
       // visits; it is not an exact tuple counter or a latency guarantee.
       const examined = scans.reduce((count, plan) => count + ((plan['Actual Rows'] ?? 0) + (plan['Rows Removed by Filter'] ?? 0) +
@@ -104,7 +106,7 @@ localDatabase('monitoring responsibility with populated task history', () => {
       const [behaviorResult] = await prisma.$queryRaw<Array<{ 'QUERY PLAN': Array<{ Plan: Plan; 'Execution Time': number }> }>>`
         EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${behaviorQuery}`
       const behaviorReport = behaviorResult['QUERY PLAN'][0]
-      const behaviorScans = nodes(behaviorReport.Plan).filter(plan => plan['Relation Name'] === 'audit_verifier_executions')
+      const behaviorScans = nodes(behaviorReport.Plan).filter(plan => plan['Relation Name'] === 'audit_execution_tasks')
       const behaviorExamined = behaviorScans.reduce((count, plan) => count + ((plan['Actual Rows'] ?? 0) + (plan['Rows Removed by Filter'] ?? 0) +
         (plan['Rows Removed by Index Recheck'] ?? 0)) * (plan['Actual Loops'] ?? 1), 0)
       const behaviorIndexes = nodes(behaviorReport.Plan).flatMap(plan => plan['Index Name'] ? [plan['Index Name']] : [])
@@ -113,7 +115,7 @@ localDatabase('monitoring responsibility with populated task history', () => {
         databaseExecutionMs: behaviorReport['Execution Time'], indexes: behaviorIndexes }) + '\n')
       expect(behaviorScans.length).toBeGreaterThan(0)
       expect(behaviorExamined).toBeLessThanOrEqual(sourceCount * 4 * 2)
-      expect(await prisma.auditVerifierExecution.count({ where: { audit: { projectId: project.id } } })).toBe(sourceCount * taskCount + 1)
+      expect(await prisma.auditExecutionTask.count({ where: { audit: { projectId: project.id } } })).toBe(sourceCount * taskCount + 1)
     } finally {
       await prisma.audit.deleteMany({ where: { id: { in: sourceIds } } })
       await prisma.user.delete({ where: { id: userId } })

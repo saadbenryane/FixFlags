@@ -25,7 +25,8 @@ export function projectCurrentSiteEvidence(input: {
     evidenceCoverage: audit?.evidenceCoverage, failedModules: audit?.failedModules, failureCode: audit?.failureCode,
     triageCompleted: Boolean(audit?.triageAt), extraReviewCompleted: Boolean(audit?.aiReviewAt),
     verifierExecutions: audit?.verifierExecutions, flags, now: input.now, coverageMaxAgeMs })
-  const lastKnown = input.prior ? buildCoverageFacts(facts(input.prior)) : null
+  const lastKnown = input.prior ? overlayCategoryCoverage(buildCoverageFacts(facts(input.prior)),
+    applicableCategoryEvidence(input.categories, input.prior), input.now, flags, coverageMaxAgeMs) : null
   const categoryEvidence = applicableCategoryEvidence(input.categories, input.audit)
   const coverage = overlayCategoryCoverage(buildCoverageFacts({ ...facts(input.audit), lastKnown,
     retainLastKnownWhileChecking: Boolean(lastKnown) }), categoryEvidence, input.now, flags, coverageMaxAgeMs)

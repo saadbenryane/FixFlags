@@ -6,6 +6,7 @@ const replace = vi.hoisted(() => vi.fn())
 const retry = vi.hoisted(() => vi.fn())
 const useOAuthProviders = vi.hoisted(() => vi.fn())
 const authClient = vi.hoisted(() => ({
+  sendVerificationEmail: vi.fn(),
   signUp: { email: vi.fn() },
   signIn: { email: vi.fn(), passkey: vi.fn() },
 }))
@@ -28,6 +29,7 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
     vi.clearAllMocks()
     replace.mockReset()
     authClient.signUp.email.mockReset()
+    authClient.sendVerificationEmail.mockReset()
     authClient.signIn.email.mockReset()
     authClient.signIn.passkey.mockReset()
     useOAuthProviders.mockReturnValue({
@@ -38,6 +40,45 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
       error: false,
       retry,
     })
+  })
+
+  it('keeps an unauthenticated signup at email verification instead of claiming its Site', async () => {
+    const onAuthenticated = vi.fn()
+    authClient.signUp.email.mockResolvedValue({ data: { token: null, user: { id: 'pending-user' } }, error: null })
+    render(<AuthFlow mode="signup" onAuthenticated={onAuthenticated} nextPath="/sites/retained-site" />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }))
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Check your email' })).toBeInTheDocument())
+    expect(onAuthenticated).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+  })
+
+  it.each(['signup', 'signin'] as const)('retains the %s destination through failed and successful verification-link requests', async mode => {
+    const onAuthenticated = vi.fn()
+    authClient.signUp.email.mockResolvedValue({ data: { token: null, user: { id: 'pending-user' } }, error: null })
+    authClient.signIn.email.mockResolvedValue({ data: null, error: { code: 'EMAIL_NOT_VERIFIED', message: 'Email is not verified' } })
+    render(<AuthFlow mode={mode} nextPath="/sites/retained-site" from="report" onAuthenticated={onAuthenticated} />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+    fireEvent.click(screen.getByRole('button', { name: mode === 'signup' ? 'Create account' : 'Sign in', exact: true }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(screen.getByRole('status', { name: 'Check your email' })).toHaveFocus()
+    authClient.sendVerificationEmail.mockRejectedValueOnce(new Error('Offline'))
+      .mockResolvedValueOnce({ data: { status: true }, error: null })
+    fireEvent.click(screen.getByRole('button', { name: 'Send another link' }))
+    await screen.findByRole('alert')
+    expect(screen.queryByText('Another verification link has been requested.')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Send another link' }))
+    await screen.findByText('Another verification link has been requested.')
+    expect(authClient.sendVerificationEmail).toHaveBeenLastCalledWith({ email: 'owner@example.com',
+      callbackURL: '/post-login?next=%2Fsites%2Fretained-site&from=report' })
+    expect(onAuthenticated).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Use another email' }))
+    expect(screen.getByLabelText('Password')).toHaveValue('')
+    expect(screen.getByRole('button', { name: mode === 'signup' ? 'Create account' : 'Sign in', exact: true })).toBeInTheDocument()
   })
 
   it('does not expose active authentication controls before hydration', () => {

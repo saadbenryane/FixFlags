@@ -16,6 +16,7 @@ import { API_BASE, getCredential, hasConfiguredCredential, removeCredential, req
 import { fetchIdentity, loginWithBrowser, loginWithToken, revokeCredential } from './auth.js'
 import { EDITORS, initializeFixFlags, type Editor } from './init.js'
 import { runMcpBridge } from './mcp-bridge.js'
+import { readMcpResponse } from './mcp-response.js'
 const PROMPT_PREVIEW_LENGTH = 700
 const CLI_VERSION = (
   JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }
@@ -25,6 +26,7 @@ let rpcId = 1
 
 function createMcpCaller(apiKey?: string): McpCaller {
   return async (tool, args) => {
+    const id = rpcId++
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json, text/event-stream',
@@ -35,15 +37,15 @@ function createMcpCaller(apiKey?: string): McpCaller {
       headers,
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: rpcId++,
+        id,
         method: 'tools/call',
         params: { name: tool, arguments: args },
       }),
     })
 
-    const body = (await response.json().catch(() => null)) as {
+    const body = (await readMcpResponse(response, id)) as {
       error?: { message?: string }
-      result?: { content?: Array<{ type: string; text?: string }> }
+      result?: { isError?: boolean; structuredContent?: unknown; content?: Array<{ type: string; text?: string }> }
     } | null
 
     if (!response.ok) {
@@ -52,6 +54,16 @@ function createMcpCaller(apiKey?: string): McpCaller {
     if (body?.error) throw new Error(body.error.message || 'FixFlags tool error')
 
     const text = body?.result?.content?.find((item) => item.type === 'text')?.text
+    if (body?.result?.isError) {
+      let failure = body.result.structuredContent
+      if (failure == null && text) {
+        try { failure = JSON.parse(text) }
+        catch { throw new Error(text) }
+      }
+      const detail = failure && typeof failure === 'object' && 'error' in failure ? failure.error : null
+      const message = detail && typeof detail === 'object' && 'message' in detail ? detail.message : null
+      throw new Error(typeof message === 'string' && message ? message : 'FixFlags tool error')
+    }
     if (!text) throw new Error(`FixFlags returned no data for ${tool}`)
     try {
       return JSON.parse(text)

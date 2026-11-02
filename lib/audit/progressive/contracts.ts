@@ -5,7 +5,9 @@ export { jsonValueSchema, type JsonValue } from '@/lib/json-value'
 
 export const ANALYSIS_RECOVERY_MS = 60 * 60_000
 export const TASK_RECOVERY_MS = 30 * 60_000
-export const MAX_TASKS_PER_AUDIT = 1200
+// Covers the full 24-page catalog, retained entry behaviors and Site obligations.
+// Control history shares those behavior tasks rather than increasing this bound.
+export const MAX_TASKS_PER_AUDIT = 1280
 export const TASK_CRASH_LIMIT = 3
 export const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024
 export const taskKindSchema = z.enum(['http', 'search-resources', 'browser', 'motion', 'overlays', 'keyboard', 'captures', 'pagespeed', 'check', 'search', 'google', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'automatic-accounts', 'judge', 'prescription', 'discovery', 'cross-page', 'finalize'])
@@ -21,14 +23,17 @@ export const taskInputSchema = z.object({
   outcomeId: z.string().min(1).max(120).optional(), bindingKey: z.string().min(1).max(120).optional(),
   fixtureId: z.string().min(1).max(120).optional(),
   device: z.enum(['desktop', 'mobile']).optional(),
+  verificationContext: z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/).optional(),
+  verificationContexts: z.array(z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/)).min(1).max(5000).optional(),
   prescriptionScope: prescriptionScopeSchema.optional(),
   prescriptionContractVersion: z.literal(2).optional(),
   prescriptionFlagKeys: z.array(z.string().min(1).max(2000)).max(12).optional(),
-}).strict()
+}).strict().refine(input => !input.verificationContexts || !input.verificationContext && new Set(input.verificationContexts).size === input.verificationContexts.length,
+  'A control cohort must retain unique original contexts')
 export type TaskInput = z.infer<typeof taskInputSchema>
 export const taskPlanSchema = z.object({
   kind: taskKindSchema, key: z.string().min(1).max(200), scope: z.string().min(1).max(2048),
-  input: taskInputSchema, dependencies: z.array(z.string().min(1)).max(1200),
+  input: taskInputSchema, dependencies: z.array(z.string().min(1)).max(MAX_TASKS_PER_AUDIT),
 }).strict()
 export type TaskPlan = z.infer<typeof taskPlanSchema>
 export const taskJobSchema = z.object({ auditId: z.string().min(1), taskId: z.string().min(1),
@@ -47,6 +52,7 @@ export const prescriptionResultSchema = z.object({
 }).strict()
 export const taskArtifactSchema = z.object({
   kind: taskKindSchema, version: z.literal(1), collectedAt: z.string().datetime(),
+  continuation: z.literal(true).optional(),
   data: z.record(z.string(), jsonValueSchema),
 }).strict()
 export type TaskArtifact = z.infer<typeof taskArtifactSchema>

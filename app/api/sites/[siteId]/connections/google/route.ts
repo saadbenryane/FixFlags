@@ -8,7 +8,7 @@ import { apiError, handleRouteError } from '@/lib/api/errors'
 import { prisma } from '@/lib/db'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import {
-  accessTokenForConnection,
+  getGoogleConnectionAccess,
   buildGoogleAuthorizeUrl,
   googleConnectionConfigured,
   googleConnectionCredentialScope,
@@ -66,7 +66,7 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     })
     if (!connection || connection.authorizedByUserId !== owned.userId || connection.status === 'REVOKED') return apiError('Connect this provider first.', 409)
     let token: string | null
-    try { token = await accessTokenForConnection(connection, owned.userId) }
+    try { token = (await getGoogleConnectionAccess(connection, owned.userId))?.token ?? null }
     catch (error) {
       if (error instanceof GoogleProviderError && error.requiresReauthentication) token = null
       else {

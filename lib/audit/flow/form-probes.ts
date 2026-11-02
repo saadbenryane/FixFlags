@@ -23,6 +23,7 @@ export interface FormProbeResult {
 export async function probeFormValidation(page: Page, options: {
   isolated?: boolean; localValidationToken?: string; deadline?: number; safetyRefused?: () => boolean
   expectedTargets?: Array<{ context: string; selector: string; label: string }>
+  excludedContexts?: readonly string[]
   unavailableDependencies?: boolean
   overlayRecorder?: OverlayInteractionRecorder
   overlayOnly?: boolean
@@ -85,7 +86,8 @@ export async function probeFormValidation(page: Page, options: {
     return index === null || index === undefined ? null : `form[data-fixflags-form-probe="${index}"]`
   }, originalSubmit) : undefined
   const formMeta = originalSubmit ? scoped.find(candidate => candidate.selector === originalFormSelector)
-    : options.expectedTargets?.length ? scoped.find(candidate => options.expectedTargets!.some(target => target.context === candidate.context)) : scoped[0]
+    : options.expectedTargets?.length ? scoped.find(candidate => options.expectedTargets!.some(target => target.context === candidate.context))
+      : scoped.find(candidate => !options.excludedContexts?.includes(candidate.context))
   if (!formMeta) {
     const expected = options.expectedTargets?.[0] ?? (candidates.incomplete ? { selector: 'form', label: 'Conversion form inventory',
       context: 'form:' + createHash('sha256').update(pageUrl + ':inventory').digest('hex') } : undefined)

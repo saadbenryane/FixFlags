@@ -15,12 +15,17 @@ export function assembleFlowModuleCheck(input: {
   pricingOnly: boolean
   targetedPricing: boolean
   protectedActionRefused?: boolean
+  delegatedDiscovery?: boolean
 }) {
   const { result } = input
   const applicable = input.pricingOnly
     ? Boolean(result.multiStep?.pricingEvidence) || input.targetedPricing || result.multiStep?.pricingComplete === false
     : !result.actionEvidence || result.actionEvidence.candidateCount > 0 || input.actionRequired !== false
   const primaryAssertions = primaryActionAssertions(result.actionEvidence, input.actionRequired)
+  if (input.delegatedDiscovery && result.status === 'skipped' && result.actionEvidence?.controlContext === null &&
+      result.actionEvidence.candidateComplete === true && result.actionEvidence.candidateCount > 0)
+    return { applicable: false, complete: true, passed: true,
+      assertions: primaryAssertions.map(assertion => ({ ...assertion, disposition: 'observed' as const })) }
   const trustAssertions = result.destinationTrust ? destinationTrustObservations(result) : []
   const contentAssertions = result.status === 'success' && result.destinationUX ? destinationContentObservations(result) : []
   const assertions: CheckAssertion[] = [...primaryAssertions, ...postClickAssertions(result.postClickMetrics, result.finalUrl, result.actionEvidence),
