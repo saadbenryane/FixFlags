@@ -108,7 +108,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
     <div className={styles.actions}>
       {compact ? <div className="space-y-3">
         <div ref={guidanceActions}>
-          {currentGuidance === 'ready' ? <SitePromptCopyButton key={`${siteId}:${referenceFlagId}`} siteId={siteId} flagId={referenceFlagId} presentation="preview" /> : <div className="space-y-3 rounded-card bg-muted/30 p-4">
+          {currentGuidance === 'ready' ? <SitePromptCopyButton key={`${siteId}:${referenceFlagId}`} siteId={siteId} flagId={referenceFlagId} sourceFlagId={flagId} presentation="preview" /> : <div className="space-y-3 rounded-card bg-muted/30 p-4">
             <p role="status" className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.repairGuidance[currentGuidance]}</p>
             {currentGuidance === 'pending' ? <Button type="button" variant="outline" onClick={() => { guidanceRefreshRequested.current = true; router.refresh() }}>{SITE_ACTION_COPY.repairGuidance.refresh}</Button>
               : <Button variant="outline" asChild><Link href={`/sites/${siteId}`}>{SITE_ACTION_COPY.repairGuidance.overview}</Link></Button>}
@@ -123,7 +123,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
             <h3>{SITE_BOARD_COPY.fixStep}</h3>
             {currentGuidance === 'ready' ? <>
               <p className={styles.description}>{SITE_BOARD_COPY.fixStepBody}</p>
-              <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={referenceFlagId} /></div>
+              <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={referenceFlagId} sourceFlagId={flagId} /></div>
               {guidance?.trim() ? <details className={styles.guidance}>
                 <summary>{SITE_BOARD_COPY.readFixGuidance}<ChevronDown size={14} aria-hidden /></summary>
                 <p>{guidance}</p>

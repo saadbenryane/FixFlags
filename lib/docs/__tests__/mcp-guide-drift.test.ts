@@ -36,9 +36,9 @@ describe('published MCP guide', () => {
 
   it('names no tool that FixFlags does not serve', () => {
     const guide = renderedMcpGuide()
-    const named = [...guide.matchAll(/`([a-z]+[_.][a-z_]+)`/g)].map((match) => match[1])
+    const named = [...guide.matchAll(/`(fixflags\.[a-z_]+)`/g)].map((match) => match[1])
     const known = new Set(mcpToolNames())
-    const unknown = named.filter((token) => !known.has(token) && !token.startsWith('fixflags.'))
+    const unknown = named.filter((token) => !known.has(token))
     expect(unknown, 'guide names a tool FixFlags does not serve').toEqual([])
   })
 

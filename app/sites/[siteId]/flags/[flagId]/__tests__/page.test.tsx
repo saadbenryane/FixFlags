@@ -162,8 +162,9 @@ describe('Flag verification attempts', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'grouped-incident' }), searchParams: Promise.resolve({}) }))
     fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt' }))
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/flags/displayed-capture/fix', expect.anything()))
-    expect(fetch).not.toHaveBeenCalledWith('/api/sites/site-1/flags/grouped-incident/fix', expect.anything())
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/flags/grouped-incident/fix', expect.objectContaining({
+      body: JSON.stringify({ action: 'prepare', expectedSourceFlagId: 'displayed-capture' }),
+    })))
   })
 
   it('does not call an unproven recovery recovered when the completed audit is still on file', async () => {

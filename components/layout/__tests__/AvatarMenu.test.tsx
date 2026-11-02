@@ -53,7 +53,7 @@ const user: MeUser = {
 
 describe('AvatarMenu', () => {
   it('opens Settings, Help, and Log out actions', async () => {
-    signOut.mockResolvedValue(undefined)
+    signOut.mockResolvedValue({ data: { success: true }, error: null })
 
     render(
       <MeProvider initialUser={user}>

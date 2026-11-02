@@ -17,12 +17,13 @@ import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
 import { usePreparedRepairPrompt } from '@/hooks/usePreparedRepairPrompt'
 
 export function SitePromptCopyButton(props: Parameters<typeof SitePromptCopyContent>[0]) {
-  return <SitePromptCopyContent key={JSON.stringify([props.siteId, props.flagId, props.availability ?? 'available'])} {...props} />
+  return <SitePromptCopyContent key={JSON.stringify([props.siteId, props.flagId, props.sourceFlagId, props.availability ?? 'available'])} {...props} />
 }
 
 function SitePromptCopyContent({
   siteId,
   flagId,
+  sourceFlagId,
   compact = false,
   iconOnly = false,
   availability = 'available',
@@ -30,6 +31,7 @@ function SitePromptCopyContent({
 }: {
   siteId: string
   flagId: string
+  sourceFlagId?: string
   compact?: boolean
   iconOnly?: boolean
   availability?: SiteActionAvailability
@@ -38,7 +40,7 @@ function SitePromptCopyContent({
   const { busy, message, error, submit } = useSiteAction()
   const [copied, setCopied] = useState(false)
   const [manualPrompt, setManualPrompt] = useState<string | null>(null)
-  const prepared = usePreparedRepairPrompt({ kind: 'flag', siteId, flagId }, availability === 'available', presentation === 'preview')
+  const prepared = usePreparedRepairPrompt({ kind: 'flag', siteId, flagId, sourceFlagId }, availability === 'available', presentation === 'preview')
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {

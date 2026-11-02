@@ -53,10 +53,10 @@ describe('website capture preview', () => {
   })
   it('distinguishes admitted capture work from a terminal missing artifact', () => {
     const view = render(<SitePreviewCard host="example.com" captures={[]} collectionState="pending" />)
-    expect(screen.getByText('Capturing screenshot…')).toBeVisible()
+    expect(screen.getByText('Preparing screenshot')).toBeVisible()
     view.rerender(<SitePreviewCard host="example.com" captures={[]} collectionState="not_recorded" />)
     expect(screen.getByText('No screenshot recorded')).toBeVisible()
-    expect(screen.queryByText('Capturing screenshot…')).not.toBeInTheDocument()
+    expect(screen.queryByText('Preparing screenshot')).not.toBeInTheDocument()
     view.rerender(<SitePreviewCard host="example.com" captures={[]} collectionState="unavailable" />)
     expect(screen.getByText('Screenshot unavailable')).toBeVisible()
   })

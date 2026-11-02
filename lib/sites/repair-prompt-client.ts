@@ -5,7 +5,7 @@ import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { REPORT_COPY } from '@/lib/marketing/copy/report-workspace'
 
 export type RepairPromptScope = { siteId: string } & (
-  | { kind: 'flag'; flagId: string }
+  | { kind: 'flag'; flagId: string; sourceFlagId?: string }
   | { kind: 'bundle'; area?: SiteCardArea; flagIds?: string[] }
 )
 export type PreparedRepairPrompt = { prompt: string; tasks: Array<{ sourceFlagId: string; promptHash: string; referenceFlagId?: string }> }
@@ -13,7 +13,8 @@ export type PreparedRepairPrompt = { prompt: string; tasks: Array<{ sourceFlagId
 export async function prepareRepairPrompt(scope: RepairPromptScope, signal: AbortSignal): Promise<PreparedRepairPrompt> {
   if (scope.kind === 'flag') {
     const task = await executeSiteAction(`/api/sites/${encodeURIComponent(scope.siteId)}/flags/${encodeURIComponent(scope.flagId)}/fix`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'prepare' }), signal,
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'prepare', ...(scope.sourceFlagId ? { expectedSourceFlagId: scope.sourceFlagId } : {}) }), signal,
     }, 'fixPromptPreparation')
     return { prompt: task.prompt, tasks: [{ sourceFlagId: task.sourceFlagId, promptHash: task.promptHash, referenceFlagId: task.referenceFlagId }] }
   }

@@ -35,6 +35,16 @@ test('limits the legacy lint glob exception to its reviewed indirect advisory', 
     via: [{ url: 'https://example.com/unreviewed-advisory' }] } } }).length, 1)
 })
 
+test('requires a reviewed advisory throughout cyclic peer paths without accepting an unexplained cycle', () => {
+  const cycle = { eslint: { isDirect: true, via: ['utils'] }, utils: { isDirect: false, via: ['eslint'] } }
+  assert.equal(inspectToolchainAudit({ vulnerabilities: cycle }).length, 2)
+  const reviewed = { ...cycle, eslint: { ...cycle.eslint, via: ['utils', 'braces'] }, braces }
+  assert.deepEqual(inspectToolchainAudit({ vulnerabilities: reviewed }), [])
+  assert.equal(inspectToolchainAudit({ vulnerabilities: { ...reviewed,
+    utils: { isDirect: false, via: ['eslint', { url: 'https://example.com/unreviewed' }] },
+  } }).length, 2)
+})
+
 test('fails closed on provider errors in either audit phase without labelling missing evidence as a vulnerability', () => {
   for (const phase of ['Runtime', 'Toolchain']) {
     for (const status of [0, 1]) assert.throws(() => parseAuditCommandResult({ status,

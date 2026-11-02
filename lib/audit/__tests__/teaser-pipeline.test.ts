@@ -23,6 +23,7 @@ const { prismaMock, queueAddMock, gates } = vi.hoisted(() => ({
     // is considered reusable.
     provisionalSite: { findUnique: vi.fn(async () => null) },
     $executeRaw: vi.fn(),
+    $queryRaw: vi.fn(async () => []),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === 'function') return (arg as (tx: unknown) => unknown)(prismaMock)
       if (Array.isArray(arg)) return Promise.all(arg)

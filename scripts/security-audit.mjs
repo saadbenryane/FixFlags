@@ -16,25 +16,27 @@ export function inspectToolchainAudit(report) {
   const vulnerabilities = report.vulnerabilities ?? {}
   const memo = new Map()
 
-  function isReviewed(name, visiting = new Set()) {
+  function isReviewed(name) {
     if (memo.has(name)) return memo.get(name)
-    if (visiting.has(name)) return false
-    const vulnerability = vulnerabilities[name]
-    if (!vulnerability) return false
-    const nextVisiting = new Set(visiting).add(name)
-    const advisories = (vulnerability.via ?? []).filter((item) => typeof item === 'object')
-    const dependencies = (vulnerability.via ?? []).filter((item) => typeof item === 'string')
-    const allowedUrls = ALLOWED_TOOLCHAIN_ADVISORIES.get(name)
-    const ownAdvisoriesReviewed = advisories.length === 0 || Boolean(
-      allowedUrls
-      && vulnerability.isDirect === false
-      && advisories.every((item) => allowedUrls.has(item.url)),
-    )
-    const dependencyAdvisoriesReviewed = dependencies.length === 0
-      || dependencies.every((dependency) => isReviewed(dependency, nextVisiting))
-    const reviewed = ownAdvisoriesReviewed
-      && dependencyAdvisoriesReviewed
-      && (advisories.length > 0 || dependencies.length > 0)
+    const visited = new Set()
+    let foundAdvisory = false
+    // Peer-dependency cycles cannot introduce an advisory or hide an unreviewed
+    // one. Inspect each reachable node once and require a real reviewed source.
+    function visit(dependency) {
+      if (visited.has(dependency)) return true
+      visited.add(dependency)
+      const vulnerability = vulnerabilities[dependency]
+      if (!vulnerability) return false
+      const advisories = (vulnerability.via ?? []).filter(item => item && typeof item === 'object')
+      const dependencies = (vulnerability.via ?? []).filter(item => typeof item === 'string')
+      if (advisories.length) {
+        foundAdvisory = true
+        const allowed = ALLOWED_TOOLCHAIN_ADVISORIES.get(dependency)
+        if (!allowed || vulnerability.isDirect !== false || advisories.some(item => !allowed.has(item.url))) return false
+      }
+      return (advisories.length > 0 || dependencies.length > 0) && dependencies.every(visit)
+    }
+    const reviewed = visit(name) && foundAdvisory
     memo.set(name, reviewed)
     return reviewed
   }

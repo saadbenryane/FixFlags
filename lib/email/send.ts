@@ -27,7 +27,12 @@ export async function sendNurtureEmail(userId: string, emailType: NurtureEmailTy
   if (promotional && !user.notificationPreference?.productTips) return { sent: false, reason: 'product_tips_disabled' }
   if (!await notificationRecipientAllowed(user.email)) return { sent: false, reason: 'recipient_suppressed' }
   const log = await prisma.emailLog.upsert({ where: { userId_emailType: { userId, emailType } },
-    create: { userId, emailType, status: 'PENDING' }, update: {} })
+    create: { userId, emailType, status: 'PENDING' }, update: {} }).catch(async error => {
+      // Prisma can implement this empty-update upsert as a read followed by an
+      // insert. Competing creators must converge before the delivery lease.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
+      return prisma.emailLog.findUniqueOrThrow({ where: { userId_emailType: { userId, emailType } } })
+    })
   if (log.status === 'SENT') return { sent: false, reason: 'already_sent' }
   const available = { id: log.id, status: log.status, attempts: log.attempts,
     OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }] }
