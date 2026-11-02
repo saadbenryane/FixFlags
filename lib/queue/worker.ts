@@ -21,6 +21,7 @@ import { readExecutionSpec } from '../sites/domain/execution-spec'
 import { startAdminOperationRuntime } from '@/lib/admin/runtime'
 import { probeBrowserRendering } from '@/lib/audit/browser/health-probe'
 import { browserCapacity } from '@/lib/audit/progressive/capacity'
+import { startMemorySampler } from '@/lib/runtime/memory-sampler.mjs'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -215,6 +216,10 @@ export function startWorker() {
     const [connection] = await Promise.all([waitForAuditWorker(), tasks.waitUntilReady(), uptime.waitUntilReady(), adminOperations.waitUntilReady()])
     return connection
   }
+  const memorySampler = startMemorySampler({ role: 'worker',
+    readCounts: async () => ({ activeTasks: tasks.activeCount?.() ?? null, browserContexts: getBrowserDiagnostics().activeContexts }),
+    emit: sample => logger.info('Runtime memory sample', sample),
+  })
   void runBestEffort(
     () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }),
     { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },
@@ -224,6 +229,7 @@ export function startWorker() {
   const closeAuditWorker = worker.close.bind(worker)
   worker.close = async force => {
     closing = true
+    memorySampler.stop()
     probeController.abort(new Error('Worker stopping'))
     clearInterval(heartbeatTimer)
     await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()])
