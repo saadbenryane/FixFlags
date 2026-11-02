@@ -218,7 +218,7 @@ export function startWorker() {
   }
   const memorySampler = startMemorySampler({ role: 'worker',
     readCounts: async () => ({ activeTasks: tasks.activeCount?.() ?? null, browserContexts: getBrowserDiagnostics().activeContexts }),
-    emit: (sample: Record<string, unknown>) => logger.info('Runtime memory sample', sample),
+    emit: (sample: Record<string, string | number | null>) => logger.info('Runtime memory sample', sample),
   })
   void runBestEffort(
     () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }),
