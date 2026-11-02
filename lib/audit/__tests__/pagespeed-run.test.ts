@@ -88,6 +88,7 @@ describe('fetchPageSpeedData', () => {
     await vi.advanceTimersByTimeAsync(61_000)
     expect((await result).desktop).toMatchObject({ score: 85, lcp: 2500 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    auditCache.clear() // The cache owns its expiry timer independently of the provider request.
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -100,6 +101,7 @@ describe('fetchPageSpeedData', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(await result).toMatchObject({ mobile: null, mobileFailure: { code: 'PROVIDER_UNAVAILABLE', retryable: true } })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    auditCache.clear()
     expect(vi.getTimerCount()).toBe(0)
   })
 

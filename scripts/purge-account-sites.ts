@@ -9,6 +9,7 @@ const { values } = parseArgs({ options: {
   preview: { type: 'boolean' }, apply: { type: 'boolean' }, manifest: { type: 'string' },
   email: { type: 'string' }, 'keep-host': { type: 'string' }, 'remove-host': { type: 'string', multiple: true },
   'unlinked-host': { type: 'string', multiple: true },
+  'checkpoint-every': { type: 'string' },
 } })
 if (Boolean(values.preview) === Boolean(values.apply) || !values.manifest) throw new Error('Choose --preview or --apply and --manifest <file>')
 if (!process.env.DATABASE_URL) throw new Error('Explicit DATABASE_URL is required; this operator command never loads local environment files')
@@ -34,7 +35,12 @@ try {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       progress = { digest: manifest.digest, fenced: false, assetsDeleted: [], auditsDeleted: [], complete: false }
     }
-    await applySitePurge(db, manifest, progress, deleteAuditScreenshotAssets, state => persist(file, state))
+    const checkpointEvery = Number(values['checkpoint-every'] ?? 0)
+    if (!Number.isInteger(checkpointEvery) || checkpointEvery < 0 || checkpointEvery > 100) throw new Error('Invalid checkpoint batch')
+    if (checkpointEvery) await db.$executeRawUnsafe('CHECKPOINT')
+    await applySitePurge(db, manifest, progress, deleteAuditScreenshotAssets, state => persist(file, state), async count => {
+      if (checkpointEvery && count % checkpointEvery === 0) await db.$executeRawUnsafe('CHECKPOINT')
+    })
     console.log(JSON.stringify({ digest: manifest.digest, complete: progress.complete, reportsDeleted: progress.auditsDeleted.length }))
   }
 } finally { await db.$disconnect() }

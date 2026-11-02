@@ -5,7 +5,7 @@ import { removeSite } from '@/lib/sites/application/settings-commands'
 type DB = PrismaClient | Prisma.TransactionClient
 export type PurgeScope = { email: string; keepHost: string; removeHosts: string[]; unlinkedHosts: string[] }
 export type PurgeManifest = {
-  version: 1; createdAt: string; scope: PurgeScope; ownerId: string; keepProjectId: string;
+  version: 1; createdAt: string; databaseIdentity: string; scope: PurgeScope; ownerId: string; keepProjectId: string;
   projectIds: string[]; auditIds: string[]; keptAuditIds: string[];
   dependencies: Record<string, number>; capturePrefixes: string[]; digest: string;
 }
@@ -13,6 +13,10 @@ export type PurgeProgress = { digest: string; fenced: boolean; assetsDeleted: st
 const quote = (value: string) => '"' + value.replaceAll('"', '""') + '"'
 const sorted = (values: string[]) => [...values].sort()
 const same = (a: string[], b: string[]) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b))
+async function databaseIdentity(db: DB) {
+  const rows = await db.$queryRawUnsafe(`SELECT current_database() AS database, inet_server_addr()::text AS address, inet_server_port() AS port`)
+  return createHash('sha256').update(JSON.stringify(rows)).digest('hex')
+}
 export function manifestDigest(manifest: Omit<PurgeManifest, 'digest'> | PurgeManifest) {
   const { digest: _digest, ...material } = manifest as PurgeManifest
   return createHash('sha256').update(JSON.stringify(material)).digest('hex')
@@ -31,7 +35,7 @@ async function inspect(db: DB, scope: PurgeScope) {
   if (!same(projects.filter(p => p.id !== keep.id).map(p => p.canonicalHost), scope.removeHosts))
     throw new Error('Website inventory differs from the explicit removal scope')
   const projectIds = sorted(targets.map(p => p.id))
-  const foreign = await db.audit.count({ where: { projectId: { in: projectIds }, userId: { not: owner.id } } })
+  const foreign = await db.audit.count({ where: { projectId: { in: projectIds }, OR: [{ userId: { not: owner.id } }, { userId: null }] } })
   if (foreign) throw new Error('A target website contains another owner’s reports')
   const accounts = await db.siteTestAccount.count({ where: { projectId: { in: projectIds }, state: { not: 'DELETED' } } })
   if (accounts) throw new Error('External test-account cleanup must finish before purging')
@@ -79,18 +83,29 @@ async function inspectDependencies(db: DB, inventory: Awaited<ReturnType<typeof 
 export async function previewSitePurge(db: PrismaClient, scope: PurgeScope): Promise<PurgeManifest> {
   return db.$transaction(async tx => {
     const inventory = await inspect(tx, scope)
-    const material = { version: 1 as const, createdAt: new Date().toISOString(), scope, ...inventory,
+    const material = { version: 1 as const, createdAt: new Date().toISOString(), databaseIdentity: await databaseIdentity(tx), scope, ...inventory,
       dependencies: await inspectDependencies(tx, inventory), capturePrefixes: inventory.auditIds.map(id => `screenshots/${id}/`) }
     return { ...material, digest: manifestDigest(material) }
   }, { isolationLevel: 'RepeatableRead', timeout: 60_000 })
 }
 
 export async function applySitePurge(db: PrismaClient, manifest: PurgeManifest, progress: PurgeProgress,
-  deleteAssets: (auditIds: string[]) => Promise<void>, save: (progress: PurgeProgress) => Promise<void>) {
+  deleteAssets: (auditIds: string[]) => Promise<void>, save: (progress: PurgeProgress) => Promise<void>,
+  afterBatch: (deletedCount: number) => Promise<void> = async () => {}) {
   if (manifest.version !== 1 || manifestDigest(manifest) !== manifest.digest || progress.digest !== manifest.digest)
     throw new Error('The purge manifest or progress identity is invalid')
   if (progress.assetsDeleted.some(id => !manifest.auditIds.includes(id)) || progress.auditsDeleted.some(id => !manifest.auditIds.includes(id)))
     throw new Error('Progress contains an unapproved report')
+  if (await databaseIdentity(db) !== manifest.databaseIdentity) throw new Error('Purge manifest belongs to another database')
+  const remainingProjects = await db.project.count({ where: { id: { in: manifest.projectIds } } })
+  if (progress.fenced && remainingProjects === 0) {
+    const owner = await db.user.findUniqueOrThrow({ where: { email: manifest.scope.email }, select: { id: true } })
+    const keep = await db.project.findFirst({ where: { id: manifest.keepProjectId, userId: owner.id, deletedAt: null, canonicalHost: manifest.scope.keepHost } })
+    const remaining = await db.audit.count({ where: { id: { in: manifest.auditIds } } })
+    const kept = await db.audit.count({ where: { id: { in: manifest.keptAuditIds }, userId: manifest.ownerId } })
+    if (owner.id !== manifest.ownerId || !keep || remaining || kept !== manifest.keptAuditIds.length) throw new Error('Completed purge verification failed')
+    progress.complete = true; await save(progress); return
+  }
   // Lock inventory while admission is fenced. This does not change the User lifecycle.
   await db.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM users WHERE id=${manifest.ownerId} FOR UPDATE`
@@ -128,6 +143,7 @@ export async function applySitePurge(db: PrismaClient, manifest: PurgeManifest, 
       await tx.audit.deleteMany({ where: { id, userId: manifest.ownerId } })
     }, { timeout: 60_000 })
     progress.auditsDeleted.push(id); await save(progress)
+    await afterBatch(progress.auditsDeleted.length)
   }
   await db.$transaction(async tx => {
     const left = await tx.audit.count({ where: { projectId: { in: manifest.projectIds } } })
