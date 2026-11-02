@@ -253,6 +253,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const job = taskJobSchema.parse(rawJob)
   const original = await prisma.auditExecutionTask.findFirst({
     where: { id: job.taskId, auditId: job.auditId }, include: { audit: true },
+    omit: { workResult: true, detail: true, evidenceReference: true },
   })
   if (!original || !original.workKind || original.audit.status === 'FAILED' ||
     original.audit.status === 'COMPLETED' && !runsAfterCompletion(original.workKind)) return

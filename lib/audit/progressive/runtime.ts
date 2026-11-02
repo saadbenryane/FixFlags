@@ -40,7 +40,7 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
         await recordProgress(tx, auditId, { kind: 'analysis', state: 'started' })
       }
     })
-    if (!(await loadTaskGraph(auditId)).length) {
+    if (!await prisma.auditExecutionTask.findFirst({ where: { auditId }, select: { id: true } })) {
       const plans = initialTaskPlan(spec)
       for (const plan of plans) if (!handlers.has(plan.kind)) throw new Error('Missing task evaluator: ' + plan.kind)
       await persistTaskPlan(auditId, plans)
@@ -74,8 +74,9 @@ export async function recoverProgressiveAudits(limit = 25) {
 }
 
 export function startProgressiveWorkers() {
+  let activeTasks = 0
   const workers = Object.entries(TASK_QUEUES).map(([resource, config]) => {
-    const worker = new Worker(config.name, job => executeTask(job.data, handlers), {
+    const worker = new Worker(config.name, async job => { activeTasks++; try { return await executeTask(job.data, handlers) } finally { activeTasks-- } }, {
       connection: createWorkerRedis(), concurrency: config.concurrency, lockDuration: 90_000, maxStalledCount: 0,
     })
     worker.on('error', error => logger.error('Execution task worker error', { resource, message: error.message }))
@@ -92,7 +93,7 @@ export function startProgressiveWorkers() {
     })
     return worker
   })
-  return { waitUntilReady: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: async () => {
+  return { activeCount: () => activeTasks, waitUntilReady: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: async () => {
     await Promise.all(workers.map(worker => worker.close()))
     await closeParserWorker()
   } }
