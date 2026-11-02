@@ -35,9 +35,13 @@ try {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       progress = { digest: manifest.digest, fenced: false, assetsDeleted: [], auditsDeleted: [], complete: false }
     }
-    const checkpointEvery = Number(values['checkpoint-every'] ?? 0)
+    const checkpointEvery = Number(values['checkpoint-every'] ?? 5)
     if (!Number.isInteger(checkpointEvery) || checkpointEvery < 0 || checkpointEvery > 100) throw new Error('Invalid checkpoint batch')
-    if (checkpointEvery) await db.$executeRawUnsafe('CHECKPOINT')
+    if (checkpointEvery) {
+      const [wal] = await db.$queryRawUnsafe<Array<{ budget: bigint }>>(`SELECT pg_size_bytes(current_setting('max_wal_size')) AS budget`)
+      if (wal.budget > BigInt(256 * 1024 * 1024)) throw new Error('Review WAL and free-storage headroom before erasure. The operator checkpoint mode requires max_wal_size at most 256MB.')
+      await db.$executeRawUnsafe('CHECKPOINT')
+    }
     await applySitePurge(db, manifest, progress, deleteAuditScreenshotAssets, state => persist(file, state), async count => {
       if (checkpointEvery && count % checkpointEvery === 0) await db.$executeRawUnsafe('CHECKPOINT')
     })

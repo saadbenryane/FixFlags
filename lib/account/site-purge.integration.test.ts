@@ -63,4 +63,18 @@ run('scoped website purge in disposable PostgreSQL', () => {
     await db.siteTestAccount.create({ data: { projectId: target, origin: 'https://remove.test', purpose: 'retained', email: 'test@example.test', encryptedPassword: 'fixture', signupUrl: 'https://remove.test', flowFingerprint: 'fixture', state: 'ACTIVE' } })
     await expect(previewSitePurge(db, scope())).rejects.toThrow('External test-account cleanup')
   })
+  it('resumes safely when database deletion committed but its progress save was interrupted', async () => {
+    await db.audit.create({ data: { userId: owner, projectId: target, url: 'https://remove.test/second' } })
+    const manifest = await previewSitePurge(db, scope()), progress = state(manifest.digest)
+    let durable = structuredClone(progress)
+    const save = async (next: PurgeProgress) => {
+      if (next.auditsDeleted.length) throw new Error('receipt write interrupted')
+      durable = structuredClone(next)
+    }
+    await expect(applySitePurge(db, manifest, progress, async () => {}, save)).rejects.toThrow('receipt write interrupted')
+    expect(await db.audit.count({ where: { id: { in: manifest.auditIds } } })).toBe(1)
+    await applySitePurge(db, manifest, durable, async () => {}, async () => {})
+    expect(durable.complete).toBe(true)
+    expect(await db.audit.count({ where: { id: preserved } })).toBe(1)
+  })
 })
