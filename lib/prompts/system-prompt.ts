@@ -46,6 +46,7 @@ Every candidate must contain evidenceRefs with exact quotes from their named sup
 Quotes only anchor review scope. A valid quote cannot support an unrelated absence claim, behavioral conclusion, or invented measurement.
 
 TITLE CRAFTING RULES:
+- Write for the person responsible for the website. Describe the affected element and observed behavior, without implying the reader performed a visitor action. Claim that something stopped working only when an earlier working result is recorded.
 - Use conditional review wording. Do not assert a failure that native checks have not established.
 - Include the specific element name: "Headline uses no audience signal" not "Messaging problem"
 - Omit markdown, quotes, punctuation at end

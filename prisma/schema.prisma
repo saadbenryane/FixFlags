@@ -51,6 +51,9 @@ model User {
   cliDeviceAuthorizations  CliDeviceAuthorization[]
   creditPurchases          CreditPurchase[]
   emailLogs                EmailLog[]
+  notificationPreference   NotificationPreference?
+  notificationDigests      NotificationDigest[]
+  emailDeliveries          EmailDelivery[]
   githubConnection         GithubConnection?
   linkedLeads              Lead[]                       @relation("LeadLinkedUser")
   mcpInteractions          McpInteraction[]
@@ -76,6 +79,7 @@ model User {
   siteAgentMessages        SiteAgentMessage[]
   siteLifecycleEvents      SiteLifecycleEvent[]
   requestedRuns            RunRequest[]                 @relation("RunRequester")
+  requestedRunKeys         RunRequestKey[]
   oauthAuthorizationCodes  OAuthAuthorizationCode[]
   oauthRefreshTokens       OAuthRefreshToken[]
   entitlementGrants        EntitlementGrant[]
@@ -83,6 +87,109 @@ model User {
   billingSnapshots         BillingSubscriptionSnapshot[]
 
   @@map("users")
+}
+
+model NotificationPreference {
+  userId       String   @id
+  cadence      NotificationSummaryCadence @default(FOLLOW_MONITORING)
+  productTips  Boolean  @default(false)
+  hour         Int      @default(9)
+  timeZone     String   @default("UTC")
+  weekday      Int      @default(1)
+  revision     Int      @default(0)
+  resolvedCadence String?
+  nextSendAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  digests      NotificationDigest[]
+
+  @@index([nextSendAt])
+  @@map("notification_preferences")
+}
+
+model NotificationDigest {
+  id           String   @id @default(cuid())
+  userId       String
+  revision     Int
+  scheduledAt  DateTime
+  status       NotificationDigestStatus @default(PENDING)
+  attempts     Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil   DateTime?
+  payload      Json?
+  providerId   String?
+  deliveryProjectedAt DateTime?
+  sentAt       DateTime?
+  lastError    String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preference   NotificationPreference @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "notification_digests_preference_fkey")
+
+  @@unique([userId, revision, scheduledAt])
+  @@index([status, nextAttemptAt, leaseUntil])
+  @@index([status, deliveryProjectedAt, sentAt])
+  @@map("notification_digests")
+}
+
+enum NotificationSummaryCadence {
+  FOLLOW_MONITORING
+  DAILY
+  WEEKLY
+  OFF
+}
+
+enum NotificationDigestStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model EmailDelivery {
+  providerId    String   @id
+  userId        String
+  recipientHash String
+  channel       String
+  sourceId      String
+  acceptedAt    DateTime
+  firstAttemptAt DateTime
+  deliveredAt   DateTime?
+  delayedAt     DateTime?
+  bouncedAt     DateTime?
+  complainedAt  DateTime?
+  failedAt      DateTime?
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, acceptedAt(sort: Desc)])
+  @@map("email_deliveries")
+}
+
+model EmailProviderEvent {
+  id              String   @id
+  providerId      String
+  type            String
+  recipientHashes String[]
+  occurredAt      DateTime
+  bodyHash        String
+  receivedAt      DateTime @default(now())
+  processedAt     DateTime?
+  expiresAt       DateTime
+
+  @@index([providerId, occurredAt])
+  @@index([processedAt, receivedAt])
+  @@index([expiresAt])
+  @@map("email_provider_events")
+}
+
+model EmailSuppression {
+  recipientHash String @id
+  reason        String
+  occurredAt    DateTime
+  providerId    String
+
+  @@map("email_suppressions")
 }
 
 model PaidPlanWaitlistEntry {
@@ -300,12 +407,18 @@ model EmailLog {
   emailType  String
   sentAt     DateTime            @default(now())
   providerId String?
+  deliveryProjectedAt DateTime?
   status     EmailDeliveryStatus @default(PENDING)
   errorMsg   String?
+  attempts   Int                 @default(0)
+  leaseUntil DateTime?
+  payload    Json?
+  nextAttemptAt DateTime?
   user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, emailType])
   @@index([userId])
+  @@index([status, deliveryProjectedAt, sentAt])
   @@map("email_logs")
 }
 
@@ -505,6 +618,8 @@ model SiteConnection {
   projectId             String
   /// The owner who authorized this grant, independent of later Site ownership.
   authorizedByUserId    String?
+  /// Stable across token renewal. New authorization replaces this identity.
+  authorizationId       String                 @default(dbgenerated("(gen_random_uuid())::text"))
   provider              SiteConnectionProvider
   externalAccount       String?
   propertyId            String?
@@ -704,6 +819,7 @@ model Audit {
   watchNotificationLastError String?
   /// Provider acceptance reference, never proof that a person received or read it.
   watchNotificationProviderId String?
+  watchDeliveryProjectedAt DateTime?
   /// Immutable provider request body, retained so retries cannot change its meaning.
   watchNotificationPayload    Json?
   /// *
@@ -774,6 +890,7 @@ model Audit {
   /// Supports the Watch notification retry sweep, which only ever looks at a
   /// small set of undelivered alerts.
   @@index([watchNotificationStatus, watchNotificationNextAttemptAt, updatedAt], map: "audits_watch_notification_due_idx")
+  @@index([watchNotificationStatus, watchDeliveryProjectedAt, watchNotifiedAt], map: "audits_watch_delivery_projection_idx")
   @@index([dispatchState, dispatchNextAt], map: "audits_dispatch_due_idx")
   @@map("audits")
 }
@@ -1372,6 +1489,7 @@ model ImprovementOccurrence {
 }
 
 model ImprovementAttempt {
+  sourceFlagIds        String[]                @default([])
   frozen              Boolean                 @default(false)
   idempotencyKey       String?
   requestHash          String?
@@ -2252,6 +2370,7 @@ model RunRequest {
   legacyOutcomeId   String?            @map("outcomeId")
   requestedByUserId String?
   source            RunRequestSource
+  /// Historical first key. RunRequestKey owns original and shared replay lookup.
   idempotencyKey    String
   environment       String             @default("production")
   context           Json?
@@ -2275,13 +2394,32 @@ model RunRequest {
   requestedBy       User?              @relation("RunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   audit             Audit?             @relation(fields: [auditId], references: [id], onDelete: SetNull)
   assessments       OutcomeAssessment[]
+  keys              RunRequestKey[]
 
+  @@unique([id, projectId])
   @@index([projectId, requestedAt(sort: Desc)])
   @@index([legacyOutcomeId, requestedAt(sort: Desc)])
   @@unique([projectId, source, idempotencyKey])
   @@index([auditId])
   @@index([status, requestedAt])
   @@map("run_requests")
+}
+
+/// Original and joined request keys retain one immutable physical admission.
+model RunRequestKey {
+  projectId         String
+  source            RunRequestSource
+  idempotencyKey    String
+  runRequestId      String
+  requestedByUserId String?
+  createdAt         DateTime @default(now())
+  runRequest        RunRequest @relation(fields: [runRequestId, projectId], references: [id, projectId], onDelete: Cascade)
+  requestedBy       User? @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([projectId, source, idempotencyKey])
+  @@index([runRequestId, projectId])
+  @@index([requestedByUserId])
+  @@map("run_request_keys")
 }
 
 /// The exact Outcome set requested for one physical Audit execution.
@@ -2969,6 +3107,7 @@ model UptimeNotification {
   leaseUntil    DateTime?
   sentAt        DateTime?
   providerId    String?
+  deliveryProjectedAt DateTime?
   deliveryPayload Json?
   lastError     String?
   createdAt     DateTime       @default(now())
@@ -2976,6 +3115,7 @@ model UptimeNotification {
 
   @@unique([incidentId, kind])
   @@index([status, nextAttemptAt, leaseUntil])
+  @@index([status, deliveryProjectedAt, sentAt])
   @@map("uptime_notifications")
 }
 

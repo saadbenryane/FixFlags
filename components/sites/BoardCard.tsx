@@ -246,7 +246,7 @@ export function BoardCard({
 
   if (compact && count === 0) {
     const description = [...new Set([status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail].filter(Boolean))].join('. ')
-    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{checking ? SITE_BOARD_COPY.checking : flagCountLabel(0)}
+    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}><span className={styles.compactStatus}>{checking ? SITE_BOARD_COPY.checking : state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}</span>
       <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
     const compactClass = `${styles.card} ${styles.compactSummary}`
     return onOpen ? <InteractiveButton type="button" className={compactClass} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</InteractiveButton>
@@ -385,7 +385,7 @@ export function ProductBoardCard({
   return (
     <BoardCard
       name={card.name}
-      status={recordedPartial && layout === 'card' ? SITE_DASHBOARD_COPY.checkDetails : recordedPartial ? SITE_ACTION_COPY.execution.partialStatus : card.status}
+      status={recordedPartial ? SITE_ACTION_COPY.execution.partialStatus : card.status}
       state={card.state}
       answer={answer}
       detail={card.id === 'site' ? card.detail : compact ? null : problem ? problem.body : card.detail}

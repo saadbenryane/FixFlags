@@ -15,6 +15,8 @@ Exact rendered strings live in `lib/marketing/copy/` and their tests. Product di
 
 FixFlags is for people responsible for live websites and software. They may be developers, founders, ecommerce operators, growth teams, or agencies. Write for technically literate readers without forcing implementation detail into every surface.
 
+Describe the affected feature and its behavior. Do not imply that the reader personally clicked, submitted, ordered, or paid. Say a feature stopped working only when an earlier working result is recorded.
+
 FixFlags independently observes important live behavior, raises meaningful Flags, supports a fix, and verifies the result with fresh evidence. It reduces uncertainty; it does not promise omniscience, guaranteed revenue, or prevention of every failure.
 
 The customer loop is Monitor → Flag → Fix → Monitor. Monitor includes initial analysis, configured scheduled checks, and post-fix verification. Verification remains the proof required for recovery. An immediate check does not turn on scheduled monitoring or alter its cadence.

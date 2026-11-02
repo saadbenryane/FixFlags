@@ -3,6 +3,7 @@ import { shutdownDeadlineMs } from '../lib/runtime/environment.mjs'
 
 export interface WorkerHandle {
   close(): Promise<unknown>
+  ready?(): Promise<unknown>
 }
 export interface WorkerRuntimeLogger {
   info(message: string): void
@@ -21,6 +22,7 @@ export interface WorkerRuntimeDependencies {
   exit(code: number): void
   logger: WorkerRuntimeLogger
   shutdownMs?: number
+  publishState?(state: 'starting' | 'ready' | 'stopping'): void
 }
 
 /** Supervise startup and draining without exposing process globals to tests. */
@@ -28,15 +30,22 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   let worker: WorkerHandle | null = null
   let scheduler: ReturnType<WorkerRuntimeDependencies['startScheduler']>
   let shuttingDown = false, startPromise: Promise<void> | undefined, stopPromise: Promise<void> | undefined
+  let readinessTimer: ReturnType<typeof setInterval> | undefined
 
   async function runStart() {
     if (shuttingDown) return
+    dependencies.publishState?.('starting')
     dependencies.validateEnvironment()
     dependencies.logger.info('Worker starting')
     await dependencies.preflight()
     if (shuttingDown) return
     worker = dependencies.startWorker()
+    await worker.ready?.()
+    if (shuttingDown) return
     scheduler = dependencies.startScheduler()
+    dependencies.publishState?.('ready')
+    readinessTimer = setInterval(() => dependencies.publishState?.('ready'), 10_000)
+    readinessTimer.unref?.()
     dependencies.logger.info('Worker ready, listening for audit jobs')
   }
   function start() { return startPromise ??= runStart() }
@@ -44,6 +53,8 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   function shutdown(exitCode = 0): Promise<void> {
     if (stopPromise) return stopPromise
     shuttingDown = true
+    clearInterval(readinessTimer)
+    dependencies.publishState?.('stopping')
     dependencies.logger.info('Worker stopping intake and draining active work')
     stopPromise = (async () => {
       const timeout = setTimeout(() => {

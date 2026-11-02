@@ -160,6 +160,9 @@ export const SITE_BOARD_COPY = {
   siteCheckOutOfDate: 'The last check is out of date. Run a new check for current evidence.',
   checking: 'Checking',
   browserSource: 'FixFlags browser',
+  pageSpeedSource: 'Google PageSpeed',
+  searchConsoleSource: 'Search Console',
+  analyticsSource: 'Google Analytics',
   addCard: 'Add to this Site',
   previewUnavailable: 'Website preview unavailable',
   addTitle: 'Add to this Site',
@@ -293,8 +296,9 @@ export const API_KEY_COPY = {
   title: 'API keys',
   description: 'Create a key for your own tools, then revoke it here whenever you need to.',
   createTitle: 'Create API key',
-  createDescription: 'Keys can read evidence and use the Fix → Verify workflow for Sites owned by this account. The secret is shown once.',
+  createDescription: 'Choose the access your tool needs for Sites owned by this account. The secret is shown once.',
   accessName: 'Fix and verify',
+  accessLabel: 'Access',
   accessDescription: 'Read Site evidence, start checks, and use the Monitor → Flag → Fix loop for Sites you own.',
 } as const
 

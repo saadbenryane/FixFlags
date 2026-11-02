@@ -16,12 +16,14 @@ export const verificationTargetSchema = z.discriminatedUnion('kind', [
   ])
 import { scanAccessIntentSchema } from '@/lib/audit/scan-access-intent'
 export const monitoredBehaviorSchema = z.enum(['flow', 'pricing-navigation', 'slow-replay', 'journeys'])
+export const actionContextSchema = z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/)
 export const executionSpecSchema = z.object({
   scanAccess: scanAccessIntentSchema.optional(),
   engine: z.literal('progressive-v1').optional(),
   reviewDepth: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   monitoringPages: z.array(z.string().url()).min(1).max(24).optional(),
-  monitoringBehaviors: z.array(z.object({ pageUrl: z.string().url(), behaviors: z.array(monitoredBehaviorSchema).min(1).max(4) }).strict()).min(1).max(24).optional(),
+  monitoringBehaviors: z.array(z.object({ pageUrl: z.string().url(), behaviors: z.array(monitoredBehaviorSchema).max(4),
+    actionContexts: z.array(actionContextSchema).min(1).max(5000).optional() }).strict()).min(1).max(24).optional(),
   // Historical snapshots retain their original entry-role contract. New admission records behaviors.
   monitoringEntryPages: z.array(z.string().url()).min(1).max(24).optional(),
   consoleObservationMs: z.number().int().min(0).max(90000).optional(),
@@ -30,7 +32,9 @@ export const executionSpecSchema = z.object({
   scope: z.enum(['SITE', 'CATEGORY', 'OUTCOMES', 'DIAGNOSTIC', 'FIXTURE_SETUP', 'ACCOUNT_CHECKS']),
   category: z.object({ area: categoryAreaSchema, sourceAuditId: z.string().min(1), pages: z.array(z.string().url()).min(1).max(24) }).strict().optional(),
   verificationScopes: z.array(z.object({ pageUrl: z.string().url(), phases: z.array(z.enum(['page_load', 'public_action'])).max(2),
+    actionContexts: z.array(actionContextSchema).max(5000).optional(),
     overlayPhases: z.array(z.string().regex(/^(page_load|primary_action(?:_after)?|pricing_navigation(?:_after)?|(?:flow_)?form_validation(?:_after)?|journey_[a-z0-9_-]+)$/).max(160)).max(100).optional() }).strict()).max(100).optional(),
+  verificationSourceFlagIds: z.array(z.string().min(1)).min(1).max(5000).optional(),
   accountChecks: accountIntentSchema.optional(),
   fixtureSetup: z.object({ id: z.string().min(1), version: z.number().int().positive() }).strict().optional(),
   checks: z.record(z.string(), z.number().int().positive()),
@@ -38,12 +42,16 @@ export const executionSpecSchema = z.object({
     bindingPolicy: z.string(), bindings: z.array(executionBindingSchema) }).strict()),
   verificationTarget: verificationTargetSchema.nullable(),
 }).strict().superRefine((spec, context) => {
+  if (spec.verificationSourceFlagIds && (spec.scope !== 'DIAGNOSTIC' || spec.verificationTarget?.kind !== 'DIAGNOSTIC' ||
+    new Set(spec.verificationSourceFlagIds).size !== spec.verificationSourceFlagIds.length))
+    context.addIssue({ code: 'custom', message: 'Invalid verification source scope' })
   if (spec.monitoringPages && (spec.scope !== 'SITE' || spec.monitoringPages[0] !== spec.targetUrl || new Set(spec.monitoringPages).size !== spec.monitoringPages.length))
     context.addIssue({ code: 'custom', message: 'Invalid monitoring page scope' })
   if (spec.monitoringBehaviors) {
     const pages = spec.scope === 'SITE' ? spec.monitoringPages ?? [spec.targetUrl] : spec.scope === 'CATEGORY' ? spec.category?.pages : undefined
     if (!pages || new Set(spec.monitoringBehaviors.map(item => item.pageUrl)).size !== spec.monitoringBehaviors.length ||
-      spec.monitoringBehaviors.some(item => !pages.includes(item.pageUrl) || new Set(item.behaviors).size !== item.behaviors.length))
+      spec.monitoringBehaviors.some(item => !pages.includes(item.pageUrl) || new Set(item.behaviors).size !== item.behaviors.length ||
+        !item.behaviors.length && !item.actionContexts?.length || item.actionContexts && new Set(item.actionContexts).size !== item.actionContexts.length))
       context.addIssue({ code: 'custom', message: 'Invalid monitoring behavior scope' })
   }
   if (spec.monitoringEntryPages) {

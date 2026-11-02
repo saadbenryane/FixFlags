@@ -1,18 +1,19 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { currentExecutionOwnership, executionTransaction } from '@/lib/audit/execution-ownership'
-import { accessTokenForConnection, googleConnectionGrantScope } from '@/lib/sites/connections/google'
+import { getGoogleConnectionAccess, googleConnectionCredentialScope, googleConnectionGrantScope } from '@/lib/sites/connections/google'
 import { searchPropertyCoversUrl } from '@/lib/sites/connections/report-scope'
 import { getGscAccess, inspectSearchUrl, querySearchAnalytics, SearchConsoleError, type SearchUrlInspection, type GscSearchRow } from '@/lib/integrations/google-search-console'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { searchObservationSchema, searchReceiptSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { searchFindings } from './registry'
 import { googleIndexObservations } from './google-index'
+import { verificationSourceAuditId } from '@/lib/sites/domain/verification-source'
 
 type Failure = keyof typeof C.googleFailures
 type GoogleReceiptModule = 'search-google' | 'search-google-index' | 'search-google-performance'
 type GoogleAccess = { token: string; property: string; projectId: string; userId: string } & (
-  { connectionId: string; legacyUserId: null; connectionScope: Prisma.SiteConnectionWhereInput } |
+  { connectionId: string; legacyUserId: null; connectionScope: Prisma.SiteConnectionWhereInput; refusalScope: Prisma.SiteConnectionWhereInput } |
   { connectionId: null; legacyUserId: string; legacyScope: Prisma.GscConnectionWhereInput })
 type GoogleAdmission = { access: GoogleAccess | Failure; pageUrls: readonly string[]; retryAfterMs?: number }
 
@@ -60,8 +61,9 @@ async function googleAdmission(projectId: string, userId: string, input: {
     if (connection.status === 'MISMATCH' || !connection.propertyId) return selected('PROPERTY_MISMATCH')
     if (!['CONNECTED', 'UNAVAILABLE'].includes(connection.status)) return selected('AUTH_EXPIRED')
     try {
-      const token = await accessTokenForConnection(connection, userId)
-      return selected(token ? { token, property: connection.propertyId, projectId, userId, connectionId: connection.id, legacyUserId: null,
+      const current = await getGoogleConnectionAccess(connection, userId)
+      return selected(current ? { token: current.token, property: connection.propertyId, projectId, userId, connectionId: connection.id, legacyUserId: null,
+        refusalScope: googleConnectionCredentialScope(current.grant, userId),
         connectionScope: { ...googleConnectionGrantScope(connection, userId), projectId, provider: 'SEARCH_CONSOLE', propertyId: connection.propertyId,
           status: { in: ['CONNECTED', 'UNAVAILABLE'] }, project: { userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } } } : 'AUTH_EXPIRED')
     } catch (error) { return { ...selected(failureCode(error)), retryAfterMs: error instanceof SearchConsoleError ? error.retryAfterMs : undefined } }
@@ -115,7 +117,10 @@ async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null
           .map(source => failed(receipt.pageUrl, 'AUTHORIZATION_CHANGED', source, receipt.collectedAt)) }
         access = null; inspection = null; rows = []
       } else if (access.connectionId !== null && receipt.observations.some(item => ['AUTH_EXPIRED', 'PERMISSION_REFUSED'].includes(item.reason))) {
-        await tx.siteConnection.updateMany({ where: access.connectionScope, data: { status: 'NEEDS_REAUTH', statusDetail: C.googleFailures.AUTH_EXPIRED } })
+        // Retain the failed observation, but only its exact request credential
+        // can require reconnection. A later same-grant renewal stays usable.
+        await tx.siteConnection.updateMany({ where: { AND: [access.connectionScope, access.refusalScope] },
+          data: { status: 'NEEDS_REAUTH', statusDetail: C.googleFailures.AUTH_EXPIRED } })
       }
     }
     if (access && inspection?.indexStatusResult) {
@@ -161,7 +166,7 @@ export async function runGoogleSearchForAudit(input: {
   let retryAfterMs: number | undefined
   const audit = await prisma.audit.findFirst({
     where: { id: input.auditId, userId: input.userId ?? null },
-    select: { id: true, projectId: true, parentId: true, userId: true, project: { select: { userId: true } } },
+    select: { id: true, projectId: true, parentId: true, executionSpec: true, userId: true, project: { select: { userId: true } } },
   })
   if (!audit || audit.userId && audit.project?.userId !== audit.userId) throw new Error('Search execution does not belong to this Site owner')
   const pages = input.pages.slice(0, 24)
@@ -198,8 +203,9 @@ export async function runGoogleSearchForAudit(input: {
         const status = inspection.indexStatusResult
         if (!status?.verdict) observations.push(failed(page.url, 'MALFORMED_PROVIDER_RESPONSE', 'google-index', collectedAt))
         if (status?.verdict) {
-          const prior = audit.parentId ? await prisma.auditVerifierExecution.findUnique({
-            where: { auditId_targetKey_scopeKey: { auditId: audit.parentId, targetKey: `module:${moduleName}`, scopeKey: `page:${page.url}` } },
+          const sourceAuditId = await verificationSourceAuditId(prisma, audit, page.url)
+          const prior = sourceAuditId ? await prisma.auditVerifierExecution.findUnique({
+            where: { auditId_targetKey_scopeKey: { auditId: sourceAuditId, targetKey: `module:${moduleName}`, scopeKey: `page:${page.url}` } },
             select: { detail: true },
           }) : null
           const priorReceipt = searchReceiptSchema.safeParse(prior?.detail)

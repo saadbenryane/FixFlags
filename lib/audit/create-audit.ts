@@ -1,4 +1,5 @@
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { loadRunRequestByKey } from '@/lib/sites/application/run-request-keys'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { prisma } from '@/lib/db'
@@ -47,6 +48,7 @@ import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { assertScheduledClaim, staleScheduledClaim, type ScheduledClaimProject } from '@/lib/sites/application/scheduled-admission'
+import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 
 type AuditCreateContext = {
   url: string
@@ -357,12 +359,16 @@ export async function createAndEnqueueAudit(
           },
           select: {
             id: true,
+            sourceFlagIds: true,
             verificationAudit: {
               select: { id: true, status: true, parentId: true },
             },
           },
         })
         if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
+        if (executionSpec.scope === 'DIAGNOSTIC' &&
+          canonicalIntent((attempt.sourceFlagIds ?? []).toSorted()) !== canonicalIntent((executionSpec.verificationSourceFlagIds ?? []).toSorted()))
+          throw new ParentAuditError('Verification must retain every original repair capture.', 409)
         if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
           return packageAudit(tx, { ...attempt.verificationAudit, reused: true })
         }
@@ -384,11 +390,11 @@ export async function createAndEnqueueAudit(
 
       if (options.runRequestAdmission) {
         const intent = options.runRequestAdmission
-        const existing = await tx.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
+        const existing = await loadRunRequestByKey({
           projectId: intent.projectId, source: intent.source!, idempotencyKey: intent.idempotencyKey,
-        } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true, selections: { select: { outcomeId: true } } } })
+        }, tx)
         if (existing) {
-          if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== (options.operator?.actorId ?? userId))
+          if (existing.requestHash !== intent.requestHash || existing.keyRequestedByUserId !== (options.operator?.actorId ?? userId))
             throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
           if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
           throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort())

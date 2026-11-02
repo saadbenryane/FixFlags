@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { FlagEvidenceDetails } from '../FlagEvidenceDetails'
 
 describe('shared Flag evidence presentation', () => {
+  it('retains native repair alternatives as technical detail beside the recorded diagnosis', () => {
+    const diagnostic = '#menu\nFix any of the following:\nElement does not have text that is visible to screen readers\n<button id="menu"></button>'
+    render(<FlagEvidenceDetails observed={diagnostic} diagnosis="Buttons must have discernible text (1 element)" expected="The menu has an accessible name" />)
+    expect(screen.getByText('Buttons must have discernible text (1 element)')).toBeVisible()
+    const details = screen.getByText('Technical diagnostic').closest('details')!
+    expect(details).not.toHaveAttribute('open')
+    expect(details.querySelector('p')?.textContent).toBe(diagnostic)
+  })
   it('retains every page observation while allowing caller-owned actions', () => {
     render(<FlagEvidenceDetails observed="Controls have no accessible name" expected="Each control has an accessible name"
       supportingObservations={[

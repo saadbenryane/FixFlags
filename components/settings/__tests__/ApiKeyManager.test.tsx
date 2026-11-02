@@ -27,13 +27,12 @@ describe('ApiKeyManager', () => {
     })
   })
 
-  it('creates a Fix and verify key without asking for an implementation client', async () => {
+  it('defaults to read-only evidence and keeps the secret visible once', async () => {
     render(<ApiKeyManager />)
     await screen.findByText('No active keys.')
 
-    expect(screen.queryByRole('combobox', { name: /Access/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /Access/ })).toHaveValue('read_only')
     expect(screen.queryByRole('combobox', { name: /Client/ })).not.toBeInTheDocument()
-    expect(screen.getByText(/Fix and verify/)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /Expires after/ })).toHaveValue('90')
     fireEvent.change(screen.getByRole('textbox', { name: /Key name/ }), { target: { value: 'Release agent' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
@@ -42,7 +41,7 @@ describe('ApiKeyManager', () => {
       expect(createApiKey).toHaveBeenCalledWith({
         name: 'Release agent',
         client: 'other',
-        scopePreset: 'fix_and_verify',
+        scopePreset: 'read_only',
         expiresInDays: 90,
       })
     })
@@ -65,13 +64,14 @@ describe('ApiKeyManager', () => {
     expect(key).toHaveProperty('selectionEnd', 'ff_live_secret_once'.length)
   })
 
-  it('lets the customer choose expiration without configuring scopes', async () => {
-    render(<ApiKeyManager />)
+  it('creates the chosen repair access and expiration for the selected agent', async () => {
+    render(<ApiKeyManager client="codex" />)
     await screen.findByText('No active keys.')
 
     fireEvent.change(screen.getByRole('combobox', { name: /Expires after/ }), {
       target: { value: '30' },
     })
+    fireEvent.change(screen.getByRole('combobox', { name: /Access/ }), { target: { value: 'fix_and_verify' } })
     fireEvent.change(screen.getByRole('textbox', { name: /Key name/ }), { target: { value: 'CI release' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
 
@@ -79,6 +79,7 @@ describe('ApiKeyManager', () => {
       expect(createApiKey).toHaveBeenCalledWith(
         expect.objectContaining({
           scopePreset: 'fix_and_verify',
+          client: 'codex',
           expiresInDays: 30,
         })
       )

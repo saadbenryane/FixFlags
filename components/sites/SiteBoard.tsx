@@ -140,11 +140,12 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   })
   const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' &&
     (banner.kind !== 'incomplete' || summaryNote))
+  const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
 
   return (
     <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
-      headerAction={<>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>}>
+      headerAction={viewMode === 'home' ? undefined : siteActions}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
         <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
@@ -173,7 +174,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <SiteOverviewWorkspace summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} capturePriority summaryItems={summaryItems}
+        <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
           notice={checking ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
             if (item.id === 'pages') { openWorkspace('pages'); return }
@@ -203,7 +204,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
               return { id: card.id, flagCount: category.flagCount,
                 render: (layout: 'card' | 'row') => {
                 const Frame = layout === 'row' ? 'div' : 'article'
-                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
+                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
                 opener.current = trigger
                 selectCategory(card.id)
               }} /></Frame> } }

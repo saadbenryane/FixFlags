@@ -465,4 +465,59 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     await deliverUptimeNotifications(now)
     expect(fixture.send).not.toHaveBeenCalled()
   })
+  it.each([false, true])('retires an obsolete outage message after recovery without changing its retained body (retried: %s)', async retried => {
+    const { incident, receipt } = await receiptFixture('DOWN', 'recovered-before-delivery')
+    if (retried) {
+      fixture.send.mockResolvedValueOnce({ data: null, error: { message: 'Controlled delivery interruption' } })
+      await deliverUptimeNotifications(now)
+      fixture.send.mockClear()
+    }
+    const before = await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })
+    const recoveredAt = new Date(Math.max(now.getTime() + 60_000, before.nextAttemptAt.getTime() + 1))
+    vi.setSystemTime(recoveredAt)
+    await db().uptimeIncident.update({ where: { id: incident.id }, data: { recoveredAt } })
+    const recovery = await db().uptimeNotification.create({ data: { incidentId: incident.id, kind: 'RECOVERED', nextAttemptAt: recoveredAt } })
+    await deliverUptimeNotifications(recoveredAt)
+    expect(fixture.send).toHaveBeenCalledTimes(1)
+    expect(fixture.send.mock.calls[0][0].subject).toBe('example.com is responding again')
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({ status: 'SKIPPED',
+      attempts: before.attempts, deliveryPayload: before.deliveryPayload, sentAt: null, providerId: null })
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: recovery.id } })).toMatchObject({ status: 'SENT' })
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ confirmedAt: now, recoveredAt })
+  })
+  it('retires a delayed recovery after a newer confirmed outage while retaining both incidents', async () => {
+    const { incident, monitor, receipt } = await receiptFixture('RECOVERED', 'recurrence-before-delivery')
+    const recurrenceAt = new Date(now.getTime() + 60_000)
+    vi.setSystemTime(recurrenceAt)
+    const recurrence = await db().uptimeIncident.create({ data: { monitorId: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl,
+      startedAt: recurrenceAt, confirmedAt: recurrenceAt, reason: 'response_error' } })
+    const down = await db().uptimeNotification.create({ data: { incidentId: recurrence.id, kind: 'DOWN', nextAttemptAt: recurrenceAt } })
+    await deliverUptimeNotifications(recurrenceAt)
+    expect(fixture.send).toHaveBeenCalledTimes(1)
+    expect(fixture.send.mock.calls[0][0].subject).toBe('example.com is not responding')
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({ status: 'SKIPPED', attempts: 0 })
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: down.id } })).toMatchObject({ status: 'SENT' })
+    expect(await db().uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(2)
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: now })
+  })
+  it('fences a recurrence committed between recovery selection and delivery admission', async () => {
+    const { monitor, receipt } = await receiptFixture('RECOVERED', 'recurrence-at-claim')
+    const original = db().uptimeNotification.updateMany.bind(db().uptimeNotification)
+    let changed = false
+    const admission = vi.spyOn(db().uptimeNotification, 'updateMany').mockImplementation(async input => {
+      if (!changed && input.where?.id === receipt.id && input.data.status === 'SENDING') {
+        changed = true
+        const at = new Date(now.getTime() + 1)
+        await db().uptimeIncident.create({ data: { monitorId: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl,
+          startedAt: at, confirmedAt: at, reason: 'response_error' } })
+      }
+      return original(input)
+    })
+    try { await deliverUptimeNotifications(now) } finally { admission.mockRestore() }
+    expect(changed).toBe(true)
+    expect(fixture.send).not.toHaveBeenCalled()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({ status: 'PENDING', attempts: 0, deliveryPayload: null })
+    await deliverUptimeNotifications(now)
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({ status: 'SKIPPED', attempts: 0 })
+  })
 })

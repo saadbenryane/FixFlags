@@ -23,7 +23,7 @@ describe('website capture preview', () => {
     expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Mobile' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Desktop' }).textContent).toBe('')
-    expect(screen.queryByText(/Previous capture/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Previous capture/)).toBeVisible()
     expect(screen.queryByText('https://example.com/')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('Previous capture')
@@ -48,7 +48,7 @@ describe('website capture preview', () => {
   it('does not substitute desktop evidence for a missing mobile capture', () => {
     const view = render(<SitePreviewCard host="example.com" captures={[captures[0]]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Mobile' }))
-    expect(screen.getByText('No screenshot yet')).toBeVisible()
+    expect(screen.getByText('No screenshot recorded')).toBeVisible()
     expect(view.container.querySelector('img')).toBeNull()
   })
   it('shows failed image loading honestly instead of offering an empty enlargement', () => {
@@ -56,5 +56,12 @@ describe('website capture preview', () => {
     fireEvent.error(view.container.querySelector('img')!)
     expect(screen.getByText('Screenshot unavailable')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Open captured page for example.com' })).not.toBeInTheDocument()
+  })
+  it('distinguishes an unfinished capture task from a terminal missing capture', () => {
+    const view = render(<SitePreviewCard host="example.com" captures={[]} availability={{ desktop: 'pending', mobile: 'not_recorded' }} />)
+    expect(screen.getByText('Preparing screenshot')).toBeVisible()
+    view.rerender(<SitePreviewCard host="example.com" captures={[]} availability={{ desktop: 'unavailable', mobile: 'not_recorded' }} />)
+    expect(screen.getByText('Screenshot unavailable')).toBeVisible()
+    expect(screen.queryByText('Preparing screenshot')).not.toBeInTheDocument()
   })
 })

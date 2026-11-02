@@ -3,10 +3,12 @@ import { BoardSummaryStrip, type BoardSummaryItem } from './BoardCard'
 import { type ToolItem } from './SiteTooling'
 import { DetectedToolsCard } from './DetectedToolsCard'
 import styles from './SiteOverview.module.css'
+import type { SiteCaptureAvailability } from '@/lib/sites/captures'
 
-export function SiteOverview({ host, captures, capturePriority = false, summaryItems, summaryLabel, notice, technologies, onSelectSummary, onSelectTechnology }: {
+export function SiteOverview({ host, captures, captureAvailability, capturePriority = false, summaryItems, summaryLabel, notice, technologies, onSelectSummary, onSelectTechnology }: {
   host: string
   captures: readonly SiteCapture[]
+  captureAvailability?: SiteCaptureAvailability
   capturePriority?: boolean
   summaryItems: readonly BoardSummaryItem[]
   summaryLabel?: string
@@ -18,7 +20,7 @@ export function SiteOverview({ host, captures, capturePriority = false, summaryI
   return <div className={styles.overview}>
     {notice ? <p role="status" className={styles.notice}>{notice}</p> : null}
     <div className={styles.layout}>
-      <SitePreviewCard host={host} captures={captures} priority={capturePriority} />
+      <SitePreviewCard host={host} captures={captures} availability={captureAvailability} priority={capturePriority} />
       <div className={styles.summaries}>
         <section className={styles.findings} aria-label="Findings summary">
           <BoardSummaryStrip items={summaryItems} label={summaryLabel} onSelect={onSelectSummary} />

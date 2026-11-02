@@ -2,7 +2,7 @@ import { captureScreenshot } from './browser/capture-screenshot'
 import { collectRenderedHtml } from './browser/rendered-html'
 import { observeRenderedCopy, type RenderedCopy } from './browser/rendered-copy'
 import { collectRenderedSearchSnapshot, type RenderedSearchSnapshot } from './search/rendered-snapshot'
-import { chromium, type Browser, type Page } from 'playwright'
+import { type Browser, type Page } from 'playwright'
 import { AxeBuilder } from '@axe-core/playwright'
 import fs from 'fs'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
@@ -18,6 +18,8 @@ import { observeViewport } from './browser/viewport-observation'
 import { observeMotionWindow, collectReducedMotionWindow, type MotionWindow } from './browser/motion-observation'
 import { applyMotionObservation } from './checks/motion-evidence'
 import { sharedBrowser } from './browser/shared-browser'
+import { launchWorkerBrowser } from './browser/worker-browser'
+import { browserContextInventory } from './browser/context-inventory'
 import { bindPublicBrowserProxy, startPublicBrowserProxy } from './browser/public-proxy'
 import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
@@ -93,7 +95,7 @@ async function launchBrowser(): Promise<Browser> {
   try {
     const proxy = await startPublicBrowserProxy()
     try {
-      const launched = await chromium.launch({
+      const launched = await launchWorkerBrowser({
         args: BROWSER_LAUNCH_ARGS,
         headless: true,
         executablePath,
@@ -119,11 +121,13 @@ export async function getBrowser(): Promise<Browser> {
 export function getBrowserDiagnostics(): {
   connected: boolean
   activeContexts: number
+  contextOwnership: ReturnType<typeof browserContextInventory>
 } {
   const browser = browserRuntime.peek()
   return {
     connected: Boolean(browser?.isConnected()),
     activeContexts: browser?.isConnected() ? browser.contexts().length : 0,
+    contextOwnership: browserContextInventory(browser),
   }
 }
 

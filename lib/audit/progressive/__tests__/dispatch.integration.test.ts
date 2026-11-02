@@ -293,6 +293,122 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     } finally { await queue.resume(); await worker?.close() }
   }, 25_000)
 
+  it('continues one durable task across bounded deliveries without completing dependents or consuming later retry allowance', async () => {
+    const { audit } = await admission(['flow'])
+    const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id } })
+    await persistTaskPlan(audit.id, [{ kind: 'flow', key: task.targetKey.slice(5), scope: task.scopeKey,
+      input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies: [] }, { kind: 'finalize', key: 'finalize', scope: 'site',
+      input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies: [task.targetKey.slice(5)] }])
+    let interrupted = false
+    const observed: number[] = []
+    const continuing: TaskHandler = { kind: 'flow', replay: 'read_only', continuation: true, timeoutMs: 1000,
+      async evaluate(context) {
+        const previous = context.task.workResult as { data?: { step?: number } } | null
+        const step = (previous?.data?.step ?? 0) + 1
+        observed.push(step)
+        if (step === 3 && !interrupted) { interrupted = true; throw new TaskFailure('CONTROLLED_INTERRUPTION', true, 1, true) }
+        return { ...serializeArtifact('flow', { step }), ...(step < 3 ? { continuation: true as const } : {}) }
+      }, validateResult: () => {},
+      async commit(context, artifact, tx) {
+        await tx.auditVerificationReceipt.create({ data: { auditId: audit.id, taskId: context.task.id, targetKey: 'fixture:continued-observation',
+          scopeKey: String(artifact.data.step), source: 'DETERMINISTIC', status: 'COMPLETED', detail: artifact as never } })
+      } }
+    const registry = new Map([['flow', continuing]])
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, registry)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'READY', status: 'PENDING',
+      workGeneration: 1, workAttempts: 0, workResult: { data: { step: 1 }, continuation: true } })
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'finalize' } })).toMatchObject({ workState: 'WAITING' })
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, registry)
+    expect(observed).toEqual([1])
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 2 }, registry)
+    const queued = await dispatch.queues.get('browser')!.getJob(task.id + '-g3')
+    expect(queued!.opts.priority).toBe(4)
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 3 }, registry)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1,
+      workResult: { data: { step: 2 } } })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+    await reconcileTasks(audit.id)
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 4 }, registry)
+    expect(observed).toEqual([1, 2, 3, 3])
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'COMPLETED', workGeneration: 4, workAttempts: 2 })
+    expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id, targetKey: 'fixture:continued-observation' } })).toBe(3)
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'finalize' } })).toMatchObject({ workState: 'READY' })
+  })
+
+  it.each(['not-enabled', 'protected'] as const)('refuses continuation for a %s handler before committing an observation', async mode => {
+    const { audit, tasks } = await admission(['http']), task = tasks[0], commit = vi.fn()
+    const handler: TaskHandler = { kind: 'http', replay: mode === 'protected' ? 'protected' : 'read_only',
+      continuation: mode === 'protected', timeoutMs: 1000, reconcile: async () => true,
+      evaluate: async () => ({ ...serializeArtifact('http', { observed: true }), continuation: true }), validateResult: () => {}, commit }
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, new Map([['http', handler]]))
+    expect(commit).not.toHaveBeenCalled()
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+      workState: 'BLOCKED', workErrorCode: 'CONTINUATION_NOT_SUPPORTED', workResult: null })
+  })
+
+  it('rolls back an interrupted checkpoint and retries the same observation before advancing', async () => {
+    const { audit, tasks } = await admission(['http']), task = tasks[0]
+    let interrupted = false
+    const steps: number[] = []
+    const handler: TaskHandler = { kind: 'http', replay: 'read_only', continuation: true, timeoutMs: 1000,
+      evaluate: async context => {
+        const prior = context.task.workResult as { data?: { step?: number } } | null
+        const step = (prior?.data?.step ?? 0) + 1; steps.push(step)
+        return { ...serializeArtifact('http', { step }), continuation: true }
+      }, validateResult: () => {},
+      commit: async (context, artifact, tx) => {
+        await tx.auditVerificationReceipt.create({ data: { auditId: audit.id, taskId: context.task.id, targetKey: 'fixture:checkpoint',
+          scopeKey: String(artifact.data.step), source: 'DETERMINISTIC', status: 'COMPLETED' } })
+        if (!interrupted) { interrupted = true; throw new TaskFailure('CONTROLLED_COMMIT_INTERRUPTION', true, 1) }
+      } }
+    const registry = new Map([['http', handler]])
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, registry)
+    expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id, targetKey: 'fixture:checkpoint' } })).toBe(0)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT', workResult: null })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+    await reconcileTasks(audit.id)
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 2 }, registry)
+    expect(steps).toEqual([1, 1])
+    expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id, targetKey: 'fixture:checkpoint' } })).toBe(1)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'READY', workResult: { data: { step: 1 } } })
+    await prisma.audit.update({ where: { id: audit.id }, data: { recoveryUntil: new Date(0) } })
+    await reconcileTasks(audit.id)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'EXHAUSTED', workResult: { data: { step: 1 } } })
+    expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id, targetKey: 'fixture:checkpoint' } })).toBe(1)
+  })
+
+  it('releases a browser worker between control observations so another Site can execute first', async () => {
+    const queue = dispatch.queues.get('browser')!
+    await queue.drain()
+    const first = await admission(Array.from({ length: taskDeliveryWindow('browser') }, () => 'flow' as const)), other = await admission(['flow'])
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: first.audit.id, id: { not: first.tasks[0].id } },
+      data: { workDispatchState: 'SENT', workRetryAt: new Date(Date.now() + 60_000) } })
+    const sequence: string[] = []
+    const handler: TaskHandler = { kind: 'flow', replay: 'read_only', continuation: true, timeoutMs: 1000,
+      evaluate: async context => {
+        const prior = context.task.workResult as { data?: { step?: number } } | null
+        const step = (prior?.data?.step ?? 0) + 1
+        sequence.push(context.audit.id === first.audit.id ? 'cohort:' + step : 'other-site')
+        return { ...serializeArtifact('flow', { step }), ...(context.audit.id === first.audit.id && step < 2 ? { continuation: true as const } : {}) }
+      }, validateResult: () => {} }
+    const connection = createWorkerRedis(); connections.push(connection)
+    const worker = new Worker(queue.name, job => executeTask(job.data, new Map([['flow', handler]])), { connection, concurrency: 1 })
+    try {
+      await worker.waitUntilReady()
+      await dispatchTask(first.tasks[0].id)
+      expect(await dispatchTask(other.tasks[0].id)).toBe(false)
+      await queue.resume()
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: first.tasks[0].id } }))
+        .toMatchObject({ workState: 'READY', workGeneration: 1 }), { timeout: 5000, interval: 20 })
+      expect(await dispatchTask(other.tasks[0].id)).toBe(true)
+      await vi.waitFor(async () => {
+        await dispatchReadyTasks(await reconcileTasks(first.audit.id))
+        expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: first.tasks[0].id } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 5000, interval: 20 })
+      expect(sequence).toEqual(['cohort:1', 'other-site', 'cohort:2'])
+    } finally { await queue.pause(); await worker.close() }
+  })
+
   it('admits a maximum-sized graph in bulk and preserves completed execution on identical replay', async () => {
     const audit = await prisma.audit.create({ data: { url: 'https://example.com/' } })
     auditIds.push(audit.id)

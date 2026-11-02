@@ -4,17 +4,20 @@ import { createHash } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
-import { publicPageBehaviors } from '@/lib/audit/progressive/graph'
+import { initialTaskPlan, publicPageBehaviors } from '@/lib/audit/progressive/graph'
+import type { TaskPlan } from '@/lib/audit/progressive/contracts'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { consoleObservationMinimum } from '@/lib/audit/console-evidence'
 import { capturePageKey } from '@/lib/audit/browser/observation-scope'
 import { validateBindingForOutcome } from './binding-config'
 import { canonicalIntent, executionSpecSchema, readExecutionSpec, type ExecutionSpec } from '../domain/execution-spec'
 import type { CategoryArea } from '../domain/execution-spec'
-import { analysisEnvironmentWhere, siteWideAnalysisAuditWhere } from './analysis-scope'
+import { analysisEnvironmentWhere, includeLegacySiteAnalyses } from './analysis-scope'
+import { loadLegacySiteAnalysisIds } from './legacy-analysis'
 import { SiteRunRefusal } from './run-refusal'
-import { monitoringResponsibility, monitoringBehaviorResponsibility } from './monitoring-responsibility'
+import { monitoringResponsibility, monitoringBehaviorResponsibility, monitoringActionResponsibility, monitoringConsoleResponsibility } from './monitoring-responsibility'
 import { readSupportingObservations } from '@/lib/audit/flag-observations'
+import { originalPageActionContexts } from '@/lib/audit/flow/verification-context'
 import { recordedPageUrls } from '../page-coverage'
 
 type SpecOutcome = { id: string; kind: string; expectation?: string | null; bindingPolicy?: string;
@@ -28,8 +31,9 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   let targetUrl = input.targetUrl
   if ((input.scope === 'SITE' && input.projectId) || input.scope === 'CATEGORY') {
     if (input.scope === 'CATEGORY' && !input.categoryArea) throw new SiteRunRefusal('Select a category to check.', 400)
+    const legacyIds = await loadLegacySiteAnalysisIds([input.projectId])
     const source = await prisma.audit.findFirst({ where: { projectId: input.projectId,
-      ...(input.scope === 'CATEGORY' ? { status: 'COMPLETED' as const } : {}), ...siteWideAnalysisAuditWhere,
+      ...(input.scope === 'CATEGORY' ? { status: 'COMPLETED' as const } : {}), ...includeLegacySiteAnalyses(legacyIds),
       AND: [analysisEnvironmentWhere(input.environment)] },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true, url: true, executionSpec: true, pages: {
         orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 24, select: { url: true } },
@@ -48,6 +52,12 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     const pages = await monitoringResponsibility({ projectId: input.projectId, environment: input.environment, targetUrl, recorded })
     monitoringBehaviors = await monitoringBehaviorResponsibility({ projectId: input.projectId, environment: input.environment, pages,
       recordedEntries: [...(source?.url ? [source.url] : []), ...(compatible ? prior.monitoringEntryPages ?? [] : [])], recordedBehaviors: compatible ? prior.monitoringBehaviors : undefined })
+    const actions = await monitoringActionResponsibility({ projectId: input.projectId, environment: input.environment, pages })
+    monitoringBehaviors = pages.flatMap(pageUrl => {
+      const behaviors = monitoringBehaviors!.find(scope => scope.pageUrl === pageUrl)?.behaviors ?? []
+      const actionContexts = actions.get(pageUrl)
+      return behaviors.length || actionContexts?.length ? [{ pageUrl, behaviors, ...(actionContexts?.length ? { actionContexts } : {}) }] : []
+    })
     if (input.scope === 'CATEGORY') category = { area: input.categoryArea!, sourceAuditId: source!.id, pages }
     else if (recorded.length || pages.length > 1) monitoringPages = pages
   }
@@ -68,13 +78,22 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     if (fixture) Object.assign(binding, { fixture: { id: fixture.id, version: fixture.version } })
   }
   let verificationScopes: ExecutionSpec['verificationScopes']
+  let verificationSourceFlagIds: ExecutionSpec['verificationSourceFlagIds']
   let consoleObservationMs: number | undefined
   let consoleObservationScopes: ExecutionSpec['consoleObservationScopes']
   const diagnosticModule = input.verificationTarget?.kind === 'DIAGNOSTIC' ? CHECK_REGISTRY[input.verificationTarget.checkId.split('::page:')[0]]?.module : null
   if (input.verificationTarget?.kind === 'DIAGNOSTIC') {
-    const flags = await prisma.flag.findMany({ where: { auditId: input.verificationTarget.parentAuditId,
-      audit: { projectId: input.projectId }, pageUrl: input.verificationTarget.pageUrl,
-      checkId: input.verificationTarget.checkId }, take: 100, select: { evidenceTargets: true, affectedPaths: true, supportingObservations: true } })
+    const attempt = await prisma.improvementAttempt.findFirst({ where: { id: input.verificationTarget.attemptId,
+      sourceAuditId: input.verificationTarget.parentAuditId, improvement: { projectId: input.projectId } },
+      select: { improvementId: true, sourceFlagIds: true } })
+    if (attempt?.sourceFlagIds?.length) verificationSourceFlagIds = attempt.sourceFlagIds
+    const flags = await prisma.flag.findMany({ where: { audit: { projectId: input.projectId,
+      ...(verificationSourceFlagIds ? { AND: [analysisEnvironmentWhere(input.environment)] } : {}) },
+      ...(verificationSourceFlagIds ? { id: { in: verificationSourceFlagIds }, improvementOccurrence: { improvementId: attempt!.improvementId } }
+        : { auditId: input.verificationTarget.parentAuditId, pageUrl: input.verificationTarget.pageUrl, checkId: input.verificationTarget.checkId }) },
+      take: verificationSourceFlagIds ? 5000 : 100, select: { pageUrl: true, verificationRule: true, evidenceTargets: true, affectedPaths: true, supportingObservations: true } })
+    if (verificationSourceFlagIds && flags.length !== verificationSourceFlagIds.length)
+      throw new SiteRunRefusal('The original repair scope is no longer available.', 409, 'REPAIR_SCOPE_UNAVAILABLE')
     const observations = flags.flatMap(flag => readSupportingObservations(flag.supportingObservations)?.items ?? [])
     const evidenceTargets = [...flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets : []),
       ...observations.flatMap(item => item.evidenceTargets)]
@@ -83,10 +102,12 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
       return typeof context === 'string' && context.startsWith('tracking:') && context.length <= 4200 ? [context] : []
     })
-    const pages = [...new Set([input.verificationTarget.pageUrl, ...observations.flatMap(item => item.pageUrl ? [item.pageUrl] : []),
+    const pages = [...new Set([input.verificationTarget.pageUrl, ...flags.flatMap(flag => flag.pageUrl ? [flag.pageUrl] : []), ...observations.flatMap(item => item.pageUrl ? [item.pageUrl] : []),
       ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])])]
     verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
       contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
+    if (diagnosticModule === 'flow' || diagnosticModule === 'form-validation')
+      verificationScopes = verificationScopes.map(scope => ({ ...scope, actionContexts: originalPageActionContexts(flags, scope.pageUrl) }))
     if (diagnosticModule === 'overlays') {
       const contexts = evidenceTargets.flatMap(value => {
         const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
@@ -100,19 +121,9 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   if (input.scope === 'SITE' || category?.area === 'conversion') {
     // Carry recorded error horizons into care runs. A fast, healthy navigation
     // must not silently shorten observation after an earlier delayed failure.
-    const flags = await prisma.flag.findMany({ where: { audit: { projectId: input.projectId, status: 'COMPLETED' },
-      OR: [{ checkId: { startsWith: 'console-errors-critical' } }, { checkId: { startsWith: 'console-errors-some' } }] },
-      orderBy: { createdAt: 'desc' }, take: 100, select: { evidenceTargets: true, pageUrl: true, affectedPaths: true } })
-    const windows = new Map<string, number>()
-    for (const flag of flags) {
-      const pages = [flag.pageUrl, ...(Array.isArray(flag.affectedPaths) ? flag.affectedPaths : [])]
-      for (const page of pages) if (typeof page === 'string' && URL.canParse(page)) {
-        const pageUrl = new URL(page).href
-        const minimum = consoleObservationMinimum(flag.evidenceTargets, pageUrl)
-        if (minimum && (windows.has(pageUrl) || windows.size < 100)) windows.set(pageUrl, Math.max(2000, minimum, windows.get(pageUrl) ?? 0))
-      }
-    }
-    if (windows.size) consoleObservationScopes = [...windows].map(([pageUrl, minimumMs]) => ({ pageUrl, minimumMs }))
+    const scopes = await monitoringConsoleResponsibility({ projectId: input.projectId, environment: input.environment,
+      pages: category?.pages ?? monitoringPages ?? [targetUrl] })
+    if (scopes.length) consoleObservationScopes = scopes
   }
   let accountChecks = (['SITE', 'ACCOUNT_CHECKS'].includes(input.scope) || category?.area === 'conversion' || input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId.startsWith('account-')) ? await accountAdmission(input.projectId, input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId === 'account-signup-failed' ? 'retest' : input.accountMode) : undefined
   if (accountChecks?.siteUrl && new URL(accountChecks.siteUrl).origin !== new URL(input.targetUrl).origin) accountChecks = undefined
@@ -121,13 +132,15 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       .filter(([id, definition]) => !category || definition.area === category.area || category.area === 'search' && id.startsWith('corridor-og-'))
       .map(([id, definition]) => [id, definition.version])),
     ...(accountChecks ? { accountChecks } : {}), outcomes, verificationTarget: input.verificationTarget ?? null, ...(verificationScopes ? { verificationScopes } : {}),
+    ...(verificationSourceFlagIds ? { verificationSourceFlagIds } : {}),
     ...(monitoringPages ? { monitoringPages } : {}), ...(monitoringBehaviors ? { monitoringBehaviors } : {}),
     ...(consoleObservationMs !== undefined ? { consoleObservationMs } : {}), ...(consoleObservationScopes ? { consoleObservationScopes } : {}) })
   if (spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') return spec
   const pages = spec.category?.pages ?? spec.monitoringPages ?? [spec.targetUrl]
   return executionSpecSchema.parse({ ...spec, monitoringBehaviors: pages.flatMap((pageUrl, position) => {
     const behaviors = publicPageBehaviors({ pageUrl, primary: position === 0 }, spec)
-    return behaviors.length ? [{ pageUrl, behaviors }] : []
+    const actionContexts = spec.monitoringBehaviors?.find(scope => scope.pageUrl === pageUrl)?.actionContexts
+    return behaviors.length || actionContexts?.length ? [{ pageUrl, behaviors, ...(actionContexts ? { actionContexts } : {}) }] : []
   }) })
 }
 
@@ -137,6 +150,27 @@ export function canonicalExecutionOutcomes(outcomes: ExecutionSpec['outcomes']) 
   return outcomes.toSorted((left, right) => left.id.localeCompare(right.id)).map(outcome => ({ ...outcome,
     bindings: outcome.bindings.toSorted((left, right) => left.key.localeCompare(right.key)),
   }))
+}
+
+/** Different request keys may share live work only when its frozen plan covers
+ * the requested obligations. Exact keyed replay keeps its original snapshot. */
+export function monitoringExecutionCovers(admitted: ExecutionSpec, requested: ExecutionSpec): boolean {
+  const identity = (task: TaskPlan) => JSON.stringify([task.scope, task.kind, task.input.module ?? null,
+    task.input.device ?? null, task.input.outcomeId ?? null, task.input.bindingKey ?? null])
+  try {
+    // Compare the complete admitted page intent. The physical execution keeps
+    // its own policy-selected depth; this read cannot expand that execution.
+    const available = new Map(initialTaskPlan({ ...admitted, reviewDepth: 3 }).map(task => [identity(task), task]))
+    return initialTaskPlan({ ...requested, reviewDepth: 3 }).every(task => {
+      const prior = available.get(identity(task))
+      if (!prior) return false
+      const contexts = new Set(prior.input.verificationContexts ?? [])
+      return (task.input.verificationContexts ?? []).every(context => contexts.has(context))
+    })
+  } catch {
+    // Unreadable historical work cannot establish compatibility.
+    return false
+  }
 }
 
 export function executionIntentHash(spec: ExecutionSpec) {

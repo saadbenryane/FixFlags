@@ -10,18 +10,19 @@ const evidence: KeyboardEvidence = { version: 1, pageUrl: 'https://example.com/'
     rect: { x: 10, y: 10, width: 100, height: 30 } }] }
 
 describe('keyboard evidence evaluation', () => {
-  it('keeps corrected focus paint observations separate from historical detector evidence', () => {
+  it.each([undefined, 'painted-properties-v2'] as const)('keeps corrected focus paint observations separate from historical detector evidence (%s)', focusPolicy => {
     const scope = { pageUrl: evidence.pageUrl, finalUrl: evidence.pageUrl, profile: 'desktop', access: 'public' }
-    const original = runKeyboardChecks({ ...evidence, scope, steps: [{ ...evidence.steps[0], indicator: 'missing' }] }).flags[0]
-    const current = runKeyboardChecks({ ...evidence, scope, focusPolicy: 'painted-properties-v2' })
+    const original = runKeyboardChecks({ ...evidence, scope, focusPolicy, steps: [{ ...evidence.steps[0], indicator: 'missing' }] }).flags[0]
+    const current = runKeyboardChecks({ ...evidence, scope, focusPolicy: 'painted-properties-v3' })
     expect(scopedAssertionForTarget({ checkId: original.checkId!, flag: original, receipt: checkReceiptSchema.parse({
       kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: evidence.pageUrl, applicable: true,
       complete: true, passed: true, assertions: current.assertions,
       execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: evidence.collectedAt },
     }) })).toBeUndefined()
-    const navigation = (focusPolicy?: 'painted-properties-v2') => runKeyboardChecks({ ...evidence, scope, focusPolicy, trap: 'blocked' })
+    const navigation = (focusPolicy?: KeyboardEvidence['focusPolicy']) => runKeyboardChecks({ ...evidence, scope, focusPolicy, trap: 'blocked' })
       .flags.find(flag => flag.checkId === 'keyboard-nav-trap')!.evidenceTargets
     expect(navigation('painted-properties-v2')).toEqual(navigation())
+    expect(navigation('painted-properties-v3')).toEqual(navigation())
   })
   it('requires the same requested page, final page, browser profile and access for original-control repair', () => {
     const scope = { pageUrl: evidence.pageUrl, finalUrl: evidence.pageUrl, profile: 'desktop', access: 'public' }

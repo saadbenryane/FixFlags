@@ -104,6 +104,19 @@ it.each(['ready', 'admitted', 'failed', 'later-source'] as const)('projects reco
     commitReference: pending.commitReference, deploymentReference: pending.deploymentReference, verifying: state === 'admitted' || state === 'later-source' })
 })
 
+it.each([
+  { selected: true, sourceAuditId: 'representative-audit' }, { selected: false, sourceAuditId: 'representative-audit' },
+  { selected: true, sourceAuditId: 'audit-1' }, { selected: false, sourceAuditId: 'audit-1' },
+])('uses frozen grouped membership, selected=$selected and source=$sourceAuditId', async ({ selected, sourceAuditId }) => {
+  mocks.attempts.mockResolvedValue([{ id: 'grouped-attempt', createdAt: new Date(), builder: 'site', outcome: null,
+    sourceAuditId, sourceFlagIds: ['representative-flag', ...(selected ? ['captured-flag'] : [])],
+    handoffReference: 'flag:representative-flag', verificationAuditId: 'grouped-verification',
+    verificationAudit: { projectId: 'project-1', parentId: sourceAuditId, status: 'QUEUED' } }])
+  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({
+    verifying: selected, verificationState: selected ? 'verifying' : 'still_open', sourceAuditId: 'audit-1',
+  })
+})
+
 it.each([null, { version: 9, items: [] }])('distinguishes absent historical support from unreadable recorded evidence: %j', async supportingObservations => {
   mocks.flag.mockResolvedValue({ ...await mocks.flag(), supportingObservations })
   expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({

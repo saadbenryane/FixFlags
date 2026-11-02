@@ -171,6 +171,17 @@ Overview and detailed history share the same projection and eligibility policy. 
 
 Each incident has one persisted outage receipt and one recovery receipt. Delivery rechecks notification preferences, current monitoring eligibility, and target generation. Confirmed public unavailability is treated as critical for critical-only notifications. Recovery alerts also require the recovery preference. Leases and a stable provider idempotency key protect delivery retries. Failed delivery is retried with bounded exponential backoff, up to eight attempts. Receipt status remains available in the database; an observation is not a notification delivery receipt.
 
+Delivery also retains event order. An outage message that has not been sent is
+retired after its incident recovers. A delayed recovery is retired after a newer
+confirmed incident on the same target generation. The recovery claim repeats
+that condition in its database write, so a recurrence committed after selection
+cannot authorize the older message. Retired receipts use `SKIPPED` and retain
+their original incident, payload, attempt count and any delivery uncertainty.
+This does not retract a request already dispatched or claim that an uncertain
+earlier request was never received. Disposable PostgreSQL fixtures exercise
+first delivery, retry, recurrence and the selection-to-claim race with a stubbed
+provider. They establish local selection and custody, not inbox delivery.
+
 Uptime and Watch alerts share one SDK sender with a 20-second physical request
 abort deadline and an explicit provider-acceptance requirement. Uptime stores
 the exact provider body before sending. Subsequent retries preserve it across

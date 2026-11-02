@@ -11,12 +11,13 @@ import { Prisma,type RunRequestSource } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { canonicalIntent,readExecutionSpec,readVerificationTarget } from '../domain/execution-spec'
 import { analysisEnvironmentValueSql,analysisEnvironmentWhere,siteAnalysisAuditWhere,siteWideAnalysisAuditWhere } from './analysis-scope'
-import { canonicalExecutionOutcomes,executionIntentHash } from './execution-spec'
+import { canonicalExecutionOutcomes,executionIntentHash,monitoringExecutionCovers } from './execution-spec'
 import { activeRunWhere,reclaimExpiredRuns,RUN_LEASE_MS } from './run-leases'
 import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
 import { resolveRunExecution,validateRunSelection } from './run-selection'
 import { requireActiveAccount } from '@/lib/auth/account-availability'
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
+import { loadRunRequestByKey, retainSharedRunKey } from './run-request-keys'
 export { getOwnedRun } from './run-queries'
 export { markOutcomeRunsCouldNotVerify,reconcileOutcomeRunsForAudit } from './run-reconciliation'
 
@@ -92,21 +93,19 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (executionSpec.consoleObservationScopes?.some(scope => scope.minimumMs >
       (admitted?.consoleObservationScopes?.find(prior => prior.pageUrl === scope.pageUrl)?.minimumMs ?? admitted?.consoleObservationMs ?? 2000))) return false
     if (scope !== 'SITE' && scope !== 'CATEGORY') return true
-    return admitted?.scope === scope && canonicalIntent(canonicalExecutionOutcomes(admitted.outcomes)) === canonicalIntent(canonicalExecutionOutcomes(executionSpec.outcomes))
+    return admitted?.scope === scope && monitoringExecutionCovers(admitted, executionSpec) &&
+      canonicalIntent(canonicalExecutionOutcomes(admitted.outcomes)) === canonicalIntent(canonicalExecutionOutcomes(executionSpec.outcomes))
   }
 
   const requestedKey =
     input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
-  const byKey = await prisma.runRequest.findUnique({
-    where: {
-      projectId_source_idempotencyKey: {
-        projectId: input.projectId,
-        source: input.source,
-        idempotencyKey: requestedKey,
-      },
-    },
-    include: { selections: { select: { outcomeId: true } } },
-  })
+  const key = { projectId: input.projectId, source: input.source, idempotencyKey: requestedKey }
+  const retainShared = (run: { id: string; auditId: string | null; selections?: Array<{ outcomeId: string }> }) => input.idempotencyKey?.trim()
+    ? retainSharedRunKey({ ...key, userId: input.userId, runRequestId: run.id, operator: input.operator,
+      cleanup: Boolean(input.operator && scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup') },
+    (recorded, exactReplay) => recorded.environment === environment && (exactReplay ? matchesIntent(recorded) : compatibleActive(recorded)))
+    : Promise.resolve(run)
+  const byKey = await loadRunRequestByKey(key)
   if (byKey) {
     if (byKey.projectId !== input.projectId || byKey.environment !== environment || !matchesIntent(byKey)) {
       throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
@@ -128,7 +127,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (active.environment !== environment || !compatibleActive(active)) {
       throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
     }
-    return { runId: active.id, auditId: active.auditId, outcomeIds: replaySelection(active), reused: true }
+    const shared = await retainShared(active)
+    return { runId: shared.id, auditId: shared.auditId, outcomeIds: replaySelection(shared), reused: true }
   }
 
 
@@ -226,19 +226,19 @@ export async function requestSiteRun(input: RunInput): Promise<{
     return { runId: run.id, auditId: started.auditId, outcomeIds: selectedIds, reused: started.reused }
   } catch (error) {
     if (error instanceof RunAdmissionReplay)
-      return { runId: error.runId, auditId: error.auditId, outcomeIds: scope === 'SITE' ? error.outcomeIds : selectedIds, reused: true }
+      return { runId: error.runId, auditId: error.auditId, outcomeIds: scope === 'SITE' || scope === 'CATEGORY' ? error.outcomeIds : selectedIds, reused: true }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const concurrent = await prisma.runRequest.findFirst({
-        where: { projectId: input.projectId, OR: [
-          { source: input.source, idempotencyKey: requestedKey },
-          { status: { in: ['QUEUED', 'RUNNING'] } },
-        ] }, include: { selections: { select: { outcomeId: true } } },
+      const recorded = await loadRunRequestByKey(key)
+      const concurrent = recorded ?? await prisma.runRequest.findFirst({
+        where: { projectId: input.projectId, status: { in: ['QUEUED', 'RUNNING'] } },
+        include: { selections: { select: { outcomeId: true } } },
       })
       if (concurrent) {
-        const identicalKey = concurrent.source === input.source && concurrent.idempotencyKey === requestedKey
+        const identicalKey = Boolean(recorded)
         if (concurrent.environment !== environment || !(identicalKey ? matchesIntent(concurrent) : compatibleActive(concurrent)))
           throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
-        return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: replaySelection(concurrent), reused: true }
+        const shared = identicalKey ? concurrent : await retainShared(concurrent)
+        return { runId: shared.id, auditId: shared.auditId, outcomeIds: replaySelection(shared), reused: true }
       }
     }
     // Admission refusal rolls back both ledgers. There is no orphan request to fail.
@@ -269,16 +269,7 @@ export async function findReusableVerificationRun(input: {
   verificationIdentity?: { outcomeId?: string; pageUrl?: string; checkId?: string; attemptId?: string }
 }): Promise<{ runId: string; auditId: string; environment: string; outcomeIds: string[]; verificationTarget: SiteRunVerificationTarget } | null> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
-  const existing = await prisma.runRequest.findUnique({
-    where: {
-      projectId_source_idempotencyKey: {
-        projectId: input.projectId,
-        source: input.source,
-        idempotencyKey: input.idempotencyKey,
-      },
-    },
-    include: { selections: { select: { outcomeId: true } } },
-  })
+  const existing = await loadRunRequestByKey({ projectId: input.projectId, source: input.source, idempotencyKey: input.idempotencyKey })
   if (!existing) return null
   const target = readVerificationTarget(existing.verificationTarget)
   if (

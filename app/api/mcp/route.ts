@@ -146,7 +146,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
       { name: 'fixflags', version: process.env.npm_package_version || '0.1.0' },
       { capabilities: { tools: {} } },
     )
-    registerAllTools(server, user, { signal: req.signal })
+    registerAllTools(server, user, { signal: req.signal, credential: credentialScopes })
     return server
   }, {
     legacy: 'stateless',

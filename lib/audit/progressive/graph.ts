@@ -73,7 +73,21 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   }
   // Analysis explanation reads recorded observations; it never supplies assertion success.
   plans.push(make('judge', plans.filter(task => !['google', 'bindings', 'journeys'].includes(task.kind)).map(task => task.key)))
-  return plans
+  if (spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') return plans
+  return retainActionContexts(plans, spec)
+}
+
+/** One durable behavior task retains its complete original control cohort.
+ * Each control receives its own bounded delivery and immutable observation. */
+function retainActionContexts(plans: TaskPlan[], spec: ExecutionSpec): TaskPlan[] {
+  const diagnostic = spec.scope === 'DIAGNOSTIC'
+  return plans.map(task => {
+    if (task.kind !== 'flow' || task.input.module && !['form-validation', 'pricing-navigation'].includes(task.input.module)) return task
+    const scopes = diagnostic ? spec.verificationScopes : spec.monitoringBehaviors
+    const contexts = [...new Set(scopes?.find(scope => scope.pageUrl === task.input.pageUrl)?.actionContexts ?? [])].filter(context =>
+      context.startsWith(task.input.module === 'form-validation' ? 'form:' : task.input.module === 'pricing-navigation' ? 'flow:pricing:' : 'flow:control:'))
+    return contexts.length < (diagnostic ? 2 : 1) ? task : { ...task, input: { ...task.input, verificationContexts: contexts } }
+  })
 }
 
 export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
@@ -175,8 +189,8 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
         if (checkId !== 'flow-pricing-nav-broken' && scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
       }
     }
-    const plans: TaskPlan[] = [...selected].map(key => available.get(key)!)
-    plans.push({ kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: [...selected] })
+    const plans = retainActionContexts([...selected].map(key => available.get(key)!), spec)
+    plans.push({ kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: plans.map(task => task.key) })
     validateTaskGraph(plans)
     return plans
   }

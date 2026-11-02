@@ -17,6 +17,7 @@ const prismaMock = vi.hoisted(() => ({
   $executeRaw: vi.fn(),
   $queryRaw: vi.fn(),
   runRequest: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
+  runRequestKey: { findUnique: vi.fn() },
   outcomeFixture: { updateMany: vi.fn() },
   flag: { findMany: vi.fn() },
   audit: {
@@ -37,6 +38,7 @@ const prismaMock = vi.hoisted(() => ({
   // path resolves this model before deciding to reuse.
   provisionalSite: {
     findUnique: vi.fn(),
+    findMany: vi.fn(),
   },
   user: {
     findUnique: vi.fn(),
@@ -131,6 +133,7 @@ describe('createAndEnqueueAudit', () => {
       return op(prismaMock)
     })
     prismaMock.runRequest.findUnique.mockResolvedValue(null)
+    prismaMock.runRequestKey.findUnique.mockResolvedValue(null)
     prismaMock.runRequest.create.mockResolvedValue({ id: 'setup-run' })
     prismaMock.outcomeFixture.updateMany.mockResolvedValue({ count: 1 })
     prismaMock.audit.create.mockResolvedValue({ id: 'audit-1', parentId: null })
@@ -140,6 +143,7 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.audit.updateMany.mockResolvedValue({ count: 1 })
     prismaMock.audit.findUniqueOrThrow.mockResolvedValue({ dispatchAttempts: 1, createdAt: new Date() })
     prismaMock.provisionalSite.findUnique.mockResolvedValue(null)
+    prismaMock.provisionalSite.findMany.mockResolvedValue([])
     prismaMock.user.findUnique.mockResolvedValue(signedInUser())
     prismaMock.siteLifecycleEvent.upsert.mockResolvedValue({ id: 'event-1' })
     queueAdd.mockResolvedValue({ id: 'job-1' })

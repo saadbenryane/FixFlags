@@ -5,6 +5,7 @@ vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn
 const mocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   historicalPageScope: vi.fn().mockResolvedValue([]),
+  historicalConsoleScope: vi.fn().mockResolvedValue([]),
   fixtureFindFirst: vi.fn(), taskFindFirst: vi.fn(), outcomeFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
   runFindUnique: vi.fn(),
@@ -25,8 +26,24 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
-    $queryRaw: mocks.historicalPageScope,
+    $transaction: (operation: (tx: Record<string, unknown>) => Promise<unknown>) => operation({
+      $queryRaw: async () => [{ id: 'user-1' }],
+      runRequest: { findFirst: mocks.runFindFirst },
+      runRequestKey: { findUnique: async (args: unknown) => {
+        const runRequest = await mocks.runFindUnique(args)
+        return runRequest ? { runRequest, requestedByUserId: runRequest.requestedByUserId ?? null } : null
+      }, createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    }),
+    runRequestKey: { findUnique: async (args: unknown) => {
+      const runRequest = await mocks.runFindUnique(args)
+      return runRequest ? { runRequest, requestedByUserId: runRequest.requestedByUserId ?? null } : null
+    } },
+    $queryRaw: (query: TemplateStringsArray | { sql: string }, ...values: unknown[]) => {
+      const sql = Array.isArray(query) ? query.join('') : (query as { sql: string }).sql
+      return (sql.includes('console:page_load:%') ? mocks.historicalConsoleScope : mocks.historicalPageScope)(query, ...values)
+    },
     user: { findUnique: mocks.userFindUnique },
+    provisionalSite: { findMany: vi.fn().mockResolvedValue([]) },
     outcomeFixture: { findFirst: mocks.fixtureFindFirst }, auditVerifierExecution: { findFirst: mocks.taskFindFirst },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
@@ -42,6 +59,7 @@ vi.mock('@/lib/db', () => ({
     audit: { findFirst: mocks.auditFindFirst, findUnique: mocks.auditFindUnique },
     flag: { findFirst: mocks.flagFindFirst, findMany: mocks.flagFindMany },
     improvement: { findFirst: mocks.improvementFindFirst },
+    improvementAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
     outcomeAssessment: { upsert: mocks.assessmentUpsert },
     outcomeBindingExecution: { findMany: mocks.executionFindMany },
   },
@@ -204,6 +222,8 @@ describe('RunRequest tenant boundary and idempotency', () => {
   })
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.historicalPageScope.mockResolvedValue([])
+    mocks.historicalConsoleScope.mockResolvedValue([])
     mocks.userFindUnique.mockResolvedValue({ id: 'user-1', lifecycleStatus: 'ACTIVE' })
     mocks.outcomeFindMany.mockResolvedValue([ownedOutcome])
     mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example/' })
@@ -325,9 +345,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'SITE', outcomes: [] })
     const recorded = { id: 'original', auditId: 'original-audit', projectId: 'project-1', environment: 'production',
       requestHash: executionIntentHash(spec), executionSpec: spec, selections: [], verificationTarget: null }
-    mocks.flagFindMany.mockResolvedValue([{ pageUrl, affectedPaths: [pageUrl], evidenceTargets: [
-      { context: consoleContext('desktop', pageUrl, pageUrl, 'profile', 'public', 6500) },
-    ] }])
+    mocks.historicalConsoleScope.mockResolvedValue([{ pageUrl, context: consoleContext('desktop', pageUrl, pageUrl, 'profile', 'public', 6500) }])
     mocks.runFindUnique.mockResolvedValueOnce(recorded)
     expect(await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'original' }))
       .toMatchObject({ runId: 'original', auditId: 'original-audit', reused: true })
@@ -423,6 +441,25 @@ describe('RunRequest tenant boundary and idempotency', () => {
     })
 
     expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+
+  it.each(['page', 'behavior', 'control'] as const)('does not reuse narrower active Site care after another %s responsibility is recorded', async kind => {
+    const root = 'https://shop.example/', peer = root + 'contact'
+    mocks.outcomeFindMany.mockResolvedValue([])
+    const baseline = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root, environment: 'production',
+      monitoringPages: kind === 'page' ? [root] : [root, peer], checks: {}, outcomes: [], verificationTarget: null }
+    mocks.auditFindFirst.mockResolvedValue({ id: 'inventory', url: root, executionSpec: baseline, pages: [] })
+    const admitted = await buildExecutionSpec({ projectId: 'project-1', targetUrl: root, environment: 'production', scope: 'SITE', outcomes: [] })
+    const expanded = { ...baseline, monitoringPages: [root, peer], ...(kind !== 'page' ? { monitoringBehaviors: [{ pageUrl: peer,
+      behaviors: kind === 'behavior' ? ['slow-replay'] : [], ...(kind === 'control' ? { actionContexts: ['form:' + 'a'.repeat(64)] } : {}) }] } : {}) }
+    mocks.auditFindFirst.mockResolvedValue({ id: 'expanded-inventory', url: root, executionSpec: expanded, pages: [] })
+    mocks.historicalPageScope.mockImplementation(async (query: TemplateStringsArray) => query.join('').includes('SELECT DISTINCT "pageUrl", context')
+      ? kind === 'control' ? [{ pageUrl: peer, context: 'form:' + 'a'.repeat(64) }] : [] : [])
+    mocks.runFindFirst.mockResolvedValue({ id: 'narrow-run', auditId: 'narrow-audit', projectId: 'project-1',
+      environment: 'production', executionSpec: admitted, requestHash: executionIntentHash(admitted), selections: [], verificationTarget: null })
+    await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', scope: 'SITE', outcomeIds: [], source: 'WEB',
+      idempotencyKey: 'expanded-care' })).rejects.toMatchObject({ status: 409, code: 'SITE_RUN_IN_PROGRESS' })
     expect(mocks.createAudit).not.toHaveBeenCalled()
   })
 
@@ -1122,11 +1159,15 @@ describe('Tracking verification admission', () => {
     expect(spec.verificationScopes).toEqual([{ pageUrl, phases: ['page_load'] }, { pageUrl: other, phases: ['page_load'] }])
     expect(spec.consoleObservationMs).toBe(6500)
     expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, consoleObservationMs: undefined }))
+    mocks.auditFindFirst.mockResolvedValue({ id: 'before', url: pageUrl, pages: [{ url: pageUrl }, { url: other }] })
+    mocks.historicalConsoleScope.mockResolvedValue([
+      { pageUrl, context: consoleContext('mobile', pageUrl, pageUrl, 'profile', 'public', 2000) },
+      { pageUrl: other, context: consoleContext('desktop', other, other, 'profile', 'public', 6500) },
+    ])
     const care = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'SITE', outcomes: [] })
     expect(care.consoleObservationMs).toBeUndefined()
     expect(care.consoleObservationScopes).toEqual([{ pageUrl, minimumMs: 2000 }, { pageUrl: other, minimumMs: 6500 }])
     expect(executionIntentHash(care)).toBe(executionIntentHash({ ...care, consoleObservationScopes: undefined }))
-    expect(mocks.flagFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ audit: { projectId: 'project-1', status: 'COMPLETED' } }) }))
   })
   it('derives only tenant-owned recorded page and phase scopes and keeps replay identity stable', async () => {
     const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'

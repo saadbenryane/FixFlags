@@ -74,6 +74,8 @@ COPY --from=builder /app/scripts/runtime-start.mjs ./scripts/runtime-start.mjs
 COPY --from=builder /app/scripts/runtime-artifacts.mjs ./scripts/runtime-artifacts.mjs
 COPY --from=builder /app/lib/runtime/environment.mjs ./lib/runtime/environment.mjs
 COPY --from=builder /app/lib/runtime/migration-coordination.mjs ./lib/runtime/migration-coordination.mjs
+COPY --from=builder /app/lib/runtime/worker-health.mjs ./lib/runtime/worker-health.mjs
+COPY --from=builder /app/lib/runtime/worker-browser.mjs ./lib/runtime/worker-browser.mjs
 COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 8080

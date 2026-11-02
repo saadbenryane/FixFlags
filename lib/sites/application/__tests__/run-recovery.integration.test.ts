@@ -47,6 +47,47 @@ run('bounded Site run recovery with physical execution ownership', () => {
     expect(await prisma.flag.count({ where: { auditId: { in: auditIds } } })).toBe(0)
   })
 
+  it('gives later Sites a recovery turn after a full batch of reconciliation failures and resumes the preserved results later', async () => {
+    const old = new Date(Date.now() - 2 * 86400_000), completedAt = new Date(old.getTime() + 3600_000)
+    const projectIds = Array.from({ length: 102 }, () => randomUUID())
+    auditIds = Array.from({ length: 101 }, () => randomUUID())
+    await prisma.project.createMany({ data: projectIds.map((id, index) => ({ id, userId, name: 'Recovery fairness ' + index,
+      canonicalHost: 'fairness-' + index + '.example.test', url: 'https://fairness-' + index + '.example.test/' })) })
+    const spec = (index: number) => ({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://fairness-' + index + '.example.test/',
+      environment: 'production', checks: {}, outcomes: [], verificationTarget: null })
+    await prisma.audit.createMany({ data: auditIds.map((id, index) => ({ id, projectId: projectIds[index], userId,
+      url: spec(index).targetUrl, executionSpec: spec(index), status: 'COMPLETED', completedAt })) })
+    await prisma.runRequest.createMany({ data: projectIds.map((projectId, index) => ({ id: 'request-' + projectId, projectId,
+      requestedByUserId: userId, source: 'WEB', idempotencyKey: randomUUID(), leaseUntil: new Date(0),
+      requestedAt: new Date(old.getTime() + index), updatedAt: old, executionSpec: spec(index), auditId: auditIds[index] ?? null })) })
+    const originals = await prisma.audit.findMany({ where: { id: { in: auditIds } }, orderBy: { id: 'asc' } })
+    const blocked = new Set(auditIds.slice(0, 100))
+    const reconcile = vi.fn(async (auditId: string) => {
+      if (blocked.has(auditId)) throw new Error('Controlled result projection interruption')
+      await reconcileOutcomeRunsForAudit(auditId)
+    })
+    const { logger } = await import('@/lib/logger')
+    vi.spyOn(logger, 'error').mockImplementation(() => {})
+    const selection = vi.spyOn(prisma.runRequest, 'findMany')
+    expect(await recoverExpiredSiteRuns(reconcile)).toBe(0)
+    expect(await prisma.runRequest.count({ where: { projectId: { in: projectIds }, status: 'QUEUED' } })).toBe(102)
+    selection.mockClear()
+    expect(await recoverExpiredSiteRuns(reconcile)).toBe(2)
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: 'request-' + projectIds[100] } })).toMatchObject({ status: 'COMPLETED' })
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: 'request-' + projectIds[101] } })).toMatchObject({ status: 'FAILED', errorCode: 'RUN_ABANDONED' })
+    // A pass remains bounded even while failed results stay pending. No
+    // completed observations are discarded to make the queue look recovered.
+    const cohortRead = selection.mock.calls.find(([args]) => args?.take === 100)
+    expect(cohortRead).toBeDefined()
+    const cohort = await selection.mock.results[selection.mock.calls.indexOf(cohortRead!)].value as Array<{ projectId: string }>
+    expect(cohort).toHaveLength(100)
+    expect(await prisma.runRequest.count({ where: { projectId: { in: projectIds.slice(0, 100) }, status: 'QUEUED' } })).toBe(100)
+    blocked.clear()
+    expect(await recoverExpiredSiteRuns(reconcile)).toBe(100)
+    expect(await prisma.runRequest.count({ where: { projectId: { in: projectIds }, status: 'COMPLETED' } })).toBe(101)
+    expect(await prisma.audit.findMany({ where: { id: { in: auditIds } }, orderBy: { id: 'asc' } })).toEqual(originals)
+  })
+
   it.each(['database-null', 'json-null', 'legacy-json'] as const)('reclaims an expired %s legacy request without requiring a progressive executor', async kind => {
     const site = await prisma.project.create({ data: { userId, name: 'Legacy recovery', canonicalHost: 'example.com', url: 'https://example.com/' } })
     const audit = await prisma.audit.create({ data: { projectId: site.id, userId, url: site.url,
@@ -58,6 +99,29 @@ run('bounded Site run recovery with physical execution ownership', () => {
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'FAILED', errorCode: 'EXECUTION_LEASE_EXPIRED' })
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'FAILED', failureCode: 'EXECUTION_LEASE_EXPIRED' })
     expect(await claimExecution(audit.id)).toBeNull()
+  })
+
+  it.each(['renewal', 'settlement', 'activity'] as const)('does not touch or reclaim a selected request after concurrent %s', async kind => {
+    const site = await prisma.project.create({ data: { userId, name: 'Recovery selection fence', canonicalHost: 'example.com', url: 'https://example.com/' } })
+    const request = await prisma.runRequest.create({ data: { projectId: site.id, source: 'WEB', idempotencyKey: randomUUID(), leaseUntil: new Date(0) } })
+    let changed: typeof request | undefined
+    const handoff = prisma.$extends({ query: { runRequest: {
+      async findMany({ args, query }) {
+        const candidates = await query(args)
+        changed = await prisma.runRequest.update({ where: { id: request.id }, data: {
+          updatedAt: new Date(Date.now() + 1000),
+          ...(kind === 'renewal' ? { leaseUntil: new Date(Date.now() + 90_000) } : {}),
+          ...(kind === 'settlement' ? { status: 'FAILED', completedAt: new Date(), errorCode: 'CONTROLLED_CANCELLATION' } : {}),
+        } })
+        return candidates
+      },
+    } } })
+    vi.spyOn(prisma.runRequest, 'findMany').mockImplementationOnce(args => handoff.runRequest.findMany(args))
+    const reconcile = vi.fn(reconcileOutcomeRunsForAudit)
+    expect(await recoverExpiredSiteRuns(reconcile)).toBe(0)
+    expect(changed).toBeDefined()
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toEqual(changed)
+    expect(reconcile).not.toHaveBeenCalled()
   })
 
   it.each(['progressive-owner', 'completed-observation'] as const)('retains a %s acquired after candidate selection', async kind => {

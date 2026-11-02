@@ -10,6 +10,8 @@ import { recordVerifierExecution } from '@/lib/improvements/verifier-provenance'
 import { parseAffectedPaths } from '@/lib/audit/flag-identity'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 import { boundSearchObservations } from './observation-bounds'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { verificationSourceAuditId } from '@/lib/sites/domain/verification-source'
 
 export const SEARCH_LOCAL_MODULES = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
   .map(item => 'module:search-' + item.evaluator)
@@ -25,24 +27,26 @@ export function combineSearchReceipts(input: { auditId: string; pageUrl: string;
 
 /** Compatibility adapters keep historical module receipts distinct from Search assertions. */
 export async function priorSearchReceipt(auditId: string, pageUrl: string, evaluator?: string): Promise<SearchReceipt | null> {
-  const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { parentId: true } })
+  const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { parentId: true, projectId: true, executionSpec: true } })
   if (!audit?.parentId) return null
+  const sourceAuditId = await verificationSourceAuditId(prisma, audit, pageUrl)
+  if (!sourceAuditId) return null
   if (evaluator) {
     const part = await prisma.auditVerifierExecution.findUnique({ where: { auditId_targetKey_scopeKey: {
-      auditId: audit.parentId, targetKey: 'module:search-' + evaluator, scopeKey: `page:${pageUrl}` } }, select: { detail: true } })
+      auditId: sourceAuditId, targetKey: 'module:search-' + evaluator, scopeKey: `page:${pageUrl}` } }, select: { detail: true } })
     const parsed = searchReceiptSchema.safeParse(part?.detail)
     if (parsed.success && parsed.data.pageUrl === pageUrl) return parsed.data
   }
   const previous = await prisma.auditVerifierExecution.findUnique({
-    where: { auditId_targetKey_scopeKey: { auditId: audit.parentId, targetKey: 'module:search', scopeKey: `page:${pageUrl}` } },
+    where: { auditId_targetKey_scopeKey: { auditId: sourceAuditId, targetKey: 'module:search', scopeKey: `page:${pageUrl}` } },
     select: { detail: true },
   })
   const parsed = searchReceiptSchema.safeParse(previous?.detail)
   if (parsed.success && parsed.data.pageUrl === pageUrl) return parsed.data
-  const parts = await prisma.auditVerifierExecution.findMany({ where: { auditId: audit.parentId,
+  const parts = await prisma.auditVerifierExecution.findMany({ where: { auditId: sourceAuditId,
     pageUrl, targetKey: { in: SEARCH_LOCAL_MODULES } }, take: SEARCH_LOCAL_MODULES.length, select: { detail: true } })
   const receipts = parts.flatMap(part => { const result = searchReceiptSchema.safeParse(part.detail); return result.success ? [result.data] : [] })
-  return receipts.length ? combineSearchReceipts({ auditId: audit.parentId, pageUrl, receipts, expected: SEARCH_LOCAL_MODULES.length }) : null
+  return receipts.length ? combineSearchReceipts({ auditId: sourceAuditId, pageUrl, receipts, expected: SEARCH_LOCAL_MODULES.length }) : null
 }
 
 export async function persistSearchReceipt(receipt: SearchReceipt, module: 'search' | 'search-google' | 'search-cross-page' = 'search'): Promise<SearchReceipt> {
@@ -61,12 +65,13 @@ export async function persistSearchReceipt(receipt: SearchReceipt, module: 'sear
 
 /** A verifier is recorded only for the actual responsibility and comparable entity types. */
 export async function recordSearchVerifiers(receipt: SearchReceipt, db: typeof prisma | Prisma.TransactionClient = prisma): Promise<void> {
-  const audit = await db.audit.findUnique({ where: { id: receipt.auditId }, select: { parentId: true } })
+  const audit = await db.audit.findUnique({ where: { id: receipt.auditId }, select: { parentId: true, executionSpec: true } })
   if (!audit?.parentId) return
+  const sourceFlagIds = readExecutionSpec(audit.executionSpec)?.verificationSourceFlagIds
   const attempts = await db.improvementAttempt.findMany({
     where: { sourceAuditId: audit.parentId, outcome: null },
     select: { improvement: { select: { occurrences: {
-      where: { auditId: audit.parentId },
+      where: sourceFlagIds ? { flagId: { in: sourceFlagIds } } : { auditId: audit.parentId },
       select: { flag: { select: { checkId: true, source: true, pageUrl: true, affectedPaths: true, fingerprint: true, attentionPolicy: true } } },
     } } } },
   })

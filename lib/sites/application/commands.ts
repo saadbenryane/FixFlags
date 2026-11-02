@@ -190,6 +190,7 @@ export async function executeSiteCommand(command: SiteCommand) {
           const environment = await loadRunSourceEnvironment(initialSite.projectId, attempt.sourceAuditId)
           if (environment !== reusable.environment) throw new SiteRunRefusal('Verification receipt environment does not match its source', 409)
           if (!command.attemptId) assertAttemptReplay({ userId: command.userId, sourceAuditId: attempt.sourceAuditId,
+            ...(attempt.sourceFlagIds?.length ? { sourceFlagIds: attempt.sourceFlagIds } : {}),
             handoffReference: attempt.handoffReference, changeSummary: command.changeSummary }, attempt)
           return {
             ok: true as const,

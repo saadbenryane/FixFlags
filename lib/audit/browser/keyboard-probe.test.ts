@@ -227,6 +227,30 @@ runBrowser('keyboard collector in Chromium', () => {
     expect(evidence.steps[0].indicator).toBe('styled')
     expect(runKeyboardChecks(evidence).flags).toEqual([])
   })
+  it.each([
+    ['fixed-fill icon', '<svg width="20" height="20" aria-hidden="true"><path fill="black" d="M0 0h20v20H0z"/></svg>', ''],
+    ['masked text color', 'Action', 'button{-webkit-text-fill-color:black}'],
+    ['empty child', '<span style="display:inline-block;width:20px;height:20px"></span>', ''],
+    ['empty generated box', '', 'button::after{content:"";display:block;width:20px;height:20px;background:black}'],
+    ['empty underline', '<svg width="20" height="20" aria-hidden="true"><path fill="black" d="M0 0h20v20H0z"/></svg>', 'button{text-decoration:underline}'],
+    ['empty text shadow', '', 'button{text-shadow:0 0 3px}'],
+  ])('does not certify an unused color change on a %s as a focus repair', async (_name, content, style) => {
+    await fixture(`<style>button{outline:none;box-shadow:none;color:black}button:focus-visible{color:blue}${style}</style><button id="action" aria-label="Action">${content}</button>`)
+    const observed = await collect()
+    expect(observed.steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+    expect(runKeyboardChecks(observed).flags.map(flag => flag.checkId)).toContain('focus-visible-missing')
+  })
+  it.each([
+    ['text', '<span>Action</span>', ''],
+    ['generated text', '', 'button::after{content:"Action"}'],
+    ['text shadow with fixed glyph fill', 'Action', 'button{-webkit-text-fill-color:black;text-shadow:2px 2px 3px}'],
+    ['decoration over descendant text', '<span>Action</span>', 'button{-webkit-text-fill-color:black;text-decoration:underline}'],
+    ['icon fill', '<svg width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M0 0h20v20H0z"/></svg>', ''],
+    ['icon stroke', '<svg width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" d="M2 2L18 18"/></svg>', ''],
+  ])('retains a painted %s color change as a focus indicator', async (_name, content, style) => {
+    await fixture(`<style>button{outline:none;box-shadow:none;color:black}button:focus-visible{color:blue}${style}</style><button id="action" aria-label="Action">${content}</button>`)
+    expect((await collect()).steps).toMatchObject([{ selector: '#action', indicator: 'styled' }])
+  })
   it('does not certify an outline matching its uniform surrounding background, and verifies a contrasting repair', async () => {
     await fixture('<style>body{padding:20px;background:white}button{outline:none;box-shadow:none}button:focus-visible{outline:3px solid white;outline-offset:2px}</style><button id="action">Action</button>')
     const observed = await collect(), original = runKeyboardChecks(observed).flags.find(flag => flag.checkId === 'focus-visible-missing')!
@@ -286,6 +310,7 @@ runBrowser('keyboard collector in Chromium', () => {
     ['zero-area child background', '<span style="display:inline-block;width:0;height:0"></span>', 'button:focus-visible span{background:blue}'],
     ['zero-area pseudo background', '', 'button::after{content:"";display:block;width:0;height:0}button:focus-visible::after{background:blue}'],
     ['undrawn text decoration', '', 'button{ text-decoration:none red }button:focus-visible{text-decoration-color:blue}'],
+    ['transparent text decoration', '', 'button{text-decoration:underline rgba(255,0,0,0)}button:focus-visible{text-decoration-color:rgba(0,0,255,0)}'],
   ])('does not count a %s as a visible focus indicator', async (_name, child, style) => {
     await fixture(`<style>button{outline:none;box-shadow:none}${style}</style><button id="action">Action${child}</button>`)
     const evidence = await collect()
@@ -306,7 +331,7 @@ runBrowser('keyboard collector in Chromium', () => {
     ['generated background', 'button::after{content:"";display:block;width:0;height:3px}button:focus-visible::after{width:20px;background:blue}'],
   ])('retains a painted %s as a focus-specific style', async (_name, style) => {
     await fixture(`<style>button{outline:none;box-shadow:none}${style}</style><button id="action">Action</button>`)
-    expect(await collect()).toMatchObject({ focusPolicy: 'painted-properties-v2', steps: [{ indicator: 'styled' }] })
+    expect(await collect()).toMatchObject({ focusPolicy: 'painted-properties-v3', steps: [{ indicator: 'styled' }] })
   })
 
   it('observes a persistent trap using forward, reverse, and Escape keys', async () => {

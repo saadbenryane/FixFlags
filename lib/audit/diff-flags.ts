@@ -265,8 +265,20 @@ async function loadRecoveryExecutions(auditId: string, executionSpec: unknown, f
       targets.add('module:search-google-index'); targets.add('module:search-google-performance')
     }
   }
-  return prisma.auditVerifierExecution.findMany({ where: { auditId, status: 'COMPLETED', targetKey: { in: [...targets] } },
-    select: { targetKey: true, status: true, detail: true }, take: 1200 })
+  const executions: RecoveryExecution[] = []
+  const batchSize = 512
+  let afterId: string | undefined
+  // Every related observation matters, including failures after a passing row.
+  // Page the immutable completed receipts without truncating recovery evidence.
+  for (;;) {
+    const batch = await prisma.auditVerificationReceipt.findMany({
+      where: { auditId, status: 'COMPLETED', targetKey: { in: [...targets] }, ...(afterId ? { id: { gt: afterId } } : {}) },
+      select: { id: true, targetKey: true, status: true, detail: true }, orderBy: { id: 'asc' }, take: batchSize,
+    })
+    executions.push(...batch)
+    if (batch.length < batchSize) return executions
+    afterId = batch[batch.length - 1].id
+  }
 }
 
 export function reviewedPageUrls(input: {
@@ -322,7 +334,7 @@ export async function diffFlagsAgainstParent(
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
   }> = []
-  const seenMonitoringIds = new Set<string>()
+  const monitoringUpdates = new Map<string, typeof updates[number]>()
 
   for (const parentFlag of parentFlags) {
     const monitoringFlag = observationMatchKeys(parentFlag)
@@ -346,16 +358,17 @@ export async function diffFlagsAgainstParent(
       stillFails: true,
     })
 
-    // Several parent pages can share one base check (per-page ::page:N
-    // variants collapse onto the same monitoring flag). Update the monitoring
-    // flag once, and keep the strongest status for the parent rows.
-    if (!seenMonitoringIds.has(monitoringFlag.id)) {
-      seenMonitoringIds.add(monitoringFlag.id)
-      updates.push({
+    // Several original conditions can share one current Flag. A later
+    // recurrence or severity increase must survive any earlier OPEN match.
+    const pending = monitoringUpdates.get(monitoringFlag.id)
+    if (!pending) {
+      const update = {
         id: monitoringFlag.id,
         data: { status },
-      })
-    }
+      }
+      monitoringUpdates.set(monitoringFlag.id, update)
+      updates.push(update)
+    } else if (status === 'REGRESSED') pending.data.status = status
     if (parentFlag.status === 'FIXED') continue
     updates.push({
       id: parentFlag.id,
@@ -523,12 +536,13 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
       continue
     }
 
-    const bucket = classifyMatchedFlagDiff({
-      parentStatus: parentFlag.status,
-      parentSeverity: parentFlag.severity,
+    const buckets = parentGroups.get(key)!.map(original => classifyMatchedFlagDiff({
+      parentStatus: original.status,
+      parentSeverity: original.severity,
       monitoringStatus: monitoringFlag.status,
       monitoringSeverity: monitoringFlag.severity,
-    })
+    }))
+    const bucket = buckets.includes('regressed') ? 'regressed' : buckets[0]
 
     if (bucket === 'fixed') {
       fixed.push({ ...item, status: 'FIXED' })

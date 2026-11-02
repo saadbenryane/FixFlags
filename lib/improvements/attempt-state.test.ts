@@ -16,4 +16,16 @@ describe('verification state from admitted work', () => {
     expect(attemptHasActiveVerification({ ...attempt, verificationAudit: { ...attempt.verificationAudit, status: 'COMPLETED',
       verifierExecutions: [{ workKind: 'finalize', workState: 'RETRY_WAIT' }] } }, 'site')).toBe(true)
   })
+  it('recognizes every frozen grouped capture while retaining execution authority and source scope', () => {
+    const grouped = { ...attempt, sourceFlagIds: ['representative', 'earlier-capture'] }
+    expect(attemptHasActiveVerification(grouped, 'site', 'earlier-audit', 'earlier-capture')).toBe(true)
+    expect(attemptHasActiveVerification(grouped, 'site', 'source', 'later-capture')).toBe(false)
+    expect(attemptHasActiveVerification(grouped, 'site', 'earlier-audit')).toBe(false)
+    expect(attemptHasActiveVerification(grouped, 'other-site', 'earlier-audit', 'earlier-capture')).toBe(false)
+    expect(attemptHasActiveVerification({ ...grouped, verificationAudit: { ...attempt.verificationAudit, parentId: 'wrong-source' } },
+      'site', 'earlier-audit', 'earlier-capture')).toBe(false)
+    expect(attemptHasActiveVerification({ ...grouped, outcome: 'IMPROVED' }, 'site', 'earlier-audit', 'earlier-capture')).toBe(false)
+    expect(attemptHasActiveVerification({ ...grouped, verificationAudit: { ...attempt.verificationAudit, status: 'FAILED' } },
+      'site', 'earlier-audit', 'earlier-capture')).toBe(false)
+  })
 })

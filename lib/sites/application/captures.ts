@@ -31,7 +31,7 @@ export async function loadSiteCaptures(auditId: string | null, priorId: string |
       })
       if (!shot?.url) continue
       captures.push({ url: normalizeInternalScreenshotUrl(shot.url), auditId: sourceId,
-        device: device === 'DESKTOP' ? 'desktop' : 'mobile', previous: active && (sourceId !== auditId || !shot.recordedAt || Boolean(startedAt && shot.recordedAt < startedAt)),
+        device: device === 'DESKTOP' ? 'desktop' : 'mobile', previous: sourceId !== auditId || active && (!shot.recordedAt || Boolean(startedAt && shot.recordedAt < startedAt)),
         pageUrl: shot.page?.url ?? shot.audit.url, viewport: `${shot.width} × ${shot.height}`,
         recordedAt: shot.recordedAt?.toISOString() ?? null })
       break

@@ -9,6 +9,7 @@ import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy-barrel'
 import { siteNotificationEmail } from '@/lib/email/site-notification'
+import { notificationRecipientAllowed, projectEmailAcceptance } from '@/lib/email/delivery-events'
 import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
 import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '@/lib/email/watch-delivery'
 import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
@@ -24,6 +25,7 @@ import { ensureDefaultMonitoring, initializeDefaultMonitoring, MONITORING_SCHEDU
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { reconcileScheduledCompletions } from '@/lib/sites/application/scheduled-completion'
 import { ACTIVE_RUN_STATUSES } from '@/lib/sites/application/run-leases'
+import { readScheduledContext, sharedWatchRunWhere, scheduledObservationAuditsSql } from '@/lib/sites/application/scheduled-observation'
 
 export type { WatchInterval } from '@/lib/audit/watch-interval'
 export {
@@ -279,11 +281,25 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
   })
   if (!child || child.status !== 'COMPLETED' || !child.completedAt || !child.userId ||
     child.user?.lifecycleStatus !== 'ACTIVE' || delivery && !child.improvementProjectedAt ||
-    child.recheckTrigger !== 'WATCH' || !child.projectId || !child.project ||
+    !child.projectId || !child.project ||
     child.project.deletedAt != null || child.project.userId !== child.userId) return
+  let monitoringSource: Prisma.AuditWhereInput = { recheckTrigger: 'WATCH' }
+  if (child.recheckTrigger !== 'WATCH') {
+    const committed = await prisma.runRequest.findMany({ where: { auditId: child.id, ...sharedWatchRunWhere(child.projectId) },
+      select: { id: true, context: true } })
+    const valid = committed.filter(run => readScheduledContext(run.context).success)
+    if (!valid.length) {
+      if (committed.length) throw new Error('Committed monitoring schedule is unavailable')
+      return
+    }
+    // The validated schedule and its server-owned Watch key must still exist
+    // at classification and provider admission, not just at this earlier read.
+    monitoringSource = { runRequests: { some: { ...sharedWatchRunWhere(child.projectId),
+      OR: valid.map(run => ({ id: run.id, context: { equals: run.context as Prisma.InputJsonValue } })) } } }
+  }
   const completedSource = {
     id: child.id, userId: child.userId, projectId: child.projectId, status: 'COMPLETED' as const,
-    recheckTrigger: 'WATCH' as const, completedAt: child.completedAt,
+    ...monitoringSource, completedAt: child.completedAt,
     ...(delivery ? { improvementProjectedAt: { not: null } } : {}),
   }
   const currentOwner = { userId: child.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' as const } }
@@ -364,6 +380,12 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
     && child.watchNotificationLeaseUntil != null
     && child.watchNotificationLeaseUntil > deliveryNow
   if (leaseHeld) return
+  if (!await notificationRecipientAllowed(child.user!.email)) {
+    await prisma.audit.updateMany({ where: { ...currentEligibility, watchNotificationStatus: { not: 'SENT' },
+      OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: deliveryNow } }] },
+    data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null } })
+    return
+  }
 
   // A worker may die after the provider call on the final allowed claim. Once
   // that lease expires, another send could duplicate an accepted email, while
@@ -465,6 +487,8 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       },
     })
     if (recorded.count !== 1) return
+    await projectEmailAcceptance({ providerId, userId: child.userId!, email: message.to,
+      channel: 'watch', sourceId: childAuditId, acceptedAt: new Date(), firstAttemptAt: new Date(payload.firstAttemptAt!) })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await prisma.audit.updateMany({
@@ -498,27 +522,36 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
 
 export async function retryPendingWatchNotifications(limit = 20): Promise<number> {
   const now = new Date()
+  const retryable = Prisma.sql`((due."watchNotificationStatus" IN ('PENDING', 'FAILED')
+      AND due."watchNotificationAttempts" < due."watchNotificationAttemptCeiling")
+    OR (due."watchNotificationStatus" = 'SENDING'
+      AND (due."watchNotificationLeaseUntil" IS NULL OR due."watchNotificationLeaseUntil" <= ${now})))`
   // Ownership equality must be checked before LIMIT. Otherwise historical
   // observations from transferred Sites can permanently occupy the retry batch.
   // Expired SENDING claims remain selectable at their ceiling so the sender can
   // terminalize abandoned final attempts without making another provider call.
   const audits = await prisma.$queryRaw<Array<Pick<Audit, 'id' | 'parentId' | 'watchNotificationAttempts' |
     'watchNotificationStatus' | 'watchNotificationLeaseUntil' | 'watchNotificationNextAttemptAt'>>>(Prisma.sql`
+    WITH shared AS MATERIALIZED (${scheduledObservationAuditsSql}),
+    due AS NOT MATERIALIZED (
+      SELECT a.id, a."parentId", a."projectId", a."userId", a."updatedAt", a."recheckTrigger",
+        a."watchNotificationAttempts", a."watchNotificationAttemptCeiling", a."watchNotificationStatus",
+        a."watchRegressionCount", a."watchRecoveryCount", a."watchNotificationLeaseUntil", a."watchNotificationNextAttemptAt"
+      FROM audits a WHERE a.status = 'COMPLETED' AND a."completedAt" IS NOT NULL AND a."improvementProjectedAt" IS NOT NULL
+        AND (a."watchNotificationNextAttemptAt" IS NULL OR a."watchNotificationNextAttemptAt" <= ${now})
+    )
     SELECT a.id, a."parentId", a."watchNotificationAttempts", a."watchNotificationStatus",
       a."watchNotificationLeaseUntil", a."watchNotificationNextAttemptAt"
-    FROM audits a
+    FROM (
+      SELECT due.* FROM due WHERE due."recheckTrigger" = 'WATCH' AND ${retryable}
+      UNION ALL
+      SELECT due.* FROM shared JOIN due ON due.id = shared."auditId" AND due."projectId" = shared."projectId"
+      WHERE due."recheckTrigger" IS DISTINCT FROM 'WATCH' AND (${retryable}
+        OR (due."watchNotificationStatus" = 'NOT_APPLICABLE' AND due."watchRegressionCount" IS NULL AND due."watchRecoveryCount" IS NULL))
+    ) a
     JOIN projects p ON p.id = a."projectId" AND p."userId" = a."userId"
     JOIN users u ON u.id = a."userId"
-    WHERE a.status = 'COMPLETED' AND a."recheckTrigger" = 'WATCH'
-      AND a."completedAt" IS NOT NULL AND a."improvementProjectedAt" IS NOT NULL
-      AND p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE'
-      AND (a."watchNotificationNextAttemptAt" IS NULL OR a."watchNotificationNextAttemptAt" <= ${now})
-      AND (
-        (a."watchNotificationStatus" IN ('PENDING', 'FAILED')
-          AND a."watchNotificationAttempts" < a."watchNotificationAttemptCeiling")
-        OR (a."watchNotificationStatus" = 'SENDING'
-          AND (a."watchNotificationLeaseUntil" IS NULL OR a."watchNotificationLeaseUntil" <= ${now}))
-      )
+    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE'
     ORDER BY a."updatedAt" ASC, a.id ASC
     LIMIT ${limit}
   `)
@@ -540,6 +573,7 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
           watchNotificationLeaseUntil: audit.watchNotificationLeaseUntil,
           watchNotificationNextAttemptAt: audit.watchNotificationNextAttemptAt,
           OR: [{ watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+            { watchNotificationStatus: 'NOT_APPLICABLE', watchRegressionCount: null, watchRecoveryCount: null },
             { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: now } }] }] },
           data: { watchNotificationNextAttemptAt: new Date(Date.now() + 30_000),
             watchNotificationLastError: 'Notification classification could not complete' } })

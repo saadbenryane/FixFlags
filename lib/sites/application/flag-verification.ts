@@ -4,6 +4,8 @@ import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 import { SiteRunRefusal } from './run-refusal'
+import { buildSiteRepairBrief } from '@/lib/sites/repair-brief'
+import { getAppUrl } from '@/lib/get-app-url'
 
 export async function recordSiteFlagFix(input: {
   siteId: string
@@ -14,6 +16,7 @@ export async function recordSiteFlagFix(input: {
   commitReference?: string
   deploymentReference?: string
   client?: string
+  expectedContextHash?: string
 }) {
   const site = await loadSiteRecord(input.siteId)
   if (!site?.projectId || site.userId !== input.userId) throw new Error('Site not found')
@@ -25,13 +28,21 @@ export async function recordSiteFlagFix(input: {
     where: { improvementId: flag.improvementId, idempotencyKey: key,
       improvement: { projectId: site.projectId, project: { userId: input.userId } } },
   }) : null
+  // A first declaration belongs to the task the caller actually retrieved.
+  // A recorded key already owns its frozen scope and must remain replayable
+  // after monitoring discovers another occurrence or the repair resolves it.
+  if (!recorded && input.expectedContextHash)
+    buildSiteRepairBrief(site.siteId, flag, getAppUrl(), input.flagId, 0, input.expectedContextHash)
   const sourceFlagId = flag.sourceFlagId ?? flag.id
   if (recorded && input.flagId !== flag.improvementId && recorded.handoffReference !== 'flag:' + sourceFlagId) throw new ImprovementAttemptConflict()
   // A durable Improvement may point to a later occurrence by the time a retry
   // arrives. Replay its original source; ownership is rechecked by the service.
   const recordedSource = recorded?.handoffReference?.startsWith('flag:') ? recorded.handoffReference.slice(5) : null
+  const sourceFlagIds = recorded ? recorded.sourceFlagIds
+    : input.flagId === flag.improvementId && (flag.sourceFlagIds?.length ?? 0) > 1 ? flag.sourceFlagIds : undefined
   const result = await recordFlagImprovementAttempt({
     flagId: recordedSource ?? sourceFlagId,
+    ...(sourceFlagIds?.length ? { sourceFlagIds } : {}),
     userId: input.userId,
     builder: 'site',
     client: input.client,
@@ -76,7 +87,7 @@ export async function requireSiteFlagAttempt(input: {
       improvement: { projectId: site.projectId, project: { userId: input.userId } },
       sourceAudit: { projectId: site.projectId },
     },
-    select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true },
+    select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true, sourceFlagIds: true },
   })
   if (!attempt) throw new SiteRunRefusal('Fix attempt not found or already verified', 409)
   // Monitoring may advance the durable incident while a repair is being made.

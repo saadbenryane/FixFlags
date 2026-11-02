@@ -5,18 +5,20 @@ import { readCheckReceipt } from '@/lib/audit/checks/receipt'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 import { siteCoverageIsStale } from '@/lib/sites/evidence-freshness'
-import type { SiteCheckResult } from '@/lib/sites/check-results'
+import { recordedCheckSources, type SiteCheckResult } from '@/lib/sites/check-results'
 import type { Prisma } from '@prisma/client'
 import { siteEvidenceAuditSelect } from './site-execution'
-import type { loadSiteConnectionViews, connectionCardNotes } from '@/lib/sites/connections/read'
+import type { connectionCardNotes } from '@/lib/sites/connections/read'
 
 type EvidenceAudit = Prisma.AuditGetPayload<{ select: typeof siteEvidenceAuditSelect }>
-export function applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now, coverageMaxAgeMs }: {
+export function applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connectionNotes, now, coverageMaxAgeMs }: {
   cards: BoardCardView[]; audit: EvidenceAudit | null; summaryResults: SiteCheckResult[]; inFlight: boolean; pageCount: number;
-  connections: Awaited<ReturnType<typeof loadSiteConnectionViews>> | null;
   connectionNotes: ReturnType<typeof connectionCardNotes>; now: Date; coverageMaxAgeMs?: number
 }) {
   for (const card of cards) {
+    card.sources = recordedCheckSources(summaryResults, card.id)
+    if (card.id === 'site' && card.captureUrl && !card.sources.includes(SITE_BOARD_COPY.browserSource))
+      card.sources.push(SITE_BOARD_COPY.browserSource)
     if (card.state === 'healthy' && card.openFlagCount === 0) {
       const observation = summaryResults.find(result => result.area === card.id && !result.historical && result.kind === 'assertion' && result.status === 'passed')
       if (observation) {
@@ -85,7 +87,7 @@ export function applyCardEvidence({ cards, audit, summaryResults, inFlight, page
     }
     if (card.id === 'search' && connectionNotes.search) card.facts = [...card.facts, connectionNotes.search].slice(0, 4)
     if (card.id === 'tracking' && connectionNotes.tracking) card.facts = [...card.facts, connectionNotes.tracking].slice(0, 4)
-    if (card.id === 'search' && connections?.searchConsole.status === 'connected') card.sources = [...card.sources, 'Search Console']
-    if (card.id === 'tracking' && connections?.analytics.status === 'connected') card.sources = [...card.sources, 'Google Analytics']
+    if (card.id === 'search' && connectionNotes.search) card.sources = [...new Set([...card.sources, SITE_BOARD_COPY.searchConsoleSource])]
+    if (card.id === 'tracking' && connectionNotes.tracking) card.sources = [...new Set([...card.sources, SITE_BOARD_COPY.analyticsSource])]
   }
 }

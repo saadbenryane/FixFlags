@@ -21,6 +21,9 @@ let localLease: Awaited<ReturnType<typeof acquireLocalWorkerLease>> | null = nul
 let localRedis: ReturnType<typeof createQueueRedis> | null = null
 
 const runtime = createWorkerRuntime({
+  publishState: state => {
+    if (process.connected && process.send) process.send({ type: 'fixflags:worker-state', state }, () => {})
+  },
   validateEnvironment: validateWorkerEnv,
   preflight: async () => {
     await prisma.$queryRaw`SELECT 1`

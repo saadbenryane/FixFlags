@@ -4,6 +4,7 @@ import type { User } from '@prisma/client'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 import type { z } from 'zod'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 const mocks = vi.hoisted(() => ({ site: vi.fn(), record: vi.fn(), run: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { runRequest: { findFirst: mocks.run } } }))
@@ -16,12 +17,13 @@ type Handler = (input: Record<string, unknown>) => Promise<Result>
 describe('MCP record_fix receipts', () => {
   let handler: Handler
   let verifySchema: z.ZodType
+  let recordSchema: z.ZodType
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.site.mockResolvedValue({ siteId: 'site', projectId: 'site', userId: 'owner' })
     mocks.run.mockResolvedValue({ id: 'run' })
     const server = { registerTool(name: string, definition: { inputSchema: z.ZodType }, registered: Handler) {
-      if (name === MCP_TOOLS.recordFix.name) handler = registered
+      if (name === MCP_TOOLS.recordFix.name) { handler = registered; recordSchema = definition.inputSchema }
       if (name === MCP_TOOLS.verifyFlag.name) verifySchema = definition.inputSchema
     } } as unknown as McpServer
     registerSiteOutcomeTools(server, { id: 'owner' } as User)
@@ -35,6 +37,19 @@ describe('MCP record_fix receipts', () => {
     expect(verifySchema.safeParse(next.arguments).success).toBe(true)
     expect(next.arguments.idempotencyKey).toBe('flag-verify:attempt')
     expect(replay.structuredContent.next).toEqual(next)
+  })
+  it('retains the repair brief revision and returns an actionable refusal when its context changes', async () => {
+    const expectedContextHash = 'a'.repeat(64)
+    const input = { siteId: 'site', flagId: 'flag', idempotencyKey: 'repair-key', changeSummary: 'Recorded repair', expectedContextHash }
+    expect(recordSchema.safeParse({ ...input, expectedContextHash: 'invalid' }).success).toBe(false)
+    mocks.record.mockResolvedValue({ siteId: 'site', flagId: 'flag', attemptId: 'attempt', outcome: null, verificationAuditId: null })
+    await handler(recordSchema.parse(input) as Record<string, unknown>)
+    expect(mocks.record).toHaveBeenCalledWith(expect.objectContaining({ siteId: 'site', flagId: 'flag', userId: 'owner', expectedContextHash }))
+    mocks.record.mockRejectedValue(new SiteRunRefusal('The repair context changed.', 409, 'REPAIR_CONTEXT_CHANGED'))
+    const result = await handler(input)
+    expect(result.isError).toBe(true)
+    expect(result.structuredContent).toMatchObject({ status: 'ERROR', error: { code: 'REPAIR_CONTEXT_CHANGED', action: 'prepare_new_prompt' } })
+    expect(mocks.run).not.toHaveBeenCalled()
   })
   it.each(['recorded', 'admitted', 'completed'] as const)('returns stored provenance and the applicable next step: %s', async stage => {
     const receipt = { siteId: 'site', flagId: 'flag', attemptId: 'attempt', idempotencyKey: 'repair-key',

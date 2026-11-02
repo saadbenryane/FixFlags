@@ -2,6 +2,8 @@ import { Prisma } from '@prisma/client'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { monitoringOverdueBefore } from '@/lib/sites/monitoring-freshness'
 import { UPTIME_INTERVAL_MS, UPTIME_STALE_MS } from '@/lib/uptime/domain'
+import { uptimeProjectWhere } from '@/lib/uptime/eligibility'
+import { sharedWatchRunWhere, watchObservationWhere } from './scheduled-observation'
 
 type UptimeGap = { id: string; name: string; createdAt: Date; monitorId: string | null;
   state: string | null; nextProbeAt: Date | null; lastCheckedAt: Date | null; gap: 'overdue' | 'inconclusive' }
@@ -25,14 +27,15 @@ function uptimeOperationSites(now: Date) {
   return Prisma.sql`SELECT p.id, p.name, p."createdAt", m.id AS "monitorId", m.state,
     m."nextProbeAt", m."lastCheckedAt", CASE WHEN ${overdue} THEN 'overdue' ELSE 'inconclusive' END AS gap
     FROM projects p JOIN users u ON u.id = p."userId" LEFT JOIN uptime_monitors m ON m."projectId" = p.id
-    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND p."watchInterval" IS NOT NULL
+    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE'
+      AND p."watchPausedAt" IS NULL AND p."watchInterval" IS NOT NULL
       AND (${overdue} OR ${inconclusive})`
 }
 
 /** Missing monitors sort after every saved probe time, matching NULLS LAST. */
 async function missingPublicMonitorGaps(db: Pick<Prisma.TransactionClient, 'project'>, now: Date): Promise<UptimeGap[]> {
   const rows = await db.project.findMany({
-    where: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: { not: null },
+    where: { ...uptimeProjectWhere,
       uptimeMonitor: null, createdAt: { lt: monitoringOverdueBefore(now) } },
     select: { id: true, name: true, url: true, createdAt: true },
     orderBy: { id: 'asc' },
@@ -85,39 +88,51 @@ export function monitoringOperationsWhere(now: Date) {
     { completedAt: null, createdAt: { lt: overdueBefore } },
   ] } satisfies Prisma.AuditWhereInput
   return {
-    schedules: { ...activeSite, watchInterval: { not: null }, watchNextRunAt: { lt: monitoringOverdueBefore(now) } },
+    schedules: { ...uptimeProjectWhere, watchNextRunAt: { lt: monitoringOverdueBefore(now) } },
     uptimeAlerts: { incident: { monitor: { project: activeSite } }, OR: [
       { status: 'FAILED' },
       { status: 'PENDING', nextAttemptAt: { lt: overdueBefore } },
       { status: 'SENDING', OR: [{ leaseUntil: { lte: now } }, { leaseUntil: null, nextAttemptAt: { lt: overdueBefore } }] },
     ] },
-    watchAlerts: { project: activeSite, recheckTrigger: 'WATCH', OR: [
+    watchAlerts: { project: activeSite, AND: [watchObservationWhere()], OR: [
       { watchNotificationStatus: 'FAILED' },
+      { watchNotificationStatus: 'NOT_APPLICABLE', watchRegressionCount: null, watchRecoveryCount: null,
+        runRequests: { some: sharedWatchRunWhere() }, ...oldWatchObservation },
       { watchNotificationStatus: 'PENDING', ...oldWatchObservation },
       { watchNotificationStatus: 'SENDING', OR: [
         { watchNotificationLeaseUntil: { lte: now } },
         { watchNotificationLeaseUntil: null, ...oldWatchObservation },
       ] },
     ] },
+    summaryAlerts: { user: { lifecycleStatus: 'ACTIVE' }, OR: [
+      { status: 'FAILED' },
+      { status: 'PENDING', nextAttemptAt: { lt: overdueBefore } },
+      { status: 'SENDING', OR: [
+        { leaseUntil: { lte: now } },
+        { leaseUntil: null, nextAttemptAt: { lt: overdueBefore } },
+      ] },
+    ] },
   } satisfies {
     schedules: Prisma.ProjectWhereInput;
     uptimeAlerts: Prisma.UptimeNotificationWhereInput;
     watchAlerts: Prisma.AuditWhereInput;
+    summaryAlerts: Prisma.NotificationDigestWhereInput;
   }
 }
 
 /** Operational counts and queue selection share the same saved obligations.
  * These are current gaps, not a historical fulfillment rate. */
 export async function countMonitoringOperations(
-  db: Pick<Prisma.TransactionClient, 'project' | 'uptimeNotification' | 'audit' | '$queryRaw'>,
+  db: Pick<Prisma.TransactionClient, 'project' | 'uptimeNotification' | 'audit' | 'notificationDigest' | '$queryRaw'>,
   now: Date,
 ) {
   const where = monitoringOperationsWhere(now)
-  const [overdueSchedules, uptime, undeliveredUptimeAlerts, undeliveredWatchAlerts] = await Promise.all([
+  const [overdueSchedules, uptime, undeliveredUptimeAlerts, undeliveredWatchAlerts, unsettledSummaries] = await Promise.all([
     db.project.count({ where: where.schedules }),
     countUptimeOperationSites(db, now),
     db.uptimeNotification.count({ where: where.uptimeAlerts }),
     db.audit.count({ where: where.watchAlerts }),
+    db.notificationDigest.count({ where: where.summaryAlerts }),
   ])
-  return { overdueSchedules, ...uptime, undeliveredUptimeAlerts, undeliveredWatchAlerts }
+  return { overdueSchedules, ...uptime, undeliveredUptimeAlerts, undeliveredWatchAlerts, unsettledSummaries }
 }

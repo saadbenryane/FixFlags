@@ -1,4 +1,5 @@
 import { BRAND, SITE_URL } from './brand'
+import { NOTIFICATIONS_COPY } from './notifications'
 import { brandLight } from '@/lib/design/brand-spec'
 import { emailLayout as layout, emailButtonStyle as ctaStyle, escapeEmailHtml } from '@/lib/email/layout'
 
@@ -10,48 +11,48 @@ export const NURTURE_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
-  <p>Keep one website in your free account. Its Site board holds your Flags, evidence, and fix prompts for Cursor, Claude, Lovable, or Bolt.</p>
-  <p>Paste the URL you are about to share. That is what this is for.</p>
+  <p>Keep one website in your free account. See what needs attention, why it matters, and what to do next.</p>
+  <p>Add your website to get started.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Check your first website</a></p>
   <p style="font-size: 13px; color: ${p.mutedForeground};">Common first checks: your landing page, a client site before handoff, a store that should still take orders.</p>
 `),
   },
   firstAuditNudge: {
     subject: `Your first Site check is waiting`,
-    html: (name: string) =>
+    html: (name: string, unsubscribeUrl?: string) =>
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
   <p>You signed up for ${BRAND.name} yesterday. Add the website you want to monitor.</p>
-  <p>Paste any public URL. You will get Flags with evidence and a fix for each one.</p>
+  <p>Paste your website address. We’ll show you any problems we find, with details and steps to help you fix them.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
-`),
+`, { preferencesUrl: unsubscribeUrl, preferencesLabel: NOTIFICATIONS_COPY.unsubscribe.action }),
   },
   monitoring: {
-    subject: `Did your agent actually fix it?`,
-    html: (name: string) =>
+    subject: `Check that your fixes worked`,
+    html: (name: string, unsubscribeUrl?: string) =>
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
-  <p>You ran a ${BRAND.name} Site check a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
-  <p>Verify runs the same page and action again and shows whether the Flag passed, failed, or stayed inconclusive.</p>
+  <p>Made changes since your last website check? Open a problem and choose Verify to check it again.</p>
+  <p>We’ll show whether the fix worked, still needs attention, or needs another check.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Open your Sites</a></p>
-`),
+`, { preferencesUrl: unsubscribeUrl, preferencesLabel: NOTIFICATIONS_COPY.unsubscribe.action }),
   },
   launchChecklist: {
     subject: `5 things to confirm before you share the link`,
-    html: (name: string) =>
+    html: (name: string, unsubscribeUrl?: string) =>
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
   <p>Before your next launch post, run through this:</p>
   <ul>
-    <li>The intended next step is easy to find at 375px</li>
+    <li>The main button is easy to find on a phone</li>
     <li>The shared-link title and image match the page you intend to share</li>
-    <li>LCP under 2.5s on mobile</li>
+    <li>The main content loads quickly on a phone</li>
     <li>Any proof you show is accurate and supports its claim</li>
     <li>The opening copy explains what the page is for</li>
   </ul>
   <p>${BRAND.name} checks your website and keeps evidence with each finding. Confirm important results before you share the link.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Review before you publish</a></p>
-`),
+`, { preferencesUrl: unsubscribeUrl, preferencesLabel: NOTIFICATIONS_COPY.unsubscribe.action }),
   },
 } as const
 
@@ -110,7 +111,7 @@ export const DEMO_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
   <p>Thanks for requesting a ${planLabel} demo. We will email you to set a time. We are not charging yet.</p>
-  <p>Paid monitoring is billed per website, verified every day.</p>
+  <p>We’ll discuss the websites you want to monitor and the next steps.</p>
   <p><a href="${SITE_URL}/pricing" style="${ctaStyle}">Back to pricing</a></p>
 `),
   },

@@ -28,7 +28,9 @@ export async function POST(
 
     const task = await loadSiteFlagCopyTask(access.decision.site.siteId, flagId,
       body.data.action === 'copy' ? body.data.promptHash : undefined)
-    if (body.data.action === 'prepare') return NextResponse.json({ ok: true, ...task })
+    if (body.data.action === 'prepare') return NextResponse.json({ ok: true, prompt: task.prompt,
+      promptHash: task.promptHash, sourceFlagId: task.sourceFlagId, referenceFlagId: task.referenceFlagId,
+    }, { headers: { 'Cache-Control': 'private, no-store' } })
     const recorded = await executeSiteCommand({
       type: 'RECORD_FIX_HANDOFF',
       flagId: task.sourceFlagId,

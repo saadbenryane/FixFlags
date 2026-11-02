@@ -14,6 +14,7 @@ export const notificationEmailSnapshotSchema = z.object({
   subject: z.string().min(1), html: z.string().min(1), text: z.string().min(1),
   tags: z.array(z.object({ name: z.string(), value: z.string() }).strict()).max(10),
   firstAttemptAt: z.string().datetime({ offset: true }).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
 }).strict()
 
 /** Provider keys expire. A stable key cannot make an arbitrarily late replay safe. */
@@ -36,7 +37,7 @@ export function prepareNotificationReplay<T extends z.infer<typeof notificationE
 /** Stored ownership and selection metadata never enter the provider request. */
 export function notificationEmailBody(payload: z.infer<typeof notificationEmailSnapshotSchema>) {
   return { from: payload.from, to: payload.to, subject: payload.subject, html: payload.html,
-    text: payload.text, tags: payload.tags }
+    text: payload.text, tags: payload.tags, ...(payload.headers ? { headers: payload.headers } : {}) }
 }
 
 /** Both monitoring senders abort the physical SDK request before their lease expires. */

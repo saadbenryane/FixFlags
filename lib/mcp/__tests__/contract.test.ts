@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
+import { mcpCoreError, mcpStructuredResult, registerConnectionInfoTool } from '@/lib/mcp/contract'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 
 describe('MCP Outcome contract envelopes', () => {
+  it('reports granted tools so a connected agent can diagnose missing write access', async () => {
+    let invoke: (() => Promise<ReturnType<typeof mcpStructuredResult>>) | undefined
+    const server = { server: { getClientVersion: () => ({ name: 'test-agent', version: '1' }) },
+      registerTool(_name: string, _definition: unknown, handler: typeof invoke) { invoke = handler },
+    } as unknown as McpServer
+    registerConnectionInfoTool(server, true, { audience: null, scopes: ['sites:read', 'runs:read', 'flags:read'] })
+    const result = await invoke!()
+    expect(result.structuredContent).toMatchObject({ authentication: { authenticated: true }, permissions: {
+      legacyFullAccess: false, scopes: ['sites:read', 'runs:read', 'flags:read'],
+    } })
+    const tools = (result.structuredContent.permissions as { allowedTools: string[] }).allowedTools
+    expect(tools).toContain('fixflags.get_flag')
+    expect(tools).not.toContain('fixflags.record_fix')
+    expect(tools).not.toContain('fixflags.run')
+  })
   it('returns a changed-fix refusal with a fresh-key recovery action', () => {
     const error = new ImprovementAttemptConflict()
     expect(mcpCoreError(error, { action: 'retry' }).structuredContent).toEqual({ status: 'ERROR', error: {

@@ -25,6 +25,23 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  it('copies and verifies the selected incident while retaining its source-specific guidance', async () => {
+    const fetchMock = copyResponse('Task for the selected incident')
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" referenceFlagId="incident-1" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt, exact: true }))
+    await act(async () => {})
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/sites/p_site/flags/incident-1/fix')
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'Named the existing control' } })
+    fetchMock.mockImplementationOnce(async () => ({ ok: true, json: async () => ({ ok: true, accepted: true,
+      siteId: 'p_site', flagId: 'incident-1', verificationAuditId: 'verification', runId: 'run', runRequestId: 'run',
+      attemptId: 'attempt', parentAuditId: 'original', expectedBehavior: 'The recorded controls have names' }) }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }))
+    await act(async () => {})
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/sites/p_site/flags/incident-1/verify')
+    expect(screen.getByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+  })
   it.each(['pending', 'unavailable'] as const)('keeps compact %s guidance concise while preserving verification', repairGuidance => {
     render(<SiteFlagActions compact repairGuidance={repairGuidance} initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     expect(screen.getByText(SITE_ACTION_COPY.repairGuidance[repairGuidance])).toBeVisible()

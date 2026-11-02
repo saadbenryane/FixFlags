@@ -52,7 +52,10 @@ export function AvatarMenu({
 
   async function handleSignOut() {
     const { authClient } = await import('@/lib/auth-client')
-    await authClient.signOut()
+    const result = await authClient.signOut()
+    if (result.error) return
+    const { clearSettingsDrafts } = await import('@/lib/settings/drafts')
+    clearSettingsDrafts()
     router.push('/')
     router.refresh()
   }

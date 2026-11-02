@@ -139,7 +139,7 @@ describe('Site notice for an undelivered alert', () => {
     const queries = readFileSync(resolve(root, 'lib/sites/application/queries.ts'), 'utf8')
     expect(queries).toMatch(/async function loadLatestWatchAlert\(projectId: string \| null \| undefined\)/)
     expect(queries).toMatch(/return projectId\s*\? await prisma\.audit\.findFirst/)
-    expect(queries).toContain("where: { projectId, recheckTrigger: 'WATCH'")
+    expect(queries).toContain('where: { projectId, ...watchObservationWhere(projectId)')
     expect(queries).toContain('loadLatestWatchAlert(site.projectId)')
     expect(queries).toContain('watchNotificationLeaseUntil: true')
     expect(queries).toContain('leaseUntil: latestAlert?.watchNotificationLeaseUntil')

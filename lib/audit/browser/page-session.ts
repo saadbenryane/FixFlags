@@ -162,6 +162,7 @@ export async function createAuditPage(
     ...(options.storageState ? { storageState: options.storageState } : {}),
     ...(options.allowLocalhost ? { proxy: publicBrowserProxyOptions(browser, true) } : {}),
   }, { deadline: options.deadline, signal: currentExecutionOwnership()?.signal,
+    owner: currentExecutionOwnership() ? 'audit' : 'inspection',
     priority: options.resourcePriority === 'availability' ? 1 : 0 }, async (context, assertActive) => {
   assertActive()
   await applyScanAccessCookies(context, targetUrl, options.scanAccess)

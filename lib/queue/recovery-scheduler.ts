@@ -19,6 +19,8 @@ import { dispatchPendingAudits } from '@/lib/audit/dispatch'
 import { recoverProgressiveAudits } from '@/lib/audit/progressive/runtime'
 import { refreshDueGoogleContexts } from '@/lib/sites/connections/google'
 import { MONITORING_SWEEP_INTERVAL_MS } from '@/lib/sites/monitoring-freshness'
+import { deliverWebsiteSummaries } from '@/lib/notifications/service'
+import { maintainEmailDelivery, retryPendingNurtureEmails } from '@/lib/email/maintenance'
 
 const PROGRESSIVE_RECOVERY_INTERVAL_MS = 10_000
 const RECOVERY_INTERVAL_MS = 120_000
@@ -127,6 +129,21 @@ async function googleContextTick(): Promise<void> {
   }
 }
 
+async function websiteSummaryTick(): Promise<void> {
+  try { await deliverWebsiteSummaries() }
+  catch (error) { logger.error('Website summary sweep failed', error instanceof Error ? error : new Error(String(error))) }
+}
+
+async function emailDeliveryTick(): Promise<void> {
+  try { await maintainEmailDelivery() }
+  catch (error) { logger.error('Email delivery maintenance failed', error instanceof Error ? error : new Error(String(error))) }
+}
+
+async function emailRetryTick(): Promise<void> {
+  try { await retryPendingNurtureEmails() }
+  catch (error) { logger.error('Getting-started email retries failed', error instanceof Error ? error : new Error(String(error))) }
+}
+
 async function nurtureTick(): Promise<void> {
   if (!(await tryAcquireLock('nurture-emails', NURTURE_LOCK_TTL_MS))) return
   try {
@@ -197,6 +214,9 @@ export function startRecoveryScheduler() {
     [siteRunRecoveryTick, 17_000, RECOVERY_INTERVAL_MS],
     [projectWatchTick, 5000, MONITORING_SWEEP_INTERVAL_MS],
     [projectWatchNotificationTick, 6000, MONITORING_SWEEP_INTERVAL_MS],
+    [websiteSummaryTick, 8000, 60_000],
+    [emailDeliveryTick, 9000, 60_000],
+    [emailRetryTick, 10_000, 60_000],
     [googleContextTick, 47_000, WATCH_MAINTENANCE_INTERVAL_MS],
     [integrityWatchTick, 50_000, WATCH_MAINTENANCE_INTERVAL_MS],
     [nurtureTick, 60_000, NURTURE_INTERVAL_MS],

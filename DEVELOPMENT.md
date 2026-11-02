@@ -174,6 +174,36 @@ active requests or rewrite priorities already stored in Redis.
 
 ### Quality
 
+Continuous monitoring should check both `/api/health/ready` for runtime prerequisites
+and `/api/health/operational` for worker execution and saved monitoring obligations.
+The operational endpoint returns HTTP 503 for a current gap or unavailable evidence,
+with only a coarse status code and no caching. `/api/health/worker` keeps the detailed
+compatibility snapshot and HTTP 200, so its consumers must inspect `body.ok`.
+Use the same operational assessor for both surfaces. Configure alert ownership,
+deduplication and recovery notification in the actual external monitor, then prove
+failure and recovery there. An endpoint or deployment healthcheck alone does not
+establish continuous observation or delivery of an operator alert.
+
+`node scripts/verify-notifications.mjs` creates two disposable local PostgreSQL
+databases, replays migrations, checks schema drift and runs the focused email,
+settings, webhook, unsubscribe and delivery-claim tests. It drops only the
+databases it created and sends no customer email. It does not migrate the normal
+local database, start a browser or establish production delivery.
+
+Outbound delivery evidence uses `/api/webhooks/resend/delivery` with its own
+`RESEND_DELIVERY_WEBHOOK_SECRET`. Subscribe to `email.sent`, `email.delivered`,
+`email.delivery_delayed`, `email.bounced`, `email.complained`, `email.failed`
+and `email.suppressed`. Keep the inbound receiving endpoint and secret separate.
+The worker reconciles accepted source receipts and early provider events. Email
+history retains 90 days of dated delivery facts. Unmatched events expire after
+one day; matched events expire after 90 days. The suppression list keeps only
+the recipient hash, reason, provider reference and time. Changing the account
+email does not transfer an old address's suppression to the new address.
+
+Product tips are off by default. Their signed unsubscribe link accepts an
+RFC 8058 POST without a session; a GET displays confirmation without changing
+preferences. Summary and website alert controls remain independent.
+
 Follow the [agent validation policy](AGENTS.md#validation): end-to-end tests require an explicit user request, including the browser journeys bundled into `verify:release`. A routine UI edit does not authorize those commands.
 
 Vitest keeps the real Checkout and integrity browser probes in the

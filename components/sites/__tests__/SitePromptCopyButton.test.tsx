@@ -125,4 +125,17 @@ describe('SitePromptCopyButton', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByText(SITE_BOARD_COPY.copyPromptCopied)).not.toBeInTheDocument()
   })
+  it('revalidates the exact prepared incident scope when its source Flag has a different ID', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ ok: true, prompt: 'Repair every recorded affected page.',
+      sourceFlagId: 'source-flag', referenceFlagId: 'incident', promptHash: 'a'.repeat(64) }))
+      .mockResolvedValueOnce(Response.json({ ok: true, prompt: 'Repair every recorded affected page.',
+        handoff: { flagId: 'source-flag', action: 'HANDOFF_COPIED', improvementId: 'incident', sourceReviewId: 'audit-1' } }))
+    render(<SitePromptCopyButton siteId="site-1" flagId="incident" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(fetch).toHaveBeenLastCalledWith('/api/sites/site-1/flags/incident/fix', expect.objectContaining({
+      body: JSON.stringify({ action: 'copy', promptHash: 'a'.repeat(64) }),
+    }))
+  })
 })

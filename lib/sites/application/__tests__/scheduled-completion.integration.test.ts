@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { processDueProjectWatches } from '@/lib/audit/project-watch'
+import { classifyWatchResult, processDueProjectWatches, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
+import { persistFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { loadSiteHome } from '../queries'
+import { countMonitoringOperations } from '../monitoring-operations'
 import * as transactions from '@/lib/billing/product-transaction'
 import { requestScheduledSiteRun } from '../scheduled-runs'
 import { requestSiteRun } from '../run-requests'
@@ -13,7 +16,9 @@ import { Prisma } from '@prisma/client'
 import { interruptedAnalysisWorkSql, interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
 
 const queue = vi.hoisted(() => ({ add: vi.fn(async () => ({ id: 'queued' })) }))
+const provider = vi.hoisted(() => ({ send: vi.fn() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => queue }))
+vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: provider.send } } }))
 vi.mock('@/lib/audit/ai-report-entitlement', () => ({ resolveIncludeAiForNewAudit: async () => false }))
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 run('scheduled completion after cadence advancement', () => {
@@ -31,9 +36,11 @@ run('scheduled completion after cadence advancement', () => {
       accountChecksEnabled: false, notificationLevel: 'OFF' } })
     projectId = site.id
     queue.add.mockReset().mockResolvedValue({ id: 'queued' })
+    provider.send.mockReset().mockResolvedValue({ data: { id: 'shared-watch-' + randomUUID() }, error: null })
   })
   afterEach(async () => {
     vi.useRealTimers(); vi.restoreAllMocks()
+    await prisma.audit.deleteMany({ where: { userId } })
     await prisma.project.deleteMany({ where: { id: projectId } })
     await prisma.user.deleteMany({ where: { id: { in: [userId, ...otherOwners] } } })
   })
@@ -100,7 +107,10 @@ run('scheduled completion after cadence advancement', () => {
   ] as const)('preserves interruption meaning across SQL selection and conditional settlement: %j', async ({ interrupted, ...task }) => {
     const request = await admit(2)
     const due = (await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).watchNextRunAt
-    await prisma.auditVerificationReceipt.create({ data: { ...task, auditId: request.auditId!, source: 'EXECUTION' } })
+    if (task.targetKey.startsWith('task:'))
+      await prisma.auditExecutionTask.create({ data: { ...task, auditId: request.auditId!, source: 'EXECUTION' } })
+    else
+      await prisma.auditVerificationReceipt.create({ data: { auditId: request.auditId!, targetKey: task.targetKey, status: task.status, source: 'EXECUTION' } })
     const [sql] = await prisma.$queryRaw<Array<{ interrupted: boolean }>>(Prisma.sql`SELECT ${interruptedAnalysisWorkSql} AS interrupted
       FROM audits "source" WHERE "source".id = ${request.auditId!}`)
     expect(sql.interrupted).toBe(interrupted)
@@ -181,6 +191,64 @@ run('scheduled completion after cadence advancement', () => {
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchConsecutiveFailures: 0, watchLastError: null })
   })
 
+  it('bounds completion recovery independently of retained scheduled request history', async () => {
+    const request = await admit(2)
+    const scheduled = (request.context as { scheduled: Record<string, Prisma.JsonValue> }).scheduled
+    const history = Array.from({ length: 10_000 }, (_, index) => {
+      const attemptedAt = Number(scheduled.attemptedAt) - (index + 1) * 60_000
+      return { id: randomUUID(), attemptedAt, completedAt: new Date(attemptedAt + 1000) }
+    })
+    // Retained terminal history models query cost. No browser, natural calendar
+    // execution or real website failures are claimed by these synthetic rows.
+    await prisma.audit.createMany({ data: history.map(row => ({ id: row.id, projectId, userId, url: 'https://example.com/',
+      status: 'FAILED' as const, createdAt: new Date(row.attemptedAt), completedAt: row.completedAt,
+      recheckTrigger: 'WATCH' as const, executionSpec: request.executionSpec! })) })
+    await prisma.runRequest.createMany({ data: history.map(row => ({ projectId, auditId: row.id, source: 'WATCH',
+      idempotencyKey: 'retained:' + row.id, status: 'FAILED' as const, completedAt: row.completedAt,
+      executionSpec: request.executionSpec!, context: { scheduled: { ...scheduled, scheduledAt: row.attemptedAt - 1000,
+        attemptedAt: row.attemptedAt, nextRunAt: row.attemptedAt + 7 * 86400_000, failures: 0 } } })) })
+    await prisma.audit.update({ where: { id: request.auditId! }, data: { status: 'COMPLETED', completedAt: new Date() } })
+    await prisma.runRequest.update({ where: { id: request.id }, data: { status: 'COMPLETED', completedAt: new Date(), leaseUntil: null } })
+    await prisma.$executeRaw`ANALYZE run_requests`
+    await prisma.$executeRaw`ANALYZE audits`
+    await prisma.$executeRaw`ANALYZE projects`
+    let selected: Prisma.Sql | undefined
+    let activePlan: Record<string, unknown> | undefined
+    const explain = async (query: Prisma.Sql) => {
+      const rows = await prisma.$queryRawUnsafe<Array<{ 'QUERY PLAN': Array<{ Plan: Record<string, unknown> }> }>>(
+        'EXPLAIN (ANALYZE, FORMAT JSON) ' + query.text, ...query.values)
+      return rows[0]['QUERY PLAN'][0].Plan
+    }
+    const read = prisma.$queryRaw.bind(prisma)
+    const capture = vi.spyOn(prisma, '$queryRaw').mockImplementation(async query => {
+      if (typeof query === 'object' && 'text' in query && query.text.includes('scheduled,attemptedAt')) {
+        selected = query as Prisma.Sql
+        activePlan ??= await explain(selected)
+      }
+      return read(query)
+    })
+    try {
+      expect(await reconcileScheduledCompletions()).toBe(1)
+      expect(await reconcileScheduledCompletions()).toBe(0)
+    } finally { capture.mockRestore() }
+    expect(selected).toBeDefined()
+    expect(activePlan).toBeDefined()
+    for (const [state, plan] of Object.entries({ active: activePlan!, empty: await explain(selected!) })) {
+      const indexes = new Set<string>()
+      const visits = (node: Record<string, unknown>): number => {
+        if (typeof node['Index Name'] === 'string') indexes.add(node['Index Name'])
+        return (node['Relation Name'] === 'run_requests'
+          ? (Number(node['Actual Rows'] ?? 0) + Number(node['Rows Removed by Filter'] ?? 0)) * Number(node['Actual Loops'] ?? 1) : 0) +
+          (Array.isArray(node.Plans) ? node.Plans.reduce((sum, child) => sum + visits(child), 0) : 0)
+      }
+      const inspected = visits(plan)
+      console.info('Scheduled completion request history:', { state, inspected, indexes: [...indexes] })
+      expect(inspected).toBeLessThan(50)
+    }
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(10_001)
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchConsecutiveFailures: 0, watchLastError: null })
+  })
+
   it('uses six-hour backoff for repeated execution failures without forgetting the streak', async () => {
     const request = await admit(2)
     await fail(request.auditId!)
@@ -233,6 +301,124 @@ run('scheduled completion after cadence advancement', () => {
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: manual.runId } })).toMatchObject({ source: 'WEB', context: { scheduled: { version: 1 } } })
     await fail(manual.auditId!)
     expect((await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).watchNextRunAt!.getTime()).toBeLessThan(Date.now() + 16 * 60_000)
+  })
+
+  async function completedSharedObservation() {
+    await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, projectId, userId))
+    await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS' } })
+    const manual = await requestSiteRun({ projectId, userId, source: 'WEB', scope: 'SITE', outcomeIds: [], idempotencyKey: 'shared-manual-alert' })
+    const original = await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })
+    expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    // Controlled stored observation exercises schedule and notification
+    // projection, not fresh collection or a real provider send.
+    await prisma.flag.create({ data: { auditId: manual.auditId!, checkId: 'security-headers-missing-csp', source: 'DETERMINISTIC',
+      rubric: 'REACH', severity: 'IMPORTANT', confidence: 1, position: 0, problem: 'Content policy is absent',
+      evidence: 'Controlled header observation.', whyItMatters: 'Restrict public script permissions.', fix: 'Configure the response policy.' } })
+    const completedAt = new Date()
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { status: 'COMPLETED', completedAt } })
+    await persistFlagDiffSummary(original.parentId, manual.auditId!)
+    return { manual, original, completedAt }
+  }
+
+  it.each([false, true])('retains monitoring classification when due care shares a manual execution (deferred: %s)', async deferred => {
+    const { manual, original, completedAt } = await completedSharedObservation()
+    if (!deferred) await classifyWatchResult(original.parentId, manual.auditId!)
+    else expect(await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })).toMatchObject({
+      watchNotificationStatus: 'NOT_APPLICABLE', watchRegressionCount: null, watchRecoveryCount: null })
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { improvementProjectedAt: new Date() } })
+    if (!deferred) {
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })).toMatchObject({
+        recheckTrigger: original.recheckTrigger, skipUsageCount: original.skipUsageCount,
+        watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0 })
+    }
+    expect(await retryPendingWatchNotifications()).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })).toMatchObject({
+      recheckTrigger: original.recheckTrigger, skipUsageCount: original.skipUsageCount,
+      watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 })
+    expect(provider.send).toHaveBeenCalledOnce()
+    expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'accepted', status: 'SENT', attempts: 1 })
+    expect(await countMonitoringOperations(prisma, new Date())).toMatchObject({ undeliveredWatchAlerts: 0 })
+    expect(await retryPendingWatchNotifications()).toBe(0)
+    expect(provider.send).toHaveBeenCalledOnce()
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchLastRunAt: completedAt })
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(1)
+    expect(queue.add).toHaveBeenCalledOnce()
+  })
+
+  it('does not grant alerts from schedule-shaped context without the server Watch key', async () => {
+    const { manual } = await completedSharedObservation()
+    await prisma.runRequestKey.deleteMany({ where: { runRequestId: manual.runId, source: 'WATCH' } })
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { improvementProjectedAt: new Date() } })
+    expect(await retryPendingWatchNotifications()).toBe(0)
+    expect(provider.send).not.toHaveBeenCalled()
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })).toMatchObject({
+      watchNotificationStatus: 'NOT_APPLICABLE', watchRegressionCount: null, watchNotificationAttempts: 0 })
+  })
+
+  it('rechecks a shared monitoring obligation before provider admission', async () => {
+    const { manual } = await completedSharedObservation()
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { improvementProjectedAt: new Date() } })
+    const write = prisma.audit.updateMany.bind(prisma.audit)
+    const revoke = vi.spyOn(prisma.audit, 'updateMany').mockImplementation(async input => {
+      if (input.data.watchNotificationStatus === 'SENDING')
+        await prisma.runRequestKey.deleteMany({ where: { runRequestId: manual.runId, source: 'WATCH' } })
+      return write(input)
+    })
+    try { expect(await retryPendingWatchNotifications()).toBe(1) } finally { revoke.mockRestore() }
+    expect(provider.send).not.toHaveBeenCalled()
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })).toMatchObject({
+      watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0 })
+  })
+
+  it('exposes a shared monitoring delivery failure through owner and operational reads', async () => {
+    const { manual } = await completedSharedObservation()
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { improvementProjectedAt: new Date() } })
+    provider.send.mockResolvedValueOnce({ data: null, error: { message: 'Controlled provider refusal' } })
+    expect(await retryPendingWatchNotifications()).toBe(1)
+    expect(provider.send).toHaveBeenCalledOnce()
+    expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'delivering', status: 'FAILED', attempts: 1 })
+    expect(await countMonitoringOperations(prisma, new Date())).toMatchObject({ undeliveredWatchAlerts: 1 })
+    expect(await retryPendingWatchNotifications()).toBe(0)
+  })
+
+  it('defers an unreadable shared classification without consuming a provider attempt', async () => {
+    const { manual } = await completedSharedObservation()
+    await prisma.runRequest.update({ where: { id: manual.runId }, data: { context: { scheduled: { version: 1 } } } })
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { improvementProjectedAt: new Date() } })
+    expect(await retryPendingWatchNotifications()).toBe(1)
+    expect(provider.send).not.toHaveBeenCalled()
+    const deferred = await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId! } })
+    expect(deferred).toMatchObject({ watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationAttempts: 0,
+      watchNotificationLastError: 'Notification classification could not complete' })
+    expect(deferred.watchNotificationNextAttemptAt!.getTime()).toBeGreaterThan(Date.now())
+    expect(await retryPendingWatchNotifications()).toBe(0)
+    expect(await countMonitoringOperations(prisma, new Date(Date.now() + 2 * 60 * 60_000))).toMatchObject({ undeliveredWatchAlerts: 1 })
+  })
+
+  it('bounds an empty notification sweep independently of unrelated manual history', async () => {
+    const { manual } = await completedSharedObservation()
+    await prisma.audit.update({ where: { id: manual.auditId! }, data: { improvementProjectedAt: new Date() } })
+    await prisma.audit.createMany({ data: Array.from({ length: 10_000 }, () => ({ userId, projectId, url: 'https://example.com/',
+      status: 'COMPLETED' as const, completedAt: new Date(), improvementProjectedAt: new Date() })) })
+    await prisma.$executeRaw`ANALYZE audits`
+    await prisma.$executeRaw`ANALYZE run_requests`
+    let selected: Prisma.Sql | undefined
+    const read = prisma.$queryRaw.bind(prisma)
+    const capture = vi.spyOn(prisma, '$queryRaw').mockImplementation(async query => {
+      if (typeof query === 'object' && 'text' in query && query.text.includes('watchNotificationAttemptCeiling')) selected = query as Prisma.Sql
+      return read(query)
+    })
+    try { expect(await retryPendingWatchNotifications(1)).toBe(1) } finally { capture.mockRestore() }
+    expect(selected).toBeDefined()
+    const plan = await prisma.$queryRawUnsafe<Array<{ 'QUERY PLAN': Array<{ Plan: Record<string, unknown> }> }>>(
+      'EXPLAIN (ANALYZE, FORMAT JSON) ' + selected!.text, ...selected!.values)
+    const visits = (node: Record<string, unknown>): number => (node['Relation Name'] === 'audits'
+      ? (Number(node['Actual Rows'] ?? 0) + Number(node['Rows Removed by Filter'] ?? 0)) * Number(node['Actual Loops'] ?? 1) : 0) +
+      (Array.isArray(node.Plans) ? node.Plans.reduce((sum, child) => sum + visits(child), 0) : 0)
+    const inspected = visits(plan[0]['QUERY PLAN'][0].Plan)
+    console.info('Shared Watch empty sweep audit visits:', inspected)
+    expect(inspected).toBeLessThan(50)
+    expect(await prisma.audit.count({ where: { projectId } })).toBe(10_001)
   })
 
   it('retries an exhausted dispatch after the scheduler has already advanced its weekly clock', async () => {

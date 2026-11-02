@@ -281,7 +281,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH)
   })
 
-  it('keeps Check again in the header when a public action was refused', async () => {
+  it('keeps Check again available with the website actions when a public action was refused', async () => {
     const view = boardView({
       cards: [card({ id: 'conversion', name: 'Conversion', state: 'unknown', evidenced: true, answer: SITE_BOARD_COPY.cardCheckIncomplete, status: SITE_BOARD_COPY.siteCoverageIncomplete, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })],
       executionProgress: {
@@ -293,10 +293,11 @@ describe('SiteBoard chrome', () => {
       },
     })
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-    const header = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain }).closest('header')!
+    const header = screen.getByRole('heading', { name: 'example.com', level: 1 }).closest('header')!
+    const actions = screen.getByRole('group', { name: 'Website actions' })
     expect(within(header).getAllByText('example.com')).toHaveLength(1)
     expect(screen.getByRole('heading', { name: 'example.com', level: 1 })).toBeVisible()
-    expect(within(header).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible()
+    expect(within(actions).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible()
     expect(screen.queryByRole('link', { name: SITE_ACTION_COPY.recovery.access })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Conversion') })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
@@ -318,9 +319,10 @@ describe('SiteBoard chrome', () => {
     })
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
     const header = screen.getByRole('button', { name: 'Monitoring: Not monitored' }).closest('header')!
+    const actions = screen.getByRole('group', { name: 'Website actions' })
     expect(within(header).getAllByText('example.com')).toHaveLength(1)
-    expect(within(header).getByRole('link', { name: SITE_ACTION_COPY.recovery.access })).toHaveAttribute('href', '/sites/p_example/settings#scan-access')
-    expect(within(header).queryByRole('button', { name: SITE_BOARD_COPY.checkAgain })).not.toBeInTheDocument()
+    expect(within(actions).getByRole('link', { name: SITE_ACTION_COPY.recovery.access })).toHaveAttribute('href', '/sites/p_example/settings#scan-access')
+    expect(within(actions).queryByRole('button', { name: SITE_BOARD_COPY.checkAgain })).not.toBeInTheDocument()
   })
 
   it('keeps header monitoring collapsed and restores focus after Escape', () => {

@@ -9,7 +9,7 @@ import { probeUptime } from './probe'
 import { UPTIME_INTERVAL_MS, UPTIME_RETENTION_MS, uptimeTransition } from './domain'
 import type { ProbeObservation } from './domain'
 import type { UptimeMonitor } from '@prisma/client'
-import { uptimeEligible, uptimeProjectInclude, type MonitoringProject } from './eligibility'
+import { uptimeEligible, uptimeProjectInclude, uptimeProjectWhere, type MonitoringProject } from './eligibility'
 import { systemClock, type Clock } from '@/lib/time/clock'
 const slot = (now: Date) => new Date(Math.floor(now.getTime() / UPTIME_INTERVAL_MS) * UPTIME_INTERVAL_MS)
 const nextSlot = (now: Date) => new Date(slot(now).getTime() + UPTIME_INTERVAL_MS)
@@ -25,7 +25,8 @@ async function syncMonitor(snapshot: UptimeMonitor, project: MonitoringProject, 
   if (!transition) return snapshot
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM uptime_monitors WHERE id = ${snapshot.id} FOR UPDATE`
-    const current = await tx.uptimeMonitor.findUniqueOrThrow({ where: { id: snapshot.id }, include: { project: { include: uptimeProjectInclude } } })
+    const current = await tx.uptimeMonitor.findUnique({ where: { id: snapshot.id }, include: { project: { include: uptimeProjectInclude } } })
+    if (!current) return null
     if (current.version !== snapshot.version || current.targetUrl !== snapshot.targetUrl) return current
     // The selection is only a hint. A worker may have completed an observation
     // or acquired its lease while this caller was waiting for the row lock.
@@ -54,8 +55,7 @@ function monitorSynchronization(monitor: UptimeMonitor, project: MonitoringProje
 /** Bounded sweeps plus durable due fields recover enqueue failures without a catch-up burst. */
 export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
   const setupCutoff = clock.now()
-  const initializing: Prisma.ProjectWhereInput = { ...(onlyProjectId ? { id: onlyProjectId } : {}),
-    user: { lifecycleStatus: 'ACTIVE' }, deletedAt: null, watchPausedAt: null, watchInterval: { not: null }, uptimeMonitor: null }
+  const initializing: Prisma.ProjectWhereInput = { ...uptimeProjectWhere, ...(onlyProjectId ? { id: onlyProjectId } : {}), uptimeMonitor: null }
   const projects = await prisma.project.findMany({
     where: { ...initializing, ...monitoringSetupDue(setupCutoff) },
     include: uptimeProjectInclude, orderBy: monitoringSetupOrder, take: limit,
@@ -83,7 +83,7 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
   }
   const selectedAt = clock.now()
   const due = await prisma.uptimeMonitor.findMany({
-    where: { ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: { user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchPausedAt: null, watchInterval: { not: null } },
+    where: { ...(onlyProjectId ? { projectId: onlyProjectId } : {}), project: uptimeProjectWhere,
       OR: [{ nextProbeAt: { lte: selectedAt } }, { confirmationDueAt: { lte: selectedAt } }],
       AND: [{ OR: [{ leaseUntil: null }, { leaseUntil: { lt: selectedAt } }] }] },
     include: { project: { include: uptimeProjectInclude } },
@@ -92,6 +92,7 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
   for (const snapshot of due) {
     try {
       const monitor = await syncMonitor(snapshot, snapshot.project, clock.now())
+      if (!monitor) continue
       if (!monitor.enabled || !uptimeEligible(snapshot.project)) {
         await prisma.uptimeMonitor.updateMany({ where: { id: monitor.id, version: monitor.version }, data: { nextProbeAt: nextSlot(clock.now()) } })
         continue
@@ -105,8 +106,7 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
         lastDispatchAttemptAt: monitor.lastDispatchAttemptAt, nextProbeAt: monitor.nextProbeAt,
         confirmationDueAt: monitor.confirmationDueAt, pendingSlotAt: monitor.pendingSlotAt,
         OR: [{ leaseUntil: null }, { leaseUntil: { lt: attemptedAt } }],
-        project: { id: monitor.projectId, userId: snapshot.project.userId, url: snapshot.project.url,
-          deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchPausedAt: null, watchInterval: { not: null } },
+        project: { ...uptimeProjectWhere, id: monitor.projectId, userId: snapshot.project.userId, url: snapshot.project.url },
       }, data: { lastDispatchAttemptAt: attemptedAt } })
       if (!attempted.count) continue
       if (monitor.pendingFailureAt && monitor.pendingSlotAt && monitor.confirmationDueAt) {
@@ -127,7 +127,7 @@ export async function executeUptimeProbe(job: UptimeJob, observe: (url: string) 
   const snapshot = await prisma.uptimeMonitor.findUnique({ where: { id: job.monitorId }, include: { project: { include: uptimeProjectInclude } } })
   if (!snapshot || snapshot.version !== job.version) return
   const monitor = await syncMonitor(snapshot, snapshot.project, clock.now())
-  if (monitor.version !== job.version || !monitor.enabled || !uptimeEligible(snapshot.project)) return
+  if (!monitor || monitor.version !== job.version || !monitor.enabled || !uptimeEligible(snapshot.project)) return
   // Complete authority reads before spending the observation lease.
   const currentProject = await prisma.project.findUnique({ where: { id: monitor.projectId }, include: uptimeProjectInclude })
   if (!currentProject || !uptimeEligible(currentProject) || normalizeAuditUrl(currentProject.url).ok === false || currentProject.url !== snapshot.project.url) return
@@ -137,8 +137,7 @@ export async function executeUptimeProbe(job: UptimeJob, observe: (url: string) 
   const claimed = await prisma.uptimeMonitor.updateMany({ where: {
     id: job.monitorId, version: job.version, enabled: true,
     OR: [{ leaseUntil: null }, { leaseUntil: { lt: claimedAt } }],
-    project: { id: currentProject.id, userId: currentProject.user.id, url: currentProject.url, deletedAt: null,
-      user: { lifecycleStatus: 'ACTIVE' }, watchPausedAt: null, watchInterval: { not: null } },
+    project: { ...uptimeProjectWhere, id: currentProject.id, userId: currentProject.user.id, url: currentProject.url },
     ...(job.attempt === 1 ? { nextProbeAt: { lte: claimedAt }, AND: [{ OR: [{ lastScheduledAt: null }, { lastScheduledAt: { lt: scheduledAt } }] }] }
       : { pendingSlotAt: scheduledAt, confirmationDueAt: { lte: claimedAt }, pendingFailureAt: { gt: new Date(claimedAt.getTime() - UPTIME_INTERVAL_MS) } }),
   }, data: { leaseUntil, leaseToken: token } })
@@ -150,9 +149,17 @@ export async function executeUptimeProbe(job: UptimeJob, observe: (url: string) 
     const observation = await observe(monitor.targetUrl)
     const observedAt = clock.now()
     const confirmAt = await prisma.$transaction(async tx => {
+      // Keep authority stable through the evidence and incident writes. Match
+      // account and Site commands' lock order before claiming the monitor row.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${currentProject.user.id} FOR SHARE`
+      await tx.$queryRaw`SELECT id FROM projects WHERE id = ${currentProject.id} FOR SHARE`
       await tx.$queryRaw`SELECT id FROM uptime_monitors WHERE id = ${monitor.id} FOR UPDATE`
-      const current = await tx.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id }, include: { project: { include: uptimeProjectInclude } } })
-      if (current.leaseToken !== token || current.version !== job.version || !uptimeEligible(current.project) || current.project.url !== currentProject.url) return
+      const current = await tx.uptimeMonitor.findUnique({ where: { id: monitor.id }, include: { project: { include: uptimeProjectInclude } } })
+      // Removal can commit while the public request or a row lock is pending.
+      // A vanished monitor cancels this observation without recreating state.
+      if (!current || current.leaseToken !== token || !current.leaseUntil || current.leaseUntil <= clock.now() ||
+        current.version !== job.version || current.targetUrl !== monitor.targetUrl || !current.enabled ||
+        current.project.user.id !== currentProject.user.id || !uptimeEligible(current.project) || current.project.url !== currentProject.url) return
       const existing = await tx.uptimeProbe.findUnique({ where: { monitorId_version_scheduledAt_attempt: {
         monitorId: monitor.id, version: job.version, scheduledAt, attempt: job.attempt,
       } } })

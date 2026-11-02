@@ -135,7 +135,7 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
     if (existingJob && (existingState === 'failed' || existingState === 'completed')) await existingJob.retry(existingState)
     else if (!existingJob) await queue.add('audit-task', { auditId: task.auditId, taskId, generation: task.workGeneration + 1 },
       { jobId, attempts: 1, removeOnComplete: 100, removeOnFail: 500,
-        priority: priorityForTask(task.workKind as TaskKind, input, task.workAttempts) })
+        priority: priorityForTask(task.workKind as TaskKind, input, task.workAttempts, task.workGeneration > task.workAttempts) })
     // A delivered job can wait in a busy queue without occupying every recovery
     // batch. Recheck later so a lost Redis delivery still gets reconstructed.
     await prisma.auditExecutionTask.updateMany({ where: dispatchOwner,
@@ -327,23 +327,26 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
         check()
         const result = taskArtifactSchema.parse(scopeTaskArtifact(await handler.evaluate(context), original.audit.executionSpec))
         handler.validateResult(result)
+        if (result.continuation && (!handler.continuation || handler.replay !== 'read_only')) throw new TaskFailure('CONTINUATION_NOT_SUPPORTED', false)
         check()
         await executionTransaction(async tx => {
           await handler.commit?.(context, result, tx)
           check()
           await tx.auditPipelineEvent.create({ data: {
             auditId: job.auditId, executionId: task.id, traceId: job.auditId, attempt: task.workAttempts,
-            stage: 'checking', event: 'task_observation_committed', status: 'completed',
+            stage: 'checking', event: 'task_observation_committed', status: result.continuation ? 'partial' : 'completed',
             detail: { version: 1, taskId: task.id, generation: job.generation, kind: handler.kind,
               collectedAt: result.collectedAt, evidenceReference: task.id,
               ...(handler.kind === 'check' || handler.kind === 'search' || handler.kind === 'google' ? { observations: result.data } : {}) },
           } })
           await tx.auditExecutionTask.update({ where: { id: task.id }, data: {
-            workResult: result as Prisma.InputJsonValue, workState: 'COMPLETED', status: 'COMPLETED',
+            workResult: result as Prisma.InputJsonValue, workState: result.continuation ? 'READY' : 'COMPLETED', status: result.continuation ? 'PENDING' : 'COMPLETED',
             workErrorCode: null, workLeaseUntil: null,
+            ...(result.continuation ? { workToken: null, workAttempts: 0, workRecoveryUntil: null, workRetryAt: new Date(),
+              workDispatchState: 'PENDING', workDispatchLeaseUntil: null } : {}),
           } })
           if (handler.kind === 'prescription') await settlePrescriptionAudit(tx, job.auditId)
-          await recordProgress(tx, job.auditId, { taskId: task.id, kind: handler.kind, state: 'COMPLETED', observationReference: task.id })
+          await recordProgress(tx, job.auditId, { taskId: task.id, kind: handler.kind, state: result.continuation ? 'READY' : 'COMPLETED', observationReference: task.id })
           check()
         })
       })

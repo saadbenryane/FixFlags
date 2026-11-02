@@ -17,6 +17,15 @@ const categorySelect = {
 } satisfies Prisma.AuditSelect
 export type CategoryEvidenceAudit = Prisma.AuditGetPayload<{ select: typeof categorySelect }>
 
+/** A running or failed broad check retains the preceding completed inventory's
+ * category observations as last-known evidence, never as its own collection. */
+export function categoryEvidenceBaselines(projectId: string | null, current: { id: string; status: string } | null,
+  prior?: { id: string; status: string } | null) {
+  if (!projectId || !current) return []
+  const source = current.status === 'COMPLETED' ? current : prior?.status === 'COMPLETED' ? prior : null
+  return source ? [{ projectId, auditId: source.id }] : []
+}
+
 export function categoryCoverageFact(audit: Pick<CategoryEvidenceAudit, 'id' | 'parentId' | 'executionSpec' | 'status' | 'completedAt' | 'evidenceCoverage' | 'failedModules' | 'failureCode' | 'pages'> &
   { verifierExecutions: Array<CoverageExecution & RecordedCompletionTask> }, now: Date,
   flags: Array<{ checkId: string | null; rubric: string; severity: string; impactTag: string | null }> = [], coverageMaxAgeMs?: number): CoverageFact | null {

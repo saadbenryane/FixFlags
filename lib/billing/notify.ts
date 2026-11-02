@@ -1,3 +1,4 @@
+import { emailContent } from '@/lib/email/content'
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy-barrel'
 import { BILLING_EMAILS } from '@/lib/email/templates'
@@ -63,7 +64,7 @@ export async function notifyUserPaymentFailed(input: {
       from: FROM_EMAIL,
       to: input.email,
       subject: BILLING_EMAILS.paymentFailed.subject,
-      html: BILLING_EMAILS.paymentFailed.html(input.name ?? ''),
+      ...emailContent(BILLING_EMAILS.paymentFailed.html(input.name ?? '')),
     })
   } catch (error) {
     logger.error('Failed to send payment_failed user email', {

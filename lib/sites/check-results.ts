@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { CHECK_OBSERVATION_REASONS, type CheckAssertion, type CheckObservationReason } from '@/lib/audit/checks/assertion'
 import { searchObservationSchema, searchReceiptSchema, type SearchObservation } from '@/lib/audit/search/contracts'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 
 export type SiteCheckResult = {
   id: string
@@ -24,6 +26,26 @@ export type SiteCheckResult = {
   observation?: string
   expected?: string
   search?: SearchObservation
+}
+
+/** A recorded collector identifies the source. An installed library or a
+ * connection's authorization state does not establish provider evidence. */
+export function checkResultSourceLabel(source: string, area: SiteCardArea): string | null {
+  if (area === 'search' && Object.hasOwn(SEARCH_COPY.sources, source))
+    return SEARCH_COPY.sources[source as keyof typeof SEARCH_COPY.sources]
+  if (source === 'http' || source === 'original-html') return SEARCH_COPY.sources[source]
+  if (['pagespeed-desktop', 'pagespeed-mobile'].includes(source)) return SITE_BOARD_COPY.pageSpeedSource
+  if (['rendered-dom', 'browser-network', 'browser-console', 'browser-accessibility', 'axe', 'keyboard'].includes(source))
+    return SITE_BOARD_COPY.browserSource
+  return null
+}
+
+export function recordedCheckSources(results: readonly SiteCheckResult[], area: SiteCardArea): string[] {
+  return [...new Set(results.filter(result => result.area === area && !result.historical && result.kind === 'assertion' &&
+    ['passed', 'findings', 'observed'].includes(result.status)).flatMap(result => {
+    const label = checkResultSourceLabel(result.source, area)
+    return label ? [label] : []
+  }))]
 }
 
 export function projectCheckResults(auditId: string, receipts: Array<{

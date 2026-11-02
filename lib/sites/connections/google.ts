@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { Prisma, type SiteConnection, type SiteConnectionProvider } from '@prisma/client'
 import { getAuthBaseUrl } from '@/lib/auth/env'
 import { prisma } from '@/lib/db'
@@ -282,7 +282,7 @@ export function liveGoogleClient(): GoogleConnectionClient {
 
 type SyncResult = { status: 'CONNECTED' | 'MISMATCH' | 'NEEDS_REAUTH' | 'UNAVAILABLE'; detail: string; propertyId: string | null; propertyLabel: string | null }
 
-type GoogleCredentials = Pick<SiteConnection, 'id' | 'encryptedAccessToken' | 'encryptedRefreshToken' | 'tokenExpiresAt'>
+type GoogleCredentials = Pick<SiteConnection, 'id' | 'authorizationId' | 'encryptedAccessToken' | 'encryptedRefreshToken' | 'tokenExpiresAt'>
 const activeConnectionProject = { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } satisfies Prisma.ProjectWhereInput
 
 async function lockConnectionOwner(tx: Prisma.TransactionClient, projectId: string, userId: string) {
@@ -294,9 +294,8 @@ async function lockConnectionOwner(tx: Prisma.TransactionClient, projectId: stri
 
 /** Credentials require an active owner and the admitted, non-revoked grant. */
 export function googleConnectionGrantScope(connection: GoogleCredentials, userId: string): Prisma.SiteConnectionWhereInput {
-  return { id: connection.id, authorizedByUserId: userId, status: { not: 'REVOKED' }, project: { ...activeConnectionProject, userId },
-    ...(connection.encryptedRefreshToken ? { encryptedRefreshToken: connection.encryptedRefreshToken }
-      : { encryptedAccessToken: connection.encryptedAccessToken }) }
+  return { id: connection.id, authorizationId: connection.authorizationId ?? '', authorizedByUserId: userId,
+    status: { not: 'REVOKED' }, project: { ...activeConnectionProject, userId } }
 }
 
 export function googleConnectionCredentialScope(connection: GoogleCredentials, userId: string): Prisma.SiteConnectionWhereInput {
@@ -305,12 +304,12 @@ export function googleConnectionCredentialScope(connection: GoogleCredentials, u
     tokenExpiresAt: connection.tokenExpiresAt }
 }
 
-async function commitSync(input: { connectionId: string; projectId: string; userId: string; credentialScope: Prisma.SiteConnectionWhereInput; siteUrl?: string }, result: SyncResult,
+async function commitSync(input: { connectionId: string; projectId: string; userId: string; authorityScope: Prisma.SiteConnectionWhereInput; siteUrl?: string }, result: SyncResult,
   facts: ConnectionFact[] | null, observedAt: Date, period: ReportingPeriod) {
   await prisma.$transaction(async tx => {
     await lockConnectionOwner(tx, input.projectId, input.userId)
     const admitted = await tx.siteConnection.updateMany({
-      where: { ...input.credentialScope, id: input.connectionId, projectId: input.projectId,
+      where: { ...input.authorityScope, id: input.connectionId, projectId: input.projectId,
         project: { ...activeConnectionProject, userId: input.userId, ...(input.siteUrl ? { url: input.siteUrl } : {}) },
         OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: observedAt } }] },
       data: { lastSyncAttemptAt: observedAt, status: result.status, statusDetail: result.detail,
@@ -338,7 +337,7 @@ export async function syncGoogleConnection(input: {
   const connection = await prisma.siteConnection.findFirst({
     where: { id: input.connectionId, projectId: input.projectId, authorizedByUserId: input.userId, provider: input.provider, status: { not: 'REVOKED' },
       project: { ...activeConnectionProject, userId: input.userId, ...(input.siteUrl ? { url: input.siteUrl } : {}) } },
-    select: { id: true, encryptedAccessToken: true, encryptedRefreshToken: true, tokenExpiresAt: true,
+    select: { id: true, authorizationId: true, propertyId: true, encryptedAccessToken: true, encryptedRefreshToken: true, tokenExpiresAt: true,
       project: { select: { canonicalHost: true, url: true, ...(input.provider === 'ANALYTICS'
         ? { sitePages: { select: { url: true }, orderBy: [{ updatedAt: 'desc' as const }, { id: 'asc' as const }], take: ANALYTICS_PAGE_LIMIT } } : {}) } } },
   })
@@ -391,8 +390,12 @@ export async function syncGoogleConnection(input: {
         : 'Google is unavailable. Earlier context retains its original observation date.',
       propertyId: input.propertyId ?? null, propertyLabel: null }
   }
+  // Successful reports belong to the grant, independently of token renewal.
+  // A refused old token cannot invalidate a concurrently renewed credential.
+  const authorityScope = result.status === 'CONNECTED' ? googleConnectionGrantScope(connection, input.userId)
+    : googleConnectionCredentialScope(connection, input.userId)
   // Write failures roll back both state and facts; they cannot claim a successful sync.
-  return commitSync({ ...input, credentialScope: googleConnectionCredentialScope(connection, input.userId) }, result, facts, observedAt, period)
+  return commitSync({ ...input, authorityScope: { ...authorityScope, propertyId: connection.propertyId } }, result, facts, observedAt, period)
 }
 
 export async function completeGoogleConnection(input: {
@@ -431,6 +434,7 @@ export async function completeGoogleConnection(input: {
       },
       update: {
         authorizedByUserId: parsed.userId,
+        authorizationId: randomUUID(),
         // Retain old facts in storage, but never lend the former owner's
         // property or observation identity to a newly authorized owner.
         ...(previous?.authorizedByUserId !== parsed.userId ? {
@@ -458,15 +462,15 @@ export async function completeGoogleConnection(input: {
   return { projectId: parsed.projectId }
 }
 
-export async function accessTokenForConnection(connection: GoogleCredentials, userId: string): Promise<string | null> {
+export async function getGoogleConnectionAccess(connection: GoogleCredentials, userId: string): Promise<{ token: string; grant: GoogleCredentials } | null> {
   if (!connection.encryptedAccessToken) return null
   const readCurrent = () => prisma.siteConnection.findFirst({ where: googleConnectionGrantScope(connection, userId) })
-  const usableToken = (candidate: GoogleCredentials | null) => candidate?.encryptedAccessToken &&
+  const usableAccess = (candidate: GoogleCredentials | null) => candidate?.encryptedAccessToken &&
     (!candidate.tokenExpiresAt || candidate.tokenExpiresAt.getTime() - REFRESH_BUFFER_MS > Date.now())
-    ? decryptSecret(candidate.encryptedAccessToken) : null
+    ? { token: decryptSecret(candidate.encryptedAccessToken), grant: candidate } : null
   const current = await readCurrent()
   if (!current) return null
-  const available = usableToken(current)
+  const available = usableAccess(current)
   if (available) return available
   if (!current.encryptedRefreshToken) return null
   let data: Awaited<ReturnType<typeof readGoogleTokens>>
@@ -478,25 +482,26 @@ export async function accessTokenForConnection(connection: GoogleCredentials, us
       grant_type: 'refresh_token',
     }))
   } catch (error) {
-    const renewed = usableToken(await readCurrent())
+    const renewed = usableAccess(await readCurrent())
     if (renewed) return renewed
     throw error
   }
   const accessToken = data.access_token
-  const tokenExpiresAt = new Date(Date.now() + data.expires_in * 1000)
+  const credentials = {
+    encryptedAccessToken: encryptSecret(accessToken),
+    ...(data.refresh_token ? { encryptedRefreshToken: encryptSecret(data.refresh_token) } : {}),
+    tokenExpiresAt: new Date(Date.now() + data.expires_in * 1000),
+  }
   const updated = await prisma.$transaction(async tx => {
     await lockConnectionOwner(tx, current.projectId, userId)
     return tx.siteConnection.updateMany({
       where: googleConnectionCredentialScope(current, userId),
-      data: {
-        encryptedAccessToken: encryptSecret(accessToken),
-        tokenExpiresAt,
-      },
+      data: credentials,
     })
   })
   // Independent workers may renew this same grant. Losing the credential write
   // is not revocation when a current, usable token for that grant already won.
-  return updated.count === 1 ? accessToken : usableToken(await readCurrent())
+  return updated.count === 1 ? { token: accessToken, grant: { ...current, ...credentials } } : usableAccess(await readCurrent())
 }
 
 /** Refresh retained provider context independently of website-check admission. */
@@ -536,14 +541,14 @@ export async function refreshDueGoogleContexts(now = new Date(), limit = 20, dep
     })
     if (claimed.count !== 1) return
     try {
-      const token = await accessTokenForConnection(connection, connection.project.userId)
-      if (!token) {
+      const access = await getGoogleConnectionAccess(connection, connection.project.userId)
+      if (!access) {
         await prisma.siteConnection.updateMany({ where: googleConnectionCredentialScope(connection, connection.project.userId),
           data: { status: 'NEEDS_REAUTH', statusDetail: 'Reconnect this Google account to keep reading it.' } })
         return
       }
       await syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, userId: connection.project.userId, provider: connection.provider,
-        host: connection.project.canonicalHost, siteUrl: connection.project.url, propertyId: connection.propertyId, accessToken: token, client: dependencies.client })
+        host: connection.project.canonicalHost, siteUrl: connection.project.url, propertyId: connection.propertyId, accessToken: access.token, client: dependencies.client })
     } catch (error) {
       const reauthenticate = error instanceof GoogleProviderError && error.requiresReauthentication
       await prisma.siteConnection.updateMany({ where: googleConnectionCredentialScope(connection, connection.project.userId),

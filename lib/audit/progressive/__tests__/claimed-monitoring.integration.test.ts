@@ -238,7 +238,13 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect((await loadSiteHome(site.siteId, { ownerEvidence: true }))?.flags).toEqual(expect.arrayContaining([expect.objectContaining({ sourceFlagId: flag.id })]))
     const mcpFlag = await mcpCall(owner, MCP_TOOLS.getFlag.name, { siteId: site.siteId, flagId: flag.id })
     expect(mcpFlag.isError).not.toBe(true)
-    expect(mcpFlag.structuredContent).toMatchObject({ siteId: site.siteId, flag: { sourceFlagId: flag.id, checkId: flag.checkId, status: 'OPEN' } })
+    // Claim publishes the durable incident without declaring a customer repair.
+    const identity = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id }, include: { improvement: true } })
+    expect(identity.improvement).toMatchObject({ status: 'PROPOSED', acceptedAt: null })
+    expect(await loadSiteFlagDetail(site, flag.id)).toMatchObject({ status: 'PROPOSED', verificationState: 'still_open' })
+    expect(mcpFlag.structuredContent).toMatchObject({ siteId: site.siteId,
+      flag: { sourceFlagId: flag.id, checkId: flag.checkId, status: 'PROPOSED', verificationState: 'still_open' },
+      repairBrief: { flag: { sourceFlagId: flag.id, status: 'PROPOSED', verificationState: 'still_open' } } })
     let resultCursor: string | undefined, foundSourceFinding = false
     for (let page = 0; page < 20; page++) {
       const mcpOutcomes = await mcpCall(owner, MCP_TOOLS.listOutcomes.name, { siteId: site.siteId, ...(resultCursor ? { resultCursor } : {}) })

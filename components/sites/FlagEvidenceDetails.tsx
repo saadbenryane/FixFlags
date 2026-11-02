@@ -4,6 +4,7 @@ import type { publicSupportingObservations } from '@/lib/audit/flag-observations
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { presentObservedEvidence, type ObservedPage } from '@/lib/sites/observed-evidence'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+import { includesRepairAlternatives } from '@/lib/audit/evidence-presentation'
 
 function ObservedPageRow({ page }: { page: ObservedPage }) {
   return <li className="min-w-0">
@@ -16,7 +17,13 @@ function ObservedPageRow({ page }: { page: ObservedPage }) {
   </li>
 }
 
-function ObservedFact({ text }: { text: string }) {
+function ObservedFact({ text, diagnosis }: { text: string; diagnosis?: string }) {
+  if (includesRepairAlternatives(text)) return <div className="space-y-3">
+    {diagnosis ? <p className="leading-relaxed">{diagnosis}</p> : null}
+    <details><summary className="flex min-h-11 cursor-pointer items-center text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.technicalDiagnostic}</summary>
+      <p className="mt-2 whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+    </details>
+  </div>
   const presented = presentObservedEvidence(text)
   if (presented.kind === 'text') return <p className="whitespace-pre-wrap break-words leading-relaxed">{text}</p>
   const visible = presented.pages.slice(0, 4)
@@ -33,15 +40,15 @@ function ObservedFact({ text }: { text: string }) {
 }
 
 /** Presentation is shared; sample actions and owner-authorized actions stay with their callers. */
-export function FlagEvidenceDetails({ observed, expected, supportingObservations = [], supportingEvidenceUnreadable = false, factsClassName,
+export function FlagEvidenceDetails({ observed, expected, diagnosis, supportingObservations = [], supportingEvidenceUnreadable = false, factsClassName,
   observedLabel = SITE_ACTION_COPY.flagEvidence.observed, expectedLabel = SITE_ACTION_COPY.expected, children }: {
-  observed: string | null; expected: string; supportingObservations?: ReturnType<typeof publicSupportingObservations>;
+  observed: string | null; expected: string; diagnosis?: string; supportingObservations?: ReturnType<typeof publicSupportingObservations>;
   supportingEvidenceUnreadable?: boolean; factsClassName?: string; observedLabel?: string; expectedLabel?: string; children?: ReactNode;
 }) {
   return <>
     <dl className={factsClassName ?? 'space-y-5 text-sm'}>
       <div><dt className="text-xs font-medium text-muted-foreground">{observedLabel}</dt>
-        <dd className="mt-1">{observed ? <ObservedFact text={observed} /> : <p className="leading-relaxed">{SITE_ACTION_COPY.flagEvidence.missing}</p>}</dd></div>
+        <dd className="mt-1">{observed ? <ObservedFact text={observed} diagnosis={diagnosis} /> : <p className="leading-relaxed">{SITE_ACTION_COPY.flagEvidence.missing}</p>}</dd></div>
       <div><dt className="text-xs font-medium text-muted-foreground">{expectedLabel}</dt>
         <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed">{expected}</dd></div>
     </dl>
@@ -50,7 +57,7 @@ export function FlagEvidenceDetails({ observed, expected, supportingObservations
       <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.supporting}</summary>
       <ul className="mt-3 space-y-4">{supportingObservations.map((item, index) => <li key={index} className="space-y-1 rounded-control bg-muted/30 p-4">
         {item.pageUrl ? <p className="break-words text-xs text-muted-foreground">{item.pageUrl}</p> : null}
-        <p className="whitespace-pre-wrap break-words leading-relaxed">{item.evidence}</p>
+        <ObservedFact text={item.evidence} />
         {item.recordedAt ? <time className="text-xs text-muted-foreground" dateTime={item.recordedAt}>{formatEvidenceTimestamp(item.recordedAt)}</time> : null}
         {item.references.length ? <p className="break-words text-xs text-muted-foreground">{item.references.map(reference => [reference.label, reference.selector, reference.device].filter(Boolean).join(' · ')).join('; ')}</p> : null}
       </li>)}</ul>
