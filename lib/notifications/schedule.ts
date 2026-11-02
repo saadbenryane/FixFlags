@@ -41,4 +41,3 @@ export async function scheduleSummaries(now: Date, limit: number) {
     })
   }
 }
-
