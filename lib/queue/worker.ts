@@ -1,4 +1,5 @@
 import { startUptimeRuntime } from '@/lib/uptime/runtime'
+import { startMemorySampler } from '@/lib/runtime/memory-sampler.mjs'
 import { Worker, UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
@@ -211,6 +212,7 @@ export function startWorker() {
   const tasks = startProgressiveWorkers()
   const uptime = startUptimeRuntime()
   const adminOperations = startAdminOperationRuntime()
+  const memorySampler = startMemorySampler({ role: 'worker', readCounts: async () => ({ activeTasks: tasks.activeCount(), browserContexts: getBrowserDiagnostics().activeContexts }), emit: (sample: Record<string, string | number | null>) => logger.info('Runtime memory sample', sample) })
   const waitForAuditWorker = worker.waitUntilReady.bind(worker)
   worker.waitUntilReady = async () => {
     const [connection] = await Promise.all([waitForAuditWorker(), tasks.waitUntilReady(), uptime.waitUntilReady(), adminOperations.waitUntilReady()])
