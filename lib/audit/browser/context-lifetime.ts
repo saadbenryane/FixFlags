@@ -3,12 +3,11 @@ import { browserCapacity } from '../progressive/capacity'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { randomUUID } from 'node:crypto'
 import { logger } from '@/lib/logger'
-import { registerBrowserContext, type BrowserContextOwner } from './context-inventory'
 
 export const CONTEXT_SETUP_TIMEOUT_MS = 30_000
 
-type ContextOwner = { contextId: string; openedAt: number; deadline?: number; signal: AbortSignal; scope: 'task' | 'execution' | 'standalone';
-  state: 'preparing' | 'prepared' | 'closing' | 'close_failed' }
+type ContextOwner = { contextId: string; openedAt: number; deadline?: number; signal: AbortSignal; scope: 'task' | 'execution' | 'standalone' | 'probe';
+  closingAt?: number; state: 'preparing' | 'prepared' | 'closing' | 'close_failed' }
 const contextOwners = new WeakMap<BrowserContext, ContextOwner>()
 
 /** Operational lifecycle facts only. Never expose targets, credentials or tenant identifiers. */
@@ -17,6 +16,7 @@ export function auditContextDiagnostics(browser: Browser | null, now = Date.now(
   const owners = contexts.flatMap(context => {
     const owner = contextOwners.get(context)
     return owner ? [{ contextId: owner.contextId, scope: owner.scope, state: owner.state, ageMs: Math.max(0, now - owner.openedAt),
+      overdue: owner.closingAt !== undefined ? now > owner.closingAt + 30_000 : owner.deadline !== undefined && now > owner.deadline + 30_000,
       expired: owner.signal.aborted || owner.deadline !== undefined && now >= owner.deadline }] : []
   })
   return { ownedContexts: owners.length, unownedContexts: contexts.length - owners.length,
@@ -30,7 +30,7 @@ export async function openAuditContext<T>(
   browser: Browser,
   contextOptions: BrowserContextOptions,
   lifetime: { deadline?: number; signal?: AbortSignal; priority?: number; scope?: ContextOwner['scope'];
-    category?: BrowserContextOwner; owner?: { auditId: string; taskId?: string; generation: number } },
+    category?: 'audit' | 'inspection' | 'probe'; owner?: { auditId: string; taskId?: string; generation: number } },
   prepare: (context: BrowserContext, assertActive: () => void) => Promise<T>,
 ): Promise<T> {
   const deadline = new AbortController()
@@ -46,7 +46,7 @@ export async function openAuditContext<T>(
   else { timer = setTimeout(expire, remaining); timer.unref?.() }
   const signal = lifetime.signal ? AbortSignal.any([deadline.signal, lifetime.signal]) : deadline.signal
   const owner: ContextOwner = { contextId: randomUUID(), openedAt: Date.now(), deadline: hasDeadline ? deadlineAt : undefined, signal,
-    scope: lifetime.scope ?? 'standalone', state: 'preparing' }
+    scope: lifetime.scope ?? (lifetime.category === 'probe' ? 'probe' : lifetime.category === 'audit' || lifetime.owner ? 'task' : 'standalone'), state: 'preparing' }
   const reason = () => signal.reason instanceof Error ? signal.reason : new Error('Browser capture cancelled')
   let release: () => void
   try { release = await browserCapacity.acquire(signal, lifetime.priority ?? 0) }
@@ -100,8 +100,13 @@ export async function openAuditContext<T>(
     catch (error) { releaseOnce(); throw error }
     owner.openedAt = Date.now()
     contextOwners.set(context, owner)
+    const nativeClose = context.close.bind(context)
+    context.close = async (...args) => {
+      owner.state = 'closing'; owner.closingAt ??= Date.now()
+      try { await nativeClose(...args) }
+      catch (error) { owner.state = 'close_failed'; throw error }
+    }
     logger.info('Native browser context allocated', { contextId: owner.contextId, scope: owner.scope, ...lifetime.owner })
-    registerBrowserContext(context, lifetime.category ?? (lifetime.owner ? 'audit' : 'inspection'), hasDeadline ? deadlineAt : undefined)
     context.once('close', () => { stop(new Error('Audit browser context closed')); releaseOnce() })
     try {
       assertActive()
