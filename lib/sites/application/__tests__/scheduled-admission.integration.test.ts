@@ -9,6 +9,8 @@ import { processDueProjectWatches } from '@/lib/audit/project-watch'
 import { requestSiteRun } from '../run-requests'
 import { dispatchAudit } from '@/lib/audit/dispatch'
 import * as betaPolicy from '@/lib/billing/beta-policy'
+import { expireUnownedExecution } from '@/lib/audit/execution-ownership'
+import { reconcileOutcomeRunsForAudit } from '../run-reconciliation'
 
 const queue = vi.hoisted(() => ({ add: vi.fn(async () => ({ id: 'queued' })) }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => queue }))
@@ -37,6 +39,61 @@ run('scheduled admission against the current monitoring claim', () => {
 
   const input = () => ({ projectId, userId, interval: 'weekly' as const, scheduledAt, now,
     claim: { attemptedAt: now, leaseUntil } })
+
+  it.each(['FAILED', 'COMPLETED'] as const)('replays a shared request key after its physical check becomes %s without creating another execution', async status => {
+    await prisma.siteOutcome.create({ data: { projectId, slug: 'page-loads', name: 'This page loads', kind: 'AVAILABILITY',
+      confirmedAt: now, bindings: { create: { key: 'default-http', mechanism: 'HTTP_AVAILABILITY', required: true,
+        config: { startUrl: 'https://example.com/' } } } } })
+    const command = { projectId, userId, scope: 'SITE' as const, source: 'WEB' as const, outcomeIds: [], idempotencyKey: 'original-care' }
+    const original = await requestSiteRun(command)
+    expect(await requestSiteRun({ ...command, idempotencyKey: 'joined-care' }))
+      .toMatchObject({ runId: original.runId, auditId: original.auditId, reused: true })
+    const audit = await prisma.audit.findUniqueOrThrow({ where: { id: original.auditId! } })
+    if (status === 'FAILED') expect(await expireUnownedExecution(audit, new Date())).toBe(true)
+    else {
+      // Model the settled boundary without inventing successful collection.
+      // With no executions the binding assessment remains unverified.
+      await prisma.audit.update({ where: { id: audit.id }, data: { status, completedAt: new Date(), executionLeaseUntil: null } })
+      await reconcileOutcomeRunsForAudit(audit.id)
+    }
+    const settledAudit = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
+    const settledRequest = await prisma.runRequest.findUniqueOrThrow({ where: { id: original.runId } })
+    expect(await requestSiteRun({ ...command, idempotencyKey: 'joined-care' }))
+      .toMatchObject({ runId: original.runId, auditId: original.auditId, reused: true })
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.audit.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toEqual(settledAudit)
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: original.runId } })).toEqual(settledRequest)
+  })
+
+  it.each(['page', 'behavior', 'control'] as const)('preserves the live request when a newly recorded %s makes it too narrow for new Site care', async kind => {
+    const root = 'https://example.com/', peer = root + 'contact'
+    await prisma.siteOutcome.create({ data: { projectId, slug: 'page-loads', name: 'This page loads', kind: 'AVAILABILITY',
+      confirmedAt: now, bindings: { create: { key: 'default-http', mechanism: 'HTTP_AVAILABILITY', required: true, config: { startUrl: root } } } } })
+    const baseline = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root, environment: 'production',
+      monitoringPages: kind === 'page' ? [root] : [root, peer], checks: {}, outcomes: [], verificationTarget: null }
+    // Recorded inventories model a scope change during the live check. This
+    // fixture establishes admission behavior, not another executed analysis.
+    await prisma.audit.create({ data: { userId, projectId, url: root, status: 'COMPLETED', completedAt: now, executionSpec: baseline } })
+    const command = { projectId, userId, scope: 'SITE' as const, source: 'WEB' as const, outcomeIds: [], idempotencyKey: 'original-live-care' }
+    const live = await requestSiteRun(command)
+    const original = await prisma.runRequest.findUniqueOrThrow({ where: { id: live.runId } })
+    expect(await requestSiteRun({ ...command, idempotencyKey: 'compatible-live-care' }))
+      .toMatchObject({ runId: live.runId, auditId: live.auditId, reused: true })
+    await prisma.audit.create({ data: { userId, projectId, url: root, status: 'COMPLETED', completedAt: now,
+      createdAt: new Date(Date.now() + 1000), executionSpec: { ...baseline, monitoringPages: [root, peer],
+        ...(kind !== 'page' ? { monitoringBehaviors: [{ pageUrl: peer, behaviors: kind === 'behavior' ? ['slow-replay'] : [],
+          ...(kind === 'control' ? { actionContexts: ['form:' + 'a'.repeat(64)] } : {}) }] } : {}) } } })
+    await expect(requestSiteRun({ ...command, idempotencyKey: 'expanded-live-care' }))
+      .rejects.toMatchObject({ status: 409, code: 'SITE_RUN_IN_PROGRESS' })
+    expect(await requestSiteRun(command)).toMatchObject({ runId: live.runId, auditId: live.auditId, reused: true })
+    expect(await requestSiteRun({ ...command, idempotencyKey: 'compatible-live-care' }))
+      .toMatchObject({ runId: live.runId, auditId: live.auditId, reused: true })
+    expect(await prisma.runRequestKey.count({ where: { projectId, idempotencyKey: 'expanded-live-care' } })).toBe(0)
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: live.runId } })).toEqual(original)
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.audit.count({ where: { projectId } })).toBe(3)
+  })
 
   async function retainLegacyTick(runId: string) {
     const run = await prisma.runRequest.findUniqueOrThrow({ where: { id: runId } })

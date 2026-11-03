@@ -27,7 +27,7 @@ export async function loadSiteOperations(now = new Date()) {
     { label: 'Accounts awaiting reconciliation', value: pendingAccountReconciliation },
     { label: ADMIN_COPY.operations.uptime, value: monitoring.overdueUptimeProbes + monitoring.inconclusiveUptimeSites },
     { label: 'Uptime notifications needing attention', value: monitoring.undeliveredUptimeAlerts },
-    { label: 'Monitoring notifications needing attention', value: monitoring.undeliveredWatchAlerts },
+    { label: 'Monitoring notifications needing attention', value: monitoring.undeliveredWatchAlerts + monitoring.unsettledSummaries },
     { label: ADMIN_COPY.operations.guidance, value: missingGuidance },
   ]
 }

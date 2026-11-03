@@ -6,6 +6,16 @@ vi.mock('@/lib/queue/redis', () => ({ createQueueRedis: () => redis }))
 beforeEach(() => { vi.resetModules(); vi.clearAllMocks() })
 
 describe('worker draining heartbeat', () => {
+  it('does not turn browser connection heartbeats into successful render probes', async () => {
+    const { touchWorkerHeartbeat } = await import('../worker-heartbeat')
+    await touchWorkerHeartbeat({ browserOk: true })
+    const published = () => JSON.parse((redis.set.mock.calls.at(-1) as unknown as [string, string])[1])
+    expect(published().lastSuccessfulBrowserProbeAt).toBeNull()
+    const recordedAt = '2026-10-29T10:00:00.000Z'
+    await touchWorkerHeartbeat({ lastSuccessfulBrowserProbeAt: recordedAt })
+    await touchWorkerHeartbeat({ browserOk: true })
+    expect(published().lastSuccessfulBrowserProbeAt).toBe(recordedAt)
+  })
   it('retains stopping state through completion events and stops publication after cleanup', async () => {
     const { beginWorkerShutdown, clearWorkerHeartbeat, touchWorkerHeartbeat } = await import('../worker-heartbeat')
     await touchWorkerHeartbeat({ browserOk: true, queueState: 'active' })

@@ -1,19 +1,25 @@
 ---
 status: supporting
 authority: evidence
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-29
 supersedes: []
 ---
 
 # Current product implementation
 
-**Workspace implementation inventory, reconciled 2026-10-19. Not a production release attestation.**
+**Workspace implementation inventory, baseline reconciled 2026-10-19. Repair, MCP setup and worker health reviewed 2026-10-29. Not a production release attestation.**
 
 The current release is the website app with one-website open-beta access. Websites leads to Site Overview, Timeline, Integrations, and Settings. Category evidence, pages, Outcomes, and diagnostics remain contextual depth. Automatic accounts and HTTP uptime are implemented locally, with controlled lifecycle and deployed proof still required. Settings and removal use tenant-scoped commands, and removal explicitly acknowledges unresolved external accounts. MCP, CLI, repository tools, and paid enrollment retain compatibility and the broader vision but are outside customer discovery and website release acceptance. The current requirement and proof status is recorded once in the [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger).
 
 The accepted destination is [the full vision](knowledge/vision.md). [ROADMAP.md](ROADMAP.md) and [the PRD](docs/product-prd.md) define upcoming implementation. This file describes reusable code and current compatibility behavior; it does not freeze the old experience.
 
 ## What exists in the workspace
+
+The current local candidate adds one validated, private repair brief shared by copied prompts, HTTP JSON and MCP. It preserves source identity, selected incident scope, revision checks and every supported observation through explicit continuation. Incident evidence includes unresolved peer captures; exact Flag links retain their original scope. Optional source evidence reads recorded performance conditions and a persisted image from the same Flag, Audit and Site. Small images use native MCP content; larger bounded images use authenticated artifact retrieval. Attachments identify their finding and page, with a checksum and explicit unavailable states. Developer keys default to read-only evidence and the setup flow shows one selected client with its native configuration and a connection check. MCP customer discovery remains closed pending actual-client acceptance.
+
+The November 3 repair-delivery work distinguishes repair, investigation and evidence recovery through one definition. Web copying, email snapshots and receipt validation share the canonical task. Category exports retain a scope revision across bounded pages, and clipboard success remains distinct from recording history. The [November 3 checkpoint](docs/product-masterplan.md#implementation-checkpoint-november-3) records implementation, local proof and the remaining production, scale and browser acceptance boundaries.
+
+Browser diagnostics now inventory native context ownership and record render-probe success separately from connection heartbeats. The supervised worker health server waits for child readiness and refuses readiness during shutdown. Capture presentation distinguishes pending, absent, unavailable and dated prior screenshots. Native technical repair alternatives stay available as diagnostics without being presented as observed outcomes. The candidate's [implementation checkpoint](docs/product-masterplan.md#implementation-checkpoint-2026-10-29) records verification and remaining acceptance boundaries.
 
 | Area                  | Existing implementation                                                                                                                                    | Boundary                                                                                                                                       |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

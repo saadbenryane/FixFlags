@@ -1,5 +1,15 @@
 export const AUTH = {
   preparingSecureSignIn: 'Preparing secure sign in',
+  emailVerification: {
+    title: 'Check your email',
+    address: (email: string) => `Check ${email} for a verification link.`,
+    body: 'Open the link to verify your email and continue.',
+    resend: 'Send another link',
+    resending: 'Requesting link',
+    resent: 'Another verification link has been requested.',
+    error: 'We could not request another link. Try again.',
+    edit: 'Use another email',
+  },
   reportGate: {
     title: 'Your site check is underway',
     subtitle: (hostname?: string | null) =>
@@ -223,6 +233,7 @@ export const AUTH = {
       unsavedDescription: 'Leave without saving? Your edits will be lost.',
       unsavedStay: 'Stay',
       unsavedLeave: 'Leave',
+      discardChanges: 'Discard changes',
       deleteCta: 'Delete account',
       deleteDescription: 'This permanently removes your reports, screenshots, projects, and account.',
       deletePasswordLabel: 'Password, if your account has one',

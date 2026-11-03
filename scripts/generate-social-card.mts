@@ -27,9 +27,8 @@ function textPaths(text: string, x: number, y: number, size: number, color: stri
 const logo = (await readFile('public/brand/logo-lockup-light.svg')).toString('base64')
 const overlay = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <image href="data:image/svg+xml;base64,${logo}" x="72" y="52" width="184" height="48"/>
-  ${textPaths('Website', 68, 242, 88, P.foreground, display)}
-  ${textPaths('monitoring.', 68, 334, 88, P.foreground, display)}
-  ${textPaths(C.headline[1], 72, 405, 37, P.primary, display)}
+  ${textPaths(C.headline[0], 68, 290, 64, P.foreground, display)}
+  ${textPaths(C.headline[1], 68, 364, 64, P.primary, display)}
   ${textPaths(C.description, 73, 450, 20, P.mutedForeground)}
   ${textPaths(BRAND.domain, 73, 563, 18, P.mutedForeground)}
 </svg>`

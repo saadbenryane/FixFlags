@@ -7,6 +7,7 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
 import { FLAG_EXPLANATIONS, FLAG_EXPLANATION_FALLBACK } from '@/lib/marketing/copy/flag-explanations'
 import { REPAIR_GUIDANCE_COPY } from '@/lib/marketing/copy/repair-guidance'
+import { customerFindingExplanation } from '@/lib/sites/finding-label'
 
 /** Checks fixed in source/head/config - not by staring at a screenshot region. */
 const CODE_OR_HEAD_CHECKS = new Set<string>([
@@ -102,14 +103,14 @@ export function isGenericWhyItMatters(
 }
 
 export function whyItMattersForCheckId(checkId: string): string {
-  return (
-    FLAG_EXPLANATIONS[checkId] ?? FLAG_EXPLANATION_FALLBACK
-  )
+  const check = checkId.split('::page:')[0]
+  return customerFindingExplanation({ checkId, whyItMatters: FLAG_EXPLANATIONS[check] ??
+    FLAG_EXPLANATIONS[check.replace(/^mobile-/, '')] ?? FLAG_EXPLANATION_FALLBACK })
 }
 
 export function resolveWhyItMatters(flag: RankableFlag): string {
   if (flag.whyItMatters && !isGenericWhyItMatters(flag.whyItMatters)) {
-    return flag.whyItMatters
+    return customerFindingExplanation({ checkId: flag.checkId, whyItMatters: flag.whyItMatters })
   }
   if (flag.checkId) return whyItMattersForCheckId(flag.checkId)
   return flag.whyItMatters ?? flag.problem

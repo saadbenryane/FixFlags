@@ -31,12 +31,12 @@ export function loadingDelayObservation(window: PageLoadExperience, threshold: n
     ...(context ? { context } : {}),
     ...(advisory ? { disposition: 'observed' as const } : {}) }
 }
-export function blockingLoadingObservation(metrics: CaptureMetrics | null): CheckAssertion {
+export function blockingLoadingObservation(metrics: Partial<Pick<CaptureMetrics, 'loadingObservation' | 'stuckLoadingIndicator'>> | null): CheckAssertion {
   const context = loadingContext(metrics?.loadingObservation)
   const failed = metrics?.stuckLoadingIndicator === true
   const passed = metrics?.stuckLoadingIndicator === false && metrics.loadingObservation?.ready === true && metrics.loadingObservation.contentVisible === true
   return { key: 'blocking-loading-ui', name: 'Captured loading UI', expected: 'Blocking mobile loading UI is absent and page content is visible',
-    observed: metrics ? `Blocking loading UI ${failed ? 'remained' : 'was absent'} at capture time. ` +
+    observed: typeof metrics?.stuckLoadingIndicator === 'boolean' ? `Blocking loading UI ${failed ? 'remained' : 'was absent'} at capture time. ` +
       (metrics.loadingObservation?.contentVisible ? 'Viewport content was observed.' : 'Viewport content is unproven.') : 'Loading UI was not observed.',
     passed: Boolean(context && passed), complete: Boolean(context && (failed || passed)),
     ...(context ? { context } : metrics?.loadingObservation ? {} : { disposition: 'observed' as const }) }

@@ -43,9 +43,26 @@ export async function claimTaskDelivery(taskId: string) {
     }
     const reserved = task.workDispatchState === 'SENT' || task.workDispatchState === 'FAILED'
     if (!reserved) {
-      const occupied = await tx.$queryRaw<Array<{ id: string }>>(reservedDeliveryQuery(resource, task.id, now))
-      if (occupied.length >= taskDeliveryWindow(resource)) {
-        // Rotate saturated work so another resource in this graph can progress.
+      let yielding = false
+      // A continued observation must release its reservation to untried or
+      // earlier waiting work, including a Site that could not enter a full
+      // delivery window. Broker priority alone cannot see those database rows.
+      if (task.workGeneration > task.workAttempts) {
+        const waiting = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT delivery.id FROM audit_execution_tasks delivery JOIN audits a ON a.id = delivery."auditId"
+          WHERE delivery.id <> ${task.id} AND delivery."workState" = 'READY'
+            AND (delivery."workDispatchState" IS NULL OR delivery."workDispatchState" = 'PENDING')
+            AND (delivery."workDispatchLeaseUntil" IS NULL OR delivery."workDispatchLeaseUntil" <= ${now})
+            AND (delivery."workRetryAt" IS NULL OR delivery."workRetryAt" <= ${now})
+            AND (delivery."workGeneration" = 0 OR delivery."workRetryAt" IS NULL OR delivery."workRetryAt" < ${task.workRetryAt ?? now}
+              OR delivery."workRetryAt" = ${task.workRetryAt ?? now} AND delivery.id < ${task.id})
+            AND a.status <> 'FAILED' AND (a.status <> 'COMPLETED' OR delivery."workKind" IN (${Prisma.join([...COMPLETION_TASK_KINDS])}))
+            AND (${deliveryResourceSql}) = ${resource} LIMIT 1`
+        yielding = waiting.length > 0
+      }
+      const occupied = yielding ? [] : await tx.$queryRaw<Array<{ id: string }>>(reservedDeliveryQuery(resource, task.id, now))
+      if (yielding || occupied.length >= taskDeliveryWindow(resource)) {
+        // Rotate yielded and saturated work so other ready resources can progress.
         // Waiting for delivery capacity is neither an attempt nor a failure.
         await tx.auditExecutionTask.updateMany({ where, data: { workRetryAt: now } })
         return null

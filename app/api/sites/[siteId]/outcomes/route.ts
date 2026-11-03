@@ -47,19 +47,23 @@ export async function POST(
     }
 
     if (access.decision.role !== 'owner') return apiError('Sign in and claim this Site first.', 403)
+    const userId = access.decision.site.userId
+    if (!userId) return apiError('Sign in and claim this Site first.', 403)
 
     const result = await executeSiteCommand(
       'watchPage' in body.data
-        ? { type: 'CONFIRM_PAGE_AVAILABILITY', siteId: access.decision.site.siteId }
+        ? { type: 'CONFIRM_PAGE_AVAILABILITY', siteId: access.decision.site.siteId, userId }
         : 'action' in body.data
           ? {
               type: 'RENAME_OUTCOME',
+              userId,
               siteId: access.decision.site.siteId,
               outcomeId: body.data.outcomeId,
               name: body.data.name,
             }
         : {
             type: 'CONFIRM_OUTCOME',
+            userId,
             siteId: access.decision.site.siteId,
             outcomeId: body.data.outcomeId,
             confirmed: body.data.confirmed,

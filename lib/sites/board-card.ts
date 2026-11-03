@@ -12,11 +12,12 @@ import {
 import type { CoverageFact, SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-
-export const BROWSER_SOURCE = SITE_BOARD_COPY.browserSource
+import { includesRepairAlternatives } from '@/lib/audit/evidence-presentation'
+import { customerFindingLabel } from './finding-label'
 
 /** Short customer label only; never mutate a recorded diagnosis or its scope. */
-export function boardFindingTitle(title: string): string {
+export function boardFindingTitle(title: string, checkId?: string | null): string {
+  title = customerFindingLabel({ checkId, problem: title })
   return SITE_BOARD_COPY.compactHeadlines[title as keyof typeof SITE_BOARD_COPY.compactHeadlines]
     ?? (/^All touch targets must be 24px large, or leave sufficient space \(\d+ elements?\)$/.test(title) ? SITE_BOARD_COPY.smallTouchTargets : title)
 }
@@ -165,23 +166,8 @@ export function visibleFlagChips(chips: BoardCardFlagChip[], limit = 3): {
   }
 }
 
-export function sourcesForArea(
-  area: SiteCardArea,
-  detected: { analytics?: string[] } | undefined
-): string[] {
-  if (area === 'tracking') {
-    const analytics = (detected?.analytics ?? []).filter(Boolean)
-    if (analytics.length > 0) return analytics
-  }
-  return [BROWSER_SOURCE]
-}
-
-export function formatBoardSources(sources: string[]): string {
-  const unique = [...new Set(sources.filter(Boolean))]
-  return unique.length > 0 ? unique.join(' · ') : BROWSER_SOURCE
-}
-
 export function boardFlagPrompt(input: {
+  actionLabel?: string
   problem: string
   whyItMatters: string
   evidence?: string | null
@@ -202,10 +188,10 @@ export function boardFlagPrompt(input: {
     paths.length > 1 ? `Affected pages:\n${paths.map(path => '- ' + path).join('\n')}` : null,
     input.journeyName ? `Outcome: ${input.journeyName}` : null,
     `Why it matters: ${input.whyItMatters}`,
-    input.evidence?.trim() ? `Evidence: ${input.evidence.trim()}` : null,
+    input.evidence?.trim() ? `${includesRepairAlternatives(input.evidence) ? 'Technical diagnostic (includes repair alternatives)' : 'Evidence'}: ${input.evidence.trim()}` : null,
     supportingObservationLines(input.supportingObservations).join('\n'),
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,
-    `Fix: ${input.fix}`,
+    `${input.actionLabel ?? 'Fix'}: ${input.fix}`,
     observations?.length ? E.verifyAll : null,
     paths.length > 1 ? 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same affected pages and action.'
       : 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same page and action.',
@@ -235,7 +221,7 @@ function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip
     priorityBand: flag.priorityBand,
     id: flag.id,
     sourceFlagId: flag.sourceFlagId,
-    title: flag.problem,
+    title: boardFindingTitle(flag.problem, flag.checkId),
     repairGuidanceReady: hasRepairGuidance(flag.fix),
     ...(flag.repairGuidance ? { repairGuidance: flag.repairGuidance } : {}),
     href: `/sites/${siteId}/flags/${flag.id}`,
@@ -254,7 +240,6 @@ export function buildBoardCards(input: {
   captureUrl: string | null
   checkedAt: string | null
   areas?: SiteCardArea[]
-  detected?: { analytics?: string[] }
 }): BoardCardView[] {
   const activity: 'checking' | null = input.inFlight ? 'checking' : null
   const areas = input.areas ?? [...STARTER_BOARD_CARDS, ...ADDABLE_BOARD_CARDS, 'uptime'] as SiteCardArea[]
@@ -295,7 +280,7 @@ export function buildBoardCards(input: {
         checkedAt: input.checkedAt,
         flagIds: pageFlags.map((flag) => flag.id),
         flagChips: chipsForFlags(input.siteId, pageFlags),
-        sources: sourcesForArea('site', input.detected),
+        sources: [],
         activity,
         wide: true,
         captureUrl: input.captureUrl,
@@ -325,7 +310,7 @@ export function buildBoardCards(input: {
     const problem: BoardCardProblem | null =
       isProblem && firstFlag
         ? {
-            title: firstFlag.problem,
+            title: boardFindingTitle(firstFlag.problem, firstFlag.checkId),
             body: firstFlag.whyItMatters,
             outcomeName,
             href: `/sites/${input.siteId}/flags/${firstFlag.id}`,
@@ -353,7 +338,7 @@ export function buildBoardCards(input: {
       incompleteReason: fact?.incompleteReason ?? null,
       flagIds: areaFlags.map((flag) => flag.id),
       flagChips: chipsForFlags(input.siteId, areaFlags),
-      sources: sourcesForArea(area, input.detected),
+      sources: [],
       activity,
       wide: false,
       captureUrl: null,

@@ -1,4 +1,4 @@
-import { BRAND } from '@/lib/marketing/copy-barrel'
+import { BRAND } from '@/lib/marketing/copy/brand'
 
 /** Canonical sender address for all outgoing emails. */
 export const FROM_EMAIL =

@@ -37,6 +37,16 @@ export type OpenCheckResult = {
 }
 export type OpenCheckObservation = Pick<OpenCheckResult, 'url' | 'outcome' | 'status' | 'shouldFlagDead'>
 
+/** Access restrictions cannot establish public destination recovery. An auth
+ * entry or HTTP-only page check may explicitly accept the sign-in response. */
+export function hasSuccessfulPublicGet(
+  result: Pick<OpenCheckObservation, 'outcome' | 'status' | 'shouldFlagDead'> | null | undefined,
+  options: { allowAuthEntry?: boolean } = {},
+): boolean {
+  return Boolean(result && !result.shouldFlagDead && result.status !== null && result.status >= 200 && result.status < 300 &&
+    (['reachable', 'redirected'].includes(result.outcome) || options.allowAuthEntry && result.outcome === 'auth_required'))
+}
+
 export type OpenCheckFetch = (
   input: string,
   init?: { method?: string; redirect?: RequestRedirect; signal?: AbortSignal; headers?: HeadersInit }
@@ -56,11 +66,9 @@ function abortableTimeout(ms: number): { signal: AbortSignal; cancel: () => void
   }
 }
 
-function looksLikeAuth(url: string, status: number | null, wwwAuthenticate: string | null): boolean {
-  if (status === 401) return true
-  if (wwwAuthenticate) return true
-  if (AUTH_PATH.test(url)) return true
-  return false
+function hasAuthPath(url: string): boolean {
+  try { return AUTH_PATH.test(new URL(url).pathname) }
+  catch { return false }
 }
 
 export function detectSoft404(html: string, status: number | null): boolean {
@@ -89,8 +97,9 @@ export function classifyPublicGet(input: {
   if (restriction === 'bot_challenge')
     return { outcome: 'blocked', shouldFlagDead: false, evidence: 'The destination presented an access challenge; its normal response remains unknown.' }
 
-  if (looksLikeAuth(finalUrl, status, wwwAuthenticate) || looksLikeAuth(requestedUrl, status, wwwAuthenticate)) {
-    if (status === 401 || status === 403 || (status >= 200 && status < 300 && AUTH_PATH.test(finalUrl) && !(html && detectSoft404(html, status)))) {
+  const authDestination = hasAuthPath(finalUrl)
+  if (status === 401 || wwwAuthenticate || authDestination || hasAuthPath(requestedUrl)) {
+    if (status === 401 || status === 403 || (status >= 200 && status < 300 && authDestination && !(html && detectSoft404(html, status)))) {
       return {
         outcome: 'auth_required',
         shouldFlagDead: false,
@@ -123,7 +132,7 @@ export function classifyPublicGet(input: {
     }
   }
 
-  if (restriction === 'access_denied' && !AUTH_PATH.test(finalUrl)) {
+  if (restriction === 'access_denied' && !authDestination) {
     return {
       outcome: 'blocked',
       shouldFlagDead: false,

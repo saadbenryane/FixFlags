@@ -22,7 +22,7 @@ export interface PricingProbeResult {
 
 /** Observe the actual header action using the same painted-control inventory as
  * primary actions. Neither hidden mobile copies nor destination refetches apply. */
-export async function probePricingNav(page: Page, overlayRecorder?: OverlayInteractionRecorder, expectedContexts?: string[]): Promise<PricingProbeResult> {
+export async function probePricingNav(page: Page, overlayRecorder?: OverlayInteractionRecorder, expectedContexts?: string[], excludedContexts?: readonly string[]): Promise<PricingProbeResult> {
   const before = page.url(), source = auditPageObservation(page)
   const pageContext = primaryPageContext(source?.scope.pageUrl ?? before, before, page.viewportSize(), source?.scope)
   const native = Boolean(source && !source.restricted && captureObservationKey(source.scope) !== 'unknown')
@@ -34,7 +34,7 @@ export async function probePricingNav(page: Page, overlayRecorder?: OverlayInter
       context: primaryControlContext({ pageContext, identity: control.identity, label: control.text, href: control.resolvedHref, controls: control.controls })
         .replace('flow:control:', 'flow:pricing:v1:') }))
   const originalIndex = originalSelector ? await page.locator(originalSelector).getAttribute(FLOW_IDX_ATTR).catch(() => null) : null
-  const link = candidates.find(control => (!originalSelector || String(control.idx) === originalIndex) && (!expectedContexts || expectedContexts.includes(control.context)))
+  const link = candidates.find(control => (!originalSelector || String(control.idx) === originalIndex) && (!expectedContexts || expectedContexts.includes(control.context)) && !excludedContexts?.includes(control.context))
   if (!link) return { pricingNav: 'skipped', pricingComplete: inventory.complete, ...(expectedContexts?.[0] ? {
     pricingEvidence: { context: expectedContexts[0], complete: false, passed: false, reason: 'original-missing' as const } } : {}) }
   const base = { pricingNavLabel: link.text, pricingNavHref: link.href ?? undefined }

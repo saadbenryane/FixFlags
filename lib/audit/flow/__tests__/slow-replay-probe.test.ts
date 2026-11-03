@@ -14,8 +14,8 @@ vi.mock('node:timers/promises', () => { const timeout = (ms: number, _value: unk
   signal?.addEventListener('abort', abort, { once: true })
 }); return { setTimeout: timeout, default: { setTimeout: timeout } } })
 import { observeSlowViewport, runSlowReplay } from '../slow-replay-probe'
-import { SLOW_3G } from '../slow-replay-contract'
-import { runSlowReplayChecks } from '../../checks/slow-replay'
+import { SLOW_3G, SLOW_REPLAY_PROFILE } from '../slow-replay-contract'
+import { runSlowReplayChecks, slowReplayAssertions } from '../../checks/slow-replay'
 
 const rect = (top = 0) => ({ width: 200, height: 50, top, bottom: top + 50, left: 0, right: 200 }) as DOMRect
 function page() {
@@ -46,6 +46,23 @@ beforeEach(() => {
 afterEach(async () => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); delete (Range.prototype as { getBoundingClientRect?: unknown }).getBoundingClientRect })
 
 describe('slow connection visitor observation', () => {
+  it('retains the original cohort size when native sampling is bounded', async () => {
+    const { current } = page()
+    document.body.innerHTML = '<main><p>Meaningful product information for a visitor.</p>' +
+      Array.from({ length: 21 }, (_, i) => `<button id="action-${i}">Get started ${i}</button>`).join('') + '</main>'
+    const expectedActions = Array.from({ length: 21 }, (_, i) => ({ selector: '#action-' + i, label: 'Get started ' + i,
+      context: JSON.stringify({ profile: SLOW_REPLAY_PROFILE, pageUrl: location.href, href: null }) }))
+    mocks.session.mockImplementation(async (_browser, _url, options) => {
+      options.onNavigationStart(current, Date.now()); return { page: current, disposeNetwork: vi.fn() }
+    })
+    const pending = runSlowReplay({} as Browser, 'audit', 'https://example.com/', { deadline: 20_000, expectedActions })
+    await vi.advanceTimersByTimeAsync(10_100)
+    const result = await pending
+    expect(result).toMatchObject({ navigationComplete: true, complete: false, expectedActionCount: 21, reason: 'observation_incomplete' })
+    expect(result.actions).toHaveLength(20)
+    expect(slowReplayAssertions(result)).toContainEqual(expect.objectContaining({ name: 'Original action sample', complete: false, passed: false }))
+    expect(runSlowReplayChecks(result)).toEqual([])
+  })
   it('captures the requested points while navigation is pending and records the actual observation horizon', async () => {
     const { current, context, captures } = page()
     const send = vi.fn()

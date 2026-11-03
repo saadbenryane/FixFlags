@@ -10,7 +10,7 @@ import { startRecoveryScheduler } from '@/lib/queue/recovery-scheduler'
 import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
 import { clearWorkerHeartbeat, touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { getAuditBrowser, getBrowserDiagnostics, closeBrowser } from '@/lib/audit/screenshot'
-import { encryptSecret } from '@/lib/security/crypto'
+import { decryptSecret, encryptSecret } from '@/lib/security/crypto'
 import * as pageSessions from '@/lib/audit/browser/page-session'
 import { searchReceiptSchema } from '@/lib/audit/search/contracts'
 import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
@@ -45,9 +45,9 @@ run('Google indexed-version worker observations', () => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
       if (url.hostname === 'oauth2.googleapis.com' && url.pathname === '/token') {
         tokenRenewals++
-        expect(new URLSearchParams(String(options?.body)).get('refresh_token')).toBe('fixture-search-refresh')
+        expect(['fixture-search-refresh', 'fixture-search-rotated-refresh']).toContain(new URLSearchParams(String(options?.body)).get('refresh_token'))
         if (tokenUnavailable) return Response.json({ error: 'temporarily_unavailable' }, { status: 503, headers: { 'retry-after': '1' } })
-        return Response.json({ access_token: 'fixture-search-access', expires_in: 3600 })
+        return Response.json({ access_token: 'fixture-search-access', refresh_token: 'fixture-search-rotated-refresh', expires_in: 3600 })
       }
       if (url.hostname === 'searchconsole.googleapis.com' && url.pathname === '/v1/urlInspection/index:inspect') {
         providerRequests++
@@ -144,7 +144,7 @@ run('Google indexed-version worker observations', () => {
     }
   }, 120_000)
   it('persists soft 404 evidence, refuses stale repair proof, verifies a later crawl and preserves recurrence', async () => {
-    await prisma.siteConnection.update({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } },
+    const admittedConnection = await prisma.siteConnection.update({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } },
       data: { tokenExpiresAt: new Date(0), encryptedRefreshToken: encryptSecret('fixture-search-refresh') } })
     tokenUnavailable = true
     const recovery = startRecoveryScheduler()
@@ -161,6 +161,9 @@ run('Google indexed-version worker observations', () => {
     const baseline = await pendingBaseline.finally(() => recovery.stop())
     if (interruption) throw interruption
     expect(tokenRenewals).toBeGreaterThan(0)
+    const renewedConnection = await prisma.siteConnection.findUniqueOrThrow({ where: { id: admittedConnection.id } })
+    expect(renewedConnection.authorizationId).toBe(admittedConnection.authorizationId)
+    expect(decryptSecret(renewedConnection.encryptedRefreshToken!)).toBe('fixture-search-rotated-refresh')
     const baselineReceipts = await prisma.auditVerificationReceipt.findMany({ where: {
       auditId: baseline.auditId!, targetKey: { startsWith: 'module:search-google' } } })
     expect(baselineReceipts).toHaveLength(4)

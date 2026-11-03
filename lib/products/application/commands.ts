@@ -25,6 +25,7 @@ type CommandOf<T extends ProductCommand['type']> = Extract<ProductCommand, { typ
 
 export interface ProductCommandDependencies {
   clock?: Clock
+  validateHandoff?: () => Promise<void>
 }
 
 export function executeProductCommand(
@@ -65,8 +66,8 @@ export function executeProductCommand(
     case 'RECORD_FLAG_ACTION': {
       const { type, ...input } = command
       void type
-      return dependencies.clock
-        ? recordFlagImprovementAttempt(input, { clock: dependencies.clock })
+      return dependencies.clock || dependencies.validateHandoff
+        ? recordFlagImprovementAttempt(input, dependencies)
         : recordFlagImprovementAttempt(input)
     }
     case 'RECORD_OWNER_FEEDBACK': {

@@ -67,7 +67,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
     return <Frame key={card.id} aria-label={layout === 'card' ? card.name : undefined}><BoardCard compact name={card.name} status={card.status} state={card.state} answer={card.answer} detail={layout === 'row' ? card.context : undefined} icon={card.id} flagCount={card.flagCount} freshness={S.freshness}
     showFlagPreview={layout === 'card' && card.flagCount > 0}
     onOpenFlag={(id, trigger) => onOpenFlag(card, id as SampleFlagId, trigger, 'home')}
-    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, priorityBand: flag === 'contact' ? 'other' : 'fix_first', href: '#product', copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={trigger => onOpen(card.id, trigger)} layout={layout} /></Frame>
+    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, priorityBand: flag === 'contact' ? 'other' : 'fix_first', href: '#product', copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`${S.sampleCopy} for ${SAMPLE_FLAGS[flag].title}`} title={S.sampleCopy} onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={trigger => onOpen(card.id, trigger)} layout={layout} /></Frame>
   }
 
   function updateConnection(provider: GoogleProvider, connected: boolean) {
@@ -82,6 +82,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
     }))
     setAccountMessage(mode === 'retest' ? P.retested : P.cleanedUp)
   }
+  const siteActions = <>{onCopyAll ? <InteractiveButton type="button" onClick={onCopyAll} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-foreground px-3 text-xs text-background"><Copy size={14} aria-hidden />{Dashboard.fixAll}</InteractiveButton> : null}{onViewAll ? <PromptPreviewButton loadPrompt={async () => onViewAll()} /> : null}<a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden /></a></>
 
   return <div className={s.board} role="region" aria-label={C.boardAria}>
     <p className={s.sampleLabel}>{S.sampleLabel}</p>
@@ -91,10 +92,10 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
         identity={<div className={s.sampleIdentity}><strong className={workspace.domain}>{C.boardLabel}</strong><small>{S.freshness}</small></div>}
         navigation={<SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} renderItem={({ id, label, selected, className, content }) => <InteractiveButton key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</InteractiveButton>} />}
         heading={view !== 'home' ? <h3>{SITE_ROUTES.find(([id]) => id === view)?.[1]}</h3> : null}
-        actions={<><SiteMonitoringMenu label={paused ? 'Paused' : scheduleLabel(schedule)} state={schedule && !paused ? 'healthy' : 'unknown'} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} onManage={() => { setView('settings'); setScheduleOpen(true) }} />{onCopyAll ? <InteractiveButton type="button" onClick={onCopyAll} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-foreground px-3 text-xs text-background"><Copy size={14} aria-hidden />{Dashboard.fixAll}</InteractiveButton> : null}{onViewAll ? <PromptPreviewButton loadPrompt={async () => onViewAll()} /> : null}<a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden /></a></>} />
+        actions={<><SiteMonitoringMenu label={paused ? 'Paused' : scheduleLabel(schedule)} state={schedule && !paused ? 'healthy' : 'unknown'} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} onManage={() => { setView('settings'); setScheduleOpen(true) }} />{view !== 'home' ? siteActions : null}</>} />
       </div>
       {view === 'home' ? <>
-        <SiteOverviewWorkspace checksId="sample-website-checks" headingLevel={3} summary={<SiteOverview host={C.boardLabel} captures={[
+        <SiteOverviewWorkspace checksId="sample-website-checks" headingLevel={3} actions={siteActions} summary={<SiteOverview host={C.boardLabel} captures={[
           { auditId: 'sample', device: 'desktop', previous: false, url: HOMEPAGE_EVIDENCE.site, pageUrl: `https://${C.boardLabel}/`, viewport: '720 × 440', recordedAt: P.checkedAt },
           { auditId: 'sample', device: 'mobile', previous: false, url: HOMEPAGE_EVIDENCE.siteMobile, pageUrl: `https://${C.boardLabel}/`, viewport: '390 × 844', recordedAt: P.checkedAt },
         ]}

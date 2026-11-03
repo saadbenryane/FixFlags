@@ -6,7 +6,7 @@ import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY as C, SITE_ACTION_COPY as A } from '@/lib/marketing/copy-barrel'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { Button } from '@/components/ui/button'
-import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'
+import { fetchSiteActionJson, siteActionMessage } from '@/lib/sites/client-actions'
 import { SearchResults } from './SearchResults'
 import { presentCheckResult } from '@/lib/sites/check-result-presentation'
 
@@ -23,42 +23,52 @@ export function SiteCheckResults({ results, siteId, area, pageUrl, nextCursor = 
   const [initialFailed, setInitialFailed] = useState(false)
   const [total, setTotal] = useState<number | null>(null)
   const generation = useRef(0)
-  const invalidate = useCallback(() => { ++generation.current }, [])
+  const requests = useRef(new Set<AbortController>())
+  const continuing = useRef(false)
+  const invalidate = useCallback(() => {
+    ++generation.current
+    for (const request of requests.current) request.abort()
+    requests.current.clear()
+    continuing.current = false
+  }, [])
   const initialPage = useRef({ results, nextCursor })
   initialPage.current = { results, nextCursor }
   const all = [...new Map([...(scoped ?? results), ...history].filter(result => (!area || result.area === area) && (!pageUrl || result.pageUrl === pageUrl)).map(result => [result.id, result])).values()]
   const selection = results.filter(result => !result.historical).map(result => `${result.auditId}:${result.checkedAt}`).join('|')
-  const requestPage = useCallback(async (value: string | null, signal?: AbortSignal) => {
+  const requestPage = useCallback(async (value: string | null) => {
     const query = new URLSearchParams()
     if (value) query.set('cursor', value)
     if (area) query.set('area', area)
     if (pageUrl) query.set('pageUrl', pageUrl)
-    const response = await fetchSiteAction(`/api/sites/${siteId}/check-results?${query}`, { signal })
-    if (!response.ok) {
-      const body: unknown = await response.json().catch(() => null)
-      if (body && typeof body === 'object' && 'code' in body && body.code === RESULT_SELECTION_CHANGED) throw new ResultSelectionChanged()
-      throw new Error(A.historyFailed)
-    }
-    return siteCheckPageSchema.parse(await response.json())
+    const controller = new AbortController()
+    requests.current.add(controller)
+    try {
+      const { response, body } = await fetchSiteActionJson(`/api/sites/${siteId}/check-results?${query}`, { signal: controller.signal })
+      if (!response.ok) {
+        if (body && typeof body === 'object' && 'code' in body && body.code === RESULT_SELECTION_CHANGED) throw new ResultSelectionChanged()
+        throw new Error(A.historyFailed)
+      }
+      return siteCheckPageSchema.parse(body)
+    } finally { requests.current.delete(controller) }
   }, [siteId, area, pageUrl])
   useEffect(() => {
     const current = ++generation.current
     setHistory([]); setScoped(null); setTotal(null); setCursor(area || pageUrl ? null : initialPage.current.nextCursor); setMessage(null); setInitialFailed(false); setBusy(false)
     if (!siteId || !(area || pageUrl)) return invalidate
-    const controller = new AbortController()
     setBusy(true)
-    void requestPage(null, controller.signal).then(page => {
-      if (generation.current !== current || controller.signal.aborted) return
+    void requestPage(null).then(page => {
+      if (generation.current !== current) return
       setScoped(page.results); setTotal(page.total ?? null); setCursor(page.nextCursor); if (!page.results.length && page.nextCursor) setMessage(A.resultsBounded)
     }).catch(() => {
-      if (generation.current !== current || controller.signal.aborted) return
+      if (generation.current !== current) return
       setInitialFailed(true); setMessage(A.historyFailed)
-    }).finally(() => { if (generation.current === current && !controller.signal.aborted) setBusy(false) })
-    return () => { controller.abort(); invalidate() }
+    }).finally(() => { if (generation.current === current) setBusy(false) })
+    return invalidate
   }, [siteId, area, pageUrl, selection, nextCursor, requestPage, invalidate])
   async function loadMore() {
-    if (busy || (!cursor && !initialFailed) || !siteId) return
+    if (continuing.current || busy || (!cursor && !initialFailed) || !siteId) return
     const current = generation.current
+    continuing.current = true
     setBusy(true); setMessage(null)
     try {
       const page = await requestPage(initialFailed ? null : cursor)
@@ -82,7 +92,7 @@ export function SiteCheckResults({ results, siteId, area, pageUrl, nextCursor = 
         }
       } else setMessage(error instanceof Error ? A.historyFailed : siteActionMessage(error))
     }
-    finally { if (generation.current === current) setBusy(false) }
+    finally { if (generation.current === current) { continuing.current = false; setBusy(false) } }
   }
   if (!all.length && !cursor && !busy && !message) return <p className="text-sm text-muted-foreground">{A.noRecordedResults}</p>
   return <section className="space-y-3">

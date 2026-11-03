@@ -12,6 +12,7 @@ import { categoryCoverageExecutionSelect, siteCoverageExecutionSelect } from './
 import { executionPageCoverage } from '../page-coverage'
 import { projectRecordedSiteResult } from './recorded-assessment'
 import { analysisDidNotFinish } from '../analysis-completion'
+import { readSiteEvidence } from './site-evidence-read'
 
 const historySelect = {
   id: true, parentId: true, status: true, failureCode: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
@@ -133,6 +134,10 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
 
 /** Read the broad trend independently so scoped activity cannot evict broad evidence. */
 export async function loadMonitoringHistory(site: SiteRecord, selection?: Awaited<ReturnType<typeof loadSiteAnalysisSelection>>) {
+  return readSiteEvidence(site, () => readMonitoringHistory(site, selection))
+}
+
+async function readMonitoringHistory(site: SiteRecord, selection?: Awaited<ReturnType<typeof loadSiteAnalysisSelection>>) {
   const scoped = selection ?? await loadSiteAnalysisSelection(site)
   // A creator can read only the primary analysis recorded on their provisional
   // Site. Null ownership predicates fence a claim that occurs during this read.

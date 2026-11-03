@@ -5,12 +5,11 @@ import type { SiteHomeView } from './application/queries'
 import { siteCheckResultSchema } from './check-results'
 import { watchIntervalSchema } from './watch-schedule'
 import type { BoardCardFlagChip } from './board-card'
+import { sitePresentationSchema, siteCardAreaSchema as area, cardHealthSchema as health } from './presentation-contract'
 
 const text = z.string(), nullableText = text.nullable(), count = z.number().int().nonnegative()
 const time = z.string().datetime({ offset: true }), nullableTime = time.nullable()
 const date = z.union([z.date(), time]).transform(value => new Date(value)).nullable()
-const area = z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility'])
-const health = z.enum(['healthy', 'attention', 'problem', 'unknown', 'checking'])
 const flagChip = z.object({
   id: text, sourceFlagId: nullableText.optional(), title: text, href: text,
   priorityBand: z.enum(['fix_first', 'other']).optional(),
@@ -56,6 +55,8 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   counts: z.object({ flags: count, checkedPages: count, recordedPages: count, savedPages: count, categories: z.record(area, count), pages: z.record(text, count) }),
   captures: z.array(z.object({ auditId: text, device: z.enum(['desktop', 'mobile']), previous: z.boolean(),
     url: text, pageUrl: text, viewport: text, recordedAt: nullableTime })).max(2).optional(),
+  captureAvailability: z.object({ desktop: z.enum(['available', 'pending', 'not_recorded', 'unavailable']),
+    mobile: z.enum(['available', 'pending', 'not_recorded', 'unavailable']) }).optional(),
   uptime: uptimeSummarySchema.nullable().optional(),
   uptimeEvents: z.array(uptimeIncidentSchema).max(50).optional(),
   inventoryPageCount: count,
@@ -66,19 +67,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
     projectId: nullableText, provisionalSiteId: nullableText, primaryAuditId: nullableText,
     watchInterval: watchIntervalSchema.nullable(), watchEveryMinutes: count.nullable().optional(),
     watchNextRunAt: date, watchPausedAt: date.optional().default(null), watchLastRunAt: date, watchLastError: nullableText, watchConsecutiveFailures: count, userId: nullableText }),
-  presentation: z.object({
-    identity: z.object({ siteId: text, name: text, host: text,
-      preview: z.object({ url: text, pageUrl: text, viewport: text, recordedAt: nullableTime }).nullable() }),
-    result: z.object({ state: z.enum(['checking', 'flags', 'clear', 'could_not_verify', 'stale', 'failed']), label: text }),
-    monitoring: z.object({ state: z.enum(['not_monitored', 'weekly', 'daily', 'hourly', 'custom', 'paused', 'delayed', 'quota_blocked']), label: text }),
-    coverage: z.object({ pagesReached: count, pagesExpected: count, label: text, complete: z.boolean() }),
-    freshness: z.object({ checkedAt: nullableTime, stale: z.boolean(), label: text }),
-    flags: z.object({ count, label: text, fixFirstCount: count }),
-    run: z.object({ state: z.enum(['idle', 'queued', 'running', 'partial', 'failed', 'interrupted']), label: text,
-      auditId: nullableText, recoveryAction: z.enum(['retry', 'view_details']).nullable() }),
-    categories: z.array(z.object({ id: area, name: text, state: health, answer: text, status: text, flagCount: count,
-      fixFirstCount: count, checkedAt: nullableTime, freshness: text, coverageLimitation: nullableText, rank: z.number(), href: text })),
-  }),
+  presentation: sitePresentationSchema,
   activity: z.object({ state: z.enum(['queued', 'running', 'completed', 'partial', 'failed', 'unverified']), label: text,
     pagesReached: count, milestones: z.array(z.object({ label: text, state: z.enum(['done', 'current', 'pending', 'partial']) })),
     events: z.array(z.object({ label: text, at: time })) }).optional(),
@@ -86,6 +75,8 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   executionProgress: z.object({ total: count, completed: count, running: count, pending: count, recovering: count,
     unknown: count, inapplicable: count, recoveryUntil: nullableTime, eventCursor: nullableText,
     recovery: recovery.nullable().optional(), categoryRecovery: z.partialRecord(area, recovery).optional(),
+    categoryActivity: z.partialRecord(area, z.object({ kind: text, module: nullableText.optional(),
+      device: z.enum(['desktop', 'mobile']).nullable().optional(), state: z.enum(['RUNNING', 'RETRY_WAIT', 'WAITING', 'READY']) })).optional(),
     summary: z.object({ total: count, recorded: count, limited: count, failed: count, notApplicable: count,
       pending: count, recovering: count, state: z.enum(['active', 'finished', 'limited', 'failed']), reasons: z.array(text).max(1200) }).optional(),
     tasks: z.array(z.object({ id: text, kind: text, module: nullableText.optional(), device: z.enum(['desktop', 'mobile']).nullable().optional(),

@@ -1,11 +1,22 @@
 import { Prisma } from '@prisma/client'
 import type { SiteRecord } from '../types'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
+
+/** Creation, permission and label changes retain one authority through commit. */
+export function withOutcomeAuthority<T>(site: SiteRecord, work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T | null> {
+  return executionTransaction(async tx => {
+    if (!await lockOutcomeAuthority(tx, site)) return null
+    return work(tx)
+  })
+}
 
 /** Permission commands take the same parent-first locks as worker publication. */
-export async function lockOutcomeAuthority(tx: Prisma.TransactionClient, site: SiteRecord) {
+async function lockOutcomeAuthority(tx: Prisma.TransactionClient, site: SiteRecord) {
   if (site.projectId) {
     if (!site.userId) return false
-    await tx.$queryRaw`SELECT id FROM users WHERE id = ${site.userId} FOR SHARE`
+    const owners = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users
+      WHERE id = ${site.userId} AND "lifecycleStatus" = 'ACTIVE' FOR SHARE`
+    if (owners.length !== 1) return false
     const projects = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM projects WHERE id = ${site.projectId} AND "userId" = ${site.userId}
         AND url = ${site.url} AND "deletedAt" IS NULL FOR UPDATE

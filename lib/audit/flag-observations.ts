@@ -25,6 +25,7 @@ export type SupportingObservation = SupportingObservations['items'][number]
 export const supportingObservationViewSchema = supportingObservationsSchema.shape.items.element.pick({
   source: true, checkId: true, checkVersion: true, pageUrl: true, evidence: true,
 }).extend({ recordedAt: z.string().datetime().nullable(),
+  sourceAuditId: z.string().min(1).optional(), sourceFlagId: z.string().min(1).optional(),
   references: z.array(targetSchema.pick({ device: true, label: true, selector: true })),
 }).strict()
 export type SupportingObservationView = z.infer<typeof supportingObservationViewSchema>
@@ -62,10 +63,11 @@ export function mergeSupportingObservations(values: SupportingObservations[]): S
 }
 
 /** UI references omit private comparison contexts and credentials. */
-export function publicSupportingObservations(value: unknown) {
+export function publicSupportingObservations(value: unknown): SupportingObservationView[] {
   return readSupportingObservations(value)?.items.map(item => ({
     source: item.source, checkId: item.checkId, checkVersion: item.checkVersion, pageUrl: item.pageUrl,
     evidence: item.evidence, recordedAt: item.provenance?.collectedAt ?? null,
+    ...(item.provenance?.auditId ? { sourceAuditId: item.provenance.auditId } : {}),
     references: item.evidenceTargets.map(target => ({ device: target.device, label: target.label, selector: target.selector })),
   })) ?? []
 }

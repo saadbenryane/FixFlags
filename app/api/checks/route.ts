@@ -9,7 +9,7 @@ import {
 } from '@/lib/audit/create-audit'
 import { checkAndPlan } from '@/lib/audit/task-contracts'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
-import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
+import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access-input'
 import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
 import { prisma } from '@/lib/db'
 import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'

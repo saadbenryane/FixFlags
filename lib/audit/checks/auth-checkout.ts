@@ -1,6 +1,6 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
-import { openCheckDestination, type OpenCheckObservation } from '../open-check'
+import { openCheckDestination, hasSuccessfulPublicGet, type OpenCheckObservation } from '../open-check'
 import type { CheckAssertion } from './assertion'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 import { resolvedPageLinks } from './public-links'
@@ -22,7 +22,7 @@ type LinkKind = 'auth' | 'checkout'
 
 /** The same GET result the collector records. A missing result is not a successful destination. */
 export function actionDestinationObservation(sourceUrl: string, url: string, kind: LinkKind, result?: OpenCheckObservation): CheckAssertion {
-  const passed = Boolean(result && result.outcome !== 'blocked' && result.status !== null && result.status >= 200 && result.status < 300)
+  const passed = hasSuccessfulPublicGet(result, { allowAuthEntry: kind === 'auth' })
   const conclusive = Boolean(result && (passed || result.shouldFlagDead))
   return { key: kind + '-destination', name: kind === 'checkout' ? 'Checkout link response' : 'Sign-in link response',
     expected: 'The public destination responds to GET without a missing-page or server error',

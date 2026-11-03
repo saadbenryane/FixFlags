@@ -12,7 +12,7 @@ const prisma = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/lib/db', () => ({ prisma: { flag: prisma.flag, improvement: { findMany: vi.fn().mockResolvedValue([]) }, audit: { findFirst: vi.fn() } } }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) }, flag: prisma.flag, improvement: { findMany: vi.fn().mockResolvedValue([]) }, audit: { findFirst: vi.fn() } } }))
 
 const site = { kind: 'provisional', primaryAuditId: 'audit-1' } as SiteRecord
 
@@ -30,7 +30,7 @@ describe('customer Flag projector on Site load', () => {
     }).reverse()
     const recorded = structuredClone(rows)
     prisma.flag.findMany.mockResolvedValue(rows)
-    const owned = { kind: 'project', projectId: 'owned-site', primaryAuditId: 'audit-1' } as SiteRecord
+    const owned = { kind: 'project', projectId: 'owned-site', userId: 'owner', primaryAuditId: 'audit-1' } as SiteRecord
     expect((await loadSiteRecommendations(owned)).map(flag => flag.id)).toEqual(['review-1'])
     expect(rows).toEqual(recorded)
     expect(rows[0]!.fingerprint).toBe(rows[1]!.fingerprint)
@@ -44,11 +44,14 @@ describe('customer Flag projector on Site load', () => {
       checkId: 'form-contact-submit-failed', rubric: 'EXPERIENCE', severity: 'IMPORTANT', impactTag: 'CONVERSION',
       problem: 'Contact form does not send', evidence: 'Submit returned 500', whyItMatters: 'Visitors cannot reach you',
       fix: 'Fix the form endpoint', pageUrl: 'https://example.com/contact', status: 'OPEN' }])
-    const owned = { kind: 'project', projectId: 'owned-site', primaryAuditId: 'later-partial-check' } as SiteRecord
+    const owned = { kind: 'project', projectId: 'owned-site', userId: 'owner', primaryAuditId: 'later-partial-check' } as SiteRecord
     expect((await loadSiteFlags(owned)).map(flag => flag.id)).toEqual(['claimed-contact'])
-    expect(prisma.flag.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({
+    expect(prisma.flag.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
       audit: expect.objectContaining({ projectId: 'owned-site' }), improvementOccurrence: null,
     }) }))
+    expect(prisma.flag.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: {
+      id: { in: ['claimed-contact'] }, audit: { projectId: 'owned-site' },
+    } }))
   })
 
   it('keeps broken contact as a Flag and optional SEO meta as a Recommendation', async () => {

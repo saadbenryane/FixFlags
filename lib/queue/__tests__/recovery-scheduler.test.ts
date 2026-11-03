@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({ watches: vi.fn(), notifications: vi.fn(), cont
 vi.mock('@/lib/queue/lock', () => ({ tryAcquireLock: mocks.lock,
   withSchedulerLease: async (_name: string, task: (signal: AbortSignal) => Promise<void>) => task(new AbortController().signal) }))
 vi.mock('@/lib/audit/project-watch', () => ({ processDueProjectWatches: mocks.watches, retryPendingWatchNotifications: mocks.notifications }))
+vi.mock('@/lib/notifications/service', () => ({ deliverWebsiteSummaries: async () => {} }))
+vi.mock('@/lib/email/maintenance', () => ({ maintainEmailDelivery: async () => {}, retryPendingNurtureEmails: async () => {} }))
 vi.mock('@/lib/sites/connections/google', () => ({ refreshDueGoogleContexts: mocks.contexts }))
 vi.mock('@/lib/sites/accounts/retention', () => ({ deleteExpiredAccountMessages: async () => 0 }))
 vi.mock('@/lib/audit/recover-audit-job', () => ({ recoverCompletedImprovementProjections: mocks.projections, runStuckAuditRecoverySweep: mocks.stuck }))

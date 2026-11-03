@@ -5,6 +5,8 @@ import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS } from '@/lib/marketing/copy/care-homepage'
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { Toaster, toast } from 'sonner'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-testid="url-entry" /> }))
@@ -17,6 +19,17 @@ function openCategory(name: string) {
 }
 
 describe('comprehensive homepage experience', () => {
+  it('explains independent checks and token value with one optional connection link', () => {
+    render(<CareHomepage />)
+    const section = screen.getByRole('region', { name: C.independent.title })
+    expect(within(section).getByText(C.independent.body)).toBeVisible()
+    expect(within(section).getByText(C.independent.confirmation)).toBeVisible()
+    expect(within(section).getAllByRole('link')).toHaveLength(1)
+    expect(within(section).getByRole('link', { name: 'Connect FixFlags to your AI agent' })).toHaveAttribute('href', '/connect-ai')
+    expect(section).not.toHaveTextContent(/MCP|API key/)
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument()
+  })
+
   it('keeps one brand and one website identity in the sample shell', () => {
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -70,9 +83,9 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByText('/about')).not.toBeVisible()
     fireEvent.click(within(dialog).getByText('10 other pages', { selector: 'summary' }))
     expect(within(dialog).getByText('/about')).toBeVisible()
-    expect(within(dialog).getByRole('textbox', { name: 'Fix prompt' })).not.toBeVisible()
-    fireEvent.click(within(dialog).getByLabelText('View prompt', { selector: 'summary' }))
-    expect(within(dialog).getByRole('textbox', { name: 'Fix prompt' })).toBeVisible()
+    expect(within(dialog).getByRole('textbox', { name: 'Fix instructions' })).not.toBeVisible()
+    fireEvent.click(within(dialog).getByLabelText('View instructions', { selector: 'summary' }))
+    expect(within(dialog).getByRole('textbox', { name: 'Fix instructions' })).toBeVisible()
   })
 
   it('opens sample Flags from their category without leaving the dashboard', async () => {
@@ -188,7 +201,7 @@ describe('comprehensive homepage experience', () => {
   })
   it('keeps the brand, two URL entries and the sample-to-analysis path', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('heading', { level: 1, name: /Website monitoring\.\s*From problem to fix\./ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: /Your website is live\.\s*Is everything working\?/ })).toBeVisible()
     expect(screen.getByRole('link', { name: C.hero.sampleAction })).toHaveAttribute('href', '#product')
     expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
     expect(screen.getByText(C.hero.body)).toBeVisible()
@@ -420,7 +433,7 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(board).getByRole('button', { name: 'Select Flags' }))
     fireEvent.click(within(board).getAllByRole('checkbox')[0])
     expect(within(board).getByText('1 selected')).toBeVisible()
-    const previews = within(board).getAllByRole('button', { name: 'View prompt' })
+    const previews = within(board).getAllByRole('button', { name: 'View instructions' })
     fireEvent.click(previews.at(-1)!)
     expect((await screen.findByRole('textbox') as HTMLTextAreaElement).value).toContain('Illustrative FixFlags sample.')
     expect(fetchMock).not.toHaveBeenCalled()
@@ -461,10 +474,10 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
     expect(within(dialog).queryByText(S.unresolved)).not.toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    await waitFor(() => expect(screen.getByText(SITE_BOARD_COPY.copyPromptCopied)).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'How to use these instructions' })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
-    expect(within(dialog).getByRole('link', { name: 'How to fix with AI' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(within(dialog).getByRole('link', { name: S.guidanceAction })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(opener).toHaveFocus())
   })
@@ -477,8 +490,8 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
-    await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    await waitFor(() => expect(screen.getByText(SITE_BOARD_COPY.copyPromptCopied)).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'How to use these instructions' })).toHaveAttribute('href', '/docs/fix-with-ai')
     expect(screen.getByRole('dialog')).toBeVisible()
   })
 
@@ -487,10 +500,10 @@ describe('comprehensive homepage experience', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
     const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
-    expect(within(handoff).getByRole('link', { name: 'How to fix with AI' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(within(handoff).getByRole('link', { name: C.actions.guidanceAction })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
-    expect(await screen.findByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(await screen.findByRole('link', { name: 'How to use these instructions' })).toHaveAttribute('href', '/docs/fix-with-ai')
   })
 
   it('provides readable guidance if clipboard access fails', async () => {
@@ -652,7 +665,7 @@ describe('comprehensive homepage experience', () => {
 it.each([true, false])('offers all fixes and manual copying in the shared preview (dashboardOnly=%s)', async dashboardOnly => {
   Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
   render(<CareHomepage dashboardOnly={dashboardOnly} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Copy all fix prompts' }))
+  fireEvent.click(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll }))
   const dialog = await screen.findByRole('dialog')
   expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain('These are not results from a real website.')
   for (const flag of Object.values(SAMPLE_FLAGS)) expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain(flag.prompt)
@@ -664,8 +677,8 @@ it('previews the entire homepage fix prompt before copying anything', async () =
   render(<CareHomepage />)
   const board = screen.getByRole('region', { name: C.boardAria })
   expect(within(board).getByText('Checked 15 minutes ago')).toBeVisible()
-  fireEvent.click(within(board).getByRole('button', { name: 'View prompt' }))
-  const prompt = await screen.findByRole('textbox', { name: 'Fix prompt' })
+  fireEvent.click(within(board).getByRole('button', { name: 'View instructions' }))
+  const prompt = await screen.findByRole('textbox', { name: 'Fix instructions' })
   for (const flag of Object.values(SAMPLE_FLAGS)) expect((prompt as HTMLTextAreaElement).value).toContain(flag.prompt)
   expect(writeText).not.toHaveBeenCalled()
 })

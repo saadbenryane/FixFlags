@@ -10,6 +10,7 @@ import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { customerAttemptSource } from '@/lib/sites/flag-label'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { connectionLines, loadSiteConnectionViews } from '@/lib/sites/connections/read'
@@ -138,7 +139,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     ? relatedOutcome?.kind === 'CHECKOUT' ? SITE_BOARD_COPY.checkoutRecovered
       : relatedOutcome?.kind === 'AVAILABILITY' ? SITE_BOARD_COPY.pageRecovered
         : SITE_BOARD_COPY.problemRecovered
-    : flag.problem
+    : customerFindingLabel(flag)
 
   return (
     <SiteShell actions={home.actions} siteId={resolvedId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
@@ -154,7 +155,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
-        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} initial={home}>
+        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home}>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}
@@ -179,7 +180,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   </div>
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
-                  <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior}
+                  <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
                     supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
                   {flag.evidenceContext ? <details className="text-sm">
                     <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.evidence}</summary>
@@ -249,7 +250,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   {SITE_BOARD_COPY.fixAndVerify}
                 </h2>
                 <div className="mt-6">
-                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
+                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
                 </div>
               </aside>
             ) : null}

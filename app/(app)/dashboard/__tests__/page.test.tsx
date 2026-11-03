@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MeProvider } from '@/hooks/useMe'
 import DashboardPage from '@/app/(app)/dashboard/page'
 import { WEBSITES_COPY } from '@/lib/marketing/copy/terminology'
+import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
 const mocks = vi.hoisted(() => ({
   getAppViewer: vi.fn(),
@@ -113,7 +114,8 @@ describe('/dashboard handoff', () => {
   })
 
   it('keeps returning customers focused on adding a website', async () => {
-    mocks.loadSiteSummaries.mockResolvedValue([{ id: 'existing-site' }])
+    mocks.loadSiteSummaries.mockResolvedValue([{ id: 'fixture-site', name: 'Example', hostname: 'example.com',
+      presentation: siteViewFixture().presentation, lastUsefulChangeAt: '2026-11-03T00:00:00Z' }])
     await renderPage({})
     expect(screen.getByRole('heading', { name: WEBSITES_COPY.analyzeTitle })).toBeVisible()
     expect(screen.queryByRole('heading', { name: WEBSITES_COPY.firstTitle })).not.toBeInTheDocument()

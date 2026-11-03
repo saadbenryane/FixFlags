@@ -1,12 +1,16 @@
-type AttemptState = { outcome: string | null; sourceAuditId?: string;
+type AttemptState = { outcome: string | null; sourceAuditId?: string; sourceFlagIds?: readonly string[];
   verificationAudit?: { projectId: string | null; parentId: string | null; status: string;
     verifierExecutions?: Array<{ workKind?: string | null; workState?: string | null }> } | null }
 
 /** Ready-to-verify records alone do not establish that a check was admitted. */
-export function attemptHasActiveVerification(attempt: AttemptState | undefined, projectId: string, sourceAuditId?: string): boolean {
+export function attemptHasActiveVerification(attempt: AttemptState | undefined, projectId: string, sourceAuditId?: string, sourceFlagId?: string): boolean {
   const audit = attempt?.verificationAudit
-  if (!attempt || attempt.outcome != null || !audit || audit.projectId !== projectId || audit.parentId !== attempt.sourceAuditId ||
-    sourceAuditId && attempt.sourceAuditId !== sourceAuditId) return false
+  if (!attempt || attempt.outcome != null || !audit || audit.projectId !== projectId || audit.parentId !== attempt.sourceAuditId) return false
+  // Grouped repairs retain captures from several source Audits. The frozen
+  // selection scopes their activity; later incident peers cannot inherit it.
+  if (sourceFlagId && attempt.sourceFlagIds?.length) {
+    if (!attempt.sourceFlagIds.includes(sourceFlagId)) return false
+  } else if (sourceAuditId && attempt.sourceAuditId !== sourceAuditId) return false
   if (['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'].includes(audit.status)) return true
   return audit.status === 'COMPLETED' && Boolean(audit.verifierExecutions?.some(task => task.workKind === 'finalize' &&
     ['READY', 'RUNNING', 'RETRY_WAIT'].includes(task.workState ?? '')))

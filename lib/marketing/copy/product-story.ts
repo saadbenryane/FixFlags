@@ -1,8 +1,8 @@
 /** Shared public promise for the homepage, metadata, and social artwork. */
 export const PRODUCT_STORY = {
-  headline: ['Website monitoring.', 'From problem to fix.'],
-  description: 'Find broken pages, slow loading, and buttons that don’t work. Get email alerts and clear steps to fix them.',
-  summary: 'Find problems. Get email alerts. Know what to fix.',
+  headline: ['Your website is live.', 'Is everything working?'],
+  description: 'Catch broken pages, slow load times, and buttons that fail. Get email alerts and fix instructions you can copy and paste.',
+  summary: 'Find problems. Get alerts. Copy the fix.',
   action: 'Check your website',
-  setup: 'Start free with your URL.',
+  setup: 'Start with a free check.',
 } as const

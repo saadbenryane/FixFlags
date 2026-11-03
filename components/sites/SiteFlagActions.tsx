@@ -20,13 +20,13 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 import styles from './SiteFlagActions.module.css'
 
-type SiteFlagActionsProps = { compact?: boolean; siteId: string; flagId: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string }
+type SiteFlagActionsProps = { compact?: boolean; siteId: string; flagId: string; referenceFlagId?: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string }
 
 export function SiteFlagActions(props: SiteFlagActionsProps) {
   return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteFlagActionsContent {...props} /></SiteResourceBoundary>
 }
 
-function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId }: SiteFlagActionsProps) {
+function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlagId = flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId }: SiteFlagActionsProps) {
   const router = useRouter()
   const { busy, message, error, submit, clearFeedback, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
   const { view, refresh, disconnected } = useSharedSiteResource(siteId, refreshHistoricalGuidance)
@@ -83,9 +83,9 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerifi
   }, [verificationAuditId, view.monitoringHistory, router])
 
   async function verify() {
-    if (intent.current?.flagId !== flagId) intent.current = { flagId, key: requestKey(`flag:${flagId}`) }
+    if (intent.current?.flagId !== referenceFlagId) intent.current = { flagId: referenceFlagId, key: requestKey(`flag:${referenceFlagId}`) }
     const result = await submit(async () => {
-      const body = await executeSiteAction(`/api/sites/${siteId}/flags/${flagId}/verify`, {
+      const body = await executeSiteAction(`/api/sites/${siteId}/flags/${referenceFlagId}/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +93,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerifi
         },
         body: JSON.stringify({ changeSummary: changeSummary.trim() }),
       }, 'flagVerify')
-      if (body.siteId !== siteId || body.flagId !== flagId) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse)
+      if (body.siteId !== siteId || body.flagId !== referenceFlagId) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse)
       return body
     }, body => {
       setVerificationAuditId(body.verificationAuditId)
@@ -101,21 +101,21 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerifi
       setVerifyOpen(false)
       return SITE_BOARD_COPY.verificationStarted
     }, async () => { await refresh(); router.refresh() })
-    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') { completeIntent(`flag:${flagId}`); intent.current = null }
+    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') { completeIntent(`flag:${referenceFlagId}`); intent.current = null }
   }
 
   return (
     <div className={styles.actions}>
       {compact ? <div className="space-y-3">
         <div ref={guidanceActions}>
-          {currentGuidance === 'ready' ? <SitePromptCopyButton key={`${siteId}:${flagId}`} siteId={siteId} flagId={flagId} presentation="preview" /> : <div className="space-y-3 rounded-card bg-muted/30 p-4">
+          {currentGuidance === 'ready' ? <SitePromptCopyButton key={`${siteId}:${referenceFlagId}`} siteId={siteId} flagId={referenceFlagId} presentation="preview" /> : <div className="space-y-3 rounded-card bg-muted/30 p-4">
             <p role="status" className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.repairGuidance[currentGuidance]}</p>
             {currentGuidance === 'pending' ? <Button type="button" variant="outline" onClick={() => { guidanceRefreshRequested.current = true; router.refresh() }}>{SITE_ACTION_COPY.repairGuidance.refresh}</Button>
               : <Button variant="outline" asChild><Link href={`/sites/${siteId}`}>{SITE_ACTION_COPY.repairGuidance.overview}</Link></Button>}
           </div>}
         </div>
-        <Button variant="outline" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
-        {message && !verifyOpen ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+        <Button variant="outline" disabled={busy || verificationRunning} aria-busy={busy || verificationRunning || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+        {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
       </div> : <ol className={styles.steps}>
         <li>
           <span className={styles.number} aria-hidden="true">1</span>
@@ -123,7 +123,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerifi
             <h3>{SITE_BOARD_COPY.fixStep}</h3>
             {currentGuidance === 'ready' ? <>
               <p className={styles.description}>{SITE_BOARD_COPY.fixStepBody}</p>
-              <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={flagId} /></div>
+              <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={referenceFlagId} /></div>
               {guidance?.trim() ? <details className={styles.guidance}>
                 <summary>{SITE_BOARD_COPY.readFixGuidance}<ChevronDown size={14} aria-hidden /></summary>
                 <p>{guidance}</p>
@@ -141,15 +141,11 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerifi
           <div className={styles.step}>
             <h3>{SITE_BOARD_COPY.verifyStep}</h3>
             <p className={styles.description}>{SITE_BOARD_COPY.verifyStepBody}</p>
-            <Button className="w-full" variant="outline" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
+            <Button className="w-full" variant="outline" disabled={busy || verificationRunning} aria-busy={busy || verificationRunning || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
               <ShieldCheck aria-hidden="true" />
               {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
             </Button>
-            {message && !verifyOpen ? (
-              <p className="mt-3 text-sm text-muted-foreground" role="status" aria-live="polite">
-                {message}
-              </p>
-            ) : null}
+            {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
           </div>
         </li>
       </ol>}
@@ -165,7 +161,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerifi
           <SiteActionFeedback message={message} error={error} siteId={siteId} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>{SITE_ACTION_COPY.cancel}</Button>
-            <Button type="button" variant="default" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+            <Button type="button" variant="default" loading={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

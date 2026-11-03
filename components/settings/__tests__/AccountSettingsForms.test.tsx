@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentProps } from 'react'
 import { AUTH } from '@/lib/marketing/copy-barrel'
+import { clearSettingsDrafts } from '@/lib/settings/drafts'
 
 const refresh = vi.hoisted(() => vi.fn())
 const push = vi.hoisted(() => vi.fn())
@@ -27,6 +28,7 @@ const ac = AUTH.settings.account
 function renderAccount(overrides?: Partial<ComponentProps<typeof AccountSettingsForms>>) {
   return render(
     <AccountSettingsForms
+      ownerId="account-owner"
       initialName="Saad Benryane"
       email="saadbenryane@gmail.com"
       emailVerified
@@ -39,6 +41,7 @@ function renderAccount(overrides?: Partial<ComponentProps<typeof AccountSettings
 
 describe('AccountSettingsForms', () => {
   beforeEach(() => {
+    clearSettingsDrafts()
     vi.clearAllMocks()
     authClient.updateUser.mockResolvedValue({})
     authClient.changeEmail.mockResolvedValue({})

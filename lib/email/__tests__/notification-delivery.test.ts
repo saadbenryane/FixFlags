@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Resend } from 'resend'
-import { assertNotificationReplayWindow, notificationEmailBody, notificationRetryAt, prepareNotificationReplay, sendNotificationEmail } from '../notification-delivery'
+import { assertNotificationReplayWindow, notificationEmailBody, notificationEmailSnapshotSchema, notificationRetryAt, prepareNotificationReplay, sendNotificationEmail } from '../notification-delivery'
 
 const message = { from: 'FixFlags <watch@example.test>', to: 'owner@example.test', subject: 'Site alert',
   html: '<p>Recorded observation</p>', text: 'Recorded observation', tags: [] }
@@ -37,6 +37,14 @@ it.each([[1, 5], [2, 10], [3, 20], [20, 360]])('backs off failed attempt %s by %
 })
 
 describe('bounded monitoring email transport', () => {
+  it('refuses oversized encoded attachments and messages before any provider request', async () => {
+    expect(notificationEmailSnapshotSchema.safeParse({ version: 1, ...message,
+      attachments: [{ filename: 'fix.txt', contentType: 'text/plain', content: 'a'.repeat(1024 * 1024 + 1) }] }).success).toBe(false)
+    const fetch = vi.spyOn(globalThis, 'fetch')
+    await expect(sendNotificationEmail(provider(), { ...message, text: 'é'.repeat(7 * 1024 * 1024) }, 'oversized'))
+      .rejects.toThrow('encoded message budget')
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('aborts the installed SDK physical request at the deadline', async () => {
     vi.useFakeTimers()
     let physicalSignal: AbortSignal | undefined

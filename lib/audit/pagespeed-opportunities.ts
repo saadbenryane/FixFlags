@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createHash } from 'node:crypto'
 import { normalizeVerifierUrl } from '../improvements/verifier-scope'
+import { lighthouseRecord, lighthouseScore } from './lighthouse-audit'
 
 const OPPORTUNITY_DEFINITIONS = [
   { id: 'render-blocking-resources', aliases: ['render-blocking-insight', 'render-blocking-resources'], unit: 'ms' },
@@ -59,19 +60,17 @@ function nonnegativeNumber(value: unknown): number | null {
 
 /** Retain successful measurements alongside failures. Missing or failed provider
  * audits never become zero savings. No resource URLs or DOM snippets are copied. */
-export function readResourceAudits(audits: Record<string, Record<string, unknown>>): ResourceAudit[] {
+export function readResourceAudits(audits: Record<string, unknown>): ResourceAudit[] {
   return OPPORTUNITY_DEFINITIONS.flatMap(({ id, aliases, unit }) => {
     const providerAuditId = aliases.find(alias => audits[alias])
     if (!providerAuditId) return []
     if (['uses-webp-images', 'uses-responsive-images', 'efficient-animated-content'].includes(id) && audits['image-delivery-insight']) return []
-    const audit = audits[providerAuditId]
-    const details = audit.details as Record<string, unknown> | undefined
-    const debug = details?.debugData as Record<string, unknown> | undefined
-    const metrics = audit.metricSavings as Record<string, unknown> | undefined
-    const measured = typeof audit.score === 'number' && !audit.errorMessage && !audit.notApplicable &&
-      !['error', 'notApplicable', 'informative', 'manual'].includes(String(audit.scoreDisplayMode))
-    const score = measured ? audit.score as number : null
-    let savings = !measured ? null : unit === 'ms'
+    const audit = lighthouseRecord(audits[providerAuditId])
+    const details = lighthouseRecord(audit?.details)
+    const debug = lighthouseRecord(details?.debugData)
+    const metrics = lighthouseRecord(audit?.metricSavings)
+    const score = lighthouseScore(audit)
+    let savings = score === null ? null : unit === 'ms'
       ? nonnegativeNumber(metrics?.FCP) ?? nonnegativeNumber(details?.overallSavingsMs)
       : nonnegativeNumber(details?.overallSavingsBytes) ?? nonnegativeNumber(debug?.wastedBytes)
     // A successful, explicitly empty results table proves no matching resources.
@@ -80,7 +79,7 @@ export function readResourceAudits(audits: Record<string, Record<string, unknown
     if (savings === null && score === 1 && ['table', 'opportunity'].includes(String(details?.type)) &&
       Array.isArray(details?.items) && details.items.length === 0) savings = 0
     return [{ id, providerAuditId, unit, score, savings,
-      title: (typeof audit.title === 'string' ? audit.title : providerAuditId).slice(0, 1000) }]
+      title: (typeof audit?.title === 'string' ? audit.title : providerAuditId).slice(0, 1000) }]
   })
 }
 

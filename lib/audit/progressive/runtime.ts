@@ -11,7 +11,7 @@ import { lifecycleHandlers } from './lifecycle'
 import { accountHandlers } from './accounts'
 import { actionHandlers } from './actions'
 import { registerTaskHandlers } from './registry'
-import { loadTaskGraph, persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, recoverProgressiveTasks } from './engine'
+import { persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, recoverProgressiveTasks, recoverInterruptedTaskDelivery } from './engine'
 import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
@@ -40,7 +40,7 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
         await recordProgress(tx, auditId, { kind: 'analysis', state: 'started' })
       }
     })
-    if (!(await loadTaskGraph(auditId)).length) {
+    if (!await prisma.auditExecutionTask.findFirst({ where: { auditId }, select: { id: true } })) {
       const plans = initialTaskPlan(spec)
       for (const plan of plans) if (!handlers.has(plan.kind)) throw new Error('Missing task evaluator: ' + plan.kind)
       await persistTaskPlan(auditId, plans)
@@ -74,25 +74,26 @@ export async function recoverProgressiveAudits(limit = 25) {
 }
 
 export function startProgressiveWorkers() {
+  let activeTasks = 0
   const workers = Object.entries(TASK_QUEUES).map(([resource, config]) => {
-    const worker = new Worker(config.name, job => executeTask(job.data, handlers), {
+    const worker = new Worker(config.name, async job => {
+      activeTasks++
+      try { return await executeTask(job.data, handlers) }
+      finally { activeTasks-- }
+    }, {
       connection: createWorkerRedis(), concurrency: config.concurrency, lockDuration: 90_000, maxStalledCount: 0,
     })
     worker.on('error', error => logger.error('Execution task worker error', { resource, message: error.message }))
     worker.on('failed', (job, error) => {
       logger.warn('Task delivery interrupted; ledger recovery owns retry',
-        { resource, taskId: job?.data.taskId, message: error.message })
-      const taskId = job?.data?.taskId
-      if (typeof taskId !== 'string') return
+        { resource, taskId: job?.data?.taskId, message: error.message })
       // Dispatch otherwise leaves the unclaimed task quiet for half a minute.
-      void prisma.auditExecutionTask.updateMany({
-        where: { id: taskId, workState: 'READY', workDispatchState: 'SENT' },
-        data: { workDispatchState: 'PENDING', workRetryAt: new Date(Date.now() + 1000) },
-      }).catch(writeError => logger.error('Interrupted task could not be requeued', writeError, { resource, taskId }))
+      void recoverInterruptedTaskDelivery(job).catch(writeError => logger.error('Interrupted task could not be requeued', writeError,
+        { resource, taskId: job?.data?.taskId }))
     })
     return worker
   })
-  return { close: async () => {
+  return { activeCount: () => activeTasks, ready: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: async () => {
     await Promise.all(workers.map(worker => worker.close()))
     await closeParserWorker()
   } }

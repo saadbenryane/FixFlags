@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type Flag, type OutcomeAssessment } from '@prisma/client'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { confirmSiteOutcome, createSiteOutcome, listSiteOutcomes, loadSiteOutcomeDetail, loadSiteOutcomeDetails, renameSiteOutcome, setSiteOutcomeEnabled } from '@/lib/sites/outcomes'
+import { confirmPageAvailability, confirmSiteOutcome, createSiteOutcome, listSiteOutcomes, loadSiteOutcomeDetail, loadSiteOutcomeDetails, renameSiteOutcome, setSiteOutcomeEnabled } from '@/lib/sites/outcomes'
+import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { currentExecutionOwnership, executionWrite, ExecutionOwnershipLost, withExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
 import { admittedOutcomeCoverage, comparableOutcomeCoverage } from '@/lib/sites/domain/outcome-proof'
@@ -118,6 +119,80 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
       },
     })
   }
+
+  it.each(['CONFIRM_PAGE_AVAILABILITY', 'CONFIRM_OUTCOME', 'RENAME_OUTCOME'] as const)(
+    'retains the authorized Outcome command caller after ownership changes: %s', async type => {
+      const outcome = await genericOutcome('actor-custody')
+      const replacement = await prisma.user.create({ data: { email: `replacement-${randomUUID()}@example.test` } })
+      try {
+        const command = { type, siteId: site.siteId, userId, outcomeId: outcome.id, name: 'Changed by former owner',
+          confirmed: true, kind: 'AVAILABILITY' as const }
+        await prisma.project.update({ where: { id: projectId }, data: { userId: replacement.id } })
+        expect(await executeSiteCommand(command)).toMatchObject({ ok: false, error: 'Site not found' })
+        expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })).toEqual(outcome)
+        expect(await prisma.outcomeExecutionBinding.count({ where: { outcomeId: outcome.id } })).toBe(0)
+        expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(1)
+      } finally {
+        await prisma.project.update({ where: { id: projectId }, data: { userId } })
+        await prisma.user.delete({ where: { id: replacement.id } })
+      }
+    })
+
+  it('uses the current command actor for default coverage, label changes and permission renewal', async () => {
+    const created = await executeSiteCommand({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: site.siteId, userId })
+    if (!created.ok || !('outcome' in created)) throw new Error('Owner default coverage was refused')
+    const outcomeId = created.outcome.id
+    expect(await executeSiteCommand({ type: 'RENAME_OUTCOME', siteId: site.siteId, userId, outcomeId, name: 'My public page loads' }))
+      .toMatchObject({ ok: true, outcome: { id: outcomeId, name: 'My public page loads', kind: 'AVAILABILITY' } })
+    expect(await executeSiteCommand({ type: 'CONFIRM_OUTCOME', siteId: site.siteId, userId, outcomeId, confirmed: false }))
+      .toMatchObject({ ok: true, outcome: { id: outcomeId, confirmedAt: null } })
+    expect(await prisma.outcomeExecutionBinding.count({ where: { outcomeId, enabled: true } })).toBe(0)
+    expect(await executeSiteCommand({ type: 'CONFIRM_OUTCOME', siteId: site.siteId, userId, outcomeId, confirmed: true, kind: 'AVAILABILITY' }))
+      .toMatchObject({ ok: true, outcome: { id: outcomeId, name: 'My public page loads' } })
+    expect(await prisma.outcomeExecutionBinding.count({ where: { outcomeId, enabled: true } })).toBe(1)
+    expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(1)
+  })
+
+  it('refuses stale availability setup before creating an Outcome for a replacement owner', async () => {
+    const replacement = await prisma.user.create({ data: { email: `availability-owner-${randomUUID()}@example.test` } })
+    try {
+      await prisma.project.update({ where: { id: projectId }, data: { userId: replacement.id } })
+      expect(await confirmPageAvailability(site)).toBeNull()
+      expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(0)
+    } finally {
+      await prisma.project.update({ where: { id: projectId }, data: { userId } })
+      await prisma.user.delete({ where: { id: replacement.id } })
+    }
+  })
+
+  it.each(['DELETING', 'SUSPENDED'] as const)('refuses Outcome permission mutations for an inactive owner: %s', async lifecycleStatus => {
+    const outcome = await genericOutcome('inactive-owner')
+    await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })
+    expect(await confirmPageAvailability(site)).toBeNull()
+    expect(await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY' })).toBeNull()
+    expect(await renameSiteOutcome({ site, outcomeId: outcome.id, name: 'Unavailable owner mutation' })).toBeNull()
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })).toEqual(outcome)
+    expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.outcomeExecutionBinding.count({ where: { outcomeId: outcome.id } })).toBe(0)
+  })
+
+  it.each(['default', 'page'] as const)('rolls back Outcome creation and bindings if confirmation cannot commit: %s', async kind => {
+    if (!/^[a-z0-9-]+$/.test(projectId)) throw new Error('Unexpected fixture Project identity')
+    await prisma.$executeRawUnsafe(`ALTER TABLE site_outcomes ADD CONSTRAINT fixture_refused_confirmation
+      CHECK ("projectId" <> '${projectId}' OR "confirmedAt" IS NULL) NOT VALID`)
+    try {
+      const create = kind === 'default' ? () => confirmPageAvailability(site)
+        : () => createSiteOutcome({ site, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+      await expect(create()).rejects.toThrow()
+      expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(0)
+      expect(await prisma.outcomeExecutionBinding.count({ where: { outcome: { projectId } } })).toBe(0)
+    } finally { await prisma.$executeRawUnsafe('ALTER TABLE site_outcomes DROP CONSTRAINT fixture_refused_confirmation') }
+  })
+
+  it('refuses an unavailable Signup fixture without leaving an unconfirmed Outcome', async () => {
+    await expect(createSiteOutcome({ site, kind: 'SIGNUP', targetUrl: site.url + 'signup' })).rejects.toThrow('Safe Form fixture')
+    expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(0)
+  })
 
   it('keeps evidence limits and older successful verification separate for each Outcome in a batch', async () => {
     const now = Date.now(), binding = { key: 'http', mechanism: 'HTTP_AVAILABILITY' as const, version: 1, required: true, config: { startUrl: site.url } }

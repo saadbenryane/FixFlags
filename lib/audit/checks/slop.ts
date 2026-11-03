@@ -1,4 +1,4 @@
-import { renderedContentMetadata } from '../browser/rendered-copy'
+import { observedPageCopy, type RenderedCopy } from '../browser/rendered-copy'
 import { sectionTargetExists, sectionTargetSet } from './section-links'
 import { PageMetadata } from '../metadata'
 import { classifyCtaHref } from '../flow/link-scoring'
@@ -68,16 +68,17 @@ export function detectSocialProofSlop(text: string): { label: string; matched: s
   return null
 }
 
-export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): DeterministicFlag[] {
-  meta = renderedContentMetadata(meta)
+export function runSlopChecks(meta: PageMetadata | null, record?: CheckRecorder, renderedCopy?: RenderedCopy | null, observedTitle?: string | null): DeterministicFlag[] {
+  const prose = observedPageCopy(meta, renderedCopy)
+  if (!prose) return []
   const findings: DeterministicFlag[] = []
   const h1Generic =
-    meta.h1s.length > 0 &&
+    prose.h1s.length > 0 &&
     ['home', 'welcome', 'welcome to', 'untitled', 'coming soon', 'hello world'].some((p) =>
-      meta.h1s[0].toLowerCase().includes(p)
+      prose.h1s[0].toLowerCase().includes(p)
     )
-  const bodyText = meta.pageText.slice(0, CHECK_TEXT_LIMIT)
-  const sampleText = h1Generic ? bodyText : [meta.pageText, ...meta.h1s].join(' ').slice(0, CHECK_TEXT_LIMIT)
+  const bodyText = prose.pageText.slice(0, CHECK_TEXT_LIMIT)
+  const sampleText = h1Generic ? bodyText : [prose.pageText, ...prose.h1s].join(' ').slice(0, CHECK_TEXT_LIMIT)
   let placeholderMatched = false
   let templateMatched = false
   let builderMatched = false
@@ -114,7 +115,8 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
 
   // Headings and title only: template defaults live in the headline, and matching
   // body prose produced false positives on legitimate copy.
-  const headingText = [meta.title ?? '', ...meta.h1s].join(' • ')
+  const title = observedTitle === undefined ? meta?.title : observedTitle
+  const headingText = [title ?? '', ...prose.h1s].join(' • ')
   for (const { pattern, label } of TEMPLATE_COPY_PATTERNS) {
     const match = headingText.match(pattern)
     if (match) {
@@ -168,15 +170,16 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
     })
   }
 
-  const sectionTargets = sectionTargetSet(meta)
-  const deadCtaLinks = (meta.documentLinks ?? meta.links).filter((link) => {
+  const sectionTargets = meta ? sectionTargetSet(meta) : new Set<string>()
+  const declaredLinks = meta?.documentLinks ?? meta?.links
+  const deadCtaLinks = (declaredLinks ?? []).filter((link) => {
     const href = link.href
     let destination: URL | undefined
-    try { if (meta.documentUrl) destination = new URL(href, meta.linkBaseUrl ?? meta.documentUrl) }
+    try { if (meta?.documentUrl) destination = new URL(href, meta.linkBaseUrl ?? meta.documentUrl) }
     catch { /* Invalid declarations retain their original classification. */ }
     const fragment = destination ? destination.hash.slice(1) : href.startsWith('#') ? href.slice(1) : ''
-    return classifyCtaHref(href, { baseUrl: meta.documentUrl, resolvedHref: destination?.href,
-      hashTargetExists: Boolean(fragment && sectionTargetExists(meta, fragment, sectionTargets)),
+    return classifyCtaHref(href, { baseUrl: meta?.documentUrl, resolvedHref: destination?.href,
+      hashTargetExists: Boolean(meta && fragment && sectionTargetExists(meta, fragment, sectionTargets)),
     }).isPlaceholder && CTA_PATTERN.test(`${href} ${link.text}`)
   })
   if (deadCtaLinks.length > 0) {
@@ -214,10 +217,10 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
     `${sampleText.length} characters sampled. Placeholder pattern ${placeholderMatched}, builder-artifact pattern ${builderMatched}.`,
     sampled ? !placeholderMatched && !builderMatched : undefined, true)
   recordObservation(record, 'template-heading-patterns', 'Captured template headings', 'Captured title and H1 headings do not match starter-template patterns',
-    `Template-heading pattern ${templateMatched} in the captured title and H1 sample.`, headingText.trim() ? !templateMatched : undefined, true)
+    `Template-heading pattern ${templateMatched} in the captured title and H1 sample.`, templateMatched ? false : title !== undefined && headingText.trim() ? true : undefined, true)
   recordObservation(record, 'template-tokens', 'Captured template tokens', 'Sampled page copy contains no recognized unreplaced template token',
     tokenMatch ? `Recognized token: ${tokenMatch[0].slice(0, 80)}.` : 'No recognized token in the captured sample.', sampled ? !tokenMatch : undefined, true)
-  const ctaLinks = (meta.documentLinks ?? meta.links).filter(link => CTA_PATTERN.test(`${link.href} ${link.text}`))
+  const ctaLinks = (declaredLinks ?? []).filter(link => CTA_PATTERN.test(`${link.href} ${link.text}`))
   recordObservation(record, 'cta-href-values', 'Captured action destinations', 'Captured action links declare non-placeholder destinations',
     `${deadCtaLinks.length} placeholder destinations among ${ctaLinks.length} recognized action links. Destination behavior was not executed here.`,
     ctaLinks.length ? deadCtaLinks.length === 0 : undefined, true)

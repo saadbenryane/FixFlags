@@ -1,6 +1,6 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
 import * as cheerio from 'cheerio'
 import { z } from 'zod'
+import { boundedText } from '@/lib/security/bounded-body'
 import { prisma } from '@/lib/db'
 import { encryptSecret } from '@/lib/security/crypto'
 import { waitForEmailProviderCapacity } from '@/lib/email/provider-admission'
@@ -9,34 +9,9 @@ export const receivingEventSchema = z.object({ type: z.literal('email.received')
   data: z.object({ email_id: z.string().uuid(), to: z.array(z.string().email()).max(20), created_at: z.string().datetime().optional() }) })
 export const verificationSchema = z.object({ links: z.array(z.string().url()).max(5), code: z.string().regex(/^\d{4,8}$/).nullable() }).strict()
 
-/** Svix signs the original bytes, message identity and bounded timestamp. */
-export function verifyReceivingSignature(payload: string, headers: Headers, secret: string, now = Date.now()) {
-  const id = headers.get('svix-id'), timestamp = headers.get('svix-timestamp'), signatures = headers.get('svix-signature')
-  if (!id || !timestamp || !/^\d+$/.test(timestamp) || !signatures || !secret.startsWith('whsec_') ||
-    Math.abs(now / 1000 - Number(timestamp)) > 300) return false
-  const key = Buffer.from(secret.slice(6), 'base64')
-  if (key.length < 16) return false
-  const expected = createHmac('sha256', key).update(`${id}.${timestamp}.${payload}`).digest()
-  return signatures.split(' ').some(signature => {
-    const [version, raw] = signature.split(',')
-    if (version !== 'v1' || !raw) return false
-    const actual = Buffer.from(raw, 'base64')
-    return actual.length === expected.length && timingSafeEqual(expected, actual)
-  })
-}
+export { verifySvixSignature as verifyReceivingSignature } from '@/lib/security/svix'
+export { boundedText } from '@/lib/security/bounded-body'
 
-export async function boundedText(stream: ReadableStream<Uint8Array> | null, limit: number) {
-  if (!stream) return ''
-  const reader = stream.getReader(), chunks: Uint8Array[] = []; let length = 0
-  try {
-    for (;;) { const chunk = await reader.read(); if (chunk.done) break
-      length += chunk.value.byteLength
-      if (length > limit) { await reader.cancel(); throw new Error('Message exceeds size limit') }
-      chunks.push(chunk.value)
-    }
-    return Buffer.concat(chunks).toString('utf8')
-  } finally { reader.releaseLock() }
-}
 export function extractVerification(input: { html?: string | null; text?: string | null; origin: string }) {
   const $ = cheerio.load((input.html ?? '').slice(0, 512_000)); $('script, style').remove()
   const text = `${input.text ?? ''} ${$.text()}`.slice(0, 512_000)

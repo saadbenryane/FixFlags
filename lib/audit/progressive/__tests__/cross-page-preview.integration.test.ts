@@ -13,6 +13,10 @@ import * as pageSessions from '@/lib/audit/browser/page-session'
 import { checkReceiptSchema } from '@/lib/audit/checks/receipt'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { cardAreaForCheck } from '@/lib/sites/card-areas'
+import type { SiteRecord } from '@/lib/sites/types'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('Cross-page preview worker verification', () => {
@@ -84,8 +88,23 @@ run('Cross-page preview worker verification', () => {
     const result = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'CATEGORY', categoryArea: 'search', idempotencyKey: key })
     await complete(result.auditId!); return result.auditId!
   }
+  async function currentPreviews(auditId: string, passing: boolean) {
+    const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    const spec = readExecutionSpec(audit.executionSpec)!
+    expect(spec.checks).toMatchObject({ 'corridor-og-title-drift': 2, 'corridor-og-description-drift': 1 })
+    const broad = await prisma.audit.findUniqueOrThrow({ where: { id: spec.category!.sourceAuditId } })
+    const page = await loadSiteCheckResultPage({ projectId } as SiteRecord, broad, undefined, undefined, { area: 'search' }, true)
+    const previews = page.results.filter(result => result.name === 'Cross-page previews' ||
+      ['preview-titles', 'preview-descriptions'].includes(result.assertionKey ?? ''))
+    expect(previews).toHaveLength(8)
+    expect(previews.filter(result => result.kind === 'assertion')).toHaveLength(6)
+    expect(previews.every(result => result.area === 'search' && result.auditId === auditId && !result.historical &&
+      result.evidenceReference.auditId === auditId)).toBe(true)
+    expect(previews.filter(result => result.kind === 'assertion').every(result => result.status === (passing ? 'passed' : 'findings'))).toBe(true)
+  }
   it('keeps original page comparisons through partial evidence, repair and same-incident recurrence', async () => {
     const before = await category('preview-failure')
+    await currentPreviews(before, false)
     const largeBrowser = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: before, workKind: 'browser', pageUrl: urls[2] } })
     expect(largeBrowser.workResult).toMatchObject({ data: { metadata: null, preview: { version: 1, titleComplete: true, descriptionComplete: true },
       snapshot: { desktopHtml: null, desktopHtmlTruncated: true } } })
@@ -93,6 +112,7 @@ run('Cross-page preview worker verification', () => {
     expect(duplicate.evidence).toContain('3 checked pages')
     const flags = await prisma.flag.findMany({ where: { auditId: before, checkId: { in: ['corridor-og-title-drift', 'corridor-og-description-drift'] } }, orderBy: { checkId: 'asc' } })
     expect(flags).toHaveLength(2)
+    expect(flags.every(flag => cardAreaForCheck(flag) === 'search')).toBe(true)
     const flag = flags.find(item => item.checkId === 'corridor-og-title-drift')!
     expect(flag.affectedPaths).toEqual(expect.arrayContaining(urls))
     expect(flag.evidenceTargets).toHaveLength(2)
@@ -144,6 +164,7 @@ run('Cross-page preview worker verification', () => {
     expect(checkVerifierSchema.parse(descriptionProof.detail)).toMatchObject({ verdict: 'passed', assertion: { key: 'preview-descriptions' } })
     mode = 'failed'
     const recurring = await category('preview-recurrence')
+    await currentPreviews(recurring, false)
     const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring, checkId: flag.checkId } })
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     const source = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
@@ -154,6 +175,7 @@ run('Cross-page preview worker verification', () => {
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurringDescription.id } })).toMatchObject({ improvementId: sourceDescription.improvementId })
     mode = 'healthy'
     const automatic = await category('preview-automatic-recovery')
+    await currentPreviews(automatic, true)
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: automatic } })
     const summary = await getFlagDiffSummary(audit.parentId, automatic)
     expect(summary.fixed.map(item => item.checkId)).toEqual(expect.arrayContaining([flag.checkId, description.checkId]))

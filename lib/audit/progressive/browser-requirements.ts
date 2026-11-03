@@ -1,8 +1,32 @@
-import { PAGE_CHECK_DEFINITIONS } from '../checks/definitions'
+import { ACTION_CHECK_DEFINITIONS, PAGE_CHECK_DEFINITIONS } from '../checks/definitions'
 import { taskInputSchema } from './contracts'
 
 type Consumer = { workKind: string | null; workInput: unknown }
 const complete = { collectMobile: true, collectAccessibility: true }
+
+/** These are observation dependencies, not a new detector or capture profile. */
+export function browserDevicesForCheck(module: string, checks: Readonly<Record<string, number>>): Array<'desktop' | 'mobile'> {
+  const definition = PAGE_CHECK_DEFINITIONS[module]
+  if (ACTION_CHECK_DEFINITIONS[module]) return []
+  if (!definition) return ['desktop', 'mobile']
+  if (definition.input === 'accessibility') {
+    const mobile = Boolean(checks['axe-target-size'])
+    const desktop = Object.values(definition.assertions).some(assertion => assertion.verifies.some(id => id !== 'axe-target-size' && checks[id]))
+    return [...(desktop || !mobile ? ['desktop' as const] : []), ...(mobile ? ['mobile' as const] : [])]
+  }
+  const mobileChecks = module === 'mobile-ux-quality' ? ['mobile-input-zoom', 'mobile-load-delay-content']
+    : module === 'interaction' ? ['motion-ignores-reduced-preference', 'loading-indicator-stuck'] : null
+  if (mobileChecks) {
+    const admitted = Object.values(definition.assertions).flatMap(assertion => assertion.verifies).filter(id => checks[id])
+    // These native observations already own a mobile comparison scope. Other
+    // checks retain desktop page purpose or their original paired conditions.
+    if (admitted.length && admitted.every(id => mobileChecks.includes(id))) return ['mobile']
+  }
+  if (definition.input === 'browser' || definition.input === 'console') return ['desktop', 'mobile']
+  return definition.input === 'metadata' ? ['desktop'] : []
+}
+
+export function isBrowserEvidenceKey(key: string) { return key.endsWith(':browser') || key.endsWith(':browser-mobile') }
 
 /** Read the admitted consumers, not the broader check catalog in ExecutionSpec.
  * Unknown or historical consumers retain complete collection. */

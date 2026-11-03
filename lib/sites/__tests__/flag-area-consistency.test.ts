@@ -3,7 +3,7 @@ import { loadSiteFlags } from '../flags'
 import { cardAreaForCheck } from '../card-areas'
 import type { SiteRecord } from '../types'
 
-vi.mock('@/lib/db', () => ({ prisma: {
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) },
   improvement: { findMany: vi.fn().mockResolvedValue([{ id: 'imp', title: 'Page stays blank', fingerprint: 'old', status: 'PROPOSED', expectedBenefit: 'Visitors can read the page', recommendedChange: 'Reduce blocking resources' }]) },
   audit: { findFirst: vi.fn().mockResolvedValue(null) },
   flag: { findMany: vi.fn().mockResolvedValue([]) },
@@ -17,7 +17,7 @@ describe('persisted Flag area', () => {
     expect(cardAreaForCheck({ checkId: 'journey-funnel-dead-end', rubric: 'EXPERIENCE' })).toBe('conversion')
   })
   it('keeps a proposed improvement without an originating finding off the Flag board', async () => {
-    const flags = await loadSiteFlags({ kind: 'project', projectId: 'owned-site' } as SiteRecord)
+    const flags = await loadSiteFlags({ kind: 'project', projectId: 'owned-site', userId: 'owner' } as SiteRecord)
     expect(flags).toEqual([])
   })
 })

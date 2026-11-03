@@ -1,7 +1,7 @@
 import type { Clock } from '@/lib/time/clock'
 import type { ImprovementStatus,VerificationOutcome } from '@prisma/client'
 
-export type ImprovementServiceDependencies = { clock?: Clock }
+export type ImprovementServiceDependencies = { clock?: Clock; validateHandoff?: () => Promise<void> }
 
 export type ImprovementFlag = {
   id: string

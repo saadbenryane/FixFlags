@@ -2,14 +2,13 @@ import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy/brand'
-import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import { uptimeEligible, uptimeProjectInclude } from './eligibility'
 import { logger } from '@/lib/logger'
-import { emailLayout, escapeEmailHtml } from '@/lib/email/layout'
+import { uptimeNotificationEmail } from '@/lib/email/uptime-notification'
+import { notificationRecipientAllowed, projectEmailAcceptance } from '@/lib/email/delivery-events'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationEmailBody, notificationEmailSnapshotSchema, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
-import { getAppUrl } from '@/lib/get-app-url'
 
 const uptimeEmailSchema = notificationEmailSnapshotSchema.extend({
   ownerId: z.string().min(1), projectId: z.string().min(1), incidentId: z.string().min(1),
@@ -45,10 +44,18 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           user: { id: project.user.id, email: project.user.email, lifecycleStatus: project.user.lifecycleStatus } } } } }
     const target = normalizeAuditUrl(project.url)
     try {
+      // Delivery describes the still-current event. Retain older incidents and
+      // payloads as history without sending a recovered outage or stale recovery.
+      const laterIncident = { id: { not: incident.id }, monitorId: monitor.id, version: incident.version, targetUrl: incident.targetUrl,
+        confirmedAt: { gte: incident.recoveredAt ?? incident.confirmedAt } }
+      const recoverySuperseded = receipt.kind === 'RECOVERED' && Boolean(await prisma.uptimeIncident.findFirst({
+        where: laterIncident, select: { id: true },
+      }))
       if (!['DOWN', 'RECOVERED'].includes(receipt.kind) || !target.ok || target.url !== monitor.targetUrl ||
         incident.targetUrl !== monitor.targetUrl || !monitor.enabled || !uptimeEligible(project) || project.notificationLevel === 'OFF' ||
+        receipt.kind === 'DOWN' && incident.recoveredAt !== null || recoverySuperseded ||
         (receipt.kind === 'RECOVERED' && (!project.notifyOnRecovery || !incident.recoveredAt)) ||
-        incident.supersededAt || incident.version !== monitor.version) {
+        incident.supersededAt || incident.version !== monitor.version || !await notificationRecipientAllowed(project.user.email)) {
         await prisma.uptimeNotification.updateMany({ where: { ...available, ...permission }, data: { status: 'SKIPPED', leaseUntil: null } })
         continue
       }
@@ -69,15 +76,12 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           if (payload.to !== project.user.email || Object.entries(scope).some(([key, value]) => payload[key as keyof typeof scope] !== value))
             throw new Error('Recorded notification no longer matches its recipient or incident')
         } else {
-          const subject = receipt.kind === 'DOWN' ? UPTIME_COPY.email.downSubject : UPTIME_COPY.email.recoverySubject
-          const href = `${getAppUrl()}/sites/${project.id}?view=timeline`
-          const body = receipt.kind === 'DOWN' ? UPTIME_COPY.email.downBody(incident.targetUrl, incident.confirmedAt.toISOString(), href)
-            : UPTIME_COPY.email.recoveryBody(incident.targetUrl, incident.recoveredAt!.toISOString(), href)
+          const message = uptimeNotificationEmail({ projectId: project.id, url: incident.targetUrl,
+            kind: receipt.kind as 'DOWN' | 'RECOVERED', at: receipt.kind === 'DOWN' ? incident.confirmedAt : incident.recoveredAt! })
           payload = uptimeEmailSchema.parse({ version: 1, ...scope,
             firstAttemptAt: receipt.attempts === 0 ? currentTime().toISOString() : undefined,
             from: process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`,
-            to: project.user.email, subject, text: body, tags: [],
-            html: emailLayout(body.split('\n\n').map(paragraph => `<p>${escapeEmailHtml(paragraph)}</p>`).join('')) })
+            to: project.user.email, ...message, tags: [{ name: 'type', value: 'uptime' }] })
         }
         preparation = { payload: prepareNotificationReplay(payload, currentTime(), receipt.kind === 'RECOVERED'
           ? incident.recoveredAt ?? incident.confirmedAt : incident.confirmedAt) }
@@ -87,6 +91,8 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
       // attempt ownership. No later payload write can bypass a changed recipient.
       const claimed = await prisma.uptimeNotification.updateMany({ where: {
         ...available, ...permission, deliveryPayload: { equals: receipt.deliveryPayload ?? Prisma.DbNull },
+        ...(receipt.kind === 'RECOVERED' ? { incident: { ...permission.incident,
+          monitor: { ...permission.incident.monitor, incidents: { none: laterIncident } } } } : {}),
       }, data: { status: 'SENDING', attempts: { increment: 1 }, leaseUntil,
         ...('payload' in preparation ? { deliveryPayload: preparation.payload } : {}) } })
       if (!claimed.count) continue
@@ -99,9 +105,11 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           throw new Error('Notification claim has insufficient time for provider delivery')
         assertNotificationReplayWindow(preparation.payload.firstAttemptAt, currentTime())
         const providerId = await sendNotificationEmail(resend, notificationEmailBody(preparation.payload), `uptime-${receipt.id}`)
-        await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {
+        const recorded = await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {
           status: 'SENT', sentAt: currentTime(), providerId, lastError: null, leaseUntil: null,
         } })
+        if (recorded.count) await projectEmailAcceptance({ providerId, userId: project.userId, email: preparation.payload.to,
+          channel: 'uptime', sourceId: receipt.id, acceptedAt: currentTime(), firstAttemptAt: new Date(preparation.payload.firstAttemptAt!) })
       } catch (error) {
         logger.error('Uptime notification delivery failed', { receiptId: receipt.id, error: error instanceof Error ? error.message : 'delivery unavailable' })
         await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {

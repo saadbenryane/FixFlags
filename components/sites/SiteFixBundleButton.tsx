@@ -22,34 +22,40 @@ export function SiteFixBundleButton(props: Parameters<typeof SiteFixBundleConten
   return <SiteFixBundleContent key={JSON.stringify([props.siteId, props.area, props.flagIds, props.availability])} {...props} />
 }
 
-function SiteFixBundleContent({ siteId, area, flagIds, availability, presentation = 'button' }: { siteId: string; area?: SiteCardArea; flagIds?: string[]; availability: SiteActionAvailability; presentation?: 'button' | 'preview' }) {
+function SiteFixBundleContent({ siteId, area, flagIds, availability, label, presentation = 'button' }: { siteId: string; area?: SiteCardArea; flagIds?: string[]; availability: SiteActionAvailability; label?: string; presentation?: 'button' | 'preview' }) {
   const { busy, error, submit } = useSiteAction()
   const [copied, setCopied] = useState(false)
+  const [recordNotice, setRecordNotice] = useState<string | null>(null)
   const [manual, setManual] = useState<string | null>(null)
   const scopeTooLarge = Boolean(flagIds && flagIds.length > MAX_REPAIR_TASKS)
   const scopeNotice = scopeTooLarge ? C.bundleTooLarge(MAX_REPAIR_TASKS) : null
   const prepared = usePreparedRepairPrompt({ kind: 'bundle', siteId, ...(area ? { area } : {}), ...(flagIds ? { flagIds } : {}) }, availability === 'available' && !scopeTooLarge, presentation === 'preview')
   const input = useRef<HTMLTextAreaElement>(null)
-  if (availability !== 'available') return <SitePromptAccessActions availability={availability} destination={`/sites/${siteId}${area ? `?category=${area}` : ''}`} label={flagIds ? C.fixSelected(flagIds.length) : C.fixAll} />
+  const copyLabel = label ?? (flagIds ? C.fixSelected(flagIds.length) : area ? C.fixCategory : C.fixAll)
+  if (availability !== 'available') return <SitePromptAccessActions availability={availability} destination={`/sites/${siteId}${area ? `?category=${area}` : ''}`} label={copyLabel} />
   async function copy() {
     if (scopeTooLarge) return
     await submit(async () => {
-      const bundle = await prepared.forCopy()
-      if (!await copyRepairPrompt({ kind: 'bundle', siteId }, bundle)) { setManual(bundle.prompt); return }
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2500)
+      const bundle = prepared.forCopy()
+      setRecordNotice(null)
+      const result = await copyRepairPrompt({ kind: 'bundle', siteId }, bundle, () => {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 2500)
+      })
+      if (!result.copied) { setManual(result.prompt); return }
+      setRecordNotice(result.notice)
     }, () => null)
   }
   return <>
-    {presentation === 'preview' ? <div className="w-full"><FixPromptCard unavailable={scopeNotice ?? prepared.unavailable} prompt={prepared.preview} busy={busy} disabled={scopeTooLarge} copied={copied} copyLabel={flagIds ? C.fixSelected(flagIds.length) : C.fixAll} onCopy={() => void copy()} onExpand={() => { if (!scopeTooLarge && !prepared.preview) void submit(() => prepared.prepare(), () => null) }} /><SiteActionFeedback message={null} error={error} siteId={siteId} /></div> : <span className="inline-flex flex-col items-start gap-2">
+    {presentation === 'preview' ? <div className="w-full"><FixPromptCard unavailable={scopeNotice ?? prepared.unavailable} prompt={prepared.preview} busy={busy} disabled={scopeTooLarge} copied={copied} copyLabel={copyLabel} onCopy={() => void copy()} onExpand={() => { if (!scopeTooLarge && !prepared.preview) void submit(() => prepared.prepare(), () => null) }} /><SiteActionFeedback message={recordNotice} error={error} siteId={siteId} /></div> : <span className="inline-flex flex-col items-start gap-2">
       <span className="inline-flex flex-wrap items-center gap-1"><Button size="sm" variant={area ? 'outline' : 'default'} disabled={busy || scopeTooLarge} onClick={() => void copy()} title={C.bundleBody}>
-        {copied ? <Check aria-hidden /> : <Copy aria-hidden />}{busy ? C.bundlePreparing : copied ? C.bundleCopied : flagIds ? C.fixSelected(flagIds.length) : area ? C.fixCategory : C.fixAll}
+        {copied ? <Check aria-hidden /> : <Copy aria-hidden />}{busy ? C.bundlePreparing : copied ? C.bundleCopied : copyLabel}
       </Button>
       <PromptPreviewButton key={`${siteId}:${area ?? 'all'}`} disabled={busy || scopeTooLarge} loadPrompt={async () => {
         const bundle = await prepared.prepare()
         return bundle.prompt
       }} /></span>
-      <SiteActionFeedback message={scopeNotice} error={error} siteId={siteId} />
+      <SiteActionFeedback message={recordNotice ?? scopeNotice} error={error} siteId={siteId} />
     </span>}
     <PromptPreviewDialog prompt={prepared.review ?? ''} open={prepared.review !== null} onOpenChange={open => { if (!open) prepared.closeReview() }} />
     <Dialog open={Boolean(manual)} onOpenChange={open => { if (!open) setManual(null) }}>

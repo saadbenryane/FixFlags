@@ -3,10 +3,10 @@ import { loadSiteRecommendations } from '../flags'
 import { newestRecordedFlag } from '../flag-resolution'
 import type { SiteRecord } from '../types'
 
-const db = vi.hoisted(() => ({ improvement: { findMany: vi.fn() }, flag: { findMany: vi.fn() } }))
+const db = vi.hoisted(() => ({ project: { findFirst: async () => ({ id: 'owned' }) }, improvement: { findMany: vi.fn() }, flag: { findMany: vi.fn() } }))
 vi.mock('@/lib/db', () => ({ prisma: db }))
 vi.mock('../application/incident-proofs', () => ({ currentImprovementWhere: {}, unboundSiteFindingWhere: () => ({}), loadIncidentRecoveryProofs: vi.fn().mockResolvedValue(new Map()) }))
-const site = { kind: 'project', projectId: 'owned-site' } as SiteRecord
+const site = { kind: 'project', projectId: 'owned-site', userId: 'owner' } as SiteRecord
 const time = (seconds: number) => new Date(Date.UTC(2026, 9, 17, 2, 0, seconds))
 const flag = (id: string, seconds: number) => ({ id, createdAt: time(seconds), auditId: 'audit-' + id, fingerprint: 'privacy-scope', checkId: 'no-privacy-policy',
   rubric: 'REACH', severity: 'POLISH', impactTag: 'TRUST', problem: 'No privacy policy link found', evidence: 'Recorded privacy link absence',

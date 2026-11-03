@@ -3,12 +3,19 @@ import { readFile } from 'node:fs/promises'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
-import { accessTokenForConnection, completeGoogleConnection, googleConnectionGrantScope, liveGoogleClient, refreshDueGoogleContexts, signConnectionState, syncGoogleConnection, type GoogleConnectionClient } from './google'
+import { getGoogleConnectionAccess, completeGoogleConnection, googleConnectionGrantScope, liveGoogleClient, refreshDueGoogleContexts, signConnectionState, syncGoogleConnection, type GoogleConnectionClient } from './google'
 import { loadSiteConnectionViews, connectionLines } from './read'
 import type { AnalyticsReport } from './report-scope'
 import { analyticsReportScope, searchReportScope, searchFactScope } from './report-scope'
+import { loadSiteHome } from '@/lib/sites/application/queries'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { GoogleProviderError } from '@/lib/integrations/google-response'
+import { runGoogleSearchForAudit } from '@/lib/audit/search/google'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
+
+const connectionToken = async (connection: Parameters<typeof getGoogleConnectionAccess>[0], userId: string) =>
+  (await getGoogleConnectionAccess(connection, userId))?.token ?? null
 
 run('Google credential ownership during refresh', () => {
   let userId: string
@@ -45,6 +52,31 @@ run('Google credential ownership during refresh', () => {
     return replacement
   }
 
+  it.each(['ANALYTICS', 'SEARCH_CONSOLE'] as const)('attributes $0 only after scoped report facts exist, including retained reports after revocation', async provider => {
+    enableGoogleFixture()
+    const connection = await connectionFixture('example.com', provider)
+    await prisma.siteConnection.update({ where: { id: connection.id }, data: {
+      propertyId: provider === 'ANALYTICS' ? 'properties/123' : 'sc-domain:example.com',
+    } })
+    const area = provider === 'ANALYTICS' ? 'tracking' : 'search'
+    const label = provider === 'ANALYTICS' ? SITE_BOARD_COPY.analyticsSource : SITE_BOARD_COPY.searchConsoleSource
+    const read = async () => (await loadSiteHome(connection.projectId, { ownerEvidence: true, viewerAuthenticated: true }))!
+    const empty = await read()
+    expect(empty.settings[provider === 'ANALYTICS' ? 'analytics' : 'searchConsole'].status).toBe('connected')
+    expect(empty.cards.find(card => card.id === area)?.sources).not.toContain(label)
+    const fact = await prisma.siteConnectionFact.create({ data: { connectionId: connection.id, projectId: connection.projectId,
+      kind: provider === 'ANALYTICS' ? 'analytics_site' : 'search_query', subject: 'Recorded context', sessions: 0, impressions: 0,
+      reportScope: provider === 'ANALYTICS' ? analyticsReportScope('example.com', 'properties/123')
+        : searchFactScope(searchReportScope('example.com', 'sc-domain:example.com'), 'https://example.com/')!,
+    } })
+    expect((await read()).cards.find(card => card.id === area)?.sources).toContain(label)
+    await prisma.siteConnection.update({ where: { id: connection.id }, data: { status: 'REVOKED' } })
+    const retained = await read()
+    expect(retained.cards.find(card => card.id === area)?.sources).toContain(label)
+    expect(retained.cards.find(card => card.id === area)?.facts.join(' ')).toContain('Provider unavailable; retained context.')
+    expect(await prisma.siteConnectionFact.findUniqueOrThrow({ where: { id: fact.id } })).toEqual(fact)
+  })
+
   it.each((['ANALYTICS', 'SEARCH_CONSOLE'] as const).flatMap(provider => [true, false].map(cached => ({ provider, cached }))))(
     'does not let a new Site owner borrow the previous owner\'s $provider grant (cached: $cached)', async ({ provider, cached }) => {
     enableGoogleFixture()
@@ -60,7 +92,7 @@ run('Google credential ownership during refresh', () => {
     const selected = await prisma.siteConnection.findUniqueOrThrow({ where: { id: initial.id } })
     const transport = vi.fn()
     vi.stubGlobal('fetch', transport)
-    expect(await accessTokenForConnection(selected, replacement.id)).toBeNull()
+    expect(await connectionToken(selected, replacement.id)).toBeNull()
     expect(transport).not.toHaveBeenCalled()
     expect((await loadSiteConnectionViews(initial.projectId))[provider === 'ANALYTICS' ? 'analytics' : 'searchConsole'])
       .toMatchObject({ status: 'not_connected', propertyLabel: null, lastSyncedAt: null })
@@ -91,6 +123,25 @@ run('Google credential ownership during refresh', () => {
     })
   })
 
+  it('gives retained grants independent authorization identities without changing their saved data', async () => {
+    const migration = await readFile(new URL('../../../prisma/migrations/20261102010000_site_connection_authorization/migration.sql', import.meta.url), 'utf8')
+    await prisma.$transaction(async tx => {
+      await tx.$executeRawUnsafe('SET LOCAL search_path = pg_temp')
+      await tx.$executeRawUnsafe('CREATE TEMP TABLE site_connections (id TEXT PRIMARY KEY, token TEXT NOT NULL) ON COMMIT DROP')
+      await tx.$executeRawUnsafe("INSERT INTO site_connections VALUES ('grant-a', 'retained-a'), ('grant-b', 'retained-b')")
+      await tx.$executeRawUnsafe(migration)
+      const rows = await tx.$queryRawUnsafe<Array<{ id: string; token: string; authorizationId: string }>>('SELECT id, token, "authorizationId" FROM site_connections ORDER BY id')
+      expect(rows.map(({ id, token }) => ({ id, token }))).toEqual([
+        { id: 'grant-a', token: 'retained-a' }, { id: 'grant-b', token: 'retained-b' },
+      ])
+      expect(rows.every(row => /^[a-f0-9-]{36}$/.test(row.authorizationId))).toBe(true)
+      expect(rows[0].authorizationId).not.toBe(rows[1].authorizationId)
+      const inserted = await tx.$queryRawUnsafe<Array<{ authorizationId: string }>>("INSERT INTO site_connections (id, token) VALUES ('grant-c', 'new-c') RETURNING \"authorizationId\"")
+      expect(inserted[0].authorizationId).toMatch(/^[a-f0-9-]{36}$/)
+      expect(rows.map(row => row.authorizationId)).not.toContain(inserted[0].authorizationId)
+    })
+  })
+
   it('requires the new owner\'s OAuth grant before restoring context without lending former-owner facts', async () => {
     enableGoogleFixture()
     vi.stubEnv('BETTER_AUTH_SECRET', 'google-authorization-fixture-secret')
@@ -107,7 +158,8 @@ run('Google credential ownership during refresh', () => {
       .resolves.toEqual({ projectId: initial.projectId })
     const current = await prisma.siteConnection.findUniqueOrThrow({ where: { id: initial.id } })
     expect(current).toMatchObject({ authorizedByUserId: replacement.id, status: 'UNAVAILABLE', propertyId: null, propertyLabel: null, lastSyncedAt: null })
-    expect(await accessTokenForConnection(current, replacement.id)).toBe('new-owner-access')
+    expect(current.authorizationId).not.toBe(initial.authorizationId)
+    expect(await connectionToken(current, replacement.id)).toBe('new-owner-access')
     expect((await loadSiteConnectionViews(initial.projectId)).facts).toEqual([])
     expect(await prisma.siteConnectionFact.findUnique({ where: { id: historical.id } })).toEqual(historical)
     queryAnalytics.mockResolvedValue({ pages: [], audience: { sessions: 19 } })
@@ -160,7 +212,7 @@ run('Google credential ownership during refresh', () => {
       await transferProject(connection.projectId)
       return Response.json({ access_token: 'fixture-late-access', expires_in: 3600 })
     }))
-    expect(await accessTokenForConnection(connection, userId)).toBeNull()
+    expect(await connectionToken(connection, userId)).toBeNull()
     expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })).toMatchObject({
       encryptedAccessToken: connection.encryptedAccessToken, encryptedRefreshToken: connection.encryptedRefreshToken,
       tokenExpiresAt: connection.tokenExpiresAt })
@@ -172,7 +224,7 @@ run('Google credential ownership during refresh', () => {
     await transferProject(connection.projectId)
     const transport = vi.fn(), queryAnalytics = vi.fn()
     vi.stubGlobal('fetch', transport)
-    expect(await accessTokenForConnection(connection, userId)).toBeNull()
+    expect(await connectionToken(connection, userId)).toBeNull()
     await expect(syncGoogleConnection({ userId, connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS',
       host: 'example.com', siteUrl: 'https://example.com/', accessToken: 'fixture-expired-access',
       client: { queryAnalytics } as unknown as GoogleConnectionClient })).rejects.toThrow('This connection changed')
@@ -484,7 +536,7 @@ run('Google credential ownership during refresh', () => {
     let finish!: (response: Response) => void
     const transport = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
     vi.stubGlobal('fetch', transport)
-    const refreshing = accessTokenForConnection(connection, userId)
+    const refreshing = connectionToken(connection, userId)
     await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce())
     await prisma.siteConnection.update({ where: { id: connection.id }, data: {
       status: 'REVOKED', encryptedAccessToken: null, encryptedRefreshToken: null, tokenExpiresAt: null,
@@ -501,9 +553,9 @@ run('Google credential ownership during refresh', () => {
     let finish!: (response: Response) => void
     const transport = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
     vi.stubGlobal('fetch', transport)
-    const refreshing = accessTokenForConnection(connection, userId)
+    const refreshing = connectionToken(connection, userId)
     await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce())
-    const replacement = { encryptedAccessToken: encryptSecret('fixture-replacement-access'), encryptedRefreshToken: encryptSecret('fixture-replacement-refresh'),
+    const replacement = { authorizationId: randomUUID(), encryptedAccessToken: encryptSecret('fixture-replacement-access'), encryptedRefreshToken: encryptSecret('fixture-replacement-refresh'),
       tokenExpiresAt: new Date(Date.now() + 3600_000) }
     await prisma.siteConnection.update({ where: { id: connection.id }, data: replacement })
     finish(new Response(JSON.stringify({ access_token: 'fixture-older-refresh', expires_in: 3600 }), { status: 200 }))
@@ -516,22 +568,23 @@ run('Google credential ownership during refresh', () => {
     const responses: Array<(response: Response) => void> = []
     const transport = vi.fn(() => new Promise<Response>(resolve => { responses.push(resolve) }))
     vi.stubGlobal('fetch', transport)
-    const first = accessTokenForConnection(connection, userId)
+    const first = connectionToken(connection, userId)
     await vi.waitFor(() => expect(transport).toHaveBeenCalledTimes(1))
-    const second = accessTokenForConnection(connection, userId)
+    const second = connectionToken(connection, userId)
     await vi.waitFor(() => expect(transport).toHaveBeenCalledTimes(2))
-    responses[0](Response.json({ access_token: 'fixture-winning-access', expires_in: 3600 }))
+    responses[0](Response.json({ access_token: 'fixture-winning-access', refresh_token: 'fixture-winning-refresh', expires_in: 3600 }))
     expect(await first).toBe('fixture-winning-access')
     const committed = await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })
     responses[1](result === 'success' ? Response.json({ access_token: 'fixture-losing-access', expires_in: 3600 })
       : result === 'refused' ? Response.json({ error_description: 'Controlled competing refresh refusal' }, { status: 401 })
         : Response.json({ access_token: 'fixture-incomplete-access' }))
     expect(await second).toBe('fixture-winning-access')
-    expect(await accessTokenForConnection(connection, userId)).toBe('fixture-winning-access')
+    expect(await connectionToken(connection, userId)).toBe('fixture-winning-access')
     expect(transport).toHaveBeenCalledTimes(2)
     expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })).toMatchObject({
       encryptedAccessToken: committed.encryptedAccessToken, tokenExpiresAt: committed.tokenExpiresAt,
-      encryptedRefreshToken: connection.encryptedRefreshToken, status: 'CONNECTED' })
+      encryptedRefreshToken: committed.encryptedRefreshToken, authorizationId: connection.authorizationId, status: 'CONNECTED' })
+    expect(decryptSecret(committed.encryptedRefreshToken!)).toBe('fixture-winning-refresh')
   })
 
   it.each(['revoked', 'replaced', 'owner', 'suspended'] as const)('does not reuse a winning refresh after its %s authority changes', async change => {
@@ -539,7 +592,7 @@ run('Google credential ownership during refresh', () => {
     let finish!: (response: Response) => void
     const transport = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
     vi.stubGlobal('fetch', transport)
-    const refreshing = accessTokenForConnection(connection, userId)
+    const refreshing = connectionToken(connection, userId)
     await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce())
     await prisma.siteConnection.update({ where: { id: connection.id }, data: {
       encryptedAccessToken: encryptSecret('fixture-winning-access'), tokenExpiresAt: new Date(Date.now() + 3600_000) } })
@@ -547,10 +600,10 @@ run('Google credential ownership during refresh', () => {
     else if (change === 'suspended') await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'SUSPENDED' } })
     else await prisma.siteConnection.update({ where: { id: connection.id }, data: change === 'revoked'
       ? { status: 'REVOKED', encryptedAccessToken: null, encryptedRefreshToken: null }
-      : { encryptedRefreshToken: encryptSecret('replacement-grant'), encryptedAccessToken: encryptSecret('replacement-access') } })
+      : { authorizationId: randomUUID(), encryptedRefreshToken: encryptSecret('replacement-grant'), encryptedAccessToken: encryptSecret('replacement-access') } })
     finish(Response.json({ access_token: 'fixture-late-access', expires_in: 3600 }))
     expect(await refreshing).toBeNull()
-    expect(await accessTokenForConnection(connection, userId)).toBeNull()
+    expect(await connectionToken(connection, userId)).toBeNull()
     expect(transport).toHaveBeenCalledOnce()
   })
 
@@ -559,9 +612,9 @@ run('Google credential ownership during refresh', () => {
     const connection = await prisma.siteConnection.update({ where: { id: initial.id }, data: { tokenExpiresAt: new Date(Date.now() + 3600_000) } })
     const transport = vi.fn()
     vi.stubGlobal('fetch', transport)
-    expect(await accessTokenForConnection(connection, userId)).toBe('fixture-expired-access')
+    expect(await connectionToken(connection, userId)).toBe('fixture-expired-access')
     await prisma.siteConnection.update({ where: { id: connection.id }, data: { status: 'REVOKED', encryptedAccessToken: null, encryptedRefreshToken: null, tokenExpiresAt: null } })
-    expect(await accessTokenForConnection(connection, userId)).toBeNull()
+    expect(await connectionToken(connection, userId)).toBeNull()
     expect(transport).not.toHaveBeenCalled()
   })
 
@@ -579,7 +632,7 @@ run('Google credential ownership during refresh', () => {
     const rejected = expect(reading).rejects.toThrow('This connection changed')
     await vi.waitFor(() => expect(queryAnalytics).toHaveBeenCalledOnce())
     const replacement = change === 'disconnect' ? { status: 'REVOKED' as const, encryptedAccessToken: null, encryptedRefreshToken: null, tokenExpiresAt: null }
-      : { status: 'CONNECTED' as const, encryptedAccessToken: encryptSecret('fixture-new-account'), encryptedRefreshToken: encryptSecret('fixture-new-refresh'),
+      : { status: 'CONNECTED' as const, authorizationId: randomUUID(), encryptedAccessToken: encryptSecret('fixture-new-account'), encryptedRefreshToken: encryptSecret('fixture-new-refresh'),
           tokenExpiresAt: new Date(Date.now() + 3600_000), propertyId: 'properties/replacement' }
     await prisma.siteConnection.update({ where: { id: connection.id }, data: replacement })
     finish([{ pagePath: '/', sessions: 99 }])
@@ -588,10 +641,67 @@ run('Google credential ownership during refresh', () => {
     expect(await prisma.siteConnectionFact.findMany({ where: { connectionId: connection.id } })).toEqual([previous])
   })
 
+  it('retains a rotated refresh token for the next unattended renewal', async () => {
+    const connection = await connectionFixture()
+    const requestedRefreshTokens: string[] = []
+    const transport = vi.fn(async (_url: string, options: RequestInit) => {
+      requestedRefreshTokens.push(new URLSearchParams(String(options.body)).get('refresh_token')!)
+      return Response.json(requestedRefreshTokens.length === 1
+        ? { access_token: 'fixture-first-access', refresh_token: 'fixture-rotated-refresh', expires_in: 3600 }
+        : { access_token: 'fixture-second-access', expires_in: 3600 })
+    })
+    vi.stubGlobal('fetch', transport)
+    const access = await getGoogleConnectionAccess(connection, userId)
+    expect(access?.token).toBe('fixture-first-access')
+    const rotated = await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })
+    expect(decryptSecret(rotated.encryptedRefreshToken!)).toBe('fixture-rotated-refresh')
+    expect(access?.grant).toMatchObject({ authorizationId: rotated.authorizationId, encryptedAccessToken: rotated.encryptedAccessToken,
+      encryptedRefreshToken: rotated.encryptedRefreshToken, tokenExpiresAt: rotated.tokenExpiresAt })
+    expect(rotated.authorizationId).toBe(connection.authorizationId)
+    expect(await connectionToken(connection, userId)).toBe('fixture-first-access')
+    const expired = await prisma.siteConnection.update({ where: { id: connection.id }, data: { tokenExpiresAt: new Date(0) } })
+    expect(await connectionToken(expired, userId)).toBe('fixture-second-access')
+    expect(requestedRefreshTokens).toEqual(['fixture-refresh', 'fixture-rotated-refresh'])
+    expect((await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })).encryptedRefreshToken)
+      .toBe(rotated.encryptedRefreshToken)
+  })
+
+  it.each((['AUTH_EXPIRED', 'PERMISSION_REFUSED'] as const).flatMap(code => [false, true].map(renewed => ({ code, renewed }))))(
+    'retains an attributable $code receipt without invalidating a later renewal (renewed: $renewed)', async ({ code, renewed }) => {
+      const initial = await connectionFixture('example.com', 'SEARCH_CONSOLE')
+      const connection = await prisma.siteConnection.update({ where: { id: initial.id }, data: { propertyId: 'sc-domain:example.com' } })
+      const audit = await prisma.audit.create({ data: { projectId: connection.projectId, userId, url: 'https://example.com/', status: 'COMPLETED' } })
+      let renewals = 0
+      vi.stubGlobal('fetch', vi.fn(async (target: string | URL | Request, options?: RequestInit) => {
+        const url = new URL(typeof target === 'string' ? target : target instanceof URL ? target.href : target.url)
+        if (url.hostname === 'oauth2.googleapis.com' && url.pathname === '/token') {
+          renewals++
+          return Response.json({ access_token: 'fixture-access-' + renewals, refresh_token: 'fixture-refresh-' + renewals, expires_in: 3600 })
+        }
+        expect(url.href).toBe('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect')
+        expect(new Headers(options?.headers).get('authorization')).toBe('Bearer fixture-access-1')
+        if (renewed) {
+          await prisma.siteConnection.update({ where: { id: connection.id }, data: { tokenExpiresAt: new Date(0) } })
+          expect(await connectionToken(connection, userId)).toBe('fixture-access-2')
+        }
+        return Response.json({ error: { status: code === 'AUTH_EXPIRED' ? 'UNAUTHENTICATED' : 'PERMISSION_DENIED' } },
+          { status: code === 'AUTH_EXPIRED' ? 401 : 403 })
+      }))
+      const result = await runGoogleSearchForAudit({ auditId: audit.id, userId, pages: [{ url: audit.url }],
+        sections: ['index'], deadline: Date.now() + 10_000 })
+      expect(result.receipts).toEqual([expect.objectContaining({ complete: false,
+        observations: [expect.objectContaining({ disposition: 'unknown', reason: code })] })])
+      const saved = await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })
+      expect(saved).toMatchObject({ authorizationId: connection.authorizationId, status: renewed ? 'CONNECTED' : 'NEEDS_REAUTH' })
+      expect(decryptSecret(saved.encryptedAccessToken!)).toBe('fixture-access-' + (renewed ? 2 : 1))
+      expect(renewals).toBe(renewed ? 2 : 1)
+    },
+  )
+
   it('commits current credentials and traffic facts together after a successful refresh', async () => {
     const connection = await connectionFixture()
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ access_token: 'fixture-current-access', expires_in: 3600 }), { status: 200 })))
-    const token = await accessTokenForConnection(connection, userId)
+    const token = await connectionToken(connection, userId)
     expect(token).toBe('fixture-current-access')
     const client = { findAnalyticsProperty: async () => ({ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }),
       queryAnalytics: async () => ({ pages: [{ pagePath: '/', sessions: 7 }], audience: {} }) } as unknown as GoogleConnectionClient
@@ -603,14 +713,36 @@ run('Google credential ownership during refresh', () => {
     expect(saved.facts[0]).toMatchObject({ sessions: 7, pagePath: '/' })
   })
 
+  it.each([false, true])('retains same-grant report authority across renewal without accepting old-token refusal (refused: %s)', async refused => {
+    const connection = await connectionFixture()
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ access_token: 'fixture-current-access',
+      refresh_token: 'fixture-current-refresh', expires_in: 3600 })))
+    const client = {
+      findAnalyticsProperty: async () => ({ propertyId: 'properties/123', label: 'Fixture', streamUrls: ['https://example.com/'] }),
+      queryAnalytics: async () => {
+        expect(await connectionToken(connection, userId)).toBe('fixture-current-access')
+        if (refused) throw new GoogleProviderError('AUTH_EXPIRED')
+        return { pages: [], audience: { sessions: 7 } }
+      },
+    } as unknown as GoogleConnectionClient
+    const syncing = syncGoogleConnection({ userId, connectionId: connection.id, projectId: connection.projectId,
+      provider: 'ANALYTICS', host: 'example.com', siteUrl: 'https://example.com/', accessToken: 'fixture-expired-access', client })
+    if (refused) await expect(syncing).rejects.toThrow('This connection changed')
+    else await expect(syncing).resolves.toMatchObject({ status: 'CONNECTED' })
+    const saved = await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id }, include: { facts: true } })
+    expect(saved).toMatchObject({ status: 'CONNECTED', authorizationId: connection.authorizationId })
+    expect(decryptSecret(saved.encryptedRefreshToken!)).toBe('fixture-current-refresh')
+    expect(saved.facts).toEqual(refused ? [] : [expect.objectContaining({ sessions: 7, kind: 'analytics_site' })])
+  })
+
   it('keeps a grant comparable across token refresh but refuses stale permission writes after replacement', async () => {
     const connection = await connectionFixture()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ access_token: 'fixture-current-access', expires_in: 3600 }), { status: 200 })))
-    expect(await accessTokenForConnection(connection, userId)).toBe('fixture-current-access')
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ access_token: 'fixture-current-access', refresh_token: 'fixture-current-refresh', expires_in: 3600 })))
+    expect(await connectionToken(connection, userId)).toBe('fixture-current-access')
     const scope = googleConnectionGrantScope(connection, userId)
     expect((await prisma.siteConnection.updateMany({ where: scope, data: { status: 'NEEDS_REAUTH' } })).count).toBe(1)
     await prisma.siteConnection.update({ where: { id: connection.id }, data: {
-      status: 'CONNECTED', encryptedAccessToken: encryptSecret('fixture-new-account'), encryptedRefreshToken: encryptSecret('fixture-new-grant'),
+      status: 'CONNECTED', authorizationId: randomUUID(), encryptedAccessToken: encryptSecret('fixture-new-account'), encryptedRefreshToken: encryptSecret('fixture-new-grant'),
     } })
     expect((await prisma.siteConnection.updateMany({ where: scope, data: { status: 'NEEDS_REAUTH' } })).count).toBe(0)
     expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })).toMatchObject({ status: 'CONNECTED' })
@@ -631,6 +763,26 @@ run('Google credential ownership during refresh', () => {
     expect(saved.status).toBe('CONNECTED')
     expect(decryptSecret(saved.encryptedAccessToken!)).toBe('fixture-new-access')
     expect(saved.encryptedRefreshToken).toBeNull()
+  })
+
+  it('fences the former authorization after same-owner OAuth reconnection', async () => {
+    const connection = await connectionFixture()
+    vi.stubEnv('BETTER_AUTH_SECRET', 'google-authorization-fixture-secret')
+    const client = {
+      exchangeCode: async () => ({ accessToken: 'fixture-new-access', refreshToken: 'fixture-refresh', expiresInSeconds: 3600 }),
+      findAnalyticsProperty: async () => null,
+    } as unknown as GoogleConnectionClient
+    const state = signConnectionState({ userId, projectId: connection.projectId, provider: 'ANALYTICS' })
+    await expect(completeGoogleConnection({ state, code: 'reconnection', sessionUserId: userId, client }))
+      .resolves.toEqual({ projectId: connection.projectId })
+    const current = await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })
+    expect(current.authorizationId).not.toBe(connection.authorizationId)
+    const transport = vi.fn()
+    vi.stubGlobal('fetch', transport)
+    expect(await connectionToken(connection, userId)).toBeNull()
+    expect(await connectionToken(current, userId)).toBe('fixture-new-access')
+    expect(transport).not.toHaveBeenCalled()
+    expect((await prisma.siteConnection.updateMany({ where: googleConnectionGrantScope(connection, userId), data: { status: 'NEEDS_REAUTH' } })).count).toBe(0)
   })
 
   async function monitoredContext(host: string, now: Date) {
@@ -750,9 +902,9 @@ run('Google credential ownership during refresh', () => {
     await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })
     const transport = vi.fn()
     vi.stubGlobal('fetch', transport)
-    expect(await accessTokenForConnection(connection, userId)).toBeNull()
+    expect(await connectionToken(connection, userId)).toBeNull()
     const expired = await prisma.siteConnection.update({ where: { id: connection.id }, data: { tokenExpiresAt: new Date(0) } })
-    expect(await accessTokenForConnection(expired, userId)).toBeNull()
+    expect(await connectionToken(expired, userId)).toBeNull()
     expect(transport).not.toHaveBeenCalled()
   })
 
@@ -781,7 +933,7 @@ run('Google credential ownership during refresh', () => {
     let finish!: (response: Response) => void
     const transport = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
     vi.stubGlobal('fetch', transport)
-    const refreshing = accessTokenForConnection(connection, userId)
+    const refreshing = connectionToken(connection, userId)
     try {
       await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce())
       await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })

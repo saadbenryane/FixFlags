@@ -73,6 +73,20 @@ describe('open-check', () => {
     expect(result.outcome).toBe('auth_required')
     expect(result.shouldFlagDead).toBe(false)
   })
+  it.each(['https://example.com/login?next=%2Fdetails', 'https://example.com/account/login#continue', 'https://example.com/sign-in/?next=/details'])(
+    'recognizes the actual sign-in path independently of query and fragment: %s', async finalUrl => {
+      const result = await openCheckDestination('https://example.com/details', {
+        fetchImpl: async () => jsonResponse(200, '<h1>Sign in to continue</h1>', { 'content-type': 'text/html' }, finalUrl),
+      })
+      expect(result).toMatchObject({ outcome: 'auth_required', status: 200, shouldFlagDead: false })
+    })
+  it('does not interpret an authentication path inside a query as the destination path', async () => {
+    const finalUrl = 'https://example.com/details?example=/login'
+    const result = await openCheckDestination(finalUrl, {
+      fetchImpl: async () => jsonResponse(200, '<h1>Useful details</h1>', { 'content-type': 'text/html' }, finalUrl),
+    })
+    expect(result).toMatchObject({ outcome: 'reachable', status: 200, shouldFlagDead: false })
+  })
 
   it('Flags a 200 soft-404', async () => {
     const html = '<html><title>Page not found</title><h1>Page not found</h1></html>'

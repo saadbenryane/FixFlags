@@ -30,6 +30,13 @@ describe('Site presentation', () => {
     expect(resultPresentation({ auditStatus: 'FAILED', healthState: 'healthy', flagCount: 0, stale: false, hasCurrentEvidence: true }).state).toBe('failed')
   })
 
+  it('keeps incomplete assessment evidence distinct from its stale observations', () => {
+    const input = { auditStatus: 'COMPLETED', healthState: 'unknown' as const, flagCount: 0, stale: true, hasCurrentEvidence: true }
+    expect(resultPresentation({ ...input, assessmentResult: 'COULD_NOT_VERIFY' }).state).toBe('could_not_verify')
+    expect(resultPresentation({ ...input, assessmentResult: 'STALE' }).state).toBe('stale')
+    expect(resultPresentation({ ...input, assessmentResult: 'FLAG' }).state).toBe('flags')
+  })
+
   it('ranks work, Fix-first Flags, evidence gaps, other Flags, then clear Sites', () => {
     const base = {
       identity: { siteId: 'site-1', name: 'Example', host: 'example.com', preview: null },

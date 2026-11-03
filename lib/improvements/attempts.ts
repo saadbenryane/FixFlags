@@ -22,7 +22,7 @@ import { systemClock } from '@/lib/time/clock'
 import type {
 Prisma
 } from '@prisma/client'
-import { assertAttemptReplay,attemptIntentHash,normalizedAttemptValue } from './attempt-intent'
+import { assertAttemptReplay,attemptIntentHash,normalizedAttemptValue,ImprovementAttemptConflict } from './attempt-intent'
 
 import { ensureOwnedFlagIdentity, ownedFlagIdentityInclude } from './owned-flag-identity'
 import type { ImprovementServiceDependencies } from './service-types'
@@ -32,6 +32,7 @@ export async function createImprovementAttempt(input: {
   projectId: string
   userId: string
   sourceAuditId: string
+  sourceFlagIds?: string[]
   builder: string
   client?: string
   actor?: string
@@ -45,7 +46,9 @@ export async function createImprovementAttempt(input: {
   const clock = dependencies.clock ?? systemClock
   const changeSummary = normalizedAttemptValue(input.changeSummary)
   const idempotencyKey = input.idempotencyKey?.trim() || null
-  const requestHash = idempotencyKey ? attemptIntentHash(input) : null
+  const sourceFlagIds = [...new Set(input.sourceFlagIds ?? [])].sort()
+  const intent = { ...input, sourceFlagIds }
+  const requestHash = idempotencyKey ? attemptIntentHash(intent) : null
   const improvement = await prisma.improvement.findFirst({
     where: {
       id: input.improvementId,
@@ -64,6 +67,15 @@ export async function createImprovementAttempt(input: {
       SELECT "id" FROM "projects" WHERE "id" = ${input.projectId}
         AND "userId" = ${input.userId} AND "deletedAt" IS NULL FOR UPDATE`
     if (projects.length !== 1) throw new Error('Improvement not found for Product')
+    const sameSourceScope = (attempt: { sourceFlagIds?: string[] }) =>
+      JSON.stringify((attempt.sourceFlagIds ?? []).toSorted()) === JSON.stringify(sourceFlagIds)
+    if (sourceFlagIds.length) {
+      if (sourceFlagIds.length > 5000 || input.handoffReference?.startsWith('flag:') &&
+        !sourceFlagIds.includes(input.handoffReference.slice(5))) throw new ImprovementAttemptConflict()
+      const sources = await tx.improvementOccurrence.findMany({ where: { improvementId: improvement.id,
+        flagId: { in: sourceFlagIds }, audit: { projectId: input.projectId, userId: input.userId } }, select: { flagId: true } })
+      if (sources.length !== sourceFlagIds.length) throw new ImprovementAttemptConflict()
+    }
     // Attempt creation and result projection share one lock across source
     // reviews, so an older run cannot overwrite a newer recorded repair.
     await tx.$executeRaw`
@@ -74,7 +86,7 @@ export async function createImprovementAttempt(input: {
     if (idempotencyKey) {
       const recorded = await tx.improvementAttempt.findUnique({ where: { improvementId_idempotencyKey: { improvementId: improvement.id, idempotencyKey } } })
       if (recorded) {
-        assertAttemptReplay(input, recorded)
+        assertAttemptReplay(intent, recorded)
         return recorded
       }
     }
@@ -86,8 +98,10 @@ export async function createImprovementAttempt(input: {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
+    // A new selection is a new repair, even when an older unkeyed draft exists.
+    if (existing && !sameSourceScope(existing)) existing = null
     if (existing?.frozen || existing?.idempotencyKey || existing?.verificationAuditId) {
-      const changed = (['handoffReference', 'pullRequestReference', 'commitReference', 'deploymentReference', 'changeSummary'] as const)
+      const changed = !sameSourceScope(existing) || (['handoffReference', 'pullRequestReference', 'commitReference', 'deploymentReference', 'changeSummary'] as const)
         .some(key => input[key] !== undefined && normalizedAttemptValue(input[key]) !== normalizedAttemptValue(existing![key]))
       if (!changed) return existing
       existing = null
@@ -97,6 +111,7 @@ export async function createImprovementAttempt(input: {
       data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
     })
     const data = {
+      ...(sourceFlagIds.length ? { sourceFlagIds } : {}),
       builder: input.builder,
       handoffReference: normalizedAttemptValue(input.handoffReference) ?? undefined,
       pullRequestReference: normalizedAttemptValue(input.pullRequestReference) ?? undefined,
@@ -114,7 +129,7 @@ export async function createImprovementAttempt(input: {
         verificationAuditId: null, outcome: null, frozen: false }, data })
       const current = await tx.improvementAttempt.findUniqueOrThrow({ where: { id: existing.id } })
       if (changed.count > 0) attempt = current
-      else if ((['handoffReference', 'pullRequestReference', 'commitReference', 'deploymentReference', 'changeSummary'] as const)
+      else if (sameSourceScope(current) && (['handoffReference', 'pullRequestReference', 'commitReference', 'deploymentReference', 'changeSummary'] as const)
         .every(key => input[key] === undefined || normalizedAttemptValue(input[key]) === normalizedAttemptValue(current[key]))) return current
     }
     if (!attempt) attempt = await tx.improvementAttempt.create({
@@ -160,11 +175,13 @@ export async function createImprovementAttempt(input: {
 
 export async function recordFlagImprovementAttempt(input: {
   flagId: string
+  sourceFlagIds?: string[]
   userId: string
   builder: string
   client?: string
   actor?: string
   action: 'ACCEPT' | 'HANDOFF_COPIED' | 'READY_TO_VERIFY' | 'REJECT'
+  handoffRevision?: { promptHash: string; referenceFlagId: string; context?: Prisma.InputJsonObject }
   changeSummary?: string
   deploymentReference?: string
   commitReference?: string
@@ -190,6 +207,7 @@ export async function recordFlagImprovementAttempt(input: {
       SELECT "id" FROM "projects" WHERE "id" = ${flag.audit.projectId}
         AND "userId" = ${input.userId} AND "deletedAt" IS NULL FOR UPDATE`
     if (projects.length !== 1) throw new Error('Flag is not attached to an owned Product')
+    if (input.action === 'HANDOFF_COPIED') await dependencies.validateHandoff?.()
     const linked = await ensureOwnedFlagIdentity(tx, flag, {
       userId: input.userId, transport: input.builder, client: input.client, actor: input.actor,
     })
@@ -220,8 +238,10 @@ export async function recordFlagImprovementAttempt(input: {
     } else if (input.action === 'HANDOFF_COPIED') {
       await appendImprovementCycleEvent({
         ...event,
-        idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}`,
+        idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}${input.handoffRevision ? `:${input.handoffRevision.promptHash}` : ''}`,
         type: 'HANDOFF_COPIED',
+        ...(input.handoffRevision ? { contextCorrection: { schemaVersion: 'fixflags.handoff-receipt.v1',
+          sourceFlagId: flag.id, ...input.handoffRevision } } : {}),
       }, tx)
     } else if (input.action === 'ACCEPT') {
       await tx.improvement.updateMany({
@@ -260,6 +280,7 @@ export async function recordFlagImprovementAttempt(input: {
     client: input.client,
     actor: input.actor,
     handoffReference: `flag:${flag.id}`,
+    sourceFlagIds: input.sourceFlagIds,
     deploymentReference: input.deploymentReference,
     commitReference: input.commitReference,
     idempotencyKey: input.idempotencyKey,

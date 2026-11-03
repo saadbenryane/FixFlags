@@ -15,6 +15,14 @@ export function watchEmailSelection(projectId: string, regressions: Finding[], r
 const selectionIdentity = (selection: Selection) => JSON.stringify({ projectId: selection.projectId,
   regressions: [...new Set(selection.regressions)].sort(), recoveries: [...new Set(selection.recoveries)].sort() })
 
+/** Retained provider bodies do not depend on loading today's repair context. */
+export function hasRecordedWatchSelection(recorded: unknown, selection: Selection, broadLegacyPermission: boolean): boolean {
+  if (recorded == null) return false
+  const { previous = [], ...current } = watchEmailPayloadSchema.parse(recorded)
+  return !current.selection && broadLegacyPermission || [current, ...previous].some(snapshot =>
+    snapshot.selection && selectionIdentity(snapshot.selection) === selectionIdentity(selection))
+}
+
 /** One permitted selection owns one immutable provider body and delivery key.
  * A changed selection is a new intent; earlier uncertain deliveries stay recorded. */
 export function selectWatchEmailDelivery(input: {

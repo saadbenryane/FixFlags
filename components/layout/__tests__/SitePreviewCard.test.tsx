@@ -7,6 +7,27 @@ const captures: SiteCapture[] = [
   { auditId: 'current', url: '/api/screenshots/current/mobile', pageUrl: 'https://example.com/', device: 'mobile', previous: false, viewport: '390 × 844', recordedAt: '2026-10-12T12:00:00.000Z' },
 ]
 describe('website capture preview', () => {
+  it('opens the available capture as it arrives and respects a later explicit device choice', () => {
+    const view = render(<SitePreviewCard host="example.com" captures={[]} />)
+    view.rerender(<SitePreviewCard host="example.com" captures={[captures[1]]} />)
+    expect(view.container.querySelector('img')).toHaveAttribute('src', captures[1].url)
+    expect(screen.getByRole('button', { name: 'Mobile' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Desktop' }))
+    expect(screen.getByText('No screenshot recorded')).toBeVisible()
+    expect(view.container.querySelector('img')).toBeNull()
+    view.rerender(<SitePreviewCard host="example.com" captures={captures} />)
+    expect(view.container.querySelector('img')).toHaveAttribute('src', captures[0].url)
+    expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'true')
+  })
+  it('keeps a shared empty state quiet without offering redundant device switches', () => {
+    const view = render(<SitePreviewCard host="example.com" captures={[]} availability={{ desktop: 'pending', mobile: 'pending' }} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing screenshot')
+    expect(screen.queryByRole('button', { name: 'Desktop' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mobile' })).not.toBeInTheDocument()
+    view.rerender(<SitePreviewCard host="example.com" captures={[]} availability={{ desktop: 'unavailable', mobile: 'unavailable' }} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Screenshot unavailable')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
   it('prioritizes the primary workspace capture without changing its authorized source', () => {
     const view = render(<SitePreviewCard host="example.com" captures={captures} priority />)
     const image = view.container.querySelector('img')!
@@ -23,7 +44,7 @@ describe('website capture preview', () => {
     expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Mobile' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Desktop' }).textContent).toBe('')
-    expect(screen.queryByText(/Previous capture/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Previous capture/)).toBeVisible()
     expect(screen.queryByText('https://example.com/')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('Previous capture')
@@ -48,7 +69,7 @@ describe('website capture preview', () => {
   it('does not substitute desktop evidence for a missing mobile capture', () => {
     const view = render(<SitePreviewCard host="example.com" captures={[captures[0]]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Mobile' }))
-    expect(screen.getByText('No screenshot yet')).toBeVisible()
+    expect(screen.getByText('No screenshot recorded')).toBeVisible()
     expect(view.container.querySelector('img')).toBeNull()
   })
   it('shows failed image loading honestly instead of offering an empty enlargement', () => {
@@ -56,5 +77,12 @@ describe('website capture preview', () => {
     fireEvent.error(view.container.querySelector('img')!)
     expect(screen.getByText('Screenshot unavailable')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Open captured page for example.com' })).not.toBeInTheDocument()
+  })
+  it('distinguishes an unfinished capture task from a terminal missing capture', () => {
+    const view = render(<SitePreviewCard host="example.com" captures={[]} availability={{ desktop: 'pending', mobile: 'not_recorded' }} />)
+    expect(screen.getByText('Preparing screenshot')).toBeVisible()
+    view.rerender(<SitePreviewCard host="example.com" captures={[]} availability={{ desktop: 'unavailable', mobile: 'not_recorded' }} />)
+    expect(screen.getByText('Screenshot unavailable')).toBeVisible()
+    expect(screen.queryByText('Preparing screenshot')).not.toBeInTheDocument()
   })
 })

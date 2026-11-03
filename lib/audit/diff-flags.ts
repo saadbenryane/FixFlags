@@ -14,8 +14,7 @@ import { Prisma } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
 import { createRecordedRecoveryReader, type RecoveryExecution, type RecoveryFlag } from './recovery-evidence'
 import { readExecutionSpec, type ExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import { CHECK_REGISTRY } from './check-registry'
-import { SEARCH_DEFINITIONS } from './search/definitions'
+import { loadRecoveryExecutions } from './recovery-executions'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
 import { analysisEnvironmentWhere, siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
@@ -254,21 +253,6 @@ function categoryAdmitsFlag(spec: ExecutionSpec | null, flag: FlagRow): boolean 
   return affected.length === 0 || affected.some(page => pages.has(page))
 }
 
-/** Read compact responsibility receipts only when absent findings need a recovery decision. */
-async function loadRecoveryExecutions(auditId: string, executionSpec: unknown, flags: RecoveryFlag[]): Promise<RecoveryExecution[]> {
-  if (!flags.length || readExecutionSpec(executionSpec)?.engine !== 'progressive-v1') return []
-  const ids = [...new Set(flags.flatMap(flag => baseCheckId(flag.checkId) ?? []))]
-  const targets = new Set(ids.flatMap(id => ['check:' + id, 'module:' + CHECK_REGISTRY[id]?.module]))
-  for (const definition of SEARCH_DEFINITIONS) if (definition.checkIds.some(id => ids.includes(id))) {
-    targets.add('module:search'); targets.add('module:search-' + definition.evaluator)
-    if (definition.evaluator === 'google') {
-      targets.add('module:search-google-index'); targets.add('module:search-google-performance')
-    }
-  }
-  return prisma.auditVerifierExecution.findMany({ where: { auditId, status: 'COMPLETED', targetKey: { in: [...targets] } },
-    select: { targetKey: true, status: true, detail: true }, take: 1200 })
-}
-
 export function reviewedPageUrls(input: {
   pages: ChildPageCoverage[]
   flags: Array<Pick<FlagRow, 'pageUrl' | 'affectedPaths'>>
@@ -313,8 +297,8 @@ export async function diffFlagsAgainstParent(
     parentFlags: parentRows.filter(flag => !outcomeFlagOwner(flag.fingerprint) && (!spec?.category || Object.hasOwn(spec.checks, baseCheckId(flag.checkId) ?? ''))), currentFlags: monitoringFlags })
 
   const monitoringByKey = indexByMatchKeys(monitoringFlags)
-  const recovery = await loadRecoveryExecutions(monitoringAuditId, child.executionSpec,
-    parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))))
+  const recovery = spec?.engine === 'progressive-v1' ? (await loadRecoveryExecutions([{ auditId: monitoringAuditId,
+    flags: parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))) }])).get(monitoringAuditId) ?? [] : []
   const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
     reportCompleteness: child.reportCompleteness, childPages: child.pages,
     auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery })
@@ -322,7 +306,7 @@ export async function diffFlagsAgainstParent(
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
   }> = []
-  const seenMonitoringIds = new Set<string>()
+  const monitoringUpdates = new Map<string, typeof updates[number]>()
 
   for (const parentFlag of parentFlags) {
     const monitoringFlag = observationMatchKeys(parentFlag)
@@ -346,16 +330,17 @@ export async function diffFlagsAgainstParent(
       stillFails: true,
     })
 
-    // Several parent pages can share one base check (per-page ::page:N
-    // variants collapse onto the same monitoring flag). Update the monitoring
-    // flag once, and keep the strongest status for the parent rows.
-    if (!seenMonitoringIds.has(monitoringFlag.id)) {
-      seenMonitoringIds.add(monitoringFlag.id)
-      updates.push({
+    // Several original conditions can share one current Flag. A later
+    // recurrence or severity increase must survive any earlier OPEN match.
+    const pending = monitoringUpdates.get(monitoringFlag.id)
+    if (!pending) {
+      const update = {
         id: monitoringFlag.id,
         data: { status },
-      })
-    }
+      }
+      monitoringUpdates.set(monitoringFlag.id, update)
+      updates.push(update)
+    } else if (status === 'REGRESSED') pending.data.status = status
     if (parentFlag.status === 'FIXED') continue
     updates.push({
       id: parentFlag.id,
@@ -467,8 +452,8 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
     parentFlags: parentRows.filter(diagnostic), currentFlags: monitoringFlags })
 
   const monitoringByKey = indexByMatchKeys(monitoringFlags)
-  const recovery = await loadRecoveryExecutions(monitoringAuditId, child.executionSpec,
-    parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))))
+  const recovery = spec?.engine === 'progressive-v1' ? (await loadRecoveryExecutions([{ auditId: monitoringAuditId,
+    flags: parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))) }])).get(monitoringAuditId) ?? [] : []
   const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
     reportCompleteness: child.reportCompleteness, childPages: child.pages,
     auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery })
@@ -523,12 +508,13 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
       continue
     }
 
-    const bucket = classifyMatchedFlagDiff({
-      parentStatus: parentFlag.status,
-      parentSeverity: parentFlag.severity,
+    const buckets = parentGroups.get(key)!.map(original => classifyMatchedFlagDiff({
+      parentStatus: original.status,
+      parentSeverity: original.severity,
       monitoringStatus: monitoringFlag.status,
       monitoringSeverity: monitoringFlag.severity,
-    })
+    }))
+    const bucket = buckets.includes('regressed') ? 'regressed' : buckets[0]
 
     if (bucket === 'fixed') {
       fixed.push({ ...item, status: 'FIXED' })

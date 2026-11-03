@@ -38,6 +38,42 @@ function receipt(data: CaptureMetrics, module = 'interaction') {
 }
 
 describe('source-conditioned loading repair evidence', () => {
+  it('retains a desktop loading failure and its own comparable repair when mobile metrics are unavailable', async () => {
+    const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
+    const context = (desktop: PageLoadExperience | null): TaskContext => ({
+      audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', browserCollection: 'per-profile-v1',
+        scope: 'CATEGORY', targetUrl: pageUrl, environment: 'production', category: { area: 'conversion', sourceAuditId: 'before', pages: [pageUrl] },
+        checks: { 'loading-state-slow': 1, 'loading-indicator-stuck': 1, 'motion-ignores-reduced-preference': 1 }, outcomes: [], verificationTarget: null } },
+      task: { id: 'task' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module: 'interaction' },
+      deadline: Date.now() + 10_000, dependencies: new Map([
+        ['p0:browser', { workKind: 'browser', workState: 'COMPLETED', workInput: { device: 'desktop' }, workResult: serializeArtifact('browser', {
+          pageId: 'page', metadata: null, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopBase64: null, mobileBase64: null,
+            consoleErrors: [], captureStatus: { desktop: 'pending', mobile: 'pending' }, captureFailures: [], captureMetrics: null, desktopLoadExperience: desktop },
+        }) }], ['p0:browser-mobile', { workKind: 'browser', workState: 'EXHAUSTED' }],
+      ]),
+    } as unknown as TaskContext)
+    const result = async (desktop: PageLoadExperience | null) => checkArtifactSchema.parse(readArtifact(await evaluate(context(desktop)), 'check').data)
+    const slow = await result(window('desktop', 5200)), fast = await result(window('desktop', 500))
+    const flag = slow.flags.find(flag => flag.checkId === 'loading-state-slow')!
+    expect(flag).toMatchObject({ verificationRule: LOADING_VERIFICATION_RULE })
+    expect(flag.evidenceTargets).toHaveLength(1)
+    expect(flag.evidenceTargets![0]).toMatchObject({ device: 'desktop' })
+    expect(slow.receipt).toMatchObject({ complete: false, passed: false })
+    expect(slow.receipt.assertions.find(assertion => assertion.key === 'blocking-loading-ui'))
+      .toMatchObject({ observed: 'Loading UI was not observed.', complete: false, passed: false })
+    expect(fast.flags).toEqual([])
+    expect(scopedAssertionForTarget({ receipt: fast.receipt, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: true, complete: true })
+    const bothDevices = runInteractionChecks(metrics())[0]
+    expect(scopedAssertionForTarget({ receipt: fast.receipt, checkId: bothDevices.checkId, flag: bothDevices })).toBeUndefined()
+    const changed = window('desktop', 500)
+    changed.observation!.scope.access = 'credentialed:changed'
+    expect(scopedAssertionForTarget({ receipt: (await result(changed)).receipt, checkId: flag.checkId, flag })).toBeUndefined()
+    const restricted = window('desktop', 5200)
+    restricted.observation!.restricted = true
+    expect((await result(restricted)).flags).toEqual([])
+    expect((await result(null))).toMatchObject({ flags: [], receipt: { complete: false, passed: false } })
+  })
+
   it('retains frozen category finding admission without requiring desktop metadata', async () => {
     const data = metrics()
     data.motionIgnoresReducedPreference = true

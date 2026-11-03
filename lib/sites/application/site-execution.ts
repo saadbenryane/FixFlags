@@ -10,8 +10,8 @@ import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
 /** Prior observations omit comparison snapshots and full task artifacts. */
 export const siteObservationExecutionSelect = {
   where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' },
-    { workKind: 'browser' }] },
-  select: { recordKind: true, id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
+    { workKind: 'browser' }, { workKind: 'captures' }] },
+  select: { recordKind: true, id: true, targetKey: true, status: true, pageUrl: true, workKind: true, workState: true, detail: true, updatedAt: true },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 /** Current conclusions additionally require their committed comparison. */

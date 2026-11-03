@@ -15,7 +15,7 @@ describe('help catalog', () => {
   it('keeps public help focused on URL-first Site care', () => {
     expect(HELP_CATEGORIES).toHaveLength(8)
     expect(HELP_ARTICLES).toHaveLength(19)
-    expect(getHelpArticle('analyze-a-website')?.title).toBe('Analyze a website')
+    expect(getHelpArticle('analyze-a-website')?.title).toBe('Check your website')
   })
 
   it('resolves every article slug', () => {

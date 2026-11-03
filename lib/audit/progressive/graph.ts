@@ -5,6 +5,7 @@ import { SEARCH_CHECK_REGISTRY } from '../search/definitions'
 import { ACTION_CHECK_DEFINITIONS } from '../checks/definitions'
 import { motionRequested } from '../checks/motion-evidence'
 import { monitoringReviewUrls } from '../review-depth'
+import { browserDevicesForCheck } from './browser-requirements'
 
 /** Admission and execution share public behavior policy. Frozen scope retains
  * responsibility even when a queued category has not created task rows yet. */
@@ -28,11 +29,18 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   const make = (kind: TaskKind, dependencies: string[] = [], module?: string): TaskPlan => ({
     key: prefix + ':' + (module ?? kind), kind, scope, input: { ...input, ...(module ? { module } : {}) }, dependencies,
   })
-  const plans = [make('http'), make('browser'), make('captures'),
+  const independentProfiles = spec.browserCollection === 'per-profile-v1'
+  const diagnosticCheck = spec.scope === 'DIAGNOSTIC' && spec.verificationTarget?.kind === 'DIAGNOSTIC'
+    ? spec.verificationTarget.checkId.split('::page:')[0] : undefined
+  const browserChecks = diagnosticCheck && spec.checks[diagnosticCheck]
+    ? { [diagnosticCheck]: spec.checks[diagnosticCheck] } : spec.checks
+  const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
+  const mobile = independentProfiles && (motionRequested(spec) || [...modules].some(module => browserDevicesForCheck(module, browserChecks).includes('mobile')))
+  const plans = [make('http'), { ...make('browser'), input: { ...input, ...(independentProfiles ? { device: 'desktop' as const } : {}) } },
+    ...(mobile ? [{ ...make('browser', [], 'browser-mobile'), input: { ...input, device: 'mobile' as const } }] : []), make('captures'),
     { ...make('pagespeed', [], 'pagespeed-desktop'), input: { ...input, device: 'desktop' as const } },
     { ...make('pagespeed', [], 'pagespeed-mobile'), input: { ...input, device: 'mobile' as const } }]
-  const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
-  if (motionRequested(spec)) plans.push(make('motion', [prefix + ':browser']))
+  if (motionRequested(spec)) plans.push(make('motion', [prefix + (independentProfiles ? ':browser-mobile' : ':browser')]))
   if (modules.has('overlays')) plans.push({ ...make('overlays'), input: { ...input, device: 'desktop' } },
     { ...make('overlays', [], 'overlays-mobile'), input: { ...input, device: 'mobile' } })
   if (modules.has('keyboard')) plans.push(make('keyboard', [], 'keyboard-evidence'))
@@ -41,7 +49,10 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     if (module === 'automatic-accounts' || module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
     const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : definition.input === 'headers' || definition.input === 'http' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
-    plans.push(make('check', [prefix + ':' + inputKind, ...(module === 'interaction' && motionRequested(spec) ? [prefix + ':motion'] : [])], module))
+    const dependencies = inputKind === 'browser' && independentProfiles
+      ? browserDevicesForCheck(module, browserChecks).map(device => prefix + (device === 'mobile' ? ':browser-mobile' : ':browser'))
+      : [prefix + ':' + inputKind]
+    plans.push(make('check', [...dependencies, ...(module === 'interaction' && motionRequested(spec) ? [prefix + ':motion'] : [])], module))
     if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'),
       input: { ...input, module: 'performance', device: 'mobile' } })
   }
@@ -73,7 +84,21 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   }
   // Analysis explanation reads recorded observations; it never supplies assertion success.
   plans.push(make('judge', plans.filter(task => !['google', 'bindings', 'journeys'].includes(task.kind)).map(task => task.key)))
-  return plans
+  if (spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') return plans
+  return retainActionContexts(plans, spec)
+}
+
+/** One durable behavior task retains its complete original control cohort.
+ * Each control receives its own bounded delivery and immutable observation. */
+function retainActionContexts(plans: TaskPlan[], spec: ExecutionSpec): TaskPlan[] {
+  const diagnostic = spec.scope === 'DIAGNOSTIC'
+  return plans.map(task => {
+    if (task.kind !== 'flow' || task.input.module && !['form-validation', 'pricing-navigation'].includes(task.input.module)) return task
+    const scopes = diagnostic ? spec.verificationScopes : spec.monitoringBehaviors
+    const contexts = [...new Set(scopes?.find(scope => scope.pageUrl === task.input.pageUrl)?.actionContexts ?? [])].filter(context =>
+      context.startsWith(task.input.module === 'form-validation' ? 'form:' : task.input.module === 'pricing-navigation' ? 'flow:pricing:' : 'flow:control:'))
+    return contexts.length < (diagnostic ? 2 : 1) ? task : { ...task, input: { ...task.input, verificationContexts: contexts } }
+  })
 }
 
 export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
@@ -175,8 +200,8 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
         if (checkId !== 'flow-pricing-nav-broken' && scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
       }
     }
-    const plans: TaskPlan[] = [...selected].map(key => available.get(key)!)
-    plans.push({ kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: [...selected] })
+    const plans = retainActionContexts([...selected].map(key => available.get(key)!), spec)
+    plans.push({ kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: plans.map(task => task.key) })
     validateTaskGraph(plans)
     return plans
   }

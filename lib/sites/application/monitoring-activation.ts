@@ -1,14 +1,14 @@
 import { watchScheduleSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
 import { prisma } from '@/lib/db'
-import { allowedWatchIntervals } from '@/lib/auth/entitlements'
+import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { requestOutcomeRun } from '@/lib/sites/application/run-requests'
 import { MONITORING_COPY as C } from '@/lib/marketing/copy/monitoring'
 
 export async function monitoringOptions(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, plan: true, subscriptionStatus: true } })
-  return user ? allowedWatchIntervals(user) : []
+  const policy = await loadEffectiveEntitlements(userId)
+  return policy?.available ? policy.watchIntervals : []
 }
 
 /** Coordinate existing commands. A saved schedule is never a verification result. */
@@ -25,7 +25,7 @@ export async function activateSiteMonitoring(input: { siteId: string; userId: st
   })
   let outcome = existing
   if (!outcome) {
-    const confirmed = await executeSiteCommand({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: site.siteId })
+    const confirmed = await executeSiteCommand({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: site.siteId, userId: input.userId })
     if (!confirmed.ok || !('outcome' in confirmed) || !confirmed.outcome) return { ok: false as const, stage: 'coverage' as const, message: C.coverageFailed }
     outcome = confirmed.outcome
   }
@@ -35,7 +35,9 @@ export async function activateSiteMonitoring(input: { siteId: string; userId: st
     if (!scheduled.ok) return { ok: false as const, stage: 'schedule' as const, message: 'code' in scheduled && scheduled.code === 'WATCH_UNAVAILABLE' ? C.serviceUnavailable : C.scheduleFailed }
   }
   const persisted = await loadSiteRecord(site.siteId)
-  if (!persisted?.watchInterval || !persisted.watchNextRunAt) return { ok: false as const, stage: 'schedule' as const, message: C.scheduleFailed }
+  if (persisted?.projectId !== site.projectId || persisted.userId !== input.userId ||
+    !persisted.watchInterval || !persisted.watchNextRunAt || persisted.watchPausedAt)
+    return { ok: false as const, stage: 'schedule' as const, message: C.scheduleFailed }
   const schedule = { interval: persisted.watchInterval, ...(persisted.watchInterval === 'custom' ? { everyMinutes: persisted.watchEveryMinutes } : {}), nextRunAt: persisted.watchNextRunAt.toISOString(), outcomeId: outcome.id }
   // Scope the first check to this confirmed public page. Failed enqueue attempts
   // get a new retry key; repeated clicks reuse the same pending/completed run.
@@ -46,7 +48,7 @@ export async function activateSiteMonitoring(input: { siteId: string; userId: st
       orderBy: { requestedAt: 'desc' }, select: { id: true, status: true, idempotencyKey: true, leaseUntil: true, auditId: true },
     })
     const interrupted = prior && prior.status !== 'COMPLETED' && !prior.auditId && (!prior.leaseUntil || prior.leaseUntil.getTime() <= Date.now())
-    const resuming = prior?.status === 'COMPLETED' && !site.watchInterval
+    const resuming = prior?.status === 'COMPLETED' && (!site.watchInterval || !site.watchNextRunAt || Boolean(site.watchPausedAt))
     const key = !prior ? prefix : prior.status === 'FAILED' || interrupted ? `${prefix}:retry:${prior.id}` : resuming ? `${prefix}:resume:${prior.id}` : prior.idempotencyKey
     const run = await requestOutcomeRun({ projectId: site.projectId, outcomeId: outcome.id, userId: input.userId, source: 'WEB', idempotencyKey: key })
     return { ok: true as const, ...schedule, firstCheck: 'requested' as const, reused: run.reused }

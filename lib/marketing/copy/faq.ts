@@ -30,47 +30,52 @@ export function faqEntryAnchor(question: string): string {
 export const FAQ: readonly FaqEntry[] = [
   {
     question: 'How do I start?',
-    answer: 'Enter your public website URL for a free check. Save the website as a Site in your account to keep the results, unlock fix prompts, and start its default monitoring schedule. A Site you previously paused stays paused.',
+    answer: 'Enter your website address for a free check. Save it to your account to keep the results, get fix instructions you can copy and paste, and start scheduled checks. If you previously paused this website’s checks, they stay paused.',
     learnMore: { href: '/docs/getting-started', label: 'Get started' },
   },
   {
     question: 'What does FixFlags actually check?',
-    answer: 'FixFlags checks reachable pages, public action destinations, and available evidence across eight website areas. Coverage depends on the pages and supported actions FixFlags can inspect. Planned integrations are labeled separately. Every result applies to the pages and actions actually checked.',
+    answer: 'Broken pages, slow loading, buttons that go nowhere, phone layouts, and more. We also look for improvements to search, accessibility, and other website basics. Every result tells you which pages and actions we checked, and what we couldn’t check.',
     learnMore: { href: '/coverage', label: 'What FixFlags checks' },
   },
   {
     question: 'What is a Flag?',
-    answer: 'A Flag is a problem that needs attention. It shows what happened, where it happened, and what should happen instead, with evidence and fix guidance. Suggestions and areas without enough evidence remain separate.',
+    answer: 'A Flag is a problem that needs attention. It shows the page, what went wrong, and instructions to help fix it. Suggestions and things we couldn’t check are shown separately.',
     learnMore: { href: '/help/flags-fix-verify/read-a-flag', label: 'Read a Flag' },
   },
   {
     question: 'Can I see what FixFlags saw?',
-    answer: 'Yes. Open the recorded evidence, affected page, scope, and expected result. You can explore a recorded demo check before analyzing your own website.',
+    answer: 'Yes. Open a problem to see the page and the details from our check, including screenshots when available. You can try the sample before checking your own website.',
     learnMore: { href: '/samples', label: 'Explore the product sample' },
   },
   {
-    question: 'How do I verify a fix?',
-    answer: 'Publish the change, then select Check now on the same Flag. FixFlags checks the same page or action again. The Flag closes only when fresh evidence confirms recovery. Your saved monitoring schedule continues independently.',
-    learnMore: { href: '/docs/fix-with-ai', label: 'Fix and verify' },
+    question: 'How do I know a fix worked?',
+    answer: 'Publish the update, open the problem in FixFlags, and select Check now. We mark it fixed only when a fresh check confirms the same page or action works. Your scheduled checks keep running too.',
+    learnMore: { href: '/docs/fix-with-ai', label: 'Check a fix' },
   },
   {
     question: 'Who makes the fixes?',
-    answer: 'You, your developer, or your AI tool. FixFlags provides the evidence and fix prompt. Review and publish the change, then check again to see whether it worked.',
-    learnMore: { href: '/docs/fix-with-ai', label: 'Fix with your AI' },
+    answer: 'You choose how to make the change. Copy our fix instructions and paste them where you built your website, or send them to someone who helps you. Review and publish the update, then let FixFlags check it. Copying the instructions alone does not change your website.',
+    learnMore: { href: '/docs/fix-with-ai', label: 'Use the fix instructions' },
+  },
+  {
+    question: 'Do I need to know how to code?',
+    answer: 'You can check your website without writing code. We explain problems in plain language and give you fix instructions to copy and paste. If you use a tool such as Lovable, paste them into the same chat you use to make changes. Some problems may need help from a developer.',
+    learnMore: { href: '/how-it-works', label: 'See how it works' },
   },
   {
     question: 'Do I have to keep running checks?',
-    answer: 'Save a new Site to start its default schedule. FixFlags keeps checking and can email you about new problems and confirmed fixes. Change or pause the schedule in Settings.',
+    answer: 'No. Save a new website and we’ll keep checking on its default schedule. We can email you about new problems and confirmed fixes. Change or pause the schedule in Settings.',
     learnMore: { href: '/docs/site-care#watch', label: 'Set up monitoring' },
   },
   {
     question: 'When does monitoring start?',
-    answer: 'Saving a new Site sets its default monitoring schedule. Open Site settings to see the interval and next check, or change or pause monitoring. A Site you previously paused stays paused. Monitoring follows configured coverage, and notifications follow your preferences.',
+    answer: 'When you save a new website to your account. Settings shows when the next check will run and lets you change or pause the schedule. A website you previously paused stays paused. Email alerts follow your preferences.',
     learnMore: { href: '/docs/site-care#watch', label: 'Understand monitoring' },
   },
   {
     question: 'Do you record my visitors?',
-    answer: 'FixFlags records its own website checks, including screenshots and browser observations. It does not record your visitors’ sessions. Planned connections will add store, traffic, or search context when released.',
+    answer: 'No. We record our own checks, including screenshots and what happened on the page. We do not record your visitors’ sessions.',
     learnMore: { href: '/security', label: 'Privacy and security' },
   },
   {
@@ -80,17 +85,17 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'Do you charge or complete checkout on a store?',
-    answer: 'No. Purchase-path checks stop before payment. FixFlags does not enter card details or place an order. Reaching checkout does not prove that payment completes.',
+    answer: 'No. We stop before payment. We do not enter card details or place an order. Opening checkout does not prove that a payment will go through.',
     learnMore: { href: '/coverage#conversion', label: 'Purchase-path coverage' },
   },
   {
     question: 'What about Shopify?',
-    answer: 'Shopify is coming soon while its connection and execution are tested and validated. You can analyze a public website URL now. Existing Shopify connections can still be disconnected from Site settings.',
+    answer: 'The Shopify connection is coming soon. You can check your store’s public pages now by entering its website address. If you already have a Shopify connection, you can disconnect it in Settings.',
     learnMore: { href: '/docs/integrations/shopify', label: 'Read the Shopify guide' },
   },
   {
     question: 'Who is FixFlags for?',
-    answer: 'People responsible for live websites: founders, ecommerce operators, agencies, and marketing teams. Start with the pages and actions that matter to the website you look after.',
+    answer: 'Anyone looking after a live website or app, from someone building their first project to store owners, agencies, and marketing teams. Start with the pages your visitors use most.',
     learnMore: { href: '/use-cases', label: 'Explore use cases' },
   },
 ] as const

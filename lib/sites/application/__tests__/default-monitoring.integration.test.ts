@@ -7,6 +7,14 @@ import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 import { ensureDefaultMonitoring, initializeDefaultMonitoring, MONITORING_SCHEDULE_UNAVAILABLE } from '../default-monitoring'
 import { removeSite } from '../settings-commands'
 import * as betaPolicy from '@/lib/billing/beta-policy'
+import { activateSiteMonitoring, monitoringOptions } from '../monitoring-activation'
+import { setProjectWatch } from '../monitoring-settings'
+import * as runRequests from '../run-requests'
+
+// Admission uses a controlled public DNS answer. These cases do not execute a
+// website request or claim external DNS or provider acceptance.
+vi.mock('node:dns/promises', async original => ({ ...await original<typeof import('node:dns/promises')>(),
+  resolve4: async () => ['203.0.114.1'], resolve6: async () => [] }))
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 
@@ -137,6 +145,66 @@ run('automatic monitoring with migrated PostgreSQL', () => {
       expect(await prisma.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ plan: 'FREE', subscriptionStatus: 'NONE' })
     } finally { await prisma.entitlementGrant.delete({ where: { id: grant.id } }) }
   })
+  it('uses the same live grant and account policy for schedule options and persisted changes', async () => {
+    const owner = userId + '-options', checkedAt = new Date()
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test' } })
+    const beta = vi.spyOn(betaPolicy, 'hasOpenBetaAccess').mockReturnValue(false)
+    try {
+      const site = await ensureProductProject(owner, 'https://schedule-options.example.com/')
+      const grant = await prisma.entitlementGrant.create({ data: { userId: owner, operationId: 'options-' + randomUUID(),
+        grantedBy: 'local-fixture-operator', allowedWatchIntervals: ['hourly'], expiresAt: new Date(checkedAt.getTime() + 3_600_000) } })
+      for (const phase of ['active', 'expired', 'revoked', 'inactive'] as const) {
+        await prisma.entitlementGrant.update({ where: { id: grant.id }, data: {
+          expiresAt: new Date(checkedAt.getTime() + (phase === 'expired' ? -60_000 : 3_600_000)),
+          revokedAt: phase === 'revoked' ? checkedAt : null,
+        } })
+        await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus: phase === 'inactive' ? 'DELETING' : 'ACTIVE' } })
+        await prisma.project.update({ where: { id: site.id }, data: { watchInterval: 'WEEKLY', watchNextRunAt: checkedAt } })
+        const before = await prisma.project.findUniqueOrThrow({ where: { id: site.id } })
+        expect(await monitoringOptions(owner), phase).toEqual(phase === 'inactive' ? [] : phase === 'active' ? ['weekly', 'hourly'] : ['weekly'])
+        const saved = await setProjectWatch({ projectId: site.id, userId: owner, interval: 'hourly' }, { clock: fixedClock(checkedAt) })
+        expect(saved.ok, phase).toBe(phase === 'active')
+        if (phase === 'active') expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toMatchObject({ watchInterval: 'HOURLY', watchNextRunAt: checkedAt })
+        else expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toEqual(before)
+      }
+      expect(await prisma.user.findUniqueOrThrow({ where: { id: owner } })).toMatchObject({ plan: 'FREE', subscriptionStatus: 'NONE' })
+    } finally { beta.mockRestore(); await prisma.user.delete({ where: { id: owner } }) }
+  })
+
+  it('admits a fresh first check after a retained-cadence pause and reuses only that new pending check', async () => {
+    const owner = userId + '-resume'
+    const requested = vi.spyOn(runRequests, 'requestOutcomeRun')
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test' } })
+    try {
+      const site = await ensureProductProject(owner, 'https://resume-activation.example.com/')
+      const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId: site.id, slug: 'page-loads' } })
+      const oldDate = new Date(Date.now() - 86_400_000)
+      const audit = await prisma.audit.create({ data: { projectId: site.id, userId: owner, url: 'https://resume-activation.example.com/',
+        status: 'COMPLETED', completedAt: oldDate } })
+      const prior = await prisma.runRequest.create({ data: { projectId: site.id, requestedByUserId: owner, source: 'WEB',
+        auditId: audit.id, idempotencyKey: 'monitoring-start:' + outcome.id, status: 'COMPLETED', requestedAt: oldDate, completedAt: oldDate,
+        selections: { create: { outcomeId: outcome.id } } } })
+      expect(await setProjectWatch({ projectId: site.id, userId: owner, action: 'pause' })).toMatchObject({ ok: true })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: null })
+      const activated = await activateSiteMonitoring({ siteId: site.id, userId: owner, interval: 'weekly' })
+      await expect(requested.mock.results[0].value).resolves.toMatchObject({ reused: false })
+      expect(activated)
+        .toMatchObject({ ok: true, firstCheck: 'requested', reused: false })
+      const admitted = await prisma.runRequest.findFirstOrThrow({ where: { projectId: site.id,
+        idempotencyKey: 'monitoring-start:' + outcome.id + ':resume:' + prior.id } })
+      expect(admitted.auditId).toBeTruthy()
+      expect(admitted.auditId).not.toBe(audit.id)
+      expect(admitted.status).toBe('QUEUED')
+      const saved = await prisma.project.findUniqueOrThrow({ where: { id: site.id } })
+      expect(saved).toMatchObject({ watchPausedAt: null, watchNextRunAt: expect.any(Date) })
+      expect(await activateSiteMonitoring({ siteId: site.id, userId: owner, interval: 'weekly' }))
+        .toMatchObject({ ok: true, firstCheck: 'requested', reused: true })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toEqual(saved)
+      expect(await prisma.runRequest.count({ where: { projectId: site.id } })).toBe(2)
+      expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: prior.id } })).toMatchObject({ status: 'COMPLETED', completedAt: oldDate })
+    } finally { requested.mockRestore(); await prisma.user.delete({ where: { id: owner } }) }
+  })
+
   it('advances a bounded setup batch past a persistent failure without treating it as an explicit pause', async () => {
     const sites = await Promise.all(['failed-setup', 'following-setup'].map((host, index) => prisma.project.create({ data: {
       userId, name: host, url: 'https://' + host + '.example.com/', canonicalHost: host + '.example.com',

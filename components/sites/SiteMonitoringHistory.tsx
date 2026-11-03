@@ -7,6 +7,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { BOARD_PREVIEW_COPY as C } from '@/lib/marketing/copy/board-preview'
 import styles from './SiteMonitoringHistory.module.css'
+import type { ReactNode } from 'react'
 
 export type MonitoringHistoryPoint = {
   label: string
@@ -19,7 +20,7 @@ export type MonitoringTimelineEvent = {
   time: string
   state: 'healthy' | 'attention' | 'unknown'
   flagCount?: number
-  flags?: readonly { id: string; title: string; href?: string; onOpen?: (trigger: HTMLElement) => void }[]
+  flags?: readonly { id: string; title: string; href?: string; onOpen?: (trigger: HTMLElement) => void; copyAction?: ReactNode }[]
   dateTime?: string
   detail?: string
   evidenceHref?: string
@@ -108,6 +109,7 @@ export function SiteMonitoringHistory({ points, events, emptyMessage, variant = 
         {event.flagCount !== undefined && (event.state !== 'unknown' || event.flagCount > 0) ? <span className={styles.count}>{C.flags(event.flagCount)}</span> : null}
         {event.flags?.length ? <ul className={styles.flags}>{event.flags.map(flag => <li key={flag.id}>
           {flag.onOpen ? <InteractiveButton type="button" onClick={event => flag.onOpen?.(event.currentTarget)}>{flag.title}<ArrowUpRight size={14} aria-hidden /></InteractiveButton> : flag.href ? <Link href={flag.href as Route}>{flag.title}<ArrowUpRight size={14} aria-hidden /></Link> : <span>{flag.title}</span>}
+          {flag.copyAction ? <div className={styles.flagActions}>{flag.copyAction}</div> : null}
         </li>)}</ul> : null}
       </div></li>)}
     </ol></> : null}

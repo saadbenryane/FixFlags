@@ -8,9 +8,9 @@ export { assertAuditAccess } from '@/lib/mcp/access'
 export function registerAllTools(
   server: McpServer,
   user: User | null,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; credential?: { audience: string | null; scopes: string[] } | null }
 ) {
-  registerConnectionInfoTool(server, Boolean(user))
+  registerConnectionInfoTool(server, Boolean(user), options?.credential)
   if (!user) return
   void options
   registerSiteOutcomeTools(server, user)

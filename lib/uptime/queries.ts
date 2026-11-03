@@ -4,6 +4,7 @@ import { uptimeTimeline, type ProbeResult, type UptimeHistory, type UptimeProbeV
 import { uptimeProjectInclude } from './eligibility'
 import { uptimeCursorSchema, uptimeHistorySchema, uptimeSummarySchema } from './contracts'
 import { projectUptimeStatus, uptimeStatusMonitorSelect } from './status'
+import { readSiteEvidence, type SiteEvidenceScope } from '@/lib/sites/application/site-evidence-read'
 
 function windowStart(window: UptimeHistory['window'], now: Date) {
   return new Date(now.getTime() - (window === '24h' ? 1 : window === '7d' ? 7 : 30) * 86400_000)
@@ -55,17 +56,27 @@ async function readUptime(projectId: string, window: UptimeHistory['window'], cu
     nextCursor: rows.length > 100 ? probes.at(-1)!.id : null })
 }
 
-export function loadUptimeHistory(projectId: string, window: UptimeHistory['window'] = '24h', cursor: string | null = null, now = new Date()): Promise<UptimeHistory | null> {
-  return readUptime(projectId, window, cursor, now, true)
+export async function loadUptimeHistory(site: SiteEvidenceScope, window: UptimeHistory['window'] = '24h', cursor: string | null = null, now = new Date()): Promise<UptimeHistory | null> {
+  const projectId = site.kind === 'project' ? site.projectId : null
+  if (!projectId) return null
+  return readSiteEvidence(site, () => readUptime(projectId, window, cursor, now, true))
 }
 
-export async function loadUptimeSummary(projectId: string, now = new Date()): Promise<UptimeSummary | null> {
-  const projection = await readUptime(projectId, '24h', null, now, false)
-  return projection ? uptimeSummarySchema.parse(projection) : null
+export async function loadUptimeSummary(site: SiteEvidenceScope, now = new Date()): Promise<UptimeSummary | null> {
+  const projectId = site.kind === 'project' ? site.projectId : null
+  if (!projectId) return null
+  return readSiteEvidence(site, async () => {
+    const projection = await readUptime(projectId, '24h', null, now, false)
+    return projection ? uptimeSummarySchema.parse(projection) : null
+  })
 }
 
-export async function loadUptimeEvents(projectId: string) {
-  const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId }, select: { id: true } })
-  return monitor ? prisma.uptimeIncident.findMany({ where: { monitorId: monitor.id }, orderBy: { confirmedAt: 'desc' }, take: 50,
-    select: { id: true, targetUrl: true, startedAt: true, confirmedAt: true, recoveredAt: true, supersededAt: true, reason: true } }) : []
+export async function loadUptimeEvents(site: SiteEvidenceScope) {
+  const projectId = site.kind === 'project' ? site.projectId : null
+  if (!projectId) return []
+  return readSiteEvidence(site, async () => {
+    const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId }, select: { id: true } })
+    return monitor ? prisma.uptimeIncident.findMany({ where: { monitorId: monitor.id }, orderBy: { confirmedAt: 'desc' }, take: 50,
+      select: { id: true, targetUrl: true, startedAt: true, confirmedAt: true, recoveredAt: true, supersededAt: true, reason: true } }) : []
+  })
 }

@@ -43,6 +43,21 @@ function dependencies(): WorkerRuntimeDependencies & {
 }
 
 describe('standalone worker runtime', () => {
+  it('publishes readiness only after consumer connections and stops publication before draining', async () => {
+    const deps = dependencies()
+    let ready!: () => void
+    deps.startWorker = () => ({ close: deps.closeWorker, ready: () => new Promise<void>(resolve => { ready = resolve }) })
+    deps.publishState = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    const start = runtime.start()
+    await vi.waitFor(() => expect(ready).toBeDefined())
+    expect(deps.publishState).toHaveBeenCalledWith('starting')
+    expect(deps.publishState).not.toHaveBeenCalledWith('ready')
+    ready(); await start
+    expect(deps.publishState).toHaveBeenLastCalledWith('ready')
+    await runtime.shutdown()
+    expect(deps.publishState).toHaveBeenLastCalledWith('stopping')
+  })
   it('starts consumers and recovery after core preflight without another diagnostic gate', async () => {
     const deps = dependencies()
     const runtime = createWorkerRuntime(deps)

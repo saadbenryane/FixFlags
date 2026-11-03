@@ -7,24 +7,31 @@ import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { SiteFixBundleButton } from './SiteFixBundleButton'
+import type { SiteCardArea } from '@/lib/sites/card-areas'
 
 type Selection = { active: boolean; ids: Set<string>; toggle: (id: string, checked: boolean) => void }
 const Context = createContext<Selection | null>(null)
 export const useSiteFlagSelection = () => useContext(Context)
 
 /** One explicit repair scope across priority groups, devices, and shared pages. */
-export function SiteFlagSelection({ siteId, flags, availability, children, renderSelected }: {
-  siteId: string; flags: readonly Pick<SiteFlagSeed, 'id'>[]; availability: SiteActionAvailability; children: ReactNode; renderSelected?: (ids: string[]) => ReactNode;
+export function SiteFlagSelection({ siteId, flags, availability, area, allOpen = false, children, renderSelected }: {
+  siteId: string; flags: readonly Pick<SiteFlagSeed, 'id'>[]; availability: SiteActionAvailability; area?: SiteCardArea; allOpen?: boolean; children: ReactNode; renderSelected?: (ids: string[]) => ReactNode;
 }) {
   const parent = useSiteFlagSelection()
   const [ids, setIds] = useState<Set<string> | null>(null)
   if (parent) return children
+  const allIds = [...new Set(flags.map(flag => flag.id))].sort()
   const selectedIds = [...new Set(flags.filter(flag => ids?.has(flag.id)).map(flag => flag.id))].sort()
+  // Retire recovered choices before committing children. A later recurrence
+  // must be selected again, while choices still present remain intact.
+  if (ids && (!allIds.length || selectedIds.length !== ids.size)) setIds(allIds.length ? new Set(selectedIds) : null)
   const selection: Selection = { active: ids !== null, ids: ids ?? new Set(), toggle: (id, checked) => setIds(previous => {
     const next = new Set(previous); if (checked) next.add(id); else next.delete(id); return next
   }) }
   return <Context.Provider value={selection}><div className="space-y-4">
-    {flags.length > 1 ? <div className="flex flex-wrap items-center gap-2"><Button variant="ghost" size="sm" onClick={() => setIds(ids ? null : new Set())}>{ids ? C.cancelSelection : C.selectFlags}</Button>
+    {allIds.length ? <div className="flex flex-wrap items-center gap-2">
+      {!ids ? <SiteFixBundleButton siteId={siteId} {...(area ? { area } : allOpen ? {} : { flagIds: allIds })} availability={availability} label={C.fixAll} /> : null}
+      {allIds.length > 1 || ids !== null ? <Button variant="ghost" size="sm" onClick={() => setIds(ids ? null : new Set())}>{ids ? C.cancelSelection : C.selectFlags}</Button> : null}
       {ids ? <><span role="status" className="text-xs text-muted-foreground">{C.selectedCount(selectedIds.length)}</span>{selectedIds.length ? renderSelected ? renderSelected(selectedIds) : <SiteFixBundleButton key={JSON.stringify(selectedIds)} siteId={siteId} flagIds={selectedIds} availability={availability} /> : null}</> : null}
     </div> : null}
     {children}

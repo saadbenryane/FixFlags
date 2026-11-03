@@ -20,7 +20,7 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onView
       <GlassHeroMark />
       <div className={s.layout}>
         <div className={s.copy}>
-          <h1><span>{C.hero.headline[0]}</span><span>{C.hero.headline[1].slice(0, -1)}<span className={s.period}>{C.hero.headline[1].slice(-1)}</span></span></h1>
+          <h1><span>{C.hero.headline[0]}</span>{' '}<span>{C.hero.headline[1].slice(0, -1)}<span className={s.period}>{C.hero.headline[1].slice(-1)}</span></span></h1>
           <p className={s.description}>{C.hero.body}</p>
           <HomepageUrlEntry className={s.entry} />
           <p className={s.note}>{C.hero.setup}<Link href="#product">{C.hero.sampleAction}<ArrowRight size={14} aria-hidden="true" /></Link></p>

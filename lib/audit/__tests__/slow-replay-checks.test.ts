@@ -42,6 +42,17 @@ describe('slow connection CTA check', () => {
     expect(slowReplayAssertions(result)[1].complete).toBe(false)
     expect(runSlowReplayChecks({ ...result, timeToFirstTextMs: 5100, textBlankThroughMs: 4900 })).toEqual([])
   })
+  it('keeps an original action sample overflow incomplete without hiding measured failures', () => {
+    const result = { ...measured, expectedActionCount: 21, timeToCtaMs: 1000 }
+    expect(slowReplayAssertions(result)).toContainEqual(expect.objectContaining({
+      name: 'Original action sample', complete: false, passed: false,
+    }))
+    expect(runSlowReplayChecks(result).map(flag => flag.checkId)).toEqual(['slow-3g-blank-screen'])
+    const identity = { selector: '#action', label: 'Get started', context: JSON.stringify({ profile: SLOW_REPLAY_PROFILE,
+      pageUrl: measured.scope.pageUrl, href: 'https://example.com/start' }) }
+    expect(slowReplayAssertions({ ...measured, expectedActionCount: 1, timeToContentMs: 1000,
+      actions: [{ ...identity, timeToVisibleMs: 1000, absentThroughMs: 0 }] }).every(assertion => assertion.complete && assertion.passed)).toBe(true)
+  })
   it('accepts observed image content and refuses restricted or incomplete graphic evidence', () => {
     expect(runSlowReplayChecks({ ...measured, timeToContentMs: 1000, contentAbsentThroughMs: 900 })).toEqual([])
     expect(runSlowReplayChecks({ ...measured, timeToContentMs: 30_000, contentAbsentThroughMs: 0 })).toEqual([])

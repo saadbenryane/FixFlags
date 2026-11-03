@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { fixedClock } from '@/lib/time/clock'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrismaClient } from '@prisma/client'
@@ -61,7 +62,7 @@ describe.skipIf(!databaseUrl)('Uptime reconciliation with concurrent observation
         pendingFailureAt: result === 'FAILED' ? now : null,
         confirmationDueAt: result === 'FAILED' ? new Date(now.getTime() + 30_000) : null,
       })
-      expect(await loadUptimeSummary(project.id, now)).toMatchObject({ state: result === 'ONLINE' ? 'online' : 'checking' })
+      expect(await loadUptimeSummary(uptimeReadSite(project), now)).toMatchObject({ state: result === 'ONLINE' ? 'online' : 'checking' })
       expect(await db().uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(1)
       expect(await db().uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
       // Only the worker's new failure can publish a confirmation, never the stale scheduler.
@@ -90,7 +91,7 @@ describe.skipIf(!databaseUrl)('Uptime reconciliation with concurrent observation
       expect(fixture.enqueue).not.toHaveBeenCalled()
       complete(online)
       await worker
-      expect(await loadUptimeSummary(project.id, now)).toMatchObject({ state: 'online', lastCheckedAt: now.toISOString() })
+      expect(await loadUptimeSummary(uptimeReadSite(project), now)).toMatchObject({ state: 'online', lastCheckedAt: now.toISOString() })
       expect(await db().uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(1)
     } finally { boundary.mockRestore(); complete(online); await worker }
   })

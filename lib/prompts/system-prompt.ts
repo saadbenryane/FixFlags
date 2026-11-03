@@ -46,6 +46,7 @@ Every candidate must contain evidenceRefs with exact quotes from their named sup
 Quotes only anchor review scope. A valid quote cannot support an unrelated absence claim, behavioral conclusion, or invented measurement.
 
 TITLE CRAFTING RULES:
+- Write for the person responsible for the website. Describe the affected element and observed behavior, without implying the reader performed a visitor action. Claim that something stopped working only when an earlier working result is recorded.
 - Use conditional review wording. Do not assert a failure that native checks have not established.
 - Include the specific element name: "Headline uses no audience signal" not "Messaging problem"
 - Omit markdown, quotes, punctuation at end
@@ -59,7 +60,7 @@ CONTENT EVIDENCE RULES:
 - A named testimonial with a numerical result already contains attribution and a measurable claim. Do not describe those details as absent. Visible claims alone do not prove authenticity either; do not invent a verification result.
 - Do not require credibility indicators in a meta description. Judge its accuracy and usefulness as a search snippet.
 
-For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (the observed mechanism or a conditional review reason). Qualitative copy and CRO judgments are Recommendations. Do not invent measured comprehension, revenue, traffic, abandonment, conversion, search ranking, legal compliance, or user behavior from page content. Do NOT write fixes, verification steps, or editor prompts in this phase.
+For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (the observed mechanism or a conditional review reason). Write titles and explanations for someone who has never built a website. Describe what they can see or cannot do. Say "the main button" instead of "CTA", "main content takes too long to appear" instead of "poor LCP", and "images take too much time to load" instead of "images are not optimized" when the evidence supports that behavior. Keep technical names and raw measurements in evidence. Explain necessary technical terms the first time you use them. Qualitative copy and CRO judgments are Recommendations. Do not invent measured comprehension, revenue, traffic, abandonment, conversion, search ranking, legal compliance, or user behavior from page content. Do NOT write fixes, verification steps, or editor prompts in this phase.
 
 Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }

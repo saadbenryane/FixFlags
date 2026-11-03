@@ -75,6 +75,10 @@ export function AuthFlow({
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [formError, setFormError] = useState('')
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
+  const [verificationResent, setVerificationResent] = useState(false)
+  const verificationRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (verificationEmail) verificationRef.current?.focus() }, [verificationEmail])
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => { setHydrated(true) }, [])
   const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
@@ -143,6 +147,8 @@ export function AuthFlow({
 
   function switchMode(nextMode: AuthFlowMode) {
     setFormError('')
+    setVerificationEmail(null)
+    setVerificationResent(false)
     setMode(nextMode)
     setPassword('')
   }
@@ -188,12 +194,22 @@ export function AuthFlow({
           user_id: data?.user?.id,
           from: resolvedFrom ?? undefined,
         })
+        if (data?.token === null) {
+          setPassword('')
+          setVerificationEmail(email.trim())
+          return
+        }
       } else {
         const { data, error } = await authClient.signIn.email({
           email: email.trim(),
           password,
         })
         if (error) {
+          if (error.code === 'EMAIL_NOT_VERIFIED') {
+            setPassword('')
+            setVerificationEmail(email.trim())
+            return
+          }
           setFormError(error.message || AUTH.signIn.error)
           return
         }
@@ -211,6 +227,17 @@ export function AuthFlow({
     } finally {
       setLoading(null)
     }
+  }
+
+  async function resendVerification() {
+    if (!verificationEmail || loading) return
+    setLoading('email'); setFormError(''); setVerificationResent(false)
+    try {
+      const { error } = await authClient.sendVerificationEmail({ email: verificationEmail, callbackURL: resolvedOauthCallbackURL })
+      if (error) setFormError(error.message || AUTH.emailVerification.error)
+      else setVerificationResent(true)
+    } catch { setFormError(AUTH.emailVerification.error) }
+    finally { setLoading(null) }
   }
 
   async function handlePasskeySignIn() {
@@ -240,6 +267,21 @@ export function AuthFlow({
 
   // Authentication controls become available only after their handlers attach.
   if (!hydrated) return <AuthCardSkeleton />
+
+  if (verificationEmail) {
+    const content = <div ref={verificationRef} tabIndex={-1} role="status" aria-live="polite" aria-label={AUTH.emailVerification.title}
+      className="space-y-4 outline-none">
+      <p className="break-words text-sm">{AUTH.emailVerification.address(verificationEmail)}</p>
+      <p className="text-sm text-muted-foreground">{AUTH.emailVerification.body}</p>
+      <Button className="w-full" disabled={loading !== null} loading={loading === 'email'} loadingLabel={AUTH.emailVerification.resending}
+        onClick={() => void resendVerification()}>{AUTH.emailVerification.resend}</Button>
+      {verificationResent ? <p className="text-sm text-muted-foreground">{AUTH.emailVerification.resent}</p> : null}
+      {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
+      <Button variant="ghost" className="w-full" disabled={loading !== null} onClick={() => switchMode(mode)}>{AUTH.emailVerification.edit}</Button>
+    </div>
+    return isDialog ? <div className="space-y-4"><h2 className="text-xl font-semibold tracking-heading text-center">{AUTH.emailVerification.title}</h2>{content}</div>
+      : <AuthCard title={AUTH.emailVerification.title}>{content}</AuthCard>
+  }
 
   const title = isDialog
     ? dialogTitle ?? AUTH.reportGate.title

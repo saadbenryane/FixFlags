@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { Queue } from 'bullmq'
@@ -81,7 +82,7 @@ run('redirect evidence through public HTTP and the installed uptime worker', () 
     await observe(2, 'FAILED', 'redirect_loop')
     const incident = await prisma.uptimeIncident.findFirstOrThrow({ where: { monitorId } })
     expect(incident).toMatchObject({ reason: 'redirect_loop', recoveredAt: null })
-    expect(await loadUptimeSummary(projectId, clock.now())).toMatchObject({ state: 'offline', openIncidentCount: 1 })
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), clock.now())).toMatchObject({ state: 'offline', openIncidentCount: 1 })
     phase = 'chain'; await advance(); await observe(3, 'UNKNOWN', 'redirect_unresolved')
     phase = 'cookie'; await advance(); await observe(4, 'UNKNOWN', 'redirect_unresolved')
     expect(await prisma.uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: null })
@@ -94,8 +95,8 @@ run('redirect evidence through public HTTP and the installed uptime worker', () 
     instant = (await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitorId } })).confirmationDueAt!
     await observe(7, 'FAILED', 'redirect_loop')
     expect(await prisma.uptimeIncident.count({ where: { monitorId } })).toBe(2)
-    expect(await loadUptimeSummary(projectId, clock.now())).toMatchObject({ state: 'offline', openIncidentCount: 1 })
-    expect((await loadUptimeHistory(projectId, '24h', null, clock.now()))!.probes).toHaveLength(7)
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), clock.now())).toMatchObject({ state: 'offline', openIncidentCount: 1 })
+    expect((await loadUptimeHistory(uptimeReadSite({ id: projectId, userId }), '24h', null, clock.now()))!.probes).toHaveLength(7)
     expect(await prisma.uptimeProbe.findUniqueOrThrow({ where: { id: original.id } })).toEqual(original)
     expect(await prisma.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ auditsUsed: 3 })
   }, 30_000)

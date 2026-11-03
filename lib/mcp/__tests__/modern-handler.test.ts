@@ -3,6 +3,7 @@ import type { User } from '@prisma/client'
 import { createMcpHandler, McpServer, type McpHttpHandler } from '@modelcontextprotocol/server'
 import { registerAllTools } from '@/lib/mcp/tools'
 import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
+import { buildMcpTestCurl } from '@/lib/integrations/editor-config'
 
 describe('MCP 2026-07-28 stateless handler', () => {
   let handler: McpHttpHandler | null = null
@@ -10,6 +11,21 @@ describe('MCP 2026-07-28 stateless handler', () => {
   afterEach(async () => {
     await handler?.close()
     handler = null
+  })
+  it('executes the documented diagnostic request through the installed protocol handler', async () => {
+    handler = createMcpHandler(() => {
+      const server = new McpServer({ name: 'documented-setup-test', version: '1.0.0' })
+      registerAllTools(server, { id: 'user-1' } as User)
+      return server
+    }, { legacy: 'stateless', responseMode: 'json' })
+    const example = buildMcpTestCurl('https://fixflags.test')
+    const headers = Object.fromEntries([...example.matchAll(/-H "([^:]+): (.+)"/g)].map(match => [match[1], match[2]]))
+    const response = await handler.fetch(new Request('https://fixflags.test/api/mcp', {
+      method: 'POST', headers, body: example.match(/-d '(.+)'/)![1],
+    }))
+    expect(response.status, await response.clone().text()).toBe(200)
+    expect((await response.json()).result.structuredContent).toMatchObject({ authentication: { authenticated: true },
+      clientInfo: { name: 'fixflags-curl', version: '1.0.0' } })
   })
 
   it('serves the modern envelope and the explicit stateless legacy fallback from one registry', async () => {

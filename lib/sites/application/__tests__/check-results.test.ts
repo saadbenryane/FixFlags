@@ -1,12 +1,57 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
 const { findMany, findFirst, transaction, queryRaw } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null), transaction: vi.fn(), queryRaw: vi.fn().mockResolvedValue([]) }))
-vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { findMany, findFirst }, $transaction: transaction } }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: vi.fn().mockResolvedValue({ id: 'site' }) }, get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { findMany, findFirst }, $transaction: transaction } }))
 import { loadSiteCheckResults, loadSiteCheckResultPage, CHECK_RESULT_PAGE_SIZE } from '../check-results'
 
 describe('Site result access and provenance', () => {
+  it.each(['COMPLETED', 'FAILED'])('keeps %s cross-page previews current in Search, independently of Conversion rechecks', async status => {
+    const site = { projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
+    const categories = new Map([['search', { id: 'search-recheck' }], ['conversion', { id: 'conversion-recheck' }]]) as never
+    const detail = { assertions: [
+      { key: 'preview-titles', name: 'Distinct page preview titles', passed: false, expected: 'Distinct titles', observed: 'Repeated title' },
+      { key: 'preview-descriptions', name: 'Page-specific preview descriptions', passed: true, expected: 'Distinct descriptions', observed: 'Distinct descriptions' },
+    ] }
+    const receipt = { targetKey: 'module:corridor', status, detail,
+      pageUrl: 'https://example.com/pricing', updatedAt: new Date('2026-10-12T12:00:00Z') }
+    const rows = [{ ...receipt, id: 'new-preview', auditId: 'search-recheck' },
+      { ...receipt, id: 'old-preview', auditId: 'latest' }]
+    findMany.mockResolvedValueOnce(rows); findFirst.mockResolvedValueOnce({ id: 'old-preview' })
+    const current = await loadSiteCheckResultPage(site, 'latest', undefined, categories, { area: 'search' })
+    expect(current.results).toHaveLength(status === 'COMPLETED' ? 3 : 1)
+    expect(current.results.every(result => result.area === 'search' && result.auditId === 'search-recheck' && !result.historical)).toBe(true)
+    expect(current.results.at(-1)).toMatchObject({ status: status === 'COMPLETED' ? 'completed' : 'failed',
+      evidenceReference: { auditId: 'search-recheck', executionId: 'new-preview' } })
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      targetKey: { in: expect.arrayContaining(['module:corridor']) },
+    }) }))
+    findMany.mockResolvedValueOnce(rows)
+    const history = await loadSiteCheckResultPage(site, 'latest', current.nextCursor!, categories, { area: 'search' })
+    expect(history.results).toHaveLength(current.results.length)
+    expect(history.results.every(result => result.auditId === 'latest' && result.historical)).toBe(true)
+    expect(history.results[0].checkedAt).toBe(receipt.updatedAt.toISOString())
+  })
+  it('retains observations from a selected category run when another area now owns that responsibility', async () => {
+    const site = { projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
+    const categories = new Map([['search', { id: 'search-recheck' }], ['conversion', { id: 'old-conversion-recheck' }]]) as never
+    const receipt = { targetKey: 'module:corridor', status: 'FAILED', detail: {}, pageUrl: 'https://example.com/pricing',
+      updatedAt: new Date('2026-10-12T12:00:00Z') }
+    const rows = [{ ...receipt, id: 'new-preview', auditId: 'search-recheck' },
+      { ...receipt, id: 'old-preview', auditId: 'old-conversion-recheck' }]
+    findMany.mockImplementation(async query => rows.filter(row => {
+      const selector = query.where.auditId
+      return !selector || (!selector.in || selector.in.includes(row.auditId)) &&
+        (!selector.notIn || !selector.notIn.includes(row.auditId)) && selector.not !== row.auditId
+    }))
+    findFirst.mockResolvedValue({ id: 'old-preview' })
+    const current = await loadSiteCheckResultPage(site, 'latest', undefined, categories, { area: 'search' })
+    expect(current.results).toMatchObject([{ auditId: 'search-recheck', historical: false }])
+    const history = await loadSiteCheckResultPage(site, 'latest', current.nextCursor!, categories, { area: 'search' })
+    expect(history.results).toMatchObject([{ auditId: 'old-conversion-recheck', historical: true,
+      evidenceReference: { auditId: 'old-conversion-recheck', executionId: 'old-preview' }, checkedAt: receipt.updatedAt.toISOString() }])
+  })
   it('composes category receipts with the broad scope and dates superseded area evidence as history', async () => {
-    const site = { projectId: 'site-1' } as SiteRecord
+    const site = { projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
     const categories = new Map([['security', { id: 'category-1' }]]) as never
     const receipt = { targetKey: 'module:security', status: 'COMPLETED', detail: {},
       pageUrl: 'https://example.com', updatedAt: new Date('2026-10-12T12:00:00Z') }
@@ -28,7 +73,7 @@ describe('Site result access and provenance', () => {
   beforeEach(() => { vi.clearAllMocks(); findMany.mockReset().mockResolvedValue([]); findFirst.mockReset().mockResolvedValue(null); queryRaw.mockReset().mockResolvedValue([])
     transaction.mockImplementation(operation => operation({get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { findMany, findFirst }, $queryRaw: queryRaw })) })
   it('never reads receipts by host or by a missing provisional identity', async () => {
-    await loadSiteCheckResults({ projectId: 'site-1' } as SiteRecord, 'latest')
+    await loadSiteCheckResults({ projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord, 'latest')
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ audit: { projectId: 'site-1' } }),
     }))
@@ -40,12 +85,12 @@ describe('Site result access and provenance', () => {
     findMany.mockResolvedValueOnce([{ id: 'receipt-1', auditId: 'previous', targetKey: 'module:metadata',
       status: 'COMPLETED', detail: {}, pageUrl: 'https://example.com', updatedAt: new Date('2026-10-01T12:00:00Z') }])
     const cursor = Buffer.from(JSON.stringify({ version: 1, phase: 'history', receiptId: null, offset: 0 })).toString('base64url')
-    expect((await loadSiteCheckResultPage({ projectId: 'site-1' } as SiteRecord, 'latest', cursor)).results).toMatchObject([
+    expect((await loadSiteCheckResultPage({ projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord, 'latest', cursor)).results).toMatchObject([
       { auditId: 'previous', historical: true, checkedAt: '2026-10-01T12:00:00.000Z' },
     ])
   })
   it('bounds reads and rejects a cursor outside the authorized Site', async () => {
-    const site = { projectId: 'site-1' } as SiteRecord
+    const site = { projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
     await loadSiteCheckResultPage(site, 'latest')
     expect(CHECK_RESULT_PAGE_SIZE).toBe(100)
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 11,
@@ -57,7 +102,7 @@ describe('Site result access and provenance', () => {
     const rows = Array.from({ length: 11 }, (_, index) => ({ id: 'receipt-' + index, auditId: 'latest',
       targetKey: 'module:metadata', status: 'COMPLETED', detail: {}, pageUrl: 'https://example.com', updatedAt: new Date('2026-10-11') }))
     findMany.mockResolvedValueOnce(rows)
-    const site = { projectId: 'site-1' } as SiteRecord
+    const site = { projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
     const first = await loadSiteCheckResultPage(site, 'latest')
     expect(first.results.map(item => item.id)).toEqual(rows.slice(0, 10).map(item => item.id))
     findFirst.mockResolvedValueOnce({ id: 'receipt-10' })
@@ -69,15 +114,15 @@ describe('Site result access and provenance', () => {
     const base = { targetKey: 'module:metadata', detail: {}, pageUrl: 'https://example.com', updatedAt: new Date('2026-10-11') }
     findMany.mockResolvedValueOnce([{ ...base, id: 'new', auditId: 'latest', status: 'FAILED' }])
     findFirst.mockResolvedValueOnce({ id: 'old' })
-    const current = await loadSiteCheckResultPage({ projectId: 'site-1' } as SiteRecord, 'latest')
+    const current = await loadSiteCheckResultPage({ projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord, 'latest')
     expect(current.results).toMatchObject([{ status: 'failed', historical: false }])
     expect(current.nextCursor).not.toBeNull()
     findMany.mockResolvedValueOnce([{ ...base, id: 'old', auditId: 'prior', status: 'COMPLETED' }])
-    const history = await loadSiteCheckResultPage({ projectId: 'site-1' } as SiteRecord, 'latest', current.nextCursor!)
+    const history = await loadSiteCheckResultPage({ projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord, 'latest', current.nextCursor!)
     expect(history.results).toMatchObject([{ status: 'completed', historical: true }])
   })
   it('filters mixed observations before the 100-result boundary and binds continuations to the scope', async () => {
-    const site = { siteId: 'owned-site', projectId: 'site-1' } as SiteRecord
+    const site = { siteId: 'owned-site', projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
     const row = { id: 'mixed', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED',
       pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14'), detail: {
         assertions: Array.from({ length: 240 }, (_, index) => ({ key: index % 2 ? 'title-presence' : 'viewport-presence',
@@ -107,12 +152,12 @@ describe('Site result access and provenance', () => {
   it('returns an explicit exhausted filtered scope instead of unrelated results', async () => {
     findMany.mockResolvedValueOnce([{ id: 'mixed', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED',
       detail: {}, pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14') }])
-    const page = await loadSiteCheckResultPage({ projectId: 'site' } as SiteRecord, 'latest', undefined, new Map(), { area: 'accessibility' })
+    const page = await loadSiteCheckResultPage({ projectId: 'site', kind: 'project', userId: 'owner' } as SiteRecord, 'latest', undefined, new Map(), { area: 'accessibility' })
     expect(page).toEqual({ results: [], nextCursor: null, total: 0 })
   })
 
   it('counts more than 100 filtered results and rejects changed receipt evidence at the same timestamp', async () => {
-    const site = { siteId: 'owned-site', projectId: 'site-1' } as SiteRecord
+    const site = { siteId: 'owned-site', projectId: 'site-1', kind: 'project', userId: 'owner' } as SiteRecord
     const row = { id: 'mixed', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED',
       pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14'), detail: {
         assertions: Array.from({ length: 240 }, (_, index) => ({ key: index % 2 ? 'title-presence' : 'viewport-presence',
@@ -139,7 +184,7 @@ describe('Site result access and provenance', () => {
       pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14') }
     findMany.mockResolvedValue([row]); findFirst.mockResolvedValue({ id: row.id })
     queryRaw.mockImplementation(async query => query.values.includes(row.id) ? [] : [row])
-    const page = await loadSiteCheckResultPage({ projectId: 'site' } as SiteRecord, 'latest', undefined,
+    const page = await loadSiteCheckResultPage({ projectId: 'site', kind: 'project', userId: 'owner' } as SiteRecord, 'latest', undefined,
       new Map([['security', { id: 'category' }]]) as never, {}, true)
     expect(page.results).toHaveLength(1)
     expect(page.total).toBe(1)

@@ -33,6 +33,20 @@ const original = scopeAccessibilityFlags(runAccessibilityChecks(metadata, null, 
 const proof = (value: AccessibilityEvidence) => scopedAssertionForTarget({ receipt: receipt(value), checkId: original.checkId, flag: original })?.assertion
 
 describe('automated accessibility responsibilities', () => {
+  it('keeps a mobile-only native observation applicable without inventing desktop coverage', async () => {
+    for (const state of ['failed', 'passed', 'incomplete'] as const) {
+      const checked = await runAllChecks(pageUrl, null, null, null, [], undefined, null, undefined, undefined, true, ['accessibility'], {
+        mobileAccessibility: { evidence: evidence(state, { scope: { ...scope, profile: 'mobile' },
+          rules: [{ id: 'target-size', state, nodes: 2 }] }), violations: state === 'failed' ? [{ ...violation, id: 'target-size' }] : [] },
+      })
+      expect(checked.executions[0]).toMatchObject({ applicable: true, complete: false })
+      expect(checked.flags.some(flag => flag.checkId === 'axe-target-size')).toBe(state === 'failed')
+      expect(checked.executions[0].assertions?.find(assertion => assertion.key === 'axe:axe-target-size'))
+        .toMatchObject({ passed: state === 'passed', complete: state !== 'incomplete' })
+      expect(checked.executions[0].assertions?.find(assertion => assertion.key === 'automated-accessibility'))
+        .toMatchObject({ passed: false, complete: false })
+    }
+  })
   it('keeps mobile target failures and repairs scoped to the measured mobile viewport', () => {
     const mobileScope = { ...scope, profile: 'mobile' }
     const mobileEvidence = (state: 'passed' | 'failed' | 'incomplete', profile = 'mobile') => evidence(state, {

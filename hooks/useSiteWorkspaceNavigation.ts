@@ -1,12 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { readWorkspaceLocation, type SiteBoardView, type SiteWorkspaceLocation } from '@/lib/sites/workspace-location'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 
 export function useSiteWorkspaceNavigation(siteId: string, initial: SiteWorkspaceLocation) {
   const { viewMode, selectedCard, selectedFlag } = initial
   const [location, setLocation] = useState(initial)
+  const previousView = useRef(location.viewMode)
+  useEffect(() => {
+    const changed = previousView.current !== location.viewMode
+    previousView.current = location.viewMode
+    // In-place route changes need the same focus destination as a page load.
+    // Detail dialogs own their focus and Back keeps the browser's scroll position.
+    if (changed && !location.selectedFlag && !location.selectedCard) {
+      const main = document.getElementById('main-content')
+      const target = main?.querySelector<HTMLElement>('h1') ?? main
+      target?.focus({ preventScroll: true })
+    }
+  }, [location.viewMode, location.selectedFlag, location.selectedCard])
   useEffect(() => { setLocation({ viewMode, selectedCard, selectedFlag }) }, [siteId, viewMode, selectedCard, selectedFlag])
   useEffect(() => {
     const restore = () => setLocation(readWorkspaceLocation(new URLSearchParams(window.location.search)))

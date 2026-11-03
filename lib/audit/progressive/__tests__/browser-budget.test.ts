@@ -15,5 +15,7 @@ describe('frozen per-page browser observation budget', () => {
     expect(handler.timeoutMs(audit, input)).toBe(90_000)
     expect(handler.timeoutMs(audit, { ...input, pageUrl: spec.consoleObservationScopes[0].pageUrl }))
       .toBeGreaterThanOrEqual(2 * (90_000 + PAGE_TIMEOUT_MS))
+    expect(handler.timeoutMs(audit, { ...input, pageUrl: spec.consoleObservationScopes[0].pageUrl, device: 'mobile' }))
+      .toBe(90_000 + PAGE_TIMEOUT_MS + 5_000)
   })
 })

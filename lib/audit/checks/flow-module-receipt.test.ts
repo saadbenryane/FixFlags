@@ -45,6 +45,18 @@ function conversion(receipt: ReturnType<typeof stored>['receipt'], flags: Return
 }
 
 describe('flow module receipt', () => {
+  it('keeps discovery distinct from its separately observed controls without turning a missing original control into success', () => {
+    const result: FlowScanResult = { status: 'skipped', steps: [], finalUrl: pageUrl,
+      actionEvidence: { ...action, candidateCount: 2, candidateComplete: true, controlContext: null,
+        clicked: false, navigation: 'unknown', response: 'unknown', httpStatus: null } }
+    const input = { result, actionRequired: true, actionFlags: [], pricingOnly: false, targetedPricing: false }
+    const delegated = assembleFlowModuleCheck({ ...input, delegatedDiscovery: true })
+    expect(delegated).toMatchObject({ applicable: false, complete: true, passed: true })
+    expect(delegated.assertions.every(assertion => assertion.disposition === 'observed')).toBe(true)
+    expect(assembleFlowModuleCheck(input)).toMatchObject({ applicable: true, complete: false, passed: false })
+    expect(assembleFlowModuleCheck({ ...input, delegatedDiscovery: true,
+      result: { ...result, actionEvidence: { ...result.actionEvidence!, candidateComplete: false } } })).toMatchObject({ complete: false, passed: false })
+  })
   it('retains observations through a refused action without certifying the affected action', () => {
     const check = assembleFlowModuleCheck({ result: scan(ux()), actionRequired: true, actionFlags: [], pricingOnly: false,
       targetedPricing: false, protectedActionRefused: true })

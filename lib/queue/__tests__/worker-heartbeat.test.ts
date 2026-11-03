@@ -21,6 +21,17 @@ function heartbeat(
 }
 
 describe('worker heartbeat aggregation', () => {
+  it('aggregates only complete, internally consistent ownership inventories', () => {
+    const contextOwnership = { audit: 1, inspection: 0, probe: 0, unattributed: 1, closing: 1, overdue: 1 }
+    const valid = heartbeat('current', { contextOwnership, activeBrowserContexts: 2 })
+    expect(aggregateWorkerHeartbeats([valid, { ...valid, workerId: 'other' }], now).contextOwnership)
+      .toEqual({ audit: 2, inspection: 0, probe: 0, unattributed: 2, closing: 2, overdue: 2 })
+    for (const invalid of [heartbeat('legacy'), { ...valid, activeBrowserContexts: 1 },
+      { ...valid, contextOwnership: { ...contextOwnership, audit: -1 } },
+      { ...valid, contextOwnership: { ...contextOwnership, closing: 3 } }]) {
+      expect(aggregateWorkerHeartbeats([valid, invalid], now).contextOwnership).toBeNull()
+    }
+  })
   it('aggregates every live replica and its active contexts', () => {
     expect(
       aggregateWorkerHeartbeats(

@@ -9,6 +9,7 @@ import { MAX_TASKS_PER_AUDIT, prescriptionResultSchema, taskArtifactSchema, task
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
 import { settleRecordedPages } from './page-settlement'
+import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 
 const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
 
@@ -122,6 +123,18 @@ export function logUnrecordedPrescriptionCost(auditId: string, error: unknown) {
 }
 
 type CoverageTask = Pick<AuditExecutionTask, 'id' | 'auditId' | 'workKind' | 'workInput'>
+const observationModules: Readonly<Record<string, readonly string[]>> = {
+  journeys: ['journeys', 'overlays'], 'cross-page': ['corridor'], discovery: ['seo'],
+  'slow-replay': ['slow-replay'], overlays: ['overlays'], 'automatic-accounts': ['automatic-accounts'],
+}
+function unfinishedModules(kind: string | null, module?: string): readonly string[] {
+  if (kind === 'check') return module ? [module] : []
+  if (kind !== 'flow') return observationModules[kind ?? ''] ?? []
+  if (module === 'mobile-navigation') return ['mobile-navigation']
+  if (module === 'form-validation') return ['form-validation', 'overlays']
+  return ['flow', 'measurement', 'overlays']
+}
+
 export async function settleFailedFinalization(tx: Prisma.TransactionClient, task: CoverageTask) {
   if (task.workKind !== 'finalize') return
   await settleRecordedPages(tx, task.auditId)
@@ -146,16 +159,26 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
       data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(), authorizedAt: null,
         lastDryRunResult: { disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'unknown' } } } })
   }
-  const executionModule = task.workKind === 'slow-replay' ? 'slow-replay' : task.workKind === 'overlays' ? 'overlays' : input.module
-  if ((task.workKind === 'check' || task.workKind === 'slow-replay' || task.workKind === 'overlays' || task.workKind === 'flow' && ['form-validation', 'mobile-navigation'].includes(executionModule ?? '')) && executionModule) {
-    const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '')
-    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: executionModule,
-      pageUrl: input.pageUrl, passed: false, applicable: true, failed: true, assertions: [] })
-    await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: {
-      auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey } },
-      create: { taskId: task.id, auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey,
-        pageUrl: input.pageUrl, source: 'DETERMINISTIC', status: 'FAILED', checkVersion: 1, detail: receipt,
-        evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
+  const modules = unfinishedModules(task.workKind, input.module)
+  if (modules.length) {
+    const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { executionSpec: true } })
+    const spec = readExecutionSpec(audit?.executionSpec)
+    const admitted = new Set(Object.keys(spec?.checks ?? {}).flatMap(id => CHECK_REGISTRY[id]?.module ?? []))
+    for (const executionModule of modules) {
+      const definition = Object.hasOwn(CHECK_MODULES, executionModule) ? CHECK_MODULES[executionModule] : undefined
+      if (definition && spec && !admitted.has(executionModule)) continue
+      // The unfinished remainder has its own identity. A completed control or
+      // earlier observation cannot hide this gap or be overwritten by it.
+      const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '') + ':unfinished:' + task.id
+      const receipt = definition ? checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: executionModule,
+        pageUrl: input.pageUrl, passed: false, applicable: true, complete: false, failed: true, assertions: [] })
+        : { kind: 'unavailable-check', version: 1, module: executionModule, failed: true }
+      await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: {
+        auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey } },
+        create: { taskId: task.id, auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey,
+          pageUrl: input.pageUrl, source: 'DETERMINISTIC', status: 'FAILED', checkVersion: definition?.version ?? null, detail: receipt,
+          evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
+    }
   }
   if (task.workKind === 'google') {
     const attempt = await tx.auditPipelineEvent.findFirst({ where: { auditId: task.auditId, executionId: task.id, event: 'provider_attempt_observed' },

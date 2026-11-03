@@ -16,7 +16,7 @@ import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft } from './types'
 import type { OverlayObservation, OverlayTarget } from '../checks/overlay-evidence'
 import { projectedJourneyFinding, readJourneyContext, type JourneyObservation } from '../checks/journey-evidence'
-import { selectJourneyRuns } from './review-scope'
+import { selectJourneyRuns, type JourneyRun } from './review-scope'
 import { convertEvaluationToFindings, prepareJourneyFindings, type JourneyReviewDraft } from './review-findings'
 import { recordJourneyResult } from './review-persistence'
 import { observeJourneyPlan } from './plan-observation'
@@ -39,6 +39,7 @@ export async function runJourneyReviewsForAudit(
     overlayExpectedTargets?: OverlayTarget[]; overlayPhases?: string[]; allowedCheckIds?: readonly string[];
     expectedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
     recordedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
+    journeyRuns?: JourneyRun[]; journeyPageOnly?: boolean; completeReview?: boolean;
     onAssessment?: (assessment: JourneyAssessment) => void;
     onPageObservations?: (observations: JourneyObservation[]) => void;
     onJourneyFindings?: (findings: JourneyFindingDraft[]) => void;
@@ -61,7 +62,7 @@ export async function runJourneyReviewsForAudit(
   })
   const contract = parseProductContract(auditRow?.productContract)
   const purpose = options.metadata ? detectPagePurpose(options.metadata, startUrl).purpose : null
-  const journeyRuns = selectJourneyRuns(contract, purpose, options)
+  const journeyRuns = options.journeyRuns ?? selectJourneyRuns(contract, purpose, options)
 
   const browser = await getAuditBrowser()
   let findingCount = 0
@@ -124,7 +125,7 @@ export async function runJourneyReviewsForAudit(
         plannerUsage: plannerUsage ?? undefined,
         overlayExpectedTargets: options.overlayExpectedTargets?.filter(target => target.context.split(':')[3].startsWith('journey_' + journeyType.replaceAll('-', '_') + '_')),
         expectedJourneyRoute: journeyRun.route,
-        journeyPageOnly: Boolean(options.expectedJourneyConditions),
+        journeyPageOnly: options.journeyPageOnly ?? Boolean(options.expectedJourneyConditions),
       })
       if (plan) {
         result.planJson = JSON.stringify(plan)
@@ -207,11 +208,11 @@ export async function runJourneyReviewsForAudit(
 
   await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
-    data: { journeyReviewAt: new Date(), progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE },
+    data: { ...(options.completeReview === false ? {} : { journeyReviewAt: new Date() }), progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE },
   }))
   await logPipelineEvent(auditId, {
     stage: 'JOURNEY_REVIEW',
-    event: 'completed',
+    event: options.completeReview === false ? 'observation_completed' : 'completed',
     detail: `${findingCount} findings`,
   })
 

@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { fixedClock, systemClock } from '@/lib/time/clock'
 import { readFile } from 'node:fs/promises'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -115,7 +116,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     expect(observe).toHaveBeenCalledOnce()
     expect(await db().uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(0)
     expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: null })
-    expect(await loadUptimeSummary(project.id)).toMatchObject({ enabled: false, state: 'paused' })
+    expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ enabled: false, state: 'paused' })
     expect(await db().uptimeNotification.count({ where: { incidentId: incident.id } })).toBe(0)
     expect(await setProjectWatch({ projectId: project.id, userId: user.id, action: 'resume' })).toMatchObject({ ok: true })
     await scheduleUptimeProbes(systemClock, 10)
@@ -347,7 +348,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
           incidentOpen: home.uptime!.incidentOpen }) })] })
       const detailed = await mcpCall(user, MCP_TOOLS.listOutcomes.name, { siteId: project.id, uptimeWindow: '24h' })
       expect(detailed.structuredContent).toMatchObject({ outcomes: [], uptime: {
-        ...await loadUptimeHistory(project.id), scope: UPTIME_COPY.scope, limitation: UPTIME_COPY.limitation,
+        ...await loadUptimeHistory(uptimeReadSite(project)), scope: UPTIME_COPY.scope, limitation: UPTIME_COPY.limitation,
       } })
     }
     await executeUptimeProbe(job, async () => failed)
@@ -374,7 +375,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     const originalNotification = await db().uptimeNotification.findFirstOrThrow()
     vi.setSystemTime(new Date(originTime.getTime() + 5 * 60_000))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, async () => ({ ...online, result: 'UNKNOWN', reason: 'access_blocked' }))
-    expect(await loadUptimeSummary(project.id)).toMatchObject({ state: 'unknown', openIncidentCount: 1 })
+    expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ state: 'unknown', openIncidentCount: 1 })
     await expectCurrentHealth('flags', 'Needs attention')
     // Internal monitor state cannot revoke the active Site's unresolved duty.
     await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { enabled: false } })
@@ -439,14 +440,14 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
       return online
     })
     expect(await db().uptimeProbe.count()).toBe(0)
-    expect((await loadUptimeSummary(project.id))?.state).toBe('paused')
+    expect((await loadUptimeSummary(uptimeReadSite(project)))?.state).toBe('paused')
   })
 
   it('supersedes target generations without fabricating recovery', async () => {
     const { project, monitor, job } = await monitorFixture()
     await db().uptimeIncident.create({ data: { monitorId: monitor.id, version: 1, targetUrl: project.url, startedAt: originTime, confirmedAt: originTime, reason: 'response_error' } })
     await db().project.update({ where: { id: project.id }, data: { url: 'https://example.org/' } })
-    expect(await loadUptimeSummary(project.id)).toMatchObject({ state: 'unknown', incidentOpen: false, openIncidentCount: 1 })
+    expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ state: 'unknown', incidentOpen: false, openIncidentCount: 1 })
     expect((await loadSiteHome(project.id, { ownerEvidence: true }))!.presentation.result.state).toBe('could_not_verify')
     const observe = vi.fn(async () => online)
     await executeUptimeProbe(job, observe)
@@ -455,15 +456,15 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     const incident = await db().uptimeIncident.findFirstOrThrow()
     expect(incident.supersededAt).not.toBeNull()
     expect(incident.recoveredAt).toBeNull()
-    expect((await loadUptimeSummary(project.id))?.segments.every(segment => segment.state === 'unknown')).toBe(true)
-    expect(await loadUptimeSummary(project.id)).toMatchObject({ state: 'unknown', incidentOpen: false, openIncidentCount: 0 })
+    expect((await loadUptimeSummary(uptimeReadSite(project)))?.segments.every(segment => segment.state === 'unknown')).toBe(true)
+    expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ state: 'unknown', incidentOpen: false, openIncidentCount: 0 })
   })
 
   it('rejects queued probes for a suspended account and resumes the retained monitor after reactivation', async () => {
-    const { user, monitor, job } = await monitorFixture()
+    const { user, project, monitor, job } = await monitorFixture()
     await db().user.update({ where: { id: user.id }, data: { lifecycleStatus: 'SUSPENDED' } })
-    expect(await loadUptimeSummary(monitor.projectId, originTime)).toMatchObject({ enabled: false, state: 'paused', nextCheckAt: null })
-    expect(await loadUptimeHistory(monitor.projectId, '24h', null, originTime)).toMatchObject({ enabled: false, state: 'paused' })
+    await expect(loadUptimeSummary(uptimeReadSite(project), originTime)).rejects.toMatchObject({ status: 404 })
+    await expect(loadUptimeHistory(uptimeReadSite(project), '24h', null, originTime)).rejects.toMatchObject({ status: 404 })
     const observe = vi.fn(async () => online)
     await executeUptimeProbe(job, observe)
     await scheduleUptimeProbes(fixedClock(originTime), 1)
@@ -477,7 +478,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     expect(observe).toHaveBeenCalledOnce()
     expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({
       id: monitor.id, enabled: true, state: 'online' })
-    expect(await loadUptimeSummary(monitor.projectId, originTime)).toMatchObject({ enabled: true, state: 'online' })
+    expect(await loadUptimeSummary(uptimeReadSite(project), originTime)).toMatchObject({ enabled: true, state: 'online' })
   })
 
   it('discards an in-flight observation after account suspension without inventing recovery', async () => {
@@ -542,9 +543,9 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     await db().uptimeProbe.createMany({ data: Array.from({ length: 105 }, (_, index) => ({ monitorId: monitor.id, version: 1, targetUrl: project.url,
       scheduledAt: new Date(originTime.getTime() - (index + 1) * 5 * 60_000), observedAt: new Date(originTime.getTime() - (index + 1) * 5 * 60_000),
       attempt: 1, result: 'ONLINE', reason: 'response_received', durationMs: 10, confirmed: false })) })
-    const first = await loadUptimeHistory(project.id)
+    const first = await loadUptimeHistory(uptimeReadSite(project))
     expect(first?.probes).toHaveLength(100)
-    expect((await loadUptimeHistory(project.id, '24h', first!.nextCursor))?.probes).toHaveLength(5)
+    expect((await loadUptimeHistory(uptimeReadSite(project), '24h', first!.nextCursor))?.probes).toHaveLength(5)
     const evidence = await mcpCall(user, MCP_TOOLS.listOutcomes.name, { siteId: project.id, uptimeWindow: '24h' })
     expect(evidence.structuredContent?.outcomes).toEqual([expect.objectContaining({ outcomeId: watched.id,
       state: 'COULD_NOT_VERIFY', freshness: expect.objectContaining({ status: 'UNVERIFIED' }) })])
@@ -559,7 +560,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     await db().uptimeMonitor.create({ data: { projectId: other.id, targetUrl: other.url } })
     expect(await mcpCall(user, MCP_TOOLS.listOutcomes.name, { siteId: other.id, uptimeWindow: '24h', uptimeCursor: firstPage.nextCursor }))
       .toMatchObject({ isError: true, structuredContent: { error: { code: 'INVALID_UPTIME_CURSOR' } } })
-    await expect(loadUptimeHistory(project.id, '24h', 'not-a-probe')).rejects.toThrow()
+    await expect(loadUptimeHistory(uptimeReadSite(project), '24h', 'not-a-probe')).rejects.toThrow()
     const old = new Date(originTime.getTime() - 31 * 86400_000)
     await db().uptimeProbe.create({ data: { monitorId: monitor.id, version: 1, targetUrl: project.url, scheduledAt: old, observedAt: old,
       attempt: 1, result: 'FAILED', reason: 'response_error', durationMs: 10, confirmed: true } })

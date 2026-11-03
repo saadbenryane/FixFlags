@@ -20,9 +20,19 @@ import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { observationsForFlag } from '@/lib/audit/flag-observations'
 import { classifyWatchResult } from '@/lib/audit/project-watch'
 import { readSiteHomeView } from '@/lib/sites/site-view-contract'
-import { loadSiteFlagDetail } from '@/lib/sites/flags'
+import { loadSiteFlagDetail, loadSiteFindings } from '@/lib/sites/flags'
 import { publishProgress } from '@/lib/audit/progressive/events'
-import { readSiteEvents } from '../execution-progress'
+import { readSiteEvents, loadExecutionProgress } from '../execution-progress'
+import type { SiteRecord } from '@/lib/sites/types'
+import { cardExecution } from '@/lib/sites/card-execution'
+import { evaluateSearch } from '@/lib/audit/search/registry'
+import { document, evidence } from '@/lib/audit/search/__tests__/fixtures'
+import { loadSiteNotificationSummaries } from '../list-sites'
+import { buildSummaryPayload } from '@/lib/notifications/summary'
+import { NOTIFICATIONS_COPY } from '@/lib/marketing/copy/notifications'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 run('current Site evidence publication in PostgreSQL', () => {
@@ -56,6 +66,216 @@ run('current Site evidence publication in PostgreSQL', () => {
   afterEach(async () => {
     await prisma.audit.deleteMany({ where: { userId } })
     await prisma.user.deleteMany({ where: { id: userId } })
+  })
+
+  it.each(['bound', 'unbound'] as const)('selects current %s findings before reading historical editor prompts', async kind => {
+    const paths = Array.from({ length: 24 }, (_, index) => 'https://example.com/page-' + index)
+    const prompt = 'Restore a descriptive title on the recorded page while preserving its current meaning.'
+    const historicalPrompt = 'Recorded historical editor instructions. '.repeat(512)
+    const ids = Array.from({ length: 120 }, () => randomUUID())
+    // These rows model accumulated observations, not 120 executed browser checks.
+    await prisma.flag.createMany({ data: ids.map((id, index) => ({ id, auditId, checkId: 'title-missing', fingerprint: 'title-history',
+      source: 'DETERMINISTIC', rubric: 'REACH', severity: 'IMPORTANT', impactTag: 'SEO', confidence: 1, position: index,
+      problem: 'Page title is missing', evidence: 'No title was recorded.', whyItMatters: 'The page needs an identifiable title.',
+      fix: '', agentPrompt: index === ids.length - 1 ? prompt : historicalPrompt,
+      pageUrl: paths[index % paths.length], affectedPaths: index === ids.length - 1 ? paths : [paths[index % paths.length]],
+      createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)) })) })
+    if (kind === 'bound') {
+      const improvement = await prisma.improvement.create({ data: { projectId, fingerprint: 'title-history', title: 'Restore page titles',
+        judgment: 'Recorded title absence.', expectedBenefit: 'Identify each page.', recommendedChange: prompt, successCondition: 'The title is present.' } })
+      await prisma.improvementOccurrence.createMany({ data: ids.map(flagId => ({ improvementId: improvement.id, auditId, flagId, kind: 'CONFIRMED' })) })
+    }
+    const site = (await loadSiteRecord(projectId))!
+    const readFlags = prisma.flag.findMany.bind(prisma.flag), readImprovements = prisma.improvement.findMany.bind(prisma.improvement)
+    let bytes = 0
+    const flagsRead = vi.spyOn(prisma.flag, 'findMany').mockImplementation(async args => {
+      const rows = await readFlags(args); bytes += Buffer.byteLength(JSON.stringify(rows)); return rows
+    })
+    const improvementsRead = vi.spyOn(prisma.improvement, 'findMany').mockImplementation(async args => {
+      const rows = await readImprovements(args); bytes += Buffer.byteLength(JSON.stringify(rows)); return rows
+    })
+    try {
+      const findings = await loadSiteFindings(site)
+      expect(findings.flags).toHaveLength(1)
+      expect(findings.flags[0]).toMatchObject({ sourceFlagId: ids.at(-1), affectedPageCount: paths.length,
+        fix: prompt, repairGuidance: 'ready', verificationState: 'still_open' })
+      expect(new Set(findings.flags[0].affectedPaths)).toEqual(new Set(paths))
+      expect(findings.recommendations).toHaveLength(0)
+      process.stdout.write(JSON.stringify({ scenario: kind, syntheticObservations: ids.length, selectedFindings: findings.flags.length, transferredBytes: bytes }) + '\n')
+      expect(bytes).toBeLessThan(300_000)
+    } finally { flagsRead.mockRestore(); improvementsRead.mockRestore() }
+    expect(await prisma.flag.count({ where: { id: { in: ids } } })).toBe(ids.length)
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: ids[0] } })).toMatchObject({ agentPrompt: historicalPrompt, status: 'OPEN', resolvedInId: null })
+  })
+
+  it.each(['bound', 'unbound'] as const)('loads supporting evidence only for selected %s account-summary findings', async kind => {
+    const paths = Array.from({ length: 24 }, (_, index) => 'https://example.com/page-' + index)
+    const history = Array.from({ length: 120 }, (_, index) => ({ id: randomUUID(), flagId: randomUUID(),
+      pageUrl: paths[index % paths.length], at: new Date(Date.now() - (120 - index) * 60_000) }))
+    // Synthetic retained captures exercise summary reads, not webpage collection.
+    await prisma.audit.createMany({ data: history.map(row => ({ id: row.id, projectId, userId, url: row.pageUrl,
+      status: 'COMPLETED' as const, createdAt: row.at, completedAt: row.at,
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: row.pageUrl,
+        environment: 'production', checks: { 'title-missing': 1 }, outcomes: [], verificationTarget: null } })) })
+    await prisma.flag.createMany({ data: history.map((row, index) => ({ id: row.flagId, auditId: row.id,
+      checkId: 'title-missing', fingerprint: 'summary-title-history', source: 'DETERMINISTIC', rubric: 'REACH',
+      severity: 'IMPORTANT', confidence: 1, position: 0, createdAt: row.at, pageUrl: row.pageUrl,
+      affectedPaths: index === history.length - 1 ? paths : [row.pageUrl], problem: 'Page title is missing',
+      evidence: 'No page title was recorded.', whyItMatters: 'The page needs an identifiable title.', fix: 'Restore a descriptive page title.',
+      supportingObservations: observationsForFlag({ source: 'DETERMINISTIC', checkId: 'title-missing', pageUrl: row.pageUrl,
+        evidence: 'No page title was recorded.', evidenceTargets: [{ source: 'measured', kind: 'element', device: 'desktop',
+          label: 'Original title', selector: 'title', context: 'retained private comparison context '.repeat(110) }] }) })) })
+    if (kind === 'bound') {
+      const improvement = await prisma.improvement.create({ data: { projectId, fingerprint: 'summary-title-history', title: 'Restore page titles',
+        judgment: 'Recorded title absence.', expectedBenefit: 'Identify each page.', recommendedChange: 'Restore page titles.', successCondition: 'The title is present.' } })
+      await prisma.improvementOccurrence.createMany({ data: history.map(row => ({ improvementId: improvement.id, auditId: row.id,
+        flagId: row.flagId, kind: 'CONFIRMED', createdAt: row.at })) })
+    }
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(home.flags).toHaveLength(1)
+    let bytes = 0
+    const readFlags = prisma.flag.findMany.bind(prisma.flag), readImprovements = prisma.improvement.findMany.bind(prisma.improvement)
+    const flags = vi.spyOn(prisma.flag, 'findMany').mockImplementation(async args => {
+      const rows = await readFlags(args); bytes += Buffer.byteLength(JSON.stringify(rows)); return rows
+    })
+    const improvements = vi.spyOn(prisma.improvement, 'findMany').mockImplementation(async args => {
+      const rows = await readImprovements(args); bytes += Buffer.byteLength(JSON.stringify(rows)); return rows
+    })
+    try {
+      for (const channel of ['board', 'notification'] as const) {
+        bytes = 0
+        const summaries = channel === 'board' ? await loadSiteSummaries(userId) : await loadSiteNotificationSummaries(userId)
+        expect(summaries).toHaveLength(1)
+        expect(summaries[0].presentation.flags).toEqual(home.presentation.flags)
+        expect(summaries[0].presentation.result).toEqual(home.presentation.result)
+        console.info('Account-summary finding history:', { kind, channel, captures: history.length, transferredBytes: bytes })
+        expect(bytes).toBeLessThan(150_000)
+      }
+    } finally { flags.mockRestore(); improvements.mockRestore() }
+    expect(await prisma.flag.count({ where: { auditId: { in: history.map(row => row.id) } } })).toBe(history.length)
+  })
+
+  it('retains private recovery comparison inputs while narrowing account-summary evidence reads', async () => {
+    const url = 'https://example.com/', now = new Date(), recoveryId = randomUUID()
+    const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture(url) } })
+    const finding = runPerformanceChecks(measurement, null, url).find(flag => flag.checkId === 'lcp-poor')!
+    // Controlled source and recovery receipts prove reader behavior only.
+    // They do not claim a fresh lab measurement or provider acceptance.
+    const recovery = await prisma.audit.create({ data: { id: recoveryId, projectId, userId, url, parentId: auditId, status: 'COMPLETED',
+      createdAt: new Date(now.getTime() - 60_000), completedAt: now,
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: url, environment: 'production',
+        checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
+      verificationReceipts: { create: { targetKey: 'module:performance', scopeKey: 'page:' + url, pageUrl: url,
+        status: 'COMPLETED', source: 'DETERMINISTIC', detail: { kind: 'site-module-check', version: 1, module: 'performance',
+          pageUrl: url, applicable: true, passed: true, assertions: scopePerformanceAssertions(measurement, url,
+            [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true, complete: true }]),
+          execution: { auditId: recoveryId, taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: now.toISOString() } } } } } })
+    const source = await prisma.flag.create({ data: { auditId, source: 'DETERMINISTIC', checkId: finding.checkId,
+      rubric: finding.rubric, severity: finding.severity, impactTag: finding.impactTag, problem: finding.problem,
+      evidence: finding.evidence, whyItMatters: 'Visitors wait for the page content.', fix: 'Improve content loading.', pageUrl: url, confidence: 1, position: 0,
+      verificationRule: finding.verificationRule, evidenceTargets: finding.evidenceTargets as Prisma.InputJsonValue,
+      status: 'FIXED', resolvedInId: recovery.id } })
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))!.flags).toHaveLength(0)
+    for (const summaries of [await loadSiteSummaries(userId), await loadSiteNotificationSummaries(userId)])
+      expect(summaries[0].presentation.flags.count).toBe(0)
+    await prisma.auditVerificationReceipt.deleteMany({ where: { auditId: recovery.id, targetKey: 'module:performance' } })
+    for (const summaries of [await loadSiteSummaries(userId), await loadSiteNotificationSummaries(userId)])
+      expect(summaries[0].presentation.flags.count).toBe(1)
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).toEqual(source)
+  })
+
+  it('keeps recorded progress readable without decoding historical or oversized execution inputs', async () => {
+    const pageUrl = 'https://example.com/'
+    const cohort = Array.from({ length: 5000 }, (_, index) => 'form:' + index.toString(16).padStart(64, '0'))
+    const input = { pageUrl, position: 0, primary: true, role: 'primary', verificationContexts: cohort }
+    const current = await prisma.auditExecutionTask.create({ data: { auditId, targetKey: 'task:cohort-progress', source: 'EXECUTION',
+      pageUrl, workKind: 'flow', workState: 'READY', status: 'PENDING', workInput: input } })
+    const historical = await prisma.auditExecutionTask.create({ data: { auditId, targetKey: 'task:historical-progress', source: 'EXECUTION',
+      workKind: 'check', workState: 'BLOCKED', status: 'FAILED', workErrorCode: 'CHECK_VERSION_UNAVAILABLE',
+      workInput: { pageUrl, module: 'metadata', historicalFormat: { retained: 'x'.repeat(2_000_000) } } } })
+    const unreadable = await prisma.auditExecutionTask.create({ data: { auditId, targetKey: 'task:unreadable-progress', source: 'EXECUTION',
+      workInput: { module: { invalid: true }, device: 'tablet' }, status: 'PENDING' } })
+    await prisma.auditExecutionTask.create({ data: { auditId, targetKey: 'task:prescription-progress', source: 'EXECUTION',
+      workKind: 'prescription', workState: 'READY', status: 'PENDING', workInput: input } })
+    const site = await loadSiteRecord(projectId)
+    const read = vi.spyOn(prisma, '$queryRaw')
+    try {
+      const progress = await loadExecutionProgress(site!, auditId)
+      expect(progress).toMatchObject({ total: 3, pending: 1, unknown: 2,
+        recovery: { action: 'support', reasons: ['CHECK_VERSION_UNAVAILABLE'] }, tasks: expect.arrayContaining([
+          expect.objectContaining({ id: current.id, kind: 'flow', pageUrl, state: 'READY' }),
+          expect.objectContaining({ id: historical.id, kind: 'check', module: 'metadata', pageUrl, state: 'BLOCKED' }),
+          expect.objectContaining({ id: unreadable.id, kind: '', module: null, device: null, pageUrl: '', state: 'UNKNOWN' }),
+        ]) })
+      const home = await loadSiteHome(projectId, { ownerEvidence: true })
+      expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).executionProgress).toMatchObject({ total: 3, unknown: 2,
+        categoryActivity: { conversion: { kind: 'flow', state: 'READY' } } })
+      expect(Buffer.byteLength(JSON.stringify(progress))).toBeLessThan(4096)
+      const indexes = read.mock.calls.flatMap(([query], index) =>
+        (Array.isArray(query) ? query.join('') : (query as Prisma.Sql).sql).includes('FROM audit_execution_tasks task JOIN audits audit') ? [index] : [])
+      expect(indexes).toHaveLength(2)
+      for (const index of indexes) expect(Buffer.byteLength(JSON.stringify(await read.mock.results[index].value))).toBeLessThan(4096)
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: historical.id } })).toMatchObject({
+        workInput: { historicalFormat: { retained: 'x'.repeat(2_000_000) } }, workState: 'BLOCKED',
+      })
+    } finally { read.mockRestore() }
+  })
+
+  it('retains category activity beyond the detail limit through the Site home and client projection', async () => {
+    const pageUrl = 'https://example.com/'
+    await prisma.audit.update({ where: { id: auditId }, data: { status: 'CHECKING', completedAt: null } })
+    await prisma.auditExecutionTask.createMany({ data: Array.from({ length: 120 }, (_, index) => ({
+      auditId, targetKey: 'task:earlier:' + index, source: 'EXECUTION', pageUrl, workKind: 'check',
+      workState: 'COMPLETED' as const, status: 'COMPLETED' as const, workInput: { module: 'metadata' },
+    })) })
+    const active = await prisma.auditExecutionTask.create({ data: { auditId, targetKey: 'task:later-performance', source: 'EXECUTION',
+      pageUrl, workKind: 'pagespeed', workState: 'RUNNING', status: 'RUNNING', workInput: { device: 'mobile' } } })
+    const home = await loadSiteHome(projectId, { ownerEvidence: true })
+    const view = readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId)
+    expect(view.executionProgress).toMatchObject({ total: 121, running: 1,
+      categoryActivity: { performance: { kind: 'pagespeed', state: 'RUNNING', device: 'mobile' } } })
+    expect(view.executionProgress?.tasks).toHaveLength(100)
+    expect(view.executionProgress?.tasks.some(task => task.id === active.id)).toBe(false)
+    expect(cardExecution('performance', view.executionProgress)?.status).toBe('Running')
+  })
+
+  it.each(['parent', 'tasks'] as const)('preserves only the provisional primary progress when its source is claimed after the %s read', async phase => {
+    const anonymous = await prisma.audit.create({ data: { url: 'https://example.com/' } })
+    await prisma.auditExecutionTask.create({ data: { auditId: anonymous.id, targetKey: 'task:provisional', source: 'EXECUTION',
+      pageUrl: anonymous.url, workKind: 'browser', workState: 'READY', status: 'PENDING' } })
+    const provisional = { siteId: 'provisional-progress', projectId: null, primaryAuditId: anonymous.id } as SiteRecord
+    await publishProgress(anonymous.id, { kind: 'browser', state: 'READY' })
+    expect((await readSiteEvents(provisional, BigInt(0))).length).toBeGreaterThan(0)
+    const claim = () => prisma.audit.update({ where: { id: anonymous.id }, data: { projectId, userId } })
+    let restore: () => void
+    if (phase === 'parent') {
+      const original = prisma.audit.findFirst.bind(prisma.audit)
+      const read = vi.spyOn(prisma.audit, 'findFirst').mockImplementationOnce(async input => {
+        const parent = await original(input)
+        await claim()
+        return parent
+      })
+      restore = () => read.mockRestore()
+    } else {
+      const original = prisma.auditExecutionTask.groupBy.bind(prisma.auditExecutionTask)
+      const read = vi.spyOn(prisma.auditExecutionTask, 'groupBy').mockImplementationOnce(async input => {
+        await claim()
+        return original(input)
+      })
+      restore = () => read.mockRestore()
+    }
+    try {
+      expect(await loadExecutionProgress(provisional, anonymous.id)).toMatchObject({ total: 1, pending: 1,
+        tasks: [expect.objectContaining({ kind: 'browser', state: 'READY', pageUrl: anonymous.url })] })
+      await publishProgress(auditId, { kind: 'browser', state: 'RUNNING' })
+      const events = await readSiteEvents(provisional, BigInt(0))
+      expect(events.length).toBeGreaterThan(0)
+      expect(events.every(event => event.auditId === anonymous.id)).toBe(true)
+      expect(await loadExecutionProgress(provisional, auditId)).toBeNull()
+    } finally {
+      restore()
+      await prisma.audit.delete({ where: { id: anonymous.id } })
+    }
   })
 
   it.each(['another-inventory', 'staging-inventory', 'wrong-environment'] as const)(
@@ -103,6 +323,42 @@ run('current Site evidence publication in PostgreSQL', () => {
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: unrelated.id } })).toEqual(unrelated)
     })
 
+  it.each(['QUEUED', 'CHECKING', 'FAILED'] as const)('retains fresh category assurance while the next full-site check is %s', async status => {
+    const now = Date.now(), url = 'https://example.com/'
+    const baseline = await prisma.audit.update({ where: { id: auditId }, data: {
+      createdAt: new Date(now - 10 * 86400_000), completedAt: new Date(now - 9 * 86400_000),
+    }, include: { verifierExecutions: { where: { targetKey: 'module:security' } } } })
+    await persistFlagDiffSummary(null, auditId)
+    const spec = executionSpecSchema.parse({ ...(baseline.executionSpec as object), scope: 'CATEGORY',
+      category: { area: 'security', sourceAuditId: auditId, pages: [url] } })
+    // Persisted observations isolate reader provenance. They are not fresh
+    // webpage collection or provider evidence.
+    const category = await prisma.audit.create({ data: { projectId, userId, url, parentId: auditId,
+      status: 'COMPLETED', createdAt: new Date(now - 2000), completedAt: new Date(now - 1000), executionSpec: spec,
+      pages: { create: { url, normalizedUrl: url, status: 'COMPLETED', role: 'homepage', position: 0 } },
+      verificationReceipts: { create: { targetKey: 'module:security', scopeKey: 'page:' + url,
+        status: 'COMPLETED', source: 'DETERMINISTIC', detail: baseline.verifierExecutions[0].detail!, updatedAt: new Date(now - 1000) } },
+      executionTasks: { create: initialTaskPlan(spec).map(task => ({ targetKey: 'task:' + task.key, scopeKey: task.scope, source: 'SYSTEM' as const,
+        status: 'COMPLETED' as const, workState: 'COMPLETED' as const, workKind: task.kind, workDependencies: task.dependencies,
+        workInput: task.input, pageUrl: task.input.pageUrl })) } } })
+    await persistFlagDiffSummary(auditId, category.id)
+    const before = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(before.cards.find(card => card.id === 'security')).toMatchObject({ state: 'healthy', evidenced: true,
+      checkedAt: category.completedAt!.toISOString() })
+    const current = await prisma.audit.create({ data: { projectId, userId, url, status, createdAt: new Date(now),
+      completedAt: status === 'FAILED' ? new Date(now) : null, executionSpec: baseline.executionSpec!, evidenceCoverage: {} } })
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    const client = readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId)
+    for (const view of [home, client]) {
+      expect(view.cards.find(card => card.id === 'security')).toMatchObject({ state: 'healthy', evidenced: true,
+        checkedAt: category.completedAt!.toISOString() })
+      expect(view.presentation.freshness.stale).toBe(false)
+      expect(view.audit).toMatchObject({ id: current.id, status })
+    }
+    expect((await loadSiteSummaries(userId))[0].presentation.freshness.stale).toBe(false)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: category.id } })).toEqual(category)
+  })
+
   it.each(['missing', 'unknown', 'checking', 'offline', 'stale', 'online'] as const)('uses %s uptime evidence for current Site health while preserving the recorded run', async state => {
     const now = new Date()
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: new Date(now.getTime() + 86400_000) } })
@@ -126,7 +382,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect(await prisma.flag.count({ where: { auditId } })).toBe(0)
   })
 
-  it.each(['pending', 'unavailable'] as const)('retains %s guidance from the finding source rather than the latest broad check', async state => {
+  it.each(['pending', 'unavailable'] as const)('retains the source repair recipe while its prescription is %s', async state => {
     const time = Date.now()
     await prisma.audit.update({ where: { id: auditId }, data: { includeAi: state === 'unavailable',
       triageAt: new Date(time), aiReviewAt: null, failureCode: null } })
@@ -145,9 +401,13 @@ run('current Site evidence publication in PostgreSQL', () => {
       await prisma.improvementOccurrence.create({ data: { improvementId: improvement.id, auditId: source.id, flagId: flag.id, kind: 'OBSERVED' } })
     }
     const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
-    expect(home.flags.find(item => item.sourceFlagId === flag.id)?.repairGuidance).toBe(state)
-    expect((await loadSiteFlagDetail(home.site, flag.id))?.repairGuidance).toBe(state)
-    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).flags.find(item => item.sourceFlagId === flag.id)?.repairGuidance).toBe(state)
+    const prepared = home.flags.find(item => item.sourceFlagId === flag.id)
+    expect(prepared).toMatchObject({ repairGuidance: 'ready' })
+    expect(await loadSiteFlagDetail(home.site, flag.id)).toMatchObject({ sourceAuditId: source.id, repairGuidance: 'ready', fix: prepared?.fix,
+      repairDefinition: { source: 'check-recipe', checkId: flag.checkId } })
+    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).flags.find(item => item.sourceFlagId === flag.id)?.fix)
+      .toEqual(prepared?.fix)
+    expect((await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).fix).toBe('')
     let newerFlagId: string | null = null
     if (state === 'pending') {
       const newer = await prisma.flag.create({ data: { auditId, source: 'DETERMINISTIC', checkId: flag.checkId,
@@ -156,7 +416,7 @@ run('current Site evidence publication in PostgreSQL', () => {
         fix: 'Guidance for the newer occurrence.', pageUrl: latest.url } })
       newerFlagId = newer.id
       expect((await loadSiteHome(projectId, { ownerEvidence: true }))!.flags.some(item => item.sourceFlagId === flag.id)).toBe(false)
-      expect((await loadSiteFlagDetail(home.site, flag.id))?.repairGuidance).toBe('pending')
+      expect(await loadSiteFlagDetail(home.site, flag.id)).toMatchObject({ sourceAuditId: source.id, repairGuidance: 'ready', fix: prepared?.fix })
     }
     await prisma.flag.update({ where: { id: flag.id }, data: { fix: 'Give the original button a clear accessible name.' } })
     await prisma.audit.update({ where: { id: source.id }, data: { aiReviewAt: new Date() } })
@@ -229,6 +489,45 @@ run('current Site evidence publication in PostgreSQL', () => {
     })
   })
 
+  it('keeps another page’s unavailable Search source incomplete across current Site and notification views', async () => {
+    const now = new Date(), root = 'https://example.com/', about = root + 'about'
+    const html = '<html lang="en"><head><title>Recorded title</title></head><body><h1>Recorded page</h1></body></html>'
+    const readTitle = async (url: string, available: boolean) => {
+      const source = document(available ? html : null, { url, finalUrl: url, collectedAt: now.toISOString(),
+        complete: available, reason: available ? null : 'document_truncated' })
+      const observations = (await evaluateSearch(evidence(html, { auditId, pageUrl: url, collectorVersion: 2,
+        collectedAt: now.toISOString(), original: source, rendered: source }), null, ['presentation']))
+        .filter(item => item.checkId === 'title-missing')
+      expect(observations.length).toBeGreaterThan(0)
+      expect(observations.every(item => item.disposition === (available ? 'passed' : 'unknown'))).toBe(true)
+      return { kind: 'search-checks', version: 1, auditId, pageUrl: url, collectedAt: now.toISOString(),
+        complete: available, observations }
+    }
+    const baseline = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    await prisma.audit.update({ where: { id: auditId }, data: {
+      executionSpec: { ...(baseline.executionSpec as Prisma.JsonObject), checks: { 'title-missing': 2 } },
+    } })
+    await prisma.auditPage.create({ data: { auditId, url: about, normalizedUrl: about, status: 'COMPLETED', role: 'internal', position: 1 } })
+    // These are actual parser observations on supplied documents. The fixture
+    // exercises persisted projection, not HTTP or browser collection.
+    for (const [url, available] of [[root, true], [about, false]] as const) {
+      await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:search', scopeKey: 'page:' + url,
+        pageUrl: url, source: 'DETERMINISTIC', status: 'COMPLETED', detail: await readTitle(url, available) as Prisma.InputJsonValue } })
+    }
+    await persistFlagDiffSummary(null, auditId)
+    const before = await prisma.auditVerificationReceipt.findMany({ where: { auditId }, orderBy: { id: 'asc' } })
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    const list = (await loadSiteSummaries(userId))[0]
+    const notification = (await loadSiteNotificationSummaries(userId, now))[0]
+    expect(home.cards.find(card => card.id === 'search')).toMatchObject({ state: 'unknown', incompleteReason: expect.any(String) })
+    expect(home.presentation.categories.find(category => category.id === 'search')).toMatchObject({ state: 'unknown' })
+    expect(home.presentation.result.state).toBe('could_not_verify')
+    expect(list.presentation.result).toEqual(home.presentation.result)
+    expect(notification.notification.incomplete).toBe(true)
+    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).cards.find(card => card.id === 'search')?.state).toBe('unknown')
+    expect(await prisma.auditVerificationReceipt.findMany({ where: { auditId }, orderBy: { id: 'asc' } })).toEqual(before)
+  })
+
   it.each(['malformed', 'public-only', 'empty-array'] as const)('keeps %s supporting evidence unknown across current views, publication and history', async kind => {
     const supportingObservations = kind === 'malformed' ? { version: 99, items: [] } : kind === 'empty-array' ? []
       : [{ source: 'DETERMINISTIC', checkId: 'no-https', checkVersion: 1, pageUrl: 'https://example.com/', evidence: 'Public summary',
@@ -241,7 +540,12 @@ run('current Site evidence publication in PostgreSQL', () => {
     const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.flags).toHaveLength(0)
     expect(home?.recommendations.find(item => item.sourceFlagId === flag.id)).toMatchObject({ supportingEvidenceUnreadable: true })
-    expect(home?.recommendations.find(item => item.sourceFlagId === flag.id)).toMatchObject({ fix: '', repairGuidance: 'unavailable' })
+    const recommendation = home?.recommendations.find(item => item.sourceFlagId === flag.id)
+    expect(recommendation).toMatchObject({ repairGuidance: 'ready' })
+    expect(await loadSiteFlagDetail(home!.site, flag.id)).toMatchObject({ repairGuidance: 'ready', fix: recommendation?.fix,
+      repairDefinition: { kind: 'evidence-recovery', source: 'evidence-recovery' } })
+    expect(recommendation?.fix).toContain('Do not change the website based on this record.')
+    expect(recommendation?.fix).not.toContain('Retained original guidance.')
     expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).recommendations[0].supportingEvidenceUnreadable).toBe(true)
     expect(home?.presentation.result.state).toBe('could_not_verify')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('could_not_verify')
@@ -403,15 +707,25 @@ run('current Site evidence publication in PostgreSQL', () => {
     // an independent recent reachability observation after monitoring starts.
     await prisma.uptimeMonitor.upsert({ where: { projectId }, create: { projectId, targetUrl, state: 'online', lastCheckedAt: new Date() },
       update: { state: 'online', lastCheckedAt: new Date() } })
+    await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS' } })
+    const preference = await prisma.notificationPreference.create({ data: { userId, cadence: 'DAILY' } })
+    const owner = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } })
+    const summary = () => buildSummaryPayload({ id: 'freshness-summary', userId, revision: preference.revision,
+      scheduledAt: new Date(), user: owner, preference }, new Date(), () => new Date())
     expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.presentation.result.state).toBe('clear')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
+    expect((await summary())?.text).toContain(NOTIFICATIONS_COPY.summary.quiet)
 
     expect(await setProjectWatch({ projectId, userId, interval: 'hourly' })).toMatchObject({ ok: true })
     const currentUntil = new Date(assessedAt.getTime() + 13 * 3600_000).toISOString()
     const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.outcomes.find(item => item.id === outcome.id)).toMatchObject({ state: 'STALE', validUntil: currentUntil })
     expect(home?.presentation.result.state).toBe('stale')
+    expect(home?.presentation.freshness.stale).toBe(true)
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('stale')
+    const staleSummary = await summary()
+    expect(staleSummary?.text).toContain(NOTIFICATIONS_COPY.summary.stale)
+    expect(staleSummary?.text).not.toContain(NOTIFICATIONS_COPY.summary.quiet)
     const site = await loadSiteRecord(projectId)
     expect(await loadSiteOutcomeDetail(site!, outcome.id)).toMatchObject({ state: 'STALE', validUntil: currentUntil })
     expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: 'CLEAR', validUntil: recordedUntil.toISOString() })
@@ -429,6 +743,8 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.outcomes.find(item => item.id === outcome.id))
       .toMatchObject({ state: 'CLEAR', validUntil: refreshedUntil.toISOString() })
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
+    expect((await summary())?.text).not.toContain(NOTIFICATIONS_COPY.summary.stale)
+    expect((await loadSiteSummaries(userId))[0].presentation.freshness.stale).toBe(false)
 
     const changedAt = new Date()
     expect(await setProjectWatch({ projectId, userId, interval: 'weekly' }, { clock: fixedClock(changedAt) })).toMatchObject({ ok: true })

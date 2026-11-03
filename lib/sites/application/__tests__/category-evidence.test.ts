@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/db', () => ({ prisma: {} }))
-import { applicableCategoryEvidence, overlayCategoryCoverage, type CategoryEvidenceAudit } from '../category-evidence'
+import { applicableCategoryEvidence, categoryEvidenceBaselines, overlayCategoryCoverage, type CategoryEvidenceAudit } from '../category-evidence'
 import { buildCoverageFacts } from '../../coverage'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 import { readExecutionSpec } from '../../domain/execution-spec'
 import { siteCoverageMaxAgeMs } from '../../evidence-freshness'
+import { projectCurrentSiteEvidence } from '../current-evidence'
 
 const now = new Date('2026-10-12T12:00:00Z')
 const baseline = { id: 'full', status: 'COMPLETED', createdAt: new Date('2026-10-11T12:00:00Z') }
@@ -34,6 +35,47 @@ function completedCategory() {
 }
 
 describe('category evidence projection', () => {
+  it('selects only the applicable completed inventory within one Site', () => {
+    const prior = { id: 'prior', status: 'COMPLETED' }
+    for (const status of ['QUEUED', 'CHECKING', 'FAILED']) expect(categoryEvidenceBaselines('site', { id: 'current', status }, prior))
+      .toEqual([{ projectId: 'site', auditId: 'prior' }])
+    expect(categoryEvidenceBaselines('site', { id: 'current', status: 'COMPLETED' }, prior)).toEqual([{ projectId: 'site', auditId: 'current' }])
+    expect(categoryEvidenceBaselines('site', prior, prior)).toEqual([{ projectId: 'site', auditId: 'prior' }])
+    expect(categoryEvidenceBaselines('site', { id: 'current', status: 'QUEUED' }, { id: 'failed', status: 'FAILED' }))
+      .toEqual([])
+    expect(categoryEvidenceBaselines(null, prior, prior)).toEqual([])
+    expect(categoryEvidenceBaselines('site', null, prior)).toEqual([])
+  })
+  it.each(['QUEUED', 'CHECKING', 'FAILED'])('retains a fresher category observation with the prior full report during %s broad work', status => {
+    const prior = { ...baseline, createdAt: new Date(now.getTime() - 10 * 86400_000),
+      completedAt: new Date(now.getTime() - 9 * 86400_000), evidenceCoverage: { metadata: true }, verifierExecutions: [] }
+    const audit = { ...prior, id: 'new-full', status, createdAt: now, completedAt: null, evidenceCoverage: {} }
+    const current = projectCurrentSiteEvidence({ audit, prior, categories: [completedCategory()], flags: [], now })
+    expect(current.coverage.find(fact => fact.area === 'security')).toMatchObject({ state: 'healthy', evidenced: true, checkedAt: now.toISOString() })
+    expect(current.coverage.find(fact => fact.area === 'performance')?.state).toBe('unknown')
+    expect(current.categoryEvidence.size).toBe(0)
+    expect(current.hasLastKnown).toBe(true)
+  })
+  it.each(['new-failure', 'new-gap', 'new-observation', 'completed', 'expired', 'incomplete-category'] as const)(
+    'does not let retained category evidence conceal %s', condition => {
+      const prior = { ...baseline, completedAt: baseline.createdAt, evidenceCoverage: {} }
+      const recent = completedCategory()
+      const observation = category().verifierExecutions[0]
+      const audit = { ...prior, id: 'new-full', status: condition === 'completed' ? 'COMPLETED' : 'CHECKING', createdAt: now,
+        completedAt: condition === 'completed' ? now : null,
+        verifierExecutions: condition === 'new-gap' ? [{ ...observation, detail: { kind: 'site-module-check', version: 1,
+          module: 'security', pageUrl: 'https://example.com/', passed: false, applicable: true, complete: false, assertions: [] } }]
+          : condition === 'new-observation' ? [observation] : [] }
+      if (condition === 'incomplete-category') recent.verifierExecutions = recent.verifierExecutions.filter(row => row.targetKey !== 'task:p0:http')
+      if (condition === 'new-observation') recent.status = 'FAILED'
+      const current = projectCurrentSiteEvidence({ audit, prior, categories: [recent],
+        flags: condition === 'new-failure' ? [{ checkId: 'no-https', rubric: 'REACH', severity: 'IMPORTANT', impactTag: 'TRUST' }] : [],
+        now: condition === 'expired' ? new Date(now.getTime() + 9 * 86400_000) : now })
+      const fact = current.coverage.find(fact => fact.area === 'security')!
+      expect(fact.state).toBe(condition === 'new-failure' ? 'problem' : condition === 'new-observation' ? 'healthy' : 'unknown')
+      if (condition === 'new-failure') expect(fact.openFlagCount).toBe(1)
+      if (condition === 'expired') expect(fact).toMatchObject({ stale: true, checkedAt: recent.completedAt!.toISOString() })
+    })
   it('refreshes only its admitted area and keeps the broad evidence dates', () => {
     const before = base(), selected = applicableCategoryEvidence([completedCategory()], baseline)
     const after = overlayCategoryCoverage(before, selected, now)

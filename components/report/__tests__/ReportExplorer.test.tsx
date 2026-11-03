@@ -368,8 +368,8 @@ describe('ReportExplorer anonymous teaser', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'View all prompts' }))
     if (aiLocked) {
       expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
-      expect(screen.queryByRole('textbox', { name: 'Fix prompt' })).not.toBeInTheDocument()
-    } else expect(await screen.findByRole('textbox', { name: 'Fix prompt' })).toHaveValue(prompt)
+      expect(screen.queryByRole('textbox', { name: 'Fix instructions' })).not.toBeInTheDocument()
+    } else expect(await screen.findByRole('textbox', { name: 'Fix instructions' })).toHaveValue(prompt)
     expect(writeText).not.toHaveBeenCalled()
   })
 

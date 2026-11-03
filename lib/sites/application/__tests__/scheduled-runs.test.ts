@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ project: vi.fn(), existing: vi.fn(), recent: vi.fn(), outcomes: vi.fn(), request: vi.fn(), operator: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: mocks.project }, runRequest: { findUnique: mocks.existing },
+  runRequestKey: { findUnique: async (args: unknown) => {
+    const runRequest = await mocks.existing(args)
+    return runRequest ? { runRequest, requestedByUserId: runRequest.requestedByUserId ?? null } : null
+  } },
   audit: { findFirst: mocks.recent }, siteOutcome: { findMany: mocks.outcomes } } }))
 vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.operator }))
 vi.mock('../run-requests', () => ({ requestSiteRun: mocks.request }))

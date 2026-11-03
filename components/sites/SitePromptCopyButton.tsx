@@ -23,6 +23,7 @@ export function SitePromptCopyButton(props: Parameters<typeof SitePromptCopyCont
 function SitePromptCopyContent({
   siteId,
   flagId,
+  flagTitle,
   compact = false,
   iconOnly = false,
   availability = 'available',
@@ -30,6 +31,7 @@ function SitePromptCopyContent({
 }: {
   siteId: string
   flagId: string
+  flagTitle?: string
   compact?: boolean
   iconOnly?: boolean
   availability?: SiteActionAvailability
@@ -37,9 +39,13 @@ function SitePromptCopyContent({
 }) {
   const { busy, message, error, submit } = useSiteAction()
   const [copied, setCopied] = useState(false)
+  const [recordNotice, setRecordNotice] = useState<string | null>(null)
   const [manualPrompt, setManualPrompt] = useState<string | null>(null)
   const prepared = usePreparedRepairPrompt({ kind: 'flag', siteId, flagId }, availability === 'available', presentation === 'preview')
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
+  const copyLabel = copied ? SITE_BOARD_COPY.copyPromptCopied : SITE_BOARD_COPY.copyPrompt
+  const namedCopyLabel = flagTitle ? SITE_BOARD_COPY.promptActionFor(copyLabel, flagTitle) : copyLabel
+  const previewLabel = flagTitle ? SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.viewPrompt, flagTitle) : SITE_BOARD_COPY.viewPrompt
 
   useEffect(() => {
     if (!manualPrompt) return
@@ -49,14 +55,18 @@ function SitePromptCopyContent({
 
   async function copyPrompt() {
     await submit(async () => {
-      const body = await prepared.forCopy()
-      if (!await copyRepairPrompt({ kind: 'flag', siteId, flagId }, body)) {
-        setManualPrompt(body.prompt)
+      const body = prepared.forCopy()
+      setRecordNotice(null)
+      const result = await copyRepairPrompt({ kind: 'flag', siteId, flagId }, body, () => {
+        setCopied(true)
+        showFixPromptCopied()
+        window.setTimeout(() => setCopied(false), 2000)
+      })
+      if (!result.copied) {
+        setManualPrompt(result.prompt)
         return false
       }
-      setCopied(true)
-      showFixPromptCopied()
-      window.setTimeout(() => setCopied(false), 2000)
+      setRecordNotice(result.notice)
       return true
     }, copied => copied ? SITE_BOARD_COPY.copyPromptCopied : null)
   }
@@ -66,17 +76,17 @@ function SitePromptCopyContent({
 
   return (
     <>
-      {presentation === 'preview' ? <div><FixPromptCard unavailable={prepared.unavailable} prompt={prepared.preview} onCopy={() => void copyPrompt()} copied={copied} busy={busy} copyLabel={SITE_BOARD_COPY.copyPrompt} /><SiteActionFeedback message={null} error={error} siteId={siteId} /></div> : <span className="inline-flex flex-col items-start"><span className="inline-flex flex-wrap items-center gap-1">
-        <Button type="button" data-site-return-focus="copy" size={iconOnly ? 'icon' : compact ? 'sm' : 'default'} variant={iconOnly ? 'ghost' : compact ? 'outline' : 'default'} disabled={busy} aria-label={iconOnly ? SITE_BOARD_COPY.copyPrompt : undefined} title={iconOnly ? SITE_BOARD_COPY.copyPrompt : undefined} onClick={() => void copyPrompt()}>
-          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-          {iconOnly ? null : copied ? SITE_BOARD_COPY.copyPromptCopied : SITE_BOARD_COPY.copyPrompt}
+      {presentation === 'preview' ? <div><FixPromptCard unavailable={prepared.unavailable} prompt={prepared.preview} onCopy={() => void copyPrompt()} copied={copied} busy={busy} copyLabel={SITE_BOARD_COPY.copyPrompt} /><SiteActionFeedback message={recordNotice} error={error} siteId={siteId} /></div> : <span className="inline-flex flex-col items-start"><span className="inline-flex flex-wrap items-center gap-1">
+        <Button type="button" data-site-return-focus="copy" size={iconOnly ? 'icon' : compact ? 'sm' : 'default'} variant={iconOnly ? 'ghost' : compact ? 'outline' : 'default'} loading={busy} aria-label={iconOnly || flagTitle ? namedCopyLabel : undefined} title={iconOnly ? namedCopyLabel : undefined} onClick={() => void copyPrompt()}>
+          {!busy ? copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" /> : null}
+          {iconOnly ? null : copyLabel}
         </Button>
-        <PromptPreviewButton key={`${siteId}:${flagId}`} iconOnly={iconOnly} disabled={busy} loadPrompt={async () => {
+        <PromptPreviewButton key={`${siteId}:${flagId}`} label={previewLabel} iconOnly={iconOnly} disabled={busy} loadPrompt={async () => {
           const body = await prepared.prepare()
           return body.prompt
         }} />
         </span>
-        {!copied ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
+        <SiteActionFeedback message={recordNotice ?? (!copied ? message : null)} error={error} siteId={siteId} />
       </span>}
       <PromptPreviewDialog prompt={prepared.review ?? ''} open={prepared.review !== null} onOpenChange={open => { if (!open) prepared.closeReview() }} />
       <Dialog open={Boolean(manualPrompt)} onOpenChange={(open) => { if (!open) setManualPrompt(null) }}>

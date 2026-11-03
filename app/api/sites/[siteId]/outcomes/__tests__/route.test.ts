@@ -28,7 +28,7 @@ describe('POST /api/sites/[siteId]/outcomes', () => {
     vi.clearAllMocks()
     mocks.requireSiteAccess.mockResolvedValue({
       ok: true,
-      decision: { role: 'owner', site: { siteId: 'site-1', projectId: 'project-1' } },
+      decision: { role: 'owner', site: { siteId: 'site-1', projectId: 'project-1', userId: 'owner' } },
     })
     mocks.executeSiteCommand.mockResolvedValue({ ok: true, outcome: { id: 'out_1' } })
   })
@@ -85,6 +85,7 @@ describe('POST /api/sites/[siteId]/outcomes', () => {
     expect(response.status).toBe(200)
     expect(mocks.executeSiteCommand).toHaveBeenCalledWith({
       type: 'RENAME_OUTCOME',
+      userId: 'owner',
       siteId: 'site-1',
       outcomeId: 'out_1',
       name: 'A customer can check out',
@@ -113,7 +114,18 @@ describe('POST /api/sites/[siteId]/outcomes', () => {
   it('confirms a page outcome through the kind that verifies it', async () => {
     const response = await POST(request({ watchPage: true }), context)
     expect(response.status).toBe(200)
-    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: 'site-1' })
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: 'site-1', userId: 'owner' })
+  })
+
+  it('retains the authenticated owner rather than accepting a body-supplied command actor', async () => {
+    expect((await POST(request({ watchPage: true, userId: 'another-owner' }), context)).status).toBe(200)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: 'site-1', userId: 'owner' })
+  })
+
+  it('requires an attributable owner before sending a permission command', async () => {
+    mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'owner', site: { siteId: 'site-1', projectId: 'project-1', userId: null } } })
+    expect((await POST(request({ watchPage: true }), context)).status).toBe(403)
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
   it('refuses access before touching any command', async () => {

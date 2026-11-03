@@ -45,6 +45,14 @@ export const AUDIT_ERRORS = {
   scanErrorBody: 'The review encountered an unexpected error. Try again.',
 } as const
 
+export const REQUEST_ERROR_COPY = {
+  rateLimited: (seconds: number) => {
+    const minutes = Math.ceil(seconds / 60)
+    const wait = seconds < 60 ? `${seconds} second${seconds === 1 ? '' : 's'}` : `about ${minutes} minute${minutes === 1 ? '' : 's'}`
+    return `Too many requests. Try again in ${wait}.`
+  },
+} as const
+
 /**
  * Watch activation copy.
  *

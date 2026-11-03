@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    project: { findFirst: vi.fn().mockResolvedValue({ id: 'project-1' }) },
     siteOutcome: { findMany: mocks.outcomeFindMany },
   },
 }))

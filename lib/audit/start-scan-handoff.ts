@@ -2,6 +2,7 @@
 
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 
 type CreateCheckBody = Record<string, unknown>
 
@@ -39,14 +40,14 @@ export async function startScanWithHandoff(
   options: StartScanOptions
 ): Promise<CreateCheckResult> {
   try {
-    const res = await fetch(options.endpoint ?? '/api/checks', {
+    const { response: res, body } = await fetchJsonWithDeadline(options.endpoint ?? '/api/checks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options.body),
     })
 
     if (!res.ok) {
-      const parsed = await parseApiErrorResponse(res)
+      const parsed = await parseApiErrorResponse(res, body)
       return {
         ok: false,
         message:
@@ -59,10 +60,9 @@ export async function startScanWithHandoff(
       }
     }
 
-    const data = (await res.json()) as Record<string, unknown>
+    const data = body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {}
     const reportId = typeof data.reportId === 'string' ? data.reportId : ''
     const siteId = typeof data.siteId === 'string' ? data.siteId.trim() : ''
-    options.onStarted?.(data)
 
     if (!siteId) {
       return {
@@ -74,7 +74,8 @@ export async function startScanWithHandoff(
       }
     }
 
-    options.navigate(`/sites/${siteId}`)
+    try { options.onStarted?.(data) } catch { /* Optional analytics cannot prevent the Site handoff. */ }
+    options.navigate(`/sites/${encodeURIComponent(siteId)}`)
     try {
       const { setActiveAudit } = await import('@/lib/audit/active-audit')
       setActiveAudit({

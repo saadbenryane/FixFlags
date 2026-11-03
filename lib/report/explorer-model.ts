@@ -36,6 +36,7 @@ import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
 import { buildFixArtifacts, type FixList } from '@/lib/audit/finish-plan'
 import { parseReviewCoverage } from '@/lib/audit/review-coverage'
 import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
 
 /**
  * Derive a visitor-facing truth label from the flag's source and checkId.
@@ -179,7 +180,7 @@ function mapLiveFlag(
     checkId: flag.checkId ?? null,
     attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy),
     supportingEvidenceUnreadable: hasUnreadableStoredSupportingObservations(flag.supportingObservations),
-    title: flag.problem,
+    title: customerFindingLabel(flag),
     rubric: flag.rubric,
     rubricLabel: rubricLabel(flag.rubric),
     severity: flag.severity,

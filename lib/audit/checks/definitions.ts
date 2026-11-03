@@ -122,19 +122,19 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'mobile-cta-label': assertion('performance', ['mobile-cta-weak-label']),
     'mobile-loading-delay': assertion('performance', ['mobile-load-delay-content']),
   }), version: 2 },
-  content: define('content', 'conversion', 'Page content', 'metadata', {
+  content: { ...define('content', 'conversion', 'Page content', 'metadata', {
     'headline-specificity': assertion('conversion', ['h1-generic']),
     'cta-presence': assertion('conversion', ['no-cta-detected']),
     'section-headings': assertion('conversion', ['heading-hierarchy-missing']),
     'form-validation-attributes': assertion('conversion', ['form-missing-validation']),
-  }),
-  slop: define('slop', 'conversion', 'Content quality', 'metadata', {
+  }), requiredEvidence: ['rendered-page-copy', 'declared-controls-when-applicable'] },
+  slop: { ...define('slop', 'conversion', 'Content quality', 'metadata', {
     'placeholder-patterns': assertion('conversion', ['placeholder-copy-detected']),
     'template-heading-patterns': assertion('conversion', ['template-default-copy']),
     'template-tokens': assertion('conversion', ['unreplaced-template-token']),
     'cta-href-values': assertion('conversion', ['cta-dead-link']),
     'social-proof-patterns': assertion('conversion', ['social-proof-unverifiable']),
-  }),
+  }), requiredEvidence: ['rendered-page-copy', 'declared-head-and-links-when-applicable'] },
   'auth-checkout': define('auth-checkout', 'conversion', 'Public action controls', 'metadata', {
     'auth-destination': assertion('conversion', ['auth-page-broken']),
     'checkout-destination': assertion('conversion', ['checkout-link-dead']),
@@ -145,21 +145,21 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'audience-or-outcome': assertion('conversion', ['messaging-no-audience']),
     'prose-sentence-length': assertion('conversion', ['messaging-long-sentences']),
     'headline-length': assertion('conversion', ['messaging-headline-too-short']),
-  }), version: 3 },
+  }), version: 3, requiredEvidence: ['rendered-page-copy'] },
   'conversion-friction': { ...define('conversion-friction', 'conversion', 'Action friction', 'metadata', {
     'first-step-signals': assertion('conversion', ['friction-no-commitment-path']),
     'trial-payment-wording': assertion('conversion', ['friction-trial-commitment-unclear']),
     'conversion-field-count': assertion('conversion', ['friction-form-too-many-fields']),
     'commitment-signals': assertion('conversion', ['friction-no-risk-reversal']),
     'social-proof-signals': assertion('conversion', ['friction-no-social-proof']),
-  }), version: 2 },
+  }), version: 2, requiredEvidence: ['rendered-page-copy', 'declared-page-context-when-applicable'] },
   'trust-psychology': { ...define('trust-psychology', 'conversion', 'Trust context', 'metadata', {
     'authority-signals': assertion('conversion', ['trust-no-authority-signals']),
     'testimonial-detail': assertion('conversion', ['trust-testimonial-quality']),
     'claim-support-signals': assertion('conversion', ['trust-unsupported-claims']),
     'direct-contact-signals': assertion('conversion', ['trust-no-direct-contact']),
     'internal-navigation-count': assertion('conversion', ['trust-no-internal-links']),
-  }), version: 4 },
+  }), version: 4, requiredEvidence: ['rendered-page-copy', 'declared-page-context-when-applicable'] },
   layout: define('layout', 'conversion', 'Layout', 'browser', {
     'mobile-cta-position': assertion('conversion', ['cta-below-fold-mobile']),
   }),
@@ -202,9 +202,9 @@ export const DESTINATION_CONTENT_ASSERTIONS = {
   'destination-form-privacy': ['flow-destination-no-privacy'],
 } as const
 export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
-  corridor: { ...define('corridor', 'conversion', 'Cross-page previews', 'browser', {
-    'preview-titles': assertion('conversion', ['corridor-og-title-drift']),
-    'preview-descriptions': assertion('conversion', ['corridor-og-description-drift']),
+  corridor: { ...define('corridor', 'search', 'Cross-page previews', 'browser', {
+    'preview-titles': assertion('search', ['corridor-og-title-drift']),
+    'preview-descriptions': assertion('search', ['corridor-og-description-drift']),
   }), version: 2, requiredEvidence: ['compared-rendered-pages'] },
   'mobile-navigation': { ...define('mobile-navigation', 'conversion', 'Mobile navigation', 'browser', {
     'mobile-navigation': assertion('conversion', ['flow-mobile-menu-broken']),

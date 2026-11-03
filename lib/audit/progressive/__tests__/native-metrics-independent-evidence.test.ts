@@ -16,7 +16,9 @@ const inputContext = 'mobile-input:' + '1'.repeat(64)
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 const checks = { 'mobile-ux-quality': 'mobile-input-zoom', 'cta-focus': 'competing-ctas',
   'visual-polish': 'visual-radius-inconsistent', 'visual-hierarchy': 'hierarchy-competing-actions', layout: 'cta-below-fold-mobile', interaction: 'loading-indicator-stuck', metadata: 'title-missing', 'og-image': 'og-image-broken',
-  trust: 'no-privacy-policy', seo: 'h1-missing', content: 'h1-generic' }
+  trust: 'no-privacy-policy', seo: 'h1-missing', content: 'h1-generic', slop: 'unreplaced-template-token',
+  'messaging-clarity': 'messaging-weak-value-prop', 'conversion-friction': 'friction-trial-commitment-unclear',
+  'trust-psychology': 'trust-unsupported-claims' }
 function metrics(repaired = false): CaptureMetrics {
   return { mobilePrimaryCtaTopPx: 900, mobilePrimaryCtaText: 'Get started', competingPrimaryCtaCount: 3,
     competingPrimaryCtaLabels: ['Get started', 'Request demo', 'Pricing'], competingPrimaryCtaComplete: true,
@@ -28,7 +30,7 @@ function metrics(repaired = false): CaptureMetrics {
     loadingObservation: { version: 1, device: 'mobile', scope: mobile, contentVisible: true, ready: true, restricted: false } }
 }
 async function observed(module: keyof typeof checks, repaired = false, renderedCopy?: RenderedCopy,
-  head?: Record<string, unknown>) {
+  head?: Record<string, unknown>, copyScopes?: { renderedScope?: typeof scope; renderedCopyScope?: typeof scope | null }) {
   const context = { audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
     environment: 'production', scope: 'SITE', checks: { [checks[module]]: CHECK_REGISTRY[checks[module]].version }, outcomes: [], verificationTarget: null } },
     task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module }, deadline: Date.now() + 10_000,
@@ -36,12 +38,43 @@ async function observed(module: keyof typeof checks, repaired = false, renderedC
       pageId: 'page', metadata: null, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopHtmlTruncated: true,
         desktopFinalUrl: pageUrl, desktopBase64: null, mobileBase64: null, consoleErrors: [], captureFailures: [],
         captureStatus: { desktop: 'ok', mobile: 'ok' }, renderedScope: scope, captureMetrics: metrics(repaired), ...(renderedCopy ? { renderedCopy } : {}),
+        ...copyScopes,
         ...(head ? { runtimeHeadMetadata: head, runtimeHeadScope: scope } : {}) },
     }) }]]),
   } as unknown as TaskContext
   return checkArtifactSchema.parse(readArtifact(await evaluate(context), 'check').data)
 }
 describe('independent native metric evaluation', () => {
+  it('uses the copy observation’s own scope without promoting a missing whole document to complete evidence', async () => {
+    const text = 'Each report gives the team a clear record of the work.'
+    const copy: RenderedCopy = { version: 1, pageUrl, pageText: text.repeat(8), h1s: ['Prepare useful reports for engineering teams'],
+      h2s: ['Project records'], complete: true, textTruncated: false, proseBlocks: [text], testimonialBlocks: [] }
+    const result = await observed('messaging-clarity', false, copy, undefined, { renderedScope: undefined, renderedCopyScope: scope })
+    expect(result.receipt.complete).toBe(true)
+    expect(result.receipt.assertions.every(assertion => assertion.complete && assertion.context?.startsWith('rendered-page:'))).toBe(true)
+    for (const unavailable of [null, { ...scope, finalUrl: pageUrl + 'different' }]) {
+      const refused = await observed('messaging-clarity', false, copy, undefined, { renderedCopyScope: unavailable })
+      expect(refused.flags).toEqual([])
+      expect(refused.receipt.complete).toBe(false)
+    }
+  })
+  it.each(['content', 'slop', 'messaging-clarity', 'conversion-friction', 'trust-psychology'] as const)(
+    'retains %s copy findings when whole-document metadata is unavailable', async module => {
+      const h1 = module === 'content' ? 'Welcome to' : module === 'messaging-clarity' ? 'The platform' : 'The best and fastest service'
+      const text = h1 + '. Start a free trial. Hello {{customer_name}}. ' + 'Use this service to prepare useful project records for your team. '.repeat(8)
+      const copy: RenderedCopy = { version: 1, pageUrl, pageText: text, h1s: [h1], h2s: ['Details'],
+        headlineSupport: 'Additional product details.', complete: true, textTruncated: false, proseBlocks: [text], testimonialBlocks: [] }
+      const result = await observed(module, false, copy)
+      expect(result.flags.map(flag => flag.checkId)).toContain(checks[module])
+      expect(result.receipt.assertions.some(assertion => assertion.complete === true)).toBe(true)
+      const interrupted = await observed(module, false, { ...copy, complete: false })
+      expect(interrupted.flags).toEqual([])
+      expect(interrupted.receipt.complete).toBe(false)
+      if (module !== 'messaging-clarity') {
+        expect(result.receipt.assertions.some(assertion => assertion.complete === false)).toBe(true)
+        expect(result.receipt.complete).toBe(false)
+      }
+    })
   it('retains native head observations when whole-document parsing is unavailable', async () => {
     const head = { title: null, description: null, ogTitle: null, ogDescription: null, ogImage: null,
       viewport: null, lang: null, canonical: null, robots: null, hasFavicon: false }

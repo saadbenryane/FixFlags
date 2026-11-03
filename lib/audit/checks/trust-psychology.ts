@@ -1,4 +1,4 @@
-import { renderedContentMetadata } from '../browser/rendered-copy'
+import { observedPageCopy, type RenderedCopy } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
@@ -83,10 +83,10 @@ export function isInternalNavigationHref(
 }
 
 export function resolvePageHostname(
-  meta: Pick<PageMetadata, 'canonical'>,
+  meta: Pick<PageMetadata, 'canonical'> | null,
   pageUrl?: string | null
 ): string | null {
-  for (const candidate of [meta.canonical, pageUrl]) {
+  for (const candidate of [meta?.canonical, pageUrl]) {
     if (!candidate) continue
     try {
       return new URL(candidate).hostname
@@ -98,35 +98,37 @@ export function resolvePageHostname(
 }
 
 export function runTrustPsychologyChecks(
-  meta: PageMetadata,
+  meta: PageMetadata | null,
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
   pageUrl?: string | null,
   record?: CheckRecorder,
+  renderedCopy?: RenderedCopy | null,
 ): DeterministicFlag[] {
-  meta = renderedContentMetadata(meta)
+  const prose = observedPageCopy(meta, renderedCopy)
+  if (!prose) return []
   const findings: DeterministicFlag[] = []
-  const productPage = isProductPage(purpose.purpose)
-  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
+  const productPage = meta !== null && isProductPage(purpose.purpose)
+  const bodyText = prose.pageText.slice(0, CHECK_TEXT_LIMIT)
   const htmlText = bodyText.toLowerCase()
-  const ctaTexts = meta.ctaTexts ?? []
-  const links = meta.links ?? []
+  const ctaTexts = meta?.ctaTexts ?? []
+  const links = meta?.links ?? []
 
   const hasAuthorityRef = AUTHORITY_MARKERS.some((p) => p.test(htmlText))
   const hasMediaName = MEDIA_NAMES.some((p) => p.test(htmlText))
   const hasTestimonialLikeContent = PROOF_CONTENT_MARKERS.some((p) => p.test(bodyText))
   // New observations carry scoped quotation facts. The text-only reader remains
   // isolated for historical snapshots that did not record quotation blocks.
-  const testimonialBlocks = meta.testimonialBlocks ?? (
+  const testimonialBlocks = prose.testimonialBlocks ?? (
     /<blockquote|\b(customer|user|client)\s+(quote|review|feedback)\b|\b(said|says|told us|shared|wrote|commented)\b[^.]{0,30}"/i.test(bodyText)
       ? [{ quote: bodyText, attribution: null }] : []
   )
   const hasTestimonialContent = testimonialBlocks.length > 0
-  const hasSpecificTestimonial = hasTestimonialContent && testimonialBlocks.every(block => meta.testimonialBlocks
+  const hasSpecificTestimonial = hasTestimonialContent && testimonialBlocks.every(block => prose.testimonialBlocks
     ? block.quote.length >= 40 || TESTIMONIAL_QUALITY_MARKERS[0].test(block.attribution ?? '')
     : TESTIMONIAL_QUALITY_MARKERS.some(pattern => pattern.test(block.quote)))
   const hasProofReference = hasTestimonialLikeContent || hasTestimonialContent || links.some(link => PROOF_REFERENCE.test(link.text))
   const hasDataClaim = DATA_SPECIFICITY.some((p) => p.test(bodyText))
-  const hasCustomerLogos = hasLogoWall(meta.images ?? [])
+  const hasCustomerLogos = hasLogoWall(meta?.images ?? [])
   if (productPage && ctaTexts.length > 0) recordObservation(record, 'authority-signals', 'Captured authority signals',
     'Sampled product content includes a recognized authority, testimonial, media, or logo signal',
     `Authority ${hasAuthorityRef}, media ${hasMediaName}, proof reference ${hasProofReference}, customer-logo pattern ${hasCustomerLogos}. Authenticity was not established.`,
@@ -177,7 +179,7 @@ export function runTrustPsychologyChecks(
   // Leadership terms (leading, trusted, proven) are standard positioning language
   // and are downgraded to POLISH - only aggressive superlatives (best, fastest,
   // #1) escalate to IMPORTANT.
-  const headingText = [...(meta.h1s ?? []), ...(meta.h2s ?? [])].join(' ')
+  const headingText = [...prose.h1s, ...prose.h2s].join(' ')
   const LEADERSHIP_TERMS = /\b(leading|trusted|industry-standard|battle-tested|proven|enterprise-grade)\b/i
   const AGGRESSIVE_SUPERLATIVES = /\b(the\s+(best|fastest|easiest|most\s+powerful|#1))\b/i
 
@@ -218,8 +220,8 @@ export function runTrustPsychologyChecks(
   const hasPhone = /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/.test(bodyText)
   if (productPage) recordObservation(record, 'direct-contact-signals', 'Captured contact signals',
     'Captured product content contains an email, phone, support link, or structured contact signal',
-    `Contact link ${hasContactLink}, phone ${hasPhone}, email ${emailCount > 0}, structured contact ${meta.hasContactInfo}. Reachability was not tested.`,
-    hasContactLink || hasPhone || emailCount > 0 || meta.hasContactInfo ? true : bodyText.length >= TRUST_DOM_SAMPLE_MIN_CHARS ? false : undefined, true)
+    `Contact link ${hasContactLink}, phone ${hasPhone}, email ${emailCount > 0}, structured contact ${meta?.hasContactInfo}. Reachability was not tested.`,
+    hasContactLink || hasPhone || emailCount > 0 || meta?.hasContactInfo ? true : bodyText.length >= TRUST_DOM_SAMPLE_MIN_CHARS ? false : undefined, true)
 
   // "No direct contact" is gated to product/marketing pages. Documentation,
   // articles, placeholder, and OSS pages do not need a sales/support contact
@@ -228,7 +230,7 @@ export function runTrustPsychologyChecks(
   // structured data) and catches contact info that pageText (with scripts
   // stripped) misses. Without this fallback, structured-data emails like
   // "saad@saadbenryane.com" produce false positives on personal/portfolio sites.
-  if (productPage && !hasContactLink && !hasPhone && emailCount === 0 && !meta.hasContactInfo) {
+  if (productPage && !hasContactLink && !hasPhone && emailCount === 0 && !meta?.hasContactInfo) {
     findings.push({
       checkId: 'trust-no-direct-contact',
       rubric: 'REACH',
@@ -272,5 +274,8 @@ export function runTrustPsychologyChecks(
     })
   }
 
+  if (!meta) for (const [key, name] of [['authority-signals', 'Captured authority signals'], ['testimonial-detail', 'Captured testimonial detail'],
+    ['direct-contact-signals', 'Captured contact signals'], ['internal-navigation-count', 'Captured internal navigation']])
+    recordObservation(record, key, name, 'Declared page context supports this observation', 'Page purpose, controls, links, images and structured contact facts were not collected.', undefined, true)
   return findings
 }

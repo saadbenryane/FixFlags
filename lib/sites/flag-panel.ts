@@ -5,6 +5,7 @@ import { supportingObservationViewSchema } from '@/lib/audit/flag-observations'
 export const siteFlagPanelSchema = z.object({
   flag: z.object({
     id: z.string(), sourceFlagId: z.string().nullable(), sourceAuditId: z.string(),
+    checkId: z.string().nullable(),
     problem: z.string(), evidence: z.string(), evidenceMissing: z.boolean(),
     whyItMatters: z.string(), expectedBehavior: z.string(), fix: z.string(),
     repairGuidance: z.enum(['ready', 'pending', 'unavailable']),

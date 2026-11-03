@@ -1,10 +1,20 @@
 import { expect, it } from 'vitest'
-import { suppressOverlappingFlags } from '../suppression'
+import { suppressOverlappingFlags, relatedProjectionChecks } from '../suppression'
 import type { DeterministicFlag } from '../flag-types'
 
 const scopedFlag = (checkId: string, pageUrl?: string, affectedPaths?: string[]): DeterministicFlag => ({
   checkId, pageUrl, affectedPaths, rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: checkId,
   evidence: 'Observed on the captured page', fix: 'Repair the affected page', confidence: 1, source: 'DETERMINISTIC',
+})
+
+it('selects the entire overlap family while leaving independent responsibilities separate', () => {
+  expect(relatedProjectionChecks(['h1-missing'])).toEqual(['h1-missing', 'hierarchy-no-headline'])
+  const security = relatedProjectionChecks(['security-csp-missing'])
+  expect(security).toContain('security-headers-missing')
+  expect(security).toContain('security-hsts-too-short')
+  expect(security).not.toContain('security-headers-hardening')
+  expect(relatedProjectionChecks(['journey-signup-hidden-cta::page:original'])).toEqual(['journey-hidden-cta'])
+  expect(relatedProjectionChecks(['console-errors-critical'])).toEqual(['console-errors-critical'])
 })
 
 it('keeps one actionable missing-H1 finding and retains unrelated metadata evidence', () => {

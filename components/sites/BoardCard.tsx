@@ -210,7 +210,7 @@ export function BoardCard({
         <ul className={styles.rowFlagList}>
           {rowFlags.map(flag => {
             const guidance = flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance] : null
-            const content = <><span className={styles.rowFlagTitle}><strong>{flag.title}</strong>{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}</span>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}<ArrowRight size={16} aria-hidden /></>
+            const content = <><span className={styles.rowFlagTitle}><strong>{flag.title}</strong>{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</span><ArrowRight size={16} aria-hidden /></>
             return <li key={flag.id}>
             {onOpenFlag || flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagName} aria-label={`Open ${flag.title}`} onClick={event => { if (onOpenFlag) onOpenFlag(flag.id, event.currentTarget); else flag.onOpen?.() }}>{content}</InteractiveButton>
               : <Link className={styles.rowFlagName} href={flag.href as Route} aria-label={`Open ${flag.title}`}>{content}</Link>}
@@ -246,7 +246,7 @@ export function BoardCard({
 
   if (compact && count === 0) {
     const description = [...new Set([status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail].filter(Boolean))].join('. ')
-    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{checking ? SITE_BOARD_COPY.checking : flagCountLabel(0)}
+    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}><span className={styles.compactStatus}>{checking ? SITE_BOARD_COPY.checking : state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}</span>
       <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
     const compactClass = `${styles.card} ${styles.compactSummary}`
     return onOpen ? <InteractiveButton type="button" className={compactClass} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</InteractiveButton>
@@ -271,7 +271,7 @@ export function BoardCard({
             const content = <><span>{flag.title}{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}</span><ArrowRight size={14} aria-hidden /></>
             return <li key={flag.id}>{onOpenFlag || flag.onOpen
               ? <InteractiveButton type="button" className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} onClick={event => { if (onOpenFlag) onOpenFlag(flag.id, event.currentTarget); else flag.onOpen?.() }}>{content}</InteractiveButton>
-              : <Link className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} href={flag.href as Route}>{content}</Link>}</li>
+              : <Link className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} href={flag.href as Route}>{content}</Link>}{flag.copyAction ? <div className={styles.previewCopyAction}>{flag.copyAction}</div> : null}</li>
           })}
           {hiddenPreviewCount > 0 ? <li className={styles.flagPreviewMore}>+{hiddenPreviewCount} more</li> : null}
         </ul>
@@ -298,6 +298,15 @@ export function BoardCard({
     </span>
   )
 
+  if (showFlagPreview && visiblePreviewFlags.length && (onOpen || visiblePreviewFlags.some(flag => flag.copyAction))) {
+    return <div className={`${className} ${styles.cardWithLinks}`}>
+      {onOpen ? <InteractiveButton type="button" className={styles.cardOpen} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} />
+        : href ? <Link className={styles.cardOpen} href={href as Route} aria-label={`Open ${name}`} /> : null}
+      {header}<div className={styles.body}>{body}</div>
+      <span className={`${styles.cardActions} ${styles.previewActions}`} aria-hidden><span className={styles.openButton}><ArrowRight size={17} /></span></span>
+    </div>
+  }
+
   if (href && !onOpen) {
     const external = href.startsWith('#') || href.startsWith('http')
     if (external) {
@@ -318,14 +327,6 @@ export function BoardCard({
         </Link>
       </article>
     )
-  }
-
-  if (onOpen && showFlagPreview && visiblePreviewFlags.length) {
-    return <div className={`${className} ${styles.cardWithLinks}`}>
-      <InteractiveButton type="button" className={styles.cardOpen} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} />
-      {header}<div className={styles.body}>{body}</div>
-      <span className={`${styles.cardActions} ${styles.previewActions}`} aria-hidden><span className={styles.openButton}><ArrowRight size={17} /></span></span>
-    </div>
   }
 
   if (onOpen) {
@@ -385,7 +386,7 @@ export function ProductBoardCard({
   return (
     <BoardCard
       name={card.name}
-      status={recordedPartial && layout === 'card' ? SITE_DASHBOARD_COPY.checkDetails : recordedPartial ? SITE_ACTION_COPY.execution.partialStatus : card.status}
+      status={recordedPartial ? SITE_ACTION_COPY.execution.partialStatus : card.status}
       state={card.state}
       answer={answer}
       detail={card.id === 'site' ? card.detail : compact ? null : problem ? problem.body : card.detail}

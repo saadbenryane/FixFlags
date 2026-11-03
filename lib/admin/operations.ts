@@ -29,7 +29,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
     now = new Date(),
     interrupted = new Date(now.getTime() - 900000)
   const data = await adminRead(actor, async (db) => {
-    const { schedules: sites, uptimeAlerts, watchAlerts } = monitoringOperationsWhere(now)
+    const { schedules: sites, uptimeAlerts, watchAlerts, summaryAlerts } = monitoringOperationsWhere(now)
     const tasks = incompleteExecutionHistory()
     const accounts = accountsAwaitingAction(interrupted)
     const [monitoring, taskCount, accountCount, guidanceCount] = await Promise.all([
@@ -40,14 +40,15 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
     ])
     const counts = [monitoring.overdueSchedules, taskCount, accountCount,
       monitoring.overdueUptimeProbes + monitoring.inconclusiveUptimeSites,
-      monitoring.undeliveredUptimeAlerts, monitoring.undeliveredWatchAlerts, guidanceCount]
+      monitoring.undeliveredUptimeAlerts, monitoring.undeliveredWatchAlerts + monitoring.unsettledSummaries, guidanceCount]
     const index = OPERATION_QUEUES.findIndex((q) => q.id === queue),
       total = counts[index],
       pagination = adminPagination(readAdminListQuery(params).page, total),
       slice = { skip: pagination.skip, take: pagination.take }
     let rows: Array<{
       id: string
-      siteId: string
+      siteId: string | null
+      userId?: string
       label: string
       state: string
       at: Date | null
@@ -167,11 +168,12 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
         action: 'UPTIME_NOTIFICATION_RETRY',
         targetId: n.id,
       }))
-    if (queue === 'watch-alerts')
-      rows = (
+    if (queue === 'watch-alerts') {
+      const watchTake = Math.max(0, Math.min(slice.take, monitoring.undeliveredWatchAlerts - slice.skip))
+      rows = watchTake ? (
         await db.audit.findMany({
           where: watchAlerts,
-          ...slice,
+          skip: slice.skip, take: watchTake,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           select: { id: true, projectId: true, url: true, createdAt: true, watchNotificationStatus: true },
         })
@@ -183,7 +185,17 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
         at: a.createdAt,
         action: 'WATCH_NOTIFICATION_RETRY',
         targetId: a.id,
-      }))
+      })) : []
+      const summaryTake = slice.take - rows.length
+      if (summaryTake) rows.push(...(await db.notificationDigest.findMany({
+        where: summaryAlerts, skip: Math.max(0, slice.skip - monitoring.undeliveredWatchAlerts), take: summaryTake,
+        orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
+        select: { id: true, userId: true, status: true, scheduledAt: true, user: { select: { email: true } } },
+      })).map(summary => ({
+        id: summary.id, siteId: null, userId: summary.userId, label: summary.user.email,
+        state: notificationDeliveryState(summary.status), at: summary.scheduledAt, action: null, targetId: summary.id,
+      })))
+    }
     return { queue, total, pagination, rows, counts }
   })
   try {

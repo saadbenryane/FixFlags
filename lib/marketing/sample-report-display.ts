@@ -1,4 +1,5 @@
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
 import {
   computeRubricScores,
   type RubricScoreContext,
@@ -187,7 +188,7 @@ function mapFlag(
     severity: flag.severity,
     severityLabel: severityLabel(flag.severity),
     impactTag: flag.impactTag ?? null,
-    title: flag.problem,
+    title: customerFindingLabel(flag),
     description: resolveWhyItMatters(flag),
     evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),
     whyItMatters: resolveWhyItMatters(flag),

@@ -72,7 +72,7 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'form-inputs-no-label':
     'Every visible input has an associated label or aria-label.',
   'buttons-no-text':
-    'Every button has visible text or aria-label describing its action.',
+    'Every button has an accessible name describing its action, through visible text, aria-label, aria-labelledby, or another supported naming mechanism.',
   'links-no-text':
     'Every link has visible text, aria-label, or title describing the destination.',
   'iframe-no-title': 'Every iframe has a descriptive title attribute.',

@@ -2,7 +2,8 @@ import { randomUUID, createHash } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 import { z } from 'zod'
 import { decryptSecret, encryptSecret } from '../security/crypto'
-import { parseScanAccessInput, scanAccessInputSchema, type ScanAccessConfig } from './scan-access'
+import { parseScanAccessInput, scanAccessInputSchema } from './scan-access-input'
+import type { ScanAccessConfig } from './scan-access'
 
 import { scanAccessOriginSchema as originSchema } from './scan-access-intent'
 const storedGrantSchema = z.object({ version: z.literal(2), kind: z.literal('scan-access-grant'), origin: originSchema,

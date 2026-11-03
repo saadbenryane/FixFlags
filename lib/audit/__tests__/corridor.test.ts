@@ -7,6 +7,7 @@ import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
 import { projectCheckResults } from '@/lib/sites/check-results'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
 import { capturedPagePreview, pagePreviewForComparison } from '@/lib/audit/checks/page-preview'
+import { cardAreaForCheck } from '@/lib/sites/card-areas'
 
 describe('runCorridorConsistencyChecks', () => {
   it('flags identical og titles across corridor pages', () => {
@@ -122,7 +123,7 @@ describe('runCorridorConsistencyChecks', () => {
     const incomplete = receipts(repaired.map((page, index) => index === 2 ? { ...page, titleComplete: false } : page))
     expect(scopedAssertionForTarget({ receipt: incomplete[0], receipts: incomplete, checkId: nativeFlag.checkId, flag: nativeFlag })?.assertion.passed).not.toBe(true)
   })
-  it('records inspected optional absence without declaring a comparison passed or blocking other Conversion evidence', () => {
+  it('records inspected optional absence without declaring a comparison passed or blocking other Search evidence', () => {
     const inspected = pages().map((page, index) => ({ ...page, ogTitle: null, ogDescription: null, title: 'Page ' + index }))
     const observations = evaluateCorridorConsistency(inspected)
     expect(observations.flags).toEqual([])
@@ -132,13 +133,25 @@ describe('runCorridorConsistencyChecks', () => {
     const results = projectCheckResults('after', source.map((detail, index) => ({ id: 'receipt-' + index,
       targetKey: 'module:corridor', status: 'COMPLETED', pageUrl: detail.pageUrl, updatedAt: new Date(), detail })))
     expect(results.filter(item => item.assertionKey === 'preview-descriptions').every(item => item.status === 'observed')).toBe(true)
+    expect(results.every(item => item.area === 'search')).toBe(true)
     expect(results.some(item => item.status === 'unknown')).toBe(false)
-    expect(buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: new Date(), now: new Date(), flags: [], evidenceCoverage: { flowScan: true },
-      verifierExecutions: source.map(detail => ({ targetKey: 'module:corridor', status: 'COMPLETED', detail })) }).find(item => item.area === 'conversion')?.state).toBe('healthy')
+    expect(buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: new Date(), now: new Date(), flags: [], evidenceCoverage: { metadata: true },
+      verifierExecutions: source.map(detail => ({ targetKey: 'module:corridor', status: 'COMPLETED', detail })) }).find(item => item.area === 'search')?.state).toBe('healthy')
     const prior = collapseFlagsWithAffectedPaths(runCorridorConsistencyChecks(pages())).find(flag => flag.checkId === 'corridor-og-description-drift')!
     expect(scopedAssertionForTarget({ receipt: source[0], receipts: source, checkId: prior.checkId, flag: prior })).toBeUndefined()
     const unavailable = receipts(inspected.map(page => ({ ...page, scope: undefined })))
     expect(unavailable.every(receipt => !receipt.complete)).toBe(true)
+  })
+  it('attributes preview findings and interrupted comparisons to Search without invalidating Conversion evidence', () => {
+    const flags = runCorridorConsistencyChecks(pages())
+    expect(flags).toHaveLength(4)
+    expect(flags.every(flag => cardAreaForCheck(flag) === 'search')).toBe(true)
+    const coverage = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: new Date(), now: new Date(), flags: [],
+      evidenceCoverage: { metadata: true, flowScan: true },
+      verifierExecutions: [{ targetKey: 'module:corridor', status: 'FAILED', detail: { kind: 'site-module-check', version: 1,
+        module: 'corridor', pageUrl: pages()[0].url, failed: true, complete: false, applicable: true, passed: false, assertions: [] } }] })
+    expect(coverage.find(item => item.area === 'search')).toMatchObject({ state: 'unknown', incompleteReason: expect.any(String) })
+    expect(coverage.find(item => item.area === 'conversion')).toMatchObject({ state: 'healthy', evidenced: true })
   })
   it('collects both preview responsibilities and all original page pairs', () => {
     const found = runCorridorConsistencyChecks(pages())

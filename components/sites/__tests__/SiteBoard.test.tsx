@@ -49,6 +49,12 @@ function render(ui: ReactNode) {
   return renderView(ui, { wrapper: ({ children }) => <SWRConfig value={{ provider }}>{children}</SWRConfig> })
 }
 
+async function openCategoryCheckDetails() {
+  const dialog = screen.getByRole('dialog')
+  fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
+  await waitFor(() => expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible())
+}
+
 const push = vi.hoisted(() => vi.fn())
 
 vi.mock('next/navigation', () => ({
@@ -202,6 +208,7 @@ it('reopens a requested category and preserves that destination through authenti
   render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={boardView({ actions: siteViewerActions(false) })} initialCategory="search" /></MeProvider>)
   const dialog = await screen.findByRole('dialog', {}, { timeout: 5000 })
   expect(within(dialog).getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
+  await openCategoryCheckDetails()
   expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH + '?category=search')
 })
 
@@ -241,6 +248,28 @@ function openFlag(partial: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
 }
 
 describe('SiteBoard chrome', () => {
+  it('rechecks a category directly from its quiet overview control while preserving the recorded Flag on refusal', async () => {
+    const title = 'Page title is missing'
+    const view = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'problem', openFlagCount: 1,
+      answer: title, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete,
+      flagChips: [{ id: 'flag-1', title, href: '#flag-1' }] })] })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).endsWith('/runs')
+      ? Response.json({ message: 'Please try again.' }, { status: 503 }) : Response.json(view))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+      const retry = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })
+      expect(retry).toHaveAttribute('title', SITE_BOARD_COPY.checkAreaAgain('Search'))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      fireEvent.click(retry)
+      expect(await screen.findByText('Please try again.')).toBeVisible()
+      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/runs', expect.objectContaining({
+        method: 'POST', body: JSON.stringify({ scope: 'category', area: 'search' }),
+      }))
+      expect(screen.getByRole('button', { name: `Open ${title}` })).toBeEnabled()
+      expect(retry).toBeEnabled()
+    } finally { vi.unstubAllGlobals() }
+  })
   it('keeps the check time with website identity without repeating it on category rows', () => {
     const initial = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'unknown', checkedAt: '2026-10-19T12:00:00Z' })] })
     initial.presentation.categories[0].freshness = SITE_PRESENTATION_COPY.freshness.minutes(2)
@@ -281,7 +310,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH)
   })
 
-  it('keeps Check again in the header when a public action was refused', async () => {
+  it('keeps Check again available with the website actions when a public action was refused', async () => {
     const view = boardView({
       cards: [card({ id: 'conversion', name: 'Conversion', state: 'unknown', evidenced: true, answer: SITE_BOARD_COPY.cardCheckIncomplete, status: SITE_BOARD_COPY.siteCoverageIncomplete, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })],
       executionProgress: {
@@ -293,10 +322,11 @@ describe('SiteBoard chrome', () => {
       },
     })
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-    const header = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain }).closest('header')!
+    const header = screen.getByRole('heading', { name: 'example.com', level: 1 }).closest('header')!
+    const actions = screen.getByRole('group', { name: 'Website actions' })
     expect(within(header).getAllByText('example.com')).toHaveLength(1)
     expect(screen.getByRole('heading', { name: 'example.com', level: 1 })).toBeVisible()
-    expect(within(header).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible()
+    expect(within(actions).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible()
     expect(screen.queryByRole('link', { name: SITE_ACTION_COPY.recovery.access })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Conversion') })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
@@ -318,9 +348,10 @@ describe('SiteBoard chrome', () => {
     })
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
     const header = screen.getByRole('button', { name: 'Monitoring: Not monitored' }).closest('header')!
+    const actions = screen.getByRole('group', { name: 'Website actions' })
     expect(within(header).getAllByText('example.com')).toHaveLength(1)
-    expect(within(header).getByRole('link', { name: SITE_ACTION_COPY.recovery.access })).toHaveAttribute('href', '/sites/p_example/settings#scan-access')
-    expect(within(header).queryByRole('button', { name: SITE_BOARD_COPY.checkAgain })).not.toBeInTheDocument()
+    expect(within(actions).getByRole('link', { name: SITE_ACTION_COPY.recovery.access })).toHaveAttribute('href', '/sites/p_example/settings#scan-access')
+    expect(within(actions).queryByRole('button', { name: SITE_BOARD_COPY.checkAgain })).not.toBeInTheDocument()
   })
 
   it('keeps header monitoring collapsed and restores focus after Escape', () => {
@@ -682,7 +713,7 @@ describe('SiteBoard chrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/reports/audit-1/retry', { method: 'POST' })
+      expect(fetchMock).toHaveBeenCalledWith('/api/reports/audit-1/retry', expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }))
     })
     expect(await screen.findByText(SITE_BOARD_COPY.checkStarted)).toBeVisible()
     // The command receipt is visible immediately, but a pending refresh cannot
@@ -781,19 +812,25 @@ describe('SiteBoard chrome', () => {
     settings.dispatchEvent(leaving)
     expect(leaving.defaultPrevented).toBe(false)
     expect(screen.getByRole('heading', { name: 'example.com', level: 1 })).toBeVisible()
+    timeline.focus()
     fireEvent.click(timeline)
     expect(screen.getByRole('heading', { name: 'Timeline', level: 2 })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Timeline', level: 1 })).toHaveFocus()
     expect(screen.queryByRole('button', { name: 'Open Pages' })).not.toBeInTheDocument()
     expect(timeline).toHaveAttribute('aria-current', 'page')
     expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/p_example?view=timeline#timeline')
+    integrations.focus()
     fireEvent.click(integrations)
     expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Integrations', level: 1 })).toHaveFocus()
     expect(window.location.hash).toBe('#integrations')
     fireEvent.click(screen.getByRole('link', { name: 'example.com' }))
     expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
     expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/p_example')
+    within(rail).getByRole('link', { name: 'Overview' }).focus()
     window.history.back()
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible())
+    expect(screen.getByRole('heading', { name: 'Integrations', level: 1 })).toHaveFocus()
   })
 
   it('opens the shared schedule editor for the owner and saves an allowed cadence', async () => {
@@ -815,9 +852,9 @@ describe('SiteBoard chrome', () => {
       expect(within(dialog).getByText('This schedule is not available on your plan.')).toBeVisible()
       fireEvent.change(frequency, { target: { value: 'weekly' } })
       fireEvent.click(within(dialog).getByRole('button', { name: 'Save schedule' }))
-      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', {
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', expect.objectContaining({
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: 'weekly' }),
-      }))
+      })))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     } finally { vi.unstubAllGlobals() }
   })
@@ -841,8 +878,10 @@ describe('SiteBoard chrome', () => {
     const summary = screen.getByRole('group', { name: 'Website status summary' })
     fireEvent.click(within(summary).getByRole('button', { name: '2 Pages' }))
     const pages = screen.getByRole('region', { name: 'Pages' })
-    expect(within(pages).getByText('/contact')).not.toBeVisible()
-    fireEvent.click(within(pages).getByText('2 other pages', { selector: 'summary' }))
+    expect(within(pages).getByText('/contact')).toBeVisible()
+    expect(within(pages).getByRole('heading', { name: 'Page checks incomplete' })).toBeVisible()
+    expect(within(pages).getByText('/')).not.toBeVisible()
+    fireEvent.click(within(pages).getByText('1 other page', { selector: 'summary' }))
     expect(within(pages).getByRole('img', { name: 'Home' })).toHaveAttribute('src', '/api/screenshots/audit-1/desktop?page=home')
     expect(within(pages).getByRole('img', { name: 'Preview of /contact: No screenshot recorded' })).toBeVisible()
     expect(within(pages).getByText('Checked')).toBeVisible()
@@ -929,7 +968,7 @@ describe('SiteBoard chrome', () => {
       expect(within(dialog).getByRole('combobox', { name: 'Time unit' })).toHaveValue('hours')
       fireEvent.change(within(dialog).getByRole('combobox', { name: 'Time unit' }), { target: { value: 'days' } })
       fireEvent.click(within(dialog).getByRole('button', { name: 'Save schedule' }))
-      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: 'custom', everyMinutes: 4320 }) }))
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', expect.objectContaining({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: 'custom', everyMinutes: 4320 }) })))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(screen.getByRole('button', { name: 'Edit schedule' })).toBeVisible()
     } finally { vi.unstubAllGlobals() }
@@ -1172,6 +1211,7 @@ describe('SiteBoard chrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     await screen.findByRole('dialog')
+    await openCategoryCheckDetails()
     expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
     expect(document.querySelector(`time[datetime="${checkedAt}"]`)).not.toBeNull()
   })
@@ -1218,6 +1258,7 @@ describe('SiteBoard chrome', () => {
     ))
     expect(await screen.findByText('New check started')).toBeVisible()
     expect(screen.getByText('New check started')).toBeVisible()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/check-results'))).toBe(false)
     releaseRefresh()
     rendered.unmount()
     vi.unstubAllGlobals()
@@ -1275,6 +1316,7 @@ describe('SiteBoard chrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     await screen.findByRole('dialog')
+    await openCategoryCheckDetails()
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
 
     expect(await screen.findByText(PLAN_LIMIT_NOTICE.copy['check-limit'].body)).toBeVisible()
@@ -1316,6 +1358,7 @@ describe('SiteBoard chrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     await screen.findByRole('dialog')
+    await openCategoryCheckDetails()
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
 
     expect(await screen.findByText('Another Site run is already in progress')).toBeVisible()

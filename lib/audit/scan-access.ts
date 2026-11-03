@@ -1,28 +1,9 @@
-import { z } from 'zod'
 import type { BrowserContextOptions } from 'playwright'
 import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
+import { parseScanAccessInput, type ScanAccessInput } from './scan-access-input'
+export { parseScanAccessInput, scanAccessInputSchema } from './scan-access-input'
 
-const cookieSchema = z.object({
-  name: z.string().min(1).max(200),
-  value: z.string().max(4096),
-  domain: z.string().max(253).optional(),
-  path: z.string().max(200).optional(),
-})
-
-const httpBasicSchema = z.object({
-  username: z.string().min(1).max(200),
-  password: z.string().max(500),
-})
-
-export const scanAccessInputSchema = z.object({
-  httpBasic: httpBasicSchema.optional(),
-  cookies: z.array(cookieSchema).max(20).optional(),
-  headers: z.record(z.string(), z.string()).optional(),
-  /** User note for Studio handoff (never sent to target site). */
-  label: z.string().max(200).optional(),
-})
-
-export type ScanAccessConfig = z.infer<typeof scanAccessInputSchema> & { /** Server-bound credential origin, never accepted from client input. */ origin?: string }
+export type ScanAccessConfig = ScanAccessInput & { /** Server-bound credential origin, never accepted from client input. */ origin?: string }
 
 const PREVIEW_TUNNEL_SUFFIXES = [
   '.ngrok.io',
@@ -38,17 +19,6 @@ const PREVIEW_TUNNEL_SUFFIXES = [
 export function isKnownPreviewTunnelHost(hostname: string): boolean {
   const normalized = hostname.toLowerCase()
   return PREVIEW_TUNNEL_SUFFIXES.some((suffix) => normalized.endsWith(suffix))
-}
-
-export function parseScanAccessInput(raw: unknown): ScanAccessConfig | null {
-  const parsed = scanAccessInputSchema.safeParse(raw)
-  if (!parsed.success) return null
-  const config = parsed.data
-  const hasAuth =
-    Boolean(config.httpBasic) ||
-    Boolean(config.cookies?.length) ||
-    Boolean(config.headers && Object.keys(config.headers).length > 0)
-  return hasAuth ? config : null
 }
 
 export function encryptScanAccess(config: ScanAccessConfig): string {

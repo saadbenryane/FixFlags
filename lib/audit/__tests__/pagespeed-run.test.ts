@@ -88,6 +88,7 @@ describe('fetchPageSpeedData', () => {
     await vi.advanceTimersByTimeAsync(61_000)
     expect((await result).desktop).toMatchObject({ score: 85, lcp: 2500 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    auditCache.clear() // The cache owns its expiry timer independently of the provider request.
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -100,6 +101,7 @@ describe('fetchPageSpeedData', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(await result).toMatchObject({ mobile: null, mobileFailure: { code: 'PROVIDER_UNAVAILABLE', retryable: true } })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    auditCache.clear()
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -146,6 +148,52 @@ describe('fetchPageSpeedData', () => {
     assert.equal(result.mobile?.strategy, 'mobile')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it.each([null, false, 'unavailable', { score: 2, numericValue: -1 }, { details: [] }])(
+    'retains independent measurements when an unrelated provider audit is malformed: %j', async malformed => {
+      const body = lighthouseBody(), lighthouse = body.lighthouseResult as { audits: Record<string, unknown> }
+      lighthouse.audits['unrelated-provider-diagnostic'] = malformed
+      fetchMock.mockResolvedValueOnce(Response.json(body))
+      const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+      expect(result.mobile).toMatchObject({ score: 85, lcp: 2500, cls: 0.12, inp: 160 })
+      expect(result.mobileFailure).toBeUndefined()
+      expect(pageSpeedSchema.safeParse(result.mobile).success).toBe(true)
+    })
+
+  it('keeps malformed known criteria unknown while retaining their independent peers', async () => {
+    const body = lighthouseBody(), lighthouse = body.lighthouseResult as { categories: Record<string, unknown>; audits: Record<string, unknown> }
+    lighthouse.categories.performance = { score: '0.9' }
+    lighthouse.categories['future-category'] = null
+    lighthouse.audits['largest-contentful-paint'] = { numericValue: -1, score: null }
+    lighthouse.audits['unused-javascript'] = { score: 4, details: { overallSavingsBytes: 900_000 } }
+    lighthouse.audits['target-size'] = { score: '0', details: { items: [{}] } }
+    lighthouse.audits['color-contrast'] = { score: '0', title: {} }
+    fetchMock.mockResolvedValueOnce(Response.json(body))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile).toMatchObject({ score: null, lcp: null, cls: 0.12, inp: 160, failedAccessibilityAudits: [] })
+    expect(result.mobile?.resourceAudits?.find(audit => audit.id === 'unused-javascript')).toMatchObject({ score: null, savings: null })
+    expect(result.mobile?.tapTargetAudits).toMatchObject([{ id: 'target-size', score: null }])
+    expect(pageSpeedSchema.safeParse(result.mobile).success).toBe(true)
+  })
+
+  it.each([-1, null, '0', true, {}, []])('does not coerce a malformed lab metric into a measured value: %j', async numericValue => {
+    const body = lighthouseBody(), lighthouse = body.lighthouseResult as { audits: Record<string, unknown> }
+    lighthouse.audits['largest-contentful-paint'] = { numericValue }
+    fetchMock.mockResolvedValueOnce(Response.json(body))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop).toMatchObject({ score: 85, lcp: null, cls: 0.12, fcp: 1200, inp: 160 })
+    expect(result.desktopFailure).toBeUndefined()
+  })
+
+  it.each([{ errorMessage: 'Measurement failed' }, { notApplicable: true }, { scoreDisplayMode: 'error' },
+    { scoreDisplayMode: 'manual' }, { scoreDisplayMode: 'informative' }, { scoreDisplayMode: 'notApplicable' }])(
+    'keeps failed or unmeasured accessibility criteria out of measured findings: %j', async status => {
+      const body = lighthouseBody(), lighthouse = body.lighthouseResult as { audits: Record<string, unknown> }
+      lighthouse.audits['color-contrast'] = { score: 0, title: 'Contrast', ...status }
+      fetchMock.mockResolvedValueOnce(Response.json(body))
+      const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+      expect(result.desktop).toMatchObject({ score: 85, lcp: 2500, cls: 0.12, failedAccessibilityAudits: [] })
+    })
 
   it.each(['https://other.example/page', 'https://example.com/other', 'http://example.com/page',
     'https://example.com:8443/page', 'https://private@example.com/page'])(
@@ -218,7 +266,7 @@ describe('fetchPageSpeedData', () => {
       finalUrl: 'https://example.com/', lighthouseVersion: '13.0', configSettings: { formFactor: changed === 'formFactor' ? 'mobile' : 'desktop' },
     } })))
     const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
-    expect(result.desktop).toBeNull()
+    expect(result.desktop).toMatchObject({ score: null, lcp: null, cls: null, inp: 160 })
     expect(result.desktopFailure).toMatchObject({ code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
   })
 
@@ -342,8 +390,8 @@ describe('fetchPageSpeedData', () => {
       raw: {},
       crux: null,
     })
-    auditCache.set('pagespeed:https://example.com:desktop:desktop', cached, 60_000)
-    auditCache.set('pagespeed:https://example.com:mobile:mobile', cached, 60_000)
+    auditCache.set('pagespeed:https://example.com:desktop:desktop', { result: { ...cached, raw: {} } }, 60_000)
+    auditCache.set('pagespeed:https://example.com:mobile:mobile', { result: { ...cached, raw: {} } }, 60_000)
 
     const result = await fetchPageSpeedData('https://example.com')
     assert.equal(result.desktop?.score, 88)
@@ -370,7 +418,7 @@ describe('fetchPageSpeedData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(4)
   })
 
-  it('caches a failure sentinel and reports it on the next call', async () => {
+  it('caches a typed failure and reports it on the next call', async () => {
     fetchMock.mockResolvedValue(new Response('nope', { status: 503 }))
     const first = await fetchPageSpeedData('https://example.com')
     assert.equal(first.desktop, null)
@@ -379,7 +427,62 @@ describe('fetchPageSpeedData', () => {
     const second = await fetchPageSpeedData('https://example.com')
     expect(fetchMock).not.toHaveBeenCalled()
     assert.equal(second.desktop, null)
-    assert.equal(second.desktopError, 'PageSpeed failed recently, retrying later')
+    assert.equal(second.desktopError, first.desktopError)
+    expect(second.desktopFailure).toEqual({ code: 'PROVIDER_UNAVAILABLE', retryable: true })
+  })
+
+  it.each(['PROTOCOL_TIMEOUT', 'ERRORED_DOCUMENT_REQUEST'])('retains independent field evidence after lab runtime failure %s', async code => {
+    const payload = lighthouseBody()
+    payload.lighthouseResult = { ...payload.lighthouseResult as object, runtimeError: { code } }
+    fetchMock.mockResolvedValueOnce(Response.json(payload))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile).toMatchObject({ score: null, lcp: null, cls: null, fcp: null, tbt: null, inp: 160,
+      opportunities: [], resourceAudits: [], tapTargetAudits: [], failedAccessibilityAudits: [] })
+    expect(result.mobileFailure).toEqual({ code: 'MEASUREMENT_INCOMPLETE', retryable: code === 'PROTOCOL_TIMEOUT' })
+    expect(pageSpeedSchema.safeParse(result.mobile).success).toBe(true)
+    expect(recordInpObservation(result.mobile!)).toMatchObject({ complete: true, passed: true, disposition: 'observed' })
+    const cached = await fetchPageSpeedData('https://example.com/', undefined, { strategies: ['mobile'] })
+    expect(cached).toEqual(result)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([undefined, null, { runtimeError: { code: 'PROTOCOL_TIMEOUT' } }, { categories: [], audits: false }])(
+    'keeps independently scoped field data when the lab container is missing or invalid: %j', async lighthouse => {
+      fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ lighthouseResult: lighthouse })))
+      const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+      expect(result.mobile).toMatchObject({ score: null, lcp: null, inp: 160 })
+      expect(result.mobileFailure).toMatchObject({ code: lighthouse && 'runtimeError' in lighthouse ? 'MEASUREMENT_INCOMPLETE' : 'PROVIDER_RESPONSE_INVALID' })
+    })
+
+  it('never retains foreign field or lab facts after a runtime failure', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({
+      lighthouseResult: { runtimeError: { code: 'PROTOCOL_TIMEOUT' } },
+      loadingExperience: { id: 'https://foreign.example/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
+    })))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile).toBeNull()
+    expect(result.mobileFailure).toEqual({ code: 'MEASUREMENT_INCOMPLETE', retryable: true })
+  })
+
+  it('does not use a foreign lab redirect to authorize unrelated field evidence', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({
+      lighthouseResult: { requestedUrl: 'https://foreign.example/', finalUrl: 'https://foreign.example/', runtimeError: { code: 'PROTOCOL_TIMEOUT' } },
+      loadingExperience: { id: 'https://foreign.example/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
+    })))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile).toBeNull()
+    expect(result.mobileFailure).toEqual({ code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
+  })
+
+  it('retains field facts from an earlier inline attempt if the final retry has no measurement', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ lighthouseResult: { runtimeError: { code: 'PROTOCOL_TIMEOUT' } } })))
+      .mockResolvedValueOnce(new Response('Unavailable', { status: 503 }))
+    const pending = fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'] })
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(await pending).toMatchObject({ mobile: { score: null, lcp: null, inp: 160 }, mobileFailure: { code: 'PROVIDER_UNAVAILABLE', retryable: true } })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    auditCache.clear()
   })
 
   it('aborts immediately when the signal is already aborted', async () => {

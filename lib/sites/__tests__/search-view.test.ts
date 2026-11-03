@@ -34,7 +34,7 @@ describe('Search evidence recovery', () => {
     const audit = { status: 'COMPLETED', startedAt: now, failureCode: null,
       verifierExecutions: [{ targetKey: 'module:search', detail: receipt() }] }
     const input = { cards: [search], audit: audit as unknown as Parameters<typeof applyCardEvidence>[0]['audit'],
-      summaryResults: [], inFlight: false, pageCount: 1, connections: null, connectionNotes: {} }
+      summaryResults: [], inFlight: false, pageCount: 1, connectionNotes: {} }
     const later = new Date(now.getTime() + 2 * 86400_000)
     applyCardEvidence({ ...input, now: later, coverageMaxAgeMs: siteCoverageMaxAgeMs('daily') })
     expect(search).toMatchObject({ state: 'unknown', answer: SITE_BOARD_COPY.checkOutOfDate, checkedAt: collectedAt })
@@ -62,12 +62,21 @@ describe('Search evidence recovery', () => {
     expect(search).toMatchObject({ state: 'problem', answer: 'Page title is missing', openFlagCount: 1, flagIds: ['f1'] })
   })
 
+  it('retains recorded source attribution while a Flag keeps the area in a problem state', () => {
+    const search = card({ state: 'problem', openFlagCount: 1, answer: 'A recorded problem' })
+    applySearchCardEvidence(search, [{ targetKey: 'module:search', detail: receipt({ observations: [
+      observation({ id: 'title', checkId: 'title-missing', responsibility: 'presentation', source: 'original-html', disposition: 'passed', reason: 'title_present' }),
+    ] }) }], false, now)
+    expect(search.sources).toEqual([C.sources['original-html']])
+    expect(search.state).toBe('problem')
+  })
+
   it('preserves the Search recovery reason through the complete card projection', () => {
     const search = card()
     const audit = { status: 'COMPLETED', startedAt: now, failureCode: null, failedModules: [], triageAt: now, aiReviewAt: now,
       verifierExecutions: [{ targetKey: 'module:search', detail: receipt({ complete: false, observations: [observation()] }) }] }
     applyCardEvidence({ cards: [search], audit: audit as unknown as Parameters<typeof applyCardEvidence>[0]['audit'],
-      summaryResults: [], inFlight: false, pageCount: 1, connections: null, connectionNotes: {}, now })
+      summaryResults: [], inFlight: false, pageCount: 1, connectionNotes: {}, now })
     expect(search.incompleteReason).toBe(SITE_BOARD_COPY.cardCheckIncomplete)
     expect(search.incompleteReason).not.toContain('Crawl access')
     expect(search.state).toBe('unknown')
@@ -111,6 +120,15 @@ describe('Search evidence recovery', () => {
     applySearchCardEvidence(search, executions, false, now)
     expect(search.state).toBe('healthy')
     expect(search.incompleteReason).toBeNull()
+  })
+
+  it('does not assemble a complete local inventory from different executions', () => {
+    const search = card()
+    const executions = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
+      .map((item, index) => ({ targetKey: 'module:search-' + item.evaluator,
+        detail: receipt({ auditId: index === 0 ? 'earlier-audit' : 'later-audit' }) }))
+    applySearchCardEvidence(search, executions, false, now)
+    expect(search).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
   })
 
   it('preserves another Search module limitation when local Search receipts are complete', () => {
@@ -164,6 +182,24 @@ describe('Search evidence recovery', () => {
     expect(search.incompleteReason).not.toContain('Search presentation')
   })
 
+  it.each(['another page', 'another version', 'another execution'] as const)('cannot use a result from %s to hide unavailable Search evidence', difference => {
+    const search = card()
+    const target = difference === 'another page' ? pageUrl + 'about' : pageUrl
+    applySearchCardEvidence(search, [
+      { targetKey: 'module:search', detail: receipt({ observations: [
+        observation({ id: 'title', checkId: 'title-missing', responsibility: 'presentation', source: 'original-html',
+          disposition: 'passed', reason: 'title_present' }),
+      ] }) },
+      { targetKey: 'module:search', detail: receipt({ auditId: difference === 'another execution' ? 'different-audit' : 'a', pageUrl: target, complete: false, observations: [
+        observation({ id: 'title-rendered', pageUrl: target, checkId: 'title-missing',
+          checkVersion: difference === 'another version' ? 2 : 1, responsibility: 'presentation',
+          source: 'rendered-dom', disposition: 'unknown', reason: 'document_truncated' }),
+      ] }) },
+    ], false, now)
+    expect(search).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(search.answer).not.toBe(SITE_PRESENTATION_COPY.flags(0))
+  })
+
   it('does not offer recovery while evidence is still arriving', () => {
     const search = card()
     applySearchCardEvidence(search, [{ targetKey: 'module:search-crawl', detail: receipt({ complete: false, observations: [observation()] }) }], true, now)
@@ -181,7 +217,7 @@ describe('Clear category results', () => {
       ...overrides }
   }
   function project(card: BoardCardView, summaryResults: SiteCheckResult[]) {
-    applyCardEvidence({ cards: [card], audit: null, summaryResults, inFlight: false, pageCount: 1, connections: null, connectionNotes: {}, now })
+    applyCardEvidence({ cards: [card], audit: null, summaryResults, inFlight: false, pageCount: 1, connectionNotes: {}, now })
   }
 
   it('reports zero Flags when Tracking observed requests and found none', () => {

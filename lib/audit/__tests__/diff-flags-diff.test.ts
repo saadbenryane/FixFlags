@@ -268,7 +268,7 @@ describe('durable diagnostic continuity', () => {
   it('closes an older pending fix only with its own positive scoped evidence', async () => {
     prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [previous()] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ occurrences: [{ flag: previous({ id: 'latest' }) }] }])
-    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
+    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
       observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
     } }])
@@ -278,13 +278,47 @@ describe('durable diagnostic continuity', () => {
       { where: { id: 'original' }, data: { status: 'FIXED', resolvedInId: 'current-audit' } },
     ])
   })
+  it.each(['passed', 'failed', 'missing'] as const)('reads recovery evidence beyond the first batch and preserves %s evidence', async verdict => {
+    const original = previous()
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [original] : [])
+    prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: original }], attempts: [] }])
+    const proof = (result: 'passed' | 'failed') => ({
+      kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: result, comparable: true,
+      observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
+    })
+    const rows = Array.from({ length: 1201 }, (_, index) => ({
+      id: String(index).padStart(5, '0'), auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {} as unknown,
+    }))
+    if (verdict !== 'missing') rows[1200].detail = proof(verdict)
+    if (verdict === 'failed') rows[0].detail = proof('passed')
+    prismaMock.auditVerifierExecution.findMany.mockImplementation(async input =>
+      rows.filter(row => !input.where.id || row.id > input.where.id.gt).slice(0, input.take))
+
+    await diffFlagsAgainstParent('current-audit', 'gap')
+    const summary = await getFlagDiffSummary('gap', 'current-audit')
+    if (verdict === 'passed') {
+      expect(prismaMock.flag.update).toHaveBeenCalledWith({ where: { id: original.id }, data: { status: 'FIXED', resolvedInId: 'current-audit' } })
+      expect(summary.fixed.map(flag => flag.id)).toEqual([original.id])
+    } else {
+      expect(prismaMock.flag.update).not.toHaveBeenCalled()
+      expect(summary.fixed).toEqual([])
+      expect(summary.inconclusive.map(flag => flag.id)).toEqual([original.id])
+    }
+    const reads = prismaMock.auditVerifierExecution.findMany.mock.calls.map(([input]) => input)
+    expect(reads.filter(input => input.where.id?.gt === '01023')).toHaveLength(2)
+    for (const input of reads) {
+      expect(input).toMatchObject({ where: { status: 'COMPLETED', OR: [{ auditId: 'current-audit', targetKey: { in: expect.arrayContaining(['check:title-missing']) } }] },
+        take: 512, orderBy: { id: 'asc' } })
+      expect(input.select).toEqual({ id: true, auditId: true, targetKey: true, status: true, detail: true })
+    }
+  })
   it('checks unacted older conditions and never summarizes a partially recovered responsibility as fixed', async () => {
     const latest = previous({ id: 'latest' })
     const samePage = previous({ id: 'older-same-page' })
     const otherPage = previous({ id: 'older-other-page', pageUrl: 'https://example.com/original' })
     prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [samePage, otherPage] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: latest }], attempts: [] }])
-    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
+    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
       observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
     } }])
@@ -603,6 +637,24 @@ describe('diffFlagsAgainstParent', () => {
     mutateProjectIntelligence.mockImplementation(async (_projectId, fn) => fn(null))
     notifyWatchRegression.mockReset()
     notifyWatchRegression.mockResolvedValue(undefined)
+  })
+
+  it.each(['recovery', 'severity'] as const)('retains every page condition when %s establishes a regression', async cause => {
+    const ordinary = flag({ id: 'ordinary', checkId: 'cta-dead-link::page:1', severity: 'IMPORTANT' })
+    const regressing = flag({ id: 'regressing', checkId: 'cta-dead-link::page:2',
+      status: cause === 'recovery' ? 'FIXED' : 'OPEN', severity: cause === 'severity' ? 'POLISH' : 'IMPORTANT' })
+    const current = flag({ id: 'current', checkId: 'cta-dead-link', severity: 'IMPORTANT' })
+    for (const parents of [[ordinary, regressing], [regressing, ordinary]]) {
+      prismaMock.flag.update.mockClear()
+      prismaMock.flag.findMany.mockResolvedValueOnce(parents).mockResolvedValueOnce([current])
+      await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
+      expect(prismaMock.flag.update.mock.calls.filter(([input]) => input.where.id === current.id))
+        .toEqual([[{ where: { id: current.id }, data: { status: 'REGRESSED' } }]])
+      prismaMock.flag.findMany.mockResolvedValueOnce(parents).mockResolvedValueOnce([current])
+      const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
+      expect(summary.regressed).toMatchObject([{ id: current.id, status: 'REGRESSED' }])
+      expect(summary.unchanged).toEqual([])
+    }
   })
 
   it('marks parent flags missing from monitoring as FIXED', async () => {

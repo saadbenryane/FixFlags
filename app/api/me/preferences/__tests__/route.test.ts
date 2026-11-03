@@ -5,6 +5,8 @@ const prismaMock = vi.hoisted(() => ({
   user: { update: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
+const saveNotifications = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/notifications/store', () => ({ saveNotificationPreferences: saveNotifications }))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
@@ -55,5 +57,17 @@ describe('PATCH /api/me/preferences', () => {
         preferredTools: ['lovable', 'bolt', 'replit', 'codex', 'devin'],
       },
     })
+  })
+  it('validates summary settings and always uses the authenticated account', async () => {
+    const notifications = { cadence: 'DAILY', hour: 9, timeZone: 'Africa/Casablanca', weekday: 1 }
+    const request = (body: unknown) => new NextRequest('http://localhost/api/me/preferences', { method: 'PATCH', body: JSON.stringify(body) })
+    expect((await PATCH(request({ notifications: { ...notifications, userId: 'another-owner' } }))).status).toBe(400)
+    expect((await PATCH(request({ notifications: { ...notifications, hour: 25 } }))).status).toBe(400)
+    expect(saveNotifications).not.toHaveBeenCalled()
+    saveNotifications.mockResolvedValue({ ...notifications, nextSendAt: null })
+    const response = await PATCH(request({ userId: 'another-owner', notifications }))
+    expect(response.status).toBe(200)
+    expect(saveNotifications).toHaveBeenCalledWith('user-1', notifications)
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
   })
 })

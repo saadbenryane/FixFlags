@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { captureObservationKey, captureObservationScopeSchema } from '../browser/observation-scope'
-import type { CaptureMetrics } from '../capture-metrics'
 import type { CheckAssertion } from './assertion'
 import type { DeterministicFlag } from '../flag-types'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -44,7 +43,7 @@ export function motionAssertions(value: unknown): CheckAssertion[] {
           ? reduced.some(member => member.selector === target.selector && member.label === target.label) ? 'both' : 'before' : 'after' })) }
   })
 }
-export function applyMotionObservation(metrics: CaptureMetrics, observation: MotionObservation): CaptureMetrics {
+export function applyMotionObservation<T extends object>(metrics: T, observation: MotionObservation) {
   const assertions = motionAssertions(observation)
   return { ...metrics, motionObservation: observation, motionComplete: assertions.every(assertion => assertion.complete === true),
     motionIgnoresReducedPreference: assertions.some(assertion => assertion.complete === true && !assertion.passed),

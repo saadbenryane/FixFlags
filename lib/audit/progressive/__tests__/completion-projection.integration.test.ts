@@ -6,10 +6,11 @@ import { parseMetadataFromHtml } from '../../metadata'
 import { serializeArtifact } from '../contracts'
 import { siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
 import { recordedPages, recordedPageEvidence } from '../lifecycle'
-import { commitFindings } from '../results'
+import { commitFindings, recordedTaskFindings } from '../results'
 import type { TaskContext } from '../registry'
 import { evaluatorHandlers } from '../evaluators'
 import { finalizeDeterministicOnly } from '../../finalize'
+import { reconcileImprovementVerification } from '@/lib/improvements/verification'
 
 const localDatabase = process.env.PROGRESSIVE_PROJECTION_DB_REQUIRED === 'true' ? describe : describe.skip
 localDatabase('bounded PostgreSQL completion projection', () => {
@@ -17,6 +18,84 @@ localDatabase('bounded PostgreSQL completion projection', () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+  })
+  it('publishes a new responsibility without transferring or rewriting unrelated historical findings', async () => {
+    const pageUrl = 'https://example.com/'
+    const audit = await prisma.audit.create({ data: { url: pageUrl, status: 'CHECKING' } })
+    const finding = (checkId: string, evidence: string) => ({ checkId, pageUrl, rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      problem: 'Original condition failed', evidence, fix: 'Restore it', confidence: 1, source: 'DETERMINISTIC' })
+    const history = Array.from({ length: 8 }, (_, batch) => serializeArtifact('check', { flags: Array.from({ length: 200 }, (_, index) =>
+      finding('title-missing', `Independent observation ${batch}:${index}. ` + 'Recorded page evidence. '.repeat(90))) }))
+    const context = { audit } as TaskContext
+    try {
+      await prisma.auditExecutionTask.createMany({ data: history.map((workResult, index) => ({ auditId: audit.id,
+        targetKey: 'task:history:' + index, source: 'DETERMINISTIC', status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult })) })
+      await prisma.$transaction(tx => commitFindings(context, serializeArtifact('check', { flags: [finding('title-missing', 'Original title observation')] }), tx))
+      const title = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'title-missing' } })
+      expect((title.supportingObservations as { items: unknown[] }).items).toHaveLength(1601)
+      await prisma.$transaction(async tx => {
+        const read = vi.fn(tx.$queryRaw.bind(tx))
+        const observed = new Proxy(tx, { get(target, key, receiver) { return key === '$queryRaw' ? read : Reflect.get(target, key, receiver) } })
+        await commitFindings(context, serializeArtifact('check', { flags: [finding('h1-missing', 'No heading in the captured page')] }), observed)
+        const payloads = await Promise.all(read.mock.results.map(result => result.value))
+        expect(Buffer.byteLength(JSON.stringify(payloads))).toBeLessThan(4096)
+      })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: title.id } })).toEqual(title)
+      expect(await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'h1-missing' } }))
+        .toMatchObject({ evidence: 'No heading in the captured page', position: title.position + 1 })
+      expect(await recordedTaskFindings(audit.id, prisma)).toHaveLength(1600)
+      expect(await prisma.auditExecutionTask.findMany({ where: { auditId: audit.id }, orderBy: { targetKey: 'asc' }, select: { workResult: true } }))
+        .toEqual(history.map(workResult => ({ workResult })))
+    } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
+  })
+
+  it('selects historical journey aliases and split page identities with their original provenance', async () => {
+    const pageUrl = 'https://example.com/'
+    const audit = await prisma.audit.create({ data: { url: pageUrl, status: 'CHECKING' } })
+    const flag = (checkId: string) => ({ checkId, pageUrl, rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      problem: 'Recorded condition', evidence: checkId, fix: 'Restore it', confidence: 1, source: 'DETERMINISTIC' })
+    try {
+      const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:original', source: 'DETERMINISTIC',
+        status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', workResult: serializeArtifact('check', { flags: [
+          flag('journey-signup-hidden-cta::page:one'), flag('journey-pricing-evaluation-hidden-cta'), flag('journey-signup-dead-end'), flag('title-missing'),
+        ] }) } })
+      const rows = await recordedTaskFindings(audit.id, prisma, undefined, ['journey-hidden-cta'])
+      expect(rows.map(row => row.checkId)).toEqual(['journey-signup-hidden-cta::page:one', 'journey-pricing-evaluation-hidden-cta'])
+      expect(rows.every(row => row.supportingObservations.items[0].provenance?.taskId === task.id)).toBe(true)
+      expect((await recordedTaskFindings(audit.id, prisma, undefined, ['journey-dead-end'])).map(row => row.checkId)).toEqual(['journey-signup-dead-end'])
+      expect(await recordedTaskFindings(audit.id, prisma, undefined, [])).toEqual([])
+    } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
+  })
+
+  it('reads repair verdicts without loading collector journals or task diagnostics', async () => {
+    const owner = await prisma.user.create({ data: { email: randomUUID() + '@example.test' } })
+    const project = await prisma.project.create({ data: { userId: owner.id, name: 'Compact verification', url: 'https://example.com/', canonicalHost: 'example.com' } })
+    const before = await prisma.audit.create({ data: { projectId: project.id, url: project.url, status: 'COMPLETED' } })
+    const after = await prisma.audit.create({ data: { projectId: project.id, parentId: before.id, url: project.url, status: 'COMPLETED',
+      verificationReceipts: { create: [
+        ...['check:title-missing', 'module:metadata', 'ai:retained-fingerprint'].map(targetKey => ({
+          targetKey, source: 'DETERMINISTIC', status: 'COMPLETED' as const, detail: { observation: 'Retained verdict' },
+        })),
+        { targetKey: 'artifact:flow-control', source: 'DETERMINISTIC', status: 'COMPLETED', detail: { collector: 'x'.repeat(2_000_000) } },
+        { targetKey: 'artifact:observation', source: 'EXECUTION', status: 'COMPLETED', detail: { collector: 'x'.repeat(2_000_000) } },
+        { targetKey: 'intent:observation-cohort', source: 'EXECUTION', status: 'COMPLETED', detail: { members: ['x'.repeat(2_000_000)] } },
+      ] }, executionTasks: { create: { targetKey: 'task:collector', source: 'DETERMINISTIC', status: 'COMPLETED',
+        detail: { diagnostic: 'x'.repeat(100_000) } } },
+    } })
+    const read = vi.spyOn(prisma.audit, 'findUnique')
+    try {
+      await expect(reconcileImprovementVerification({ parentAuditId: before.id, verificationAuditId: after.id })).resolves.toEqual([])
+      const index = read.mock.calls.findIndex(([input]) => input.where.id === after.id)
+      expect(index).toBeGreaterThanOrEqual(0)
+      const projected = await read.mock.results[index].value as unknown as { verificationReceipts: Array<{ targetKey: string }> }
+      expect(projected.verificationReceipts.map(row => row.targetKey).sort()).toEqual(['ai:retained-fingerprint', 'check:title-missing', 'module:metadata'])
+      expect(Buffer.byteLength(JSON.stringify(projected))).toBeLessThan(4096)
+    } finally {
+      read.mockRestore()
+      await prisma.audit.deleteMany({ where: { projectId: project.id } })
+      await prisma.project.delete({ where: { id: project.id } })
+      await prisma.user.delete({ where: { id: owner.id } })
+    }
   })
   it('retains recorded coverage gaps when a deterministic finalizer has every required collector', async () => {
     const audit = await prisma.audit.create({ data: { url: 'https://example.com/', status: 'FINALIZING', failedModules: ['performance'] } })
@@ -142,7 +221,7 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       ) ON COMMIT DROP`
       await tx.$executeRaw`CREATE TEMP TABLE audit_verifier_executions (
         "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "status" text,
-        "taskId" text, "detail" jsonb, "evidenceReference" jsonb
+        "taskId" text, "detail" jsonb, "evidenceReference" jsonb, "createdAt" timestamp DEFAULT now()
       ) ON COMMIT DROP`
       const input = JSON.stringify({ position: 0, pageUrl: url, primary: true, role: 'primary' })
       const browser = JSON.stringify(serializeArtifact('browser', { pageId: 'page', metadata,

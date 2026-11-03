@@ -1,6 +1,6 @@
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { openCheckDestinations, deadDestinationFlags, type OpenCheckObservation } from '../open-check'
+import { openCheckDestinations, deadDestinationFlags, hasSuccessfulPublicGet, type OpenCheckObservation } from '../open-check'
 import { collectEligibleDestinations } from '../url-identity'
 import { destinationContext, publicLinkContext, displayDestination } from './destination-evidence'
 import type { PageMetadata } from '../metadata'
@@ -53,7 +53,7 @@ export function publicLinkObservations(sourceUrl: string, urls: string[], result
   let complete = inventoryComplete && urls.length <= 120
   for (const url of urls.slice(0, 120)) {
     const result = byDestination.get(destinationContext(sourceUrl, url))
-    const passed = Boolean(result && !result.shouldFlagDead && result.outcome !== 'blocked' && result.status !== null && result.status >= 200 && result.status < 300)
+    const passed = hasSuccessfulPublicGet(result)
     const conclusive = passed || result?.shouldFlagDead === true
     if (!conclusive) complete = false
     if (result) observed.push(result)

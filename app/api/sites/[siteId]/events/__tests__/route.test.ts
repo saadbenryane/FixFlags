@@ -6,6 +6,7 @@ vi.mock('@/lib/sites/application/execution-progress', async () => ({
 }))
 import { GET } from '../route'
 import { encodeEventCursor } from '@/lib/sites/application/execution-progress'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 const site = { siteId: 'site-one', projectId: 'project-one' }
 const context = { params: Promise.resolve({ siteId: site.siteId }) }
@@ -47,5 +48,12 @@ describe('private Site event transport', () => {
     const response = await GET(new Request('https://fixflags.example/api/sites/site-one/events'), context)
     expect(await response.text()).toContain('event: access-expired')
     expect(mocks.events).not.toHaveBeenCalled()
+  })
+  it('closes without publishing notices when authority changes during the read', async () => {
+    mocks.events.mockRejectedValue(new SiteRunRefusal('Site not found', 404))
+    const response = await GET(new Request('https://fixflags.example/api/sites/site-one/events'), context)
+    const body = await response.text()
+    expect(body).toContain('event: disconnected')
+    expect(body).not.toContain('event: projection')
   })
 })

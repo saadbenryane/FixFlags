@@ -222,8 +222,8 @@ const LEGACY_CHECK_DEFINITIONS = {
   'journey-funnel-missing-feedback': { version: 2, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
   'journey-funnel-unclear-progress': { version: 2, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
   'journey-funnel-too-many-steps': { version: 2, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
-  'corridor-og-title-drift': { version: 2, area: 'conversion', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
-  'corridor-og-description-drift': { version: 1, area: 'conversion', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
+  'corridor-og-title-drift': { version: 2, area: 'search', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
+  'corridor-og-description-drift': { version: 1, area: 'search', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
   'api-engagement-unauthorized': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'api-engagement-server-error': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'form-submit-api-unauthorized': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
@@ -267,4 +267,27 @@ export function checkAssertionsForVersion(module: string, version?: number) {
 
 export function registeredCheck(id: string | null | undefined) {
   return CHECK_REGISTRY[canonicalHistoricalCheckId(id)]
+}
+
+/** Repair policy extends the check identity, never customer wording. */
+export function registeredRepairRecipe(id: string | null | undefined) {
+  const definition = registeredCheck(id)
+  if (!definition) return null
+  const check = canonicalHistoricalCheckId(id).replace(/^mobile-/, '')
+  const recipe = check === 'unoptimized-images' ? 'images'
+    : /^lcp-/.test(check) ? 'lcp' : /^cls-/.test(check) ? 'cls' : /^inp-/.test(check) ? 'inp'
+    : /^(?:perf-|perf-score-)/.test(check) ? 'speed'
+    : check === 'unused-js-large' ? 'scripts' : check === 'unused-css-large' ? 'styles'
+    : check === 'render-blocking' ? 'blocking'
+    : /^(?:no-https|security-(?:mixed-content|certificate-))/.test(check) ? 'https'
+    : /^(?:images-(?:missing|empty)-alt|form-inputs-no-label|buttons-no-text|links-no-text)/.test(check) ? 'accessibleNames'
+    : /^(?:keyboard-|focus-visible-)/.test(check) ? 'keyboard'
+    : /^(?:title-|description-|og-)/.test(check) ? 'metadata'
+    : /(?:broken-(?:internal-links|page-anchors)|cta-(?:404|dead-link)|nav-broken|link-dead)/.test(check) ? 'links'
+    : /^(?:form-|flow-form-|account-)/.test(check) ? 'forms'
+    : ['cta-below-fold-mobile', 'placeholder-copy-detected'].includes(check) ? 'contextual' : 'investigate'
+  return { checkId: canonicalHistoricalCheckId(id), checkVersion: definition.version,
+    recipeVersion: 1 as const, recipe,
+    kind: ['lcp', 'cls', 'inp', 'speed', 'scripts', 'styles', 'blocking', 'contextual', 'investigate'].includes(recipe)
+      ? 'investigation' as const : 'repair' as const }
 }

@@ -3,9 +3,9 @@ import { SITE_BOARD_COPY } from './terminology'
 export const SITE_ACTION_COPY = {
   repairGuidance: {
     pending: 'Fix guidance is still being written. The evidence on this page is ready to read.',
-    unavailable: 'This finding has recorded evidence, and fix guidance is not available yet. Check again from Overview.',
+    unavailable: 'We could not read enough evidence to prepare a safe fix. Check this page again from Overview to get fresh results and next steps.',
     changed: 'This repair task changed. Copy the updated prompt again.',
-    label: { pending: 'Writing guidance', unavailable: 'Guidance unavailable' },
+    label: { pending: 'Preparing next steps', unavailable: 'Check again for next steps' },
     refresh: 'Refresh guidance', overview: 'Open Overview',
   },
   mobileInputs: {
@@ -49,7 +49,7 @@ export const SITE_ACTION_COPY = {
   invalidResponse: 'FixFlags could not confirm this action. Refresh before trying again.',
   added: 'Card added. Verify it for fresh evidence. Your Watch schedule is unchanged.',
   currentResults: 'Current results', previousResults: 'Previous evidence', moreResults: 'Load more recorded results',
-  flagEvidence: { observed: 'Observed', supporting: 'Supporting observations', source: 'Evidence source', recorded: 'Finding recorded', references: 'Recorded element references', unknown: 'Source not recorded',
+  flagEvidence: { observed: 'Observed', technicalDiagnostic: 'Technical diagnostic', supporting: 'Supporting observations', source: 'Evidence source', recorded: 'Finding recorded', references: 'Recorded element references', unknown: 'Source not recorded',
     sources: { DETERMINISTIC: 'Website check', AI: 'Visual review', JOURNEY: 'Visitor action', SEARCH: 'Search evidence' },
     lab: 'Google PageSpeed lab measurement. This controlled result does not describe every visitor’s experience.',
     field: 'Google CrUX field observation. The reported metric describes the 75th percentile over its recorded device and reporting scope.',
@@ -83,7 +83,7 @@ export const SITE_ACTION_COPY = {
     removeConfirmation: 'Remove this Site, stop Watch, and disconnect Shopify?',
   },
   performanceEvidence: 'Performance evidence',
-  performanceGrouping: 'Measurements and diagnostics are grouped by their recorded page and device. Each Flag keeps its own evidence and verification. Related measurements do not establish a shared cause.',
+  performanceGrouping: 'Results are grouped by page and device. Each problem has its own fix and check. Two slow results may have different causes.',
   pageEvidenceScope: 'Page results from the selected check. Areas without sufficient evidence remain unverified.',
   historicalCheck: 'This historical identity has no supported assertion contract. Its recorded execution is retained, not converted into a successful check.',
   fixtures: {

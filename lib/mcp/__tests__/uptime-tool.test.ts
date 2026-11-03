@@ -19,17 +19,19 @@ vi.mock('@/lib/uptime/queries', async importOriginal => ({
 }))
 import { registerSiteOutcomeTools } from '../tools/sites'
 import { InvalidUptimeCursorError } from '@/lib/uptime/queries'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 const now = new Date()
 const project = { id: 'owned-project', url: 'https://example.com/', deletedAt: null, name: 'Example', canonicalHost: 'example.com',
   watchInterval: 'WEEKLY' as const, watchNextRunAt: now, user: { id: 'owner', lifecycleStatus: 'ACTIVE' as const }, siteOutcomes: [] }
 const monitor = { targetUrl: project.url, state: 'offline', enabled: true, lastCheckedAt: now, nextProbeAt: now, confirmationDueAt: null }
 const summary = { ...projectUptimeStatus(project, monitor, now), openIncidentCount: 1, segments: [] }
+const ownedSite = { kind: 'project', siteId: 'site-alias', projectId: project.id, userId: 'owner' }
 const handlers = new Map<string, { schema: z.ZodType; call: (input: never) => Promise<{ structuredContent: Record<string, unknown>; isError?: boolean }> }>()
 beforeEach(() => {
   vi.clearAllMocks(); handlers.clear()
   stubs.sites.mockResolvedValue([{ ...project, uptimeMonitor: monitor }])
-  stubs.site.mockResolvedValue({ kind: 'project', siteId: 'site-alias', projectId: project.id, userId: 'owner' })
+  stubs.site.mockResolvedValue(ownedSite)
   stubs.outcomes.mockResolvedValue([]); stubs.latest.mockResolvedValue(null)
   stubs.results.mockResolvedValue({ results: [], nextCursor: null }); stubs.summary.mockResolvedValue(summary)
   registerSiteOutcomeTools({ registerTool(name: string, definition: { inputSchema: z.ZodType }, call: (input: never) => Promise<never>) {
@@ -45,14 +47,14 @@ it('includes automatic uptime for every listed owned Site without per-Site histo
   const result = await call(MCP_TOOLS.listSites.name, {})
   expect(result.structuredContent.sites).toEqual([{ siteId: project.id, name: project.name, host: project.canonicalHost,
     outcomeCount: 0, watching: true, uptime: projectUptimeStatus(project, monitor, now) }])
-  expect(stubs.sites).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner', deletedAt: null } }))
+  expect(stubs.sites).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } }))
   expect(stubs.summary).not.toHaveBeenCalled(); expect(stubs.history).not.toHaveBeenCalled()
 })
 
 it('includes the shared summary by default without requiring configured Outcomes', async () => {
   const result = await call(MCP_TOOLS.listOutcomes.name, { siteId: 'site-alias' })
   expect(result.structuredContent).toMatchObject({ siteId: 'site-alias', outcomes: [], uptime: { ...summary, scope: UPTIME_COPY.scope, limitation: UPTIME_COPY.limitation } })
-  expect(stubs.summary).toHaveBeenCalledWith(project.id)
+  expect(stubs.summary).toHaveBeenCalledWith(ownedSite)
   expect(stubs.history).not.toHaveBeenCalled()
 })
 
@@ -60,7 +62,7 @@ it.each(['24h', '7d', '30d'] as const)('reads %s history only on request, scoped
   const history = { ...summary, window, probes: [{ id: 'probe-one', result: 'FAILED' }], incidents: [{ id: 'incident-one', recoveredAt: null }], nextCursor: 'probe-two' }
   stubs.history.mockResolvedValue(history)
   const result = await call(MCP_TOOLS.listOutcomes.name, { siteId: 'site-alias', uptimeWindow: window, uptimeCursor: 'probe-one', resultCursor: 'result-cursor' })
-  expect(stubs.history).toHaveBeenCalledWith(project.id, window, 'probe-one')
+  expect(stubs.history).toHaveBeenCalledWith(ownedSite, window, 'probe-one')
   expect(stubs.summary).not.toHaveBeenCalled()
   expect(stubs.results).toHaveBeenCalledWith(expect.objectContaining({ projectId: project.id }), null, 'result-cursor')
   expect(result.structuredContent.uptime).toEqual({ ...history, scope: UPTIME_COPY.scope, limitation: UPTIME_COPY.limitation })
@@ -102,4 +104,13 @@ it.each([null, { kind: 'project', siteId: 'site-alias', projectId: 'foreign-proj
   expect(result.isError).toBe(true)
   expect(stubs.outcomes).not.toHaveBeenCalled()
   expect(stubs.summary).not.toHaveBeenCalled(); expect(stubs.history).not.toHaveBeenCalled()
+})
+
+it.each([undefined, '24h'] as const)('withholds the whole tool result when authority changes during uptime collection (%s)', async uptimeWindow => {
+  stubs.history.mockRejectedValue(new SiteRunRefusal('Site not found', 404))
+  stubs.summary.mockRejectedValue(new SiteRunRefusal('Site not found', 404))
+  const result = await call(MCP_TOOLS.listOutcomes.name, { siteId: 'site-alias', uptimeWindow })
+  expect(result).toMatchObject({ isError: true, structuredContent: { status: 'ERROR', error: { message: 'Site not found' } } })
+  expect(result.structuredContent).not.toHaveProperty('uptime')
+  expect(result.structuredContent).not.toHaveProperty('outcomes')
 })

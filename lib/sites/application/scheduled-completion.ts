@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
 import { Prisma } from '@prisma/client'
-import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
@@ -13,15 +12,9 @@ import { readExecutionSpec } from '../domain/execution-spec'
 import { analysisEnvironmentSourceSql } from './analysis-scope'
 import { SiteRunRefusal } from './run-refusal'
 import { interruptedAnalysisWorkSql, interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
+import { scheduledContextSchema, readScheduledContext, type ScheduledContext } from './scheduled-observation'
 
-const scheduleSchema = z.object({ version: z.literal(1), targetHash: z.string().regex(/^[a-f0-9]{64}$/),
-  interval: z.enum(['daily', 'weekly', 'hourly', 'custom']), everyMinutes: z.number().int().positive().nullable(),
-  scheduledAt: z.number().int().nonnegative(), attemptedAt: z.number().int().nonnegative(), nextRunAt: z.number().int().nonnegative(),
-  failures: z.number().int().min(0).max(2147483646),
-}).strict()
-type Schedule = z.infer<typeof scheduleSchema>
 const targetHash = (url: string) => createHash('sha256').update(url).digest('hex')
-const readSchedule = (context: unknown) => scheduleSchema.safeParse(context && typeof context === 'object' && 'scheduled' in context ? context.scheduled : undefined)
 
 /** The receipt's schedule context and the Site clock commit together, after
  * normal execution admission. No raw URL or claim lease enters that context. */
@@ -42,7 +35,7 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
     const spec = readExecutionSpec(run?.executionSpec)
     if (!run || !spec || !['SITE', 'OUTCOMES'].includes(spec.scope) || spec.environment !== 'production' || spec.verificationTarget)
       throw new SiteRunRefusal('The scheduled check did not finish. FixFlags will try again.', 409, 'SCHEDULED_RUN_UNAVAILABLE')
-    const old = readSchedule(run.context)
+    const old = readScheduledContext(run.context)
     if (!old.success && run.context && typeof run.context === 'object' && 'scheduled' in run.context)
       throw new SiteRunRefusal('The recorded monitoring context is unavailable.', 409, 'SCHEDULE_CONTEXT_UNAVAILABLE')
     if (old.success) {
@@ -51,7 +44,7 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
       return false
     }
     assertScheduledClaim(site, input.claim)
-    const scheduled = scheduleSchema.parse({ version: 1, targetHash: targetHash(site.url), interval: input.claim.interval,
+    const scheduled = scheduledContextSchema.parse({ version: 1, targetHash: targetHash(site.url), interval: input.claim.interval,
       everyMinutes: input.claim.everyMinutes, scheduledAt: input.claim.scheduledAt.getTime(), attemptedAt: input.claim.attemptedAt.getTime(),
       nextRunAt: calcWatchNextRun(input.claim.interval, input.admittedAt, input.claim.everyMinutes).getTime(), failures: site.watchConsecutiveFailures })
     const context = run.context && typeof run.context === 'object' && !Array.isArray(run.context) ? run.context : {}
@@ -95,9 +88,9 @@ export async function reconcileScheduledCompletions(limit = 20, clock: Clock = s
     ORDER BY "source"."completedAt", r.id LIMIT ${Math.max(1, Math.min(100, limit))}`)
   let changed = 0
   for (const row of rows) {
-    const parsed = readSchedule(row.context)
+    const parsed = readScheduledContext(row.context)
     if (!parsed.success) continue
-    const saved: Schedule = parsed.data
+    const saved: ScheduledContext = parsed.data
     const failed = row.status === 'FAILED' || row.interrupted
     const delay = [15, 60, 360][Math.min(saved.failures, 2)] * 60_000
     try {

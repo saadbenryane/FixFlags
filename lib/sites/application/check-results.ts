@@ -7,6 +7,7 @@ import type { CategoryArea } from '../domain/execution-spec'
 import type { SiteCardArea } from '../card-areas'
 import { CHECK_MODULES, CHECK_ASSERTIONS } from '@/lib/audit/check-registry'
 import { Prisma } from '@prisma/client'
+import { readSiteEvidence } from './site-evidence-read'
 
 export const CHECK_RESULT_PAGE_SIZE = 100
 const RECEIPT_BATCH_SIZE = 10
@@ -43,8 +44,9 @@ async function countReceiptBatch(database: ResultDatabase, site: SiteRecord, lat
   categoryIds: string[], filter: CheckResultFilter, phase: ResultCursor['phase'], after?: string) {
   const modules = resultModules(filter)
   if (modules?.length === 0) return []
-  const auditIds = phase === 'current' ? [latestAuditId, ...categoryIds] : categoryIds.length ? categoryIds : [latestAuditId]
-  const selection = phase === 'current' ? Prisma.sql`a.id IN (${Prisma.join(auditIds)})` : Prisma.sql`a.id NOT IN (${Prisma.join(auditIds)})`
+  const auditIds = [latestAuditId, ...categoryIds]
+  const selection = phase === 'current' ? Prisma.sql`a.id IN (${Prisma.join(auditIds)})`
+    : categoryIds.length ? Prisma.sql`TRUE` : Prisma.sql`a.id <> ${latestAuditId}`
   return database.$queryRaw<Receipt[]>(Prisma.sql`
     WITH candidates AS MATERIALIZED (
       SELECT r.id, r."auditId", r."targetKey", r."pageUrl", r.source, r.status,
@@ -112,6 +114,12 @@ async function scopedResultTotal(database: ResultDatabase, site: SiteRecord, lat
 export async function loadSiteCheckResultPage(site: SiteRecord,
   latestAudit: string | { id: string; status: string; createdAt: Date } | null, rawCursor?: string,
   categoryEvidence?: Map<CategoryArea, CategoryEvidenceAudit>, filter: CheckResultFilter = {}, includeTotal = false) {
+  return readSiteEvidence(site, () => collectSiteCheckResultPage(site, latestAudit, rawCursor, categoryEvidence, filter, includeTotal))
+}
+
+async function collectSiteCheckResultPage(site: SiteRecord,
+  latestAudit: string | { id: string; status: string; createdAt: Date } | null, rawCursor: string | undefined,
+  categoryEvidence: Map<CategoryArea, CategoryEvidenceAudit> | undefined, filter: CheckResultFilter, includeTotal: boolean) {
   const id = typeof latestAudit === 'string' ? latestAudit : latestAudit?.id
   const needsSnapshot = includeTotal || Boolean(rawCursor && decodeCursor(rawCursor).version === 4)
   if (!needsSnapshot || !id || !site.projectId && !site.primaryAuditId)
@@ -141,7 +149,7 @@ async function readSiteCheckResultPage(database: ResultDatabase, site: SiteRecor
     ? applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [{ projectId: site.projectId, auditId: latestAudit.id }] : []), latestAudit) : new Map<CategoryArea, CategoryEvidenceAudit>())
   const categoryIds = [...categories.values()].map(audit => audit.id)
   const currentIds = [latestAuditId, ...categoryIds]
-  const snapshot = createHash('sha256').update(JSON.stringify([site.siteId ?? site.projectId ?? site.primaryAuditId, latestAuditId, filter.area ?? null, filter.pageUrl ?? null,
+  const snapshot = createHash('sha256').update(JSON.stringify(['category-observation-history-v2', site.siteId ?? site.projectId ?? site.primaryAuditId, latestAuditId, filter.area ?? null, filter.pageUrl ?? null,
     [...categories].map(([area, audit]) => [area, audit.id]).sort(([a], [b]) => a.localeCompare(b))])).digest('hex')
   const auditWhere = site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId! }
   const cursor = decodeCursor(rawCursor)
@@ -150,7 +158,9 @@ async function readSiteCheckResultPage(database: ResultDatabase, site: SiteRecor
   if (rawCursor && (cursor.version === 4 && cursor.snapshot !== versionedScope(snapshot) || cursor.version === 3 && cursor.snapshot !== snapshot || cursor.version === 2 && cursor.snapshot !== legacySnapshot ||
     cursor.version < 3 && (filter.area || filter.pageUrl))) throw new Error('Invalid check history cursor')
   const currentWhere = { in: currentIds }
-  const historyWhere = categories.size ? { notIn: categoryIds } : { not: latestAuditId }
+  // A selected category run can contain observations owned by another area.
+  // Project each result against its current source before excluding history.
+  const historyWhere = categories.size ? undefined : { not: latestAuditId }
   const encodeNext = (phase: ResultCursor['phase'], receiptId: string | null, offset: number) =>
     encodeCursor({ version: 3, phase, receiptId, offset, snapshot })
   if (cursor.receiptId) {

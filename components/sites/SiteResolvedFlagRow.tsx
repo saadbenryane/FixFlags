@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
 
 export function SiteResolvedFlagRow({ siteId, flag }: { siteId: string; flag: SiteFlagSeed }) {
   const scope = flag.affectedPageCount === 1 ? '1 affected page' : `${flag.affectedPageCount} affected pages`
@@ -15,7 +16,7 @@ export function SiteResolvedFlagRow({ siteId, flag }: { siteId: string; flag: Si
         <span>{scope}</span>
         {flag.latestOccurrenceAt ? <span>Verified {formatEvidenceTimestamp(flag.latestOccurrenceAt)}</span> : null}
       </p>
-      <h3 className="mt-1 text-sm font-medium sm:text-base">{flag.problem}</h3>
+      <h3 className="mt-1 text-sm font-medium sm:text-base">{customerFindingLabel(flag)}</h3>
     </div>
     <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.sourceFlagId ?? flag.id}`}>View proof</Link></Button>
   </article>

@@ -6,7 +6,8 @@ import { recoverExpiredSiteRuns } from '../run-leases'
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mocks.runs.mockResolvedValueOnce([{ projectId: 'interrupted-site' }, { projectId: 'other-site' }])
+  mocks.runs.mockResolvedValueOnce([{ id: 'interrupted-run', projectId: 'interrupted-site', updatedAt: new Date(0) },
+    { id: 'abandoned-run', projectId: 'other-site', updatedAt: new Date(0) }])
     .mockRejectedValueOnce(new Error('Controlled Site recovery read failure'))
     .mockResolvedValueOnce([{ id: 'abandoned-run', auditId: null }])
   mocks.fail.mockResolvedValue({ count: 1 })

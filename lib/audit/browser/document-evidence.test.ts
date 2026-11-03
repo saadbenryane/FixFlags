@@ -21,4 +21,13 @@ describe('document evidence', () => {
       desktopHtml: '<html></html>', desktopHtmlTruncated: true, renderedSearchSnapshot: snapshot,
     }).renderedComplete).toBe(false)
   })
+  it('retains independently bounded Search sections when whole-document collection exceeds its limit', () => {
+    expect(renderedDocumentForSearch({
+      desktopHtml: null, desktopHtmlTruncated: true, renderedSearchSnapshot: snapshot,
+    })).toEqual({ renderedHtml: null, renderedSearchSnapshot: snapshot, renderedComplete: false })
+    expect(renderedDocumentForSearch({
+      desktopHtml: null, desktopHtmlTruncated: true, renderedSearchSnapshot: snapshot,
+      collectionRestrictions: ['read_only_refusal'],
+    })).toEqual({ renderedHtml: null, renderedSearchSnapshot: undefined, renderedComplete: false })
+  })
 })

@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { systemClock } from '@/lib/time/clock'
 import { randomUUID } from 'node:crypto'
 import { Queue } from 'bullmq'
@@ -49,7 +50,7 @@ run('Uptime dispatch through the installed queue and worker', () => {
       await scheduleUptimeProbes(systemClock, 1, site.id)
       expect(await retained.getState()).toBe('completed')
       expect(observe).toHaveBeenCalledOnce()
-      expect(await loadUptimeSummary(site.id)).toMatchObject({ state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(site))).toMatchObject({ state: 'online' })
       expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
       expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).auditsUsed).toBe(3)
     } finally {
@@ -95,8 +96,8 @@ run('Uptime dispatch through the installed queue and worker', () => {
         await scheduleUptimeProbes(systemClock, 1)
         expect(await prisma.uptimeProbe.count({ where: { monitorId: monitors[0].id } })).toBe(1)
       }, { timeout: 10_000, interval: 50 })
-      expect(await loadUptimeSummary(projects[0].id)).toMatchObject({ state: 'online' })
-      expect(await loadUptimeSummary(projects[1].id)).toMatchObject({ state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(projects[0]))).toMatchObject({ state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(projects[1]))).toMatchObject({ state: 'online' })
       expect(await prisma.uptimeIncident.count({ where: { monitor: { project: { userId: user.id } } } })).toBe(0)
       expect(await prisma.audit.count({ where: { userId: user.id } })).toBe(0)
       expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).auditsUsed).toBe(3)
@@ -132,7 +133,7 @@ run('Uptime dispatch through the installed queue and worker', () => {
         expect(await prisma.uptimeProbe.count({ where: { monitor: { projectId: projects[2].id } } })).toBe(1)
       }, { timeout: 10_000, interval: 50 })
       expect(observe.mock.calls.map(([url]) => url)).toEqual([projects[2].url])
-      expect(await loadUptimeSummary(projects[2].id)).toMatchObject({ enabled: true, state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(projects[2]))).toMatchObject({ enabled: true, state: 'online' })
       rejectSetup = false
       // Make the persisted retry due without waiting a minute in the fixture.
       await prisma.project.updateMany({ where: { id: { in: [...failing] } }, data: { monitoringSetupRetryAt: new Date(Date.now() - 1) } })
@@ -175,8 +176,8 @@ run('Uptime dispatch through the installed queue and worker', () => {
       }, { timeout: 10_000, interval: 50 })
       expect(observe.mock.calls.map(([url]) => url).sort()).toEqual([projects[0].url, projects[2].url].sort())
       expect(await prisma.uptimeMonitor.findUnique({ where: { projectId: projects[1].id } })).toBeNull()
-      expect(await loadUptimeSummary(projects[0].id)).toMatchObject({ enabled: true, state: 'online' })
-      expect(await loadUptimeSummary(projects[2].id)).toMatchObject({ enabled: true, state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(projects[0]))).toMatchObject({ enabled: true, state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(projects[2]))).toMatchObject({ enabled: true, state: 'online' })
       expect((await prisma.project.findUniqueOrThrow({ where: { id: projects[1].id } })).monitoringSetupRetryAt).toBeInstanceOf(Date)
       await prisma.project.update({ where: { id: projects[1].id }, data: { monitoringSetupRetryAt: new Date(Date.now() - 1) } })
       await scheduleUptimeProbes(systemClock, 10, projects[1].id)
@@ -184,7 +185,7 @@ run('Uptime dispatch through the installed queue and worker', () => {
         expect(await prisma.uptimeProbe.count({ where: { monitor: { projectId: projects[1].id } } })).toBe(1)
       }, { timeout: 10_000, interval: 50 })
       expect(observe).toHaveBeenCalledTimes(3)
-      expect(await loadUptimeSummary(projects[1].id)).toMatchObject({ enabled: true, state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(projects[1]))).toMatchObject({ enabled: true, state: 'online' })
       expect((await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId: projects[0].id } })).id).toBe(existing.id)
       expect(await prisma.audit.count({ where: { userId: user.id } })).toBe(0)
       expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).auditsUsed).toBe(3)

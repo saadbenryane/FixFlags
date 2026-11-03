@@ -152,15 +152,18 @@ export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null
 }
 
 /** Stable projection identities; repeated publication never deletes originating evidence. */
-async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, rows: Prisma.FlagCreateManyInput[], authoritativePaths = false) {
+async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, rows: Prisma.FlagCreateManyInput[], authoritativePaths = false, preservePositions = false) {
   await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
-  const previous = await tx.flag.findMany({ where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] } },
-    select: { id: true, fingerprint: true, source: true, affectedPaths: true, supportingObservations: true } })
+  const previous = await tx.flag.findMany({ where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] },
+    ...(authoritativePaths ? { OR: rows.map(row => ({ source: row.source, fingerprint: row.fingerprint })) } : {}) },
+    select: { id: true, fingerprint: true, source: true, position: true,
+      affectedPaths: !authoritativePaths, supportingObservations: !authoritativePaths } })
+  let nextPosition = preservePositions ? ((await tx.flag.aggregate({ where: { auditId }, _max: { position: true } }))._max.position ?? -1) + 1 : 0
   const existing = new Map(previous.map(row => [row.source + ':' + row.fingerprint, row]))
   const created: Prisma.FlagCreateManyInput[] = []
   for (const row of rows) {
     const prior = existing.get(row.source + ':' + row.fingerprint)
-    if (!prior) { created.push(row); continue }
+    if (!prior) { created.push(preservePositions ? { ...row, position: nextPosition++ } : row); continue }
     const paths = [...new Set([
       ...(!authoritativePaths && Array.isArray(prior.affectedPaths) ? prior.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
       ...(Array.isArray(row.affectedPaths) ? row.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
@@ -169,7 +172,8 @@ async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, ro
     const newObservations = readSupportingObservations(row.supportingObservations)
     const supportingObservations = !authoritativePaths && oldObservations && newObservations
       ? mergeSupportingObservations([oldObservations, newObservations]) as Prisma.InputJsonValue : row.supportingObservations
-    await tx.flag.update({ where: { id: prior.id }, data: { ...row, supportingObservations, affectedPaths: paths.length ? paths : undefined } })
+    await tx.flag.update({ where: { id: prior.id }, data: { ...row,
+      ...(preservePositions ? { position: prior.position } : {}), supportingObservations, affectedPaths: paths.length ? paths : undefined }, select: { id: true } })
   }
   if (created.length) await tx.flag.createMany({ data: created })
 }
@@ -191,14 +195,15 @@ function journeySeverityPenalty(severity: string): number {
 /**
  * Persist deterministic flags and partial rubric scores during the pipeline run.
  * Incremental callers retain prior paths. Authoritative projection callers supply
- * every committed observation, including overlaps, to update the current union.
+ * every committed observation for the supplied responsibilities, including
+ * their complete overlap family, to update that part of the current union.
  */
 export async function persistDeterministicFlags(
   auditId: string,
   deterministicFlags: DeterministicFlag[],
   rubricScores: Partial<Record<RubricName, number | null>>,
   transaction?: Prisma.TransactionClient,
-  options: { authoritativeProjection?: boolean } = {},
+  options: { authoritativeProjection?: boolean; preservePositions?: boolean } = {},
 ): Promise<void> {
   const persist = async (tx: Prisma.TransactionClient) => {
 
@@ -213,10 +218,12 @@ export async function persistDeterministicFlags(
         const score = rubricScores[rubricName as RubricName]
         const existing = await tx.reportRubric.findFirst({
           where: { auditId, name: rubricName as RubricName },
+          select: { id: true, summary: true },
         })
         if (existing) {
           return tx.reportRubric.update({
             where: { id: existing.id },
+            select: { id: true, name: true },
             data: {
               score: score !== null && score !== undefined ? clampScore(score) : null,
               grade:
@@ -234,6 +241,7 @@ export async function persistDeterministicFlags(
           })
         }
         return tx.reportRubric.create({
+          select: { id: true, name: true },
           data: {
             auditId,
             name: rubricName as RubricName,
@@ -259,7 +267,7 @@ export async function persistDeterministicFlags(
       auditId,
     }))
 
-    await persistFlagRows(tx, auditId, flagRows, options.authoritativeProjection)
+    await persistFlagRows(tx, auditId, flagRows, options.authoritativeProjection, options.preservePositions)
     if (options.authoritativeProjection) {
       const retained = new Set(collapsed.map(flagFingerprint))
       const superseded = [...new Set(deterministicFlags.map(flagFingerprint))].filter(identity => !retained.has(identity))
@@ -275,6 +283,7 @@ export async function persistDeterministicFlags(
     const overallScore = calculateOverallScore(rubricScores)
     await tx.audit.update({
       where: { id: auditId },
+      select: { id: true },
       data: {
         score: overallScore,
         reportCompleteness: 'PARTIAL',

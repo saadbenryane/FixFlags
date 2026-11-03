@@ -29,7 +29,7 @@ export function projectHomePresentation(input: {
   const completedAt = (isAuditFinished(audit?.status) ? audit : prior)?.completedAt?.toISOString() ?? null
   const { pagesReached, pagesExpected } = pageCoverage
   const evidenceFacts = coverage.filter((fact) => fact.evidenced)
-  const stale = evidenceFacts.length > 0 && evidenceFacts.every((fact) => fact.stale === true)
+  const stale = health.assessment.gaps.some(gap => gap.reason === 'stale')
   const result = resultPresentation({
     auditStatus: audit?.status ?? null,
     healthState: siteCardState,

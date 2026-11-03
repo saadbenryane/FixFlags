@@ -1,11 +1,11 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
 const db = vi.hoisted(() => ({ outcomes: vi.fn(), fixtures: vi.fn(), references: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { siteOutcome: { findMany: db.outcomes }, outcomeFixture: { findMany: db.fixtures } } }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: vi.fn().mockResolvedValue({ id: 'site' }) }, siteOutcome: { findMany: db.outcomes }, outcomeFixture: { findMany: db.fixtures } } }))
 vi.mock('@/lib/sites/application/outcome-references', () => ({ loadOutcomeDetailReferences: db.references }))
 import { loadSiteOutcomeDetail, loadSiteOutcomeDetails } from '../outcome-queries'
 
-const site = { kind: 'project', projectId: 'site' } as SiteRecord
+const site = { kind: 'project', projectId: 'site', userId: 'owner' } as SiteRecord
 const row = { id: 'outcome', projectId: 'site', provisionalSiteId: null, name: 'Page loads', slug: 'page-loads', description: null,
   inferenceSource: 'browser', confirmedAt: null, pages: [], kind: 'AVAILABILITY', criticality: 'IMPORTANT', environment: 'production',
   enabled: true, staleAfterMinutes: 60, expectation: null, bindings: [], assessments: [], runSelections: [], bindingAttempts: [], bindingExecutions: [], improvements: [] }

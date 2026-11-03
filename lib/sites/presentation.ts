@@ -179,6 +179,7 @@ export function resultPresentation(input: {
   if (inFlight) state = 'checking'
   else if (input.auditStatus === 'FAILED') state = 'failed'
   else if (input.flagCount > 0 || input.assessmentResult === 'FLAG' || input.healthState === 'attention' || input.healthState === 'problem') state = 'flags'
+  else if (input.assessmentResult === 'COULD_NOT_VERIFY') state = 'could_not_verify'
   else if (input.stale || input.assessmentResult === 'STALE') state = 'stale'
   else if (!input.hasCurrentEvidence || input.healthState !== 'healthy') state = 'could_not_verify'
   else state = 'clear'

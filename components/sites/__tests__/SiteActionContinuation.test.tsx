@@ -14,14 +14,14 @@ function Actions() {
   useSiteNavigationContinuity('p_creator')
   return <ReportAuthGateProvider auditId="creator-audit">
     <SiteActionContinuation availability="sign_in" destination="/sites/p_creator" action="check" />
-    <SitePromptAccessActions availability="sign_in" destination="/sites/p_creator" label="Copy all fix prompts" />
+    <SitePromptAccessActions availability="sign_in" destination="/sites/p_creator" label="Copy all fix instructions" />
   </ReportAuthGateProvider>
 }
 
 afterEach(() => { cleanup(); sessionStorage.clear(); vi.unstubAllGlobals(); window.history.replaceState({}, '', '/') })
 
 describe('signed-out Site actions', () => {
-  it.each(['Check again', 'Copy all fix prompts', 'View prompt'])('opens authentication from %s without running a protected action', async label => {
+  it.each(['Check again', 'Copy all fix instructions', 'View instructions'])('opens authentication from %s without running a protected action', async label => {
     const request = vi.fn()
     vi.stubGlobal('fetch', request)
     window.history.replaceState({}, '', '/sites/p_creator?category=performance#flags')

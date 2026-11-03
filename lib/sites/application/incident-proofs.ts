@@ -4,6 +4,7 @@ import { outcomeFlagOwner } from '@/lib/audit/flag-identity'
 import { createRecordedRecoveryReader, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { siteAnalysisAuditWhere } from './analysis-scope'
+import { loadRecoveryExecutions } from '@/lib/audit/recovery-executions'
 
 export function unboundSiteFindingWhere(projects: string | string[]): Prisma.FlagWhereInput {
   return { audit: { projectId: typeof projects === 'string' ? projects : { in: projects }, ...siteAnalysisAuditWhere },
@@ -63,9 +64,9 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
   }
   const audits = await prisma.audit.findMany({ where: { id: { in: ids }, projectId: { in: projectIds },
     status: 'COMPLETED', completedAt: { not: null } }, select: { id: true, projectId: true, completedAt: true, executionSpec: true,
-      outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } },
-      verifierExecutions: { where: { status: 'COMPLETED', OR: [{ targetKey: { startsWith: 'module:' } }, { targetKey: { startsWith: 'check:' } }] },
-        select: { targetKey: true, status: true, detail: true } } } })
+      outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } } } })
+  const executions = await loadRecoveryExecutions(audits.flatMap(audit => audit.projectId ? [{ auditId: audit.id,
+    flags: flagsByRecovery.get(JSON.stringify([audit.projectId, audit.id])) ?? [] }] : []))
   const certificatesByAudit = new Map<string, RecoveryCertificate[]>()
   const remember = (projectId: string, flagId: string, auditId: string, at: Date) => {
     const keys = provenFlagsByProject.get(projectId) ?? new Set<string>()
@@ -81,7 +82,7 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
     const certificates = recoveryCertificates(audit.outcomeAssessments)
     certificatesByAudit.set(audit.id, certificates)
     const recovery = createRecordedRecoveryReader({ auditId: audit.id, executionSpec: audit.executionSpec,
-      executions: audit.verifierExecutions ?? [] })
+      executions: executions.get(audit.id) ?? [] })
     for (const flag of flagsByRecovery.get(JSON.stringify([audit.projectId, audit.id])) ?? []) {
       if (!recovery.hasRecovery(flag) &&
         !namedByRecovery(flag, certificates)) continue

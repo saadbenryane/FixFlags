@@ -23,16 +23,19 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { loadUptimeEvents,loadUptimeSummary } from '@/lib/uptime/queries'
 import { loadAccountChecksView } from '../accounts/store'
 import { projectHomePresentation } from '../home-presentation'
+import { watchObservationWhere } from './scheduled-observation'
 import type { SiteHomeView } from '../site-home'
 import { loadPerformanceEvidence } from './performance-evidence'
 import { loadSiteCaptures, loadSiteCheckedPages } from './captures'
+import { siteCaptureAvailability } from '../captures'
 import { applyCardEvidence } from './card-evidence'
-import { loadCategoryEvidence } from './category-evidence'
+import { categoryEvidenceBaselines, loadCategoryEvidence } from './category-evidence'
 import { projectCurrentSiteEvidence } from './current-evidence'
 import { hasUnresolvedFlagEvidence } from '@/lib/audit/attention'
 import { loadExecutionProgress } from './execution-progress'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import { loadMonitoringHistory } from './monitoring-history'
+import { readSiteEvidence } from './site-evidence-read'
 import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
 import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
@@ -63,7 +66,7 @@ async function loadLatestWatchAlert(projectId: string | null | undefined) {
   // other tenants' unscoped Watch alerts.
   return projectId
     ? await prisma.audit.findFirst({
-      where: { projectId, recheckTrigger: 'WATCH', watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
+      where: { projectId, ...watchObservationWhere(projectId), watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
       // Delivery retries change updatedAt, not the incident's chronology.
       orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'desc' }],
       select: {
@@ -89,6 +92,11 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
   const site = options.site ?? await loadSiteRecord(siteId)
   if (!site) return null
   if (site.siteId !== siteId) throw new Error('Site query identity mismatch')
+  return readSiteEvidence(site, () => readSiteHome(site, options))
+}
+
+async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise<SiteHomeView> {
+  const siteId = site.siteId
   const now = new Date()
   const settingsEvidence = options.readScope === 'settings' && options.ownerEvidence
 
@@ -99,6 +107,10 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
   const monitoringHistoryPromise = loadMonitoringHistory(site, selection)
   void monitoringHistoryPromise.catch(() => undefined)
   const audit = await resolveLatestAudit(site, selection)
+  const priorPromise = site.kind === 'project' ? resolvePriorCompletedAudit(site, audit?.id ?? null, selection) : Promise.resolve(null)
+  const categoryEvidencePromise = audit?.status === 'COMPLETED'
+    ? loadCategoryEvidence(categoryEvidenceBaselines(site.projectId, audit))
+    : priorPromise.then(prior => loadCategoryEvidence(categoryEvidenceBaselines(site.projectId, audit, prior)))
 
   const [
     { flags, recommendations }, outcomes, pageCount, checkedPages,
@@ -117,8 +129,8 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
       },
     }) : null,
     loadSiteResolvedFlags(site),
-    site.kind === 'project' ? resolvePriorCompletedAudit(site, audit?.id ?? null, selection) : null,
-    loadCategoryEvidence(site.projectId && audit ? [{ projectId: site.projectId, auditId: audit.id }] : []),
+    priorPromise,
+    categoryEvidencePromise,
     monitoringHistoryPromise,
   ])
   const inFlight = isAuditInFlight(audit?.status)
@@ -130,17 +142,15 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
 
   const finished = isAuditFinished(audit?.status)
-  const trackingAudit = categoryEvidence.get('tracking')
   const [
-    resultPage, captures, uptime, uptimeEvents, technologyProfile, trackingProfile,
+    resultPage, captures, uptime, uptimeEvents, technologyProfile,
     activeRuns, connections, latestAlert, executionProgress, accountChecks, github,
   ] = await Promise.all([
     loadSiteCheckResultPage(site, audit, undefined, categoryEvidence),
     loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null),
-    options.ownerEvidence && site.projectId ? loadUptimeSummary(site.projectId, now) : undefined,
-    options.ownerEvidence && site.projectId ? loadUptimeEvents(site.projectId) : undefined,
+    options.ownerEvidence && site.projectId ? loadUptimeSummary(site, now) : undefined,
+    options.ownerEvidence && site.projectId ? loadUptimeEvents(site) : undefined,
     audit?.id ? loadTechnologyProfile(audit.id) : null,
-    trackingAudit ? loadTechnologyProfile(trackingAudit.id) : null,
     loadActiveSiteRuns(site, now),
     options.connections ?? (site.projectId ? loadSiteConnectionViews(site.projectId) : null),
     loadLatestWatchAlert(site.projectId),
@@ -166,9 +176,6 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
     uptime,
   })
   const capture = captures.find(item => item.device === 'desktop')
-  const analytics = (trackingProfile && trackingProfile.status !== 'not_captured' ? trackingProfile : technologyProfile)?.technologies
-    .filter((tech) => tech.category === 'analytics')
-    .map((tech) => tech.name) ?? []
   const { timeline: monitoringHistory, trend: monitoringTrend } = monitoringHistoryView
   const connectionNotes = connectionCardNotes(connections?.facts ?? [])
   const cards: BoardCardView[] = buildBoardCards({
@@ -182,16 +189,15 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
     pageCount,
     captureUrl: capture?.url ?? null,
     checkedAt: (finished ? audit : prior)?.completedAt?.toISOString() ?? null,
-    detected: { analytics },
   })
-  applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now, coverageMaxAgeMs })
+  applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connectionNotes, now, coverageMaxAgeMs })
   for (const [area, categoryAudit] of categoryEvidence) {
     const card = cards.find(card => card.id === area)
     if (!card) continue
     const categoryInFlight = isAuditInFlight(categoryAudit.status)
     applyCardEvidence({ cards: [card], audit: { ...audit!, ...categoryAudit },
       summaryResults: projectCheckResults(categoryAudit.id, categoryAudit.verifierExecutions), inFlight: categoryInFlight,
-      pageCount, connections, connectionNotes, now, coverageMaxAgeMs })
+      pageCount, connectionNotes, now, coverageMaxAgeMs })
     if (categoryInFlight) card.activity = 'checking'
   }
 
@@ -218,7 +224,7 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
     readScope: options.readScope ?? 'overview',
     actions: siteViewerActions(Boolean(options.ownerEvidence && site.projectId), options.viewerAuthenticated),
     counts: siteScopeCounts(flags, checkedPages, pageCount),
-    captures, uptime,
+    captures, captureAvailability: siteCaptureAvailability(captures, audit), uptime,
     uptimeEvents: uptimeEvents?.map(event => ({ ...event, startedAt: event.startedAt.toISOString(), confirmedAt: event.confirmedAt.toISOString(), recoveredAt: event.recoveredAt?.toISOString() ?? null, supersededAt: event.supersededAt?.toISOString() ?? null })),
     inventoryPageCount: pageCount,
     activeRuns,

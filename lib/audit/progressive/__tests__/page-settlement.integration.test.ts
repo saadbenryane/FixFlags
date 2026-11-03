@@ -26,6 +26,8 @@ localDatabase('page settlement from committed native collection', () => {
       const absent = await page('absent', 3, 'CAPTURING'), wrongUrl = await page('other-url/', 4), noMetadata = await page('no-metadata', 5)
       const historical = await page('historical', 6, 'COMPLETED'), failed = await page('failed', 7, 'FAILED')
       const partial = await page('partial', 8, 'PARTIAL'), malformed = await page('malformed', 9)
+      const mobileOnly = await page('mobile-only', 10), mobileMissing = await page('mobile-missing', 11)
+      const desktopRequired = await page('desktop-required', 12)
       const foreignPage = await prisma.auditPage.create({ data: { auditId: foreign.id, url: url + 'foreign', normalizedUrl: url + 'foreign',
         role: 'primary', position: 0, status: 'CHECKING' } })
       const task = async (pageUrl: string, pageId: string, overrides: object = {}) => prisma.auditExecutionTask.create({ data: {
@@ -41,6 +43,14 @@ localDatabase('page settlement from committed native collection', () => {
       await task(failed.url, failed.id)
       await task(foreignPage.url, foreignPage.id)
       await task(malformed.url, malformed.id, { workResult: serializeArtifact('browser', { pageId: malformed.id, metadata: {} }) })
+      for (const observed of [mobileOnly, mobileMissing, desktopRequired]) await task(observed.url, observed.id, {
+        workInput: { pageUrl: observed.url, position: observed.position, primary: false, role: 'review', device: 'mobile' },
+        workResult: serializeArtifact('browser', { pageId: observed.id, metadata: null,
+          snapshot: { consoleCoverage: { mobile: { complete: observed !== mobileMissing } } } }),
+      })
+      await task(desktopRequired.url, desktopRequired.id, { workState: 'EXHAUSTED', status: 'FAILED',
+        workInput: { pageUrl: desktopRequired.url, position: desktopRequired.position, primary: false, role: 'review', device: 'desktop' },
+        workResult: undefined })
       // Missing media, provider or performance results do not erase collection.
       await task(good.url, good.id, { workKind: 'judge', status: 'FAILED', workState: 'EXHAUSTED', workResult: undefined })
       const before = await prisma.auditVerifierExecution.findMany({ where: { auditId: audit.id }, orderBy: { id: 'asc' } })
@@ -48,7 +58,8 @@ localDatabase('page settlement from committed native collection', () => {
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED',
         reportCompleteness: 'PARTIAL', failureCode: 'FINALIZATION_INCOMPLETE', verdict: null })
       expect(await prisma.auditPage.findUniqueOrThrow({ where: { id: good.id } })).toMatchObject({ status: 'COMPLETED', completeness: 'PARTIAL' })
-      for (const unavailable of [httpOnly, uncommitted, absent, wrongUrl, noMetadata, malformed])
+      expect(await prisma.auditPage.findUniqueOrThrow({ where: { id: mobileOnly.id } })).toMatchObject({ status: 'COMPLETED', completeness: 'PARTIAL' })
+      for (const unavailable of [httpOnly, uncommitted, absent, wrongUrl, noMetadata, malformed, mobileMissing, desktopRequired])
         expect(await prisma.auditPage.findUniqueOrThrow({ where: { id: unavailable.id } })).toMatchObject({ status: 'FAILED',
           completeness: 'PARTIAL', failureCode: 'BROWSER_SCOPE_UNAVAILABLE' })
       for (const unchanged of [historical, failed, partial, foreignPage])

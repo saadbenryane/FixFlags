@@ -13,6 +13,13 @@ import {
 import { CARE_HOME } from '@/lib/marketing/copy-barrel'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
+it('labels recorded repair alternatives as diagnostics rather than an observed action', () => {
+  const diagnostic = '#menu\nFix any of the following:\nElement has no accessible name'
+  expect(boardFlagPrompt({ problem: 'Button lacks a name', whyItMatters: 'Purpose is unavailable',
+    evidence: diagnostic, fix: 'Give the button a name' }))
+    .toContain(`Technical diagnostic (includes repair alternatives): ${diagnostic}`)
+})
+
 it('keeps every affected page in both individual and category repair instructions', () => {
   const pageUrl = 'https://example.com/original', affectedPaths = [pageUrl, 'https://example.com/other', pageUrl]
   const input = { problem: 'A control was covered', evidence: 'Controlled cover observations', whyItMatters: 'The control cannot be used',
@@ -160,23 +167,9 @@ describe('board card contract', () => {
       { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1', repairGuidanceReady: true, priorityBand: conversionFlag.priorityBand },
     ])
     expect(boardAreaPrompt('Conversion', [{ ...conversionFlag, fix: ' ' }])).toBe('')
-    expect(conversion?.sources).toEqual([SITE_BOARD_COPY.browserSource])
+    expect(conversion?.sources).toEqual([])
     const tracking = cards.find((card) => card.id === 'tracking')
-    expect(tracking?.sources).toEqual([SITE_BOARD_COPY.browserSource])
-    const withAnalytics = buildBoardCards({
-      siteId: 'p_example',
-      inFlight: false,
-      hasLastKnown: false,
-      health: { state: 'healthy', answer: '0 Flags', statusLabel: '0 Flags' },
-      coverageByArea: new Map([['tracking', fact('tracking', 'healthy', 'Key events are arriving')]]),
-      flags: [],
-      outcomes: [],
-      pageCount: 12,
-      captureUrl: null,
-      checkedAt: '2026-09-08T12:00:00.000Z',
-      detected: { analytics: ['Google Analytics'] },
-    }).find((card) => card.id === 'tracking')
-    expect(withAnalytics?.sources).toEqual(['Google Analytics'])
+    expect(tracking?.sources).toEqual([])
     expect(cards.some((card) => card.id === 'uptime')).toBe(true)
     expect(cards.find(card => card.id === 'uptime')?.state).toBe('unknown')
     expect(cards.some((card) => card.id === 'accessibility')).toBe(true)

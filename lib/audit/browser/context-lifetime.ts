@@ -1,6 +1,7 @@
 import type { Browser, BrowserContext, BrowserContextOptions } from 'playwright'
 import { browserCapacity } from '../progressive/capacity'
 import { AuditDeadlineError } from '../pipeline-errors'
+import { registerBrowserContext, type BrowserContextOwner } from './context-inventory'
 
 export const CONTEXT_SETUP_TIMEOUT_MS = 30_000
 
@@ -8,7 +9,7 @@ export const CONTEXT_SETUP_TIMEOUT_MS = 30_000
 export async function openAuditContext<T>(
   browser: Browser,
   contextOptions: BrowserContextOptions,
-  lifetime: { deadline?: number; signal?: AbortSignal; priority?: number },
+  lifetime: { deadline?: number; signal?: AbortSignal; priority?: number; owner?: BrowserContextOwner },
   prepare: (context: BrowserContext, assertActive: () => void) => Promise<T>,
 ): Promise<T> {
   const deadline = new AbortController()
@@ -65,6 +66,7 @@ export async function openAuditContext<T>(
     catch (error) { releaseOnce(); throw error }
     try { context = await browser.newContext(contextOptions) }
     catch (error) { releaseOnce(); throw error }
+    registerBrowserContext(context, lifetime.owner ?? 'inspection', hasDeadline ? deadlineAt : undefined)
     context.once('close', () => { stop(new Error('Audit browser context closed')); releaseOnce() })
     try {
       assertActive()

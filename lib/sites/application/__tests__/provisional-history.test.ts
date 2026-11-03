@@ -3,9 +3,9 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { loadMonitoringHistory } from '../monitoring-history'
 import { includeLegacySiteAnalyses } from '../analysis-scope'
 
-const reads = vi.hoisted(() => ({ audits: vi.fn(), executions: vi.fn(), flags: vi.fn() }))
+const reads = vi.hoisted(() => ({ audits: vi.fn(), executions: vi.fn(), flags: vi.fn(), authorize: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
-  audit: { findMany: reads.audits }, auditVerifierExecution: { findMany: reads.executions }, flag: { findMany: reads.flags },
+  project: { findFirst: reads.authorize }, audit: { findMany: reads.audits }, auditVerifierExecution: { findMany: reads.executions }, flag: { findMany: reads.flags },
 } }))
 
 const site: SiteRecord = { siteId: 'p_creator', kind: 'provisional', provisionalSiteId: 'creator', projectId: null,
@@ -16,6 +16,7 @@ const selection = { legacyIds: ['creator-audit'], where: includeLegacySiteAnalys
 describe('provisional Site history boundary', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    reads.authorize.mockResolvedValue({ id: 'owned' })
     reads.audits.mockResolvedValue([])
     reads.executions.mockResolvedValue([])
     reads.flags.mockResolvedValue([])

@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import type Redis from 'ioredis'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { resolveCommitSha } from '@/lib/health/commit-sha'
+import type { browserContextInventory } from '@/lib/audit/browser/context-inventory'
 
 const HEARTBEAT_PREFIX = 'fixflags:worker:heartbeat:'
 const STALLED_COUNT_KEY = 'fixflags:worker:stalled-count'
@@ -37,6 +38,7 @@ function getRedis(): Redis {
 }
 
 export interface WorkerDiagnostics {
+  contextOwnership?: ReturnType<typeof browserContextInventory>
   uptimeReady?: boolean
   lastUptimeSweepAt?: string | null
   browserOk: boolean
@@ -63,7 +65,6 @@ export async function touchWorkerHeartbeat(
 ): Promise<void> {
   if (stopping) return
   diagnostics = { ...diagnostics, ...update, ...(draining ? { queueState: 'stopping' as const } : {}) }
-  if (update?.browserOk === true) diagnostics.lastSuccessfulBrowserProbeAt = new Date().toISOString()
   const record: WorkerHeartbeatRecord = {
     workerId: WORKER_ID,
     lastSeenMs: Date.now(),
@@ -94,6 +95,7 @@ export interface WorkerHeartbeatStatus {
   workerCount: number
   browserOk: boolean
   activeBrowserContexts: number
+  contextOwnership?: ReturnType<typeof browserContextInventory> | null
   configuredConcurrency: number
   workers: Array<{
     workerId: string
@@ -223,6 +225,11 @@ export function aggregateWorkerHeartbeats(
       (total, record) => total + record.activeBrowserContexts,
       0
     ),
+    contextOwnership: aliveRecords.every(validContextOwnership)
+      ? aliveRecords.reduce((total, record) => {
+          for (const key of Object.keys(total) as Array<keyof typeof total>) total[key] += record.contextOwnership![key]
+          return total
+        }, { audit: 0, inspection: 0, probe: 0, closing: 0, unattributed: 0, overdue: 0 }) : null,
     configuredConcurrency: aliveRecords.reduce(
       (total, record) =>
         total +
@@ -241,4 +248,11 @@ export function aggregateWorkerHeartbeats(
       queueState: record.queueState ?? 'idle',
     })),
   }
+}
+
+function validContextOwnership(record: WorkerHeartbeatRecord): boolean {
+  const counts = record.contextOwnership
+  if (!counts || !Object.values(counts).every(value => Number.isSafeInteger(value) && value >= 0)) return false
+  const total = counts.audit + counts.inspection + counts.probe + counts.unattributed
+  return total === record.activeBrowserContexts && counts.closing <= total && counts.overdue <= total
 }

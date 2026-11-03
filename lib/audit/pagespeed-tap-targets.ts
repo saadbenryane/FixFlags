@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { CheckAssertion } from './checks/assertion'
+import { lighthouseRecord, lighthouseScore } from './lighthouse-audit'
 
 const AUDIT_IDS = ['target-size', 'tap-targets', 'tap-targets-too-small'] as const
 export const tapTargetAuditsSchema = z.array(z.object({
@@ -16,15 +17,13 @@ export const TAP_TARGET_CONTEXT = /^pagespeed-tap-targets:(target-size|tap-targe
 
 /** Preserve the provider's criteria, including measured success. DOM snippets
  * and control values are not part of the normalized observation. */
-export function readTapTargetAudits(audits: Record<string, Record<string, unknown>>): TapTargetAudit[] {
+export function readTapTargetAudits(audits: Record<string, unknown>): TapTargetAudit[] {
   return AUDIT_IDS.flatMap(id => {
-    const audit = audits[id]
-    if (!audit) return []
-    const measured = typeof audit.score === 'number' && Number.isFinite(audit.score) && audit.score >= 0 && audit.score <= 1 &&
-      !audit.errorMessage && !audit.notApplicable && !['error', 'notApplicable', 'informative', 'manual'].includes(String(audit.scoreDisplayMode))
-    const details = audit.details as Record<string, unknown> | undefined
-    return [{ id, title: (typeof audit.title === 'string' ? audit.title : id).slice(0, 1000),
-      score: measured ? audit.score as number : null,
+    if (!Object.hasOwn(audits, id)) return []
+    const audit = lighthouseRecord(audits[id])
+    const details = lighthouseRecord(audit?.details)
+    return [{ id, title: (typeof audit?.title === 'string' ? audit.title : id).slice(0, 1000),
+      score: lighthouseScore(audit),
       ...(Array.isArray(details?.items) && details.items.length <= 100_000 ? { itemsCount: details.items.length } : {}) }]
   })
 }

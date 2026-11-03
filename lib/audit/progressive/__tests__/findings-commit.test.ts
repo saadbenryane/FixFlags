@@ -10,6 +10,15 @@ import type { TaskContext } from '../registry'
 import { recordedPageEvidence } from '../lifecycle'
 
 describe('finding publication cost', () => {
+  it('keeps an earlier control failure in page evidence while the cohort is still unfinished', async () => {
+    const pageUrl = 'https://example.com/', observed = { checkId: 'flow-form-no-validation', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      source: 'DETERMINISTIC', problem: 'No feedback', evidence: 'The original form showed no validation feedback.', fix: 'Restore validation.', confidence: 1, pageUrl }
+    const query = vi.fn().mockResolvedValueOnce([{ id: 'cohort', workKind: 'flow', workState: 'READY', status: 'PENDING',
+      workInput: { position: 0, pageUrl, primary: true, verificationContexts: ['form:' + 'a'.repeat(64)] },
+      workResult: serializeArtifact('flow', { flags: [] }) }]).mockResolvedValueOnce([]).mockResolvedValueOnce([{ pageUrl, findings: [observed] }])
+    const [page] = await recordedPageEvidence('original-audit', pageUrl, { $queryRaw: query } as unknown as Pick<Prisma.TransactionClient, '$queryRaw'>)
+    expect(page.flags).toEqual([observed])
+  })
   it.each([false, true])('attaches committed judge provenance after artifact parsing without rewriting grouped evidence: %s', async grouped => {
     const flag = { rubric: 'EXPERIENCE', impactTag: 'FRICTION', severity: 'IMPORTANT', problem: 'Action needs review',
       evidence: 'The captured button promises a trial but opens a contact form.', whyItMatters: 'Review the promise and destination.',
@@ -19,7 +28,7 @@ describe('finding publication cost', () => {
       verdict: 'Review the action.', score: 80, launchReadiness: 'fix_first', launchChecklist: [], rubrics: [], newFlags: [flag] },
       usage: { inputTokens: 10, outputTokens: 10, model: 'recorded-provider' } } })
     const original = JSON.stringify(artifact)
-    const query = vi.fn().mockResolvedValueOnce([{ id: 'judge-task', workKind: 'judge', workState: 'COMPLETED', status: 'COMPLETED',
+    const query = vi.fn().mockResolvedValue([]).mockResolvedValueOnce([{ id: 'judge-task', workKind: 'judge', workState: 'COMPLETED', status: 'COMPLETED',
       workInput: { position: 0, pageUrl: flag.pageUrl, primary: true }, workResult: artifact }]).mockResolvedValueOnce([])
     const pages = await recordedPageEvidence('original-audit', undefined, { $queryRaw: query } as unknown as Pick<Prisma.TransactionClient, '$queryRaw'>)
     const admitted = pages[0].triage?.output.newFlags[0]
@@ -36,7 +45,7 @@ describe('finding publication cost', () => {
     const data = kind === 'browser' ? { pageId: 'page', metadata: null,
       metadataFailure: { code: 'PARSER_CRASH', attempts: 2 }, snapshot: { desktopUrl: null, mobileUrl: null, renderedScope: null } }
       : { metadata: null, metadataFailure: { code: 'PARSER_CRASH', attempts: 2 } }
-    const query = vi.fn().mockResolvedValueOnce([{ id: kind + '-task', workKind: kind, workState: 'COMPLETED', status: 'COMPLETED',
+    const query = vi.fn().mockResolvedValue([]).mockResolvedValueOnce([{ id: kind + '-task', workKind: kind, workState: 'COMPLETED', status: 'COMPLETED',
       workInput: { position: 0, pageUrl, primary: true }, workResult: serializeArtifact(kind, data) }]).mockResolvedValueOnce([])
     const pages = await recordedPageEvidence('audit', undefined, { $queryRaw: query } as unknown as Pick<Prisma.TransactionClient, '$queryRaw'>)
     expect(pages).toHaveLength(1)

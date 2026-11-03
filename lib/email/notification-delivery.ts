@@ -1,5 +1,6 @@
 import type { Resend } from 'resend'
 import { z } from 'zod'
+import { MAX_NOTIFICATION_MESSAGE_BYTES, MAX_NOTIFICATION_ATTACHMENT_BYTES } from '@/lib/sites/repair-budgets'
 
 export const NOTIFICATION_REQUEST_TIMEOUT_MS = 20_000
 const PROVIDER_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60_000
@@ -11,9 +12,12 @@ export function notificationRetryAt(failedAttempt: number, failedAt: Date) {
 
 export const notificationEmailSnapshotSchema = z.object({
   version: z.literal(1), from: z.string().min(1), to: z.string().email(),
-  subject: z.string().min(1), html: z.string().min(1), text: z.string().min(1),
+  subject: z.string().min(1).max(1000), html: z.string().min(1).max(128 * 1024), text: z.string().min(1).max(128 * 1024),
   tags: z.array(z.object({ name: z.string(), value: z.string() }).strict()).max(10),
   firstAttemptAt: z.string().datetime({ offset: true }).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  attachments: z.array(z.object({ filename: z.string().min(1).max(200), content: z.string().min(1).max(MAX_NOTIFICATION_ATTACHMENT_BYTES),
+    contentType: z.literal('text/plain') }).strict()).max(8).optional(),
 }).strict()
 
 /** Provider keys expire. A stable key cannot make an arbitrarily late replay safe. */
@@ -36,12 +40,15 @@ export function prepareNotificationReplay<T extends z.infer<typeof notificationE
 /** Stored ownership and selection metadata never enter the provider request. */
 export function notificationEmailBody(payload: z.infer<typeof notificationEmailSnapshotSchema>) {
   return { from: payload.from, to: payload.to, subject: payload.subject, html: payload.html,
-    text: payload.text, tags: payload.tags }
+    text: payload.text, tags: payload.tags, ...(payload.headers ? { headers: payload.headers } : {}),
+    ...(payload.attachments ? { attachments: payload.attachments } : {}) }
 }
 
 /** Both monitoring senders abort the physical SDK request before their lease expires. */
 export async function sendNotificationEmail(provider: Pick<Resend, 'emails'>,
   message: Parameters<Resend['emails']['send']>[0], idempotencyKey: string) {
+  if (Buffer.byteLength(JSON.stringify(message)) > MAX_NOTIFICATION_MESSAGE_BYTES)
+    throw new Error('Notification exceeds the encoded message budget')
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(new Error('Notification provider deadline')), NOTIFICATION_REQUEST_TIMEOUT_MS)
   try {

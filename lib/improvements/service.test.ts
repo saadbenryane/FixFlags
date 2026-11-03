@@ -490,28 +490,19 @@ describe('createImprovementAttempt', () => {
 })
 
 describe('recordFlagImprovementAttempt', () => {
-  it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('refuses an unconditional historical %s handoff before creating any receipt', async checkId => {
-    const recorded = { ...flag, checkId, fix: 'Replace the recorded content and move the action.', improvementOccurrence: null,
+  it.each(['placeholder-copy-detected', 'cta-below-fold-mobile', 'unoptimized-images'])('validates the same safe prepared guidance under the Site lock: %s', async checkId => {
+    const recorded = { ...flag, checkId, fix: 'Sign up to get the fix prompt.', improvementOccurrence: null,
       audit: { id: 'audit-1', projectId: 'project-1', productContract: null } }
     const before = structuredClone(recorded)
     mocks.flagFindFirst.mockResolvedValue(recorded)
-    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
-      .rejects.toThrow('Repair guidance is unavailable')
+    const validateHandoff = vi.fn(async () => { throw new Error('Revision changed at write boundary') })
+    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }, { validateHandoff }))
+      .rejects.toThrow('Revision changed at write boundary')
+    expect(validateHandoff).toHaveBeenCalledOnce()
     expect(mocks.improvementCreateMany).not.toHaveBeenCalled()
     expect(mocks.cycleEventUpsert).not.toHaveBeenCalled()
     expect(mocks.attemptCreate).not.toHaveBeenCalled()
     expect(recorded).toEqual(before)
-  })
-  it.each(['', 'Sign up', 'Create a free account to see evidence and fix prompts.',
-    'Sign up to see why this matters and get a fix prompt for your editor.', 'Sign up to get the fix prompt.',
-    'Sign up to see verification steps.'])('does not record a handoff for missing guidance or a historical signup gate: %j', async fix => {
-    mocks.flagFindFirst.mockResolvedValue({ ...flag, fix, improvementOccurrence: null,
-      audit: { id: 'audit-1', projectId: 'project-1', productContract: null } })
-    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
-      .rejects.toThrow('Repair guidance is unavailable')
-    expect(mocks.improvementCreateMany).not.toHaveBeenCalled()
-    expect(mocks.cycleEventUpsert).not.toHaveBeenCalled()
-    expect(mocks.attemptCreate).not.toHaveBeenCalled()
   })
 
   const ownedFlag = {
@@ -770,7 +761,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false, journeyReviewAt: null, pages: [], runRequests: [],
       executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
         checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: null },
-      verifierExecutions: scenario === 'missing' ? [] : [{ targetKey: 'module:metadata', scopeKey: 'page:' + pageUrl,
+      verificationReceipts: scenario === 'missing' ? [] : [{ targetKey: 'module:metadata', scopeKey: 'page:' + pageUrl,
         status: 'COMPLETED', evidenceReference: { taskId: 'task' }, detail: { kind: 'site-module-check', version: 1, module: 'metadata', passed: true, applicable: true,
           pageUrl, execution: { auditId: 'after', taskId: 'task', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-12T12:00:00.000Z' },
           assertions: [{ key: 'viewport-presence', name: 'Viewport', expected: 'Present', observed: 'Present', passed: true }],
@@ -795,7 +786,7 @@ describe('reconcileImprovementVerification', () => {
       const startedAt = new Date('2026-10-11T12:00:00Z')
       mocks.auditFindUnique.mockResolvedValue({ id: 'after', parentId: 'gap', projectId: 'product-1', productContract: null,
         status: 'COMPLETED', startedAt, reportCompleteness: 'PARTIAL', evidenceCoverage: {}, failedModules: [],
-        pages: [], verifierExecutions: [], journeyReviewIncluded: false, journeyReviewAt: null,
+        pages: [], verificationReceipts: [], journeyReviewIncluded: false, journeyReviewAt: null,
         runRequests: [{ id: 'run', projectId: scenario === 'other-site' ? 'other' : 'product-1', status: 'COMPLETED', environment: 'production',
           verificationTarget: scenario === 'targeted' ? { kind: 'OUTCOME', attemptId: 'another-attempt' } : null,
           assessments: [{ outcomeId: 'signup-1', auditId: 'after', runRequestId: 'run', state: 'CLEAR', coverage, evidence: {
@@ -821,12 +812,12 @@ describe('reconcileImprovementVerification', () => {
         expect(mocks.attemptFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
           createdAt: { lte: startedAt }, sourceAudit: { projectId: 'product-1', flags: { some: { status: 'FIXED', resolvedInId: 'after' } } },
         }) }))
-        expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+        expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
           evidenceReference: { beforeAuditId: 'source', beforeFlagId: 'flag-1', afterAuditId: 'after', afterFlagId: null },
         }) }))
       } else {
         expect(results).toEqual([])
-        expect(mocks.attemptUpdate).not.toHaveBeenCalled()
+        expect(mocks.attemptUpdateMany).not.toHaveBeenCalled()
       }
     },
   )
@@ -840,7 +831,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false, journeyReviewAt: null, pages: [],
       runRequests: [{ id: 'run', projectId: 'product-1', status: 'COMPLETED', environment: 'production', assessments: [],
         verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt-1', parentAuditId: 'review-1', checkId: targetedFlag.checkId, pageUrl } }],
-      verifierExecutions: verdict === 'missing' ? [] : [{ targetKey: 'check:checkout-link-dead', scopeKey: 'page:' + pageUrl,
+      verificationReceipts: verdict === 'missing' ? [] : [{ targetKey: 'check:checkout-link-dead', scopeKey: 'page:' + pageUrl,
         status: 'COMPLETED', evidenceReference: { taskId: 'check-task' }, detail: {
           kind: 'check-verifier', version: 1, auditId: 'review-2', taskId: 'check-task', checkId: targetedFlag.checkId,
           checkVersion: 1, pageUrl, source: 'http', collectedAt: '2026-10-11T12:00:00.000Z', comparable: true, verdict,
@@ -858,7 +849,9 @@ describe('reconcileImprovementVerification', () => {
         outcome: null, sourceAuditId: 'review-1', id: 'attempt-1',
       }, take: 1 }) } },
     }) }))
-    expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'attempt-1' } }))
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      id: 'attempt-1', sourceAuditId: 'review-1', outcome: null, verificationAuditId: null,
+    }) }))
     expect(mocks.improvementUpdate).not.toHaveBeenCalled()
     if (verdict === 'passed') expect(mocks.flagUpdateMany).toHaveBeenCalledWith({
       where: { id: 'flag-1', auditId: 'review-1', audit: { projectId: 'product-1' }, status: { in: ['OPEN', 'REGRESSED'] } },
@@ -892,7 +885,7 @@ describe('reconcileImprovementVerification', () => {
         checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
       runRequests: [{ id: 'run', projectId: 'product-1', status: 'COMPLETED', environment: 'production', assessments: [],
         verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt-1', parentAuditId: 'review-1', checkId: original.checkId, pageUrl } }],
-      verifierExecutions: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
+      verificationReceipts: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
     })
     mocks.flagFindMany.mockResolvedValue(scenario === 'failed-peer' ? [{ ...original, id: 'child-peer', pageUrl: peer }] : [])
     mocks.occurrenceFindMany.mockResolvedValue([{ id: 'occurrence-1', auditId: 'review-1', improvementId: 'improvement-1', flagId: original.id,
@@ -931,7 +924,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false,
       journeyReviewAt: null,
       pages: [{ url: 'https://example.com', status: 'COMPLETED' }],
-      verifierExecutions: [{
+      verificationReceipts: [{
         targetKey: 'check:cta-dead-link',
         scopeKey: 'page:https://example.com',
         status: 'COMPLETED',
@@ -960,7 +953,7 @@ describe('reconcileImprovementVerification', () => {
     expect(results).toEqual([
       expect.objectContaining({ outcome: 'IMPROVED', status: unresolved ? 'PROPOSED' : 'VERIFIED' }),
     ])
-    expect(mocks.attemptUpdate).toHaveBeenCalledWith(
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           verificationAuditId: 'review-2',
@@ -996,7 +989,7 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false,
       journeyReviewAt: null,
       pages: [{ url: 'https://example.com', status: 'PARTIAL' }],
-      verifierExecutions: [],
+      verificationReceipts: [],
     })
     mocks.flagFindMany.mockResolvedValue([])
     mocks.occurrenceFindMany.mockResolvedValue([{
@@ -1022,7 +1015,7 @@ describe('reconcileImprovementVerification', () => {
         comparable: false,
       }),
     ])
-    expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         outcome: 'INCONCLUSIVE',
         comparable: false,

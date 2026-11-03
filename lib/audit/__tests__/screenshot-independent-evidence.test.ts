@@ -81,6 +81,18 @@ describe('independent rendered evidence', () => {
     expect(result.consoleCoverage?.mobile.complete).toBe(false)
     expect(result.captureFailures).toEqual([])
   })
+  it.each(['desktop', 'mobile'] as const)('collects only the requested %s profile without manufacturing the other observation', async device => {
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined,
+      { device, runFlow: false, captureMedia: false, collectAccessibility: false })
+    expect(createAuditPage).toHaveBeenCalledOnce()
+    expect(vi.mocked(createAuditPage).mock.calls[0][2].profile.name).toBe(device)
+    expect(result.consoleCoverage?.[device].complete).toBe(true)
+    expect(result.consoleCoverage?.[device === 'desktop' ? 'mobile' : 'desktop'].complete).toBe(false)
+    expect(result.desktopHtml !== null).toBe(device === 'desktop')
+    expect(result.desktopLoadExperience != null).toBe(device === 'desktop')
+    expect(result.captureMetrics != null).toBe(device === 'mobile')
+    expect(result.captureStatus).toEqual({ desktop: 'pending', mobile: 'pending' })
+  })
   it('fills initial, landing and timeline references from their actual asynchronous uploads', async () => {
     vi.useFakeTimers(); vi.setSystemTime(0)
     mocks.upload.mockImplementation(async (_auditId, device, _buffer, key) => {

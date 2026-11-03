@@ -1,4 +1,4 @@
-import type { Project, User } from '@prisma/client'
+import type { Prisma, Project, User } from '@prisma/client'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 
 export type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watchInterval' | 'watchNextRunAt' | 'watchPausedAt'> & {
@@ -10,6 +10,11 @@ export type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watc
 export const uptimeProjectInclude = {
   user: { select: { id: true, email: true, lifecycleStatus: true } },
 } as const
+
+/** Scheduling and operational gaps describe the same currently watched Sites. */
+export const uptimeProjectWhere = {
+  deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchPausedAt: null, watchInterval: { not: null },
+} satisfies Prisma.ProjectWhereInput
 
 export function uptimeEligible(project: MonitoringProject) {
   return project.user.lifecycleStatus === 'ACTIVE' && !project.deletedAt && !project.watchPausedAt && fromStoredWatchInterval(project.watchInterval) !== null

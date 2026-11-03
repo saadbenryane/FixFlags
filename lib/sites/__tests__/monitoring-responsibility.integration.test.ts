@@ -5,7 +5,8 @@ import { prisma } from '@/lib/db'
 import { analysisEnvironmentWhere, siteWideAnalysisAuditWhere } from '../application/analysis-scope'
 import { loadRunSourceEnvironment } from '../application/run-requests'
 import { buildExecutionSpec } from '../application/execution-spec'
-import { monitoringResponsibility, monitoringBehaviorResponsibility } from '../application/monitoring-responsibility'
+import { monitoringResponsibility, monitoringBehaviorResponsibility, monitoringActionResponsibility } from '../application/monitoring-responsibility'
+import { consoleContext } from '@/lib/audit/console-evidence'
 
 const localDatabase = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 localDatabase('combined recorded monitoring responsibility', () => {
@@ -13,6 +14,117 @@ localDatabase('combined recorded monitoring responsibility', () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+  })
+  it.each(['history', 'environment', 'grouped'] as const)('retains the original console failure horizon independently of newer %s', async scenario => {
+    const root = 'https://example.com/', owner = 'console-history-' + randomUUID()
+    await prisma.user.createMany({ data: [owner, owner + '-other'].map(id => ({ id, email: id + '@example.test' })) })
+    try {
+      const project = await prisma.project.create({ data: { userId: owner, name: 'Console history', url: root, canonicalHost: 'example.com' } })
+      const spec = (environment: string) => ({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root,
+        environment, checks: {}, outcomes: [], verificationTarget: null })
+      const original = await prisma.audit.create({ data: { projectId: project.id, url: root, status: 'COMPLETED', executionSpec: spec('production') } })
+      const finding = (auditId: string, milliseconds: number, createdAt = new Date('2026-10-01T12:00:00Z')) => ({
+        auditId, checkId: 'console-errors-some', pageUrl: root, source: 'DETERMINISTIC' as const, rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT' as const, problem: 'Delayed console error', evidence: 'Recorded console error after navigation',
+        whyItMatters: 'The page fails later', fix: 'Repair the delayed error', confidence: 1, position: 0, createdAt,
+        evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Original console window',
+          context: consoleContext('desktop', root, root, 'profile', 'public', milliseconds) }],
+      })
+      const flag = await prisma.flag.create({ data: { ...finding(original.id, scenario === 'grouped' ? 2000 : 6500), status: 'FIXED',
+        ...(scenario === 'grouped' ? { supportingObservations: { version: 1, items: [{
+          source: 'DETERMINISTIC', checkId: 'console-errors-some', checkVersion: 1, pageUrl: root,
+          evidence: 'The original delayed error remains part of this grouped Flag', verificationRule: null,
+          evidenceTargets: finding(original.id, 6500).evidenceTargets, provenance: null,
+        }] } } : {}) } })
+      const foreign = await prisma.project.create({ data: { userId: owner + '-other', name: 'Foreign console history', url: root, canonicalHost: 'example.com' } })
+      const foreignSource = await prisma.audit.create({ data: { projectId: foreign.id, url: root, status: 'COMPLETED', executionSpec: spec('production') } })
+      const setup = await prisma.audit.create({ data: { projectId: project.id, url: root, status: 'COMPLETED', executionSpec: { ...spec('production'), scope: 'FIXTURE_SETUP' } } })
+      const unfinished = await prisma.audit.create({ data: { projectId: project.id, url: root, status: 'CHECKING', executionSpec: spec('production') } })
+      await prisma.flag.createMany({ data: [foreignSource.id, setup.id, unfinished.id].map(auditId => finding(auditId, 90000)) })
+      await prisma.flag.create({ data: { ...finding(original.id, 90000), evidenceTargets: [
+        { context: consoleContext('desktop', root + 'other', root + 'other', 'profile', 'public', 90000) },
+        { context: consoleContext('desktop', root, root, 'profile', 'public', 90001) },
+      ] } })
+      if (scenario === 'history') await prisma.flag.createMany({ data: Array.from({ length: 600 }, (_, index) => ({
+        ...finding(original.id, 2000, new Date('2026-10-02T12:00:00Z')),
+        evidenceTargets: [{ context: consoleContext('desktop', root, root, 'a-profile-' + index, 'public', 2000) }],
+      })) })
+      else {
+        const staging = await prisma.audit.create({ data: { projectId: project.id, url: root, status: 'COMPLETED', executionSpec: spec('staging') } })
+        await prisma.flag.create({ data: finding(staging.id, 90000, new Date('2026-10-03T12:00:00Z')) })
+      }
+      const read = vi.spyOn(prisma, '$queryRaw')
+      try {
+        for (const scope of ['SITE', 'CATEGORY'] as const) {
+          const admitted = await buildExecutionSpec({ projectId: project.id, targetUrl: root, environment: 'production', scope,
+            ...(scope === 'CATEGORY' ? { categoryArea: 'conversion' as const } : {}), outcomes: [] })
+          expect(admitted.consoleObservationScopes).toEqual([{ pageUrl: root, minimumMs: 6500 }])
+        }
+        const indexes = read.mock.calls.flatMap(([query], index) =>
+          (Array.isArray(query) ? query.join('') : (query as Prisma.Sql).sql).includes('FROM flags flag JOIN audits "source"') ? [index] : [])
+        expect(indexes).toHaveLength(scenario === 'history' ? 4 : 2)
+        for (const index of indexes) {
+          const rows = await read.mock.results[index].value as Array<{ target: unknown }>
+          expect(rows.length).toBeLessThanOrEqual(512)
+          expect(rows.every(row => Object.keys(row).join(',') === 'target')).toBe(true)
+        }
+      } finally { read.mockRestore() }
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', evidenceTargets: flag.evidenceTargets })
+    } finally { await prisma.user.deleteMany({ where: { id: { in: [owner, owner + '-other'] } } }) }
+  })
+  it('retains the original claimed legacy analysis across later incomplete runs without admitting unrelated history', async () => {
+    const root = 'https://example.com/', owner = 'claimed-legacy-' + randomUUID()
+    const entry = root + 'original/', reviewed = root + 'reviewed/', planned = root + 'planned/'
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test' } })
+    try {
+      const project = await prisma.project.create({ data: { userId: owner, name: 'Claimed legacy Site', url: root, canonicalHost: 'example.com' } })
+      const foreign = await prisma.project.create({ data: { userId: owner, name: 'Other Site', url: root, canonicalHost: 'other.example.com' } })
+      const original = await prisma.audit.create({ data: { projectId: project.id, userId: owner, url: entry, status: 'COMPLETED' } })
+      const link = (auditId: string) => prisma.provisionalSite.create({ data: { sessionKey: owner + auditId, canonicalHost: 'example.com',
+        url: root, primaryAuditId: auditId, claimedProjectId: project.id } })
+      await link(original.id)
+      await prisma.auditPage.create({ data: { auditId: original.id, url: reviewed, normalizedUrl: reviewed, status: 'FAILED', role: 'review', position: 0 } })
+      await prisma.auditExecutionTask.create({ data: { auditId: original.id, targetKey: 'task:planned-browser', workKind: 'browser', pageUrl: planned,
+        source: 'EXECUTION', status: 'FAILED', workState: 'EXHAUSTED' } })
+      const originalSnapshot = await prisma.audit.findUniqueOrThrow({ where: { id: original.id } })
+      for (const kind of ['unrelated', 'foreign', 'diagnostic', 'outcome', 'setup', 'category'] as const) {
+        const audit = await prisma.audit.create({ data: { userId: owner, projectId: kind === 'foreign' ? foreign.id : project.id,
+          url: root + kind, status: 'COMPLETED', ...(kind === 'category' ? { executionSpec: { version: 1, scope: 'CATEGORY' } } : {}) } })
+        if (kind !== 'unrelated') await link(audit.id)
+        if (['diagnostic', 'outcome', 'setup'].includes(kind)) {
+          const request = await prisma.runRequest.create({ data: { projectId: project.id, auditId: audit.id, source: 'WEB', idempotencyKey: kind, status: 'COMPLETED',
+            ...(kind === 'diagnostic' ? { verificationTarget: { kind: 'DIAGNOSTIC' } } : {}),
+            executionSpec: kind === 'setup' ? { version: 1, scope: 'FIXTURE_SETUP' } : {} } })
+          if (kind === 'outcome') {
+            const outcome = await prisma.siteOutcome.create({ data: { projectId: project.id, kind: 'GENERIC', slug: 'legacy-exclusion', name: 'Legacy targeted check' } })
+            await prisma.runRequestOutcome.create({ data: { runRequestId: request.id, outcomeId: outcome.id } })
+          }
+        }
+      }
+      const admission = (scope: 'SITE' | 'CATEGORY') => buildExecutionSpec({ projectId: project.id, targetUrl: root,
+        environment: 'production', scope, ...(scope === 'CATEGORY' ? { categoryArea: 'conversion' as const } : {}), outcomes: [] })
+      // The original analysis is still the Site's visible baseline, even
+      // though it predates both execution snapshots and RunRequests.
+      const category = await admission('CATEGORY')
+      expect(category.category).toEqual({ area: 'conversion', sourceAuditId: original.id, pages: [entry, reviewed, planned] })
+      const initial = await admission('SITE')
+      expect(initial.monitoringPages).toEqual([root, entry, reviewed, planned])
+      expect(initial.monitoringBehaviors?.find(scope => scope.pageUrl === entry)?.behaviors)
+        .toEqual(['flow', 'pricing-navigation', 'slow-replay', 'journeys'])
+      await prisma.audit.create({ data: { userId: owner, projectId: project.id, url: root, status: 'FAILED',
+        executionSpec: { version: 1, scope: 'SITE', targetUrl: root, environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+      expect((await admission('SITE')).monitoringPages).toEqual([root, entry, reviewed, planned])
+      expect(await monitoringResponsibility({ projectId: project.id, environment: 'production', targetUrl: root, recorded: [] }))
+        .toEqual([root, entry, reviewed, planned])
+      expect(await monitoringResponsibility({ projectId: project.id, environment: 'staging', targetUrl: root, recorded: [] })).toEqual([root])
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: original.id } })).toEqual(originalSnapshot)
+      await prisma.provisionalSite.deleteMany({ where: { primaryAuditId: original.id, claimedProjectId: project.id } })
+      expect(await monitoringResponsibility({ projectId: project.id, environment: 'production', targetUrl: root, recorded: [] })).toEqual([root])
+      await expect(admission('CATEGORY')).rejects.toMatchObject({ status: 409 })
+    } finally {
+      await prisma.provisionalSite.deleteMany({ where: { sessionKey: { startsWith: owner } } })
+      await prisma.user.delete({ where: { id: owner } })
+    }
   })
   it('retains independent admitted branches and missing rows without borrowing another tenant, environment or targeted scope', async () => {
     const root = 'https://example.com/', owner = 'scope-ledger-' + randomUUID(), otherOwner = 'other-' + owner
@@ -109,7 +221,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
       const task = (auditId: string, pageUrl: string, kind: string, module?: string) => ({ auditId, pageUrl, workKind: kind,
         targetKey: 'task:' + randomUUID(), source: 'EXECUTION' as const, status: 'FAILED' as const, workState: 'EXHAUSTED' as const,
         workInput: { pageUrl, ...(module ? { module } : {}) } })
-      await prisma.auditVerificationReceipt.createMany({ data: [task(category.id, flow, 'flow'), task(category.id, flow, 'flow'),
+      await prisma.auditExecutionTask.createMany({ data: [task(category.id, flow, 'flow'), task(category.id, flow, 'flow'),
         task(category.id, journey, 'journeys'), task(category.id, pricing, 'flow', 'pricing-navigation'), task(performance.id, slow, 'slow-replay'),
         task(category.id, slow, 'flow', 'form-validation'), task(category.id, slow, 'flow', 'mobile-navigation'), task(category.id, slow, 'bindings'),
         task(diagnostic.id, flow, 'journeys'), task(staging.id, flow, 'slow-replay')] })
@@ -244,6 +356,38 @@ localDatabase('combined recorded monitoring responsibility', () => {
         .toEqual([root, root + 'retained/'])
       expect(batches.length).toBeGreaterThan(1)
       expect(batches.every(length => length <= 48)).toBe(true)
+    } finally { await prisma.user.delete({ where: { id: owner } }) }
+  })
+  it('retains admitted and natively observed controls without borrowing another Site, environment, page or receipt producer', async () => {
+    const owner = 'action-scope-' + randomUUID(), root = 'https://example.com/', peer = root + 'forms'
+    const form = 'form:' + 'a'.repeat(64), action = 'flow:control:' + 'b'.repeat(64), excluded = 'form:' + 'c'.repeat(64)
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test' } })
+    try {
+      const project = await prisma.project.create({ data: { userId: owner, name: 'Care control scope', url: root, canonicalHost: 'example.com' } })
+      const foreign = await prisma.project.create({ data: { userId: owner, name: 'Other Site', url: 'https://other.example/', canonicalHost: 'other.example' } })
+      const saved = async (scope: string, extras: object = {}, projectId = project.id) => prisma.audit.create({ data: {
+        userId: owner, projectId, url: root, status: 'COMPLETED', executionSpec: { version: 1, engine: 'progressive-v1', scope,
+          targetUrl: root, environment: 'production', checks: {}, outcomes: [], verificationTarget: null, ...extras },
+      } })
+      await saved('DIAGNOSTIC', { verificationScopes: [{ pageUrl: peer, phases: ['page_load'], actionContexts: [form, form, 'malformed'] }] })
+      await saved('SITE', { monitoringBehaviors: [{ pageUrl: peer, behaviors: [], actionContexts: [form] }] })
+      for (const extras of [{ environment: 'staging' }, { targetUrl: peer }])
+        await saved('DIAGNOSTIC', { ...extras, verificationScopes: [{ pageUrl: peer, phases: ['page_load'], actionContexts: [excluded] }] })
+      await saved('DIAGNOSTIC', { verificationScopes: [{ pageUrl: peer, phases: ['page_load'], actionContexts: [excluded] }] }, foreign.id)
+      await saved('DIAGNOSTIC', { verificationScopes: [{ pageUrl: root + 'other', phases: ['page_load'], actionContexts: [excluded] }] })
+      await saved('DIAGNOSTIC', { monitoringBehaviors: [{ pageUrl: peer, behaviors: [], actionContexts: [excluded] }] })
+      const source = await saved('SITE')
+      const task = await prisma.auditExecutionTask.create({ data: { auditId: source.id, targetKey: 'task:flow', pageUrl: peer,
+        workKind: 'flow', source: 'EXECUTION', status: 'COMPLETED', workState: 'COMPLETED' } })
+      for (const [index, sourceId] of [source.id, 'foreign-recorded-audit'].entries()) await prisma.auditVerificationReceipt.create({ data: {
+        auditId: source.id, taskId: task.id, pageUrl: peer, source: 'DETERMINISTIC', targetKey: 'module:flow', scopeKey: 'page:' + peer + ':' + index,
+        status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'flow', pageUrl: peer,
+          execution: { auditId: sourceId, taskId: task.id, source: 'rendered-dom' },
+          assertions: [{ key: 'primary-action-response', context: index ? excluded : action, complete: true, passed: true }] },
+      } })
+      expect(await monitoringActionResponsibility({ projectId: project.id, environment: 'production', pages: [root, peer] }))
+        .toEqual(new Map([[peer, [action, form]]]))
+      expect(await monitoringActionResponsibility({ projectId: project.id, environment: 'production', pages: [root] })).toEqual(new Map())
     } finally { await prisma.user.delete({ where: { id: owner } }) }
   })
 })

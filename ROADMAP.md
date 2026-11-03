@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-31
 supersedes: []
 ---
 
@@ -9,19 +9,15 @@ supersedes: []
 
 ## Current delivery: website public validation
 
-The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [current completion plan](docs/product-masterplan.md#current-completion-plan-2026-10-26) owns the dependency-ordered work, information architecture, refactoring boundaries, and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) preserves historical implementation and exact-candidate proof separately. Paid enrollment and customer-facing MCP/CLI are parked for this milestone. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
+The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [current completion plan](docs/product-masterplan.md#required-delivery-order) owns the dependency-ordered work, information architecture, refactoring boundaries, and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) defines current-candidate acceptance. Paid enrollment and customer-facing MCP/CLI retain separate release gates. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
 
-**Checkpoint, 2026-10-26:** public health reports `8e4f3b3f`, with core prerequisites healthy and automatic accounts disabled. Substantial local execution, authorization, capability and monitoring improvements remain uncommitted and undeployed; their scoped evidence is recorded in [the audit pipeline](docs/audit-pipeline.md#local-objective-verification-2026-10-26). The selected release pointer names an older candidate whose referenced ledger is absent locally. Follow the current completion plan for customer-loop, provider, experience and current-candidate acceptance work.
+**Source review, 2026-10-31:** the checkout is based on `a7ab7ab8` with uncommitted repair, notification, browser/runtime and settings changes. Earlier stability and execution migrations are part of the committed baseline. Repair and notification work have separate local proof; the combined candidate, ordinary public customer loop, provider delivery, protected recovery and unattended production operation still require current acceptance. This review does not attest a deployment.
 
-**Local implementation, 2026-10-27:** Site/Flag reads preserve viewer permission custody, repair controls share scope and clipboard ownership, claim publishes durable Flag identity atomically, and customer actions recheck ownership under the same transaction lock. Outcome completion uses the shared resource, copied task links use the runtime origin, and the Pages heading hierarchy and Outcome layout are corrected. The controlled browser repair/recurrence/second-recovery loop and packaged Linux migration/native-repair/fixture-restore checks pass locally. [The implementation checkpoint](docs/product-masterplan.md#implementation-checkpoint-2026-10-27) records exact proof scopes, retained failures and the owner's control contrast exception. The work remains uncommitted and undeployed; current-candidate, provider and production acceptance remain open.
-
-**Shipping snapshot, 2026-10-28:** the owner authorized committing and deploying the local changes. The release worktree preserves the complete 177-file October 27 checkpoint while a separate chat continues a stability refactor in the original checkout. The shipping snapshot adds patched auth/email/query-string packages, explicit backup-code enrollment compatibility, public TOTP-route refusal and an additive default for new users' tool preferences. Account identity columns and existing profile values are preserved. Fresh verification and Railway web/worker revision agreement are required before reporting deployment success. This ordinary deployment does not close the comprehensive acceptance gaps above.
+Immediate order: integrate the existing candidate and migrations, resolve operational truth, prove ordinary entry and useful repair, close capability/provider evidence, finish the complete interface and navigation states, measure and streamline real hot paths, then accept one recoverable deployed candidate. The [dated checkpoint archive](docs/product-masterplan-history-2026-10-29.md) preserves earlier implementation and failed acceptance records. The current plan maps each remaining gap to its owner and completion criterion.
 
 FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
 
-**Integrated completion work, 2026-10-28:** `3f231e0c` shipped successfully to web and worker. The finished stability refactor is integrated locally with that release's auth/custody corrections. Native repair verification now requires a typed task relationship, and mobile navigation and chat share the measured bottom inset. The [integration checkpoint](docs/product-masterplan.md#integration-checkpoint-2026-10-28) separates current local proof, the coordinated schema cutover and remaining external acceptance. This integration has not yet been deployed.
-
-The authoritative implementation detail, capability mapping, MCP contract, migration, and launch checklist live in [docs/product-masterplan.md](docs/product-masterplan.md). This file is the dependency-ordered delivery view. Current code truth remains [PRODUCT.md](PRODUCT.md).
+Current code truth remains [PRODUCT.md](PRODUCT.md). The broader gates below describe separate architectural milestones and cannot expand the website-beta acceptance scope.
 
 ## Architectural spine
 
@@ -49,11 +45,13 @@ This is evolution, not replacement. `Project`, `Audit`, Playwright, checks, Jour
 
 ## Checkout slice status
 
+This is a retained implementation checkpoint. Its local release results do not certify the October 31 combined candidate; use the current completion plan for fresh proof requirements.
+
 The local implementation now connects Checkout, Safe Signup, and page-availability Outcomes → binding → tenant-scoped RunRequest → existing Audit/worker → independent evidence → assessment and durable Flag → targeted re-verification. Every initiator named above enters the same application command, including Shopify install as an integration trigger; an equivalence test asserts that. Safe Signup is confirmable only with a tenant-scoped fixture that uses accessible target descriptors, encrypted synthetic values, exact-origin reset and cleanup hooks, a successful dry run, and version-bound authorization. Login and Password reset remain unavailable. Per-Outcome pause preserves evidence while blocking new manual and scheduled selection, and cadence changes update the shared freshness policy without rewriting history. A binding is Flagged only on a confirmed failure, and every walk that ran is retained as an append-only attempt so a retry cannot erase an earlier RED. The Outcome page now owns expectation, assessment, coverage, freshness, evidence, limitations, active and resolved Flags, and run/fix/recovery history. The developer-key and CLI setup path is unparked, while public MCP discovery remains withheld. Watch reliability and daily-care economics now have one durable operational projection, including explicit collecting and unavailable states; the production cohort has not yet passed it. Additive migrations and the full local release gate pass. This is an implementation checkpoint, not a launch receipt: credentialed external-client proof, the exact-SHA production canary, the 14-day Watch window, and opening paid checkout remain open. The [release evidence runbook](docs/release-evidence-runbook.md) names each open gate.
 
-## Launch milestone: independent monitoring with MCP
+## Separate milestone: independent monitoring with MCP
 
-The first public milestone is one complete loop, not a collection of foundations:
+The broader machine-client milestone proves one complete loop:
 
 **change → verify → Flag → fix → verify → Clear**
 

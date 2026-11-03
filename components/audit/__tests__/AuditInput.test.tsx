@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MeProvider } from '@/hooks/useMe'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy-barrel'
@@ -31,6 +31,38 @@ describe('AuditInput scan handoff', () => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
     readOrCreateAnalyticsJourneyId.mockReturnValue(null)
+  })
+
+  it('owns one pending submission and permits an explicit retry after refusal', async () => {
+    let finish!: (result: { ok: false; message: string }) => void
+    startScanWithHandoff.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+      .mockResolvedValueOnce({ ok: true, siteId: 'site-retry' })
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" idSuffix="-submission-owner" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    const form = input.closest('form')!
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+    expect(startScanWithHandoff).toHaveBeenCalledTimes(1)
+    expect(input).toBeDisabled()
+    await act(async () => { finish({ ok: false, message: 'Try this request again.' }) })
+    expect(input).toBeEnabled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Try this request again.')
+    fireEvent.submit(form)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(2))
+  })
+
+  it('continues starting a check when optional journey attribution is unavailable', async () => {
+    readOrCreateAnalyticsJourneyId.mockImplementationOnce(() => { throw new Error('Storage unavailable') })
+    startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site-1' })
+    render(<MeProvider initialUser={null}><AuditInput source="homepage" idSuffix="-optional-attribution" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(1))
+    expect(startScanWithHandoff.mock.calls[0][0].body.journeyId).toBeUndefined()
   })
 
   it('keeps the research surface separate from a real external campaign in the check and GA start', async () => {

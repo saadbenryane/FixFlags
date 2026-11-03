@@ -63,6 +63,7 @@ describe('browser technology checkpoint publication', () => {
       scope: { access: 'credentialed:fixture-key' }, detections: [expect.objectContaining({ name: 'React' })] } })
     expect(JSON.stringify(artifact)).not.toMatch(/PRIVATE_(PAGE|USER|PASSWORD)/)
     const tx = { auditTechnologyObservation: { deleteMany: vi.fn(), create: vi.fn() },
+      $queryRaw: vi.fn().mockResolvedValue([]), auditPage: { update: vi.fn() },
       technology: { upsert: vi.fn(async () => ({ id: 'react' })) }, audit: { update: vi.fn() } }
     await handler.commit!(ctx, artifact, tx as never)
     expect(tx.auditTechnologyObservation.create).toHaveBeenCalledWith({ data: expect.objectContaining({
@@ -82,7 +83,25 @@ describe('browser technology checkpoint publication', () => {
     const artifact = await handler.evaluate(ctx)
     const data = browserArtifactSchema.parse(artifact.data)
     delete data.technologies
-    await handler.commit!(ctx, { ...artifact, data } as never, {} as never)
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), auditPage: { update: vi.fn() }, audit: { update: vi.fn() },
+      auditTechnologyObservation: { create: vi.fn() } }
+    await handler.commit!(ctx, { ...artifact, data } as never, tx as never)
+    expect(tx.auditTechnologyObservation.create).not.toHaveBeenCalled()
+  })
+
+  it('commits mobile console facts beside a deduplicated desktop peer without replacing desktop metadata', async () => {
+    boundary.parse.mockResolvedValue(healthyMeta())
+    const handler = collectionHandlers.find(handler => handler.kind === 'browser')!, ctx = context()
+    const artifact = await handler.evaluate(ctx), data = browserArtifactSchema.parse(artifact.data)
+    const shared = { type: 'error', text: 'Shared profile error', identity: 'a'.repeat(64) }
+    const phone = { type: 'error', text: 'Mobile-only error', identity: 'b'.repeat(64) }
+    data.metadata = null
+    delete data.technologies
+    data.snapshot.consoleErrors = [shared, phone]
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([{ errors: [shared] }]), auditPage: { update: vi.fn() }, audit: { update: vi.fn() } }
+    await handler.commit!({ ...ctx, input: { ...ctx.input, device: 'mobile' } }, { ...artifact, data } as never, tx as never)
+    expect(tx.auditPage.update).toHaveBeenCalledWith({ where: { id: 'page' }, data: { consoleErrors: [shared, phone] } })
+    expect(tx.audit.update).toHaveBeenCalledWith({ where: { id: 'audit' }, data: { consoleErrors: [shared, phone] } })
   })
 })
 

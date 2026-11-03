@@ -1,5 +1,6 @@
 export const BOARD_PREVIEW_COPY = {
   attentionHeading: 'Needs attention',
+  actions: 'Website actions',
   otherChecksHeading: 'Other checks',
   detectedTools: 'Detected tools',
   viewTools: 'View detected tools',
