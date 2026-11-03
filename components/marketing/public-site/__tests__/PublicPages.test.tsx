@@ -60,7 +60,7 @@ describe('public supporting pages', () => {
     render(<MeProvider initialUser={null}><HowItWorksPage /></MeProvider>)
     expect(screen.getAllByRole('heading', { name: C.howItWorks.title })).toHaveLength(1)
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(C.howItWorks.steps.map(step => step.label)).toEqual(['Monitor', 'Flag', 'Fix'])
+    expect(C.howItWorks.steps.map(step => step.label)).toEqual(['Check', 'Find', 'Fix'])
     expect(screen.getByRole('heading', { name: C.howItWorks.steps[0].title })).toBeVisible()
     for (const area of HOMEPAGE_CHECK_COVERAGE.areas) {
       expect(screen.getByRole('link', { name: area.name })).toHaveAttribute('href', `/coverage#${area.id}`)

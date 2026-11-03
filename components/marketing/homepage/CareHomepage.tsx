@@ -22,7 +22,7 @@ import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
 import { HomepageDashboardPreview, type SampleFlagOpener } from './HomepageDashboardPreview'
 import { SITE_ROUTES, type SiteRoute } from '@/components/sites/SiteWorkspaceNavigation'
 import { HomepageCheckCoverage } from './HomepageCheckCoverage'
-import { HomepageFinalSection, HomepageHandoffSection, HomepageIntegrationsSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
+import { HomepageFinalSection, HomepageHandoffSection, HomepageIndependentSection, HomepageIntegrationsSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
 import s from './CareHomepage.module.css'
 
 export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolean } = {}) {
@@ -107,6 +107,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
     {dashboardOnly ? <HomepageDashboardPreview {...previewActions} /> : <HomepageHero {...previewActions} />}
     {!dashboardOnly ? <>
     <HomepageCheckCoverage />
+    <HomepageIndependentSection />
     <HomepageLoopSection onOpenFlag={trigger => { openCard('site'); setFlag('availability'); opener.current = trigger }} />
     <HomepageHandoffSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
     <HomepageIntegrationsSection />

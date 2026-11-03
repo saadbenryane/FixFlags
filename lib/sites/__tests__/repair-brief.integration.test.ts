@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { loadSiteRecord } from '../ensure-site'
-import { loadSiteFlagDetail } from '../flags'
+import { loadSiteFlagDetail, loadSiteFindings, loadSiteResolvedFlags } from '../flags'
 import { buildSiteRepairBrief } from '../repair-brief'
 import { loadSiteFlagCopyTask } from '../application/flag-copy-task'
 import { loadSiteFixBundle } from '../application/fix-bundle'
@@ -14,6 +14,7 @@ import { pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixture
 import { recordSiteFlagFix } from '../application/flag-verification'
 import { buildExecutionSpec } from '../application/execution-spec'
 import { verificationSourceAuditId } from '../domain/verification-source'
+import * as screenshots from '@/lib/storage/screenshots'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('persisted repair context scope', () => {
@@ -57,6 +58,92 @@ run('persisted repair context scope', () => {
     await prisma.user.deleteMany({ where: { id: owner } })
     await prisma.$disconnect()
   })
+
+  it('refuses private finding and repair reads from a retained former-owner Site record', async () => {
+    const site = (await loadSiteRecord(siteId))!, flag = (await loadSiteFlagDetail(site, captures[0].id))!
+    const replacement = await prisma.user.create({ data: { email: 'replacement-repair-' + randomUUID() + '@example.test' } })
+    try {
+      await prisma.project.update({ where: { id: siteId }, data: { userId: replacement.id } })
+      for (const read of [() => loadSiteFlagDetail(site, captures[0].id), () => loadSiteFindings(site),
+        () => loadSiteResolvedFlags(site), () => loadSiteFixBundle(site),
+        () => loadSiteRepairEvidence(site, flag, 'https://fixflags.test/private-capture')]) {
+        await expect(read()).rejects.toMatchObject({ status: 404 })
+      }
+    } finally {
+      await prisma.project.update({ where: { id: siteId }, data: { userId: owner } })
+      await prisma.user.delete({ where: { id: replacement.id } })
+    }
+  })
+
+  it('withholds an in-flight finding read after transfer while preserving the new owner history', async () => {
+    const site = (await loadSiteRecord(siteId))!
+    const replacement = await prisma.user.create({ data: { email: 'inflight-repair-' + randomUUID() + '@example.test' } })
+    let changed = false
+    const raced = prisma.$extends({ query: { flag: {
+      async findFirst({ args, query }) {
+        const row = await query(args)
+        if (!changed) {
+          changed = true
+          await prisma.project.update({ where: { id: siteId }, data: { userId: replacement.id } })
+        }
+        return row
+      },
+    } } })
+    const read = vi.spyOn(prisma.flag, 'findFirst').mockImplementation(args => raced.flag.findFirst(args))
+    try {
+      await expect(loadSiteFlagDetail(site, captures[0].id)).rejects.toMatchObject({ status: 404 })
+      expect(changed).toBe(true)
+      read.mockRestore()
+      const current = (await loadSiteRecord(siteId))!
+      expect(current.userId).toBe(replacement.id)
+      expect(await loadSiteFlagDetail(current, captures[0].id)).toMatchObject({ sourceAuditId: captures[0].auditId })
+      await expect(loadSiteFlagCopyTask(site, incidentId)).rejects.toMatchObject({ status: 404 })
+      expect((await loadSiteFlagCopyTask(current, incidentId)).prompt).toContain('Name the existing control')
+    } finally {
+      read.mockRestore()
+      await prisma.project.update({ where: { id: siteId }, data: { userId: owner } })
+      await prisma.user.delete({ where: { id: replacement.id } })
+    }
+  })
+
+  it('withholds private image bytes when ownership changes during the storage read', async () => {
+    const site = (await loadSiteRecord(siteId))!, flag = (await loadSiteFlagDetail(site, captures[1].id))!
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1ZkAAAAASUVORK5CYII=', 'base64')
+    const screenshotUrl = await uploadScreenshot(flag.sourceAuditId, 'mobile', png, 'owner-fence')
+    const review = await prisma.journeyReview.create({ data: { auditId: flag.sourceAuditId, journeyType: 'fixture', startUrl: flag.pageUrl! } })
+    await prisma.journeyFinding.create({ data: { journeyReviewId: review.id, flagId: flag.sourceFlagId,
+      stepNumber: 1, rubric: 'EXPERIENCE', severity: 'IMPORTANT', impactTag: 'ACCESSIBILITY',
+      problem: flag.problem, evidence: flag.evidence, whyItMatters: flag.whyItMatters, url: flag.pageUrl!, screenshotUrl } })
+    const replacement = await prisma.user.create({ data: { email: 'capture-repair-' + randomUUID() + '@example.test' } })
+    const original = screenshots.readScreenshot
+    const read = vi.spyOn(screenshots, 'readScreenshot').mockImplementation(async (...args) => {
+      const image = await original(...args)
+      await prisma.project.update({ where: { id: siteId }, data: { userId: replacement.id } })
+      return image
+    })
+    try {
+      await expect(loadSiteRepairEvidence(site, flag, 'https://fixflags.test/private-capture')).rejects.toMatchObject({ status: 404 })
+      expect(read).toHaveBeenCalledTimes(1)
+    } finally {
+      read.mockRestore()
+      await prisma.project.update({ where: { id: siteId }, data: { userId: owner } })
+      await prisma.user.delete({ where: { id: replacement.id } })
+    }
+  })
+
+  it.each(['SUSPENDED', 'DELETING', 'removed'] as const)('refuses private repair reads after Site authority ends: %s', async state => {
+    const site = (await loadSiteRecord(siteId))!
+    try {
+      if (state === 'removed') await prisma.project.update({ where: { id: siteId }, data: { deletedAt: new Date() } })
+      else await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus: state } })
+      await expect(loadSiteFlagDetail(site, captures[0].id)).rejects.toMatchObject({ status: 404 })
+      await expect(loadSiteFixBundle(site)).rejects.toMatchObject({ status: 404 })
+      await expect(loadSiteFlagCopyTask(site, incidentId)).rejects.toMatchObject({ status: 404 })
+    } finally {
+      await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus: 'ACTIVE' } })
+      await prisma.project.update({ where: { id: siteId }, data: { deletedAt: null } })
+    }
+  })
   it('retains exact historical scope and every unresolved incident observation through page continuation', async () => {
     const site = (await loadSiteRecord(siteId))!
     const original = (await loadSiteFlagDetail(site, captures[0].id))!
@@ -82,7 +169,7 @@ run('persisted repair context scope', () => {
     expect(new Set(observations.map(item => item.sourceFlagId))).toEqual(new Set(captures.map(flag => flag.id)))
     expect(new Set(observations.map(item => item.sourceAuditId))).toEqual(new Set(captures.map(flag => flag.auditId)))
     expect(JSON.stringify(observations)).not.toContain('private comparison input')
-    const task = await loadSiteFlagCopyTask(siteId, incidentId)
+    const task = await loadSiteFlagCopyTask(site, incidentId)
     expect(task.referenceFlagId).toBe(incidentId)
     expect(task.prompt).toContain('25 of 70 supporting observations')
     const bundle = await loadSiteFixBundle(site, undefined, [incidentId])
@@ -135,14 +222,15 @@ run('persisted repair context scope', () => {
     }
   })
   it('refuses malformed historical support and changed evidence without replacing the prepared task', async () => {
-    const prepared = await loadSiteFlagCopyTask(siteId, incidentId)
+    const site = (await loadSiteRecord(siteId))!
+    const prepared = await loadSiteFlagCopyTask(site, incidentId)
     const source = await prisma.flag.findUniqueOrThrow({ where: { id: captures[0].id } })
     await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: { version: 9, items: [] } } })
-    await expect(loadSiteFlagCopyTask(siteId, incidentId)).rejects.toMatchObject({ status: 422 })
+    await expect(loadSiteFlagCopyTask(site, incidentId)).rejects.toMatchObject({ status: 422 })
     await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: source.supportingObservations!, evidence: 'Changed recorded observation' } })
     // The original source may be a peer of the displayed representative.
     await prisma.flag.updateMany({ where: { id: { in: captures.map(flag => flag.id) } }, data: { fix: 'Different bounded repair guidance' } })
-    await expect(loadSiteFlagCopyTask(siteId, incidentId, prepared.promptHash)).rejects.toMatchObject({ status: 409 })
+    await expect(loadSiteFlagCopyTask(site, incidentId, prepared.promptHash)).rejects.toMatchObject({ status: 409 })
   })
   it('reads an exact persisted source image and refuses a pointer into another capture', async () => {
     const site = (await loadSiteRecord(siteId))!
@@ -163,7 +251,7 @@ run('persisted repair context scope', () => {
     expect(await loadSiteRepairEvidence(site, flag, 'https://fixflags.test/private-capture'))
       .toMatchObject({ image: null, evidence: { capture: { state: 'unavailable' } } })
     const wrongSite = { ...site, projectId: 'another-site' }
-    expect((await loadSiteRepairEvidence(wrongSite, flag, 'https://fixflags.test/private-capture')).evidence.capture.state).toBe('not_recorded')
+    await expect(loadSiteRepairEvidence(wrongSite, flag, 'https://fixflags.test/private-capture')).rejects.toMatchObject({ status: 404 })
   })
   it('reads performance conditions from the original page collector rather than another task or Site', async () => {
     const site = (await loadSiteRecord(siteId))!
@@ -175,7 +263,7 @@ run('persisted repair context scope', () => {
       workResult: { kind: 'pagespeed', version: 1, collectedAt: new Date().toISOString(),
         data: { desktop: { diagnostics: { measurement } }, mobile: null } } } })
     expect((await loadSiteRepairEvidence(site, flag, 'https://fixflags.test/private-capture')).evidence.performanceMeasurements).toEqual([measurement])
-    expect((await loadSiteRepairEvidence({ ...site, projectId: 'another-site' }, flag, 'https://fixflags.test/private-capture')).evidence.performanceMeasurements).toEqual([])
+    await expect(loadSiteRepairEvidence({ ...site, projectId: 'another-site' }, flag, 'https://fixflags.test/private-capture')).rejects.toMatchObject({ status: 404 })
     expect((await loadSiteRepairEvidence(site, { ...flag, pageUrl: 'https://repair-context.test/unrecorded' }, 'https://fixflags.test/private-capture')).evidence.performanceMeasurements).toEqual([])
   })
 })

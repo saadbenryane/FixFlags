@@ -25,6 +25,59 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  it('releases an interrupted verification for retry with its note and original request key intact', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockImplementationOnce(() => new Promise<Response>(() => {}))
+      .mockResolvedValueOnce(Response.json({ ok: true, accepted: true, siteId: 'p_site', flagId: 'flag-1',
+        verificationAuditId: 'verification', runId: 'run', runRequestId: 'run', attemptId: 'attempt',
+        parentAuditId: 'original', expectedBehavior: 'The recorded control has a name.' }))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      render(<SiteFlagActions repairGuidance="pending" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
+      fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+      const dialog = screen.getByRole('dialog')
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Published the button label.' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(SITE_ACTION_COPY.interrupted)
+      expect(within(dialog).getByRole('textbox')).toHaveValue('Published the button label.')
+      expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+      expect(screen.queryByText(SITE_BOARD_COPY.verificationStarted)).not.toBeInTheDocument()
+      await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+      expect(screen.getByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({
+        body: JSON.stringify({ changeSummary: 'Published the button label.' }),
+        headers: expect.objectContaining({ 'Idempotency-Key': fetchMock.mock.calls[0][1].headers['Idempotency-Key'] }),
+      }))
+    } finally { vi.useRealTimers() }
+  })
+  it.each([false, true])('preserves recovery after a pending verification dialog closes (compact: %s)', async compact => {
+    const previousHref = window.location.href
+    window.history.replaceState(null, '', '/sites/p_site?view=pages&flag=flag-1')
+    let respond!: (response: Response) => void
+    const response = new Promise<Response>(resolve => { respond = resolve })
+    const fetchMock = vi.fn(() => response)
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      render(<SiteFlagActions compact={compact} repairGuidance="pending" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
+      fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+      const dialog = screen.getByRole('dialog')
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Published the button label.' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+      fireEvent.click(within(dialog).getByRole('button', { name: SITE_ACTION_COPY.cancel }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await act(async () => { respond(Response.json({ message: 'Your session has expired.' }, { status: 401 })) })
+      expect(await screen.findByRole('alert')).toHaveTextContent('Your session has expired.')
+      const signIn = screen.getByRole('link', { name: SITE_ACTION_COPY.signInAction })
+      expect(new URL(signIn.getAttribute('href')!, window.location.origin).searchParams.get('next')).toBe('/sites/p_site?view=pages&flag=flag-1')
+      expect(screen.queryByText(SITE_BOARD_COPY.verificationStarted)).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+      expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('Published the button label.')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally { window.history.replaceState(null, '', previousHref) }
+  })
   it('copies and verifies the selected incident while retaining its source-specific guidance', async () => {
     const fetchMock = copyResponse('Task for the selected incident')
     vi.stubGlobal('fetch', fetchMock)
@@ -175,7 +228,7 @@ describe('SiteFlagActions', () => {
     render(<SiteFlagActions compact repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     expect(await screen.findByText('Canonical task with recorded evidence.', { selector: 'summary > span' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.fixStep })).not.toBeInTheDocument()
-    const preview = screen.getByLabelText('View prompt', { selector: 'summary' })
+    const preview = screen.getByLabelText('View instructions', { selector: 'summary' })
     fireEvent.click(preview)
     expect(screen.getByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel })).toHaveValue('Canonical task with recorded evidence.')
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
@@ -190,7 +243,7 @@ describe('SiteFlagActions', () => {
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeInTheDocument()
     await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()
-    expect(await screen.findByText('Fix prompt copied')).toBeInTheDocument()
+    expect(await screen.findByText(SITE_BOARD_COPY.copyPromptCopied)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/sites/p_site/flags/flag-1/fix',
       expect.objectContaining({
@@ -225,8 +278,8 @@ describe('SiteFlagActions', () => {
     render(
       <SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />
     )
-    await screen.getByRole('button', { name: SITE_BOARD_COPY.sendFlagToAi }).click()
-    expect(await screen.findByText('Fix prompt copied')).toBeInTheDocument()
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()
+    expect(await screen.findByText(SITE_BOARD_COPY.copyPromptCopied)).toBeInTheDocument()
     expect(writeText).toHaveBeenCalledWith('FixFlags Flag: No confirmation after contact')
     expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.share })).not.toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalledWith(

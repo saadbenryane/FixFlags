@@ -108,11 +108,11 @@ function SiteShellContent({
     <div className={styles.canvas} data-site-content>
       <CustomerMain className="space-y-5">
         <SiteWorkspaceHeader identity={<>
-        {canvasTitle == null ? <h1 className={styles.siteTitle}><Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link></h1>
+        {canvasTitle == null ? <h1 tabIndex={-1} className={styles.siteTitle}><Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link></h1>
           : <Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link>}
         {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : analyzing ? <AnalysisDetails statusLabel={presentation.run.label} active disconnected={false} /> : null)}
         </>} navigation={<div className={styles.desktopNavigation}>{navigation('Site')}</div>}
-          heading={canvasTitle ? <><h1>{canvasTitle}</h1>{description ? <p>{description}</p> : null}</> : null}
+          heading={canvasTitle ? <><h1 tabIndex={-1}>{canvasTitle}</h1>{description ? <p>{description}</p> : null}</> : null}
           actions={<><SiteMonitoringMenu label={watch.label}
             state={watch.state === 'watching' ? 'healthy' : watch.state === 'delayed' || watch.state === 'quota' ? 'attention' : 'unknown'}
             nextCheck={() => nextCheckLabel(watch.nextRunAt, Date.now())}

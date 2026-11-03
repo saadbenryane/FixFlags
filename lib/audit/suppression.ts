@@ -1,4 +1,5 @@
 import type { DeterministicFlag } from './flag-types'
+import { durableCheckId } from './check-identity'
 
 const SUPPRESSIONS: Array<[string, string]> = [
   ['hierarchy-no-headline', 'h1-missing'],
@@ -41,6 +42,23 @@ const HARDENING_SUPPRESSED_BY = new Set([
   'security-permissions-policy-overbroad',
   'security-x-permitted-cross-domain',
 ])
+
+/** Recompute the complete connected responsibility family. A new specific
+ * observation can change an older broad finding on another affected page. */
+export function relatedProjectionChecks(checkIds: readonly string[]): string[] {
+  const selected = new Set(checkIds.flatMap(id => durableCheckId(id) ?? []))
+  const relations = [...SUPPRESSIONS,
+    ...[...CONSOLIDATED_SUPPRESSED_BY].map(id => [id, 'security-headers-missing']),
+    ...[...HARDENING_SUPPRESSED_BY].map(id => [id, 'security-headers-hardening'])]
+  let expanded = true
+  while (expanded) {
+    expanded = false
+    for (const relation of relations) if (relation.some(id => selected.has(id))) for (const id of relation) {
+      if (!selected.has(id)) { selected.add(id); expanded = true }
+    }
+  }
+  return [...selected]
+}
 
 function observationPages(flag: DeterministicFlag): string[] {
   const pages = [...new Set([...(flag.affectedPaths ?? []), ...(flag.pageUrl ? [flag.pageUrl] : [])])]

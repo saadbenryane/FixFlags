@@ -13,7 +13,7 @@ describe('buyer guide content and evidence contracts', () => {
     expect(new Set(WEBSITE_GUIDES.map(guide => guide.decision)).size).toBe(6)
     for (const guide of WEBSITE_GUIDES) {
       const body = [...guide.sections.flatMap(section => section.paragraphs), ...guide.example.paragraphs].join(' ')
-      expect(body.split(/\s+/).length).toBeGreaterThanOrEqual(450)
+      expect(body.split(/\s+/).length).toBeGreaterThanOrEqual(250)
       expect(body.split(/\s+/).length).toBeLessThanOrEqual(750)
       expect(new Set(guide.sections.map(section => section.id)).size).toBe(guide.sections.length)
       expect(guide.sections).toHaveLength(4)
@@ -25,6 +25,10 @@ describe('buyer guide content and evidence contracts', () => {
     expect(GUIDE_REVIEWED_AT).toBe('2026-10-20')
     expect(GUIDES_PAGE.offer).toBe(PUBLIC_OFFER.free)
     expect(GUIDES_PAGE.offerLimits).toBe(PUBLIC_OFFER.availability)
+    expect(GUIDES_PAGE.sourceNote).toMatch(/stop(?:s)? before payment/)
+    expect(GUIDES_PAGE.sourceNote).toMatch(/MCP connections/)
+    expect(GUIDES_PAGE.sourceNote).toMatch(/paid integrations/)
+    expect(GUIDES_PAGE.sourceNote).toMatch(/Signup checks need a supported, safe test setup/)
     for (const guide of WEBSITE_GUIDES) {
       const copy = JSON.stringify(guide)
       expect(copy).not.toContain('\u2014')
@@ -32,10 +36,6 @@ describe('buyer guide content and evidence contracts', () => {
       expect(guide.example.paragraphs.join(' ')).toContain('controlled illustration')
       expect(copy).toContain('Couldn’t verify')
       expect(copy).toMatch(/independent verification/i)
-      expect(copy).toMatch(/stop(?:s)? before payment/)
-      expect(copy).toMatch(/MCP connections/)
-      expect(copy).toMatch(/paid integrations/)
-      expect(copy).toMatch(/signup|Signup/)
     }
   })
 

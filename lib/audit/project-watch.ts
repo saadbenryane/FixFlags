@@ -9,9 +9,10 @@ import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy-barrel'
 import { siteNotificationEmail } from '@/lib/email/site-notification'
+import { loadEmailRepairFindings } from '@/lib/email/finding-repair'
 import { notificationRecipientAllowed, projectEmailAcceptance } from '@/lib/email/delivery-events'
 import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
-import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '@/lib/email/watch-delivery'
+import { hasRecordedWatchSelection, selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '@/lib/email/watch-delivery'
 import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
@@ -419,14 +420,18 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   let preparation: { payload: ReturnType<typeof selectWatchEmailDelivery> } | { error: unknown }
   try {
     if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
+    const selection = watchEmailSelection(projectId, alertRegressions, alertRecoveries)
+    const broadLegacyPermission = child.project?.notificationLevel !== 'CRITICAL_ONLY' && child.project?.notifyOnRecovery !== false
+    const emailRegressions = hasRecordedWatchSelection(child.watchNotificationPayload, selection, broadLegacyPermission)
+      ? alertRegressions : await loadEmailRepairFindings(projectId, child.userId!, alertRegressions)
     const selected = selectWatchEmailDelivery({ auditId: child.id, recorded: child.watchNotificationPayload,
-      broadLegacyPermission: child.project?.notificationLevel !== 'CRITICAL_ONLY' && child.project?.notifyOnRecovery !== false,
+      broadLegacyPermission,
       fresh: watchEmailPayloadSchema.parse({ version: 1, from: FROM_EMAIL, to: child.user.email,
         firstAttemptAt: !child.watchNotificationPayload && child.watchNotificationAttempts > 0 ? child.completedAt!.toISOString() : new Date().toISOString(),
         ...siteNotificationEmail({ projectId, url: child.url, name: child.user.name,
-          checkedAt: child.completedAt, regressions: alertRegressions, recoveries: alertRecoveries }),
+          checkedAt: child.completedAt, regressions: emailRegressions, recoveries: alertRecoveries }),
         tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }],
-        selection: watchEmailSelection(projectId, alertRegressions, alertRecoveries) }) })
+        selection }) })
     preparation = { payload: prepareNotificationReplay(selected, new Date(), child.completedAt!) }
   } catch (error) { preparation = { error } }
 

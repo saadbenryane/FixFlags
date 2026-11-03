@@ -6,6 +6,45 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { REPORT_COPY } from '@/lib/marketing/copy/report-workspace'
 
 describe('SitePromptCopyButton', () => {
+  it('starts a promised native clipboard write during the click before preparation resolves', async () => {
+    let resolvePreparation!: (response: Response) => void
+    let supplied: Promise<Blob> | undefined
+    class Item { constructor(public data: Record<string, Promise<Blob>>) {} }
+    vi.stubGlobal('ClipboardItem', Item)
+    const write = vi.fn(async (items: Item[]) => { supplied = items[0].data['text/plain']; await supplied })
+    const writeText = vi.fn()
+    Object.assign(navigator, { clipboard: { write, writeText } })
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise(resolve => { resolvePreparation = resolve }))
+    render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
+    expect(write).toHaveBeenCalledOnce()
+    expect(supplied).toBeInstanceOf(Promise)
+    expect(screen.queryByText(SITE_BOARD_COPY.copyPromptCopied)).not.toBeInTheDocument()
+    await act(async () => resolvePreparation(Response.json({ ok: true, prompt: 'The exact prepared task',
+      sourceFlagId: 'flag-1', promptHash: 'a'.repeat(64) })))
+    expect((await supplied!).type).toBe('text/plain')
+    await waitFor(() => expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPromptCopied })).toBeVisible())
+    expect(writeText).not.toHaveBeenCalled()
+  })
+  it('identifies each icon action by its Flag and announces the copied state for that Flag', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<>
+      <SitePromptCopyButton siteId="site-1" flagId="flag-1" flagTitle="Checkout stays empty" iconOnly />
+      <SitePromptCopyButton siteId="site-1" flagId="flag-2" flagTitle="Page title missing" iconOnly />
+    </>)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.copyPrompt, 'Checkout stays empty') })).toHaveAttribute('title', SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.copyPrompt, 'Checkout stays empty'))
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.copyPrompt, 'Page title missing') })).toBeEnabled()
+    expect(fetch).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.viewPrompt, 'Page title missing') }))
+    expect(await screen.findByRole('textbox')).toHaveValue('Repair the checkout heading.')
+    expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/flags/flag-2/fix', expect.anything())
+    expect(writeText).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.copyPrompt, 'Checkout stays empty') }))
+    expect(await screen.findByRole('button', { name: SITE_BOARD_COPY.promptActionFor(SITE_BOARD_COPY.copyPromptCopied, 'Checkout stays empty') })).toBeEnabled()
+    expect(writeText).toHaveBeenCalledWith('Repair the checkout heading.')
+  })
   it('requires review when copying would differ from the inspected task', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
@@ -19,7 +58,7 @@ describe('SitePromptCopyButton', () => {
       return Response.json({ ok: true, prompt: 'Updated repair instructions.', handoff: { flagId: 'flag-1', action: 'HANDOFF_COPIED', improvementId: 'i', sourceReviewId: 'a' } })
     }))
     render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'View instructions' }))
     expect(await screen.findByRole('textbox')).toHaveValue('Original repair instructions.')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
@@ -48,7 +87,7 @@ describe('SitePromptCopyButton', () => {
     const writeText = vi.fn()
     Object.assign(navigator, { clipboard: { writeText } })
     render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'View instructions' }))
     expect(await screen.findByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel })).toHaveValue('Repair the checkout heading.')
     expect(writeText).not.toHaveBeenCalled()
     expect(fetch).toHaveBeenCalledTimes(1)
@@ -70,7 +109,7 @@ describe('SitePromptCopyButton', () => {
     Object.assign(navigator, { clipboard: { writeText } })
     render(<><SitePromptCopyButton siteId="site-1" flagId="flag-1" /><Toaster /></>)
     fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
-    expect(await screen.findByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(await screen.findByRole('link', { name: 'How to use these instructions' })).toHaveAttribute('href', '/docs/fix-with-ai')
     expect(writeText).toHaveBeenCalledWith('Repair the checkout heading.')
   })
 
@@ -123,7 +162,7 @@ describe('SitePromptCopyButton', () => {
     expect(await screen.findByText(text => text.startsWith(REPORT_COPY.explorer.promptCopiedRecordFailed))).toBeVisible()
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Repair the checkout heading.')
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.queryByText(SITE_BOARD_COPY.copyPromptCopied)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPromptCopied })).toBeVisible()
   })
   it('revalidates the exact prepared incident scope when its source Flag has a different ID', async () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })

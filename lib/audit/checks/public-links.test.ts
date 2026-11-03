@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { capturedPageLinks, publicLinkObservations, publicLinkUrls } from './public-links'
 import { parseMetadataFromHtml } from '../metadata'
 import type { OpenCheckResult } from '../open-check'
+import { classifyPublicGet } from '../open-check'
 import { destinationContext, publicLinkContext, DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
@@ -21,6 +22,34 @@ describe('public link observations', () => {
     const result = publicLinkObservations(page, [page + 'gone'], [response(page + 'gone', { outcome: 'render_error', shouldFlagDead: true })])
     expect(result.flags[0].checkId).toBe('broken-internal-links')
     expect(result.assertions[0]).toMatchObject({ passed: false, complete: true })
+  })
+  it.each([
+    { status: 200, finalUrl: page + 'login', wwwAuthenticate: null },
+    { status: 401, finalUrl: page + 'details', wwwAuthenticate: 'Basic realm="Private details"' },
+  ])('keeps an access restriction unknown through exact public-link repair: $status $finalUrl', ({ status, finalUrl, wwwAuthenticate }) => {
+    const url = page + 'details'
+    const source = publicLinkObservations(page, [url], [response(url, { status: 404, outcome: 'not_found', shouldFlagDead: true })])
+    const restricted = response(url, { status, finalUrl, ...classifyPublicGet({ status, requestedUrl: url,
+      finalUrl, wwwAuthenticate, html: '<h1>Sign in to continue</h1>', cfMitigated: null }) })
+    expect(restricted.outcome).toBe('auth_required')
+    const current = publicLinkObservations(page, [page + 'ready', url], [response(page + 'ready'), restricted])
+    expect(current).toMatchObject({ complete: false, flags: [], assertions: [
+      { passed: true, complete: true }, { passed: false, complete: false },
+    ] })
+    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'seo', pageUrl: page,
+      applicable: true, passed: false, complete: false, assertions: current.assertions,
+      execution: { auditId: 'independent', taskId: 'http-observation', checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() } })
+    expect(scopedAssertionForTarget({ receipt, checkId: 'broken-internal-links', flag: source.flags[0] }))
+      .toBeUndefined()
+  })
+  it('accepts a completed public redirect while a challenge response remains unknown', () => {
+    const result = publicLinkObservations(page, [page + 'moved', page + 'restricted'], [
+      response(page + 'moved', { outcome: 'redirected', finalUrl: page + 'ready' }),
+      response(page + 'restricted', { outcome: 'blocked' }),
+    ])
+    expect(result).toMatchObject({ complete: false, flags: [], assertions: [
+      { passed: true, complete: true }, { passed: false, complete: false },
+    ] })
   })
   it('retains query identity in scoped proof while redacting signed values from findings', () => {
     const url = page + 'gone?token=PRIVATE_VALUE'

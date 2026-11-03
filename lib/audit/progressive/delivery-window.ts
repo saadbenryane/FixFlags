@@ -43,6 +43,7 @@ export async function claimTaskDelivery(taskId: string) {
     }
     const reserved = task.workDispatchState === 'SENT' || task.workDispatchState === 'FAILED'
     if (!reserved) {
+      let yielding = false
       // A continued observation must release its reservation to untried or
       // earlier waiting work, including a Site that could not enter a full
       // delivery window. Broker priority alone cannot see those database rows.
@@ -57,11 +58,11 @@ export async function claimTaskDelivery(taskId: string) {
               OR delivery."workRetryAt" = ${task.workRetryAt ?? now} AND delivery.id < ${task.id})
             AND a.status <> 'FAILED' AND (a.status <> 'COMPLETED' OR delivery."workKind" IN (${Prisma.join([...COMPLETION_TASK_KINDS])}))
             AND (${deliveryResourceSql}) = ${resource} LIMIT 1`
-        if (waiting.length) return null
+        yielding = waiting.length > 0
       }
-      const occupied = await tx.$queryRaw<Array<{ id: string }>>(reservedDeliveryQuery(resource, task.id, now))
-      if (occupied.length >= taskDeliveryWindow(resource)) {
-        // Rotate saturated work so another resource in this graph can progress.
+      const occupied = yielding ? [] : await tx.$queryRaw<Array<{ id: string }>>(reservedDeliveryQuery(resource, task.id, now))
+      if (yielding || occupied.length >= taskDeliveryWindow(resource)) {
+        // Rotate yielded and saturated work so other ready resources can progress.
         // Waiting for delivery capacity is neither an attempt nor a failure.
         await tx.auditExecutionTask.updateMany({ where, data: { workRetryAt: now } })
         return null

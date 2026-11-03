@@ -2,9 +2,9 @@
 
 Check your live website, see what needs attention, and get help fixing it.
 
-1. [Enter your website address](/new) and select **Analyze**. You can try this before creating an account.
+1. [Enter your website address](/new) and select **Check your website**. You can try this before creating an account.
 2. Wait for the results. FixFlags groups them by area, such as Pages, Search, and Performance.
-3. Open a **Flag**, a problem FixFlags found. Read what happened and copy the suggested fix to your AI tool or developer.
+3. Open a **Flag**, a problem FixFlags found. Copy the fix instructions and paste them where you built your website, or send them to someone who can help.
 4. Publish the change, then return to the Flag and select **Check now** to see whether it worked.
 
 Start with [Getting started](/docs/getting-started) for a walkthrough.
@@ -19,7 +19,7 @@ Save your website to your account to return to its results. In FixFlags, this sa
 
 - [Getting started](/docs/getting-started): run your first check and save your website.
 - [Understand your results](/docs/site-care): read Flags, see what was checked, and follow changes over time.
-- [Fix with your AI](/docs/fix-with-ai): copy a suggested fix into the tool you already use.
+- [Copy and paste a fix](/docs/fix-with-ai): get instructions to use where you built your website.
 - [Integration guides](/docs/integrations): manage GitHub account authorization and understand planned connections.
 <!-- generated:mcp-guide-link -->
 - [Troubleshooting](/docs/troubleshooting): get help when a check or connection does not finish.

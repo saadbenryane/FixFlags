@@ -16,7 +16,7 @@ import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { createRecordedRecoveryReader, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
 import { systemClock } from '@/lib/time/clock'
 import type {
-Flag,ImprovementStatus,
+Flag,ImprovementStatus,Prisma,
 VerificationOutcome
 } from '@prisma/client'
 
@@ -67,6 +67,7 @@ export async function reconcileImprovementVerification(input: {
       },
     })
   if (!verificationAudit?.projectId || verificationAudit.parentId !== input.parentAuditId) return []
+  const projectId = verificationAudit.projectId
   const targetedRun = verificationAudit.runRequests?.find(run => run.verificationTarget != null)
   const target = readVerificationTarget(targetedRun?.verificationTarget)
   if (targetedRun && (!target || target.parentAuditId !== input.parentAuditId || targetedRun.projectId !== verificationAudit.projectId)) return []
@@ -216,12 +217,17 @@ export async function reconcileImprovementVerification(input: {
       ...(attempt.sourceFlagIds?.length ? { beforeFlagIds: attempt.sourceFlagIds } : {}),
     }
 
-    await executionTransaction(async (tx) => {
+    const recorded = await executionTransaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'fixflags:improvement-attempt:' + occurrence.improvementId}, 0))`
       const latestAttempt = await tx.improvementAttempt.findFirst({ where: { improvementId: occurrence.improvementId },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true } })
-      await tx.improvementAttempt.update({
-        where: { id: attempt.id },
+      // The selected attempt can settle or acquire another verification while
+      // evidence is assessed. The advisory lock serializes commits, but only
+      // this comparison prevents a stale snapshot from replacing newer facts.
+      const claimed = await tx.improvementAttempt.updateMany({
+        where: { id: attempt.id, improvementId: occurrence.improvementId, sourceAuditId,
+          outcome: attempt.outcome ?? null, verificationAuditId: attempt.verificationAuditId ?? null,
+          improvement: { projectId, status: { notIn: ['REJECTED', 'SUPERSEDED'] } } },
         data: {
           verificationAuditId: input.verificationAuditId,
           outcome,
@@ -238,6 +244,7 @@ export async function reconcileImprovementVerification(input: {
                 : 'The independent Review still observed the targeted condition.',
         },
       })
+      if (claimed.count !== 1) return false
       if (target && outcome === 'IMPROVED') {
         // Targeted runs skip the broad report diff. Their exact repair proof
         // must still resolve the source Flag alongside the verified attempt.
@@ -252,17 +259,24 @@ export async function reconcileImprovementVerification(input: {
           data: { status: 'FIXED', resolvedInId: input.verificationAuditId },
         })
         if (target.kind === 'DIAGNOSTIC' && verificationAudit.startedAt) {
-          const unresolved = await tx.flag.findMany({ where: {
+          const unresolvedWhere: Prisma.FlagWhereInput = {
             improvementOccurrence: { improvementId: occurrence.improvementId }, audit: { projectId: verificationAudit.projectId },
             source: 'DETERMINISTIC', status: { in: ['OPEN', 'REGRESSED'] }, createdAt: { lte: verificationAudit.startedAt },
-          }, take: 100, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: {
-            id: true, checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, evidenceTargets: true, verificationRule: true, supportingObservations: true,
-          } })
-          const recovered = unresolved.filter(recoveryReader.hasRecovery)
-          if (recovered.length) await tx.flag.updateMany({ where: {
-            id: { in: recovered.map(flag => flag.id) }, audit: { projectId: verificationAudit.projectId },
-            source: 'DETERMINISTIC', status: { in: ['OPEN', 'REGRESSED'] }, createdAt: { lte: verificationAudit.startedAt },
-          }, data: { status: 'FIXED', resolvedInId: input.verificationAuditId } })
+          }
+          let after: string | undefined
+          // Unresolved gaps stay open without preventing later comparable
+          // captures from recovering. Keyset traversal survives those updates.
+          for (;;) {
+            const unresolved = await tx.flag.findMany({ where: { ...unresolvedWhere, ...(after ? { id: { gt: after } } : {}) },
+              take: 100, orderBy: { id: 'asc' }, select: {
+                id: true, checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, evidenceTargets: true, verificationRule: true, supportingObservations: true,
+              } })
+            const recovered = unresolved.filter(recoveryReader.hasRecovery)
+            if (recovered.length) await tx.flag.updateMany({ where: { ...unresolvedWhere, id: { in: recovered.map(flag => flag.id) } },
+              data: { status: 'FIXED', resolvedInId: input.verificationAuditId } })
+            if (unresolved.length < 100) break
+            after = unresolved.at(-1)!.id
+          }
         }
       }
       if (current) {
@@ -312,7 +326,9 @@ export async function reconcileImprovementVerification(input: {
           outcome,
         }, tx)
       }
+      return true
     })
+    if (!recorded) continue
     results.push({
       improvementId: occurrence.improvementId,
       attemptId: attempt.id,

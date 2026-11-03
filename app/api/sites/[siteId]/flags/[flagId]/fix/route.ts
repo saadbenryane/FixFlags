@@ -27,7 +27,7 @@ export async function POST(
     const body = schema.safeParse(await req.json().catch(() => ({})))
     if (!body.success) return apiError('Invalid action', 400)
 
-    const task = await loadSiteFlagCopyTask(access.decision.site.siteId, flagId,
+    const task = await loadSiteFlagCopyTask(access.decision.site, flagId,
       body.data.action === 'copy' ? body.data.promptHash : undefined, body.data.expectedSourceFlagId)
     if (body.data.action === 'prepare') return NextResponse.json({ ok: true, prompt: task.prompt,
       promptHash: task.promptHash, sourceFlagId: task.sourceFlagId, referenceFlagId: task.referenceFlagId,
@@ -38,6 +38,7 @@ export async function POST(
       userId,
       builder: 'copy',
       client: body.data.promptHash ? COPIED_HANDOFF_CLIENT : undefined,
+      preparedHandoff: { siteId, referenceFlagId: flagId, promptHash: task.promptHash, context: task.revision },
     })
     const handoff = 'handoff' in recorded ? recorded.handoff : null
     if (!handoff) return apiError(SITE_ACTION_COPY.invalidResponse, 500)

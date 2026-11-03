@@ -6,7 +6,7 @@ import { apiError, handleRouteError } from '@/lib/api/errors'
 import {
   parseScanAccessInput,
   scanAccessInputSchema,
-} from '@/lib/audit/scan-access'
+} from '@/lib/audit/scan-access-input'
 import { readSavedScanAccess, saveScanAccess } from '@/lib/sites/application/scan-access-commands'
 
 const bodySchema = z.object({

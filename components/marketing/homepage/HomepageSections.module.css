@@ -1,3 +1,16 @@
+.independent { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(28px, 6vw, 88px); background: hsl(var(--muted) / .3); }
+.independentHeading, .independentBody { min-width: 0; }
+.independentHeading h2 { max-width: 440px; font-size: clamp(32px, 4vw, 48px); font-weight: 600; line-height: 1.1; letter-spacing: -.045em; }
+.independentBody > p { color: hsl(var(--muted-foreground)); font-size: 18px; line-height: 1.7; }
+.independentBody > p + p { margin-top: 16px; }
+.independentLink { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; min-height: 44px; margin-top: 20px; color: hsl(var(--foreground)); font-size: 14px; font-weight: 600; }
+.independentLink svg { flex-shrink: 0; color: hsl(var(--brand)); }
+.independentLink:hover { text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 767px) {
+  .independent { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .independentBody > p { font-size: 16px; }
+}
+
 .handoffIntro h2, .integrationCopy h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 600; line-height: 1.1; letter-spacing: -.045em; }
 .handoffIntro > p:not(:first-child) { margin-top: 18px; color: hsl(var(--muted-foreground)); font-size: 18px; line-height: 1.7; }
 

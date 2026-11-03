@@ -1,4 +1,4 @@
-import { repairGuidanceState, repairGuidanceText, type RepairGuidanceState } from '@/lib/improvements/repair-guidance'
+import { repairGuidanceState, resolveRepairDefinition, type RepairDefinition, type RepairGuidanceState } from '@/lib/improvements/repair-guidance'
 import { flagEvidenceContext, type FlagEvidenceContext } from './flag-evidence'
 import { publicSupportingObservations, hasUnreadableStoredSupportingObservations } from '@/lib/audit/flag-observations'
 import { prisma } from '@/lib/db'
@@ -16,6 +16,9 @@ import { attemptHasActiveVerification, attemptProvesFlagRecovery } from '@/lib/i
 import type { Prisma } from '@prisma/client'
 import type { AgentPrompts } from '@/lib/audit/flag-types'
 import { incidentSupportingEvidence } from './incident-supporting-evidence'
+import { customerFindingExplanation } from './finding-label'
+import { readSiteEvidence } from './application/site-evidence-read'
+import { createHash } from 'node:crypto'
 
 const guidanceSelect = { fix: true, agentPrompt: true, cursorPrompt: true, claudePrompt: true,
   windsurfPrompt: true, lovablePrompt: true, boltPrompt: true } satisfies Prisma.FlagSelect
@@ -52,6 +55,8 @@ function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
   attentionPolicy?: unknown
   supportingObservations?: unknown
   supportingEvidenceUnreadable?: boolean
+  repairDefinition?: RepairDefinition | null
+  repairScopeEvidence?: unknown
   audit?: Parameters<typeof repairGuidanceState>[0]['audit']
   id: string
   checkId: string | null
@@ -84,6 +89,8 @@ function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
     affectedPageCount: affectedPaths.length,
     outcomeId: flag.relatedOutcome?.id,
   })
+  const repairDefinition = flag.repairDefinition ?? resolveRepairDefinition({ ...flag, supportingEvidenceUnreadable })
+  const fix = repairDefinition?.guidance ?? ''
   return {
     ...(supportingEvidenceUnreadable ? { supportingEvidenceUnreadable: true } : {}),
     attentionPolicy: flag.attentionPolicy,
@@ -97,9 +104,13 @@ function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
     impactTag: flag.impactTag,
     problem: searchAttentionDecision(flag)?.reason === 'historical_intent_not_established' ? SEARCH_COPY.historicalPolicy : flag.problem,
     evidence: flag.evidence,
-    whyItMatters: flag.whyItMatters,
-    fix: repairGuidanceText(flag),
-    repairGuidance: repairGuidanceState(flag),
+    whyItMatters: customerFindingExplanation(flag),
+    fix,
+    repairDefinition,
+    repairEvidenceRevision: createHash('sha256').update(JSON.stringify({ checkId: flag.checkId,
+      evidence: flag.evidence, supportingObservations: flag.supportingObservations ?? null,
+      scope: flag.repairScopeEvidence ?? null, repairDefinition })).digest('hex'),
+    repairGuidance: fix ? 'ready' : repairGuidanceState(flag),
     pageUrl: flag.pageUrl,
     status: flag.status,
     resolvedInId: flag.resolvedInId,
@@ -179,12 +190,11 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: findingSelect,
     })
-    const unboundProofs = (await loadIncidentRecoveryProofs([{ projectId: site.projectId, flags: unbound }])).get(site.projectId) ?? new Set<string>()
-    const auditFlags = currentUnboundFindings(unbound, unboundProofs)
+    const proofIds = (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
+      flags: [...unbound, ...improvements.flatMap(imp => (imp.occurrences ?? []).map(occurrence => occurrence.flag))] }])).get(site.projectId) ?? new Set<string>()
+    const auditFlags = currentUnboundFindings(unbound, proofIds)
 
     if (improvements.length > 0) {
-      const proofIds = (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
-        flags: improvements.flatMap(imp => (imp.occurrences ?? []).map(occurrence => occurrence.flag)) }])).get(site.projectId) ?? new Set<string>()
       const projected = improvements.flatMap((imp) => {
         if (!imp.occurrences?.length) return []
         const currentOccurrenceFlags = currentImprovementFlags((imp.occurrences ?? []).map(occurrence => occurrence.flag), proofIds,
@@ -200,6 +210,9 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
           ...flag,
           status: flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
           improvementId: imp.id,
+          repairScopeEvidence: currentOccurrenceFlags.map(source => createHash('sha256').update(JSON.stringify({
+            id: source.id, evidence: source.evidence, supportingObservations: source.supportingObservations,
+            verificationRule: source.verificationRule })).digest('hex')),
           affectedPaths: paths,
           relatedOutcome: imp.outcome ?? null,
           verificationState: verificationState(flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
@@ -235,7 +248,7 @@ export async function loadSiteFindings(site: SiteRecord): Promise<{
   flags: SiteFlagSeed[]
   recommendations: SiteFlagSeed[]
 }> {
-  return partitionCustomerFlags(withoutSlowCtaBesideMissingAction(await loadAllOpenSiteFlags(site)))
+  return readSiteEvidence(site, async () => partitionCustomerFlags(withoutSlowCtaBesideMissingAction(await loadAllOpenSiteFlags(site))))
 }
 
 export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
@@ -247,6 +260,10 @@ export async function loadSiteRecommendations(site: SiteRecord): Promise<SiteFla
 }
 
 export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
+  return readSiteEvidence(site, () => readSiteResolvedFlags(site))
+}
+
+async function readSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
   if (site.kind !== 'project' || !site.projectId) return []
   const rows = await prisma.flag.findMany({
     where: {
@@ -415,6 +432,10 @@ export async function loadSiteFlagDetail(
   site: SiteRecord,
   flagId: string
 ): Promise<SiteFlagDetail | null> {
+  return readSiteEvidence(site, () => readSiteFlagDetail(site, flagId))
+}
+
+async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<SiteFlagDetail | null> {
   // Detail is a historical resource, independent of the open inbox and its pagination.
   let flagRow = await prisma.flag.findFirst({
     where: {

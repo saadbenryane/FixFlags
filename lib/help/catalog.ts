@@ -4,9 +4,9 @@ import type { HelpArticle, HelpCategory } from './types'
 
 export const HELP_CATEGORIES: readonly HelpCategory[] = [
   { id: 'getting-started', title: 'Getting started', description: 'Check your website and save the results.', icon: 'rocket' },
-  { id: 'sites-and-coverage', title: 'Sites and coverage', description: 'Understand what was checked, when, and where.', icon: 'flag' },
-  { id: 'flags-fix-verify', title: 'Flags, Fix, Verify', description: 'Read a problem, make a change, and check the fix.', icon: 'flag' },
-  { id: 'watch-and-notifications', title: 'Watch and notifications', description: 'Set a check schedule and choose your emails.', icon: 'rocket' },
+  { id: 'sites-and-coverage', title: 'Your website and results', description: 'See what was checked and how recent the results are.', icon: 'flag' },
+  { id: 'flags-fix-verify', title: 'Fixing problems', description: 'Copy and paste fix instructions, then check that they worked.', icon: 'flag' },
+  { id: 'watch-and-notifications', title: 'Scheduled checks and emails', description: 'Choose when we check and which emails you receive.', icon: 'rocket' },
   { id: 'shopify', title: 'Shopify', description: 'Connection status and removal.', icon: 'creditCard' },
   { id: 'account-and-billing', title: 'Account and billing', description: 'Sign in and manage your plan.', icon: 'creditCard' },
   { id: 'privacy-and-security', title: 'Privacy and security', description: 'Understand saved data and account deletion.', icon: 'user' },
@@ -15,13 +15,13 @@ export const HELP_CATEGORIES: readonly HelpCategory[] = [
 
 export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
-    slug: 'analyze-a-website', categoryId: 'getting-started', title: 'Analyze a website',
+    slug: 'analyze-a-website', categoryId: 'getting-started', title: 'Check your website',
     excerpt: "Enter your website address and see what needs attention.", popular: true,
     searchTokens: ['start', 'url', 'scan', 'audit', 'site'], updatedAt: '2026-10-16', estimatedReadMinutes: 2,
     body: [
       { type: "p", text: "You can try your first check before creating an account. Use a live webpage that visitors can open without signing in." },
       { type: "p", text: "No installation needed for public-page analysis." },
-      { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Check your website.", "Open a Flag to read the observed problem, supporting evidence, and suggested next step. If FixFlags could not inspect an area, read the reason beside that result."] },
+      { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Check your website.", "Open a problem, called a Flag, to see what went wrong and how to fix it. If we couldn’t check an area, the result tells you why."] },
       { type: "callout", text: "A Flag is a problem that needs attention. Not checked yet means results are not available for that area." },
     ], related: ['save-your-site', 'read-site-coverage', 'verify-a-flag'], relatedDocs: ['getting-started'],
   },
@@ -67,16 +67,16 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ], related: ['send-a-fix-to-your-ai', 'verify-a-flag'], relatedDocs: ['site-care'],
   },
   {
-    slug: 'send-a-fix-to-your-ai', categoryId: 'flags-fix-verify', title: 'Send a Flag to your coding AI',
-    excerpt: "Copy a suggested fix into the tool you use to build your website.",
+    slug: 'send-a-fix-to-your-ai', categoryId: 'flags-fix-verify', title: 'Copy and paste a fix',
+    excerpt: "Get fix instructions to paste where you built your website.",
     searchTokens: ['fix', 'prompt', 'coding ai', 'handoff'], updatedAt: '2026-10-13', estimatedReadMinutes: 2,
     body: [
-      { type: "steps", items: ["Open the Flag and copy its fix prompt.", "Paste the prompt into your AI tool or send it to your developer.", "Review the change and publish it to your live website.", "Return to the same Flag and select Check now."] },
-      { type: "p", text: "The prompt describes the problem and what the fix should achieve. FixFlags does not edit your code or publish changes for you." },
+      { type: "steps", items: ["Open the problem and copy its fix instructions.", "Paste them into the chat where you built your website, or send them to someone who can help.", "Review and publish the update.", "Return to the same problem in FixFlags and select Check now."] },
+      { type: "p", text: "The instructions describe what went wrong and what needs to change. Copying them alone does not change your website. You choose when to publish the update." },
     ], related: ['read-a-flag', 'verify-a-flag'], relatedDocs: ['site-care'],
   },
   {
-    slug: 'verify-a-flag', categoryId: 'flags-fix-verify', title: 'Verify a Flag',
+    slug: 'verify-a-flag', categoryId: 'flags-fix-verify', title: 'Check that a fix worked',
     excerpt: "Check whether a published fix worked.", popular: true,
     searchTokens: ['verify', 'recheck', 'fixed', 'regressed', 'inconclusive'], updatedAt: '2026-10-13', estimatedReadMinutes: 3,
     body: [

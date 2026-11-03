@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { deliverWebsiteSummaries, saveNotificationPreferences } from '../service'
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '../preferences'
+import { DEFAULT_NOTIFICATION_PREFERENCES, nextSummaryAt } from '../preferences'
 import * as summaries from '@/lib/sites/application/list-sites'
+import { scheduleSummaries } from '../schedule'
 
 const provider = vi.hoisted(() => ({ send: vi.fn(), reserved: false }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: provider.send } } }))
@@ -155,6 +156,85 @@ run('summary delivery using real database claims', () => {
     const saved = await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } })
     expect(saved.resolvedCadence).toBe('DAILY')
     expect(saved.nextSendAt!.getTime() - now.getTime()).toBeLessThanOrEqual(24 * 3600_000)
+    expect(provider.send).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['WEEKLY', 'DAILY'], ['DAILY', 'WEEKLY'],
+  ] as const)('keeps a product-tip save coherent with a monitoring change from %s to %s', async (previous, current) => {
+    const { id, site } = await fixture()
+    const now = new Date('2026-10-29T10:00:00Z')
+    await prisma.project.update({ where: { id: site.id }, data: { watchInterval: previous } })
+    await saveNotificationPreferences(id, DEFAULT_NOTIFICATION_PREFERENCES, now)
+    const before = await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } })
+    expect(before).toMatchObject({ resolvedCadence: previous,
+      nextSendAt: nextSummaryAt(DEFAULT_NOTIFICATION_PREFERENCES, previous, now) })
+    const queued = await prisma.notificationDigest.create({ data: { userId: id, revision: before.revision,
+      scheduledAt: new Date(now.getTime() - 60_000), nextAttemptAt: now } })
+    await prisma.project.update({ where: { id: site.id }, data: { watchInterval: current } })
+    await saveNotificationPreferences(id, { productTips: true }, now)
+    const saved = await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } })
+    expect(saved).toMatchObject({ productTips: true, resolvedCadence: current, revision: before.revision + 1,
+      nextSendAt: nextSummaryAt(DEFAULT_NOTIFICATION_PREFERENCES, current, now) })
+    await deliverWebsiteSummaries(now)
+    expect(await prisma.notificationDigest.findUniqueOrThrow({ where: { id: queued.id } })).toMatchObject({ status: 'SKIPPED', attempts: 0 })
+    expect(provider.send).not.toHaveBeenCalled()
+  })
+  it('preserves a due summary and its revision when saving an unrelated preference without a cadence change', async () => {
+    const { id, now } = await fixture()
+    const before = await prisma.notificationPreference.update({ where: { userId: id }, data: { resolvedCadence: 'DAILY' } })
+    await saveNotificationPreferences(id, { productTips: true }, now)
+    expect(await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } }))
+      .toMatchObject({ revision: before.revision, nextSendAt: before.nextSendAt, productTips: true })
+    await deliverWebsiteSummaries(now)
+    expect(provider.send).toHaveBeenCalledOnce()
+  })
+  it.each(['existing', 'missing'] as const)('serializes preference saves with summary scheduling for %s preferences', async kind => {
+    const { id, now } = await fixture()
+    if (kind === 'missing') await prisma.notificationPreference.delete({ where: { userId: id } })
+    else await prisma.notificationPreference.update({ where: { userId: id }, data: { resolvedCadence: 'DAILY' } })
+    let pause!: () => void, resume!: () => void
+    const paused = new Promise<void>(resolve => { pause = resolve })
+    const resumed = new Promise<void>(resolve => { resume = resolve })
+    const transaction = prisma.$transaction.bind(prisma)
+    let first = true
+    vi.spyOn(prisma, '$transaction').mockImplementation(operation => {
+      if (!first || typeof operation !== 'function') return transaction(operation)
+      first = false
+      return transaction(async tx => {
+        const read = tx.project.findMany.bind(tx.project)
+        const sites = vi.spyOn(tx.project, 'findMany').mockImplementation(async args => {
+          const result = await read(args)
+          pause(); await resumed
+          return result
+        })
+        try { return await operation(tx) }
+        finally { sites.mockRestore() }
+      })
+    })
+    const saving = saveNotificationPreferences(id, { productTips: true }, now)
+    await paused
+    let settled = false
+    const scheduling = scheduleSummaries(now, 20).finally(() => { settled = true })
+    try {
+      // Wait for either completed admission or its real PostgreSQL row wait,
+      // then release the paused save. No fixed delay chooses the race winner.
+      let waiting = false
+      for (let attempt = 0; attempt < 100 && !settled && !waiting; attempt++) {
+        const [state] = await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+            AND pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+            AND (query LIKE 'UPDATE%notification_preferences%' OR query LIKE '%SELECT id FROM users%'
+              OR query LIKE 'INSERT INTO%notification_%')) AS waiting`
+        waiting = state.waiting
+        if (!settled && !waiting) await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      expect(settled || waiting).toBe(true)
+    } finally { resume(); await saving; await scheduling }
+    const saved = await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } })
+    expect(saved.productTips).toBe(true)
+    expect(saved.nextSendAt!.getTime()).toBeGreaterThan(now.getTime())
+    await scheduleSummaries(now, 20)
+    expect(await prisma.notificationDigest.count({ where: { userId: id } })).toBe(kind === 'existing' ? 1 : 0)
     expect(provider.send).not.toHaveBeenCalled()
   })
   it('does not replay a failed delivery beyond the provider’s deduplication window', async () => {

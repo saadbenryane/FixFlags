@@ -181,6 +181,7 @@ export async function recordFlagImprovementAttempt(input: {
   client?: string
   actor?: string
   action: 'ACCEPT' | 'HANDOFF_COPIED' | 'READY_TO_VERIFY' | 'REJECT'
+  handoffRevision?: { promptHash: string; referenceFlagId: string; context?: Prisma.InputJsonObject }
   changeSummary?: string
   deploymentReference?: string
   commitReference?: string
@@ -206,6 +207,7 @@ export async function recordFlagImprovementAttempt(input: {
       SELECT "id" FROM "projects" WHERE "id" = ${flag.audit.projectId}
         AND "userId" = ${input.userId} AND "deletedAt" IS NULL FOR UPDATE`
     if (projects.length !== 1) throw new Error('Flag is not attached to an owned Product')
+    if (input.action === 'HANDOFF_COPIED') await dependencies.validateHandoff?.()
     const linked = await ensureOwnedFlagIdentity(tx, flag, {
       userId: input.userId, transport: input.builder, client: input.client, actor: input.actor,
     })
@@ -236,8 +238,10 @@ export async function recordFlagImprovementAttempt(input: {
     } else if (input.action === 'HANDOFF_COPIED') {
       await appendImprovementCycleEvent({
         ...event,
-        idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}`,
+        idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}${input.handoffRevision ? `:${input.handoffRevision.promptHash}` : ''}`,
         type: 'HANDOFF_COPIED',
+        ...(input.handoffRevision ? { contextCorrection: { schemaVersion: 'fixflags.handoff-receipt.v1',
+          sourceFlagId: flag.id, ...input.handoffRevision } } : {}),
       }, tx)
     } else if (input.action === 'ACCEPT') {
       await tx.improvement.updateMany({

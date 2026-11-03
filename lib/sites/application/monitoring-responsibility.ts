@@ -5,8 +5,9 @@ import { INTERNAL_REVIEW_PAGE_CEILING, monitoringReviewUrls } from '@/lib/audit/
 import { actionContextSchema, executionSpecSchema, monitoredBehaviorSchema, type ExecutionSpec } from '../domain/execution-spec'
 import { analysisEnvironmentSourceSql, claimedSiteWideAnalysisSourceSql } from './analysis-scope'
 import { consoleObservationMinimum } from '@/lib/audit/console-evidence'
+import { recordedTargetBatches, type RecordedTargetReader } from '@/lib/audit/recorded-targets'
 
-type ResponsibilityReader = { $queryRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: unknown[]): Promise<T> }
+type ResponsibilityReader = RecordedTargetReader
 
 /** Keep original console timing through recurrence without replaying whole
  * findings or limiting responsibility to the most recent failures. */
@@ -14,37 +15,13 @@ export async function monitoringConsoleResponsibility(input: {
   projectId: string; environment: string; pages: readonly string[];
 }, db: ResponsibilityReader = prisma): Promise<NonNullable<ExecutionSpec['consoleObservationScopes']>> {
   if (!input.pages.length) return []
-  const selected = new Set(input.pages), windows = new Map<string, number>(), batchSize = 512
-  let after: { pageUrl: string; context: string } | undefined
-  for (;;) {
-    // Deduplicate in PostgreSQL, transfer only page/context pairs, and retain
-    // at most the admitted pages' maximum windows while traversing history.
-    const rows = await db.$queryRaw<Array<{ pageUrl: string; context: string }>>`
-      WITH candidates AS (
-        SELECT page.value #>> '{}' AS "pageUrl", target.value->>'context' AS context
-        FROM "flags" flag JOIN "audits" "source" ON "source".id = flag."auditId"
-        CROSS JOIN LATERAL jsonb_array_elements(jsonb_build_array(flag."pageUrl") || CASE
-          WHEN jsonb_typeof(flag."affectedPaths") = 'array' THEN flag."affectedPaths" ELSE '[]'::jsonb END) page(value)
-        CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(flag."evidenceTargets") = 'array'
-          THEN flag."evidenceTargets" ELSE '[]'::jsonb END) target(value)
-        WHERE "source"."projectId" = ${input.projectId} AND "source".status = 'COMPLETED'
-          AND ${analysisEnvironmentSourceSql(input.environment)}
-          AND (("source"."executionSpec"->>'scope') IS NULL OR "source"."executionSpec"->>'scope' <> 'FIXTURE_SETUP')
-          AND split_part(flag."checkId", '::page:', 1) IN ('console-errors-critical', 'console-errors-some')
-          AND jsonb_typeof(page.value) = 'string' AND jsonb_typeof(target.value->'context') = 'string'
-          AND target.value->>'context' LIKE 'console:page_load:%'
-      ) SELECT DISTINCT "pageUrl", context FROM candidates
-        ${after ? Prisma.sql`WHERE ("pageUrl", context) > (${after.pageUrl}, ${after.context})` : Prisma.empty}
-        ORDER BY "pageUrl", context LIMIT ${batchSize}`
-    for (const row of rows) {
-      if (!URL.canParse(row.pageUrl)) continue
-      const pageUrl = new URL(row.pageUrl).href
-      if (!selected.has(pageUrl)) continue
-      const minimum = consoleObservationMinimum([{ context: row.context }], pageUrl)
+  const windows = new Map<string, number>()
+  for await (const targets of recordedTargetBatches({ projectId: input.projectId, environment: input.environment,
+    checkIds: ['console-errors-critical', 'console-errors-some'] }, db)) {
+    for (const pageUrl of input.pages) {
+      const minimum = consoleObservationMinimum(targets, pageUrl)
       if (minimum) windows.set(pageUrl, Math.max(2000, minimum, windows.get(pageUrl) ?? 0))
     }
-    if (rows.length < batchSize) break
-    after = rows[rows.length - 1]
   }
   return input.pages.flatMap(pageUrl => windows.has(pageUrl) ? [{ pageUrl, minimumMs: windows.get(pageUrl)! }] : [])
 }

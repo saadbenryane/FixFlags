@@ -12,19 +12,19 @@ export function documentEvidenceWithheld(restrictions: readonly string[] | null 
   return Boolean(restrictions?.some(reason => !ACTION_REFUSALS.has(reason)))
 }
 
-/** Search uses the rendered document unless it was truncated or a request the
- * document depended on was not collected. */
+/** Whole-document limits do not discard independently bounded Search sections.
+ * A request the document depended on being refused still withholds both. */
 export function renderedDocumentForSearch<T>(snapshot: {
   desktopHtml?: string | null
   desktopHtmlTruncated?: boolean
   collectionRestrictions?: readonly string[] | null
   renderedSearchSnapshot?: T
 } | null | undefined): { renderedHtml: string | null; renderedSearchSnapshot: T | undefined; renderedComplete: boolean } {
-  const withheld = documentEvidenceWithheld(snapshot?.collectionRestrictions) || snapshot?.desktopHtmlTruncated === true
+  const withheld = documentEvidenceWithheld(snapshot?.collectionRestrictions)
   const renderedHtml = snapshot?.desktopHtml ?? null
   return {
     renderedHtml,
     renderedSearchSnapshot: withheld ? undefined : snapshot?.renderedSearchSnapshot,
-    renderedComplete: Boolean(renderedHtml) && !withheld,
+    renderedComplete: Boolean(renderedHtml) && snapshot?.desktopHtmlTruncated !== true && !withheld,
   }
 }

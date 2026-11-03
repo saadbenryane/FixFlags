@@ -5,6 +5,7 @@ import { performanceMeasurement, performancePageKey } from './performance-measur
 import { readResourceAudits, projectResourceOpportunities, type ResourceAudit } from './pagespeed-opportunities'
 import { readTapTargetAudits, type TapTargetAudit } from './pagespeed-tap-targets'
 import { collectCruxEvidence, readCruxMetric, type CruxEvidence } from './crux'
+import { lighthouseMetric, lighthouseRecord, lighthouseScore } from './lighthouse-audit'
 export type { CruxMetrics } from './crux'
 
 export const pageSpeedFailureSchema = z.object({
@@ -13,16 +14,13 @@ export const pageSpeedFailureSchema = z.object({
 }).strict()
 type PageSpeedFailure = z.infer<typeof pageSpeedFailureSchema>
 class PageSpeedError extends Error {
-  constructor(message: string, readonly failure: PageSpeedFailure) { super(message); this.name = 'PageSpeedError' }
+  constructor(message: string, readonly failure: PageSpeedFailure, readonly observation?: PageSpeedResult) { super(message); this.name = 'PageSpeedError' }
 }
-const finiteMetric = z.number().finite().nonnegative()
-const providerPayloadSchema = z.object({
-  lighthouseResult: z.object({
-    categories: z.record(z.string(), z.object({ score: z.number().min(0).max(1).nullable().optional() }).passthrough()),
-    audits: z.record(z.string(), z.object({ score: z.number().min(0).max(1).nullable().optional(),
-      numericValue: finiteMetric.optional(), title: z.string().optional(), details: z.record(z.string(), z.unknown()).optional() }).passthrough()),
-    runtimeError: z.object({ code: z.string(), message: z.string().optional() }).optional(),
-  }).passthrough(),
+const providerPayloadSchema = z.object({ lighthouseResult: z.unknown().optional() }).passthrough()
+const lighthousePayloadSchema = z.object({
+  categories: z.record(z.string(), z.unknown()),
+  audits: z.record(z.string(), z.unknown()),
+  runtimeError: z.object({ code: z.string(), message: z.string().optional() }).optional(),
 }).passthrough()
 
 export interface LighthouseAuditSummary {
@@ -49,20 +47,17 @@ export interface PageSpeedResult {
   crux: CruxEvidence | null
 }
 
-/** An audit can retain a number while explicitly reporting failed measurement. */
-function labMetric(audit: Record<string, unknown> | undefined): number | null {
-  if (!audit || audit.errorMessage || audit.notApplicable ||
-    ['error', 'notApplicable', 'manual', 'informative'].includes(String(audit.scoreDisplayMode))) return null
-  const value = audit.numericValue
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
-}
-
 // PSI allows 120 seconds for measurement. Retain transport and parsing time
 // inside a separate task budget, while earlier caller deadlines still win.
 export const PAGESPEED_REQUEST_TIMEOUT_MS = 130_000
 export const PAGESPEED_TASK_TIMEOUT_MS = PAGESPEED_REQUEST_TIMEOUT_MS + 15_000
 const FAILURE_CACHE_TTL_MS = 5 * 60 * 1000
-const FAILED_SENTINEL = '__FAILED__' as const
+type PageSpeedObservation = { result: PageSpeedResult | null; error?: string; failure?: PageSpeedFailure }
+type PageSpeedData = {
+  desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
+  desktopError?: string; mobileError?: string;
+  desktopFailure?: PageSpeedFailure; mobileFailure?: PageSpeedFailure;
+}
 
 const RETRYABLE_STATUS_PATTERNS = ['429', '500', '502', '503', '504'] as const
 
@@ -93,6 +88,7 @@ async function runPageSpeedWithRetry(
 ): Promise<PageSpeedResult> {
   const maxAttempts = 2
   let lastError: unknown
+  let observation: PageSpeedResult | undefined
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (signal?.aborted) throw new Error('Audit deadline approaching')
 
@@ -100,11 +96,13 @@ async function runPageSpeedWithRetry(
       return await runPageSpeed(url, strategy, signal)
     } catch (err) {
       lastError = err
+      if (err instanceof PageSpeedError && err.observation) observation = err.observation
       if (!isRetryableError(err) || attempt === maxAttempts) break
       const delayMs = Math.min(2000 * 2 ** (attempt - 1), 15_000)
       await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
   }
+  if (observation) throw new PageSpeedError(formatPageSpeedError(lastError), failureFor(lastError), observation)
   throw lastError
 }
 
@@ -149,34 +147,45 @@ async function runPageSpeed(
     const parsed = providerPayloadSchema.safeParse(await readBoundedJson(res, 8_000_000))
     if (!parsed.success) throw new PageSpeedError('PageSpeed returned an invalid measurement payload', { code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
     const data = parsed.data
-    const measurement = performanceMeasurement(data.lighthouseResult, strategy, requestedAt)
+    const lighthouse = lighthouseRecord(data.lighthouseResult) ?? {}
+    const lab = lighthousePayloadSchema.safeParse(lighthouse)
+    const measurement = performanceMeasurement(lighthouse, strategy, requestedAt)
     const reportedFactor = measurement.formFactor
-    if ((data.lighthouseResult.requestedUrl !== undefined && performancePageKey(String(data.lighthouseResult.requestedUrl)) !== performancePageKey(url)) ||
-      (['desktop', 'mobile'].includes(reportedFactor ?? '') && reportedFactor !== strategy))
-      throw new PageSpeedError('PageSpeed returned a different requested scope', { code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
-    const runtimeError = data.lighthouseResult.runtimeError
-    if (runtimeError && runtimeError.code !== 'NO_ERROR') throw new PageSpeedError('PageSpeed did not complete its measurement', {
-      code: 'MEASUREMENT_INCOMPLETE', retryable: ['PROTOCOL_TIMEOUT', 'READ_FAILED', 'PARSING_PROBLEM', 'UNKNOWN_ERROR'].includes(runtimeError.code),
-    })
+    const foreignScope = (lighthouse.requestedUrl !== undefined && performancePageKey(String(lighthouse.requestedUrl)) !== performancePageKey(url)) ||
+      (['desktop', 'mobile'].includes(reportedFactor ?? '') && reportedFactor !== strategy)
+    // Field records validate their own page/origin. A refused lab scope cannot
+    // authorize field evidence for its reported redirect destination.
+    const crux = collectCruxEvidence(foreignScope ? { ...data, lighthouseResult: undefined } : data, url)
+    const runtimeError = z.object({ code: z.string() }).safeParse(lighthouse.runtimeError)
+    const failedRuntime = runtimeError.success && runtimeError.data.code !== 'NO_ERROR'
+    if (foreignScope || failedRuntime || !lab.success) {
+      const failure: PageSpeedFailure = failedRuntime && !foreignScope ? {
+        code: 'MEASUREMENT_INCOMPLETE', retryable: ['PROTOCOL_TIMEOUT', 'READ_FAILED', 'PARSING_PROBLEM', 'UNKNOWN_ERROR'].includes(runtimeError.data.code),
+      } : { code: 'PROVIDER_RESPONSE_INVALID', retryable: false }
+      throw new PageSpeedError(foreignScope ? 'PageSpeed returned a different requested scope'
+        : failedRuntime ? 'PageSpeed did not complete its measurement' : 'PageSpeed returned an invalid measurement payload', failure,
+      crux ? { strategy, score: null, lcp: null, cls: null, fcp: null, tbt: null,
+        inp: readCruxMetric(crux, 'inp')?.value ?? null, opportunities: [], resourceAudits: [], tapTargetAudits: [],
+        failedAccessibilityAudits: [], diagnostics: { measurement }, raw: data, crux } : undefined)
+    }
 
-    const categories = data.lighthouseResult as Record<string, unknown>
-    const audits = (categories?.audits || {}) as Record<string, Record<string, unknown>>
-    const categoryScores = (categories?.categories || {}) as Record<string, Record<string, unknown>>
+    const audits = lab.data.audits
+    const categoryScores = lab.data.categories
 
-    const perfScore = categoryScores.performance?.score as number | null | undefined ?? null
-    const lcp = labMetric(audits['largest-contentful-paint'])
-    const cls = labMetric(audits['cumulative-layout-shift'])
-    const fcp = labMetric(audits['first-contentful-paint'])
-    const tbt = labMetric(audits['total-blocking-time'])
+    const perfScore = lighthouseScore(categoryScores.performance)
+    const lcp = lighthouseMetric(audits['largest-contentful-paint'])
+    const cls = lighthouseMetric(audits['cumulative-layout-shift'])
+    const fcp = lighthouseMetric(audits['first-contentful-paint'])
+    const tbt = lighthouseMetric(audits['total-blocking-time'])
 
     const failedAccessibilityAudits: LighthouseAuditSummary[] = []
     for (const id of ACCESSIBILITY_AUDIT_IDS) {
-      const audit = audits[id]
-      if (audit && audit.score !== null && (audit.score as number) < 1) {
+      const audit = lighthouseRecord(audits[id]), score = lighthouseScore(audit)
+      if (audit && score !== null && score < 1) {
         failedAccessibilityAudits.push({
           id,
-          title: (audit.title as string) ?? id,
-          score: audit.score as number,
+          title: (typeof audit.title === 'string' ? audit.title : id).slice(0, 1000),
+          score,
         })
       }
     }
@@ -187,8 +196,6 @@ async function runPageSpeed(
     const tapTargetAudits = strategy === 'mobile' ? readTapTargetAudits(audits) : []
     opportunities.push(...tapTargetAudits.flatMap(audit => audit.score !== null && audit.score < 1
       ? [{ id: audit.id, title: audit.title, savings: 0, ...(audit.itemsCount ? { itemsCount: audit.itemsCount } : {}) }] : []))
-
-    const crux = collectCruxEvidence(data, url)
 
     return {
       strategy,
@@ -217,87 +224,33 @@ function formatPageSpeedError(reason: unknown): string {
   return String(reason)
 }
 
+function failureFor(reason: unknown): PageSpeedFailure {
+  return reason instanceof PageSpeedError ? reason.failure : { code: 'PROVIDER_UNAVAILABLE', retryable: true }
+}
+
 export async function fetchPageSpeedData(url: string, signal?: AbortSignal, options: {
   fresh?: boolean; strategies?: readonly ('desktop' | 'mobile')[]; singleAttempt?: boolean;
-} = {}): Promise<{
-  desktop: PageSpeedResult | null
-  mobile: PageSpeedResult | null
-  desktopError?: string
-  mobileError?: string
-  desktopFailure?: PageSpeedFailure
-  mobileFailure?: PageSpeedFailure
-}> {
-  const desktopKey = auditCache.cacheKeyForPageSpeed(url, 'desktop', 'desktop')
-  const mobileKey = auditCache.cacheKeyForPageSpeed(url, 'mobile', 'mobile')
-
+} = {}): Promise<PageSpeedData> {
   const strategies = options.strategies ?? ['desktop', 'mobile']
-  const desktopCached = options.fresh ? null : auditCache.get<PageSpeedResult>(desktopKey)
-  const mobileCached = options.fresh ? null : auditCache.get<PageSpeedResult>(mobileKey)
+  const output: PageSpeedData = { desktop: null, mobile: null }
 
-  const cachedDesktop = desktopCached
-  const cachedMobile = mobileCached
-
-  const promises: Array<{ strategy: 'desktop' | 'mobile'; promise: Promise<PageSpeedResult> }> = []
-
-  if (strategies.includes('desktop') && !cachedDesktop) {
-    promises.push({ strategy: 'desktop', promise:
-      (options.singleAttempt ? runPageSpeed(url, 'desktop', signal) : runPageSpeedWithRetry(url, 'desktop', signal))
-        .then((result) => {
-          if (!signal?.aborted) auditCache.set(desktopKey, result, 60 * 60 * 1000)
-          return result
-        })
-        .catch((err) => {
-          if (!signal?.aborted) auditCache.set(desktopKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
-          throw err
-        })
-    })
-  }
-
-  if (strategies.includes('mobile') && !cachedMobile) {
-    promises.push({ strategy: 'mobile', promise:
-      (options.singleAttempt ? runPageSpeed(url, 'mobile', signal) : runPageSpeedWithRetry(url, 'mobile', signal))
-        .then((result) => {
-          if (!signal?.aborted) auditCache.set(mobileKey, result, 60 * 60 * 1000)
-          return result
-        })
-        .catch((err) => {
-          if (!signal?.aborted) auditCache.set(mobileKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
-          throw err
-        })
-    })
-  }
-
-  const isFailedSentinel = (v: unknown): boolean => v === FAILED_SENTINEL
-
-  const output: {
-    desktop: PageSpeedResult | null
-    mobile: PageSpeedResult | null
-    desktopError?: string
-    mobileError?: string
-    desktopFailure?: PageSpeedFailure
-    mobileFailure?: PageSpeedFailure
-  } = {
-    desktop: strategies.includes('desktop') && cachedDesktop && !isFailedSentinel(cachedDesktop) ? cachedDesktop : null,
-    mobile: strategies.includes('mobile') && cachedMobile && !isFailedSentinel(cachedMobile) ? cachedMobile : null,
-    desktopError: cachedDesktop && isFailedSentinel(cachedDesktop) ? 'PageSpeed failed recently, retrying later' : undefined,
-    mobileError: cachedMobile && isFailedSentinel(cachedMobile) ? 'PageSpeed failed recently, retrying later' : undefined,
-  }
-
-  if (promises.length > 0) {
-    const settled = await Promise.allSettled(promises.map(item => item.promise))
-    for (const [index, result] of settled.entries()) {
-      const strategy = promises[index].strategy
-      if (result.status === 'fulfilled') {
-        output[strategy] = result.value
-      } else {
-        const error = formatPageSpeedError(result.reason)
-        output[`${strategy}Error`] = error
-        output[`${strategy}Failure`] = result.reason instanceof PageSpeedError ? result.reason.failure : {
-          code: 'PROVIDER_UNAVAILABLE', retryable: true,
-        }
+  await Promise.all([...new Set(strategies)].map(async strategy => {
+    const key = auditCache.cacheKeyForPageSpeed(url, strategy, strategy)
+    let observation = options.fresh ? null : auditCache.get<PageSpeedObservation>(key)
+    if (!observation) {
+      try {
+        const result = await (options.singleAttempt ? runPageSpeed(url, strategy, signal) : runPageSpeedWithRetry(url, strategy, signal))
+        observation = { result }
+      } catch (error) {
+        observation = { result: error instanceof PageSpeedError ? error.observation ?? null : null,
+          error: formatPageSpeedError(error), failure: failureFor(error) }
       }
+      if (!signal?.aborted) auditCache.set(key, observation, observation.failure ? FAILURE_CACHE_TTL_MS : 60 * 60 * 1000)
     }
-  }
+    output[strategy] = observation.result
+    if (observation.error) output[`${strategy}Error`] = observation.error
+    if (observation.failure) output[`${strategy}Failure`] = observation.failure
+  }))
 
   return output
 }

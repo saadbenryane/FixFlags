@@ -6,7 +6,7 @@ import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 import type { ComponentProps } from 'react'
 
 const PUBLIC_PATHS = new Set([
-  '/', '/new', '/how-it-works', '/coverage', '/security', '/use-cases', '/samples',
+  '/', '/new', '/how-it-works', '/coverage', '/security', '/use-cases', '/samples', '/connect-ai',
   '/integrations', '/pricing', '/waitlist', '/request-demo', '/faq', '/help', '/docs',
   '/blog', '/guides', '/changelog', '/privacy', '/terms', '/tools/meta-preview', '/tools/placeholder-detector',
 ])

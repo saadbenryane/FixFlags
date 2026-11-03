@@ -6,7 +6,7 @@ import { pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixture
 import { MAX_MCP_CAPTURE_BYTES, MAX_REPAIR_CAPTURE_BYTES } from '@/lib/sites/repair-evidence-contract'
 
 const mocks = vi.hoisted(() => ({ finding: vi.fn(), request: vi.fn(), screenshot: vi.fn(), artifact: vi.fn(), performance: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { journeyFinding: { findFirst: mocks.finding }, runRequest: { findFirst: mocks.request } } }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) }, journeyFinding: { findFirst: mocks.finding }, runRequest: { findFirst: mocks.request } } }))
 vi.mock('@/lib/storage/screenshots', () => ({ readScreenshot: mocks.screenshot }))
 vi.mock('@/lib/integrity/storage', () => ({ readIntegrityArtifact: mocks.artifact }))
 vi.mock('../performance-evidence', () => ({ loadPerformanceEvidence: mocks.performance }))

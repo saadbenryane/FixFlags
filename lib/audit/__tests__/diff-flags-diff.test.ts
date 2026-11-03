@@ -268,7 +268,7 @@ describe('durable diagnostic continuity', () => {
   it('closes an older pending fix only with its own positive scoped evidence', async () => {
     prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [previous()] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ occurrences: [{ flag: previous({ id: 'latest' }) }] }])
-    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
+    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
       observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
     } }])
@@ -287,7 +287,7 @@ describe('durable diagnostic continuity', () => {
       observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
     })
     const rows = Array.from({ length: 1201 }, (_, index) => ({
-      id: String(index).padStart(5, '0'), targetKey: 'check:title-missing', status: 'COMPLETED', detail: {} as unknown,
+      id: String(index).padStart(5, '0'), auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {} as unknown,
     }))
     if (verdict !== 'missing') rows[1200].detail = proof(verdict)
     if (verdict === 'failed') rows[0].detail = proof('passed')
@@ -307,9 +307,9 @@ describe('durable diagnostic continuity', () => {
     const reads = prismaMock.auditVerifierExecution.findMany.mock.calls.map(([input]) => input)
     expect(reads.filter(input => input.where.id?.gt === '01023')).toHaveLength(2)
     for (const input of reads) {
-      expect(input).toMatchObject({ where: { auditId: 'current-audit', status: 'COMPLETED', targetKey: { in: expect.arrayContaining(['check:title-missing']) } },
+      expect(input).toMatchObject({ where: { status: 'COMPLETED', OR: [{ auditId: 'current-audit', targetKey: { in: expect.arrayContaining(['check:title-missing']) } }] },
         take: 512, orderBy: { id: 'asc' } })
-      expect(input.select).toEqual({ id: true, targetKey: true, status: true, detail: true })
+      expect(input.select).toEqual({ id: true, auditId: true, targetKey: true, status: true, detail: true })
     }
   })
   it('checks unacted older conditions and never summarizes a partially recovered responsibility as fixed', async () => {
@@ -318,7 +318,7 @@ describe('durable diagnostic continuity', () => {
     const otherPage = previous({ id: 'older-other-page', pageUrl: 'https://example.com/original' })
     prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [samePage, otherPage] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: latest }], attempts: [] }])
-    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
+    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
       observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
     } }])

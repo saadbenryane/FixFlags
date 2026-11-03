@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Resend } from 'resend'
 
 const mocks = vi.hoisted(() => ({
+  flagFindMany: vi.fn(),
+  repairTask: vi.fn(),
   userFindUnique:vi.fn(),
   assertOperator: vi.fn(),
   projectFindMany: vi.fn(),
@@ -27,9 +29,12 @@ const mocks = vi.hoisted(() => ({
   refreshGoogleContext: vi.fn(),
 }))
 
+vi.mock('@/lib/sites/ensure-site', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/sites/ensure-site')>(), loadSiteRecord: async (id: string) => ({ siteId: id, projectId: id, userId: 'user-1' }) }))
+vi.mock('@/lib/sites/application/flag-copy-task', () => ({ loadSiteFlagCopyTask: mocks.repairTask }))
 vi.mock('@/lib/email/delivery-events', () => ({ notificationRecipientAllowed: async () => true, projectEmailAcceptance: async () => {} }))
 vi.mock('@/lib/db', () => ({
   prisma: {
+    flag: { findMany: mocks.flagFindMany },
     $transaction: mocks.transaction,
     $queryRaw: mocks.notificationQuery,
     user:{findUnique:mocks.userFindUnique},
@@ -91,6 +96,7 @@ function completedWatch<T extends { project?: Record<string, unknown> } & Record
 describe('Product Watch', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    mocks.flagFindMany.mockResolvedValue([])
     vi.stubEnv('REDIS_URL', 'redis://watch.test')
     vi.stubEnv('RESEND_API_KEY', 're_watch_test')
     vi.stubEnv('RESEND_FROM_EMAIL', 'watch@example.test')
@@ -679,6 +685,34 @@ describe('Product Watch', () => {
     expect(message.html).toContain('/icon-192.png')
     expect(message.html).toContain('What improved')
     expect(message.text).toContain('We checked again and did not find this problem.')
+  })
+
+  it('delivers the exact selected finding with its report and complete fix, then retries without reloading guidance', async () => {
+    const finding = { id: 'original-image', checkId: 'unoptimized-images', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      confidence: 1, status: 'OPEN', problem: 'Images are not optimized', pageUrl: 'https://example.com/shop' }
+    const child = completedWatch({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      recheckTrigger: 'WATCH', completedAt: new Date(), watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0,
+      watchNotificationAttemptCeiling: 5, watchNotificationPayload: null,
+      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.test', name: 'Owner' },
+      project: { watchInterval: 'WEEKLY', notificationLevel: 'FLAGS', notifyOnRecovery: true } })
+    mocks.auditFindUnique.mockResolvedValue(child)
+    mocks.getFlagDiffSummary.mockResolvedValue({ newIssues: [finding], regressed: [], fixed: [], unchanged: [], inconclusive: [] })
+    mocks.flagFindMany.mockResolvedValue([{ ...finding, auditId: 'original-scan', evidence: 'hero.jpg is oversized',
+      whyItMatters: 'Large image download', fix: '', affectedPaths: [finding.pageUrl], verificationRule: 'Remeasure the same image.', supportingObservations: null }])
+    mocks.repairTask.mockResolvedValue({ prompt: '/report/original-scan\nhttps://example.com/shop\nhero.jpg is oversized\nServe each at the size it is displayed.\nRemeasure the same image.', promptHash: 'a'.repeat(64), source: { sourceAuditId: 'original-scan', checkId: finding.checkId, problem: finding.problem, pageUrl: finding.pageUrl } })
+    await notifyWatchRegression(null, 'child-1')
+    const first = mocks.sendEmail.mock.calls[0][0]
+    expect(first.text).toContain('/report/original-scan')
+    expect(first.text).toContain(finding.pageUrl)
+    expect(first.text).toContain('hero.jpg is oversized')
+    expect(first.text).toContain('size it is displayed')
+    expect(first.text).toContain('Remeasure the same image.')
+    const payload = mocks.auditUpdateMany.mock.calls.find(([input]) => input.data.watchNotificationPayload)![0].data.watchNotificationPayload
+    mocks.auditFindUnique.mockResolvedValue({ ...child, watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1, watchNotificationPayload: payload })
+    mocks.flagFindMany.mockRejectedValue(new Error('Repair source is temporarily unavailable'))
+    await notifyWatchRegression(null, 'child-1')
+    expect(mocks.flagFindMany).toHaveBeenCalledOnce()
+    expect(mocks.sendEmail.mock.calls[1][0]).toEqual(first)
   })
 
   it('retries the recorded provider body even after names and templates change', async () => {

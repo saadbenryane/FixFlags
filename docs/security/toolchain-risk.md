@@ -58,3 +58,27 @@ The next audit refresh caught high-severity `GHSA-6qxp-vccf-f47h` in
 MCP SDK lifecycle test, so it is now a development dependency on patched
 `^2.3.1` instead of a production dependency. The advisory is fixed rather than
 suppressed, and the production image must not contain the client package.
+
+## Unresolved tooling advisory, November 2
+
+The approved current npm audit reports zero production vulnerabilities and one
+underlying advisory through the development lint tree:
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+The report expands that advisory into fifteen affected package paths. It still
+includes installed `minimatch@3.1.5` under ESLint and its plugins. The advisory
+declares versions before `11.0.1` affected; this is not an additional reviewed
+exception, and the security gate continues to reject it.
+
+Current public package metadata reports `eslint@10.14.0` depending on
+`minimatch@^10.2.6`. The latest import (`2.32.0`), JSX accessibility (`6.10.2`)
+and React (`7.37.5`) plugins still depend on `minimatch@^3.1.2` and declare
+ESLint peer support through version 9. Upgrading ESLint alone cannot remove
+these paths. Replacing the callable legacy minimatch export with the modern
+object export would break its consumers. No incompatible global override,
+automatic downgrade or audit exception was applied.
+
+The audit reports are retained locally at
+`test-results/runtime/goal-dependency-audit-20261102.json` and
+`test-results/runtime/goal-runtime-audit-20261102.json`. They establish the
+dependency tree inspected at this checkpoint, not a guarantee about future
+advisories or deployed images.

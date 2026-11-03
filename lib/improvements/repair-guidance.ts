@@ -4,6 +4,8 @@ import { REPAIR_GUIDANCE_COPY as C } from '@/lib/marketing/copy/repair-guidance'
 import { isConditionalInspection, isUsableFixPrompt, requiresContextualReview } from '@/lib/audit/prescription-policy'
 import type { AgentPrompts } from '@/lib/audit/flag-types'
 import { hasUnavailableFlagEvidence } from '@/lib/audit/attention'
+import { FINDING_GUIDANCE_COPY as G } from '@/lib/marketing/copy/finding-guidance'
+import { registeredRepairRecipe } from '@/lib/audit/check-registry'
 
 export type InspectionGuidancePlan = {
   inspection: string
@@ -44,6 +46,15 @@ export function hasRepairGuidance(fix: string | null | undefined): boolean {
 export type RepairGuidanceInput = Partial<AgentPrompts> & {
   fix?: string | null; checkId?: string | null; attentionPolicy?: unknown
   supportingObservations?: unknown; supportingEvidenceUnreadable?: boolean
+  problem?: string | null; evidence?: string | null; verificationRule?: string | null
+}
+
+export type RepairDefinition = {
+  schemaVersion: 'fixflags.repair-definition.v1'
+  kind: 'repair' | 'investigation' | 'evidence-recovery'
+  source: 'recorded' | 'check-recipe' | 'investigation' | 'evidence-recovery'
+  checkId: string | null; recipeCheckVersion: number | null; recipeVersion: number
+  guidance: string; preconditions: string[]; acceptance: string[]
 }
 
 /** One task selection for individual report actions and composed editor handoffs. */
@@ -60,15 +71,41 @@ export function effectiveRepairGuidance(input: RepairGuidanceInput): string | nu
 
 /** Compatibility text access uses the same task as rendered actions and commands. */
 export function repairGuidanceText(input: RepairGuidanceInput): string {
-  return effectiveRepairGuidance(input) ?? ''
+  return resolveRepairDefinition(input)?.guidance ?? ''
+}
+
+/** Resolve only owned evidence. This result describes the next action, not AI success. */
+export function resolveRepairDefinition(input: RepairGuidanceInput): RepairDefinition | null {
+  const recipe = registeredRepairRecipe(input.checkId)
+  const unreadable = hasUnavailableFlagEvidence(input)
+  const recorded = effectiveRepairGuidance(input)
+  if (!recorded && !input.problem?.trim()) return null
+  const recovery = unreadable || (!recorded && !input.evidence?.trim())
+  const kind = recovery ? 'evidence-recovery' : recipe?.kind ?? 'investigation'
+  const plan = recipe ? G[recipe.recipe as keyof typeof G] : G.investigate
+  const guidance = recovery ? G.recoverEvidence : recorded ?? [G.reproduce,
+    !recipe ? `${G.investigationGoal} ${input.problem!.trim()}\n${plan}` : plan,
+    G.preserve, G.verify].map((step, index) => `${index + 1}. ${step}`).join('\n')
+  return { schemaVersion: 'fixflags.repair-definition.v1', kind,
+    source: recovery ? 'evidence-recovery' : recorded ? 'recorded' : recipe ? 'check-recipe' : 'investigation',
+    checkId: recipe?.checkId ?? input.checkId ?? null, recipeCheckVersion: recipe?.checkVersion ?? null,
+    recipeVersion: recipe?.recipeVersion ?? 1, guidance,
+    preconditions: recovery ? [G.recoveryPrecondition] : [G.reproduce, ...(kind === 'investigation' ? [G.investigationPrecondition] : [])],
+    acceptance: recovery ? [G.recoveryAcceptance] : [input.verificationRule?.trim() || G.verify],
+  }
+}
+
+/** Compatibility entry point. Preparation and receipt validation share one policy. */
+export function prepareEvidenceRepairGuidance(input: RepairGuidanceInput): string {
+  return repairGuidanceText(input)
 }
 
 /** Existing per-finding guidance remains usable independently of other prescriptions. */
 export function repairGuidanceState(input: RepairGuidanceInput & {
   audit?: { includeAi?: boolean; triageAt?: Date | string | null; aiReviewAt?: Date | string | null; failureCode?: string | null }
 }): RepairGuidanceState {
-  if (hasUnavailableFlagEvidence(input)) return 'unavailable'
   if (hasRepairGuidance(repairGuidanceText(input))) return 'ready'
+  if (hasUnavailableFlagEvidence(input)) return 'unavailable'
   const audit = input.audit
   return audit?.includeAi && audit.triageAt && !audit.aiReviewAt && !audit.failureCode ? 'pending' : 'unavailable'
 }

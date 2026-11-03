@@ -31,6 +31,7 @@ import { TAP_TARGET_CONTEXT, TAP_TARGET_VERIFICATION_RULE } from '../pagespeed-t
 import { RESOURCE_REPAIR_RULE, resourceCheckPolicy, resourcePageKey } from '../pagespeed-opportunities'
 import { PAGESPEED_LAB_RULE, performanceLabKey, performancePageKey, readPerformanceContext } from '../performance-measurement'
 import { TRACKING_VERIFICATION_RULE, TRACKING_REQUEST_CONTEXT } from '../tracking/identity'
+import { verificationEvidence } from './verification-evidence'
 
 export const checkVerifierSchema = z.object({
   kind: z.literal('check-verifier'), version: z.literal(1),
@@ -387,17 +388,26 @@ export async function recordAssertionVerifiers(input: {
   allowedCheckIds?: readonly string[];
 }, tx: Prisma.TransactionClient): Promise<void> {
   const { receipt } = input
-  if (!input.parentId || !receipt.applicable || !receipt.execution || !receipt.assertions.length) return
-  const attempts = await tx.improvementAttempt.findMany({
-    where: { sourceAuditId: input.parentId, outcome: null }, take: 500, orderBy: { id: 'asc' },
-    select: { improvement: { select: { occurrences: {
-      where: input.sourceFlagIds ? { flagId: { in: [...input.sourceFlagIds] } } : { auditId: input.parentId },
-      take: input.sourceFlagIds?.length ?? 100, orderBy: { id: 'asc' },
-      select: { flag: { select: { checkId: true, source: true, fingerprint: true, pageUrl: true, verificationRule: true, evidenceTargets: true } } },
-    } } } },
-  })
+  if (!input.parentId || !receipt.applicable || !receipt.execution || receipt.execution.auditId !== input.auditId || !receipt.assertions.length) return
+  const flags: Array<{ checkId: string | null; source: string; fingerprint: string | null; pageUrl: string | null;
+    verificationRule: string | null; evidenceTargets: unknown }> = []
+  let after = ''
+  for (;;) {
+    const selected = await tx.flag.findMany({
+      where: {
+        ...(input.sourceFlagIds ? { id: { in: [...input.sourceFlagIds], ...(after ? { gt: after } : {}) } }
+          : { auditId: input.parentId, ...(after ? { id: { gt: after } } : {}) }),
+        improvementOccurrence: { improvement: { attempts: { some: { sourceAuditId: input.parentId, outcome: null } } } },
+      },
+      take: 500, orderBy: { id: 'asc' },
+      select: { id: true, checkId: true, source: true, fingerprint: true, pageUrl: true, verificationRule: true, evidenceTargets: true },
+    })
+    flags.push(...selected)
+    if (selected.length < 500) break
+    after = selected.at(-1)!.id
+  }
   let contextualReceipts: Array<z.infer<typeof checkReceiptSchema>> | undefined
-  for (const attempt of attempts) for (const { flag } of attempt.improvement.occurrences) {
+  for (const flag of flags) {
     const checkId = baseCheckId(flag.checkId)
     if (!checkId || flag.source !== 'DETERMINISTIC' && !(flag.source === 'JOURNEY' &&
       (receipt.module === 'overlays' && scopedOverlayRule(flag.verificationRule) || receipt.module === 'journeys' && flag.verificationRule === JOURNEY_VERIFICATION_RULE))) continue
@@ -409,12 +419,13 @@ export async function recordAssertionVerifiers(input: {
     const contextual = resource || flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || receipt.module === 'slow-replay' || receipt.module === 'corridor' || receipt.module === 'mobile-navigation' || receipt.module === 'journeys' || receipt.module === 'keyboard' || receipt.module === 'automatic-accounts' || tracking || receipt.module === 'overlays' || receipt.module === 'flow' || receipt.module === 'accessibility' || receipt.module === 'console' || receipt.module === 'auth-checkout' || receipt.module === 'og-image' || receipt.module === 'form-validation' || receipt.module === 'seo' && ['broken-internal-links', 'broken-page-anchors'].includes(checkId)
     if (!contextual && (flag.pageUrl ? verifierScopeKey(flag.pageUrl) !== verifierScopeKey(receipt.pageUrl) : !input.primary)) continue
     if (contextual && !resource && !contextualReceipts) {
-      const rows = await tx.auditVerifierExecution.findMany({ where: { auditId: input.auditId, targetKey: 'module:' + receipt.module, status: 'COMPLETED' },
-        take: 300, select: { detail: true } })
-      contextualReceipts = rows.flatMap(row => {
-        const parsed = checkReceiptSchema.safeParse(row.detail)
-        return parsed.success ? [parsed.data] : []
-      })
+      const checks = new Set(flags.flatMap(flag => {
+        const id = baseCheckId(flag.checkId)
+        return id && (!input.allowedCheckIds || input.allowedCheckIds.includes(id)) ? [id] : []
+      }))
+      contextualReceipts = await verificationEvidence({ receipt, targets: flags.map(flag => flag.evidenceTargets),
+        assertionKeys: Object.entries(MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions ?? {})
+          .filter(([, definition]) => definition.verifies.some(id => checks.has(id))).map(([key]) => key) }, tx)
     }
     const scoped = scopedAssertionForTarget({ receipt, checkId, flag, receipts: contextualReceipts })
     if (!scoped) continue

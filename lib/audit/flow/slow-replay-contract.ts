@@ -44,6 +44,7 @@ export const slowReplayResultSchema = z.object({
   scope: captureObservationScopeSchema.optional(),
   observedForMs: milliseconds.optional(), textBlankThroughMs: milliseconds.optional(), ctaAbsentThroughMs: milliseconds.optional(),
   timeToContentMs: milliseconds.optional(), contentAbsentThroughMs: milliseconds.optional(),
+  expectedActionCount: z.number().int().nonnegative().optional(),
   actions: z.array(slowActionIdentitySchema.extend({ timeToVisibleMs: milliseconds, absentThroughMs: milliseconds }).strict()).max(20).optional(),
   captures: z.array(z.object({ targetMs: milliseconds, startedAtMs: milliseconds, capturedAtMs: milliseconds.nullable().optional(), completedAtMs: milliseconds,
     url: z.string().url().nullable() }).strict()).max(3).optional(),

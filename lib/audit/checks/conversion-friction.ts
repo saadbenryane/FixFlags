@@ -1,4 +1,4 @@
-import { renderedContentMetadata } from '../browser/rendered-copy'
+import { observedPageCopy, type RenderedCopy } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import {
@@ -92,18 +92,20 @@ function missingFirstStepCopy(offer: OfferType): { evidence: string; fix: string
 }
 
 export function runConversionFrictionChecks(
-  meta: PageMetadata,
+  meta: PageMetadata | null,
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
   record?: CheckRecorder,
+  renderedCopy?: RenderedCopy | null,
 ): DeterministicFlag[] {
-  meta = renderedContentMetadata(meta)
+  const prose = observedPageCopy(meta, renderedCopy)
+  if (!prose) return []
   const findings: DeterministicFlag[] = []
-  const productPage = isProductPage(purpose.purpose)
+  const productPage = meta !== null && isProductPage(purpose.purpose)
   const offer = detectOfferType(purpose.purpose)
-  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
-  const ctaTexts = meta.ctaTexts ?? []
-  const links = meta.links ?? []
-  const h1s = meta.h1s ?? []
+  const bodyText = prose.pageText.slice(0, CHECK_TEXT_LIMIT)
+  const ctaTexts = meta?.ctaTexts ?? []
+  const links = meta?.links ?? []
+  const h1s = prose.h1s
   const combinedAboveFold = [...h1s, ...ctaTexts].filter(Boolean).join(' ')
   const firstSteps = detectFirstSteps({
     bodyText,
@@ -112,17 +114,17 @@ export function runConversionFrictionChecks(
     links,
   })
   const hasGuarantee = GUARANTEE_MARKERS.test(bodyText)
-  const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta.images ?? [])
+  const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta?.images ?? [])
   const hasPricingLinks = firstSteps.has('pricing')
   const trialOffer = TRIAL_COMMITMENT_MARKERS.test(bodyText) || TRIAL_COMMITMENT_MARKERS.test(combinedAboveFold)
-  if (needsFirstStep(purpose.purpose)) recordObservation(record, 'first-step-signals', 'Recognized first-step signals',
+  if (meta && needsFirstStep(purpose.purpose)) recordObservation(record, 'first-step-signals', 'Recognized first-step signals',
     'Sampled product content contains a recognized first-step signal', `Recognized paths: ${[...firstSteps].join(', ') || 'none'}. Destinations were not executed by this check.`,
     bodyText.trim().length >= 200 || firstSteps.size > 0 ? firstSteps.size > 0 : undefined, true)
 
   // First-step checks run on marketing and studio pages. Content pages
   // legitimately have no conversion path. Any matching first step is enough;
   // offer type only changes the missing-path prescription.
-  if (needsFirstStep(purpose.purpose) && firstSteps.size === 0) {
+  if (meta && needsFirstStep(purpose.purpose) && firstSteps.size === 0) {
     const copy = missingFirstStepCopy(offer)
     findings.push({
       checkId: 'friction-no-commitment-path',
@@ -157,8 +159,8 @@ export function runConversionFrictionChecks(
   // Only flag the largest form that contains a conversion CTA (sign up, start
   // free, etc.). Search bars, cookie forms, and login forms legitimately have
   // many fields but are not conversion friction.
-  const formFields = meta.maxConversionFormInputs ?? meta.totalFormInputs ?? 0
-  if (meta.forms > 0) recordObservation(record, 'conversion-field-count', 'Captured conversion form size',
+  const formFields = meta?.maxConversionFormInputs ?? meta?.totalFormInputs ?? 0
+  if (meta && meta.forms > 0) recordObservation(record, 'conversion-field-count', 'Captured conversion form size',
     'The recorded form has at most five fields', `${formFields} fields recorded. Field necessity and conversion impact were not measured.`,
     meta.maxConversionFormInputs !== undefined ? formFields <= 5 : undefined, true)
   if (formFields > 5) {
@@ -218,5 +220,8 @@ export function runConversionFrictionChecks(
     })
   }
 
+  if (!meta) for (const [key, name] of [['first-step-signals', 'Recognized first-step signals'], ['conversion-field-count', 'Captured conversion form size'],
+    ['commitment-signals', 'Signup commitment wording'], ['social-proof-signals', 'Captured social proof signals']])
+    recordObservation(record, key, name, 'Declared page context supports this observation', 'Page purpose, controls, form declarations and images were not collected.', undefined, true)
   return findings
 }

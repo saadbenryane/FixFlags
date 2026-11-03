@@ -81,8 +81,8 @@ describe('flag-copy', () => {
     for (const explanation of [...Object.values(FLAG_EXPLANATIONS), whyItMattersForCheckId('unknown-check')]) {
       assert.doesNotMatch(explanation, /every click.*lost revenue|costs conversions|most traffic is mobile|most visitors never|convert better|causing.*abandon|creates compliance risk|split ranking signals/i)
     }
-    assert.match(whyItMattersForCheckId('perf-score-poor'), /lab performance/)
-    assert.match(whyItMattersForCheckId('mobile-perf-critical'), /does not establish.*traffic mix/)
+    assert.match(whyItMattersForCheckId('perf-score-poor'), /page-speed check/)
+    assert.match(whyItMattersForCheckId('mobile-perf-critical'), /measured delays/)
     assert.match(whyItMattersForCheckId('cookie-consent-absent'), /legal compliance were not evaluated/)
     assert.equal(resolveWhyItMatters({ id: 'historic', checkId: 'perf-score-poor', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Recorded problem',
       whyItMatters: 'Specific original explanation from this observation.' }), 'Specific original explanation from this observation.')

@@ -1,3 +1,4 @@
+import { uptimeReadSite } from '@/lib/uptime/__tests__/read-site'
 import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
@@ -116,7 +117,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueSchedules: 0, overdueUptimeProbes: 0, inconclusiveUptimeSites: 0 })
     expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(0)
     expect((await loadSiteOperations(now)).find(item => item.label === 'Uptime monitoring gaps')?.value).toBe(0)
-    expect(await loadUptimeSummary(projectId, now)).toMatchObject({ enabled: false, state: 'paused' })
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), now)).toMatchObject({ enabled: false, state: 'paused' })
     await scheduleUptimeProbes(fixedClock(now), 1, projectId)
     expect(uptimeQueue.enqueue).not.toHaveBeenCalled()
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(retained)
@@ -142,7 +143,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(operations.total).toBe(1)
     expect(operations.rows).toMatchObject([{ siteId: projectId, state: 'Observation remains inconclusive', action: 'SITE_RECONCILE' }])
     expect((await loadSiteOperations(now)).find(item => item.label === 'Uptime monitoring gaps')?.value).toBe(1)
-    expect(await loadUptimeSummary(projectId, now)).toMatchObject({ state: 'unknown', openIncidentCount: 0 })
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), now)).toMatchObject({ state: 'unknown', openIncidentCount: 0 })
     expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
     expect(await prisma.uptimeNotification.count({ where: { incident: { monitorId: monitor.id } } })).toBe(0)
     expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toEqual(monitor)
@@ -212,7 +213,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(uptimeQueue.enqueue).toHaveBeenCalledOnce()
     expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId } })).toMatchObject({ enabled: true, targetUrl: url })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueUptimeProbes: 0 })
-    expect(await loadUptimeSummary(projectId, now)).toMatchObject({ state: 'unknown', lastCheckedAt: null })
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), now)).toMatchObject({ state: 'unknown', lastCheckedAt: null })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(saved)
     expect(await prisma.audit.count({ where: { projectId } })).toBe(0)
   })
@@ -246,7 +247,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, overdueSchedules: 0, overdueUptimeProbes: 1, inconclusiveUptimeSites: 0 })
     expect((await loadOperations(actor, { queue: 'uptime' })).rows).toMatchObject([{ siteId: projectId, action: 'SITE_RECONCILE' }])
     expect((await loadSiteOperations(now)).find(item => item.label === 'Uptime monitoring gaps')?.value).toBe(1)
-    expect(await loadUptimeSummary(projectId, now)).toMatchObject({ enabled: true, state: 'unknown' })
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), now)).toMatchObject({ enabled: true, state: 'unknown' })
     expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toEqual(monitor)
 
     await scheduleUptimeProbes(fixedClock(now), 1, projectId)
@@ -267,7 +268,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect((await readMonitoringHealth(now)).overdueUptimeProbes).toBe(1)
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: null } })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueUptimeProbes: 0, inconclusiveUptimeSites: 0 })
-    expect(await loadUptimeSummary(projectId, now)).toMatchObject({ enabled: false, state: 'paused' })
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), now)).toMatchObject({ enabled: false, state: 'paused' })
     expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({ enabled: true, nextProbeAt: overdue })
   })
 

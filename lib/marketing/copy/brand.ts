@@ -6,12 +6,12 @@ export const BRAND = {
   domain: 'fixflags.com',
   tagline: PRODUCT_STORY.headline.join(' '),
   footerDescription:
-    'Website checks, email alerts, and clear steps to fix problems.',
+    'Find website problems. Copy and paste the fix instructions. Keep building.',
   trademarkNotice:
     'Third-party trademarks and logos belong to their respective owners. Their use does not imply affiliation with or endorsement of FixFlags.',
   category: 'Independent website monitoring.',
   oneLiner:
-    'FixFlags monitors your website, emails you about problems, and helps you fix them.',
+    'FixFlags checks your website, emails you about problems, and gives you fix instructions to copy and paste.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
@@ -30,16 +30,16 @@ export const SITE_URL =
 
 export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
-  fixPrompt: 'Fix prompt',
+  fixPrompt: 'Fix instructions',
   seeFullSample: 'See full sample report',
-  nextStep: 'Paste into editor → publish → run an update review.',
+  nextStep: 'Paste the instructions where you built your website. Publish the update, then check again.',
 } as const
 
 export const URL_PLACEHOLDER = 'https://yoursite.com'
 
 const WEBSITE_CHECK_HANDOFF = {
   heading: 'Check more of your website',
-  description: 'Find broken pages, slow loading, and other problems. Get evidence and guidance to help fix them.',
+  description: 'Find broken pages, slow loading, and more. Get fix instructions you can copy and paste.',
 } as const
 
 export const TOOLS = {
@@ -51,7 +51,7 @@ export const TOOLS = {
     ctaCheck: 'Check preview',
     ctaAudit: PRODUCT_STORY.action,
     socialPreviewHeading: 'Social Preview',
-    metaTagsHeading: 'Meta Tags',
+    metaTagsHeading: 'Page details',
     metaFieldLabels: {
       title: 'Title',
       description: 'Description',
@@ -79,12 +79,12 @@ export const TOOLS = {
     noIssuesIconAria: 'Clean page',
     noIssuesHeading: 'No placeholder content found',
     noIssuesSubhead:
-      'This check found no placeholder content on this page. Other website problems are outside this tool’s scope.',
+      'We didn’t find any of the unfinished text this tool looks for. Use the full website check to look for other problems.',
     issuesFound: '{count} match{plural} found',
     typeLabels: {
       placeholder: 'Placeholder',
       'template-copy': 'Template Copy',
-      'ai-builder': 'AI Builder Artifact',
+      'ai-builder': 'Leftover generated text',
       'template-token': 'Template Token',
       'social-proof': 'Social proof',
     },
@@ -110,7 +110,7 @@ export const ROAST_COPY = {
   downloadSvg: 'Download SVG',
   copyMarkdown: 'Copy markdown',
   fullReport: 'Open Site board',
-  wantFixes: 'Want a fix prompt for every Flag?',
+  wantFixes: 'Want fix instructions you can copy and paste?',
   runFullAudit: 'Run a full FixFlags check',
   taglines: {
     A: 'The checked areas scored well. Review any remaining Flags and coverage limits.',

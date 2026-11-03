@@ -7,7 +7,9 @@ export const ANALYSIS_RECOVERY_MS = 60 * 60_000
 export const TASK_RECOVERY_MS = 30 * 60_000
 // Covers the full 24-page catalog, retained entry behaviors and Site obligations.
 // Control history shares those behavior tasks rather than increasing this bound.
-export const MAX_TASKS_PER_AUDIT = 1280
+// Independent browser profiles add at most one task per admitted page while
+// preserving the former graph's remaining allowance for Site obligations.
+export const MAX_TASKS_PER_AUDIT = 1312
 export const TASK_CRASH_LIMIT = 3
 export const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024
 export const taskKindSchema = z.enum(['http', 'search-resources', 'browser', 'motion', 'overlays', 'keyboard', 'captures', 'pagespeed', 'check', 'search', 'google', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'automatic-accounts', 'judge', 'prescription', 'discovery', 'cross-page', 'finalize'])
@@ -23,6 +25,7 @@ export const taskInputSchema = z.object({
   outcomeId: z.string().min(1).max(120).optional(), bindingKey: z.string().min(1).max(120).optional(),
   fixtureId: z.string().min(1).max(120).optional(),
   device: z.enum(['desktop', 'mobile']).optional(),
+  consoleIdentityKey: z.string().uuid().optional(),
   verificationContext: z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/).optional(),
   verificationContexts: z.array(z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/)).min(1).max(5000).optional(),
   prescriptionScope: prescriptionScopeSchema.optional(),
@@ -67,7 +70,9 @@ export function readArtifact(value: unknown, expected: TaskKind) {
   return artifact
 }
 export class TaskFailure extends Error {
-  constructor(readonly code: string, readonly retryable: boolean, readonly retryAfterMs?: number, readonly crash = false) {
+  /** Independent read-only facts may commit without completing the task or resetting retries. */
+  constructor(readonly code: string, readonly retryable: boolean, readonly retryAfterMs?: number, readonly crash = false,
+    readonly observation?: TaskArtifact) {
     super(code); this.name = 'TaskFailure'
   }
 }

@@ -1,3 +1,4 @@
+import type { SiteRecord } from '@/lib/sites/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/server'
 import type { User } from '@prisma/client'
@@ -14,6 +15,8 @@ vi.mock('@/lib/sites/application/repair-evidence', () => ({ loadSiteRepairEviden
 import { registerSiteOutcomeTools } from '../tools/sites'
 import { loadSiteFlagCopyTask } from '@/lib/sites/application/flag-copy-task'
 
+const authorizedSite = { siteId: 'site', projectId: 'site', userId: 'owner' } as SiteRecord
+
 type Handler = (input: { siteId: string; flagId: string; expectedContextHash?: string; observationOffset?: number; includeEvidence?: boolean }) => Promise<{
   structuredContent: Record<string, unknown>; isError?: boolean; content: Array<{ type: string; data?: string; text?: string }>
 }>
@@ -23,14 +26,14 @@ describe('canonical repair context through MCP', () => {
   let outputSchema: z.ZodType
   beforeEach(() => {
     vi.resetAllMocks()
-    mocks.site.mockResolvedValue({ siteId: 'site', projectId: 'site', userId: 'owner' })
+    mocks.site.mockResolvedValue(authorizedSite)
     mocks.flag.mockResolvedValue(repairFlag())
     registerSiteOutcomeTools({ registerTool(name: string, definition: { inputSchema: z.ZodType; outputSchema: z.ZodType }, registered: Handler) {
       if (name === MCP_TOOLS.getFlag.name) { handler = registered; schema = definition.inputSchema; outputSchema = definition.outputSchema }
     } } as unknown as McpServer, { id: 'owner' } as User)
   })
   it('returns the exact task and context revision copied from the web product', async () => {
-    const copied = await loadSiteFlagCopyTask('site', 'original')
+    const copied = await loadSiteFlagCopyTask(authorizedSite, 'original')
     const expected = buildSiteRepairBrief('site', repairFlag(), 'https://fixflags.test')
     expect(schema.safeParse(expected.retrieval.mcp.arguments).success).toBe(true)
     const result = await handler(expected.retrieval.mcp.arguments)
@@ -77,19 +80,19 @@ describe('canonical repair context through MCP', () => {
     expect((await handler(next)).structuredContent).toMatchObject({ error: { code: 'REPAIR_CONTEXT_CHANGED', action: 'prepare_new_prompt' } })
   })
   it('rejects changes through both the copied-task hash and MCP revision', async () => {
-    const copied = await loadSiteFlagCopyTask('site', 'original')
+    const copied = await loadSiteFlagCopyTask(authorizedSite, 'original')
     const expected = buildSiteRepairBrief('site', repairFlag(), 'https://fixflags.test')
     mocks.flag.mockResolvedValue(repairFlag({ verificationRule: 'Changed acceptance' }))
     const result = await handler(expected.retrieval.mcp.arguments)
     expect(result.isError).toBe(true)
     expect(result.structuredContent).toMatchObject({ error: { code: 'REPAIR_CONTEXT_CHANGED' } })
     expect(result.structuredContent.repairBrief).toBeUndefined()
-    await expect(loadSiteFlagCopyTask('site', 'original', copied.promptHash)).rejects.toMatchObject({ status: 409, code: 'REPAIR_TASK_CHANGED' })
+    await expect(loadSiteFlagCopyTask(authorizedSite, 'original', copied.promptHash)).rejects.toMatchObject({ status: 409, code: 'REPAIR_TASK_CHANGED' })
   })
   it('retains the requested incident scope instead of substituting the narrower source Flag scope', async () => {
     mocks.flag.mockImplementation(async (_site, id) => repairFlag({ affectedPaths: id === 'incident'
       ? ['https://example.com/checkout', 'https://example.com/cart'] : ['https://example.com/checkout'] }))
-    const copied = await loadSiteFlagCopyTask('site', 'incident')
+    const copied = await loadSiteFlagCopyTask(authorizedSite, 'incident')
     expect(copied.referenceFlagId).toBe('incident')
     const brief = buildSiteRepairBrief('site', repairFlag(), 'https://fixflags.test', 'incident')
     expect(brief.retrieval.mcp.arguments.flagId).toBe('incident')
@@ -106,6 +109,6 @@ describe('canonical repair context through MCP', () => {
   it('does not invent a task when evidence is unreadable', async () => {
     mocks.flag.mockResolvedValue(repairFlag({ supportingEvidenceUnreadable: true }))
     expect((await handler({ siteId: 'site', flagId: 'original' })).structuredContent.repairBrief).toMatchObject({ repair: { readiness: 'unavailable', guidance: null } })
-    await expect(loadSiteFlagCopyTask('site', 'original')).rejects.toMatchObject({ status: 422 })
+    await expect(loadSiteFlagCopyTask(authorizedSite, 'original')).rejects.toMatchObject({ status: 422 })
   })
 })

@@ -1,12 +1,15 @@
 import { GUIDES_PAGE } from './guides'
 import { WEBSITE_PROMISE } from './care-homepage'
 import { PUBLIC_OFFER } from './public-offer'
+import { PRODUCT_STORY } from './product-story'
+import { AI_CONNECTION_COPY } from './ai-connection'
 
 export const SEO = {
+  connectAi: { title: AI_CONNECTION_COPY.metadataTitle, description: AI_CONNECTION_COPY.description },
   guides: { title: GUIDES_PAGE.metadataTitle, description: GUIDES_PAGE.description },
   coverage: {
     title: 'What FixFlags checks | FixFlags',
-    description: 'See what FixFlags checks, from broken pages to slow loading. Explore the checks, setup, and limits across eight website areas.',
+    description: 'Broken pages, slow loading, buttons that go nowhere, and more. See what FixFlags checks and what needs a closer look.',
   },
   security: {
     title: 'Privacy and security | FixFlags',
@@ -14,17 +17,17 @@ export const SEO = {
   },
   useCases: {
     title: 'Website monitoring use cases | FixFlags',
-    description: 'Website checks, email alerts, and fix guidance for builders, store owners, agencies, and marketing teams.',
+    description: 'Keep building your website or app. Get website checks, email alerts, and copy-and-paste fix instructions. For builders, store owners, and agencies.',
   },
   home: {
-    title: 'FixFlags | Website monitoring. From problem to fix.',
+    title: `FixFlags | ${PRODUCT_STORY.headline.join(' ')}`,
     description:
       WEBSITE_PROMISE,
   },
   integrations: {
     title: 'FixFlags Integrations',
     description:
-      'Start with your website URL. Explore GitHub account connection and other integrations coming soon.',
+      'Start with just your website address. See optional connections, including GitHub, and what’s coming soon.',
   },
   pricing: {
     title: 'FixFlags Pricing',
@@ -33,7 +36,7 @@ export const SEO = {
   requestDemo: {
     title: 'Request a FixFlags demo',
     description:
-      'Request a walkthrough of the checks, evidence, and next steps for the website you look after.',
+      'Bring your website and your questions. See how FixFlags finds problems and helps you fix them.',
   },
   waitlist: {
     title: 'Join the waitlist',
@@ -42,27 +45,27 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Enter your URL, see what needs attention, and get help fixing it. Save your website for fix prompts, scheduled checks, and email alerts.',
+      'Enter your website. Find problems. Copy and paste the fix instructions, then check that your update worked.',
   },
   samples: {
     title: 'Sample Site and Flag',
     description:
-      'Try a recorded demo check. See a website problem, read the evidence, and copy a fix prompt for your AI.',
+      'Try a recorded demo. See a website problem and copy the instructions to fix it.',
   },
   faq: {
     title: 'FAQ',
     description:
-      'Answers about FixFlags website analysis, Flags, evidence, verification, Site monitoring, GitHub authorization, and planned integrations.',
+      'Simple answers about checking your website, copying fix instructions, email alerts, and what’s included for free.',
   },
   help: {
     title: 'Help Center',
     description:
-      'Guides for website analysis, Flags, verification, Site monitoring, connections, and account support.',
+      'Help with your first website check, fixing problems, scheduled checks, and your account.',
   },
   docs: {
     title: 'FixFlags Documentation',
     description:
-      'Learn how to check your website, read a Flag, use a fix prompt, and set up monitoring.',
+      'Learn how to check your website, copy and paste fix instructions, and get email alerts when something needs attention.',
   },
   changelog: {
     title: 'Changelog',

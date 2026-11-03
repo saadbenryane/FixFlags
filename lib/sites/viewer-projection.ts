@@ -13,12 +13,17 @@ export function viewerRepairGuidance(flag: RepairGuidanceInput & { repairGuidanc
 /** Both the initial render and refresh publish the same allowlisted wire model. */
 export function projectSiteHomeForViewer(view: SiteHomeView): SiteHomeView {
   const owner = view.actions.ownership === 'owner'
-  const flags = (items: SiteHomeView['flags']) => items.map(flag => ({ ...flag, ...viewerRepairGuidance(flag, owner) }))
+  const flags = (items: SiteHomeView['flags']) => items.map(flag => ({ ...flag,
+    ...(!owner ? { repairDefinition: null } : {}), ...viewerRepairGuidance(flag, owner) }))
   return readSiteHomeView({ ...view,
     settings: { ...view.settings, github: owner ? view.settings.github : undefined },
     flags: flags(view.flags), recommendations: flags(view.recommendations), resolvedFlags: flags(view.resolvedFlags),
-    cards: view.cards.map(card => ({ ...card, flagChips: card.flagChips.map(chip => owner ? chip : {
-      ...chip, repairGuidanceReady: false, repairGuidance: 'unavailable',
+    cards: view.cards.map(card => ({ ...card, flagChips: card.flagChips.map(chip => {
+      if (owner) return chip
+      // An access gate is not evidence that the finding has no guidance.
+      const { repairGuidance: _repairGuidance, ...visible } = chip
+      void _repairGuidance
+      return { ...visible, repairGuidanceReady: false }
     }) })),
   }, view.site.siteId)
 }

@@ -1,3 +1,5 @@
+import { REQUEST_ERROR_COPY } from '@/lib/marketing/copy/errors'
+
 export interface ParsedApiError {
   message: string
   code?: string
@@ -5,10 +7,10 @@ export interface ParsedApiError {
   estimatedWaitSeconds?: number
 }
 
-/** Safely parse JSON error body from a fetch Response. */
-export async function parseApiErrorResponse(res: Response): Promise<ParsedApiError> {
+/** Accept the already-read body when a bounded transport owns consumption. */
+export async function parseApiErrorResponse(res: Response, parsedBody?: unknown): Promise<ParsedApiError> {
   try {
-    const data = (await res.json()) as {
+    const data = (parsedBody === undefined ? await res.json() : parsedBody) as {
       code: string
       message: string
       action?: string
@@ -43,13 +45,12 @@ export async function parseApiErrorResponse(res: Response): Promise<ParsedApiErr
     const seconds = retryAfter ? parseInt(retryAfter, 10) : 60
     const wait = Number.isFinite(seconds) && seconds > 0 ? seconds : 60
     estimatedWaitSeconds = wait
-    message = `Your request is queued. Estimated wait: ${wait < 60 ? `${wait} seconds` : `about ${Math.ceil(wait / 60)} minute${wait >= 120 ? 's' : ''}`}. Browse examples or prep MCP while you wait.`
+    message = REQUEST_ERROR_COPY.rateLimited(wait)
   }
 
   return {
     message,
     code: res.status === 429 ? 'RATE_LIMITED' : undefined,
-    action: res.status === 429 ? 'queued' : undefined,
     estimatedWaitSeconds,
   }
 }

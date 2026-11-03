@@ -9,6 +9,9 @@ import { customerMechanismLabel, flagMatchesOutcome, outcomeCoverageLabel, outco
 import { loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
+import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
 
 export default async function OutcomeDetailPage({ params }: {
   params: Promise<{ siteId: string; outcomeId: string }>
@@ -122,9 +125,10 @@ export default async function OutcomeDetailPage({ params }: {
               {relatedFlags.map((flag) => (
                 <li key={flag.id} className="rounded-card border border-brand p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <Link href={`/sites/${home.site.siteId}/flags/${flag.id}`} className="inline-flex min-h-11 max-w-full items-center text-sm font-medium hover:underline">{flag.problem}</Link>
+                    <Link href={`/sites/${home.site.siteId}/flags/${flag.id}`} className="inline-flex min-h-11 max-w-full items-center text-sm font-medium hover:underline">{customerFindingLabel(flag)}</Link>
                     <span className="text-xs text-muted-foreground">{flag.status === 'FIXED' ? 'Resolved' : 'Active'}</span>
                   </div>
+                  {home.flags.some(current => current.id === flag.id) && (home.actions.copy !== 'available' || hasRepairGuidance(flag.fix)) ? <SitePromptCopyButton siteId={home.site.siteId} flagId={flag.id} flagTitle={customerFindingLabel(flag)} availability={home.actions.copy} compact /> : null}
                 </li>
               ))}
             </ul>

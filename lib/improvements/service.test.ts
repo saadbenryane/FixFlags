@@ -490,28 +490,19 @@ describe('createImprovementAttempt', () => {
 })
 
 describe('recordFlagImprovementAttempt', () => {
-  it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('refuses an unconditional historical %s handoff before creating any receipt', async checkId => {
-    const recorded = { ...flag, checkId, fix: 'Replace the recorded content and move the action.', improvementOccurrence: null,
+  it.each(['placeholder-copy-detected', 'cta-below-fold-mobile', 'unoptimized-images'])('validates the same safe prepared guidance under the Site lock: %s', async checkId => {
+    const recorded = { ...flag, checkId, fix: 'Sign up to get the fix prompt.', improvementOccurrence: null,
       audit: { id: 'audit-1', projectId: 'project-1', productContract: null } }
     const before = structuredClone(recorded)
     mocks.flagFindFirst.mockResolvedValue(recorded)
-    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
-      .rejects.toThrow('Repair guidance is unavailable')
+    const validateHandoff = vi.fn(async () => { throw new Error('Revision changed at write boundary') })
+    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }, { validateHandoff }))
+      .rejects.toThrow('Revision changed at write boundary')
+    expect(validateHandoff).toHaveBeenCalledOnce()
     expect(mocks.improvementCreateMany).not.toHaveBeenCalled()
     expect(mocks.cycleEventUpsert).not.toHaveBeenCalled()
     expect(mocks.attemptCreate).not.toHaveBeenCalled()
     expect(recorded).toEqual(before)
-  })
-  it.each(['', 'Sign up', 'Create a free account to see evidence and fix prompts.',
-    'Sign up to see why this matters and get a fix prompt for your editor.', 'Sign up to get the fix prompt.',
-    'Sign up to see verification steps.'])('does not record a handoff for missing guidance or a historical signup gate: %j', async fix => {
-    mocks.flagFindFirst.mockResolvedValue({ ...flag, fix, improvementOccurrence: null,
-      audit: { id: 'audit-1', projectId: 'project-1', productContract: null } })
-    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
-      .rejects.toThrow('Repair guidance is unavailable')
-    expect(mocks.improvementCreateMany).not.toHaveBeenCalled()
-    expect(mocks.cycleEventUpsert).not.toHaveBeenCalled()
-    expect(mocks.attemptCreate).not.toHaveBeenCalled()
   })
 
   const ownedFlag = {
@@ -821,12 +812,12 @@ describe('reconcileImprovementVerification', () => {
         expect(mocks.attemptFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
           createdAt: { lte: startedAt }, sourceAudit: { projectId: 'product-1', flags: { some: { status: 'FIXED', resolvedInId: 'after' } } },
         }) }))
-        expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+        expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
           evidenceReference: { beforeAuditId: 'source', beforeFlagId: 'flag-1', afterAuditId: 'after', afterFlagId: null },
         }) }))
       } else {
         expect(results).toEqual([])
-        expect(mocks.attemptUpdate).not.toHaveBeenCalled()
+        expect(mocks.attemptUpdateMany).not.toHaveBeenCalled()
       }
     },
   )
@@ -858,7 +849,9 @@ describe('reconcileImprovementVerification', () => {
         outcome: null, sourceAuditId: 'review-1', id: 'attempt-1',
       }, take: 1 }) } },
     }) }))
-    expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'attempt-1' } }))
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      id: 'attempt-1', sourceAuditId: 'review-1', outcome: null, verificationAuditId: null,
+    }) }))
     expect(mocks.improvementUpdate).not.toHaveBeenCalled()
     if (verdict === 'passed') expect(mocks.flagUpdateMany).toHaveBeenCalledWith({
       where: { id: 'flag-1', auditId: 'review-1', audit: { projectId: 'product-1' }, status: { in: ['OPEN', 'REGRESSED'] } },
@@ -960,7 +953,7 @@ describe('reconcileImprovementVerification', () => {
     expect(results).toEqual([
       expect.objectContaining({ outcome: 'IMPROVED', status: unresolved ? 'PROPOSED' : 'VERIFIED' }),
     ])
-    expect(mocks.attemptUpdate).toHaveBeenCalledWith(
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           verificationAuditId: 'review-2',
@@ -1022,7 +1015,7 @@ describe('reconcileImprovementVerification', () => {
         comparable: false,
       }),
     ])
-    expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         outcome: 'INCONCLUSIVE',
         comparable: false,

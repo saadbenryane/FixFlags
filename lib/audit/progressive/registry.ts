@@ -14,7 +14,7 @@ export type TaskHandler = {
   timeoutMs: number | ((audit: Audit, input: TaskInput) => number); evaluate(context: TaskContext): Promise<TaskArtifact>;
   continuation?: boolean;
   validateResult(artifact: TaskArtifact): void;
-  commit?(context: TaskContext, artifact: TaskArtifact, tx: Prisma.TransactionClient): Promise<void>;
+  commit?(context: TaskContext, artifact: TaskArtifact, tx: Prisma.TransactionClient): Promise<void | TaskArtifact>;
   reconcile?(context: TaskContext): Promise<boolean>;
 }
 export function registerTaskHandlers(definitions: TaskHandler[]) {

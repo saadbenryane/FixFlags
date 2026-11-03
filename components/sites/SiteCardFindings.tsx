@@ -12,7 +12,7 @@ import { boardFindingTitle } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
-import { SiteFlagSelection, SiteFlagSelectionCheckbox, useSiteFlagSelection } from './SiteFlagSelection'
+import { SiteFlagSelection, SiteFlagSelectionCheckbox } from './SiteFlagSelection'
 import { SITE_DASHBOARD_COPY as D } from '@/lib/marketing/copy/site-dashboard'
 
 const PAGE_SIZE = 6
@@ -35,7 +35,6 @@ function SiteCardFindingsContent({ siteId, flags, recommendations, copyAvailabil
   ].filter((group) => group.items.length > 0)
   const [selected, setSelected] = useState(groups[0]?.id)
   const [page, setPage] = useState(0)
-  const selection = useSiteFlagSelection()
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const group = groups.find((item) => item.id === selected) ?? groups[0]
   if (!group && recommendations.length === 0) return null
@@ -59,14 +58,14 @@ function SiteCardFindingsContent({ siteId, flags, recommendations, copyAvailabil
     <div id={`${id}-flag-panel-${group.id}`} role={groups.length > 1 ? 'tabpanel' : undefined} aria-labelledby={groups.length > 1 ? `${id}-flag-tab-${group.id}` : undefined}>
     <ul className="space-y-2">{items.map((flag) => <li key={flag.id}>
         <div className="flex min-h-20 flex-col gap-3 rounded-card border border-border p-3 sm:flex-row sm:items-center">
-          <SiteFlagSelectionCheckbox flagId={flag.id} title={flag.problem} />
+          <SiteFlagSelectionCheckbox flagId={flag.id} title={boardFindingTitle(flag.problem, flag.checkId)} />
           <Icon className="h-5 w-5 shrink-0 text-brand" aria-hidden />
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold leading-snug">{boardFindingTitle(flag.problem)}</h3>
-            {flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? <p className="mt-1 text-xs text-muted-foreground">{SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance]}</p> : null}
+            <h3 className="text-sm font-semibold leading-snug">{boardFindingTitle(flag.problem, flag.checkId)}</h3>
+            {copyAvailability === 'available' && (flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable') ? <p className="mt-1 text-xs text-muted-foreground">{SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance]}</p> : null}
             {showPage ? <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="truncate" title={flag.pageUrl ?? undefined}>{flag.affectedPageCount > 1 ? D.affectedPages(flag.affectedPageCount) : pageLabel(flag.pageUrl)}</span></p> : null}
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">{!selection?.active && hasRepairGuidance(flag.fix) ? <SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /> : null}{onOpenFlag ? <Button size="sm" variant="outline" onClick={event => onOpenFlag(flag.id, event.currentTarget)}>{D.viewFlag}</Button> : <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>{D.viewFlag}</Link></Button>}</div>
+          <div className="flex shrink-0 flex-wrap gap-2">{copyAvailability !== 'available' || hasRepairGuidance(flag.fix) ? <SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.id} flagTitle={boardFindingTitle(flag.problem, flag.checkId)} /> : null}{onOpenFlag ? <Button size="sm" variant="outline" onClick={event => onOpenFlag(flag.id, event.currentTarget)}>{D.viewFlag}</Button> : <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>{D.viewFlag}</Link></Button>}</div>
         </div>
     </li>)}</ul>
     </div>
@@ -79,6 +78,6 @@ export function RecommendationList({ recommendations }: { recommendations: SiteF
   if (recommendations.length === 0) return null
   return <section className="space-y-2 pt-4" aria-labelledby="recommendations-heading">
     <h3 id="recommendations-heading" className="text-sm font-medium text-muted-foreground">{D.suggestions}</h3>
-    <ul className="space-y-2">{recommendations.map((flag) => <li key={flag.id} className="flex min-h-16 items-start gap-3 rounded-card border border-dashed border-border p-3"><Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden /><div className="min-w-0"><p className="text-sm font-medium">{boardFindingTitle(flag.problem)}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden />{pageLabel(flag.pageUrl)}</p></div></li>)}</ul>
+    <ul className="space-y-2">{recommendations.map((flag) => <li key={flag.id} className="flex min-h-16 items-start gap-3 rounded-card border border-dashed border-border p-3"><Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden /><div className="min-w-0"><p className="text-sm font-medium">{boardFindingTitle(flag.problem, flag.checkId)}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden />{pageLabel(flag.pageUrl)}</p></div></li>)}</ul>
   </section>
 }

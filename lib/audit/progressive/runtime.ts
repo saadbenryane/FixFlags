@@ -11,7 +11,7 @@ import { lifecycleHandlers } from './lifecycle'
 import { accountHandlers } from './accounts'
 import { actionHandlers } from './actions'
 import { registerTaskHandlers } from './registry'
-import { persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, recoverProgressiveTasks } from './engine'
+import { persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, recoverProgressiveTasks, recoverInterruptedTaskDelivery } from './engine'
 import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
@@ -86,14 +86,10 @@ export function startProgressiveWorkers() {
     worker.on('error', error => logger.error('Execution task worker error', { resource, message: error.message }))
     worker.on('failed', (job, error) => {
       logger.warn('Task delivery interrupted; ledger recovery owns retry',
-        { resource, taskId: job?.data.taskId, message: error.message })
-      const taskId = job?.data?.taskId
-      if (typeof taskId !== 'string') return
+        { resource, taskId: job?.data?.taskId, message: error.message })
       // Dispatch otherwise leaves the unclaimed task quiet for half a minute.
-      void prisma.auditExecutionTask.updateMany({
-        where: { id: taskId, workState: 'READY', workDispatchState: 'SENT' },
-        data: { workDispatchState: 'PENDING', workRetryAt: new Date(Date.now() + 1000) },
-      }).catch(writeError => logger.error('Interrupted task could not be requeued', writeError, { resource, taskId }))
+      void recoverInterruptedTaskDelivery(job).catch(writeError => logger.error('Interrupted task could not be requeued', writeError,
+        { resource, taskId: job?.data?.taskId }))
     })
     return worker
   })

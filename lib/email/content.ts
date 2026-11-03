@@ -1,4 +1,5 @@
 import { load } from 'cheerio'
+import { randomUUID } from 'node:crypto'
 
 /** Derive the text alternative from the same authored copy and preserve every
  * action URL. No second copy deck can drift from the HTML message. */
@@ -11,7 +12,15 @@ export function emailContent(html: string): { html: string; text: string } {
     link.replaceWith(link.contents())
   })
   $('br').replaceWith('\n')
+  const verbatim = new Map<string, string>()
+  $('pre').each((_, element) => {
+    const token = `FIXFLAGS-PROMPT-${randomUUID()}`
+    verbatim.set(token, $(element).text())
+    $(element).replaceWith(`${token}\n\n`)
+  })
   $('li').prepend('- ')
   $('p, h1, h2, h3, li, tr').append('\n\n')
-  return { html, text: $('body').text().replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim() }
+  let text = $('body').text().replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  for (const [token, prompt] of verbatim) text = text.replaceAll(token, () => prompt)
+  return { html, text }
 }

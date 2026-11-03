@@ -4,7 +4,7 @@ Have your live website address ready, for example `https://yourwebsite.com`. You
 
 Use a page visitors can open without signing in. If your website is still only on your computer, publish it first. For pages that ask for a password or a “prove you're human” check, see [Troubleshooting](/docs/troubleshooting).
 
-## Analyze a website
+## Check your website
 
 1. Open [Add website](/new), or use the address field on the homepage.
 2. Paste your website address and select **Check your website**.
@@ -16,16 +16,16 @@ The results are grouped into areas such as Pages, Search, and Performance. A **F
 
 To keep your results, sign in or create an account from this page. This saves the website as a **Site** in your account. [Help with saving your website](/help/getting-started/save-your-site).
 
-## Verify a Flag
+## Fix a problem
 
 1. Open a Flag and read the problem.
-2. Copy the suggested fix into your AI tool, or send it to your developer.
+2. Copy the fix instructions and paste them where you built your website, or send them to someone who can help.
 3. Review and publish the change to your live website.
 4. Return to the same Flag and select **Check now**.
 
 FixFlags checks the affected page or action again. Copying a fix does not mark the problem as solved. If the check cannot finish, the Flag stays unverified.
 
-[More about fixing with AI](/docs/fix-with-ai).
+[How to copy and paste a fix](/docs/fix-with-ai).
 
 ## Keep watching
 

@@ -13,6 +13,7 @@ import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 vi.mock('../SiteFlagActions', () => ({ SiteFlagActions: () => <button>Owner fix actions</button> }))
 function render(element: ReactNode) {
@@ -27,7 +28,7 @@ function view(owner = false) {
     { url: flag.affectedPaths[1], title: 'About', status: 'COMPLETED', checkedAt: '2026-10-24T00:00:00Z' }]
   return { flags: [flag], resolvedFlags: [], checkedPages, counts: siteScopeCounts([flag], checkedPages, 2), actions: siteViewerActions(owner) } as SiteHomeView
 }
-const detail = { flag: { ...flag, sourceAuditId: 'audit', evidence: 'Description is absent in the rendered page.', evidenceMissing: false,
+const detail = { flag: { ...flag, checkId: null, sourceAuditId: 'audit', evidence: 'Description is absent in the rendered page.', evidenceMissing: false,
   expectedBehavior: 'A unique description is rendered.', viewport: null, supportingObservations: [], supportingEvidenceUnreadable: false,
   performanceEvidenceSource: null, verifying: false, status: 'OPEN' }, capture: null }
 afterEach(() => vi.unstubAllGlobals())
@@ -59,7 +60,7 @@ describe('dashboard reading and handoff', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(detail)))
     render(<SiteFlagPanel siteId="site" flagId="flag-1" view={view()} onClose={vi.fn()} restoreFocus={vi.fn()} />)
     expect(await screen.findByText(detail.flag.evidence)).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Copy fix prompt' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite%3Fflag%3Dflag-1')
+    expect(screen.getByRole('link', { name: SITE_BOARD_COPY.copyPrompt })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite%3Fflag%3Dflag-1')
     expect(screen.queryByRole('button', { name: 'Owner fix actions' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Full details and history' })).toHaveAttribute('href', '/sites/site/flags/flag-1')
   })
@@ -93,8 +94,8 @@ describe('dashboard reading and handoff', () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ ok: true, prompt: 'Full category prompt', tasks: [{ sourceFlagId: 'source-1', promptHash: 'a'.repeat(64) }] }))
     vi.stubGlobal('fetch', fetch)
     render(<SiteFixBundleButton siteId="site" area="search" availability="available" />)
-    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
-    expect(await screen.findByRole('textbox', { name: 'Fix prompt' })).toHaveValue('Full category prompt')
+    fireEvent.click(screen.getByRole('button', { name: 'View instructions' }))
+    expect(await screen.findByRole('textbox', { name: 'Fix instructions' })).toHaveValue('Full category prompt')
     expect(writeText).not.toHaveBeenCalled()
     expect(fetch).toHaveBeenCalledTimes(1)
   })
@@ -106,13 +107,13 @@ describe('dashboard reading and handoff', () => {
     const flagIds = Array.from({ length: MAX_REPAIR_TASKS + 1 }, (_, index) => `flag-${index}`)
     const rendered = render(<SiteFixBundleButton siteId="site" flagIds={flagIds} availability="available" />)
     expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(flagIds.length) })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'View prompt' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'View instructions' })).toBeDisabled()
     expect(screen.getByRole('status')).toHaveTextContent(`Select up to ${MAX_REPAIR_TASKS} Flags`)
     expect(fetch).not.toHaveBeenCalled()
     expect(writeText).not.toHaveBeenCalled()
     rendered.rerender(<SiteFixBundleButton siteId="site" flagIds={flagIds.slice(0, MAX_REPAIR_TASKS)} availability="available" />)
     expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(MAX_REPAIR_TASKS) })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'View prompt' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'View instructions' })).toBeEnabled()
     expect(screen.queryByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one fix prompt.`)).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -133,7 +134,7 @@ describe('dashboard reading and handoff', () => {
       : Response.json({ ok: true, prompt: 'Task', handoff: { flagId: 'source-1', action: 'HANDOFF_COPIED', improvementId: 'i', sourceReviewId: 'a' } }))
     vi.stubGlobal('fetch', fetch)
     render(<SiteFixBundleButton siteId="site" area="search" availability="available" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Copy all fix prompts' }))
+    fireEvent.click(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll }))
     expect(await screen.findByText('Fixes copied')).toBeVisible()
     expect(writes).toEqual(['All original tasks'])
     expect(fetch).toHaveBeenCalledWith('/api/sites/site/fix-prompt', expect.objectContaining({ body: JSON.stringify({ area: 'search' }) }))
@@ -157,7 +158,7 @@ describe('dashboard reading and handoff', () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ ok: true, prompt: 'Full scoped prompt', tasks: [{ sourceFlagId: 'f', promptHash: 'a'.repeat(64) }] }))
     vi.stubGlobal('fetch', fetch)
     render(<SiteFixBundleButton siteId="site" availability="available" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Copy all fix prompts' }))
+    fireEvent.click(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('textbox')).toHaveValue('Full scoped prompt')
     expect(fetch).toHaveBeenCalledTimes(1)

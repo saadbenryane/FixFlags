@@ -35,6 +35,7 @@ import { hasUnresolvedFlagEvidence } from '@/lib/audit/attention'
 import { loadExecutionProgress } from './execution-progress'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import { loadMonitoringHistory } from './monitoring-history'
+import { readSiteEvidence } from './site-evidence-read'
 import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
 import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
@@ -91,6 +92,11 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
   const site = options.site ?? await loadSiteRecord(siteId)
   if (!site) return null
   if (site.siteId !== siteId) throw new Error('Site query identity mismatch')
+  return readSiteEvidence(site, () => readSiteHome(site, options))
+}
+
+async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise<SiteHomeView> {
+  const siteId = site.siteId
   const now = new Date()
   const settingsEvidence = options.readScope === 'settings' && options.ownerEvidence
 
@@ -142,8 +148,8 @@ export async function loadSiteHome(siteId: string, options: SiteReadOptions = {}
   ] = await Promise.all([
     loadSiteCheckResultPage(site, audit, undefined, categoryEvidence),
     loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null),
-    options.ownerEvidence && site.projectId ? loadUptimeSummary(site.projectId, now) : undefined,
-    options.ownerEvidence && site.projectId ? loadUptimeEvents(site.projectId) : undefined,
+    options.ownerEvidence && site.projectId ? loadUptimeSummary(site, now) : undefined,
+    options.ownerEvidence && site.projectId ? loadUptimeEvents(site) : undefined,
     audit?.id ? loadTechnologyProfile(audit.id) : null,
     loadActiveSiteRuns(site, now),
     options.connections ?? (site.projectId ? loadSiteConnectionViews(site.projectId) : null),

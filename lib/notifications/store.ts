@@ -11,9 +11,12 @@ export async function saveNotificationPreferences(userId: string, input: unknown
     const existing = await tx.notificationPreference.findUnique({ where: { userId } })
     const previous = existing ? readNotificationPreferences(existing) : DEFAULT_NOTIFICATION_PREFERENCES
     const changes = notificationPreferencesSchema.parse({ ...previous, ...patch })
-    const scheduleChanged = !existing || (['cadence', 'hour', 'weekday', 'timeZone'] as const).some(key => changes[key] !== previous[key])
     const sites = await tx.project.findMany({ where: { userId, ...monitored }, select: { watchInterval: true, watchEveryMinutes: true } })
     const resolvedCadence = summaryCadence(changes, sites)
+    // A monitoring edit may arrive before the scheduler reconciles it. Keep
+    // the effective cadence, due time and receipt revision one transition.
+    const scheduleChanged = !existing || existing.resolvedCadence !== resolvedCadence ||
+      (['cadence', 'hour', 'weekday', 'timeZone'] as const).some(key => changes[key] !== previous[key])
     const nextSendAt = scheduleChanged ? nextSummaryAt(changes, resolvedCadence, now) : existing.nextSendAt
     const saved = await tx.notificationPreference.upsert({ where: { userId },
       create: { userId, ...changes, nextSendAt, resolvedCadence }, update: { ...changes, nextSendAt, resolvedCadence, revision: { increment: scheduleChanged ? 1 : 0 } } })

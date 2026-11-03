@@ -382,7 +382,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect(await prisma.flag.count({ where: { auditId } })).toBe(0)
   })
 
-  it.each(['pending', 'unavailable'] as const)('retains %s guidance from the finding source rather than the latest broad check', async state => {
+  it.each(['pending', 'unavailable'] as const)('retains the source repair recipe while its prescription is %s', async state => {
     const time = Date.now()
     await prisma.audit.update({ where: { id: auditId }, data: { includeAi: state === 'unavailable',
       triageAt: new Date(time), aiReviewAt: null, failureCode: null } })
@@ -401,9 +401,13 @@ run('current Site evidence publication in PostgreSQL', () => {
       await prisma.improvementOccurrence.create({ data: { improvementId: improvement.id, auditId: source.id, flagId: flag.id, kind: 'OBSERVED' } })
     }
     const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
-    expect(home.flags.find(item => item.sourceFlagId === flag.id)?.repairGuidance).toBe(state)
-    expect((await loadSiteFlagDetail(home.site, flag.id))?.repairGuidance).toBe(state)
-    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).flags.find(item => item.sourceFlagId === flag.id)?.repairGuidance).toBe(state)
+    const prepared = home.flags.find(item => item.sourceFlagId === flag.id)
+    expect(prepared).toMatchObject({ repairGuidance: 'ready' })
+    expect(await loadSiteFlagDetail(home.site, flag.id)).toMatchObject({ sourceAuditId: source.id, repairGuidance: 'ready', fix: prepared?.fix,
+      repairDefinition: { source: 'check-recipe', checkId: flag.checkId } })
+    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).flags.find(item => item.sourceFlagId === flag.id)?.fix)
+      .toEqual(prepared?.fix)
+    expect((await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).fix).toBe('')
     let newerFlagId: string | null = null
     if (state === 'pending') {
       const newer = await prisma.flag.create({ data: { auditId, source: 'DETERMINISTIC', checkId: flag.checkId,
@@ -412,7 +416,7 @@ run('current Site evidence publication in PostgreSQL', () => {
         fix: 'Guidance for the newer occurrence.', pageUrl: latest.url } })
       newerFlagId = newer.id
       expect((await loadSiteHome(projectId, { ownerEvidence: true }))!.flags.some(item => item.sourceFlagId === flag.id)).toBe(false)
-      expect((await loadSiteFlagDetail(home.site, flag.id))?.repairGuidance).toBe('pending')
+      expect(await loadSiteFlagDetail(home.site, flag.id)).toMatchObject({ sourceAuditId: source.id, repairGuidance: 'ready', fix: prepared?.fix })
     }
     await prisma.flag.update({ where: { id: flag.id }, data: { fix: 'Give the original button a clear accessible name.' } })
     await prisma.audit.update({ where: { id: source.id }, data: { aiReviewAt: new Date() } })
@@ -536,7 +540,12 @@ run('current Site evidence publication in PostgreSQL', () => {
     const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.flags).toHaveLength(0)
     expect(home?.recommendations.find(item => item.sourceFlagId === flag.id)).toMatchObject({ supportingEvidenceUnreadable: true })
-    expect(home?.recommendations.find(item => item.sourceFlagId === flag.id)).toMatchObject({ fix: '', repairGuidance: 'unavailable' })
+    const recommendation = home?.recommendations.find(item => item.sourceFlagId === flag.id)
+    expect(recommendation).toMatchObject({ repairGuidance: 'ready' })
+    expect(await loadSiteFlagDetail(home!.site, flag.id)).toMatchObject({ repairGuidance: 'ready', fix: recommendation?.fix,
+      repairDefinition: { kind: 'evidence-recovery', source: 'evidence-recovery' } })
+    expect(recommendation?.fix).toContain('Do not change the website based on this record.')
+    expect(recommendation?.fix).not.toContain('Retained original guidance.')
     expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).recommendations[0].supportingEvidenceUnreadable).toBe(true)
     expect(home?.presentation.result.state).toBe('could_not_verify')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('could_not_verify')

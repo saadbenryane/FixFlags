@@ -25,9 +25,22 @@ export async function prepareRepairPrompt(scope: RepairPromptScope, signal: Abor
 }
 
 /** Record the exact prepared tasks only after their physical clipboard write. */
-export async function copyRepairPrompt(scope: RepairPromptScope, prepared: PreparedRepairPrompt): Promise<boolean> {
-  try { await navigator.clipboard.writeText(prepared.prompt) }
-  catch { return false }
+export async function copyRepairPrompt(scope: RepairPromptScope, preparation: PreparedRepairPrompt | Promise<PreparedRepairPrompt>, onCopied?: () => void): Promise<
+  { copied: false; prompt: string } | { copied: true; recording: 'recorded' | 'failed'; notice: string | null }> {
+  const pending = Promise.resolve(preparation)
+  // Start the native write inside the click gesture. WebKit accepts a promised
+  // Blob while preparation is in flight, without losing that activation.
+  let write: Promise<void>
+  try {
+    write = typeof navigator.clipboard?.write === 'function' && typeof ClipboardItem !== 'undefined'
+      ? navigator.clipboard.write([new ClipboardItem({ 'text/plain': pending.then(task =>
+        new Blob([task.prompt], { type: 'text/plain' })) })])
+      : pending.then(task => navigator.clipboard.writeText(task.prompt))
+  } catch (error) { write = Promise.reject(error) }
+  const written = write.then(() => true, () => false)
+  const prepared = await pending
+  if (!await written) return { copied: false, prompt: prepared.prompt }
+  onCopied?.()
 
   const failures: unknown[] = []
   for (let offset = 0; offset < prepared.tasks.length; offset += 4) {
@@ -39,14 +52,12 @@ export async function copyRepairPrompt(scope: RepairPromptScope, prepared: Prepa
     for (const result of results) if (result.status === 'rejected') failures.push(result.reason)
   }
   if (failures.length) {
-    if (scope.kind === 'bundle') throw new SiteActionError(SITE_DASHBOARD_COPY.bundleRecordFailed)
+    if (scope.kind === 'bundle') return { copied: true, recording: 'failed', notice: SITE_DASHBOARD_COPY.bundleRecordFailed }
     const failure = failures[0]
     const message = failure instanceof SiteActionError && failure.code === 'REPAIR_TASK_CHANGED'
       ? `${REPORT_COPY.explorer.promptCopiedRecordFailed}. ${SITE_ACTION_COPY.repairGuidance.changed}`
       : REPORT_COPY.explorer.promptCopiedRecordFailed
-    throw new SiteActionError(message,
-      failure instanceof SiteActionError ? failure.status : undefined,
-      failure instanceof SiteActionError ? failure.code : undefined)
+    return { copied: true, recording: 'failed', notice: message }
   }
-  return true
+  return { copied: true, recording: 'recorded', notice: null }
 }

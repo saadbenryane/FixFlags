@@ -34,8 +34,7 @@ import { requestScheduledSiteRun } from '@/lib/sites/application/scheduled-runs'
 import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { fixedClock, systemClock } from '@/lib/time/clock'
-import { executeUptimeProbe, scheduleUptimeProbes } from '@/lib/uptime/service'
-import { startUptimeWorker } from '@/lib/uptime/queue'
+import { scheduleUptimeProbes } from '@/lib/uptime/service'
 import { loadUptimeSummary } from '@/lib/uptime/queries'
 import { enqueueAiReview, enqueuePendingAiReview, recoverPendingAiReviews } from '@/lib/audit/enqueue-ai-review'
 import { executionWrite, withExecutionOwnership } from '@/lib/audit/execution-ownership'
@@ -74,7 +73,6 @@ run('URL-first analysis through claim and monitored repair', () => {
   let repaired = false
   let ownerCreated = false
   let worker: ReturnType<typeof startWorker> | undefined
-  let uptime: ReturnType<typeof startUptimeWorker> | undefined
   async function mcpCall(userId: string, name: string, args: Record<string, unknown>) {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
@@ -148,10 +146,9 @@ run('URL-first analysis through claim and monitored repair', () => {
     await getAuditBrowser(); worker = startWorker(); await worker.waitUntilReady()
     const diagnostics = getBrowserDiagnostics()
     await touchWorkerHeartbeat({ browserOk: diagnostics.connected, activeBrowserContexts: diagnostics.activeContexts, queueState: 'idle' })
-    uptime = startUptimeWorker(executeUptimeProbe)
   })
   afterAll(async () => {
-    await uptime?.close(); await worker?.close(); await clearWorkerHeartbeat(); await closeBrowser()
+    await worker?.close(); await clearWorkerHeartbeat(); await closeBrowser()
     await deleteAuditScreenshotAssets(capturedAudits)
     // Pending alerts from this completed fixture cannot enter a later suite's
     // bounded global retry sweep. The database guard above confines cleanup.
@@ -173,7 +170,7 @@ run('URL-first analysis through claim and monitored repair', () => {
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
       expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, workKind: 'finalize' } }))
         .toMatchObject({ workState: 'COMPLETED' })
-      if (browserRequired) expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, workKind: 'browser' } }))
+      if (browserRequired) expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, targetKey: 'task:p0:browser' } }))
         .toMatchObject({ workState: 'COMPLETED', workResult: { data: { metadata: { renderedCopy: { complete: true } } } } })
     }, { timeout: 90_000, interval: 200 })
   }
@@ -262,7 +259,7 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect((await loadExecutionProgress(site, source.id))?.total).toBeGreaterThan(0)
     expect(availability.bindings).toMatchObject([{ mechanism: 'HTTP_AVAILABILITY' }])
     await scheduleUptimeProbes(systemClock, 1, site.projectId!)
-    await vi.waitFor(async () => expect(await loadUptimeSummary(site.projectId!)).toMatchObject({ enabled: true, state: 'online' }), { timeout: 10_000, interval: 100 })
+    await vi.waitFor(async () => expect(await loadUptimeSummary(site)).toMatchObject({ enabled: true, state: 'online' }), { timeout: 10_000, interval: 100 })
     const monitor = await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId: site.projectId! } })
     repaired = true
     const fixed = await recordSiteFlagFix({ siteId: site.siteId, userId: owner, flagId: flag.id,

@@ -14,6 +14,7 @@ describe('startScanWithHandoff', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('opens the Site board when siteId is present', async () => {
@@ -127,5 +128,58 @@ describe('startScanWithHandoff', () => {
       status: 503,
     }))
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('opens an admitted Site even when optional start analytics throws', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ siteId: 'site-1', reportId: 'audit-1' })))
+    const onStarted = vi.fn(() => { throw new Error('Analytics unavailable') })
+    await expect(startScanWithHandoff({ url: 'https://example.com', body: { url: 'https://example.com' }, navigate, onStarted }))
+      .resolves.toMatchObject({ ok: true, siteId: 'site-1' })
+    expect(onStarted).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('/sites/site-1')
+  })
+
+  it('preserves a consumed API error body and its plan action', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ message: 'Choose a plan for another Site.',
+      code: 'SITE_LIMIT', action: 'upgrade' }, { status: 402 })))
+    await expect(startScanWithHandoff({ url: 'https://example.com', body: {}, navigate })).resolves.toEqual({
+      ok: false, status: 402, code: 'SITE_LIMIT', action: 'upgrade', message: 'Choose a plan for another Site.',
+    })
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('does not call a refused platform request queued when its body supplies no admission evidence', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Platform rate limit', { status: 429, headers: { 'Retry-After': '90' } })))
+    const result = await startScanWithHandoff({ url: 'https://example.com', body: {}, navigate })
+    expect(result).toMatchObject({ ok: false, status: 429, code: 'RATE_LIMITED' })
+    if (result.ok) throw new Error('Expected refusal')
+    expect(result.message).toContain('2 minutes')
+    expect(result.message).not.toMatch(/queued/i)
+    expect(result.action).not.toBe('queued')
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it.each(['headers', 'body'] as const)('releases a stalled %s request without handing off its late result', async phase => {
+    vi.useFakeTimers()
+    let finishHeaders!: (response: Response) => void, finishBody!: (body: unknown) => void
+    const onStarted = vi.fn()
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { finishHeaders = resolve })))
+    let completed = false
+    const pending = startScanWithHandoff({ url: 'https://example.com', body: {}, navigate, onStarted })
+      .then(result => { completed = true; return result })
+    await vi.advanceTimersByTimeAsync(20_000)
+    if (phase === 'body') {
+      finishHeaders({ ok: true, json: () => new Promise(resolve => { finishBody = resolve }) } as Response)
+      await vi.advanceTimersByTimeAsync(0)
+    }
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(completed).toBe(true)
+    expect(await pending).toMatchObject({ ok: false })
+    if (phase === 'headers') finishHeaders(Response.json({ siteId: 'late-site' }))
+    else finishBody({ siteId: 'late-site' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(navigate).not.toHaveBeenCalled()
+    expect(onStarted).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

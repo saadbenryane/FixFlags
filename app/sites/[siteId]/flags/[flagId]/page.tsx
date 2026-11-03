@@ -10,6 +10,7 @@ import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { customerAttemptSource } from '@/lib/sites/flag-label'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { connectionLines, loadSiteConnectionViews } from '@/lib/sites/connections/read'
@@ -138,7 +139,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     ? relatedOutcome?.kind === 'CHECKOUT' ? SITE_BOARD_COPY.checkoutRecovered
       : relatedOutcome?.kind === 'AVAILABILITY' ? SITE_BOARD_COPY.pageRecovered
         : SITE_BOARD_COPY.problemRecovered
-    : flag.problem
+    : customerFindingLabel(flag)
 
   return (
     <SiteShell actions={home.actions} siteId={resolvedId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>

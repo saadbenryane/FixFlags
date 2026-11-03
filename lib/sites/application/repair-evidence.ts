@@ -8,10 +8,15 @@ import { loadPerformanceEvidence } from './performance-evidence'
 import { MAX_MCP_CAPTURE_BYTES, MAX_REPAIR_CAPTURE_BYTES, repairEvidenceSchema, type RepairEvidence } from '../repair-evidence-contract'
 import type { SiteRecord } from '../types'
 import type { SiteFlagDetail } from '../flags'
+import { readSiteEvidence } from './site-evidence-read'
 
 /** Read an exact persisted source asset from private storage. Never fetch a
  * reported URL, forward a key, or substitute the newest Site screenshot. */
 export async function loadSiteRepairEvidence(site: SiteRecord, flag: SiteFlagDetail, captureUrl: string) {
+  return readSiteEvidence(site, () => readSiteRepairEvidence(site, flag, captureUrl))
+}
+
+async function readSiteRepairEvidence(site: SiteRecord, flag: SiteFlagDetail, captureUrl: string) {
   const sourceFlagId = flag.sourceFlagId ?? flag.id
   const performanceMeasurements = flag.evidenceContext?.source === 'DETERMINISTIC' &&
     performanceEvidenceSource(flag.checkId) === 'lab' && flag.pageUrl

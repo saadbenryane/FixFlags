@@ -28,7 +28,10 @@ function slowLoadFlag(load: PageLoadExperience | null | undefined): Deterministi
   }
 }
 
-export function runInteractionChecks(metrics: CaptureMetrics | null, record?: CheckRecorder): DeterministicFlag[] {
+export type InteractionEvidence = Partial<Pick<CaptureMetrics, 'motionObservation' | 'motionComplete' | 'motionIgnoresReducedPreference' |
+  'motionSampleLabel' | 'loadingObservation' | 'stuckLoadingIndicator' | 'stuckLoadingLabel' | 'loadExperience' | 'desktopLoadExperience'>>
+
+export function runInteractionChecks(metrics: InteractionEvidence | null, record?: CheckRecorder): DeterministicFlag[] {
   if (metrics?.motionObservation) motionAssertions(metrics.motionObservation).forEach(assertion => record?.(assertion))
   else recordObservation(record, 'reduced-motion', 'Reduced-motion behavior',
     'Reduced motion lowers each observed type of significant motion below half its normal count, or no motion remains',
@@ -40,11 +43,9 @@ export function runInteractionChecks(metrics: CaptureMetrics | null, record?: Ch
   if (windows.length) windows.forEach(window => record?.(loadingDelayObservation(window, 3000)))
   else recordObservation(record, 'loading-delay', 'Recorded loading delay', 'Blocking initial loading UI clears within 3000ms',
     'No initial and final loading window was recorded.', undefined, true)
-  if (metrics == null) return []
-
   const findings: DeterministicFlag[] = []
 
-  if (metrics.stuckLoadingIndicator && metrics.loadingObservation?.restricted !== true) {
+  if (metrics?.stuckLoadingIndicator && metrics.loadingObservation?.restricted !== true) {
     const label = metrics.stuckLoadingLabel ? `"${metrics.stuckLoadingLabel}"` : 'loading UI'
     findings.push(scopeLoadingFlag({
       checkId: 'loading-indicator-stuck',
@@ -59,12 +60,12 @@ export function runInteractionChecks(metrics: CaptureMetrics | null, record?: Ch
     }, [metrics.loadingObservation]))
   }
 
-  const mobileSlow = slowLoadFlag(metrics.loadExperience)
-  const desktopSlow = slowLoadFlag(metrics.desktopLoadExperience)
+  const mobileSlow = slowLoadFlag(metrics?.loadExperience)
+  const desktopSlow = slowLoadFlag(metrics?.desktopLoadExperience)
   const slow = mobileSlow ?? desktopSlow
   if (slow) findings.push(scopeLoadingFlag(slow, windows.filter(window => slowLoadFlag(window)).map(window => window.observation)))
 
-  if (metrics.motionIgnoresReducedPreference) {
+  if (metrics?.motionIgnoresReducedPreference) {
     const label = metrics.motionSampleLabel ? `"${metrics.motionSampleLabel}"` : 'animated element'
     findings.push(scopeMotionFlag({
       checkId: 'motion-ignores-reduced-preference',

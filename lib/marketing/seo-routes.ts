@@ -15,6 +15,7 @@ export type IndexableRoute = {
 /** Single registry for sitemap, llms.txt, and SEO guard checks. */
 export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/', seoKey: 'home', priority: 1.0, changeFrequency: 'weekly' },
+  { path: '/connect-ai', seoKey: 'connectAi', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/integrations', seoKey: 'integrations', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/waitlist', seoKey: 'waitlist', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/coverage', seoKey: 'coverage', priority: 0.8, changeFrequency: 'monthly' },
@@ -61,6 +62,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     title: 'Product',
     links: [
       { path: '/', label: 'Home', note: 'Your website, looked after' },
+      { path: '/connect-ai', label: 'FixFlags and your AI', note: 'Independent checks and focused fix prompts. New direct connections are coming soon.' },
       { path: '/integrations', label: 'Integrations', note: 'GitHub authorization available; every other connection coming soon' },
       { path: '/coverage', label: 'What FixFlags checks', note: 'Coverage, setup, and evidence limits' },
       { path: '/security', label: 'Privacy and security', note: 'Evidence access, AI processing, and control' },

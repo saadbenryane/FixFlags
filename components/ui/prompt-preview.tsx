@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { Textarea } from './textarea'
 import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 
-export function PromptPreviewButton({ prompt, loadPrompt, disabled, iconOnly = false, onLockedAction }: {
+export function PromptPreviewButton({ prompt, loadPrompt, disabled, iconOnly = false, onLockedAction, label = C.viewPrompt }: {
   prompt?: string; loadPrompt?: () => Promise<string>; disabled?: boolean; iconOnly?: boolean; onLockedAction?: () => void;
+  label?: string;
 }) {
   const [visible, setVisible] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -26,7 +27,7 @@ export function PromptPreviewButton({ prompt, loadPrompt, disabled, iconOnly = f
     finally { pending.current = false; setLoading(false) }
   }
   return <>
-    <Button type="button" variant="ghost" size={iconOnly ? 'icon' : 'sm'} disabled={disabled || loading} aria-label={C.viewPrompt} title={C.viewPrompt} onClick={() => void show()}><Eye size={15} aria-hidden />{!iconOnly ? C.viewPrompt : null}</Button>
+    <Button type="button" variant="ghost" size={iconOnly ? 'icon' : 'sm'} disabled={disabled} loading={loading} aria-label={label} title={label} onClick={() => void show()}>{!loading ? <Eye size={15} aria-hidden /> : null}{!iconOnly ? C.viewPrompt : null}</Button>
     {error ? <span role="alert" className="text-xs text-destructive">{error}</span> : null}
     <PromptPreviewDialog prompt={visible ?? ''} open={visible !== null} onOpenChange={open => { if (!open) setVisible(null) }} />
   </>

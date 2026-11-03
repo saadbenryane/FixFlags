@@ -5,6 +5,7 @@ import { projectOutcomeView, type OutcomeViewSource, type SiteOutcomeView } from
 import type { CurrentBindingRevision } from '@/lib/sites/domain/assessment-comparability'
 import { loadOutcomeBindingRevisions } from './outcome-binding-revisions'
 import { loadOutcomeDetailReferences, loadOutcomeSummaryReferences } from './outcome-references'
+import { readSiteEvidence } from './site-evidence-read'
 
 export const outcomePageProjection = { include: { page: { select: { url: true, projectId: true, provisionalSiteId: true } } } } as const
 export const outcomeRunRequestSelect = { id: true, status: true, requestedAt: true, errorMessage: true, auditId: true } as const
@@ -25,6 +26,10 @@ export async function toOutcomeView(row: OutcomeProjectionSource, bindingRevisio
 }
 
 export async function listSiteOutcomes(site: SiteRecord, now = new Date()): Promise<SiteOutcomeView[]> {
+  return readSiteEvidence(site, () => readSiteOutcomes(site, now))
+}
+
+async function readSiteOutcomes(site: SiteRecord, now: Date): Promise<SiteOutcomeView[]> {
   const ownerFilter =
     site.kind === 'project'
       ? { projectId: site.projectId! }
@@ -60,6 +65,11 @@ export async function loadSiteOutcomeDetail(
 /** Read bounded evidence per Outcome, with one batch for each shared authority. */
 export async function loadSiteOutcomeDetails(site: SiteRecord,
   options: { outcomeId?: string; excludeGeneric?: boolean } = {}): Promise<SiteOutcomeDetailView[]> {
+  return readSiteEvidence(site, () => readSiteOutcomeDetails(site, options))
+}
+
+async function readSiteOutcomeDetails(site: SiteRecord,
+  options: { outcomeId?: string; excludeGeneric?: boolean }): Promise<SiteOutcomeDetailView[]> {
   const ownerFilter = site.kind === 'project'
     ? { projectId: site.projectId! }
     : { provisionalSiteId: site.provisionalSiteId! }

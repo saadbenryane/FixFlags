@@ -7,8 +7,8 @@ import { runMobileChecks } from '../checks/mobile'
 import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION, SECURITY_HEADER_WITHHELD_LIMITATION } from '../checks/security-headers'
 import { recordCheckObservations, recordInpObservation } from '../checks/observations'
 import { runConsoleChecks, consoleObservations } from '../checks/console'
-import { readScreenshotSnapshot, browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
-import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
+import { readScreenshotSnapshot, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
+import { serializeArtifact, readArtifact, TaskFailure, taskIsSettled } from './contracts'
 import { checkArtifactSchema, commitFindings, commitCheckReceipt, flagSchema } from './results'
 import type { TaskContext, TaskHandler } from './registry'
 import { runSearchWorkflow, priorSearchReceipt, recordSearchVerifiers, combineSearchReceipts } from '../search/workflow'
@@ -28,7 +28,7 @@ import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
 import { scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
 import { capturedPageLinks, checkPublicLinks, missingPublicLinkEvidence } from '../checks/public-links'
-import { runInteractionChecks } from '../checks/interaction'
+import { runInteractionChecks, type InteractionEvidence } from '../checks/interaction'
 import { loadingDelayObservation, mobileLoadingDelayFlag } from '../checks/loading-evidence'
 import { applyMotionObservation, motionObservationSchema } from '../checks/motion-evidence'
 import { scopeRenderedPageEvidence } from '../checks/rendered-page-evidence'
@@ -37,13 +37,17 @@ import { publicResponseRestriction } from '../browser/page-capture'
 import { renderedDocumentForSearch } from '../browser/document-evidence'
 import { capturedHeadMetadata } from '../checks/head-metadata'
 import { nativeHttpCollection } from '../native-http-evidence'
+import { readBrowserEvidence } from './browser-evidence'
 
+function collectedDependencies(context: TaskContext, kind: string) {
+  return [...context.dependencies.values()].filter(item => item.workKind === kind &&
+    (item.workState === 'COMPLETED' || kind === 'pagespeed' && taskIsSettled(item.workState) && item.workResult))
+}
 function dependency(context: TaskContext, kind: string) {
-  return [...context.dependencies.values()].find(item => item.workKind === kind && item.workState === 'COMPLETED')
+  return collectedDependencies(context, kind)[0]
 }
 export function browserEvidence(context: TaskContext) {
-  const value = dependency(context, 'browser')
-  return value?.workResult ? browserArtifactSchema.parse(readArtifact(value.workResult, 'browser').data) : null
+  return readBrowserEvidence(context.dependencies.values())?.data ?? null
 }
 export function httpEvidence(context: TaskContext) {
   const value = dependency(context, 'http')
@@ -54,7 +58,7 @@ export function captureEvidence(context: TaskContext) {
   return value?.workResult ? captureArtifactSchema.parse(readArtifact(value.workResult, 'captures').data) : null
 }
 export function speedEvidence(context: TaskContext) {
-  const values = [...context.dependencies.values()].filter(item => item.workKind === 'pagespeed' && item.workState === 'COMPLETED' && item.workResult)
+  const values = collectedDependencies(context, 'pagespeed').filter(item => item.workResult)
     .map(item => speedArtifactSchema.parse(readArtifact(item.workResult, 'pagespeed').data))
   return values.length ? { desktop: values.find(value => value.desktop)?.desktop ?? null,
     mobile: values.find(value => value.mobile)?.mobile ?? null } : null
@@ -80,11 +84,12 @@ export const evaluatorHandlers: TaskHandler[] = [
       if (!selected.length) throw new TaskFailure('CHECK_NOT_ADMITTED', false)
       if (selected.some(([id, version]) => CHECK_REGISTRY[id]?.version !== version))
         throw new TaskFailure('CHECK_VERSION_UNAVAILABLE', false)
-      const browser = browserEvidence(context), response = httpEvidence(context), speed = speedEvidence(context)
+      const browserSource = readBrowserEvidence(context.dependencies.values())
+      const browser = browserSource?.data ?? null, response = httpEvidence(context), speed = speedEvidence(context)
       const nativeHttp = nativeHttpCollection(context.replayHttpEvidence)
       const metadata = definition.input === 'http' ? response?.metadata : browser?.metadata
       const snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
-      const head = checkModule === 'metadata' || checkModule === 'og-image' ? capturedHeadMetadata(snapshot) : undefined
+      const head = ['metadata', 'og-image', 'slop'].includes(checkModule) ? capturedHeadMetadata(snapshot) : undefined
       let flags: import('../flag-types').DeterministicFlag[], assertions: import('../checks/assertion').CheckAssertion[] = []
       let applicable = true, complete: boolean | undefined, limitation: string | undefined
       let collectedAt: string | undefined
@@ -138,10 +143,12 @@ export const evaluatorHandlers: TaskHandler[] = [
             ...(evidence.interactionCount ? [`${opened} of ${evidence.interactionCount} declared popup states opened for inspection.`] : []), copy.reasons[evidence.reason as keyof typeof copy.reasons] ?? copy.incomplete,
             ...evidence.limitations.map(key => copy.limitations[key as keyof typeof copy.limitations]).filter(Boolean), copy.scope].join(' ')
         }
-      } else if (checkModule === 'interaction' && snapshot?.captureMetrics) {
+      } else if (checkModule === 'interaction') {
         const motion = dependency(context, 'motion')
-        if (motion?.workResult) snapshot.captureMetrics = applyMotionObservation(snapshot.captureMetrics, motionObservationSchema.parse(readArtifact(motion.workResult, 'motion').data))
-        flags = runInteractionChecks(snapshot.captureMetrics, assertion => assertions.push(assertion))
+        let interaction: InteractionEvidence | null = snapshot ? { ...snapshot.captureMetrics,
+          desktopLoadExperience: snapshot.desktopLoadExperience ?? snapshot.captureMetrics?.desktopLoadExperience } : null
+        if (motion?.workResult) interaction = applyMotionObservation(interaction ?? {}, motionObservationSchema.parse(readArtifact(motion.workResult, 'motion').data))
+        flags = runInteractionChecks(interaction, assertion => assertions.push(assertion))
         const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope: evidenceScope })
         flags = admitted.flags; assertions = admitted.assertions
         complete = assertions.filter(assertion => assertion.disposition !== 'observed').every(assertion => assertion.complete === true)
@@ -213,7 +220,8 @@ export const evaluatorHandlers: TaskHandler[] = [
         const observedUrl = definition.input === 'http' ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
-            deadline: context.deadline, destinations: nativeHttp.options, head, publicDocument: response?.document, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, mobileAccessibility: snapshot?.mobileAccessibility, renderedScope: snapshot?.renderedScope,
+            deadline: context.deadline, destinations: nativeHttp.options, head, publicDocument: response?.document, renderedCopy: snapshot?.renderedCopy,
+            renderedCopyScope: snapshot?.renderedCopyScope, accessibilityEvidence: snapshot?.accessibilityEvidence, mobileAccessibility: snapshot?.mobileAccessibility, renderedScope: snapshot?.renderedScope,
             ...evidenceScope })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
         if (checked.executions.length !== 1 || checked.executions[0].module !== checkModule) throw new TaskFailure('EVALUATOR_NOT_REGISTERED', false)
@@ -234,7 +242,7 @@ export const evaluatorHandlers: TaskHandler[] = [
       const sourceKind = checkModule === 'keyboard' ? 'keyboard' : definition.input === 'http' || checkModule === 'security-headers' ? 'http'
         : checkModule === 'performance' || checkModule === 'mobile' ? 'pagespeed' : 'browser'
       const sourceTask = dependency(context, sourceKind)
-      const source = sourceTask?.workResult ? readArtifact(sourceTask.workResult, sourceKind) : null
+      const source = sourceKind === 'browser' ? browserSource : sourceTask?.workResult ? readArtifact(sourceTask.workResult, sourceKind) : null
       // A missing collector result is the observation. Do not publish findings or a collection time for it.
       if (!source) {
         flags = []

@@ -31,7 +31,7 @@ describe('Flag identity', () => {
     expect(consolidateFlagsByCheck(ai)).toHaveLength(2)
   })
 
-  it('preserves public source references without reintroducing private comparison context', () => {
+  it('preserves public source references without reintroducing private comparison conditions or task identity', () => {
     const original = { source: 'DETERMINISTIC', checkId: 'buttons-no-text', pageUrl: 'https://example.com/',
       evidence: 'Recorded control has no name', verificationRule: 'private-rule',
       evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const,
@@ -41,8 +41,8 @@ describe('Flag identity', () => {
     const result = consolidateFlagsByCheck([{ ...original, id: 'public', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
       problem: 'Unnamed control', supportingObservations: visible }])
     expect(result[0]!.supportingObservations).toEqual(visible)
-    expect(visible[0].sourceAuditId).toBe('source-audit')
-    expect(JSON.stringify(result[0]!.supportingObservations)).not.toMatch(/private-context|private-task|private-rule/)
+    expect(result[0]!.supportingObservations).toMatchObject([{ sourceAuditId: 'source-audit' }])
+    expect(JSON.stringify(result[0]!.supportingObservations)).not.toMatch(/private-context|private-task|private-rule|"provenance"/)
   })
 
   it('removes page occurrence suffixes without losing the durable check', () => {

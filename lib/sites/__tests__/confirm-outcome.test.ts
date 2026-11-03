@@ -57,6 +57,7 @@ describe('CONFIRM_OUTCOME', () => {
       siteId: 'proj_1',
       kind: 'project',
       projectId: 'proj_1',
+      userId: 'owner',
       url: 'https://example.com',
       canonicalHost: 'example.com',
     })
@@ -66,6 +67,7 @@ describe('CONFIRM_OUTCOME', () => {
   it('refuses a confirmation that carries no way to verify it', async () => {
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: true,
@@ -78,6 +80,7 @@ describe('CONFIRM_OUTCOME', () => {
   it('never writes the unverifiable confirmation, which is the whole point', async () => {
     await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: true,
@@ -88,6 +91,7 @@ describe('CONFIRM_OUTCOME', () => {
   it('explains what is missing instead of reporting a missing Outcome', async () => {
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: true,
@@ -105,6 +109,7 @@ describe('CONFIRM_OUTCOME', () => {
   it('confirms when a kind is supplied, because that is what will verify it', async () => {
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: true,
@@ -119,6 +124,7 @@ describe('CONFIRM_OUTCOME', () => {
   it('still allows withdrawing an inferred Outcome without assigning a mechanism', async () => {
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: false,
@@ -134,6 +140,7 @@ describe('CONFIRM_OUTCOME', () => {
     mocks.confirmSiteOutcome.mockRejectedValueOnce(new OutcomeKindMismatchError('SIGNUP', 'AVAILABILITY'))
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: true,
@@ -151,6 +158,7 @@ describe('CONFIRM_OUTCOME', () => {
     mocks.confirmSiteOutcome.mockResolvedValue(null)
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_missing',
       confirmed: true,
@@ -169,6 +177,7 @@ describe('RENAME_OUTCOME', () => {
       siteId: 'proj_1',
       kind: 'project',
       projectId: 'proj_1',
+      userId: 'owner',
       url: 'https://example.com',
       canonicalHost: 'example.com',
     })
@@ -182,6 +191,7 @@ describe('RENAME_OUTCOME', () => {
   it('renames without re-confirming or changing the execution kind', async () => {
     const result = await executeSiteCommand({
       type: 'RENAME_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       name: 'A customer can check out',
@@ -213,6 +223,7 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
       siteId: 'proj_1',
       kind: 'project',
       projectId: 'proj_1',
+      userId: 'owner',
       url: 'https://example.com',
       canonicalHost: 'example.com',
     })
@@ -223,6 +234,7 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
     for (const kind of ['CHECKOUT', 'AVAILABILITY'] as const) {
       const result = await executeSiteCommand({
         type: 'CONFIRM_OUTCOME',
+        userId: 'owner',
         siteId: 'proj_1',
         outcomeId: 'out_1',
         confirmed: true,
@@ -237,6 +249,7 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
     for (const kind of ['SIGNUP', 'LOGIN', 'PASSWORD_RESET'] as const) {
       const result = await executeSiteCommand({
         type: 'CONFIRM_OUTCOME',
+        userId: 'owner',
         siteId: 'proj_1',
         outcomeId: 'out_1',
         confirmed: true,
@@ -252,6 +265,7 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
   it('still lets an Outcome be renamed or withdrawn, because that needs no mechanism', async () => {
     const withdraw = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: false,
@@ -263,6 +277,7 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
   it('refuses a kind not in CONFIRMABLE_OUTCOME_KINDS', async () => {
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
+      userId: 'owner',
       siteId: 'proj_1',
       outcomeId: 'out_1',
       confirmed: true,

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { checkReceiptSchema, scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
 import { CHECK_MODULES } from '../check-registry'
 import { recordAssertionVerifiers } from '../checks/verification'
@@ -10,7 +10,8 @@ import type { TaskContext } from './registry'
 import type { TaskArtifact } from './contracts'
 import { observationsForFlag, supportingObservationsSchema } from '../flag-observations'
 import { nativeHttpEvidenceSchema } from '../native-http-evidence'
-import { CONTROL_OBSERVATION_TARGET } from './control-progress'
+import { OBSERVATION_TARGETS } from './observation-progress'
+import { relatedProjectionChecks } from '../suppression'
 
 export const flagSchema = z.object({
   checkId: z.string().min(1), rubric: z.enum(['MESSAGE', 'EXPERIENCE', 'REACH']),
@@ -52,28 +53,42 @@ export async function commitFindings(context: TaskContext, artifact: TaskArtifac
   const observed = incoming.map(flag => ({ ...flag, supportingObservations: observationsForFlag(flag,
     context.task?.id ? { auditId: context.audit.id, taskId: context.task.id,
       checkVersion: spec?.checks[flag.checkId.split('::page:')[0]] ?? null, collectedAt: receipt?.execution?.collectedAt ?? artifact.collectedAt } : undefined) }))
-  const flags = [...observed, ...await recordedTaskFindings(context.audit.id, tx, context.audit.executionSpec)]
+  const related = relatedProjectionChecks(incoming.map(flag => flag.checkId))
+  const flags = [...observed, ...await recordedTaskFindings(context.audit.id, tx, context.audit.executionSpec, related)]
   // Existing overlap policy remains unchanged. Each source receipt retains its findings.
   await persistDeterministicFlags(context.audit.id, flags as import('../flag-types').DeterministicFlag[],
-    { MESSAGE: null, EXPERIENCE: null, REACH: null }, tx, { authoritativeProjection: true })
+    { MESSAGE: null, EXPERIENCE: null, REACH: null }, tx, { authoritativeProjection: true, preservePositions: true })
 }
 
 /** Deterministic findings survive independently of rendered page compilation.
- * Read only the committed observation projection, never collected HTML or traces. */
-export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.TransactionClient, '$queryRaw'>, executionSpec?: unknown) {
+ * Read only the committed observation projection, never collected HTML or traces.
+ * Incremental publication selects a whole overlap family; finalization reads all. */
+export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.TransactionClient, '$queryRaw'>, executionSpec?: unknown, checkIds?: readonly string[]) {
   const spec = readExecutionSpec(executionSpec)
-  const rows = await db.$queryRaw<Array<{ findings: unknown; taskId?: string; collectedAt?: string }>>`
+  const selection = checkIds ? Prisma.sql`JOIN LATERAL (
+    SELECT jsonb_agg(member.value ORDER BY member.position) AS findings FROM jsonb_array_elements(observed.findings)
+      WITH ORDINALITY AS member(value, position)
+    WHERE CASE
+      WHEN split_part(member.value->>'checkId', '::page:', 1) ~ '^journey-.+-hidden-cta$' THEN 'journey-hidden-cta'
+      WHEN split_part(member.value->>'checkId', '::page:', 1) ~ '^journey-.+-dead-end$' THEN 'journey-dead-end'
+      ELSE split_part(member.value->>'checkId', '::page:', 1) END = ANY(${[...checkIds]}::text[])
+  ) selected ON selected.findings IS NOT NULL` : Prisma.empty
+  const rows = await db.$queryRaw<Array<{ findings: unknown; taskId?: string; collectedAt?: string }>>(Prisma.sql`
+    SELECT ${checkIds ? Prisma.sql`selected.findings` : Prisma.sql`observed.findings`} AS findings, observed."taskId", observed."collectedAt"
+    FROM (
     SELECT "workResult"->'data'->'flags' AS findings, "id" AS "taskId",
       COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt", "createdAt", "id" FROM "audit_execution_tasks"
     WHERE "auditId" = ${auditId} AND "workState" = 'COMPLETED'
       AND "workKind" IN ('check', 'search', 'google', 'flow', 'overlays', 'journeys', 'slow-replay', 'cross-page', 'discovery', 'automatic-accounts')
       AND "workResult"->'data'->'flags' <> '[]'::jsonb
       AND ("workInput"->'verificationContexts') IS NULL
+      AND ("workResult"->'data'->'observationProgress') IS NULL
     UNION ALL
     SELECT detail->'data'->'flags' AS findings, "taskId",
       COALESCE(detail->'data'->'receipt'->'execution'->>'collectedAt', detail->>'collectedAt') AS "collectedAt", "createdAt", "id"
-      FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" = ${CONTROL_OBSERVATION_TARGET}
-        AND status = 'COMPLETED' AND detail->'data'->'flags' <> '[]'::jsonb ORDER BY "createdAt", "id"`
+      FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" IN (${Prisma.join(OBSERVATION_TARGETS)})
+        AND status = 'COMPLETED' AND detail->'data'->'flags' <> '[]'::jsonb
+    ) observed ${selection} ORDER BY observed."createdAt", observed."id"`)
   return rows.flatMap(row => row.findings == null ? [] : z.array(flagSchema).max(500).parse(row.findings).map(flag => ({
     ...flag, supportingObservations: observationsForFlag(flag, row.taskId ? { auditId, taskId: row.taskId,
       checkVersion: spec?.checks[flag.checkId.split('::page:')[0]] ?? null, collectedAt: row.collectedAt } : undefined),

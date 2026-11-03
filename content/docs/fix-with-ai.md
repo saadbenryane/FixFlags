@@ -1,23 +1,22 @@
-## Use your fix prompt
+## Copy and paste a fix
 
-A **fix prompt** is a message you can copy from a Flag. It tells your AI tool which page has a problem, what happened, and what the fix should achieve.
+Each problem comes with fix instructions you can copy and paste. They describe the page, what went wrong, and what should happen instead.
 
-1. Open a Flag and copy its fix prompt.
-2. Open your website project in the AI tool you use to build it.
-3. Paste the prompt into its chat and ask it to make the change.
-4. Review the change, then publish it to your live website.
+1. Open the problem in FixFlags and copy the fix instructions.
+2. Paste them into the same chat you use to make changes to your website.
+3. Review the change, then publish it.
 
-You can also send the prompt to your developer. Copying it does not change your website.
+For example, if you built your website with Lovable, paste the instructions into your project’s Lovable chat. You can also send them to a developer. Copying the instructions alone does not change your website.
 
-Saved Site Flags include a report link and a focused JSON repair brief alongside the recorded task. The brief gives an authorized agent supporting evidence, affected pages and devices, and verification criteria. Private links require access. Large groups include continuation links. The agent must read every supporting observation page before implementing the grouped repair. If required context cannot be read, the agent should stop and report what is missing. Never paste an API key into a prompt.
+Saved website problems include a report link and a detailed repair brief with the pages, devices, recorded results, and conditions for checking a fix. Private links still require permission to open. Grouped fixes can include links to more details. The tool making the change must read every linked observation page before fixing the group. If it cannot open the details, it should stop and tell you what is missing. Never paste an API key into the instructions.
 
-Prompts on the FixFlags homepage are examples. [Check your own website](/new) to get fixes for problems found there.
+The homepage uses example instructions. [Check your own website](/new) to get instructions for problems found there.
 
-## Verify the fix
+## Check that it worked
 
-Return to the same Flag after publishing and select **Check now**. FixFlags checks the affected page or action again to see whether the problem is fixed.
+After publishing, return to the same problem and select **Check now**. We check the page or action again to see whether it works.
 
-If FixFlags cannot confirm the result, it shows **Couldn't verify**. The Flag does not close just because a prompt was copied or code was changed. Your saved monitoring schedule continues separately.
+If we cannot confirm the result, you’ll see **Couldn't verify**. A problem is marked fixed only after a new check confirms it. Your scheduled checks keep running too.
 
 If needed, [save the website to your account](/help/getting-started/save-your-site) first so you can return to the Flag.
 
@@ -25,10 +24,10 @@ If needed, [save the website to your account](/help/getting-started/save-your-si
 
 MCP is a way for an AI tool to use another service directly. It stands for Model Context Protocol.
 
-New FixFlags MCP connections are not available yet. You can use fix prompts now by copying and pasting them, with no connection setup.
+New FixFlags MCP connections are not available yet. You can copy and paste fix instructions now, without setting up a connection.
 
 ## Get started
 
-[Analyze your website](/new), open a Flag, and copy its fix prompt. You can start the first check before creating an account.
+[Check your website](/new), open a problem, and copy the fix instructions. Your first check can start before you create an account.
 
 When you want to save your results, [create an account](/sign-up) or [sign in](/sign-in) from the website's results page.

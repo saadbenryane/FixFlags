@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/lib/db'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { recordFlagImprovementAttempt } from './attempts'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
+import { loadSiteFlagCopyTask } from '@/lib/sites/application/flag-copy-task'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('retained clipboard handoff provenance in PostgreSQL', () => {
@@ -120,4 +122,27 @@ run('retained clipboard handoff provenance in PostgreSQL', () => {
       await prisma.user.delete({ where: { id: nextOwner } })
     }
   })
+  it('records the canonical recipe for a source with no saved fix and refuses its changed revision at the write boundary', async () => {
+    const source = await prisma.flag.create({ data: { auditId, source: 'DETERMINISTIC', checkId: 'unoptimized-images',
+      rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Images are not optimized', evidence: 'hero.jpg can save 2MB',
+      whyItMatters: 'Large downloads can delay the page.', fix: '', pageUrl: 'https://handoff.test/', confidence: 1, position: 1 } })
+    const site = await loadSiteRecord(projectId)
+    expect(site?.userId).toBe(owner)
+    const task = await loadSiteFlagCopyTask(site!, source.id)
+    expect(task.prompt).toContain('size it is displayed')
+    const command = { type: 'RECORD_FIX_HANDOFF' as const, flagId: source.id, userId: owner, builder: 'copy', client: 'website-clipboard-v2',
+      preparedHandoff: { siteId: projectId, referenceFlagId: source.id, promptHash: task.promptHash, context: task.revision } }
+    await executeSiteCommand(command)
+    await executeSiteCommand(command)
+    const receipt = await prisma.improvementCycleEvent.findMany({ where: { cycle: { projectId, sourceAuditId: auditId },
+      type: 'HANDOFF_COPIED', idempotencyKey: { contains: task.promptHash } } })
+    expect(receipt).toHaveLength(1)
+    expect(receipt[0].contextCorrection).toMatchObject({ schemaVersion: 'fixflags.handoff-receipt.v1', promptHash: task.promptHash,
+      sourceFlagId: source.id, context: { contextHash: task.revision.contextHash, sourceFlagIds: [source.id], kind: 'repair' } })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).toMatchObject({ fix: '' })
+    await prisma.flag.update({ where: { id: source.id }, data: { evidence: 'A different image and measurement' } })
+    await expect(executeSiteCommand(command)).rejects.toMatchObject({ status: 409, code: 'REPAIR_TASK_CHANGED' })
+    expect(await prisma.improvementCycleEvent.findMany({ where: { id: receipt[0].id } })).toEqual(receipt)
+  })
+
 })

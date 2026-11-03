@@ -8,6 +8,12 @@ export const repairContextHashSchema = z.string().regex(/^[a-f0-9]{64}$/)
 export const REPAIR_OBSERVATIONS_PER_PAGE = 25
 export const repairObservationOffsetSchema = z.number().int().min(0).max(5000)
 const id = z.string().min(1)
+const definition = z.object({ schemaVersion: z.literal('fixflags.repair-definition.v1'),
+  kind: z.enum(['repair', 'investigation', 'evidence-recovery']),
+  source: z.enum(['recorded', 'check-recipe', 'investigation', 'evidence-recovery']),
+  checkId: z.string().nullable(), recipeCheckVersion: z.number().int().positive().nullable(), recipeVersion: z.number().int().positive(),
+  guidance: z.string().min(1), preconditions: z.array(z.string()), acceptance: z.array(z.string()),
+}).strict()
 const repairRequestSchema = z.object({ tool: z.literal(MCP_TOOLS.getFlag.name),
   arguments: z.object({ siteId: id, flagId: id, expectedContextHash: repairContextHashSchema,
     observationOffset: repairObservationOffsetSchema.optional(), includeEvidence: z.boolean().optional() }).strict(),
@@ -36,7 +42,7 @@ export const repairBriefSchema = z.object({
     total: z.number().int().min(0).max(5000).nullable(), nextOffset: repairObservationOffsetSchema.nullable(), complete: z.boolean(),
   }).strict(),
   repair: z.discriminatedUnion('readiness', [
-    z.object({ readiness: z.literal('ready'), guidance: z.string().refine(value => value.trim().length > 0) }).strict(),
+    z.object({ readiness: z.literal('ready'), guidance: z.string().refine(value => value.trim().length > 0), definition: definition.optional() }).strict(),
     z.object({ readiness: z.literal('pending'), guidance: z.null() }).strict(),
     z.object({ readiness: z.literal('unavailable'), guidance: z.null() }).strict(),
   ]),

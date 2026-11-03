@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 
 vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
-import { runAuthCheckoutChecks } from '../checks/auth-checkout'
+import { actionDestinationObservation, runAuthCheckoutChecks } from '../checks/auth-checkout'
 import type { PageMetadata } from '../metadata'
 
 function metaWithLinks(links: PageMetadata['links']): PageMetadata {
@@ -34,6 +34,13 @@ function ids(flags: Awaited<ReturnType<typeof runAuthCheckoutChecks>>): string[]
 }
 
 describe('runAuthCheckoutChecks', () => {
+  it('keeps checkout recovery unknown at a sign-in response while retaining intended auth-entry evidence', () => {
+    const source = 'https://example.com/', url = source + 'checkout'
+    const result = { url, outcome: 'auth_required' as const, status: 200, shouldFlagDead: false }
+    expect(actionDestinationObservation(source, url, 'checkout', result)).toMatchObject({ passed: false, complete: false })
+    expect(actionDestinationObservation(source, source + 'login', 'auth', { ...result, url: source + 'login' }))
+      .toMatchObject({ passed: true, complete: true })
+  })
   it('flags a dead checkout link as a critical revenue issue', async () => {
     restore = mockFetchHead({ '/checkout': 404 })
     const flags = await runAuthCheckoutChecks(

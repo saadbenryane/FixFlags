@@ -1,4 +1,3 @@
-import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { User } from '@prisma/client'
 import {
   isAdminUser,
@@ -80,14 +79,6 @@ export function canAccessProductWatch(
 ): boolean {
   if (!shouldEnforcePlanGates()) return true
   return siteCarePolicy(user as Pick<User, 'role' | 'plan' | 'subscriptionStatus'>).watchIntervals.length > 0
-}
-
-/** Allowed watch intervals from the shared beta and account care policy. */
-export function allowedWatchIntervals(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
-): Array<WatchInterval> {
-  if (!shouldEnforcePlanGates()) return ['weekly', 'daily', 'hourly', 'custom']
-  return siteCarePolicy(user as Pick<User, 'role' | 'plan' | 'subscriptionStatus'>).watchIntervals
 }
 
 /** Manual re-check is always available to the report owner; not a plan gate. */

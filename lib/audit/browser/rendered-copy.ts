@@ -30,6 +30,17 @@ export function renderedContentMetadata<T extends Pick<PageMetadata, 'pageText' 
   return { ...metadata, pageText: copy.pageText, h1s, h2s: copy.h2s, headlineSupport: copy.headlineSupport ?? null, testimonialBlocks: copy.testimonialBlocks ?? metadata.testimonialBlocks }
 }
 
+export type PageCopyEvidence = Pick<PageMetadata, 'pageText' | 'h1s' | 'h2s' | 'headlineSupport' | 'renderedCopy' | 'testimonialBlocks'>
+
+/** Read actual prose independently of declared HTML facts. An interrupted
+ * native observation cannot borrow an older parsed document as success. */
+export function observedPageCopy(metadata: PageCopyEvidence | null, native?: RenderedCopy | null): PageCopyEvidence | null {
+  const copy = native === undefined ? metadata?.renderedCopy : native
+  if (copy !== undefined && !copy?.complete) return null
+  if (metadata) return renderedContentMetadata(copy === undefined ? metadata : { ...metadata, renderedCopy: copy })
+  return copy ? renderedContentMetadata({ pageText: copy.pageText, h1s: copy.h1s, h2s: copy.h2s, renderedCopy: copy }) : null
+}
+
 export async function observeRenderedCopy(page: Page): Promise<RenderedCopy> {
   return renderedCopySchema.parse(await page.evaluate(({ textLimit, consentContextSelector, consentNamePattern, consentChoicePattern }) => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn

@@ -16,6 +16,7 @@ export async function GET(_request: Request, context: { params: Promise<{ siteId
     const owner = access.decision.role === 'owner'
     const payload = siteFlagPanelSchema.parse({ flag: {
       id: flag.id, sourceFlagId: flag.sourceFlagId ?? null, sourceAuditId: flag.sourceAuditId,
+      checkId: flag.checkId,
       problem: flag.problem, evidence: flag.evidence, evidenceMissing: flag.evidenceMissing,
       whyItMatters: flag.whyItMatters, expectedBehavior: flag.expectedBehavior, ...viewerRepairGuidance(flag, owner), pageUrl: flag.pageUrl,
       affectedPaths: flag.affectedPaths, viewport: flag.viewport,

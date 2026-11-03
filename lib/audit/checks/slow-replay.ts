@@ -44,6 +44,11 @@ export function slowReplayAssertions(result: SlowReplayResult): CheckAssertion[]
         passed: passed || absent, complete: passed || failed || absent, ...(absent ? { disposition: 'observed' as const } : {}),
         context, ...(identity ? { targets: [identity] } : {}) }
     }),
+    ...((result.expectedActionCount ?? 0) > (result.actions?.length ?? 0) ? [{
+      key: 'primary-action-visibility', name: 'Original action sample', expected: 'Every retained original action has an observation',
+      observed: `${result.actions?.length ?? 0} of ${result.expectedActionCount} original actions were sampled. Remaining action timing is unknown.`,
+      passed: false, complete: false, context: context + ':sample',
+    }] : []),
   ]
 }
 

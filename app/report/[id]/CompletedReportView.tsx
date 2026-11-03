@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { savedFindingLabel } from '@/lib/report/finding-presentation'
+import { customerFindingLabel } from '@/lib/sites/finding-label'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { Button } from '@/components/ui/button'
@@ -39,9 +40,8 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
             Evidence from an earlier FixFlags check
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            This compatibility page preserves the observations behind an old link. It is not the
-            current health of the website. Current care lives in a private Site with Cards, Flags,
-            Verify, and Watch.
+            This saved report shows what an earlier check found. The website may have changed since
+            then. Run a new website check for current results and next steps.
           </p>
         </header>
 
@@ -56,7 +56,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {savedFindingLabel(flag)}
                   </p>
-                  <Heading as="h3" className="text-base">{flag.problem}</Heading>
+                  <Heading as="h3" className="text-base">{customerFindingLabel(flag)}</Heading>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm leading-6 text-muted-foreground">

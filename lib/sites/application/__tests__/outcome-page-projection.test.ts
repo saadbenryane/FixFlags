@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
 const db = vi.hoisted(() => ({ outcomes: vi.fn(), pages: vi.fn(), fixtures: vi.fn(), references: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { siteOutcome: { findMany: db.outcomes }, sitePage: { findMany: db.pages }, outcomeFixture: { findMany: db.fixtures } } }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: vi.fn().mockResolvedValue({ id: 'site' }) }, siteOutcome: { findMany: db.outcomes }, sitePage: { findMany: db.pages }, outcomeFixture: { findMany: db.fixtures } } }))
 vi.mock('@/lib/sites/application/outcome-references', () => ({ loadOutcomeSummaryReferences: db.references }))
 import { listSiteOutcomes, toOutcomeView } from '../outcome-queries'
 
@@ -21,7 +21,7 @@ it('projects 24 watched Outcomes without a page query for each row and preserves
   const rows = Array.from({ length: 24 }, (_, index) => ({ ...row, id: 'outcome-' + index }))
   db.outcomes.mockResolvedValue(rows)
   db.references.mockResolvedValue(rows.map(row => ({ id: row.id, assessmentIds: [], runRequestIds: [] })))
-  const views = await listSiteOutcomes({ kind: 'project', projectId: 'site' } as SiteRecord, now)
+  const views = await listSiteOutcomes({ kind: 'project', projectId: 'site', userId: 'owner' } as SiteRecord, now)
   expect(views).toHaveLength(24)
   expect(views.every(view => JSON.stringify(view.pageUrls) === JSON.stringify(['https://example.com/two', 'https://example.com/one']))).toBe(true)
   expect(db.pages).not.toHaveBeenCalled()

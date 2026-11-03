@@ -5,13 +5,14 @@ import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tes
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
-const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn(), assessments: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { improvement: { findMany: db.improvements }, flag: { findMany: db.flags },
-  outcomeAssessment: { findMany: db.assessments }, audit: { findFirst: db.audit, findMany: db.proofs } } }))
+const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn(), assessments: vi.fn(), receipts: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) }, improvement: { findMany: db.improvements }, flag: { findMany: db.flags },
+  outcomeAssessment: { findMany: db.assessments }, audit: { findFirst: db.audit, findMany: db.proofs },
+  auditVerificationReceipt: { findMany: db.receipts } } }))
 import { loadSiteFlags, loadSiteResolvedFlags } from '../flags'
 import { loadIncidentRecoveryProofs } from '../application/incident-proofs'
 
-const site = { kind: 'project', projectId: 'site-1' } as SiteRecord
+const site = { kind: 'project', projectId: 'site-1', userId: 'owner' } as SiteRecord
 const recoveredAt = new Date('2026-10-12T12:00:00Z')
 const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture('https://site.test/') } })
 function captured(overrides: Record<string, unknown> = {}) {
@@ -35,15 +36,18 @@ beforeEach(() => {
   vi.resetAllMocks(); db.flags.mockResolvedValue([]); db.assessments.mockResolvedValue([]); db.audit.mockResolvedValue({ id: 'latest' })
   db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'PROPOSED', occurrences: [{ flag: captured() }], attempts: [] }])
   db.proofs.mockResolvedValue([recovery()])
+  db.receipts.mockImplementation(async query => {
+    const audits = await db.proofs.mock.results.at(-1)?.value ?? []
+    return audits.flatMap((audit: ReturnType<typeof recovery>) => query.where.OR.some((source: { auditId: string }) => source.auditId === audit.id)
+      ? (audit.verifierExecutions ?? []).map((row, index) => ({ ...row, id: audit.id + ':' + index, auditId: audit.id })) : [])
+  })
 })
 describe('current incident projection', () => {
   it('removes a proven recovered incident without rewriting its unacted repair workflow', async () => {
     expect(await loadSiteFlags(site)).toEqual([])
     expect(db.proofs).toHaveBeenCalledWith({ where: { id: { in: ['recovery'] }, projectId: { in: ['site-1'] }, status: 'COMPLETED', completedAt: { not: null } },
       select: { id: true, projectId: true, completedAt: true, executionSpec: true,
-        outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } },
-        verifierExecutions: { where: { status: 'COMPLETED', OR: [{ targetKey: { startsWith: 'module:' } }, { targetKey: { startsWith: 'check:' } }] },
-          select: { targetKey: true, status: true, detail: true } } } })
+        outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } } } })
   })
   it('keeps missing or foreign recovery proof unverified and preserves every unresolved condition', async () => {
     db.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'another-site', completedAt: recoveredAt }])
@@ -53,6 +57,12 @@ describe('current incident projection', () => {
     ], attempts: [] }])
     db.proofs.mockResolvedValue([recovery()])
     expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: 'older', affectedPaths: ['https://site.test/original'] }])
+  })
+  it('shares one recovery read between incident occurrences and unbound observations', async () => {
+    db.flags.mockResolvedValue([captured({ id: 'unbound-condition' })])
+    expect(await loadSiteFlags(site)).toEqual([])
+    expect(db.proofs).toHaveBeenCalledOnce()
+    expect(db.receipts).toHaveBeenCalledOnce()
   })
   it('keeps recurrence visible and counts the recorded affected paths', () => {
     const flags = currentIncidentFlags([captured(), captured({ status: 'REGRESSED', resolvedInId: null,

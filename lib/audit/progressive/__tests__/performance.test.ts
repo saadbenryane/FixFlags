@@ -289,12 +289,12 @@ describe('progressive Performance evidence', () => {
 
   it('keeps failed INP coverage in the same device scope as successful coverage', async () => {
     const upsert = vi.fn()
-    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient
+    const tx = { audit: { findUnique: vi.fn().mockResolvedValue(null) }, get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient
     await publishUnfinishedCoverage(tx, { id: 'task', auditId: 'audit', workKind: 'check',
       workInput: context(measurement(), 'performance', 'mobile').input }, 'PROVIDER_QUOTA')
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { auditId_targetKey_scopeKey: { auditId: 'audit', targetKey: 'module:performance', scopeKey: 'page:' + pageUrl + ':device:mobile' } },
-      create: expect.objectContaining({ scopeKey: 'page:' + pageUrl + ':device:mobile', status: 'FAILED' }),
+      where: { auditId_targetKey_scopeKey: { auditId: 'audit', targetKey: 'module:performance', scopeKey: 'page:' + pageUrl + ':device:mobile:unfinished:task' } },
+      create: expect.objectContaining({ scopeKey: 'page:' + pageUrl + ':device:mobile:unfinished:task', status: 'FAILED' }),
     }))
   })
 

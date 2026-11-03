@@ -15,15 +15,16 @@ import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import { detectPagePurpose, needsFirstStep } from '../page-purpose'
 import { runSlowReplay } from '../flow/slow-replay-probe'
 import { runSlowReplayChecks, slowReplayAssertions } from '../checks/slow-replay'
-import { readSlowActionTargets, slowActionContextSchema, slowReplayResultSchema, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
-import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
+import { slowActionIdentitySchema, slowReplayResultSchema } from '../flow/slow-replay-contract'
+import { loadRecordedSlowActions, originalSlowActions } from '../flow/recorded-slow-actions'
 import { browserEvidence } from './evaluators'
 import { serializeArtifact, TaskFailure } from './contracts'
 import { flagSchema, commitFindings, commitCheckReceipt } from './results'
 import { executionWrite } from '../execution-ownership'
 import { serializeFlowData } from '../flow/flow-url'
 import type { TaskContext, TaskHandler } from './registry'
-import { CONTROL_OBSERVATION_TARGET, controlProgressSchema, nextControlProgress } from './control-progress'
+import { controlProgressSchema, nextControlProgress } from './control-progress'
+import { commitObservation, nextObservationBatch, observationArtifact, observationBatchStart, observationProgressSchema } from './observation-progress'
 import { runTrackingChecks } from '../checks/tracking'
 import { trackingEvidenceSchema } from '../tracking/contracts'
 import { checkReceiptSchema } from '../checks/receipt'
@@ -54,7 +55,7 @@ const flowSchema = z.object({ tracking: trackingEvidenceSchema.optional(), recei
   postClickMetrics: postClickMetricsSchema.optional(),
 }).strict() }).strict()
 const slowSchema = z.object({ flags: z.array(flagSchema).max(500), result: slowReplayResultSchema,
-  receipt: checkReceiptSchema.optional() }).strict()
+  receipt: checkReceiptSchema.optional(), observationProgress: observationProgressSchema.optional() }).strict()
 
 export const actionHandlers: TaskHandler[] = [
   { kind: 'overlays', replay: 'read_only', timeoutMs: 30_000,
@@ -95,11 +96,7 @@ export const actionHandlers: TaskHandler[] = [
         if (!expected || !controlProgress || controlProgress.completed !== expected.completed || controlProgress.total !== expected.total ||
             controlProgress.context !== expected.context || Boolean(artifact.continuation) !== (expected.completed < expected.total))
           throw new TaskFailure('CONTROL_CHECKPOINT_INVALID', false)
-        await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: { auditId: context.audit.id,
-          targetKey: CONTROL_OBSERVATION_TARGET, scopeKey: capturePageKey(context.input.pageUrl) + ':' + (controlProgress.context ?? 'discovery') } },
-        create: { auditId: context.audit.id, taskId: context.task.id, targetKey: CONTROL_OBSERVATION_TARGET,
-          scopeKey: capturePageKey(context.input.pageUrl) + ':' + (controlProgress.context ?? 'discovery'), source: 'EXECUTION',
-          status: 'COMPLETED', pageUrl: context.input.pageUrl, executionGeneration: context.task.workGeneration, detail: artifact as never }, update: {} })
+        await commitObservation(context, artifact, tx, controlProgress.context ?? 'discovery')
         context = { ...context, input: { ...context.input, verificationContexts: undefined, verificationContext: controlProgress.context ?? undefined } }
       }
       if (receipt) await commitCheckReceipt(context, receipt, tx, context.input.module === 'pricing-navigation' ? ':phase:pricing_navigation' : ':phase:public_action')
@@ -118,43 +115,42 @@ export const actionHandlers: TaskHandler[] = [
         data: { ...observed.data, controlProgress: progress } }
     }
   },
-  { kind: 'slow-replay', replay: 'read_only', timeoutMs: 45_000,
+  { kind: 'slow-replay', replay: 'read_only', timeoutMs: 45_000, continuation: true,
     validateResult: artifact => { slowSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
-      await commitFindings(context, artifact, tx)
       const data = slowSchema.parse(artifact.data)
-      if (data.receipt) await commitCheckReceipt(context, data.receipt, tx)
+      const start = observationBatchStart(context, artifact, 20)
+      const committed = start === null ? artifact : await commitObservation(context, artifact, tx, 'batch:' + start)
+      if (data.receipt) await commitCheckReceipt(context, data.receipt, tx, start === null ? '' : ':batch:' + start)
+      await commitFindings(context, committed, tx)
+      return committed
     },
     async evaluate(context) {
       if (await resolveAuditPipelineMode(context.audit.id) === 'TEASER') throw new TaskFailure('SLOW_REPLAY_NOT_APPLICABLE', false)
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
-      const prior = context.audit.projectId ? await prisma.flag.findMany({ where: {
-        audit: { projectId: context.audit.projectId, ...(target?.kind === 'DIAGNOSTIC' ? {} : {
-          executionSpec: { path: ['environment'], equals: spec?.environment ?? 'production' },
-        }) }, ...(target?.kind === 'DIAGNOSTIC' ? { ...diagnosticSourceWhere(spec, context.audit.projectId) } : { status: { in: ['OPEN', 'REGRESSED'] } }),
-        checkId: { startsWith: 'slow-3g-cta-delayed' }, verificationRule: SLOW_REPLAY_VERIFICATION_RULE,
-      }, take: spec?.verificationSourceFlagIds?.length ?? 100, orderBy: { createdAt: 'desc' }, select: { evidenceTargets: true } }) : []
-      const expectedActions = [...new Map(prior.flatMap(flag => readSlowActionTargets(flag.evidenceTargets)).filter(action => {
-        const identity = slowActionContextSchema.parse(JSON.parse(action.context))
-        return identity.sourcePageKey ? identity.sourcePageKey === capturePageKey(context.input.pageUrl)
-          : normalizeVerifierUrl(identity.pageUrl) === normalizeVerifierUrl(context.input.pageUrl)
-      }).map(action => [JSON.stringify([action.label, action.context]), action])).values()].slice(0, 20)
+      const batch = await nextObservationBatch(context, 'slow-replay', slowActionIdentitySchema, async () => {
+        const prior = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(spec, context.audit.projectId),
+          take: spec?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true, supportingObservations: true } }) : []
+        return target?.kind === 'DIAGNOSTIC' ? originalSlowActions(prior, context.input.pageUrl)
+        : context.audit.projectId && spec ? await loadRecordedSlowActions({ projectId: context.audit.projectId,
+          environment: spec.environment, pageUrl: context.input.pageUrl, excludeAuditId: context.audit.id }) : []
+      }, 20)
       const result = await runSlowReplay(await getAuditBrowser(), context.audit.id, context.input.pageUrl,
-        { deadline: context.deadline, expectedActions, pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, scanAccess: await resolveAuditScanAccess(context.audit.id) })
+        { deadline: context.deadline, expectedActions: batch.members, pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, scanAccess: await resolveAuditScanAccess(context.audit.id) })
       // A page that never loaded has no timing to judge. An interruption can still be retried.
       if (result.reason !== 'navigation_unavailable' && (!result.navigationComplete || result.reason === 'interrupted'))
         throw new TaskFailure('SLOW_REPLAY_INTERRUPTED', true, undefined, true)
       const assertions = slowReplayAssertions(result), pageUrl = context.input.pageUrl
       const complete = assertions.every(assertion => assertion.complete === true)
       const collected = result.navigationComplete === true
-      return serializeArtifact('slow-replay', slowSchema.parse({ result, flags: runSlowReplayChecks(result).map(flag => ({ ...flag, pageUrl })),
+      return observationArtifact('slow-replay', slowSchema.parse({ result, flags: runSlowReplayChecks(result).map(flag => ({ ...flag, pageUrl })),
         receipt: { kind: 'site-module-check', version: 1, module: 'slow-replay', pageUrl, applicable: true, complete,
           passed: complete && assertions.every(assertion => assertion.passed), assertions,
           limitation: collected
             ? 'Bounded top-level mobile viewport text, decoded main image and recognized-action timing on simulated 3G. Unclassified graphics, sampling gaps, missing controls and other devices remain separate or unknown.'
             : 'The slow connection page was not collected. Timing remains unknown.',
           execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
-        } }))
+        } }), batch.progress)
     },
   },
 ]

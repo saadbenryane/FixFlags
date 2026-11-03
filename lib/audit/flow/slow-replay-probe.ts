@@ -29,6 +29,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
   const abortPage = () => { void page?.context().close().catch(() => undefined) }
   signal.addEventListener('abort', abortPage, { once: true })
   const result: SlowReplayResult = { timeToFirstTextMs: 30_000, timeToCtaMs: 30_000, screenshotUrls: [], complete: false,
+    expectedActionCount: options.expectedActions?.length ?? 0,
     profile: SLOW_REPLAY_PROFILE, pageUrl, navigationComplete: false, observedForMs: 0, textBlankThroughMs: 0, ctaAbsentThroughMs: 0,
     timeToContentMs: 30_000, contentAbsentThroughMs: 0, captures: [], actions: expectedActions.map(action => ({ ...action, timeToVisibleMs: 30_000, absentThroughMs: 0 })) }
   try {
@@ -94,7 +95,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
     result.scope = auditPageObservation(page)?.scope
     result.captures!.sort((a, b) => a.targetMs - b.targetMs)
     result.screenshotUrls = result.captures!.flatMap(capture => capture.url ? [capture.url] : [])
-    result.complete = !signal.aborted && !result.restricted && (result.timeToContentMs! <= 5000 || result.contentAbsentThroughMs! > 5000)
+    result.complete = !signal.aborted && !result.restricted && (result.expectedActionCount ?? 0) <= expectedActions.length && (result.timeToContentMs! <= 5000 || result.contentAbsentThroughMs! > 5000)
       && (result.timeToCtaMs <= 8000 || result.ctaAbsentThroughMs! > 8000)
     if (!result.complete) result.reason = 'observation_incomplete'
     return result

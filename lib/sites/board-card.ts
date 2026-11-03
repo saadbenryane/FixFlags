@@ -13,9 +13,11 @@ import type { CoverageFact, SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { includesRepairAlternatives } from '@/lib/audit/evidence-presentation'
+import { customerFindingLabel } from './finding-label'
 
 /** Short customer label only; never mutate a recorded diagnosis or its scope. */
-export function boardFindingTitle(title: string): string {
+export function boardFindingTitle(title: string, checkId?: string | null): string {
+  title = customerFindingLabel({ checkId, problem: title })
   return SITE_BOARD_COPY.compactHeadlines[title as keyof typeof SITE_BOARD_COPY.compactHeadlines]
     ?? (/^All touch targets must be 24px large, or leave sufficient space \(\d+ elements?\)$/.test(title) ? SITE_BOARD_COPY.smallTouchTargets : title)
 }
@@ -165,6 +167,7 @@ export function visibleFlagChips(chips: BoardCardFlagChip[], limit = 3): {
 }
 
 export function boardFlagPrompt(input: {
+  actionLabel?: string
   problem: string
   whyItMatters: string
   evidence?: string | null
@@ -188,7 +191,7 @@ export function boardFlagPrompt(input: {
     input.evidence?.trim() ? `${includesRepairAlternatives(input.evidence) ? 'Technical diagnostic (includes repair alternatives)' : 'Evidence'}: ${input.evidence.trim()}` : null,
     supportingObservationLines(input.supportingObservations).join('\n'),
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,
-    `Fix: ${input.fix}`,
+    `${input.actionLabel ?? 'Fix'}: ${input.fix}`,
     observations?.length ? E.verifyAll : null,
     paths.length > 1 ? 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same affected pages and action.'
       : 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same page and action.',
@@ -218,7 +221,7 @@ function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip
     priorityBand: flag.priorityBand,
     id: flag.id,
     sourceFlagId: flag.sourceFlagId,
-    title: flag.problem,
+    title: boardFindingTitle(flag.problem, flag.checkId),
     repairGuidanceReady: hasRepairGuidance(flag.fix),
     ...(flag.repairGuidance ? { repairGuidance: flag.repairGuidance } : {}),
     href: `/sites/${siteId}/flags/${flag.id}`,
@@ -307,7 +310,7 @@ export function buildBoardCards(input: {
     const problem: BoardCardProblem | null =
       isProblem && firstFlag
         ? {
-            title: firstFlag.problem,
+            title: boardFindingTitle(firstFlag.problem, firstFlag.checkId),
             body: firstFlag.whyItMatters,
             outcomeName,
             href: `/sites/${input.siteId}/flags/${firstFlag.id}`,

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
   provisionalFindMany: vi.fn(),
   auditFindMany: vi.fn(),
+  receiptFindMany: vi.fn(),
   improvementFindMany: vi.fn(),
   auditPageFindMany: vi.fn(),
   screenshotFindMany: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/lib/db', () => ({
     provisionalSite: { findMany: mocks.provisionalFindMany },
     project: { findMany: mocks.projectFindMany },
     audit: { findMany: mocks.auditFindMany },
+    auditVerificationReceipt: { findMany: mocks.receiptFindMany },
     improvement: { findMany: mocks.improvementFindMany },
     auditPage: { findMany: mocks.auditPageFindMany },
     screenshot: { findMany: mocks.screenshotFindMany },
@@ -32,6 +34,10 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
+vi.mock('@/lib/sites/application/summary-references', () => ({ loadSiteSummaryReferences: async () => [
+  { projectId: 'site-1', latestAuditId: 'audit-1', completedAuditId: 'audit-1', screenshotId: null },
+  { projectId: 'site-2', latestAuditId: 'audit-2', completedAuditId: 'audit-2', screenshotId: null },
+] }))
 // These fixtures exercise assessment interpretation; native cases verify the ID selection.
 vi.mock('@/lib/sites/application/outcome-references', () => ({ loadOutcomeSummaryReferencesForProjects: async () => [
   { id: 'outcome-1', assessmentIds: ['assessment-1'] }, { id: 'outcome-2', assessmentIds: ['assessment-2'] },
@@ -154,8 +160,7 @@ describe('loadSiteSummaries', () => {
   it('batches recovery proof and keeps the two owned Sites independent', async () => {
     const audit = completedAudit()
     const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture('https://one.example/') } })
-    mocks.auditFindMany.mockReset().mockResolvedValueOnce([audit]).mockResolvedValueOnce([audit])
-      .mockResolvedValueOnce([{ id: 'recovery', projectId: 'site-1', completedAt: new Date(),
+    const recovered = { id: 'recovery', projectId: 'site-1', completedAt: new Date(),
         executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: 'https://one.example/', environment: 'production', scope: 'SITE',
           checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
         verifierExecutions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: {
@@ -164,7 +169,9 @@ describe('loadSiteSummaries', () => {
             [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true, complete: true }]),
           execution: { auditId: 'recovery', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: new Date().toISOString() },
         } }],
-      }])
+      }
+    mocks.auditFindMany.mockReset().mockResolvedValueOnce([audit]).mockResolvedValueOnce([audit]).mockResolvedValueOnce([recovered])
+    mocks.receiptFindMany.mockResolvedValue(recovered.verifierExecutions.map((row, index) => ({ ...row, id: 'receipt-' + index, auditId: recovered.id })))
     const flag = { id: 'source-flag', auditId: 'source-audit', status: 'FIXED', resolvedInId: 'recovery', severity: 'IMPORTANT', confidence: 1,
       pageUrl: 'https://one.example/', ...runPerformanceChecks(measurement, null, 'https://one.example/')[0], rubric: 'PERFORMANCE', impactTag: 'PERFORMANCE' }
     mocks.flagFindMany.mockImplementation(async args => args.select.audit ? [] : [flag])

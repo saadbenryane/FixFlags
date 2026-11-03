@@ -17,8 +17,8 @@ describe('PromptCopyButton', () => {
   it('reveals the full copy payload without writing to the clipboard or recording a handoff', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
     render(<PromptCopyButton prompt="Update the headline with a specific customer outcome." flagId="flag-1" accessState="owner" />)
-    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
-    expect(await screen.findByRole('textbox', { name: 'Fix prompt' })).toHaveValue('Update the headline with a specific customer outcome.')
+    fireEvent.click(screen.getByRole('button', { name: 'View instructions' }))
+    expect(await screen.findByRole('textbox', { name: 'Fix instructions' })).toHaveValue('Update the headline with a specific customer outcome.')
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
   })

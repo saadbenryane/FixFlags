@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { MAX_WATCH_MINUTES, watchIntervalSchema } from './watch-schedule'
 import { outcomeFixtureViewSchema } from './domain/safe-form'
-import { MAX_REPAIR_TASKS } from './repair-scope'
+import { MAX_REPAIR_TASKS, repairManifestSchema } from './repair-scope'
+import { CLIENT_REQUEST_TIMEOUT_MS, fetchJsonWithDeadline } from '@/lib/api/client-request'
 
 export class SiteActionError extends Error {
   constructor(message: string, readonly status?: number, readonly code?: string) { super(message); this.name = 'SiteActionError' }
@@ -27,6 +28,7 @@ export const siteActionSchemas = {
     .refine(body => body.notificationLevel !== undefined || body.notifyOnRecovery !== undefined || body.accountChecksEnabled !== undefined, 'Missing saved settings'),
   outcome: z.object({ ok: z.literal(true), outcome: z.object({ id: z.string().min(1), name: z.string(), kind: z.string().min(1), environment: z.string().min(1) }) }),
   watch: watchWrite,
+  watchOptions: z.object({ intervals: z.array(watchIntervalSchema) }),
   monitoringActivation: z.object({ ok: z.literal(true), interval: watchIntervalSchema,
     everyMinutes: z.number().int().min(60).max(MAX_WATCH_MINUTES).multipleOf(60).optional(),
     nextRunAt: z.string().datetime({ offset: true }), outcomeId: z.string().min(1),
@@ -44,7 +46,7 @@ export const siteActionSchemas = {
   }).passthrough() }).strict(),
   fixPromptPreparation: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1),
     sourceFlagId: z.string().min(1), referenceFlagId: z.string().min(1).optional(), promptHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
-  fixBundle: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1), tasks: z.array(z.object({
+  fixBundle: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1), manifest: repairManifestSchema.optional(), tasks: z.array(z.object({
     sourceFlagId: z.string().min(1), promptHash: z.string().regex(/^[a-f0-9]{64}$/),
     referenceFlagId: z.string().min(1).optional(),
   }).strict()).min(1).max(MAX_REPAIR_TASKS) }).strict(),
@@ -58,23 +60,11 @@ export const siteActionSchemas = {
 export type SiteActionOperation = keyof typeof siteActionSchemas
 const failureSchema = z.object({ message: z.string().optional(), error: z.string().optional(), code: z.string().optional() })
 
-export async function fetchSiteAction(url: string, options?: RequestInit): Promise<Response> {
-  try { return await fetch(url, options) }
+/** One deadline covers connection and body reading. Interrupting the caller's
+ * wait cannot establish whether a server-side command committed. */
+export async function fetchSiteActionJson(url: string, options: RequestInit = {}, timeoutMs = CLIENT_REQUEST_TIMEOUT_MS): Promise<{ response: Response; body: unknown }> {
+  try { return await fetchJsonWithDeadline(url, options, timeoutMs) }
   catch { throw new SiteActionError(SITE_ACTION_COPY.interrupted) }
-}
-
-/** Validate the shared envelope before any success message or navigation. */
-export async function readSiteActionResponse(response: Response, operation: SiteActionOperation = 'acknowledgement') {
-  const raw: unknown = await response.json().catch(() => null)
-  const failure = failureSchema.safeParse(raw)
-  const defaults = { authorizeUrl: undefined, interval: undefined, everyMinutes: undefined,
-    code: undefined, message: undefined, error: undefined, ok: undefined }
-  if (response.status === 401) throw new SiteActionError(failure.success ? failure.data.message ?? failure.data.error ?? SITE_ACTION_COPY.signIn : SITE_ACTION_COPY.signIn, 401)
-  if (!response.ok) return { ...defaults, ...(failure.success ? failure.data : {}),
-    error: failure.success ? failure.data.message ?? failure.data.error ?? SITE_ACTION_COPY.invalidResponse : SITE_ACTION_COPY.invalidResponse }
-  const parsed = siteActionSchemas[operation].safeParse(raw)
-  if (!parsed.success) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse, response.status)
-  return { ...defaults, ...parsed.data, error: undefined }
 }
 
 export type SiteActionCompletion<T> = { kind: 'saved' | 'saved_refresh_pending'; data: T }
@@ -122,8 +112,8 @@ export function siteActionMessage(error: unknown) {
 /** Typed operation payload for controllers; no optional-field success envelope. */
 export async function executeSiteAction<K extends SiteActionOperation>(url: string, options: RequestInit,
   operation: K): Promise<z.infer<(typeof siteActionSchemas)[K]>> {
-  const response = await fetchSiteAction(url, options)
-  const raw: unknown = await response.json().catch(() => null)
+  // Agent replies include generation; ordinary commands only admit durable work.
+  const { response, body: raw } = await fetchSiteActionJson(url, options, operation === 'agentReply' ? 120_000 : CLIENT_REQUEST_TIMEOUT_MS)
   if (!response.ok) {
     const failure = failureSchema.safeParse(raw)
     throw new SiteActionError(failure.success ? failure.data.message ?? failure.data.error ??

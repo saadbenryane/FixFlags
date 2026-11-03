@@ -69,6 +69,28 @@ describe('durable bounded work contracts', () => {
     expect(() => executionSpecSchema.parse({ ...spec, scope: 'OUTCOMES' })).toThrow('monitoring page scope')
     validateTaskGraph(graph)
   })
+  it('separates profile dependencies while retaining historical browser plans and the full catalog', () => {
+    const base = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
+      checks: { 'title-missing': 1, 'mobile-input-zoom': 2, 'console-errors-some': 1 }, outcomes: [], verificationTarget: null }
+    const legacy = pageTaskPlan(input, base)
+    expect(legacy.filter(task => task.kind === 'browser')).toHaveLength(1)
+    expect(legacy.find(task => task.key === 'p0:browser')!.input.device).toBeUndefined()
+    const graph = pageTaskPlan(input, { ...base, browserCollection: 'per-profile-v1' })
+    expect(graph.filter(task => task.kind === 'browser').map(task => task.input.device)).toEqual(['desktop', 'mobile'])
+    expect(graph.find(task => task.key === 'p0:metadata')!.dependencies).toEqual(['p0:browser'])
+    expect(graph.find(task => task.key === 'p0:console')!.dependencies).toEqual(['p0:browser', 'p0:browser-mobile'])
+    expect(graph.find(task => task.key === 'p0:mobile-ux-quality')!.dependencies).toEqual(['p0:browser-mobile'])
+    expect(pageTaskPlan(input, { ...base, browserCollection: 'per-profile-v1', checks: { 'title-missing': 1 } })
+      .filter(task => task.kind === 'browser')).toHaveLength(1)
+    const pages = Array.from({ length: 24 }, (_, i) => i ? input.pageUrl + 'page-' + i : input.pageUrl)
+    const full = initialTaskPlan({ ...base, browserCollection: 'per-profile-v1', reviewDepth: 3,
+      monitoringPages: pages, monitoringEntryPages: pages,
+      outcomes: Array.from({ length: 45 }, (_, i) => ({ id: 'availability-' + i, kind: 'AVAILABILITY', expectation: null,
+        bindingPolicy: 'ALL_REQUIRED', bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', required: true, config: { startUrl: input.pageUrl } }] })),
+      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).map(([id, check]) => [id, check.version])) })
+    expect(full.filter(task => task.kind === 'browser')).toHaveLength(48)
+    validateTaskGraph(full)
+  })
   it('keeps entry behavior on retained pages without duplicating bindings or deepening discovered-only pages', () => {
     const pages = [input.pageUrl, 'https://example.com/pricing/?plan=team#choose', 'https://example.com/about']
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: input.pageUrl,
@@ -145,14 +167,14 @@ describe('durable bounded work contracts', () => {
   it.each(['search', 'performance', 'conversion', 'security', 'tracking', 'accessibility'] as const)('plans only %s work and its required collectors for every frozen page', area => {
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: input.pageUrl,
       environment: 'production', category: { area, sourceAuditId: 'full', pages: [input.pageUrl, 'https://example.com/second'] },
-      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).filter(([id, definition]) => definition.area === area || area === 'search' && id.startsWith('corridor-og-')).map(([id, definition]) => [id, definition.version])),
+      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).filter(([, definition]) => definition.area === area).map(([id, definition]) => [id, definition.version])),
       outcomes: [], verificationTarget: null })
     const graph = initialTaskPlan(spec)
     validateTaskGraph(graph)
     expect(graph.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual(spec.category!.pages)
     expect(graph.some(task => ['captures', 'judge', 'discovery'].includes(task.kind))).toBe(false)
     if (area !== 'search') expect(graph.some(task => ['search', 'google', 'search-resources'].includes(task.kind))).toBe(false)
-    expect(graph.some(task => task.kind === 'cross-page')).toBe(area === 'search' || area === 'conversion')
+    expect(graph.some(task => task.kind === 'cross-page')).toBe(area === 'search')
     if (area !== 'performance') {
       expect(graph.some(task => task.kind === 'slow-replay')).toBe(false)
       for (const collector of graph.filter(task => task.kind === 'pagespeed'))
@@ -160,6 +182,14 @@ describe('durable bounded work contracts', () => {
     }
     if (area === 'tracking' || area === 'conversion') expect(graph.filter(task => task.kind === 'flow' && !task.input.module).map(task => task.input.pageUrl)).toEqual(spec.category!.pages)
     expect(graph.at(-1)?.kind).toBe('finalize')
+  })
+  it('retains preview work explicitly admitted by historical Conversion category snapshots', () => {
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: input.pageUrl,
+      environment: 'production', category: { area: 'conversion', sourceAuditId: 'full', pages: [input.pageUrl, 'https://example.com/second'] },
+      checks: { 'corridor-og-title-drift': 2, 'corridor-og-description-drift': 1 }, outcomes: [], verificationTarget: null })
+    const graph = initialTaskPlan(spec)
+    expect(graph.some(task => task.kind === 'cross-page')).toBe(true)
+    validateTaskGraph(graph)
   })
   it('retries transient interruptions within both recovery windows, never customer failures', () => {
     const base = { now: 100_000, admittedAt: 0, attempts: 1, crash: false, random: 0.5 }

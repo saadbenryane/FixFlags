@@ -108,7 +108,7 @@ describe('private agent repair context URL', () => {
   })
   it('returns unavailable guidance explicitly and keeps dependency errors private and uncacheable', async () => {
     mocks.flag.mockResolvedValueOnce(repairFlag({ fix: '', repairGuidance: 'pending' }))
-    expect(await (await read()).json()).toMatchObject({ repair: { readiness: 'pending', guidance: null } })
+    expect(await (await read()).json()).toMatchObject({ repair: { readiness: 'ready', definition: { kind: 'investigation' } } })
     mocks.flag.mockRejectedValueOnce(new Error('secret database detail'))
     const failed = await read()
     expect(failed.status).toBe(500)

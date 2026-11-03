@@ -78,6 +78,7 @@ export function AuditInput({
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [pendingUrl, setPendingUrl] = useState('')
   const autoStartedRef = useRef(false)
+  const submission = useRef(false)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
   const isLanding = variant === 'landing'
 
@@ -86,6 +87,7 @@ export function AuditInput({
   }, [])
 
   async function submitUrl(inputUrl?: string) {
+    if (submission.current) return
     setUrlError('')
     setPlanLimit(null)
 
@@ -133,12 +135,14 @@ export function AuditInput({
       return
     }
 
+    submission.current = true
     setUrl(normalized)
     setLoading(true)
     const params = new URLSearchParams(window.location.search)
     const auditSource = source ?? (isLanding ? readPublicEntrySurface(params) ?? 'homepage' : 'dashboard')
     const isPublicEntry = auditSource === 'homepage' || auditSource === 'tool_page' || auditSource === 'issue_page' || auditSource === 'benchmark_page'
-    const journeyId = isPublicEntry ? readOrCreateAnalyticsJourneyId() : null
+    let journeyId: string | null = null
+    try { if (isPublicEntry) journeyId = readOrCreateAnalyticsJourneyId() } catch { /* Attribution is optional. */ }
     const result = await startScanWithHandoff({
       url: normalized,
       body: {
@@ -168,6 +172,7 @@ export function AuditInput({
       },
     })
     if (!result.ok) {
+      submission.current = false
       setLoading(false)
       if (result.code === 'AUTH_REQUIRED') {
         setPendingUrl(normalized)

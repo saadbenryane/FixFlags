@@ -14,6 +14,7 @@ import { Logo } from '@/components/brand/Logo'
 import { BrandClosing } from '@/components/marketing/BrandClosing'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
+import { AI_CONNECTION_PATH } from '@/lib/marketing/copy/ai-connection'
 import { HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 import t from './HomepageSections.module.css'
@@ -23,6 +24,20 @@ export type HomepageCopyResult = { source: HomepageCopySource; message: string }
 
 export function HomepageEditorTools() {
   return <div className={t.editorTools}><p>{C.actions.editorLabel}</p><ul aria-label={C.actions.editorGuidesLabel}>{HOMEPAGE_EDITOR_INTEGRATIONS.map(editor => <li key={editor.key}><Link href={editorDocsHref(editor)}><EditorMark name={editor.label} className={t.editorMark} />{editor.label}</Link></li>)}</ul></div>
+}
+
+export function HomepageIndependentSection() {
+  return <section className={`${s.section} ${t.independent}`} aria-labelledby="independent-title">
+    <div className={t.independentHeading}>
+      <p className={s.eyebrow}>{C.independent.label}</p>
+      <h2 id="independent-title">{C.independent.title}</h2>
+    </div>
+    <div className={t.independentBody}>
+      <p>{C.independent.body}</p>
+      <p>{C.independent.confirmation}</p>
+      <Link href={AI_CONNECTION_PATH as Route} className={t.independentLink}>{C.independent.action}<ArrowRight size={16} aria-hidden="true" /></Link>
+    </div>
+  </section>
 }
 
 export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTMLButtonElement) => void }) {

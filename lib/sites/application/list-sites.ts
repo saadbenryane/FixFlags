@@ -1,6 +1,5 @@
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
-import { loadLegacySiteAnalysisIds } from './legacy-analysis'
-import { includeLegacySiteAnalyses } from './analysis-scope'
+import { loadSiteSummaryReferences } from './summary-references'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag, hasUnresolvedFlagEvidence } from '@/lib/audit/attention'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
@@ -75,7 +74,7 @@ export async function loadSiteNotificationSummaries(userId: string, now = new Da
  * coverage. A targeted check cannot replace the whole website's results. */
 async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Promise<SiteNotificationSummary[]> {
   const projects = await prisma.project.findMany({
-    where: { userId, deletedAt: null },
+    where: { userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     orderBy: { updatedAt: 'desc' },
     select: {
       ...uptimeStatusProjectSelect,
@@ -93,12 +92,10 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
   if (projects.length === 0) return []
 
   const projectIds = projects.map((project) => project.id)
-  const siteWideWhere = includeLegacySiteAnalyses(await loadLegacySiteAnalysisIds(projectIds))
+  const references = await loadSiteSummaryReferences(projectIds)
   const [latestAudits, latestCompletedAudits, improvements, outcomes] = await Promise.all([
     prisma.audit.findMany({
-      where: { projectId: { in: projectIds }, ...siteWideWhere },
-      orderBy: [{ projectId: 'asc' }, { createdAt: 'desc' }],
-      distinct: ['projectId'],
+      where: { projectId: { in: projectIds }, id: { in: references.flatMap(row => row.latestAuditId ? [row.latestAuditId] : []) } },
       select: {
         id: true,
         parentId: true,
@@ -119,9 +116,8 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       },
     }),
     prisma.audit.findMany({
-      where: { projectId: { in: projectIds }, status: 'COMPLETED', ...siteWideWhere },
-      orderBy: [{ projectId: 'asc' }, { completedAt: 'desc' }],
-      distinct: ['projectId'],
+      where: { projectId: { in: projectIds }, status: 'COMPLETED',
+        id: { in: references.flatMap(row => row.completedAuditId ? [row.completedAuditId] : []) } },
       select: { id: true, parentId: true, projectId: true, status: true, createdAt: true, completedAt: true,
         evidenceCoverage: true, executionSpec: true, failureCode: true, triageAt: true, aiReviewAt: true,
         verifierExecutions: siteObservationExecutionSelect, failedModules: true },
@@ -173,7 +169,8 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       select: { auditId: true, url: true, status: true },
     }),
     prisma.screenshot.findMany({
-      where: { auditId: { in: auditIds }, device: 'DESKTOP' },
+      where: { auditId: { in: auditIds }, device: 'DESKTOP',
+        id: { in: references.flatMap(row => row.screenshotId ? [row.screenshotId] : []) } },
       orderBy: { id: 'desc' },
       select: {
         auditId: true,
@@ -252,7 +249,13 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
     staleAfterMinutes: outcome.staleAfterMinutes, now,
   })] as const))
 
-  return projects.map((project): SiteNotificationSummary => {
+  // Evidence spans several independent reads. Revalidate only the originally
+  // selected Sites in one batch, preserving other Sites when one changes owner.
+  const authorized = new Set((await prisma.project.findMany({
+    where: { id: { in: projectIds }, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
+    select: { id: true },
+  })).map(project => project.id))
+  return projects.filter(project => authorized.has(project.id)).map((project): SiteNotificationSummary => {
     const watchInterval = fromStoredWatchInterval(project.watchInterval)
     const latest = latestByProject.get(project.id) ?? null
     const completed = latest?.status === 'COMPLETED' ? latest : completedByProject.get(project.id) ?? null
@@ -373,7 +376,9 @@ function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {
   const grouped = new Map<K, T[]>()
   for (const row of rows) {
     const value = key(row)
-    grouped.set(value, [...(grouped.get(value) ?? []), row])
+    const group = grouped.get(value)
+    if (group) group.push(row)
+    else grouped.set(value, [row])
   }
   return grouped
 }

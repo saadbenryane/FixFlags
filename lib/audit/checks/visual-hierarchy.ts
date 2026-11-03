@@ -1,4 +1,4 @@
-import { renderedContentMetadata, type RenderedCopy } from '../browser/rendered-copy'
+import { observedPageCopy, type RenderedCopy } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
@@ -37,13 +37,12 @@ export function runVisualHierarchyChecks(
 
   }
 
-  const copy = meta ? meta.renderedCopy : renderedCopy
-  if (!meta && !copy?.complete || copy !== undefined && !copy?.complete) {
+  const prose = observedPageCopy(meta, renderedCopy)
+  if (!prose) {
     for (const [key, name] of [['section-headings', 'Captured section hierarchy'], ['headline-presence', 'Captured headline'], ['heading-word-count', 'Sampled heading density']])
       recordObservation(record, key, name, 'Readable page copy supports this observation', 'Complete page prose is unavailable.', undefined, true)
     return findings
   }
-  const prose = renderedContentMetadata(meta ?? { pageText: copy!.pageText, h1s: copy!.h1s, h2s: copy!.h2s, renderedCopy: copy })
   const bodyText = (prose.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const h1s = prose.h1s ?? [], h2s = prose.h2s ?? []
   const totalHeadings = h1s.length + h2s.length

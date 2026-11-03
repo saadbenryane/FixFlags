@@ -10,13 +10,14 @@ import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettled
 import { executionTransaction, lockExecutionSite, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
-  retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind } from './contracts'
+  retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind, type TaskArtifact } from './contracts'
 import type { TaskHandler, TaskContext } from './registry'
 import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
 import { PageCaptureError } from '../browser/page-capture'
 import { claimTaskDelivery, DELIVERY_RECHECK_MS, retireObsoleteTaskDeliveries } from './delivery-window'
+import { isBrowserEvidenceKey } from './browser-requirements'
 
 /** A cooperative deadline also has an enforced boundary. Late continuations
  * lose write authority, while the engine retains authority to record failure. */
@@ -84,6 +85,18 @@ export async function persistTaskPlan(auditId: string, plans: TaskPlan[]) {
       }
     }
     validateTaskGraph([...effective.values()])
+    // Both profiles share one private salt, retaining distinct redacted errors
+    // without counting the same page-load exception twice. Persist it once.
+    const consoleKeys = new Map<string, string>()
+    for (const task of existing) {
+      const input = task.workInput as { pageUrl?: string; consoleIdentityKey?: string } | null
+      if (task.workKind === 'browser' && input?.pageUrl && input.consoleIdentityKey) consoleKeys.set(input.pageUrl, input.consoleIdentityKey)
+    }
+    for (const plan of additions) if (plan.kind === 'browser' && plan.input.device) {
+      const key = consoleKeys.get(plan.input.pageUrl) ?? randomUUID()
+      consoleKeys.set(plan.input.pageUrl, key)
+      plan.input = { ...plan.input, consoleIdentityKey: key }
+    }
     if (additions.length) await tx.auditExecutionTask.createMany({ data: additions.map(plan => ({
       auditId, targetKey: 'task:' + plan.key, scopeKey: plan.scope, pageUrl: plan.input.pageUrl, source: 'EXECUTION', status: 'PENDING',
       workKind: plan.kind, workInput: plan.input, workDependencies: plan.dependencies,
@@ -109,6 +122,21 @@ export async function loadTaskGraph(auditId: string) {
     omit: { workResult: true, detail: true, evidenceReference: true } })
   if (tasks.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
   return tasks
+}
+
+/** Queue failure can follow a committed continuation. Recovery belongs to the
+ * unclaimed delivery, independently of a worker's later broker acknowledgement. */
+export async function recoverInterruptedTaskDelivery(job: { id?: string; data: unknown } | undefined) {
+  const parsed = taskJobSchema.safeParse(job?.data)
+  if (!parsed.success || job?.id !== parsed.data.taskId + '-g' + parsed.data.generation) return false
+  const { taskId, auditId, generation } = parsed.data
+  const changed = await prisma.auditExecutionTask.updateMany({
+    where: { id: taskId, auditId, workGeneration: generation - 1, workState: 'READY', workDispatchState: 'SENT',
+      audit: { status: { not: 'FAILED' } },
+      OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: { in: [...COMPLETION_TASK_KINDS] } }] },
+    data: { workDispatchState: 'PENDING', workRetryAt: new Date(Date.now() + 1000) },
+  })
+  return changed.count === 1
 }
 
 export async function dispatchTask(taskId: string): Promise<boolean> {
@@ -239,7 +267,8 @@ export async function reconcileTasks(auditId: string) {
     const members = tasks.filter(task => readyIds.has(task.id)).flatMap(task => {
       const input = taskInputSchema.safeParse(task.workInput)
       return input.success && queueForTask(task.workKind as TaskKind, input.data) === resource
-        ? [{ id: task.id, priority: priorityForTask(task.workKind as TaskKind, input.data, task.workAttempts) }] : []
+        ? [{ id: task.id, priority: priorityForTask(task.workKind as TaskKind, input.data, task.workAttempts,
+          task.workGeneration > task.workAttempts) }] : []
     })
     const ids = new Set(members.map(task => task.id))
     members.sort((left, right) => left.priority - right.priority || dueAt.get(left.id)! - dueAt.get(right.id)!)
@@ -247,6 +276,27 @@ export async function reconcileTasks(auditId: string) {
     for (const id of ordered) if (ids.has(id)) replacements.set(id, members[index++].id)
   }
   return ordered.map(id => replacements.get(id) ?? id)
+}
+
+async function commitTaskObservation(context: TaskContext, handler: TaskHandler, artifact: TaskArtifact,
+  tx: Prisma.TransactionClient, partial: boolean, check: () => void = () => {}) {
+  let result = artifact
+  const committed = await handler.commit?.(context, result, tx)
+  if (committed) {
+    if (committed.kind !== result.kind || committed.continuation !== result.continuation)
+      throw new TaskFailure('OBSERVATION_CHECKPOINT_INVALID', false)
+    result = taskArtifactSchema.parse(scopeTaskArtifact(committed, context.audit.executionSpec))
+    handler.validateResult(result)
+  }
+  check()
+  await tx.auditPipelineEvent.create({ data: {
+    auditId: context.audit.id, executionId: context.task.id, traceId: context.audit.id, attempt: context.task.workAttempts,
+    stage: 'checking', event: 'task_observation_committed', status: partial ? 'partial' : 'completed',
+    detail: { version: 1, taskId: context.task.id, generation: context.task.workGeneration, kind: handler.kind,
+      collectedAt: result.collectedAt, evidenceReference: context.task.id,
+      ...(handler.kind === 'check' || handler.kind === 'search' || handler.kind === 'google' ? { observations: result.data } : {}) },
+  } })
+  return result
 }
 
 export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>) {
@@ -302,6 +352,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const task = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: original.id } })
   const owner = { auditId: job.auditId, taskId: task.id, token, generation: job.generation }
   await withExecutionOwnership(owner, async () => {
+    let failedContext: TaskContext | undefined
     try {
     await executionTransaction(async tx => {
       if (handler.kind === 'judge') await tx.audit.updateMany({ where: { id: job.auditId,
@@ -311,7 +362,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       await recordProgress(tx, job.auditId, { taskId: task.id, kind: handler.kind, state: 'RUNNING' })
     })
       const requiredKeys = ['finalize', 'discovery', 'cross-page', 'bindings'].includes(handler.kind) ? []
-        : handler.kind === 'judge' ? task.workDependencies.filter(key => key.endsWith(':browser') || key.endsWith(':captures')) : task.workDependencies
+        : handler.kind === 'judge' ? task.workDependencies.filter(key => isBrowserEvidenceKey(key) || key.endsWith(':captures')) : task.workDependencies
       const tasks = requiredKeys.length ? await prisma.auditExecutionTask.findMany({ where: { auditId: job.auditId,
         targetKey: { in: requiredKeys.map(key => 'task:' + key) } }, take: requiredKeys.length }) : []
       const byKey = new Map(tasks.map(item => [item.targetKey.slice(5), item]))
@@ -321,26 +372,19 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       const context: TaskContext = { audit: original.audit, task, input,
         deadline: Math.min(Date.now() + timeoutMs, original.audit.recoveryUntil?.getTime() ?? original.audit.createdAt.getTime() + ANALYSIS_RECOVERY_MS),
         dependencies: new Map(task.workDependencies.flatMap(key => byKey.has(key) ? [[key, byKey.get(key)!] as const] : [])) }
+      failedContext = context
       if (runsAfterCompletion(handler.kind)) context.deadline = Math.min(Date.now() + timeoutMs,
         handler.kind === 'prescription' ? Math.min(task.createdAt.getTime() + ANALYSIS_RECOVERY_MS, task.workRecoveryUntil?.getTime() ?? Infinity) : Infinity)
       await withinTaskDeadline(context, async check => {
         if (handler.replay === 'protected' && task.workAttempts > 1 && !await handler.reconcile!(context))
           throw new TaskFailure('PROTECTED_EFFECT_UNRESOLVED', false)
         check()
-        const result = taskArtifactSchema.parse(scopeTaskArtifact(await handler.evaluate(context), original.audit.executionSpec))
+        let result = taskArtifactSchema.parse(scopeTaskArtifact(await handler.evaluate(context), original.audit.executionSpec))
         handler.validateResult(result)
         if (result.continuation && (!handler.continuation || handler.replay !== 'read_only')) throw new TaskFailure('CONTINUATION_NOT_SUPPORTED', false)
         check()
         await executionTransaction(async tx => {
-          await handler.commit?.(context, result, tx)
-          check()
-          await tx.auditPipelineEvent.create({ data: {
-            auditId: job.auditId, executionId: task.id, traceId: job.auditId, attempt: task.workAttempts,
-            stage: 'checking', event: 'task_observation_committed', status: result.continuation ? 'partial' : 'completed',
-            detail: { version: 1, taskId: task.id, generation: job.generation, kind: handler.kind,
-              collectedAt: result.collectedAt, evidenceReference: task.id,
-              ...(handler.kind === 'check' || handler.kind === 'search' || handler.kind === 'google' ? { observations: result.data } : {}) },
-          } })
+          result = await commitTaskObservation(context, handler, result, tx, Boolean(result.continuation), check)
           await tx.auditExecutionTask.update({ where: { id: task.id }, data: {
             workResult: result as Prisma.InputJsonValue, workState: result.continuation ? 'READY' : 'COMPLETED', status: result.continuation ? 'PENDING' : 'COMPLETED',
             workErrorCode: null, workLeaseUntil: null,
@@ -354,12 +398,26 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       })
     } catch (error) {
       if (error instanceof ExecutionOwnershipLost) return
-      const failure = classifyTaskFailure(error)
+      let failure = classifyTaskFailure(error), observation: TaskArtifact | undefined
+      if (failure.observation) {
+        try {
+          observation = taskArtifactSchema.parse(scopeTaskArtifact(failure.observation, original.audit.executionSpec))
+          if (!failedContext || handler.replay !== 'read_only' || observation.kind !== handler.kind || observation.continuation)
+            throw new TaskFailure('OBSERVATION_CHECKPOINT_INVALID', false)
+          handler.validateResult(observation)
+        } catch {
+          observation = undefined
+          failure = new TaskFailure('OBSERVATION_CHECKPOINT_INVALID', false)
+        }
+      }
       const decision = retryDecision({ now: Date.now(), admittedAt: task.workKind === 'prescription' ? task.createdAt.getTime() : original.audit.createdAt.getTime(),
         firstFailureAt: task.workRecoveryUntil ? task.workRecoveryUntil.getTime() - 30 * 60_000 : undefined,
         attempts: task.workAttempts, crash: failure.crash, retryable: failure.retryable, retryAfterMs: failure.retryAfterMs })
       try {
         await executionTransaction(async tx => {
+          // Keep independently collected facts without resetting retry custody.
+          // A later failure with no observation leaves the committed facts intact.
+          if (observation && failedContext) observation = await commitTaskObservation(failedContext, handler, observation, tx, true)
           if (error instanceof PageCaptureError && !failure.retryable) await tx.auditPipelineEvent.create({ data: {
             auditId: job.auditId, executionId: task.id, traceId: job.auditId, attempt: task.workAttempts,
             stage: 'checking', event: 'page_response_unavailable', status: 'partial',
@@ -367,6 +425,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
               code: error.code, httpStatus: error.httpStatus, contentType: error.contentType, finalUrl: error.finalUrl },
           } })
           await tx.auditExecutionTask.update({ where: { id: task.id }, data: {
+            ...(observation ? { workResult: observation as Prisma.InputJsonValue } : {}),
             workState: decision.retry ? 'RETRY_WAIT' : failure.retryable ? 'EXHAUSTED' : 'BLOCKED',
             status: failure.code.endsWith('_NOT_APPLICABLE') ? 'NOT_APPLICABLE' : 'FAILED',
             workRetryAt: new Date(decision.nextAt), workRecoveryUntil: new Date(decision.until), workLeaseUntil: null,

@@ -8,7 +8,7 @@ import { collectDocument, collectSiteResources, missingDocument } from '../searc
 import { resolveAuditScanAccess } from '../scan-access-store'
 import { fetchPageSpeedData, toStoredPageSpeedResult, PAGESPEED_TASK_TIMEOUT_MS } from '../pagespeed'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
-import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
+import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema, screenshotSnapshotSchema } from './snapshots'
 import type { MetadataFailure } from './snapshots'
 import { MAX_TASKS_PER_AUDIT, serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import type { TaskHandler } from './registry'
@@ -28,6 +28,7 @@ import { capturedPagePreview } from '../checks/page-preview'
 import { capturedHeadMetadata } from '../checks/head-metadata'
 import { browserCollectionRequirements } from './browser-requirements'
 import { PAGE_COLLECTION_UNAVAILABLE } from '@/lib/marketing/copy/page-evidence'
+import { dedupeConsoleErrors } from '../console-evidence'
 
 /** Parsing enriches an already collected document. A bounded local retry can
  * replace a crashed parser without repeating its HTTP or browser observation. */
@@ -122,7 +123,7 @@ export const collectionHandlers: TaskHandler[] = [
     },
   },
   { kind: 'browser', replay: 'read_only', timeoutMs: (audit, input) => Math.max(90_000,
-    2 * (PAGE_TIMEOUT_MS + requestedConsoleWindow(readExecutionSpec(audit.executionSpec), input.pageUrl) + 5_000)),
+    (input.device ? 1 : 2) * (PAGE_TIMEOUT_MS + requestedConsoleWindow(readExecutionSpec(audit.executionSpec), input.pageUrl) + 5_000)),
     validateResult: artifact => { browserArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const pageUrl = new URL(context.input.pageUrl).toString()
@@ -136,42 +137,56 @@ export const collectionHandlers: TaskHandler[] = [
           select: { workKind: true, workInput: true }, take: MAX_TASKS_PER_AUDIT + 1 }) : []
       if (consumers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('TASK_GRAPH_LIMIT', false)
       const requirements = browserCollectionRequirements(consumers, spec?.checks)
+      const mobile = context.input.device === 'mobile'
       // DOM and semantics have no private-storage dependency. Media has its own
       // checkpoint and recovery window, so an upload outage cannot erase this input.
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `p${context.input.position}-g${context.task.workGeneration}`, { runFlow: false, scanAccess: access, deadline: context.deadline,
           collectOriginalDocument: false, captureMedia: false, consoleObservationMs, captureMotion: motionRequested(spec), deferMotionComparison: true,
-          ...requirements })
+          ...requirements, device: context.input.device, consoleIdentityKey: context.input.consoleIdentityKey })
       const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= RENDERED_HTML_LIMIT
       const parsed = htmlWithinBudget ? await collectMetadata(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline, 'rendered') : { metadata: null }
       const head = capturedHeadMetadata(captured)
       const metadata = parsed.metadata ? mergeRuntimeHeadMetadata(parsed.metadata, head?.metadata, captured.renderedCopy) : null
-      if (!metadata && !captured.desktopHtml && !captured.desktopHtmlTruncated && !captured.captureFailures?.some(failure => ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))
+      if ((!mobile && !metadata && !captured.desktopHtml && !captured.desktopHtmlTruncated ||
+        mobile && captured.captureFailures?.some(failure => failure.device === 'mobile')) &&
+        !captured.captureFailures?.some(failure => (!context.input.device || failure.device === context.input.device) &&
+          ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))
         throw new TaskFailure('BROWSER_COLLECTION_INTERRUPTED', true, undefined, true)
-      await executionTransaction(async tx => {
-        await tx.auditPage.update({ where: { id: page.id }, data: {
-          status: metadata ? 'CHECKING' : 'FAILED', title: metadata?.title,
-          ...(metadata ? { htmlMetadata: trimMetadataForStorage(metadata) as never } : {}),
-          consoleErrors: captured.consoleErrors as Prisma.InputJsonValue,
-          ...(!metadata ? { failureCode: 'BROWSER_SCOPE_UNAVAILABLE', failureMessage: PAGE_COLLECTION_UNAVAILABLE } : {}),
-        } })
-        if (context.input.primary && metadata) await tx.audit.update({ where: { id: context.audit.id }, data: {
-          htmlMetadata: trimMetadataForStorage(metadata) as never, consoleErrors: captured.consoleErrors as Prisma.InputJsonValue,
-        } })
-      })
       // Secret-bearing original/rendered HTML never enters the durable public collector snapshot.
       const snapshot = { ...captured }
       delete snapshot.flowResult
       if (metadata) delete snapshot.renderedCopy // Parsed metadata owns this observation when available.
       return serializeArtifact('browser', browserArtifactSchema.parse({ pageId: page.id, ...parsed, metadata,
         preview: capturedPagePreview(captured),
-        ...(context.input.primary ? { technologies: observeCapturedTechnologies(captured) } : {}),
+        ...(context.input.primary && !mobile ? { technologies: observeCapturedTechnologies(captured) } : {}),
         snapshot: { ...snapshot, desktopBase64: null, mobileBase64: null,
           ...(!htmlWithinBudget ? { desktopHtml: null } : {}),
           ...(access ? { desktopHtml: null, originalDocument: undefined } : {}) } }))
     },
     async commit(context, artifact, tx) {
-      const { technologies } = browserArtifactSchema.parse(artifact.data)
+      const { pageId, metadata, snapshot, technologies } = browserArtifactSchema.parse(artifact.data)
+      // The artifact and its legacy summary commit under the same audit fence.
+      // Read only console facts from the already committed peer, not its HTML.
+      const peers = await tx.$queryRaw<Array<{ errors: unknown }>>`
+        SELECT "workResult"#>'{data,snapshot,consoleErrors}' AS errors FROM audit_execution_tasks
+        WHERE "auditId" = ${context.audit.id} AND "pageUrl" = ${context.input.pageUrl}
+          AND "workKind" = 'browser' AND "workState" = 'COMPLETED' AND "status" = 'COMPLETED'
+          AND "id" <> ${context.task.id} LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
+      if (peers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
+      const consoleErrors = dedupeConsoleErrors([...snapshot.consoleErrors,
+        ...peers.flatMap(peer => screenshotSnapshotSchema.shape.consoleErrors.parse(peer.errors))]).slice(0, 500)
+      const desktop = context.input.device !== 'mobile'
+      await tx.auditPage.update({ where: { id: pageId }, data: {
+        consoleErrors: consoleErrors as Prisma.InputJsonValue,
+        ...(desktop ? { status: metadata ? 'CHECKING' : 'FAILED', title: metadata?.title,
+          ...(metadata ? { htmlMetadata: trimMetadataForStorage(metadata) as never, failureCode: null, failureMessage: null }
+            : { failureCode: 'BROWSER_SCOPE_UNAVAILABLE', failureMessage: PAGE_COLLECTION_UNAVAILABLE }) } : {}),
+      } })
+      if (context.input.primary) await tx.audit.update({ where: { id: context.audit.id }, data: {
+        consoleErrors: consoleErrors as Prisma.InputJsonValue,
+        ...(desktop && metadata ? { htmlMetadata: trimMetadataForStorage(metadata) as never } : {}),
+      } })
       if (context.input.primary && technologies) await persistTechnologyObservations(context.audit.id,
         technologies.detections, technologies.status, technologies.detectorVersion, undefined, { tx, scope: technologies.scope })
     },
@@ -204,6 +219,17 @@ export const collectionHandlers: TaskHandler[] = [
   },
   { kind: 'pagespeed', replay: 'read_only', timeoutMs: PAGESPEED_TASK_TIMEOUT_MS,
     validateResult: artifact => { speedArtifactSchema.parse(artifact.data) },
+    async commit(context, artifact, tx) {
+      if (!context.input.primary) return
+      const result = speedArtifactSchema.parse(artifact.data)
+      const audit = await tx.audit.findUniqueOrThrow({ where: { id: context.audit.id }, select: { performanceData: true } })
+      const prior = audit.performanceData && typeof audit.performanceData === 'object' && !Array.isArray(audit.performanceData) ? audit.performanceData : {}
+      const device = context.input.device ?? 'desktop', measurement = result[device]
+      await tx.audit.update({ where: { id: context.audit.id }, data: {
+        performanceData: { ...prior, [device]: measurement ? toStoredPageSpeedResult(measurement) : null,
+          [device + 'Error']: result[`${device}Error`] ?? null } as never,
+      } })
+    },
     async evaluate(context) {
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), Math.max(1, context.deadline - Date.now()))
       const signal = context.signal ? AbortSignal.any([controller.signal, context.signal]) : controller.signal
@@ -211,30 +237,19 @@ export const collectionHandlers: TaskHandler[] = [
         const result = await fetchPageSpeedData(context.input.pageUrl, signal,
           { fresh: true, strategies: [context.input.device ?? 'desktop'], singleAttempt: true })
         const failure = context.input.device === 'mobile' ? result.mobileFailure : result.desktopFailure
-        if (failure?.retryable) {
+        // Keep only normalized facts, not the provider's multi-megabyte trace.
+        if (result.desktop) result.desktop = { ...result.desktop, raw: {} }
+        if (result.mobile) result.mobile = { ...result.mobile, raw: {} }
+        const artifact = serializeArtifact('pagespeed', speedArtifactSchema.parse(result))
+        if (failure) {
           await executionTransaction(tx => tx.auditPipelineEvent.create({ data: { auditId: context.audit.id,
             executionId: context.task.id, traceId: context.audit.id, attempt: context.task.workAttempts,
             stage: 'checking', event: 'provider_attempt_observed', status: 'partial',
             detail: { version: 1, device: context.input.device ?? 'desktop', failure } } }))
-          throw new TaskFailure(failure.code, true, failure.retryAfterMs ?? (failure.code === 'PROVIDER_QUOTA' ? 60_000 : undefined))
+          throw new TaskFailure(failure.code, failure.retryable, failure.retryAfterMs ?? (failure.code === 'PROVIDER_QUOTA' ? 60_000 : undefined), false,
+            result.desktop || result.mobile ? artifact : undefined)
         }
-        // Keep only normalized facts, not the provider's multi-megabyte trace.
-        if (result.desktop) result.desktop = { ...result.desktop, raw: {} }
-        if (result.mobile) result.mobile = { ...result.mobile, raw: {} }
-        // A provider refusal is not a passing measurement. Preserve the returned typed errors.
-        await executionTransaction(async tx => {
-          if (context.input.primary) {
-            const audit = await tx.audit.findUniqueOrThrow({ where: { id: context.audit.id }, select: { performanceData: true } })
-            const prior = audit.performanceData && typeof audit.performanceData === 'object' && !Array.isArray(audit.performanceData) ? audit.performanceData : {}
-            const device = context.input.device ?? 'desktop'
-            const measurement = device === 'desktop' ? result.desktop : result.mobile
-            await tx.audit.update({ where: { id: context.audit.id }, data: {
-              performanceData: { ...prior, [device]: measurement ? toStoredPageSpeedResult(measurement) : null,
-                [device + 'Error']: (device === 'desktop' ? result.desktopError : result.mobileError) ?? null } as never,
-            } })
-          }
-        })
-        return serializeArtifact('pagespeed', speedArtifactSchema.parse(result))
+        return artifact
       } finally { clearTimeout(timer) }
     },
   },

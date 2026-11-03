@@ -1,4 +1,6 @@
 import { SiteRunRefusal } from './run-refusal'
+import { canonicalIntent } from '../domain/execution-spec'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import type { MonitoringChange } from './monitoring-settings'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import {
@@ -23,10 +25,12 @@ export type SiteCommand =
   | {
       type: 'CONFIRM_PAGE_AVAILABILITY'
       siteId: string
+      userId: string
     }
   | {
       type: 'CONFIRM_OUTCOME'
       siteId: string
+      userId: string
       outcomeId: string
       name?: string
       confirmed: boolean
@@ -36,6 +40,7 @@ export type SiteCommand =
   | {
       type: 'RENAME_OUTCOME'
       siteId: string
+      userId: string
       outcomeId: string
       name: string
     }
@@ -45,6 +50,7 @@ export type SiteCommand =
       userId: string
       builder: string
       client?: string
+      preparedHandoff?: { siteId: string; referenceFlagId: string; promptHash: string; context?: import('@prisma/client').Prisma.InputJsonObject }
     }
   | {
       type: 'VERIFY_FLAG'
@@ -58,17 +64,22 @@ export type SiteCommand =
     }
   | ({ type: 'SET_WATCH'; siteId: string; userId: string } & MonitoringChange)
 
+async function loadOwnedCommandSite(siteId: string, userId: string) {
+  const site = await loadSiteRecord(siteId)
+  return site?.projectId && site.userId === userId ? site : null
+}
+
 export async function executeSiteCommand(command: SiteCommand) {
   switch (command.type) {
     case 'CONFIRM_PAGE_AVAILABILITY': {
-      const site = await loadSiteRecord(command.siteId)
+      const site = await loadOwnedCommandSite(command.siteId, command.userId)
       if (!site) return { ok: false as const, error: 'Site not found' }
       const outcome = await confirmPageAvailability(site)
       if (!outcome) return { ok: false as const, error: 'Outcome not found' }
       return { ok: true as const, outcome }
     }
     case 'CONFIRM_OUTCOME': {
-      const site = await loadSiteRecord(command.siteId)
+      const site = await loadOwnedCommandSite(command.siteId, command.userId)
       if (!site) return { ok: false as const, error: 'Site not found' }
       // A kind is the execution mechanism that will verify the Outcome, not a
       // label. Confirming without one writes an agreement FixFlags can never
@@ -133,7 +144,7 @@ export async function executeSiteCommand(command: SiteCommand) {
       return { ok: true as const, outcome }
     }
     case 'RENAME_OUTCOME': {
-      const site = await loadSiteRecord(command.siteId)
+      const site = await loadOwnedCommandSite(command.siteId, command.userId)
       if (!site) return { ok: false as const, error: 'Site not found' }
       const outcome = await renameSiteOutcome({
         site,
@@ -151,7 +162,17 @@ export async function executeSiteCommand(command: SiteCommand) {
         builder: command.builder,
         client: command.client,
         action: 'HANDOFF_COPIED',
-      })
+        ...(command.preparedHandoff ? { handoffRevision: { referenceFlagId: command.preparedHandoff.referenceFlagId,
+          promptHash: command.preparedHandoff.promptHash, ...(command.preparedHandoff.context ? { context: command.preparedHandoff.context } : {}) } } : {}),
+      }, command.preparedHandoff ? { validateHandoff: async () => {
+        const { loadSiteFlagCopyTask } = await import('./flag-copy-task')
+        const scope = command.preparedHandoff!
+        const site = await loadSiteRecord(scope.siteId)
+        if (!site || site.userId !== command.userId) throw new SiteRunRefusal('Site not found', 404)
+        const current = await loadSiteFlagCopyTask(site, scope.referenceFlagId, scope.promptHash)
+        if (current.sourceFlagId !== command.flagId || scope.context && canonicalIntent(scope.context) !== canonicalIntent(current.revision))
+          throw new SiteRunRefusal(SITE_ACTION_COPY.repairGuidance.changed, 409, 'REPAIR_TASK_CHANGED')
+      } } : undefined)
       await recordSiteLifecycleEvent({
         name: 'fix_handoff',
         idempotencyKey: `fix-handoff:${command.userId}:${command.flagId}:${command.builder}${handoffProtocolSuffix(command.client)}`,

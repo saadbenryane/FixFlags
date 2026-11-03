@@ -1,20 +1,22 @@
-import { renderedContentMetadata } from '../browser/rendered-copy'
+import { observedPageCopy, type RenderedCopy } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runContentChecks(
-  meta: PageMetadata,
+  meta: PageMetadata | null,
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
   record?: CheckRecorder,
+  renderedCopy?: RenderedCopy | null,
 ): DeterministicFlag[] {
-  meta = renderedContentMetadata(meta)
+  const prose = observedPageCopy(meta, renderedCopy)
+  if (!prose) return []
   const findings: DeterministicFlag[] = []
-  const productPage = isProductPage(purpose.purpose)
+  const productPage = meta !== null && isProductPage(purpose.purpose)
 
-  if (meta.h1s.length > 0) {
-    const h1 = meta.h1s[0]
+  if (prose.h1s.length > 0) {
+    const h1 = prose.h1s[0]
     const genericPhrases = ['welcome', 'welcome to', 'untitled', 'coming soon', 'hello world']
     const categoryHeadlinePatterns = [
       /build something (amazing|great|beautiful|incredible|awesome)/i,
@@ -45,10 +47,10 @@ export function runContentChecks(
     }
   }
 
-  if (meta.h1s.length === 0) recordObservation(record, 'headline-specificity', 'Headline wording',
+  if (prose.h1s.length === 0) recordObservation(record, 'headline-specificity', 'Headline wording',
     'A captured H1 can be evaluated', 'No H1 was captured.', undefined, true)
 
-  if (productPage) recordObservation(record, 'cta-presence', 'Recognized action labels',
+  if (productPage && meta) recordObservation(record, 'cta-presence', 'Recognized action labels',
     'Captured product-page controls include a recognized action label', `${meta.ctaTexts.length} recognized action labels captured.`,
     meta.ctaTexts.length > 0, true)
 
@@ -56,7 +58,7 @@ export function runContentChecks(
   // domains, docs, articles, and OSS project pages legitimately have no
   // conversion CTA, and flagging them pollutes the report with non-actionable
   // IMPORTANT findings above real issues.
-  if (productPage && meta.ctaTexts.length === 0) {
+  if (productPage && meta && meta.ctaTexts.length === 0) {
     const sampleLinks = meta.links.slice(0, 5).map((l) => `"${l.text || l.href}"`).join(', ')
     findings.push({
       checkId: 'no-cta-detected',
@@ -73,31 +75,31 @@ export function runContentChecks(
 
   // Skip definitive "no H2" claims on sparse DOM samples (SPA shells / pre-hydration)
   // where H1 may exist in the shell while section headings render later.
-  const pageTextLen = (meta.pageText ?? '').trim().length
+  const pageTextLen = prose.pageText.trim().length
   const headingSampleComplete = pageTextLen >= 200
   recordObservation(record, 'section-headings', 'Section headings', 'Captured content with an H1 includes H2 section headings',
-    `${meta.h1s.length} H1 and ${meta.h2s.length} H2 headings in ${pageTextLen} captured characters.`,
-    meta.h1s.length > 0 && headingSampleComplete ? meta.h2s.length > 0 : undefined, true)
+    `${prose.h1s.length} H1 and ${prose.h2s.length} H2 headings in ${pageTextLen} captured characters.`,
+    prose.h1s.length > 0 && headingSampleComplete ? prose.h2s.length > 0 : undefined, true)
 
-  if (meta.forms > 0) recordObservation(record, 'form-validation-attributes', 'Declared form validation',
+  if (meta && meta.forms > 0) recordObservation(record, 'form-validation-attributes', 'Declared form validation',
     'Captured input fields declare HTML validation attributes',
     `${meta.formInputsMissingValidation} of ${meta.totalFormInputs} captured fields lack validation attributes. Runtime validation was not tested.`,
     meta.totalFormInputs > 0 ? meta.formInputsMissingValidation === 0 : undefined, true)
-  if (meta.h1s.length > 0 && meta.h2s.length === 0 && headingSampleComplete) {
+  if (prose.h1s.length > 0 && prose.h2s.length === 0 && headingSampleComplete) {
     findings.push({
       checkId: 'heading-hierarchy-missing',
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
       problem: 'Page has a headline but no section headings (H2)',
-      evidence: `H1: "${meta.h1s[0]}"; no H2 elements found in the captured DOM`,
+      evidence: `H1: "${prose.h1s[0]}"; no H2 elements found in the captured DOM`,
       fix: '1. Add H2 headings for each major section (features, pricing, FAQ)\n2. Make H2s scannable and descriptive\n3. Maintain a logical heading hierarchy (H1 → H2 → H3)',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })
   }
 
-  if (meta.forms > 0 && meta.formInputsMissingValidation > 0) {
+  if (meta && meta.forms > 0 && meta.formInputsMissingValidation > 0) {
     findings.push({
       checkId: 'form-missing-validation',
       rubric: 'EXPERIENCE',
@@ -111,5 +113,7 @@ export function runContentChecks(
     })
   }
 
+  if (!meta) for (const [key, name] of [['cta-presence', 'Recognized action labels'], ['form-validation-attributes', 'Declared form validation']])
+    recordObservation(record, key, name, 'Declared page context supports this observation', 'Page controls and form declarations were not collected.', undefined, true)
   return findings
 }

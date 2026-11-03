@@ -20,6 +20,7 @@ export const actionContextSchema = z.string().regex(/^(form:|flow:control:|flow:
 export const executionSpecSchema = z.object({
   scanAccess: scanAccessIntentSchema.optional(),
   engine: z.literal('progressive-v1').optional(),
+  browserCollection: z.literal('per-profile-v1').optional(),
   reviewDepth: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   monitoringPages: z.array(z.string().url()).min(1).max(24).optional(),
   monitoringBehaviors: z.array(z.object({ pageUrl: z.string().url(), behaviors: z.array(monitoredBehaviorSchema).max(4),

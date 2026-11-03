@@ -2,6 +2,10 @@ import { z } from 'zod'
 import { capturePageKey } from './browser/observation-scope'
 
 export type ConsoleMessage = { type: string; text: string; identity?: string }
+/** Repeated observations retain one exception, including redacted identities. */
+export function dedupeConsoleErrors(errors: ConsoleMessage[]): ConsoleMessage[] {
+  return [...new Map(errors.map(error => [error.identity ?? `${error.type}:${error.text}`, error])).values()]
+}
 const viewport = z.object({
   complete: z.boolean(), finalUrl: z.string().url().nullable(), profile: z.string().min(1), errors: z.number().int().nonnegative(),
   observedMs: z.number().int().min(0).max(90000), minimumMs: z.number().int().min(0).max(90000),

@@ -1,3 +1,4 @@
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { randomUUID } from 'node:crypto'
 import { createServer as httpServer } from 'node:http'
 import { createServer as httpsServer } from 'node:https'
@@ -126,7 +127,7 @@ run('public certificate findings through URL admission and installed workers', (
     expect(flag.evidence).not.toMatch(/PRIVATE_TLS_VALUE|PRIVATE_VALUE/)
     expect(await prisma.flag.count({ where: { auditId: source.auditId, checkId: { startsWith: 'security-headers' } } })).toBe(0)
     expect((await loadSiteHome(projectId))?.flags).toContainEqual(expect.objectContaining({ sourceFlagId: flag.id }))
-    const handoff = await loadSiteFlagCopyTask(projectId, flag.id)
+    const handoff = await loadSiteFlagCopyTask((await loadSiteRecord(projectId))!, flag.id)
     expect(handoff.prompt).toMatch(/renew/i)
     expect(handoff.prompt).not.toContain('PRIVATE_TLS_VALUE')
     const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
@@ -173,7 +174,7 @@ run('public certificate findings through URL admission and installed workers', (
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId!, checkId: 'outcome-availability-failed' } })
       expect(flag.problem).toContain('expired')
       expect(flag.fix).toMatch(/renew/i)
-      expect((await loadSiteFlagCopyTask(projectId, flag.id)).prompt).toMatch(/renew/i)
+      expect((await loadSiteFlagCopyTask((await loadSiteRecord(projectId))!, flag.id)).prompt).toMatch(/renew/i)
       expect(await prisma.outcomeBindingAttempt.findMany({ where: { auditId: source.auditId! }, orderBy: { attempt: 'asc' } }))
         .toMatchObject([{ disposition: 'FAILED', reason: 'certificate_expired' }, { disposition: 'FAILED', reason: 'certificate_expired' }])
       expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'bindings' } }))

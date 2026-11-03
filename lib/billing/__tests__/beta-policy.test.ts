@@ -17,7 +17,8 @@ vi.mock('@/lib/billing/usage-period', () => ({ rollUserUsagePeriod: vi.fn(async 
 
 import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 import { hasUnlimitedScans, getCheckUsage, getPlanDisplayLimit } from '@/lib/auth/permissions'
-import { getEntitlements, allowedWatchIntervals } from '@/lib/auth/entitlements'
+import { getEntitlements } from '@/lib/auth/entitlements'
+import { resolveEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { siteCarePolicy } from '@/lib/sites/application/care-policy'
 import { reviewDepthForPlan, PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { isPaidOpenClient, isPaidOpenServer } from '@/lib/billing/paid-open'
@@ -51,7 +52,7 @@ describe('unrestricted one-website open beta', () => {
   })
   it('grants Free all released capability gates, schedules, and full depth', () => {
     expect(getEntitlements(account)).toEqual({ canExportSummary: true, canAccessPaidFeatures: true, canMonitor: true, canWatchProduct: true, canUseMcp: true, canAccessBasicMcp: true, canScanRepositories: true })
-    expect(allowedWatchIntervals(account)).toEqual(['weekly', 'daily', 'hourly', 'custom'])
+    expect(resolveEffectiveEntitlements({ ...account, lifecycleStatus: 'ACTIVE' }, []).watchIntervals).toEqual(['weekly', 'daily', 'hourly', 'custom'])
     expect(reviewDepthForPlan('FREE')).toBe(3)
     expect(siteCarePolicy(account).maxSites).toBe(1)
   })
@@ -59,7 +60,7 @@ describe('unrestricted one-website open beta', () => {
     const canceled = { ...account, plan: 'TEAM' as const, subscriptionStatus: 'CANCELED' as const }
     expect(getEntitlements(canceled).canScanRepositories).toBe(true)
     expect(siteCarePolicy(canceled).maxSites).toBe(1)
-    expect(allowedWatchIntervals(canceled)).toContain('hourly')
+    expect(resolveEffectiveEntitlements({ ...canceled, lifecycleStatus: 'ACTIVE' }, []).watchIntervals).toContain('hourly')
   })
   it('ignores exhausted analysis allowances and pending work without spending purchased credits', async () => {
     expect(hasUnlimitedScans(account)).toBe(true)

@@ -15,10 +15,17 @@ export async function settleRecordedPages(tx: Prisma.TransactionClient, auditId:
   if (pages.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
   // Keep collection proof small. Whole HTML, network traces and media are not
   // needed to settle the lifecycle of an already committed browser observation.
-  const tasks = await tx.$queryRaw<Array<{ pageUrl: string; workResult: unknown }>>`
-    SELECT "pageUrl", jsonb_set("workResult", '{data}', jsonb_build_object(
+  const tasks = await tx.$queryRaw<Array<{ pageUrl: string; device: string | null; desktopRequired: boolean; mobileObserved: boolean; workResult: unknown }>>`
+    SELECT "pageUrl", "workInput"->>'device' AS device,
+      EXISTS (SELECT 1 FROM audit_execution_tasks desktop WHERE desktop."auditId" = collected."auditId"
+        AND desktop."pageUrl" = collected."pageUrl" AND desktop."workKind" = 'browser'
+        AND COALESCE(desktop."workInput"->>'device', 'desktop') <> 'mobile') AS "desktopRequired",
+      (jsonb_typeof("workResult"#>'{data,snapshot,captureMetrics}') = 'object'
+        OR jsonb_typeof("workResult"#>'{data,snapshot,mobileAccessibility,evidence}') = 'object'
+        OR "workResult"#>'{data,snapshot,consoleCoverage,mobile,complete}' = 'true'::jsonb) IS TRUE AS "mobileObserved",
+      jsonb_set("workResult", '{data}', jsonb_build_object(
       'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata')) AS "workResult"
-    FROM "audit_execution_tasks"
+    FROM "audit_execution_tasks" collected
     WHERE "auditId" = ${auditId} AND "workKind" = 'browser'
       AND "workState" = 'COMPLETED' AND "status" = 'COMPLETED'
       AND "pageUrl" = "workInput"->>'pageUrl'
@@ -28,7 +35,8 @@ export async function settleRecordedPages(tx: Prisma.TransactionClient, auditId:
     const artifact = taskArtifactSchema.safeParse(task.workResult)
     if (!artifact.success || artifact.data.kind !== 'browser') continue
     const collected = collectedPageSchema.safeParse(artifact.data.data)
-    if (!collected.success || !collected.data.metadata) continue
+    if (!collected.success || !collected.data.metadata &&
+      !(task.device === 'mobile' && !task.desktopRequired && task.mobileObserved)) continue
     const page = pages.find(page => page.id === collected.data.pageId && page.url === task.pageUrl)
     if (!page) continue
     await tx.auditPage.updateMany({ where: { id: collected.data.pageId, auditId, url: task.pageUrl,

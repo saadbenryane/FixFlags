@@ -3,7 +3,6 @@ import { actionContextSchema, readExecutionSpec } from '@/lib/sites/domain/execu
 import { readArtifact, TaskFailure } from './contracts'
 import type { TaskContext } from './registry'
 
-export const CONTROL_OBSERVATION_TARGET = 'artifact:flow-control'
 export const controlProgressSchema = z.object({ completed: z.number().int().min(1).max(5001),
   total: z.number().int().min(1).max(5001), context: actionContextSchema.nullable() }).strict()
 

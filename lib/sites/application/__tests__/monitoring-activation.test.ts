@@ -1,23 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ load: vi.fn(), user: vi.fn(), prior: vi.fn(), command: vi.fn(), run: vi.fn(), allowed: vi.fn(), page: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: m.user }, runRequest: { findFirst: m.prior }, siteOutcome: { findFirst: m.page } } }))
+const m = vi.hoisted(() => ({ load: vi.fn(), policy: vi.fn(), prior: vi.fn(), command: vi.fn(), run: vi.fn(), page: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { runRequest: { findFirst: m.prior }, siteOutcome: { findFirst: m.page } } }))
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: m.load }))
-vi.mock('@/lib/auth/entitlements', () => ({ allowedWatchIntervals: m.allowed }))
+vi.mock('@/lib/billing/effective-entitlements', () => ({ loadEffectiveEntitlements: m.policy }))
 vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: m.command }))
 vi.mock('@/lib/sites/application/run-requests', () => ({ requestOutcomeRun: m.run }))
-import { activateSiteMonitoring } from '../monitoring-activation'
+import { activateSiteMonitoring, monitoringOptions } from '../monitoring-activation'
 const input = { siteId: 'site-1', userId: 'owner', interval: 'weekly' as const }
 const off = { siteId: 'site-1', projectId: 'project-1', userId: 'owner', watchInterval: null, watchNextRunAt: null }
 const on = { ...off, watchInterval: 'weekly', watchNextRunAt: new Date('2026-10-17T09:00:00Z') }
 describe('monitoring activation', () => {
   beforeEach(() => {
-    vi.resetAllMocks(); m.load.mockResolvedValueOnce(off).mockResolvedValue(on); m.user.mockResolvedValue({ id: 'owner' }); m.allowed.mockReturnValue(['weekly']); m.prior.mockResolvedValue(null); m.page.mockResolvedValue(null)
+    vi.resetAllMocks(); m.load.mockResolvedValueOnce(off).mockResolvedValue(on); m.policy.mockResolvedValue({ available: true, watchIntervals: ['weekly'] }); m.prior.mockResolvedValue(null); m.page.mockResolvedValue(null)
     m.command.mockImplementation(async command => command.type === 'CONFIRM_PAGE_AVAILABILITY' ? { ok: true, outcome: { id: 'page-1' } } : { ok: true })
     m.run.mockResolvedValue({ runId: 'run-1', reused: false })
   })
   it('confirms coverage before scheduling and requests a scoped independent check', async () => {
     expect(await activateSiteMonitoring(input)).toMatchObject({ ok: true, interval: 'weekly', nextRunAt: '2026-10-17T09:00:00.000Z', firstCheck: 'requested' })
     expect(m.command.mock.calls.map(([value]) => value.type)).toEqual(['CONFIRM_PAGE_AVAILABILITY', 'SET_WATCH'])
+    expect(m.command).toHaveBeenCalledWith({ type: 'CONFIRM_PAGE_AVAILABILITY', siteId: 'site-1', userId: 'owner' })
     expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', userId: 'owner', outcomeId: 'page-1', idempotencyKey: 'monitoring-start:page-1' }))
   })
   it('rejects another tenant before changing anything', async () => {
@@ -28,6 +29,19 @@ describe('monitoring activation', () => {
   it('does not downgrade or silently substitute a forbidden cadence', async () => {
     expect(await activateSiteMonitoring({ ...input, interval: 'daily' })).toMatchObject({ ok: false, stage: 'schedule' })
     expect(m.command).not.toHaveBeenCalled()
+  })
+  it('offers the current effective cadence grant without substituting subscription-only policy', async () => {
+    m.policy.mockResolvedValue({ available: true, watchIntervals: ['weekly', 'hourly'] })
+    expect(await monitoringOptions('owner')).toEqual(['weekly', 'hourly'])
+    expect(m.policy).toHaveBeenCalledWith('owner')
+    expect(await activateSiteMonitoring({ ...input, interval: 'hourly' })).toMatchObject({ ok: true })
+    expect(m.command).toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_WATCH', interval: 'hourly' }))
+  })
+  it.each([null, { available: false, watchIntervals: ['weekly', 'hourly'] }])('refuses unavailable account policy before changing coverage: %j', async policy => {
+    m.policy.mockResolvedValue(policy)
+    expect(await monitoringOptions('owner')).toEqual([])
+    expect(await activateSiteMonitoring(input)).toMatchObject({ ok: false, stage: 'schedule' })
+    expect(m.command).not.toHaveBeenCalled(); expect(m.run).not.toHaveBeenCalled()
   })
   it('never saves a schedule when coverage confirmation fails', async () => {
     m.command.mockResolvedValue({ ok: false })
@@ -42,6 +56,18 @@ describe('monitoring activation', () => {
   it('reports the persisted cadence rather than echoing the request', async () => {
     m.load.mockReset().mockResolvedValueOnce(off).mockResolvedValue({ ...on, watchInterval: 'daily' })
     expect(await activateSiteMonitoring(input)).toMatchObject({ ok: true, interval: 'daily' })
+  })
+  it('does not adopt a replacement owner while reading the saved schedule', async () => {
+    m.load.mockReset().mockResolvedValueOnce(off).mockResolvedValue({ ...on, userId: 'replacement-owner' })
+    expect(await activateSiteMonitoring(input)).toMatchObject({ ok: false, stage: 'schedule' })
+    expect(m.run).not.toHaveBeenCalled()
+  })
+  it('requests a fresh check when a pause retained the existing cadence', async () => {
+    m.load.mockReset().mockResolvedValueOnce({ ...on, watchNextRunAt: null, watchPausedAt: new Date() }).mockResolvedValue(on)
+    m.page.mockResolvedValue({ id: 'page-1' })
+    m.prior.mockResolvedValue({ id: 'completed-before-pause', status: 'COMPLETED', idempotencyKey: 'monitoring-start:page-1' })
+    expect(await activateSiteMonitoring(input)).toMatchObject({ ok: true, firstCheck: 'requested' })
+    expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'monitoring-start:page-1:resume:completed-before-pause' }))
   })
   it('preserves an existing schedule and reuses the first check on repeated activation', async () => {
     m.load.mockReset().mockResolvedValue(on); m.page.mockResolvedValue({ id: 'page-1' })

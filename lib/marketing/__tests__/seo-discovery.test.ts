@@ -8,11 +8,10 @@ const FEATURE_FLAG_INFRA = /feature[- ]flags? infra|openfeature/i
 describe('pre-publish brand discovery copy', () => {
   it('keeps FixFlags first on the official homepage snippet', () => {
     assert.match(SEO.home.title, /^FixFlags/)
-    assert.match(SEO.home.title, /Website monitoring/i)
-    assert.match(SEO.home.title, /From problem to fix/i)
-    assert.match(SEO.home.description, /broken pages/)
+    assert.match(SEO.home.title, /Your website is live\. Is everything working\?/i)
+    assert.match(SEO.home.description, /broken pages, slow load times, and buttons that fail/)
     assert.match(SEO.home.description, /email alerts/)
-    assert.match(SEO.home.description, /clear steps to fix/)
+    assert.match(SEO.home.description, /fix instructions you can copy and paste/)
     assert.doesNotMatch(SEO.home.description, FEATURE_FLAG_INFRA)
   })
 

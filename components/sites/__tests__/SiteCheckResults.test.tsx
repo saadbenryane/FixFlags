@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SiteCheckResults } from '../SiteCheckResults'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
@@ -80,5 +80,39 @@ describe('scoped recorded-result interaction', () => {
     expect(screen.getByText('1 of 1 recorded result in this scope.')).toBeVisible()
     expect(new URL(fetch.mock.calls[2][0], 'https://fixflags.com').searchParams.get('cursor')).toBeNull()
     expect(screen.getByText('The recorded evidence changed. Showing the latest results for this scope.')).toBeVisible()
+  })
+
+  it('cancels a paginated read when its scope changes and cannot append its late response', async () => {
+    let finish!: (response: Response) => void
+    let signal!: AbortSignal
+    const fetcher = vi.fn().mockResolvedValueOnce(response([result('Earlier')], 'more'))
+      .mockImplementationOnce((_url, options) => { signal = options.signal; return new Promise<Response>(resolve => { finish = resolve }) })
+      .mockResolvedValueOnce(response([result('New category', 'accessibility')]))
+    vi.stubGlobal('fetch', fetcher)
+    const rendered = render(<SiteCheckResults siteId="owned" area="search" results={[]} />)
+    await screen.findByText('Earlier')
+    fireEvent.click(screen.getByRole('button', { name: 'Load more recorded results' }))
+    await waitFor(() => expect(signal).toBeDefined())
+    expect(signal.aborted).toBe(false)
+    rendered.rerender(<SiteCheckResults siteId="owned" area="accessibility" results={[]} />)
+    expect(signal.aborted).toBe(true)
+    expect(await screen.findByText('New category')).toBeVisible()
+    await act(async () => { finish(response([result('Retired evidence')])); await Promise.resolve() })
+    expect(screen.queryByText('Retired evidence')).not.toBeInTheDocument()
+    expect(screen.queryByText('Earlier')).not.toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledTimes(3)
+  })
+
+  it('cancels an unscoped continuation when the evidence view closes', async () => {
+    let signal!: AbortSignal
+    const fetcher = vi.fn((_url, options) => { signal = options.signal; return new Promise<Response>(() => {}) })
+    vi.stubGlobal('fetch', fetcher)
+    const rendered = render(<SiteCheckResults siteId="owned" results={[result('Recorded')]} nextCursor="more" />)
+    expect(fetcher).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Load more recorded results' }))
+    await waitFor(() => expect(signal).toBeDefined())
+    rendered.unmount()
+    expect(signal.aborted).toBe(true)
+    expect(fetcher).toHaveBeenCalledTimes(1)
   })
 })

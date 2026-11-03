@@ -2,6 +2,14 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { isProductPage, type PagePurpose } from '@/lib/audit/page-purpose'
 import type { JourneyType } from './types'
 import type { readJourneyContext } from '../checks/journey-evidence'
+import { journeyRouteSchema } from '../checks/journey-evidence'
+import { z } from 'zod'
+
+export const journeyRunSchema = z.object({
+  journeyType: z.enum(['first-visit', 'pricing-evaluation', 'checkout', 'signup', 'contact-support', 'multi-step-funnel']),
+  route: journeyRouteSchema.optional(),
+}).strict()
+export type JourneyRun = z.infer<typeof journeyRunSchema>
 
 const SAAS_JOURNEY_TYPES: JourneyType[] = [
   'first-visit',
@@ -55,7 +63,7 @@ export type JourneyScopeOptions = {
 }
 
 /** Frozen original routes stay distinguishable from ordinary discovery. */
-export function selectJourneyRuns(contract: ProductContract | null, purpose: PagePurpose | null, options: JourneyScopeOptions) {
+export function selectJourneyRuns(contract: ProductContract | null, purpose: PagePurpose | null, options: JourneyScopeOptions): JourneyRun[] {
   const journeyTypes = options.expectedJourneyConditions
     ? [...new Set(options.expectedJourneyConditions.map(condition => condition.journeyType))]
     : options.overlayPhases

@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 const findMany = vi.hoisted(() => vi.fn().mockResolvedValue([]))
-const progress = vi.hoisted(() => ({ audit: vi.fn(), tasks: vi.fn(), counts: vi.fn(), event: vi.fn().mockResolvedValue(null) }))
+const progress = vi.hoisted(() => ({ authorize: vi.fn(), audit: vi.fn(), tasks: vi.fn(), counts: vi.fn(), event: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/lib/db', () => ({ prisma: { auditPipelineEvent: { findMany, findFirst: progress.event }, audit: { findFirst: progress.audit },
+  project: { findFirst: progress.authorize },
   $queryRaw: progress.tasks, auditExecutionTask: { groupBy: progress.counts } } }))
 import { readSiteEvents, decodeEventCursor, encodeEventCursor, loadExecutionProgress } from '../execution-progress'
 import { MAX_TASKS_PER_AUDIT } from '@/lib/audit/progressive/contracts'
@@ -9,6 +10,7 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { cardExecution } from '@/lib/sites/card-execution'
 
 describe('Site progress read boundary', () => {
+  beforeEach(() => { progress.authorize.mockReset().mockResolvedValue({ id: 'project-one' }) })
   it('projects primary capture work independently from linked-page collection', async () => {
     const task = (id: string, primary: boolean, workState: string) => ({ id, primary, workKind: 'captures', status: 'COMPLETED', workState,
       pageUrl: 'https://example.com/' + id, module: null, device: null,
@@ -38,10 +40,16 @@ describe('Site progress read boundary', () => {
     expect(cardExecution('performance', result)?.status).toBe('Running')
   })
   it('scopes owned events to the exact Project and bounds replay', async () => {
-    await readSiteEvents({ siteId: 'site-one', projectId: 'project-one' } as SiteRecord, BigInt(7))
+    await readSiteEvents({ siteId: 'site-one', kind: 'project', projectId: 'project-one', userId: 'owner' } as SiteRecord, BigInt(7))
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { event: 'projection_changed', sequence: { gt: BigInt(7) }, audit: { projectId: 'project-one' } }, take: 100,
     }))
+  })
+  it('withholds an admitted notice when ownership changes during collection', async () => {
+    progress.authorize.mockResolvedValueOnce({ id: 'project-one' }).mockResolvedValueOnce(null)
+    findMany.mockResolvedValueOnce([{ sequence: BigInt(8), auditId: 'private-audit', detail: { version: 1 } }])
+    await expect(readSiteEvents({ siteId: 'site-one', kind: 'project', projectId: 'project-one', userId: 'owner' } as SiteRecord, BigInt(7)))
+      .rejects.toMatchObject({ status: 404 })
   })
   it('scopes provisional events to the owned primary Audit', async () => {
     await readSiteEvents({ siteId: 'site-provisional', projectId: null, primaryAuditId: 'audit-owned' } as SiteRecord, BigInt(0))

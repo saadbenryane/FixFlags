@@ -1,7 +1,7 @@
 import type { PublicDocument } from '../search/contracts'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { classifyPublicGet } from '../open-check'
+import { classifyPublicGet, hasSuccessfulPublicGet } from '../open-check'
 import { destinationContext, displayDestination, DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { hasRepeatedRedirect } from '../redirect-evidence'
 import { REDIRECT_LOOP_COPY } from '@/lib/marketing/copy/availability'
@@ -20,8 +20,7 @@ export function assessPageResponse(pageUrl: string, document?: PublicDocument | 
     ? classifyPublicGet({ requestedUrl: pageUrl, finalUrl: document.finalUrl, status: document.status,
       html: document.body, wwwAuthenticate: document.headers['www-authenticate'] ?? null,
       cfMitigated: document.headers['cf-mitigated'] ?? null, httpErrorsOnly: true }) : null
-  const passed = Boolean(inspected && status !== null && status >= 200 && status < 300 &&
-    ['reachable', 'redirected', 'auth_required'].includes(inspected.outcome))
+  const passed = hasSuccessfulPublicGet(inspected && { ...inspected, status }, { allowAuthEntry: true })
   const failed = redirectLoop || inspected?.shouldFlagDead === true
   const complete = passed || failed
   const observed = redirectLoop

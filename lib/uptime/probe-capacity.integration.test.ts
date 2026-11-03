@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { systemClock } from '@/lib/time/clock'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -127,7 +128,7 @@ run('native public HTTP probe under execution contention', () => {
           expect(await prisma.uptimeProbe.findUniqueOrThrow({ where: { id: previous.probeId } }))
             .toMatchObject({ result: 'ONLINE', statusCode: 200, monitorId: monitor.id })
         }
-        expect(await loadUptimeSummary(project.id)).toMatchObject({ enabled: true, state: 'online' })
+        expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ enabled: true, state: 'online' })
         expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
         expect(await prisma.audit.count({ where: { userId: user.id } })).toBe(0)
         expect(await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).toMatchObject({ plan: 'FREE', subscriptionStatus: 'NONE', auditsUsed: 3 })
@@ -181,7 +182,7 @@ run('native public HTTP probe under execution contention', () => {
       expect(observation.durationMs).toBeLessThan(8000)
       expect(monitor).toMatchObject({ state: 'online', pendingFailureAt: null, leaseToken: null, leaseUntil: null })
       expect(requests).toBe(1)
-      expect(await loadUptimeSummary(project.id)).toMatchObject({ enabled: true, state: 'online', openIncidentCount: 0 })
+      expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ enabled: true, state: 'online', openIncidentCount: 0 })
       expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
       expect(await prisma.audit.count({ where: { userId: user.id } })).toBe(0)
       expect(await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).toMatchObject({ auditsUsed: 3 })

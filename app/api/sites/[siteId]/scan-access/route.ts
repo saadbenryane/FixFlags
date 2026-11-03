@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { requireSiteOwner } from '@/lib/sites/request-access'
-import { parseScanAccessInput, scanAccessInputSchema } from '@/lib/audit/scan-access'
+import { parseScanAccessInput, scanAccessInputSchema } from '@/lib/audit/scan-access-input'
 import { readSavedScanAccess, saveScanAccess } from '@/lib/sites/application/scan-access-commands'
 
 const payload = z.object({ scanAccess: scanAccessInputSchema.nullable() }).strict()

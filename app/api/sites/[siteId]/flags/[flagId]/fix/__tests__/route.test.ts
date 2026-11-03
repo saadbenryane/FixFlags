@@ -5,13 +5,11 @@ import { repairFlag } from '@/lib/sites/__tests__/fixtures/repair-brief'
 const mocks = vi.hoisted(() => ({
   requireSiteOwner: vi.fn(),
   flag: vi.fn(),
-  site: vi.fn(),
   executeSiteCommand: vi.fn(),
 }))
 
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.requireSiteOwner }))
 vi.mock('@/lib/sites/flags', () => ({ loadSiteFlagDetail: mocks.flag }))
-vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.site }))
 vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: mocks.executeSiteCommand }))
 
 import { POST } from '@/app/api/sites/[siteId]/flags/[flagId]/fix/route'
@@ -19,8 +17,7 @@ import { POST } from '@/app/api/sites/[siteId]/flags/[flagId]/fix/route'
 describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.requireSiteOwner.mockResolvedValue({ ok: true, projectId: 'project-1', decision: { role: 'owner', site: { siteId: 'site-1', userId: 'user-1' } } })
-    mocks.site.mockResolvedValue({ siteId: 'site-1', projectId: 'site-1', userId: 'user-1' })
+    mocks.requireSiteOwner.mockResolvedValue({ ok: true, projectId: 'project-1', decision: { role: 'owner', site: { siteId: 'site-1', projectId: 'project-1', userId: 'user-1' } } })
     mocks.flag.mockResolvedValue(repairFlag({
       id: 'improvement-1', sourceFlagId: 'flag-1', sourceAuditId: 'audit-1', problem: 'Checkout button is hidden',
       whyItMatters: 'Customers cannot buy.', evidence: 'The button is outside the viewport.',
@@ -31,14 +28,26 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     mocks.executeSiteCommand.mockResolvedValue({ ok: true, handoff: { improvementId: 'improvement-1' } })
   })
 
-  it.each(['', '   '])('rejects missing guidance without recording a handoff: %j', async fix => {
+  it.each(['', '   '])('prepares an investigation when saved guidance is absent, without inventing a concrete fix: %j', async fix => {
     const detail = await mocks.flag()
     mocks.flag.mockResolvedValue({ ...detail, fix, repairGuidance: 'unavailable' })
     const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
-      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+      method: 'POST', body: JSON.stringify({ action: 'prepare' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(200)
+    const { prompt } = await response.json()
+    expect(prompt).toContain('Next action: investigation')
+    expect(prompt).toContain(detail.problem)
+    expect(prompt).not.toContain('Move the button into view.')
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
+  it('refuses a source with no recorded problem or instructions instead of fabricating a task', async () => {
+    mocks.flag.mockResolvedValue({ ...await mocks.flag(), problem: '', evidence: '', fix: '' })
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'prepare' }),
     }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
     expect(response.status).toBe(422)
-    expect((await response.json()).prompt).toBeUndefined()
     expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
@@ -66,6 +75,15 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(body.prompt).toContain('Affected pages:\n- https://example.com/product\n- https://example.com/other-product')
     expect(body.handoff).toEqual({ improvementId: 'improvement-1' })
     expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ flagId: 'flag-1', builder: 'copy' }))
+  })
+
+  it('prepares against the authorized owner snapshot without reacquiring Site identity', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'prepare' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(200)
+    expect(mocks.flag).toHaveBeenCalledWith({ siteId: 'site-1', projectId: 'project-1', userId: 'user-1' }, 'flag-1')
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
   it('prepares the complete original task without recording a copied handoff', async () => {
@@ -148,7 +166,7 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
       'Version: 2', '2026-10-16T12:00:00.000Z', 'Recheck every recorded supporting observation']) expect(prompt).toContain(text)
   })
 
-  it.each(['projection', 'invalid-view'])('does not record a handoff when supporting evidence is unreadable: %s', async condition => {
+  it.each(['projection', 'invalid-view'])('records only an evidence-recovery handoff when supporting evidence is unreadable: %s', async condition => {
     const detail = await mocks.flag()
     if (condition === 'projection') detail.supportingEvidenceUnreadable = true
     else detail.supportingObservations = { version: 9, items: [] }
@@ -156,9 +174,11 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
       method: 'POST', body: JSON.stringify({ action: 'copy' }),
     }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
-    expect(response.status).toBe(422)
-    expect((await response.json()).prompt).toBeUndefined()
-    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.prompt).toContain('Do not change the website based on this record')
+    expect(body.prompt).not.toContain(detail.fix)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ preparedHandoff: expect.objectContaining({ siteId: 'site-1', referenceFlagId: 'flag-1' }) }))
   })
 
 })

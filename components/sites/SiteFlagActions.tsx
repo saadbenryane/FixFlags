@@ -114,8 +114,8 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
               : <Button variant="outline" asChild><Link href={`/sites/${siteId}`}>{SITE_ACTION_COPY.repairGuidance.overview}</Link></Button>}
           </div>}
         </div>
-        <Button variant="outline" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
-        {message && !verifyOpen ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+        <Button variant="outline" disabled={busy || verificationRunning} aria-busy={busy || verificationRunning || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+        {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
       </div> : <ol className={styles.steps}>
         <li>
           <span className={styles.number} aria-hidden="true">1</span>
@@ -141,15 +141,11 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
           <div className={styles.step}>
             <h3>{SITE_BOARD_COPY.verifyStep}</h3>
             <p className={styles.description}>{SITE_BOARD_COPY.verifyStepBody}</p>
-            <Button className="w-full" variant="outline" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
+            <Button className="w-full" variant="outline" disabled={busy || verificationRunning} aria-busy={busy || verificationRunning || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
               <ShieldCheck aria-hidden="true" />
               {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
             </Button>
-            {message && !verifyOpen ? (
-              <p className="mt-3 text-sm text-muted-foreground" role="status" aria-live="polite">
-                {message}
-              </p>
-            ) : null}
+            {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
           </div>
         </li>
       </ol>}
@@ -165,7 +161,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
           <SiteActionFeedback message={message} error={error} siteId={siteId} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>{SITE_ACTION_COPY.cancel}</Button>
-            <Button type="button" variant="default" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+            <Button type="button" variant="default" loading={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

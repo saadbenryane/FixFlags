@@ -8,6 +8,7 @@ import type { SiteCardArea } from '../card-areas'
 import { summarizeExecutionTasks, type ExecutionTaskSummary } from '../execution-summary'
 import { categoryExecutionActivity, type CategoryActivity } from '../card-execution'
 import { captureCollectionState, type CaptureCollectionState } from '../captures'
+import { readSiteEvidence } from './site-evidence-read'
 
 export type ExecutionProgress = {
   captureState?: CaptureCollectionState
@@ -39,8 +40,8 @@ export function decodeEventCursor(siteId: string, value: string | null) {
 
 /** Read-only, tenant-scoped notices. No raw collector payloads or ledger logs. */
 export async function readSiteEvents(site: SiteRecord, after: bigint) {
-  return prisma.auditPipelineEvent.findMany({ where: { event: 'projection_changed', sequence: { gt: after }, audit: siteAuditScope(site) },
-    orderBy: { sequence: 'asc' }, take: 100, select: { sequence: true, auditId: true, detail: true } })
+  return readSiteEvidence(site, () => prisma.auditPipelineEvent.findMany({ where: { event: 'projection_changed', sequence: { gt: after }, audit: siteAuditScope(site) },
+    orderBy: { sequence: 'asc' }, take: 100, select: { sequence: true, auditId: true, detail: true } }))
 }
 
 export async function loadExecutionProgress(site: SiteRecord, auditId: string | null): Promise<ExecutionProgress | null> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '../watch-delivery'
+import { hasRecordedWatchSelection, selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '../watch-delivery'
 import { prepareNotificationReplay } from '../notification-delivery'
 
 const auditId = 'audit-1'
@@ -14,6 +14,14 @@ const select = (message: ReturnType<typeof fresh>, recorded: unknown = null, bro
   selectWatchEmailDelivery({ auditId, fresh: message, recorded, broadLegacyPermission })
 
 describe('Watch delivery selections', () => {
+  it('retains attachment content and inline prompts exactly on a retry', () => {
+    const attachments = [{ filename: 'fixflags-fix-1.txt', content: Buffer.from('The complete original prompt').toString('base64'), contentType: 'text/plain' as const }]
+    const first = select({ ...fresh(), attachments })
+    expect(hasRecordedWatchSelection(first, fresh().selection, false)).toBe(true)
+    const retry = select({ ...fresh(), attachments: [{ ...attachments[0], content: 'changed' }] }, first)
+    expect(watchEmailProviderBody(retry).attachments).toEqual(attachments)
+    expect(hasRecordedWatchSelection(first, fresh([critical], []).selection, false)).toBe(false)
+  })
   it('keeps the exact provider body and key when names, templates, and ordering change', () => {
     const first = select(fresh())
     const retry = select(fresh([important, critical], [recovered], 'New template'), first)

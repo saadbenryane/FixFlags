@@ -79,7 +79,7 @@ describe('SiteSettingsControls Watch', () => {
     fireEvent.click(screen.getByText('More integrations'))
     expect(screen.getByText('Storefront and checkout')).toBeVisible()
     expect(screen.getByText('Page traffic')).toBeVisible()
-    expect(screen.getByText('Search demand')).toBeVisible()
+    expect(screen.getByText('Search traffic')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Manage GitHub connection' })).toHaveTextContent('Connect')
     expect(screen.queryByText(/Planned:/)).not.toBeInTheDocument()
     expect(screen.getAllByText('Coming soon')).toHaveLength(9)

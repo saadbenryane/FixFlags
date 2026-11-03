@@ -10,6 +10,7 @@
 .empty { display: flex; flex: 1; align-items: center; gap: 10px; min-height: 80px; padding: 16px 120px 16px 16px; background: hsl(var(--muted) / .3); color: hsl(var(--muted-foreground)); font-size: 13px; }
 .empty svg { flex-shrink: 0; }
 .empty p { min-width: 0; overflow-wrap: anywhere; }
+.emptySolo { padding-right: 16px; }
 
 @media (max-width: 639px) {
   .card[data-device='mobile'] .imageButton { height: 240px; }

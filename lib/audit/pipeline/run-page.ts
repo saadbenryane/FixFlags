@@ -499,6 +499,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.responseHeaders ?? null,
     screenshots?.axeViolations,
     true, undefined, { head, tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
+      renderedCopy: screenshots.renderedCopy, renderedCopyScope: screenshots.renderedCopyScope,
       publicDocument: screenshots.originalDocument,
       accessibilityEvidence: screenshots.accessibilityEvidence, mobileAccessibility: screenshots.mobileAccessibility, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
   )

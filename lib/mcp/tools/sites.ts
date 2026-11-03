@@ -50,7 +50,7 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     async () => {
       try {
         const sites = await prisma.project.findMany({
-          where: { userId: user.id, deletedAt: null },
+          where: { userId: user.id, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
           orderBy: { updatedAt: 'desc' },
           select: {
             ...uptimeStatusProjectSelect,
@@ -95,8 +95,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
         const details = await loadSiteOutcomeDetails(site, { excludeGeneric: true })
         const latestAudit = await resolveLatestAudit(site)
         const resultPage = await loadSiteCheckResultPage(site, latestAudit, resultCursor)
-        const uptime = uptimeWindow ? await loadUptimeHistory(site.projectId!, uptimeWindow, uptimeCursor ?? null)
-          : await loadUptimeSummary(site.projectId!)
+        const uptime = uptimeWindow ? await loadUptimeHistory(site, uptimeWindow, uptimeCursor ?? null)
+          : await loadUptimeSummary(site)
         return mcpStructuredResult({
           siteId: site.siteId,
           uptime: uptime ? { ...uptime, scope: UPTIME_COPY.scope, limitation: UPTIME_COPY.limitation } : null,

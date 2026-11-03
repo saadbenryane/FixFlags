@@ -15,6 +15,7 @@ import { SECURITY_HEADER_LIMITATION } from './security-headers'
 import { scopeCheckEvidence, summarizeCheckAssertions } from './receipt'
 import { scopeRenderedPageEvidence } from './rendered-page-evidence'
 import type { DestinationCheckOptions } from './destination-evidence'
+import { RENDERED_COPY_MODULES } from '../browser/rendered-copy'
 
 export type { DeterministicFlag } from '../flag-types'
 export type { AxeViolation } from './accessibility'
@@ -34,6 +35,7 @@ export async function runAllChecks(
     head?: import('./head-metadata').HeadMetadataObservation;
     publicDocument?: import('../search/contracts').PublicDocument;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
+    renderedCopyScope?: import('../browser/observation-scope').CaptureObservationScope | null;
     mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
     allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea;
     destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'> },
@@ -47,6 +49,7 @@ export async function runAllChecks(
       head: runtimeEvidence?.head,
       scope: {}, deadline: runtimeEvidence?.deadline, destinations: runtimeEvidence?.destinations, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
       accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, mobileAccessibility: runtimeEvidence?.mobileAccessibility, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
+      renderedCopyScope: runtimeEvidence?.renderedCopyScope,
       publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
       record: assertion => { assertions.push(assertion) } }
     try {
@@ -62,7 +65,8 @@ export async function runAllChecks(
         if (!input.scope.complete) input.scope.limitation = SECURITY_HEADER_LIMITATION
       }
       const scoped = scopeRenderedPageEvidence({ module: check.id, flags, assertions,
-        desktop: check.id === 'metadata' ? runtimeEvidence?.head?.scope ?? runtimeEvidence?.renderedScope : runtimeEvidence?.renderedScope,
+        desktop: check.id === 'metadata' ? runtimeEvidence?.head?.scope ?? runtimeEvidence?.renderedScope
+          : RENDERED_COPY_MODULES.has(check.id) && runtimeEvidence?.renderedCopyScope !== undefined ? runtimeEvidence.renderedCopyScope ?? undefined : runtimeEvidence?.renderedScope,
         mobile: captureMetrics?.loadingObservation?.scope })
       flags = scoped.flags
       assertions.splice(0, assertions.length, ...scoped.assertions)

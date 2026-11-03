@@ -7,7 +7,7 @@ import { SiteCardFindings } from './SiteCardFindings'
 
 export function SitePerformanceFindings({ siteId, flags, availability, onOpenFlag }: { onOpenFlag?: (id: string, trigger?: HTMLElement) => void; siteId: string; flags: SiteFlagSeed[]; availability: SiteActionAvailability }) {
   if (!flags.length) return null
-  return <SiteFlagSelection siteId={siteId} flags={flags} availability={availability}><section className="space-y-6">
+  return <SiteFlagSelection siteId={siteId} flags={flags} availability={availability} area="performance"><section className="space-y-6">
     <p className="text-sm text-muted-foreground">{C.performanceGrouping}</p>
     {groupPerformanceFindings(flags).map((group, index) => <section key={index} className="space-y-3">
       <h3 className="text-sm font-medium">{group.device ? C.execution.devices[group.device] : C.performanceEvidence}</h3>

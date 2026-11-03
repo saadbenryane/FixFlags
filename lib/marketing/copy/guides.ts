@@ -4,8 +4,8 @@ export const GUIDE_REVIEWED_AT = '2026-10-20'
 
 export const GUIDES_PAGE = {
   eyebrow: 'Website guides',
-  title: 'Know what to check next.',
-  description: 'Simple guides to checking your website, fixing problems, and setting up monitoring.',
+  title: 'A little help looking after your website.',
+  description: 'Plain-language guides to checking your website, copying a fix, and knowing it worked.',
   metadataTitle: 'Website checking and monitoring guides | FixFlags',
   start: 'Check your website',
   pricing: 'See current pricing',
@@ -13,11 +13,11 @@ export const GUIDES_PAGE = {
   contents: 'On this page',
   reviewed: 'Sources and coverage reviewed',
   sources: 'Sources and scope',
-  sourceNote: 'External sources describe their own products. FixFlags coverage is documented separately. Examples below are controlled illustrations, not customer results.',
+  sourceNote: 'External sources describe their own products. These examples are demos, not customer results. Purchase checks stop before payment. Signup checks need a supported, safe test setup. Login and password reset, new MCP connections, and planned paid integrations are not available in the website beta.',
   exampleLabel: 'Controlled example',
   related: 'Keep going',
   coverageLink: 'FixFlags coverage and limits',
-  docsLink: 'Check, fix, and verify with AI',
+  docsLink: 'How to copy and paste a fix',
   nextTitle: 'Try a check on your website.',
   offer: PUBLIC_OFFER.free,
   offerLimits: PUBLIC_OFFER.availability,
@@ -45,170 +45,170 @@ const checkly: GuideSource = { title: 'Checkly: browser checks overview', href: 
 export const WEBSITE_GUIDES: WebsiteGuide[] = [
   {
     slug: 'monitoring-ai-built-websites',
-    title: 'How to monitor an AI-built website',
-    description: 'Choose checks around real visitor tasks, keep the evidence, and verify changes after your AI tool publishes them.',
-    decision: 'Start with the most important public journey. Add a configured test only when you can define its safe inputs and success condition.',
+    title: 'You built a website. How do you keep it working?',
+    description: 'Find the problems you missed, copy the fix instructions, and check the result after publishing.',
+    decision: 'Start with the pages your visitors use most. You don’t need to write a test script to check public pages.',
     sections: [
-      { id: 'choose-a-task', title: 'Turn “it works” into an observable task', paragraphs: [
-        'An AI-built website still needs a clear acceptance condition. Write down who visits, which page they open, what they choose, and what should happen next. “The website works” is too broad to investigate. “The pricing button opens the current plans page on a phone” gives you a page, an action, and an outcome to inspect.',
-        'Choose one path that matters today, such as a campaign page leading to signup or a product page leading to the cart. List the public steps separately from account creation, payment, and private data. This prevents a successful homepage check from becoming a claim about behavior that nobody exercised.',
+      { id: 'choose-a-task', title: 'Start with what people came to do', paragraphs: [
+        'What should someone be able to do on your website? Read your plans, open a contact page, or add a product to the cart? Pick a useful next step and check it. A homepage that loads does not tell you whether the next button works.',
+        'Try the important pages on your phone too. Look for menus that won’t open, buttons hidden behind popups, and pages that take too long to appear.',
       ] },
-      { id: 'pick-coverage', title: 'Match the check to the question', paragraphs: [
-        'FixFlags starts with reachable public pages. Depending on the checked scope and available evidence, it can examine page availability, action destinations, mobile behavior, search metadata, performance, accessibility, and other published coverage. A screenshot helps explain what appeared, but an image alone cannot establish that an action completed.',
-        'Purchase-path checks stop before payment. Signup verification needs supported behavior and authorized, reversible test conditions. Login and password reset are not currently available. Review coverage before depending on any particular step. New MCP connections and planned paid integrations are not available in the website beta.',
+      { id: 'pick-coverage', title: 'Enter your website address', paragraphs: [
+        'FixFlags checks public pages for broken links, slow loading, mobile problems, and more. Each result tells you which pages and actions were checked. Open a problem, called a Flag, to see what happened and the instructions to help fix it.',
+        'Nothing needs to be installed for a public-page check. Pages behind a login and actions such as signup have different requirements. Read the coverage details before relying on a check for those steps.',
       ], sourceIds: [0] },
-      { id: 'publish-and-check', title: 'Make each release a repeatable loop', paragraphs: [
-        'Run a check against the live URL, inspect a Flag, and give its evidence and fix guidance to your developer or coding tool. Review the proposed change before publishing. Then request a fresh check of the same page and behavior. Your coding tool saying “fixed” is a useful progress note, but it is not independent verification of the live result.',
-        'Save the Site and enable the supported monitoring you need. Scheduled checks observe the website when they run, not continuously between runs. Keep the check time and scope with the result. After a major navigation or account-flow change, revisit the monitoring setup instead of assuming the old path still represents your visitors.',
+      { id: 'publish-and-check', title: 'Copy, paste, and check the update', paragraphs: [
+        'Copy the fix instructions and paste them into the chat where you built your website. You can also send them to a developer. Review the change and publish it. Then open the problem in FixFlags and select Check now.',
+        'We check the live website again to see if the problem is gone. That is independent verification: a new check of the result, rather than relying on a message saying the edit is done. Save your website to keep getting scheduled checks.',
       ] },
-      { id: 'read-unknowns', title: 'Leave room for unknowns', paragraphs: [
-        'A blocked destination, failed provider, or unfinished browser step leaves an evidence gap. Couldn’t verify means that the check cannot establish the result. It should not be read as a pass. Content suggestions also do not demonstrate improved conversion. For critical private workflows, retain manual review or a separately configured scripted test with a precise success condition. Assign an owner to every unresolved task so an incomplete run has a concrete next step.',
+      { id: 'read-unknowns', title: 'Know what couldn’t be checked', paragraphs: [
+        'Couldn’t verify means a check was blocked or could not finish. It does not count as a pass. A result applies to the pages and actions checked at that time. Scheduled checks leave time between runs, so keep reviewing important changes yourself too.',
       ] },
     ],
-    example: { title: 'A pricing button after a generated redesign', paragraphs: [
-      'In this controlled illustration, a fictional studio replaces its homepage and the pricing button points to /plans-old. The homepage loads, but the destination returns an error. The useful finding names the source page, button destination, observed response, and check time.',
-      'After changing the link to /pricing and publishing, a fresh check must reach the intended plans page from the same button. That would verify this navigation step at that time. It would not establish signup, payment completion, or increased sales.',
+    example: { title: 'A pricing button that opens the wrong page', paragraphs: [
+      'In this controlled illustration, a demo website’s pricing button points to /plans-old, a page that no longer exists. The homepage loads, but visitors cannot open the plans.',
+      'The fix changes the link to /pricing. After publishing, a new check follows the same button to the plans page. It confirms that step, without making any claim about signup, payments, or sales.',
     ] },
     sources: [coverage], related: ['checking-after-publishing', 'fixflags-vs-scripted-browser-monitoring'],
   },
   {
     slug: 'checking-after-publishing',
-    title: 'What to check after publishing a website',
-    description: 'A release checklist focused on the public URL, important destinations, mobile use, and fresh evidence after a fix.',
-    decision: 'Before sending visitors to a release, verify the live entry page and its next step. Keep unresolved checks visible.',
+    title: 'Your update is live. What should you check?',
+    description: 'A simple check of your pages, buttons, phone layout, and shared links after publishing.',
+    decision: 'Check the website address your visitors use, then follow its main button to the next page.',
     sections: [
-      { id: 'identify-release', title: 'Check the release visitors can actually reach', paragraphs: [
-        'Start with the URL you will share, including its real domain and relevant page path. A preview can use different configuration, routing, and access rules. Record what changed and when it was published. If there is uncertainty about which version is live, resolve it before comparing screenshots or asking an AI tool to diagnose behavior.',
-        'Open an entry page directly, then follow its main action. Check a deeper page directly as well as through navigation. A destination can work from the homepage yet fail on refresh. Keep query parameters only when they are needed for the task, and never put private information or credentials into a public checking URL.',
+      { id: 'identify-release', title: 'Open the live website', paragraphs: [
+        'Use the address you give visitors. A preview can look right while the live website still shows an older version. Make sure your update is published before checking it.',
+        'Open an important page directly as well as through the menu. A link might work from the homepage but fail when someone opens it from a bookmark or refreshes the page. Keep passwords and private information out of the address you submit.',
       ] },
-      { id: 'follow-path', title: 'Follow the promise to its destination', paragraphs: [
-        'For a landing page, ask whether the headline, button, and destination describe the same next step. For a store, inspect the product, cart, and permitted checkout entry. For a service site, verify the contact destination and required form labels. Stop before an action that creates a real booking, lead, order, or other consequence unless you have authorized safe test conditions.',
-        'Repeat the visible navigation on a phone-sized layout. Look for menus that cannot open, overlays covering controls, missing feedback, and important actions pushed out of reach. Include keyboard access and readable labels. These observations are more actionable when tied to the affected page and recorded viewport rather than a general impression that mobile looks wrong.',
+      { id: 'follow-path', title: 'Try the next step', paragraphs: [
+        'Does the main button lead where it says? Can you reach the contact page? Can a shopper add an item to the cart? Follow the steps your visitors need. Stop before making a real booking, sending a real lead, or placing an order unless you have a safe, authorized test setup.',
+        'Try the page on your phone. Check the menu, look for popups covering buttons, and make sure text and form labels are readable. Try using the keyboard too.',
       ] },
-      { id: 'check-presentation', title: 'Check discovery and presentation separately', paragraphs: [
-        'Review titles, descriptions, canonical URLs, indexing directives, and link previews for the pages you intend to share. Check image availability and noticeable loading delays. A successful response is evidence about a request; it does not demonstrate that a visitor completed a task or that search engines indexed the release.',
-        'FixFlags can collect supported public website evidence across these areas. Available performance measurements describe the checked page and run. Automated accessibility findings are partial evidence, not a complete accessibility certification. Detected analytics markup does not prove events reached an analytics service or that attribution is correct.',
+      { id: 'check-presentation', title: 'Look beyond the homepage', paragraphs: [
+        'Check the title, image, and description that appear when you share a link. Look for missing images, slow loading, and unfinished text. FixFlags can help check these public website basics and show what needs attention.',
+        'A page that responds successfully may still have broken buttons. Automated accessibility checks also cover only part of what people need. An analytics tag on the page does not prove visits are being recorded correctly.',
       ], sourceIds: [0, 1] },
-      { id: 'resolve-and-repeat', title: 'Verify the fix before accepting the release', paragraphs: [
-        'Give each problem a concrete expected result. Publish the correction, then rerun the same check against the live page. Compare new evidence with the original failure and preserve remaining gaps. A developer report or AI summary is not independent verification. Save your Site and configure monitoring for supported checks that should continue after launch.',
-        'FixFlags purchase-path checks stop before payment. The website beta does not make new MCP connections or planned paid integrations available. Review current coverage before treating signup, private pages, or third-party services as checked. A blocked or incomplete result remains Couldn’t verify. Decide explicitly whether an unresolved critical task should delay the visitor-facing announcement.',
+      { id: 'resolve-and-repeat', title: 'Check the fix after publishing', paragraphs: [
+        'Copy the fix instructions, paste them where you built the website, review the change, and publish it. Then ask FixFlags to check the same problem again. This new check is independent verification of the live result.',
+        'If the page is blocked or the check cannot finish, you’ll see Couldn’t verify. Keep that problem open until you can confirm it works. Save your website if you want scheduled checks after launch.',
       ], sourceIds: [0] },
     ],
-    example: { title: 'A published contact-page update', paragraphs: [
-      'In this controlled illustration, a fictional consultancy publishes a new contact page. Its homepage button still targets a deleted route. A check records that broken destination. Correcting the link and publishing is the fix step, not the acceptance condition.',
-      'A fresh run should follow the original button to the contact page and show the expected form. Without an authorized submission test and evidence of its outcome, the result says nothing about message delivery. Keep that delivery check as a separate open task.',
+    example: { title: 'A contact page with an old link', paragraphs: [
+      'In this controlled illustration, a demo website gets a new contact page. The homepage button still opens the deleted page. A check finds the broken link.',
+      'After the link is corrected and published, a new check reaches the contact page. That confirms the link works. It does not confirm messages are delivered without a separate, authorized form test.',
     ] }, sources: [coverage, mdn], related: ['website-online-but-not-working', 'monitoring-ai-built-websites'],
   },
   {
     slug: 'website-online-but-not-working',
-    title: 'Your website is online, but is it working?',
-    description: 'Separate successful HTTP responses from rendered pages, usable actions, and completed customer tasks.',
-    decision: 'When uptime is green but visitors report a failure, reproduce the exact page and action before changing the monitor.',
+    title: 'Your website is online. Is everything working?',
+    description: 'A page can load while its buttons, forms, or cart are broken. Here’s what to look for.',
+    decision: 'When someone reports a problem, start with the page and the button they used.',
     sections: [
-      { id: 'separate-signals', title: 'Separate availability from the task', paragraphs: [
-        'An HTTP 200 response means a request succeeded according to HTTP semantics. It is not a complete description of the resulting experience. The server can return the page shell while a browser-side dependency fails, a button links to an obsolete route, or a form shows no useful feedback. Start by identifying which layer the available evidence actually covers.',
-        'Write down the reported URL, approximate time, device, and action. Ask what should have appeared next. Avoid collecting passwords or customer records as diagnostic material. A report that “checkout is broken” becomes easier to investigate when narrowed to “Add to cart leaves the cart empty on this product page.”',
+      { id: 'separate-signals', title: 'Online is only the first question', paragraphs: [
+        'A website can respond successfully and still leave visitors stuck. A page might load without its menu, link to a deleted page, or show an empty cart after someone selects Add to cart.',
+        'Ask which page they opened, what they tried, what happened, and roughly when. Find out whether they were on a phone or computer. You don’t need their password or private account details to start investigating.',
       ], sourceIds: [1] },
-      { id: 'reproduce', title: 'Follow a short diagnostic sequence', paragraphs: [
-        'First check whether the specific URL responds. Then inspect whether the expected content renders. Follow the main action and inspect its destination. For an interactive control, distinguish a click being accepted from the expected state appearing. Record where the sequence stops, including timeouts and blocked destinations. Do not jump from a blank screen to a confident claim about its underlying cause.',
-        'Repeat only the relevant conditions. A mobile-menu failure calls for the same narrow viewport; a deep-link failure calls for opening that route directly. If the behavior is intermittent, retain separate run times and observations. A later success does not invalidate an earlier failure, and a single successful attempt does not establish that the issue cannot recur.',
+      { id: 'reproduce', title: 'Try the same step', paragraphs: [
+        'Open the page, wait for its content, and try the button. Notice where things stop. Does the next page open? Does the product appear in the cart? Does the screen show an error or keep loading?',
+        'Use the same kind of screen when that matters. A broken phone menu might work on a laptop. If the problem comes and goes, keep the times of both failures and successes. One successful attempt does not erase an earlier problem.',
       ] },
-      { id: 'choose-evidence', title: 'Use evidence that can distinguish outcomes', paragraphs: [
-        'FixFlags can help inspect supported public pages and action destinations, with findings tied to the recorded check. Purchase checks stop before payment. Authorized signup setups have their own requirements. Login and password reset are unavailable in the current website beta. New MCP connections and planned paid integrations are not available either.',
-        'A screenshot can show an empty cart or loading state, but the recorded actions and observations explain how it got there. Read the scope before interpreting a clear result. A performance measurement does not confirm form delivery, and detected analytics markup does not establish that a conversion event was received.',
+      { id: 'choose-evidence', title: 'See what FixFlags found', paragraphs: [
+        'FixFlags checks supported public pages and actions, then keeps the details with each problem. A screenshot can help explain an empty cart; the recorded steps explain how it happened. Read what was checked before treating a result as a pass for the whole website.',
+        'Loading speed, contact messages, and analytics are different questions. A fast page does not prove a form delivers messages. A visible analytics tag does not prove a visit was recorded.',
       ], sourceIds: [0] },
-      { id: 'confirm-recovery', title: 'Confirm recovery on the same path', paragraphs: [
-        'Pass the affected page, observed failure, expected behavior, and evidence to whoever changes the website. Review and publish the fix. Then run a fresh independent verification of the original action. Keep the original acceptance condition: reaching a checkout page should not quietly become proof that a payment succeeded.',
-        'If a provider cannot respond, access is blocked, or a run ends early, Couldn’t verify preserves the uncertainty. Keep investigating with authorized manual checks or another suitable test. Monitor the layer you need after recovery, and remember that scheduled observations leave intervals between runs.',
+      { id: 'confirm-recovery', title: 'Fix the problem, then try again', paragraphs: [
+        'Copy the fix instructions and paste them where you make website changes, or send them to someone who can help. Review and publish the update. Then run the same check again for independent verification that the live fix worked.',
+        'Couldn’t verify means we could not confirm the result. A blocked page or unfinished check stays unconfirmed. Keep checking important steps yourself when they are outside the available coverage.',
       ] },
     ],
-    example: { title: 'A healthy homepage and an empty cart', paragraphs: [
-      'In this controlled illustration, a fictional shop homepage returns 200 and displays its products. Clicking Add to cart on one product leaves the cart empty. The availability observation and the cart failure can both be true.',
-      'After a correction is published, the relevant fresh check adds that product and observes it in the cart. If checkout entry is also checked, record that separately. No payment is entered, no order is placed, and this example makes no claim about customer revenue.',
+    example: { title: 'The shop loads, but the cart stays empty', paragraphs: [
+      'In this controlled illustration, a demo shop’s homepage loads and shows its products. But Add to cart leaves the cart empty. Being online and having a broken cart can both be true.',
+      'After the fix is published, a new check adds the product and finds it in the cart. Opening checkout is a separate step. No payment or order is made in this example.',
     ] }, sources: [coverage, mdn], related: ['fixflags-vs-uptime-monitoring', 'checking-after-publishing'],
   },
   {
     slug: 'checking-lovable-websites',
-    title: 'How to check a published Lovable website',
-    description: 'Check the public version of your Lovable project, turn a finding into a focused fix, and verify the published result.',
-    decision: 'Use the published visitor URL as the checking target. Confirm that a correction has been published before verifying it.',
+    title: 'Built with Lovable? Check the live website.',
+    description: 'Find problems on your published website, paste the fix instructions into Lovable, and check the update.',
+    decision: 'Use the website address your visitors open. Publish your changes before checking them.',
     sections: [
-      { id: 'public-version', title: 'Start from the published version', paragraphs: [
-        'Lovable documents publishing as deploying a snapshot to a live URL. Later edits need Publish changes to reach that published version. Check the visitor-facing address rather than assuming the editor preview and live website are identical. If you use a custom domain, use the domain you give visitors and confirm that it reaches the intended release.',
-        'Check only a project you own or have permission to test. Choose a reachable public entry page and describe its intended next step. If the app is restricted to selected viewers, a public checker may be unable to enter it. Treat that as a coverage constraint instead of making the project public merely to get a check result.',
+      { id: 'public-version', title: 'Start with the published website', paragraphs: [
+        'Lovable documents publishing as deploying a snapshot to a live URL. Later edits need Publish changes to reach that published version. Use the address you give visitors, including your custom domain if you have one.',
+        'Only check a website you own or have permission to test. If it is private, a public check may be unable to open it. You don’t need to make a private app public just to get a result.',
       ], sourceIds: [1] },
-      { id: 'public-checks', title: 'Check the public journey before private flows', paragraphs: [
-        'Start with the headline, navigation, pricing or contact destination, mobile menu, and the main call to action. Open important nested routes directly. Inspect whether images load and whether the next page offers the promised action. Check page titles, descriptions, search directives, and link previews where those matter for launch.',
-        'FixFlags checks the live website through its supported public coverage. It does not need a special Lovable connection for a reachable public page. That does not give it access to your project source, database policies, or private records. New MCP connections and planned paid integrations are unavailable in the website beta.',
+      { id: 'public-checks', title: 'Check the pages people use', paragraphs: [
+        'Start with the menu, main button, pricing or contact page, and phone layout. Open important pages directly. Look for missing images and slow loading. Check how shared links look too.',
+        'Public-page checks do not need a Lovable connection. Enter your live website address in FixFlags. Results tell you what was checked and where a closer look is needed. They do not inspect your private records or the rules controlling access to them.',
       ], sourceIds: [0] },
-      { id: 'focused-prompt', title: 'Give Lovable a bounded fix request', paragraphs: [
-        'Use the affected URL, recorded observation, expected behavior, and available fix guidance. Ask for the smallest change that restores the intended result. For example, identify the button and its wrong destination rather than asking the builder to improve the entire site. Keep secrets, customer data, and private screenshots out of a public prompt or report.',
-        'Review the generated changes, including related navigation and mobile behavior. Publish the correction, then use a fresh check against the same public URL. Independent verification comes from new evidence of the original behavior, not from the builder explaining that its own edit should work. Preserve unresolved steps if the run cannot reach them.',
+      { id: 'focused-prompt', title: 'Copy the instructions into Lovable', paragraphs: [
+        'Open a problem in FixFlags and copy its fix instructions. Paste them into your project’s Lovable chat, just as you would ask for another change. The instructions include the page, what went wrong, and what should happen instead. Keep passwords and private customer data out of the chat.',
+        'Review the change and publish it. Then return to the problem in FixFlags and select Check now. This gives you independent verification of the live result, rather than relying on the preview or a message saying the change is done.',
       ] },
-      { id: 'limits', title: 'Keep app security and task verification distinct', paragraphs: [
-        'Public website checks cannot establish that database access rules or every account permission are correct. Review those through the appropriate project and security tooling. In FixFlags, signup verification requires supported forms and authorized, reversible test conditions. Login and password reset are not currently available, and purchase-path checks stop before payment.',
-        'After the release is checked, save the Site and configure supported monitoring for the public paths that matter. Review the setup whenever the generated app changes its routes or main task. Couldn’t verify remains an unknown when access or execution is blocked. A clear public-page result does not certify the whole application.',
+      { id: 'limits', title: 'Keep important limits in mind', paragraphs: [
+        'Public website checks do not confirm every account permission or database access rule. Those need their own review. A page that could not be reached stays Couldn’t verify, rather than passing.',
+        'Save your website to get scheduled checks. If you change the main pages or signup process, review what gets checked so it still matches what your visitors need.',
       ], sourceIds: [0] },
     ],
-    example: { title: 'A fix visible in preview but absent from the live page', paragraphs: [
-      'In this controlled illustration, a fictional Lovable project has a mobile menu button that does not open. A change appears correct in preview, but the published visitor URL still shows the failure. The useful next step is to establish which version is live.',
-      'Once the correction is published, a fresh check opens the same live page at the recorded mobile viewport and exercises the menu. Observing it open verifies that interaction for that run. It does not prove that restricted pages, signup emails, or payments work.',
+    example: { title: 'The phone menu works in preview, but not live', paragraphs: [
+      'In this controlled illustration, a demo website’s phone menu will not open. A change fixes it in preview, but the live page still has the old problem.',
+      'Once the update is published, a new check opens the same live page at the same phone screen size and tries the menu. That confirms this step for that check, not every private page, signup email, or payment.',
     ] }, sources: [coverage, lovable], related: ['monitoring-ai-built-websites', 'checking-after-publishing'],
   },
   {
     slug: 'fixflags-vs-uptime-monitoring',
-    title: 'FixFlags and uptime monitoring: which checks do you need?',
-    description: 'Compare availability signals with public website and journey evidence, without treating one green check as proof of everything.',
-    decision: 'Choose the tool by its configured assertion. Use availability monitoring for reachability and a behavior check for the visitor task.',
+    title: 'Your website is online. What else should you check?',
+    description: 'Understand the difference between checking a page is online and checking what visitors can do.',
+    decision: 'Choose checks for the problems you need to find, from a website going offline to a broken cart.',
     sections: [
-      { id: 'compare-assertions', title: 'Compare assertions, not product categories', paragraphs: [
-        'A basic availability check asks whether a chosen URL responds as expected. A behavior check asks whether a specific interaction reaches its expected outcome. Both can matter. Before choosing a service, list the failures you need to notice and the evidence you would need to distinguish a real failure from a blocked or incomplete check.',
-        'UptimeRobot documents HTTP monitoring based on response statuses and keyword monitoring for page content. Its API monitoring also supports assertions on response fields, headers, status codes, and bodies. These are different capabilities. It would be inaccurate to describe every uptime product as checking only whether a server answers.',
+      { id: 'compare-assertions', title: 'Start with the question', paragraphs: [
+        'Does the page respond? Does the right content appear? Does Add to cart actually add the product? These are different questions. Before choosing a service, decide which problems matter to your website.',
+        'UptimeRobot documents HTTP monitoring based on response statuses and keyword monitoring for page content. Its API monitoring also supports assertions on response fields, headers, status codes, and bodies. It would be inaccurate to describe every uptime product as checking only whether a server answers.',
       ], sourceIds: [1, 2] },
-      { id: 'fixflags-fit', title: 'Where FixFlags fits', paragraphs: [
-        'FixFlags combines supported public website checks with page and journey observations, evidence, and fix guidance. Depending on scope and available execution, it can examine action destinations, mobile behavior, performance, accessibility, search metadata, and other listed coverage. Its usefulness depends on whether those supported checks match the problem you need to investigate.',
-        'It is not a replacement for every infrastructure or application monitor. Purchase-path checks stop before payment. Signup needs supported behavior and authorized test conditions. Login and password reset are unavailable in the website beta. New MCP connections and planned paid integrations are unavailable. Check the coverage details before choosing it for a critical private workflow.',
+      { id: 'fixflags-fit', title: 'What FixFlags helps with', paragraphs: [
+        'FixFlags checks supported public pages and actions for problems such as broken links, slow loading, and steps that lead nowhere. It keeps the details together and gives you instructions to help fix what it finds.',
+        'Read the coverage page before relying on a particular check. Public-page results do not confirm every private task or account permission. More specialized checks may still be useful for your app.',
       ], sourceIds: [0] },
-      { id: 'selection', title: 'Make a small selection worksheet', paragraphs: [
-        'For each important task, write the target, expected condition, required access, owner, and acceptable time between observations. For a public homepage, an expected response or content condition may be enough. For a product button, you may need evidence that a selected item appears in the cart. For a private transaction, you may need a scripted test under separately managed safe conditions.',
-        'Then ask each candidate service how that precise condition is configured, what evidence a failure retains, and how an incomplete run appears. Review the current plan and schedule rather than assuming equal coverage or equal frequency. No price comparison can settle whether the service actually exercises your required task.',
+      { id: 'selection', title: 'Try an important page first', paragraphs: [
+        'Pick a page your visitors use often. Write down what should happen after its main button is selected. Try a check and see whether its result answers that question. Look for enough detail to understand what went wrong.',
+        'Also look at how often checks run, what happens when a page is blocked, and how you’ll hear about problems. A low price is not useful if the service does not check the thing you need.',
       ] },
-      { id: 'operate', title: 'Keep useful signals together', paragraphs: [
-        'If you already have availability monitoring, keep its role explicit while adding checks for uncovered visitor behavior. Give each alert an owner and a recovery condition. After a fix is published, obtain fresh independent verification on the same task. A green availability signal can support the investigation without closing a behavior failure.',
-        'In FixFlags, blocked or incomplete evidence remains Couldn’t verify. Scheduled checks observe particular times, leaving gaps between runs. A successful cart check does not establish payment completion or revenue impact. Evaluate the current beta offer and limitations on Pricing before depending on future paid access.',
+      { id: 'operate', title: 'Know what each check tells you', paragraphs: [
+        'Keep useful checks you already have. A page being online can help explain a problem, but it does not prove a broken cart has been fixed. After publishing a fix, repeat the original step for independent verification.',
+        'In FixFlags, Couldn’t verify means the result could not be confirmed. Scheduled checks leave time between runs. Read current pricing and coverage before relying on features marked coming soon.',
       ] },
     ],
-    example: { title: 'The product page responds, but the button fails', paragraphs: [
-      'In this controlled illustration, a fictional product page returns the expected successful HTTP response and product title. A configured availability or keyword check can pass while Add to cart fails to update the cart. Those observations answer separate questions.',
-      'The acceptance condition for the behavior fix is a fresh observation of the product in the cart after the original action. Keep the availability check for reachability. Record checkout entry separately, and stop before payment. This is a decision example, not a benchmark or customer outcome.',
+    example: { title: 'The product page opens, but the cart does not update', paragraphs: [
+      'In this controlled illustration, a demo product page opens successfully and shows the expected product name. A check for availability or that name can pass while Add to cart still fails.',
+      'A new check needs to find the product in the cart to confirm the cart fix. Checkout is a separate step. This example is not a comparison of provider speed, cost, or reliability.',
     ] }, sources: [coverage, uptime, api], related: ['website-online-but-not-working', 'fixflags-vs-scripted-browser-monitoring'],
   },
   {
     slug: 'fixflags-vs-scripted-browser-monitoring',
-    title: 'FixFlags and scripted browser monitoring: how to choose',
-    description: 'Choose between supported website checks and explicit browser assertions based on the task, safe test setup, and maintenance you can own.',
-    decision: 'Use an explicit script when you need a precise custom workflow. Use FixFlags where its documented public coverage matches the evidence you need.',
+    title: 'Do you need to write your own website tests?',
+    description: 'Start with public website checks, and know when a custom test could help.',
+    decision: 'Use FixFlags for the public pages it supports. Consider a custom test for a specific private task outside that coverage.',
     sections: [
-      { id: 'scripted-checks', title: 'What a browser script can establish', paragraphs: [
-        'A scripted browser check specifies actions and expected results. The team chooses the pages, test inputs, assertions, and stopping point. Checkly documents Playwright browser checks with page interactions, assertions, retained execution results, and alerts. This can suit a workflow whose exact success condition and test environment you control.',
-        'A script still needs good assertions. Clicking Submit and reaching the next line does not by itself establish that a message was delivered. Decide which visible or authorized backend evidence proves the task, which failures should alert, and how test data is removed. Someone needs to own the test as routes, labels, and business rules change.',
+      { id: 'scripted-checks', title: 'What a custom test does', paragraphs: [
+        'A custom browser test spells out the pages to open, buttons to select, and results to expect. Checkly documents Playwright browser checks with page interactions, assertions, retained execution results, and alerts. This can help a team check a task with very specific requirements.',
+        'Someone needs to write and look after the test as the website changes. The test must check the actual result. Selecting Send is not enough to show a message arrived. Test accounts and data also need safe setup and cleanup.',
       ], sourceIds: [1] },
-      { id: 'supported-coverage', title: 'What FixFlags offers today', paragraphs: [
-        'FixFlags starts with supported checks of reachable public website pages, recorded observations, Flags, and fix guidance. It can help a website owner inspect supported page and journey problems without first describing every public interaction in a custom script. The documented coverage and the recorded scope determine what any individual result establishes.',
-        'It does not promise arbitrary private workflow execution. Signup verification requires supported behavior, authorization, and reversible test conditions. Login and password reset are unavailable in the website beta. Purchase-path checks stop before payment. New MCP connections and planned paid integrations are unavailable. A custom workflow outside those limits needs a separate approach.',
+      { id: 'supported-coverage', title: 'Start without writing a script', paragraphs: [
+        'For supported public pages, FixFlags starts with your website address. It checks for problems and gives you fix instructions to copy and paste. Each result tells you which pages and actions it checked.',
+        'That does not cover every private task your app might have. Read the coverage details for signup and other steps with special requirements. Keep a separate review for important tasks outside those checks.',
       ], sourceIds: [0] },
-      { id: 'choose-path', title: 'Choose by the job and its owner', paragraphs: [
-        'Choose a scripted approach when your requirement includes a precise sequence, controlled fixtures, private state, or custom assertions outside supported coverage. Before selecting a service, confirm that its browser, access model, scheduling, execution limits, and retained evidence fit that sequence. A private workflow deserves explicit authorization and a cleanup owner.',
-        'Consider FixFlags when you need evidence about supported public pages and next steps, then want to hand the observed problem to your developer or AI tool. Run a small representative check and read its scope before making a wider monitoring decision. Neither approach removes the need to review changes or understand what remained untested.',
+      { id: 'choose-path', title: 'Choose what fits your website', paragraphs: [
+        'If you need a precise sequence inside a private account, a custom test may be useful. Confirm that it has permission to use the account, does not change real customer data, and cleans up any test data it creates.',
+        'If you want to find problems on supported public pages and get help fixing them, try FixFlags with an important page first. You can use both approaches when they answer different questions.',
       ] },
-      { id: 'verification', title: 'Use the same recovery standard', paragraphs: [
-        'For either approach, define the expected result before changing the site. Review the fix, publish it, and get fresh independent verification of that result. A repaired script that no longer asserts the original condition can hide a product failure. A clear public-page check can also miss a private requirement that was never in its scope.',
-        'In FixFlags, an interrupted or blocked check remains Couldn’t verify. Scheduled runs do not establish continuous health between observations. Keep manual review for uncovered important tasks, and use current Pricing and coverage documentation when evaluating the beta. Choose complementary checks where each adds a clear, owned signal rather than duplicating alerts without a response plan.',
+      { id: 'verification', title: 'Check that the live fix worked', paragraphs: [
+        'Whichever approach you use, publish the fix and check the original problem again. This is independent verification. Changing a test so it skips a broken step can hide the problem instead of fixing it.',
+        'In FixFlags, a blocked or unfinished check stays Couldn’t verify. Results apply to what was checked at that time. Keep reviewing important steps that are outside the available checks, and remember there is time between scheduled runs.',
       ] },
     ],
-    example: { title: 'Public signup entry and a private approval workflow', paragraphs: [
-      'In this controlled illustration, a fictional software site needs two checks: the homepage signup button reaches the intended page, and an authorized test user can submit a private approval request. These have different access, data, and cleanup requirements.',
-      'A supported public destination check can address the first question. The private approval path needs a separately configured test with explicit assertions and safe reset conditions. Passing either check does not establish the other. This example makes no claim about comparative speed, cost, or reliability.',
+    example: { title: 'A public signup link and a private approval step', paragraphs: [
+      'In this controlled illustration, a demo app has a public signup button and an approval form inside a private account. They need different checks.',
+      'A public check can confirm where the signup button leads. The private approval step needs its own authorized test, safe test data, and a way to clean up. Passing one does not prove the other works.',
     ] }, sources: [coverage, checkly], related: ['fixflags-vs-uptime-monitoring', 'monitoring-ai-built-websites'],
   },
 ]

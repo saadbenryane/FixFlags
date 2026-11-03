@@ -15,7 +15,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
   })
-  it.each(['history', 'environment'] as const)('retains the original console failure horizon independently of newer %s', async scenario => {
+  it.each(['history', 'environment', 'grouped'] as const)('retains the original console failure horizon independently of newer %s', async scenario => {
     const root = 'https://example.com/', owner = 'console-history-' + randomUUID()
     await prisma.user.createMany({ data: [owner, owner + '-other'].map(id => ({ id, email: id + '@example.test' })) })
     try {
@@ -30,7 +30,12 @@ localDatabase('combined recorded monitoring responsibility', () => {
         evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Original console window',
           context: consoleContext('desktop', root, root, 'profile', 'public', milliseconds) }],
       })
-      const flag = await prisma.flag.create({ data: { ...finding(original.id, 6500), status: 'FIXED' } })
+      const flag = await prisma.flag.create({ data: { ...finding(original.id, scenario === 'grouped' ? 2000 : 6500), status: 'FIXED',
+        ...(scenario === 'grouped' ? { supportingObservations: { version: 1, items: [{
+          source: 'DETERMINISTIC', checkId: 'console-errors-some', checkVersion: 1, pageUrl: root,
+          evidence: 'The original delayed error remains part of this grouped Flag', verificationRule: null,
+          evidenceTargets: finding(original.id, 6500).evidenceTargets, provenance: null,
+        }] } } : {}) } })
       const foreign = await prisma.project.create({ data: { userId: owner + '-other', name: 'Foreign console history', url: root, canonicalHost: 'example.com' } })
       const foreignSource = await prisma.audit.create({ data: { projectId: foreign.id, url: root, status: 'COMPLETED', executionSpec: spec('production') } })
       const setup = await prisma.audit.create({ data: { projectId: project.id, url: root, status: 'COMPLETED', executionSpec: { ...spec('production'), scope: 'FIXTURE_SETUP' } } })
@@ -56,12 +61,12 @@ localDatabase('combined recorded monitoring responsibility', () => {
           expect(admitted.consoleObservationScopes).toEqual([{ pageUrl: root, minimumMs: 6500 }])
         }
         const indexes = read.mock.calls.flatMap(([query], index) =>
-          (Array.isArray(query) ? query.join('') : (query as Prisma.Sql).sql).includes('console:page_load:%') ? [index] : [])
+          (Array.isArray(query) ? query.join('') : (query as Prisma.Sql).sql).includes('FROM flags flag JOIN audits "source"') ? [index] : [])
         expect(indexes).toHaveLength(scenario === 'history' ? 4 : 2)
         for (const index of indexes) {
-          const rows = await read.mock.results[index].value as Array<{ pageUrl: string; context: string }>
+          const rows = await read.mock.results[index].value as Array<{ target: unknown }>
           expect(rows.length).toBeLessThanOrEqual(512)
-          expect(rows.every(row => Object.keys(row).sort().join(',') === 'context,pageUrl')).toBe(true)
+          expect(rows.every(row => Object.keys(row).join(',') === 'target')).toBe(true)
         }
       } finally { read.mockRestore() }
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', evidenceTargets: flag.evidenceTargets })

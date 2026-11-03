@@ -13,7 +13,7 @@ beforeEach(() => {
 describe('repair bundle authorization', () => {
   it('validates explicit selections before preparing owner tasks', async () => {
     expect((await POST(request({ flagIds: ['one', 'two'] }), context)).status).toBe(200)
-    expect(mocks.bundle).toHaveBeenCalledWith({ siteId: 'resolved-owner-site' }, undefined, ['one', 'two'])
+    expect(mocks.bundle).toHaveBeenCalledWith({ siteId: 'resolved-owner-site' }, undefined, ['one', 'two'], { offset: 0, manifestHash: undefined })
     mocks.bundle.mockClear()
     for (const flagIds of [[], ['one', 'one'], Array.from({ length: 101 }, (_, i) => String(i))])
       expect((await POST(request({ flagIds }), context)).status).toBe(400)
@@ -24,11 +24,13 @@ describe('repair bundle authorization', () => {
     const response = await POST(request({}), context)
     expect(response.status).toBe(status)
     expect(mocks.bundle).not.toHaveBeenCalled()
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+    expect(response.headers.get('Vary')).toBe('Cookie, Authorization')
   })
   it('uses the resolved owned Site, validates scope, and prohibits caching', async () => {
     const response = await POST(request({ area: 'performance' }), context)
     expect(response.status).toBe(200)
-    expect(mocks.bundle).toHaveBeenCalledWith({ siteId: 'resolved-owner-site' }, 'performance')
+    expect(mocks.bundle).toHaveBeenCalledWith({ siteId: 'resolved-owner-site' }, 'performance', undefined, { offset: 0, manifestHash: undefined })
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect((await response.json()).tasks).toHaveLength(1)
     expect((await POST(request({ area: 'unknown' }), context)).status).toBe(400)

@@ -46,6 +46,7 @@ export type PageCheckContext = {
   consoleCoverage?: ConsoleCoverage;
   head?: HeadMetadataObservation;
   renderedCopy?: RenderedCopy | null; accessibilityEvidence?: AccessibilityEvidence; renderedScope?: CaptureObservationScope;
+  renderedCopyScope?: CaptureObservationScope | null;
   mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
@@ -76,10 +77,18 @@ export function registerPageEvaluators(evaluators: Evaluator[], definitions = PA
       definition.evaluator !== evaluator.id || definition.resultSchema !== 'site-module-check-v1')
       throw new Error('Invalid page check registration: ' + evaluator.id)
     registered.set(evaluator.id, { ...evaluator, definition, evaluate(input) {
-      if (RENDERED_COPY_MODULES.has(evaluator.id) && (input.metadata?.renderedCopy !== undefined || evaluator.id === 'visual-hierarchy' && !input.metadata)) {
+      const copy = input.renderedCopy === undefined ? input.metadata?.renderedCopy : input.renderedCopy
+      const copyScope = input.renderedCopyScope === undefined ? input.renderedScope : input.renderedCopyScope
+      if (RENDERED_COPY_MODULES.has(evaluator.id) && copy && (copyScope === null ||
+        copyScope && new URL(copy.pageUrl).href !== new URL(copyScope.finalUrl).href)) {
+        input.scope.complete = false
         input.scope.limitation = RENDERED_COPY_LIMITATION
-        const copy = input.metadata ? input.metadata.renderedCopy : input.renderedCopy
+        return evaluator.id === 'visual-hierarchy' ? evaluator.evaluate({ ...input, renderedCopy: null }) : []
+      }
+      if (RENDERED_COPY_MODULES.has(evaluator.id) && (copy !== undefined || !input.metadata)) {
+        input.scope.limitation = RENDERED_COPY_LIMITATION
         if (!copy?.complete) { input.scope.complete = false; if (evaluator.id !== 'visual-hierarchy') return [] }
+        else input.scope.complete ??= true
       }
       return evaluator.evaluate(input)
     } })
@@ -132,8 +141,8 @@ export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'console', evaluate: c => { Object.assign(c.scope, { complete: consoleObservations(c.consoleCoverage).every(assertion => assertion.complete === true),
       limitation: 'Console inspection covers the recorded desktop and mobile page-load windows, not later actions or all execution states.' });
     return runConsoleChecks(c.consoleErrors, c.consoleCoverage) } },
-  { id: 'content', evaluate: withMetadata(c => runContentChecks(c.metadata, c.purpose, c.record)) },
-  { id: 'slop', evaluate: withMetadata(c => runSlopChecks(c.metadata, c.record)) },
+  { id: 'content', evaluate: c => runContentChecks(c.metadata, c.purpose, c.record, c.renderedCopy) },
+  { id: 'slop', evaluate: c => runSlopChecks(c.metadata, c.record, c.renderedCopy, c.head?.metadata.title) },
   { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
     checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
   { id: 'auth-checkout', evaluate: withMetadata(c => runAuthCheckoutChecks(c.url, c.metadata, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline })) },
@@ -144,9 +153,9 @@ export const PAGE_CHECKS = registerPageEvaluators([
     return checked.flags
   } },
   { id: 'security-headers', evaluate: c => runSecurityHeaderChecks(c.url, c.headers ?? null) },
-  { id: 'messaging-clarity', evaluate: withMetadata(c => runMessagingClarityChecks(c.metadata, c.record)) },
-  { id: 'conversion-friction', evaluate: withMetadata(c => runConversionFrictionChecks(c.metadata, c.purpose, c.record)) },
-  { id: 'trust-psychology', evaluate: withMetadata(c => runTrustPsychologyChecks(c.metadata, c.purpose, c.url, c.record)) },
+  { id: 'messaging-clarity', evaluate: c => runMessagingClarityChecks(c.metadata, c.record, c.renderedCopy) },
+  { id: 'conversion-friction', evaluate: c => runConversionFrictionChecks(c.metadata, c.purpose, c.record, c.renderedCopy) },
+  { id: 'trust-psychology', evaluate: c => runTrustPsychologyChecks(c.metadata, c.purpose, c.url, c.record, c.renderedCopy) },
   { id: 'performance', evaluate: c => runPerformanceChecks(c.desktop, c.mobile, c.url) },
   { id: 'mobile', evaluate: c => runMobileChecks(c.mobile, c.url) },
   { id: 'mobile-ux-quality', evaluate: c => {
@@ -167,6 +176,6 @@ export function pageCheckApplicable(definition: PageCheckDefinition, input: Page
   return definition.input === 'http' ? Boolean(input.publicDocument) : definition.input === 'console' ? Boolean(input.consoleCoverage || input.consoleErrors.length) : definition.input === 'keyboard' ? Boolean(input.keyboard?.candidateCount) : definition.input === 'performance' ? Boolean(input.desktop || input.mobile)
     : definition.input === 'mobile' ? Boolean(input.mobile)
     : definition.input === 'headers' ? Boolean(input.headers)
-    : definition.input === 'accessibility' ? input.axe !== undefined || Boolean(input.accessibilityEvidence || input.desktop || input.mobile)
+    : definition.input === 'accessibility' ? input.axe !== undefined || Boolean(input.accessibilityEvidence || input.mobileAccessibility || input.desktop || input.mobile)
     : definition.input === 'browser' ? Boolean(input.metrics) : true
 }

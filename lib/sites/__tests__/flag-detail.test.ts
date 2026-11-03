@@ -4,14 +4,17 @@ import type { SiteRecord } from '../types'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
+import { buildSiteRepairHandoff } from '../repair-brief'
 const mocks = vi.hoisted(() => ({ flag: vi.fn(), attempts: vi.fn(), occurrences: vi.fn(), outcome: vi.fn(), proofs: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: {
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) },
   flag: { findFirst: mocks.flag }, improvementAttempt: { findMany: mocks.attempts },
   improvementOccurrence: { findMany: mocks.occurrences }, siteOutcome: { findFirst: mocks.outcome },
   audit: { findMany: mocks.proofs },
+  auditVerificationReceipt: { findMany: async () => (await mocks.proofs()).flatMap((audit: { id: string; verifierExecutions?: object[] }) =>
+    (audit.verifierExecutions ?? []).map((receipt, index) => ({ ...receipt, id: audit.id + ':receipt:' + index, auditId: audit.id }))) },
 } }))
 import { loadSiteFlagDetail } from '../flags'
-const site = { siteId: 'site-1', projectId: 'project-1' } as SiteRecord
+const site = { siteId: 'site-1', projectId: 'project-1', userId: 'owner' } as SiteRecord
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.flag.mockResolvedValue({ id: 'captured-flag', auditId: 'audit-1', checkId: 'journey-checkout-failed-http_error', rubric: 'EXPERIENCE', severity: 'CRITICAL', impactTag: 'REVENUE', problem: 'Checkout is unavailable', evidence: 'Two failed checks', whyItMatters: 'Checkout cannot open', fix: 'Restore checkout', pageUrl: 'https://shop.test/checkout', status: 'OPEN', resolvedInId: null, confidence: 0.95, improvementOccurrence: { improvement: { id: 'improvement-1', status: 'PROPOSED', outcomeId: 'outcome-1' } } })
@@ -126,15 +129,21 @@ it.each([null, { version: 9, items: [] }])('distinguishes absent historical supp
 })
 
 it.each([
-  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_REVIEW_FAILED' }, expected: 'unavailable' },
-  { fix: ' ', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: null }, expected: 'pending' },
-  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: new Date(), failureCode: null }, expected: 'unavailable' },
+  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_REVIEW_FAILED' }, expected: 'ready' },
+  { fix: ' ', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: null }, expected: 'ready' },
+  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: new Date(), failureCode: null }, expected: 'ready' },
   { fix: 'Restore the measured action.', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_CONTRACT_INVALID' }, expected: 'ready' },
 ])('projects per-finding guidance without borrowing broader prescription success: $expected', async ({ fix, audit, expected }) => {
   const recorded = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...recorded, fix, audit })
   const detail = await loadSiteFlagDetail(site, 'captured-flag')
-  expect(detail).toMatchObject({ repairGuidance: expected, fix: fix.trim(), sourceAuditId: recorded.auditId, evidence: recorded.evidence })
+  expect(detail).toMatchObject({ repairGuidance: expected, sourceAuditId: recorded.auditId, evidence: recorded.evidence })
+  if (fix.trim()) expect(detail?.fix).toBe(fix.trim())
+  else {
+    expect(detail?.fix).toContain('reproduce the problem')
+    expect(buildSiteRepairHandoff('site-1', { ...detail!, verificationRule: null }, 'https://fixflags.test').prompt).toContain('/report/audit-1')
+    expect(recorded.fix).toBe('Restore checkout')
+  }
 })
 
 it('keeps established historical indexing guidance and its action availability consistent without changing the stored finding', async () => {
@@ -145,11 +154,14 @@ it('keeps established historical indexing guidance and its action availability c
   expect(recorded).toEqual(snapshot)
 })
 
-it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('withholds unconditional historical %s guidance without rewriting recorded evidence', async checkId => {
+it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('replaces unsafe historical %s instructions with conditional inspection without rewriting evidence', async checkId => {
   const recorded = { ...(await mocks.flag()), checkId, fix: 'Replace the recorded content and move the action.', audit: { failureCode: 'AI_REVIEW_FAILED' } }
   const snapshot = structuredClone(recorded)
   mocks.flag.mockResolvedValue(recorded)
-  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: '', repairGuidance: 'unavailable', evidence: recorded.evidence })
+  const detail = await loadSiteFlagDetail(site, 'captured-flag')
+  expect(detail).toMatchObject({ repairGuidance: 'ready', evidence: recorded.evidence })
+  expect(detail?.fix).toContain('confirm its intended purpose')
+  expect(detail?.fix).not.toContain(recorded.fix)
   expect(recorded).toEqual(snapshot)
 })
 

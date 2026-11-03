@@ -73,7 +73,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
     navigation.openFlag(id)
   }
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
-  function checkAction(area?: SiteCardArea, identifyArea = false) {
+  function checkAction(area?: SiteCardArea, identifyArea = false, iconOnly = false) {
     const name = area ? view.cards.find(card => card.id === area)?.name ?? area : undefined
     const categoryChecking = area && view.activeRuns.some(run => run.scope === 'CATEGORY' && run.targetLabel === name)
     const recovery = area ? view.executionProgress?.categoryRecovery?.[area] : view.executionProgress?.recovery
@@ -83,8 +83,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       if (recovery.action === 'inspect' && area) return null
       return <Button asChild variant="outline" size="sm"><Link href={href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button>
     }
-    if (ownsSite) return <Button variant="outline" size="sm" className="min-h-11" data-site-return-focus="check" aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
-      <RefreshCw className="h-4 w-4" aria-hidden />{busy ? SITE_BOARD_COPY.starting : checking || categoryChecking ? SITE_BOARD_COPY.checking : name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain}
+    if (ownsSite) return <Button variant={iconOnly ? 'ghost' : 'outline'} size={iconOnly ? 'icon' : 'sm'} className="min-h-11" data-site-return-focus="check" data-site-compact-recheck={iconOnly || undefined} title={iconOnly && name ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-busy={busy || Boolean(categoryChecking) || undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
+      <RefreshCw className={`h-4 w-4${busy || categoryChecking ? ' motion-safe:animate-spin' : ''}`} aria-hidden /><span className={iconOnly ? 'sr-only' : undefined}>{busy ? SITE_BOARD_COPY.starting : checking || categoryChecking ? SITE_BOARD_COPY.checking : name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain}</span>
     </Button>
     if (!ownsSite && !checking && view.audit.id) return <SiteActionContinuation
       availability={view.actions.check} destination={`/sites/${siteId}${area ? `?category=${area}` : ''}`} action="check" compact label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain} icon={<RefreshCw aria-hidden />} />
@@ -145,7 +145,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   return (
     <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
-      headerAction={viewMode === 'home' ? undefined : siteActions}>
+      headerAction={viewMode === 'home' ? undefined : viewMode === 'pages' ? !checking ? checkAction() : null : siteActions}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
         <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
@@ -204,7 +204,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
               return { id: card.id, flagCount: category.flagCount,
                 render: (layout: 'card' | 'row') => {
                 const Frame = layout === 'row' ? 'div' : 'article'
-                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
+                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true, layout === 'row') : null} renderFlagCopy={flag => !ownsSite || flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null} onOpen={trigger => {
                 opener.current = trigger
                 selectCategory(card.id)
               }} /></Frame> } }
@@ -213,7 +213,9 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'pages' ? <SitePages siteId={siteId} view={view} onOpenFlag={openFlag} /> : null}
       {viewMode === 'timeline' ? <section id="timeline" aria-labelledby="timeline-heading"><h2 id="timeline-heading" className="sr-only">Timeline</h2>
-        <SiteMonitoringHistory points={monitoringPoints} events={timelineEvents.map(event => ({ ...event, flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => openFlag(flag.id, trigger) })) : undefined }))} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} />
+        <SiteMonitoringHistory points={monitoringPoints} events={timelineEvents.map(event => ({ ...event, flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => openFlag(flag.id, trigger),
+          copyAction: view.flags.some(current => (current.id === flag.id || current.sourceFlagId === flag.id) && (view.actions.copy !== 'available' || current.fix.trim()))
+            ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null })) : undefined }))} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} />
       </section> : null}
 
       {viewMode === 'integrations' ? <section id="integrations" aria-labelledby="integrations-heading"><div><h2 id="integrations-heading" className="sr-only">Integrations</h2><p className="mt-1 text-sm text-muted-foreground">{B.integrationsBody}</p></div><SiteIntegrationsControls key={siteId} siteId={siteId} initial={view.settings} onRefresh={refresh} /></section> : null}

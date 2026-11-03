@@ -39,8 +39,8 @@ describe('exact assertion verification', () => {
   it('records failed assertions without claiming recovery and ignores another page', async () => {
     const upsert = vi.fn()
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'security-csp-missing', pageUrl: receipt.pageUrl }
-    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue([
-      { improvement: { occurrences: [{ flag }, { flag: { ...flag, pageUrl: 'https://example.com/private' } }] } },
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  flag: { findMany: vi.fn().mockResolvedValue([
+      flag, { ...flag, pageUrl: 'https://example.com/private' },
     ]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt }, tx as never)
     expect(upsert).toHaveBeenCalledTimes(1)
@@ -57,10 +57,10 @@ describe('exact assertion verification', () => {
     const upsert = vi.fn()
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'focus-visible-missing', pageUrl: keyboard.pageUrl,
       verificationRule: 'Keyboard probe: repeat navigation', evidenceTargets: [target] }
-    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue([
-      { improvement: { occurrences: [{ flag }, { flag: { ...flag, evidenceTargets: [{ selector: '#unvisited', label: 'Unvisited' }] } },
-        { flag: { ...flag, evidenceTargets: [{ selector: '#action', label: 'Different action' }] } },
-        { flag: { ...flag, verificationRule: 'Historical Lighthouse result' } }] } },
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  flag: { findMany: vi.fn().mockResolvedValue([
+      flag, { ...flag, evidenceTargets: [{ selector: '#unvisited', label: 'Unvisited' }] },
+        { ...flag, evidenceTargets: [{ selector: '#action', label: 'Different action' }] },
+        { ...flag, verificationRule: 'Historical Lighthouse result' },
     ]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: keyboard }, tx as never)
     expect(upsert).toHaveBeenCalledTimes(1)
@@ -79,7 +79,7 @@ describe('exact assertion verification', () => {
     const keyboard = checkReceiptSchema.parse({ ...receipt, module: 'keyboard', complete: false, passed: false,
       assertions: [assertion], execution: { ...receipt.execution!, source: 'keyboard' } })
     const upsert = vi.fn()
-    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }]) },
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  flag: { findMany: vi.fn().mockResolvedValue([flag]) },
       auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: keyboard }, tx as never)
     expect(upsert).toHaveBeenCalledTimes(1)
@@ -146,16 +146,14 @@ describe('exact assertion verification', () => {
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'tracking-library-http-error', pageUrl: receipt.pageUrl,
       verificationRule: TRACKING_VERIFICATION_RULE, evidenceTargets: [{ kind: 'page', context }] }
     const upsert = vi.fn()
-    const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  flag: { findMany: vi.fn().mockResolvedValue([flag]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: measurement }, tx as never)
     expect(upsert).toHaveBeenCalledOnce()
     upsert.mockClear()
-    tx.improvementAttempt.findMany.mockResolvedValue([{ improvement: { occurrences: [{ flag: {
-      ...flag, verificationRule: 'Tracking observation: repeat the same endpoint',
-    } }] } }])
+    tx.flag.findMany.mockResolvedValue([{ ...flag, verificationRule: 'Tracking observation: repeat the same endpoint' }])
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: measurement }, tx as never)
     expect(upsert).not.toHaveBeenCalled()
-    tx.improvementAttempt.findMany.mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }])
+    tx.flag.findMany.mockResolvedValue([flag])
     for (const observation of [
       { ...assertion, context: context.replace('page_load', 'public_action') },
       { ...assertion, context: context.replace('google-analytics', 'plausible') },
@@ -166,7 +164,7 @@ describe('exact assertion verification', () => {
       { key: 'analytics-markup', name: 'Markup', expected: 'Snippet present', observed: 'Present', passed: true },
     ]) await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: { ...measurement, assertions: [observation] } }, tx as never)
     expect(upsert).not.toHaveBeenCalled()
-    tx.improvementAttempt.findMany.mockResolvedValue([{ improvement: { occurrences: [{ flag: { ...flag, evidenceTargets: [{ kind: 'page', context }, { kind: 'page', context: 'unobserved' }] } }] } }])
+    tx.flag.findMany.mockResolvedValue([{ ...flag, evidenceTargets: [{ kind: 'page', context }, { kind: 'page', context: 'unobserved' }] }])
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: measurement }, tx as never)
     expect(upsert).not.toHaveBeenCalled()
   })

@@ -22,7 +22,8 @@ import { sharedBrowser } from './browser/shared-browser'
 import { launchWorkerBrowser } from './browser/worker-browser'
 import { browserContextInventory } from './browser/context-inventory'
 import { bindPublicBrowserProxy, startPublicBrowserProxy } from './browser/public-proxy'
-import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
+import { actionableConsoleErrors, dedupeConsoleErrors, type ConsoleCoverage } from './console-evidence'
+export { dedupeConsoleErrors } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
 import { documentEvidenceWithheld } from './browser/document-evidence'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from './browser/accessibility-evidence'
@@ -134,18 +135,6 @@ export function getBrowserDiagnostics(): {
   }
 }
 
-/**
- * Desktop and mobile captures each navigate their own page but push console
- * errors into one shared array, so any error that fires on every page load (the
- * common case) lands twice. Dedupe by type+text so the count reflects distinct
- * issues, not an artifact of running the same page through two viewports.
- */
-export function dedupeConsoleErrors(
-  errors: ConsoleMessage[]
-): ConsoleMessage[] {
-  return [...new Map(errors.map((e) => [e.identity ?? `${e.type}:${e.text}`, e])).values()]
-}
-
 export interface ScreenshotResult {
   renderedCopy?: RenderedCopy | null
   renderedSearchSnapshot?: RenderedSearchSnapshot
@@ -167,6 +156,7 @@ export interface ScreenshotResult {
   captureMetrics?: CaptureMetrics | null
   motionWindow?: MotionWindow
   loadExperience?: PageLoadExperience | null
+  desktopLoadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   runtimeHeadScope?: CaptureObservationScope
   responseHeaders?: Record<string, string> | null
@@ -181,6 +171,7 @@ export interface ScreenshotResult {
   accessibilityEvidence?: AccessibilityEvidence
   mobileAccessibility?: import('./browser/accessibility-evidence').MobileAccessibilityCapture
   renderedScope?: CaptureObservationScope
+  renderedCopyScope?: CaptureObservationScope | null
   collectionRestrictions?: string[]
   evidenceHarvest?: HarvestedEvidence[]
 }
@@ -216,6 +207,7 @@ interface ViewportCapture {
   axeViolations?: import('./checks/accessibility').AxeViolation[]
   accessibilityEvidence?: AccessibilityEvidence
   renderedScope?: CaptureObservationScope
+  renderedCopyScope?: CaptureObservationScope | null
   collectionRestrictions?: string[]
   evidenceHarvest?: HarvestedEvidence
 }
@@ -361,6 +353,9 @@ async function settleProfile<T>(work: () => Promise<T>): Promise<PromiseSettledR
 }
 
 export type ScreenshotCaptureOptions = {
+  /** Progressive collectors own one profile. Historical callers retain both. */
+  device?: 'desktop' | 'mobile'
+  consoleIdentityKey?: string
   consoleObservationMs?: number
   runFlow?: boolean
   scanAccess?: ScanAccessConfig | null
@@ -483,9 +478,12 @@ async function captureDesktopWithFlow(
       result.htmlTruncated = rendered.truncated
       result.htmlCompacted = rendered.compacted
       result.finalUrl = rendered.finalUrl ?? page.url()
+      result.renderedCopyScope = null
       try {
         const copy = await observeRenderedCopy(page)
         result.renderedCopy = copy.pageUrl === result.finalUrl ? copy : null
+        if (result.renderedCopy && !documentEvidenceWithheld(session.safetyRestrictions)) result.renderedCopyScope = {
+          pageUrl: targetUrl, finalUrl: copy.pageUrl, profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
       } catch (error) {
         result.renderedCopy = null
         logger.warn('Rendered copy could not be observed', error)
@@ -723,13 +721,15 @@ export async function captureScreenshots(
   const mobileErrors: Array<{ type: string; text: string }> = []
   const captureFailures: PageCaptureFailure[] = []
   const runFlow = options?.runFlow ?? true
-  const consoleIdentityKey = randomUUID()
+  const consoleIdentityKey = options?.consoleIdentityKey ?? randomUUID()
   const scanAccess = options?.scanAccess ?? null
   const profileOptions = { ...options, runFlow, scanAccess, consoleIdentityKey }
 
   // A browser task holds one native context at a time. Other page tasks can
   // progress when one profile is waiting on a document or renderer.
-  const desktopSettled = await settleProfile(() => captureDesktopWithFlow(
+  const collectDesktop = options?.device !== 'mobile'
+  const collectMobile = options?.device === 'mobile' || options?.device !== 'desktop' && options?.collectMobile !== false
+  const desktopSettled = !collectDesktop ? null : await settleProfile(() => captureDesktopWithFlow(
       b,
       url,
       auditId,
@@ -737,7 +737,7 @@ export async function captureScreenshots(
       desktopErrors,
       profileOptions,
     ))
-  const mobileSettled = options?.collectMobile === false ? null : await settleProfile(() => captureMobileViewport(
+  const mobileSettled = !collectMobile ? null : await settleProfile(() => captureMobileViewport(
       b,
       url,
       auditId,
@@ -751,13 +751,13 @@ export async function captureScreenshots(
     actionTimeline?: ActionTimelineEvent[]
     formProbe?: FormProbeResult | null
   }
-  if (desktopSettled.status === 'fulfilled') {
+  if (desktopSettled?.status === 'fulfilled') {
     desktop = desktopSettled.value
-  } else {
+  } else if (desktopSettled) {
     if (isInfrastructureAuditError(desktopSettled.reason)) throw desktopSettled.reason
     captureFailures.push(pageCaptureFailureFromError('desktop', desktopSettled.reason))
     desktop = { base64: null, url: null, initialUrl: null, html: null, flowResult: null }
-  }
+  } else desktop = { base64: null, url: null, initialUrl: null, html: null, flowResult: null }
 
   let mobile: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   if (mobileSettled?.status === 'fulfilled') {
@@ -810,7 +810,7 @@ export async function captureScreenshots(
       pageUrl: url,
       access: captureAccessKey(scanAccess, url),
       messagesTruncated: consoleErrors.length > 500 || desktop.consoleMessagesTruncated === true || mobile.consoleMessagesTruncated === true,
-      desktop: { complete: desktopSettled.status === 'fulfilled' && desktop.consoleComplete === true && Boolean(desktop.consoleFinalUrl),
+      desktop: { complete: desktopSettled?.status === 'fulfilled' && desktop.consoleComplete === true && Boolean(desktop.consoleFinalUrl),
         profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE),
         finalUrl: desktop.consoleFinalUrl ?? captureFailures.find(failure => failure.device === 'desktop')?.finalUrl ?? null,
         errors: actionableConsoleErrors(dedupeConsoleErrors(desktopErrors)).length,
@@ -822,14 +822,15 @@ export async function captureScreenshots(
         observedMs: mobile.consoleObservedMs ?? 0, minimumMs: mobile.consoleMinimumMs ?? 0 },
     },
     captureStatus: {
-      desktop: options?.captureMedia === false ? 'pending' : desktop.url ? 'ok' : 'failed',
-      mobile: options?.collectMobile === false || options?.captureMedia === false ? 'pending' : mobile.url ? 'ok' : 'failed',
+      desktop: !collectDesktop || options?.captureMedia === false ? 'pending' : desktop.url ? 'ok' : 'failed',
+      mobile: !collectMobile || options?.captureMedia === false ? 'pending' : mobile.url ? 'ok' : 'failed',
     },
     captureFailures,
     flowResult: desktop.flowResult,
     captureMetrics: observedMetrics,
     ...(mobile.motionWindow ? { motionWindow: mobile.motionWindow } : {}),
     loadExperience,
+    desktopLoadExperience: desktop.loadExperience ?? null,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     runtimeHeadScope: desktop.runtimeHeadScope,
     renderedCopy: desktop.renderedCopy ?? null,
@@ -843,9 +844,10 @@ export async function captureScreenshots(
     formProbe: desktop.formProbe ?? null,
     axeViolations: desktop.axeViolations,
     accessibilityEvidence: desktop.accessibilityEvidence,
-    ...(!options?.mediaOnly && options?.collectAccessibility !== false && options?.collectMobile !== false
+    ...(!options?.mediaOnly && options?.collectAccessibility !== false && collectMobile
       ? { mobileAccessibility: { evidence: mobile.accessibilityEvidence, violations: mobile.axeViolations } } : {}),
     renderedScope: desktop.renderedScope,
+    renderedCopyScope: desktop.renderedCopyScope,
     collectionRestrictions: desktop.collectionRestrictions ?? [],
     evidenceHarvest: [desktop.evidenceHarvest, mobile.evidenceHarvest].filter(
       (harvest): harvest is HarvestedEvidence => Boolean(harvest)
