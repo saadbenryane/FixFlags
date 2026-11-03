@@ -221,12 +221,15 @@ run('persisted repair context scope', () => {
       await prisma.audit.update({ where: { id: original.id }, data: { executionSpec: original.executionSpec ?? Prisma.DbNull } })
     }
   })
-  it('refuses malformed historical support and changed evidence without replacing the prepared task', async () => {
+  it('offers evidence recovery for malformed support and refuses the previously prepared task after context changes', async () => {
     const site = (await loadSiteRecord(siteId))!
     const prepared = await loadSiteFlagCopyTask(site, incidentId)
     const source = await prisma.flag.findUniqueOrThrow({ where: { id: captures[0].id } })
     await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: { version: 9, items: [] } } })
-    await expect(loadSiteFlagCopyTask(site, incidentId)).rejects.toMatchObject({ status: 422 })
+    const recovery = await loadSiteFlagCopyTask(site, incidentId)
+    expect(recovery.revision.kind).toBe('evidence-recovery')
+    expect(recovery.prompt).toContain('Do not change the website based on this record')
+    await expect(loadSiteFlagCopyTask(site, incidentId, prepared.promptHash)).rejects.toMatchObject({ status: 409, code: 'REPAIR_TASK_CHANGED' })
     await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: source.supportingObservations!, evidence: 'Changed recorded observation' } })
     // The original source may be a peer of the displayed representative.
     await prisma.flag.updateMany({ where: { id: { in: captures.map(flag => flag.id) } }, data: { fix: 'Different bounded repair guidance' } })

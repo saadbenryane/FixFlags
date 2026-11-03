@@ -49,7 +49,7 @@ export function SitePreviewCard({ host, captures, availability, priority = false
         <img ref={image} src={capture.url} alt="" width={width} height={height} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : undefined} decoding="async"
           onError={() => setFailedUrl(capture.url)} data-device={device} />}
       <span className={styles.enlarge}><Maximize2 size={16} aria-hidden /></span>
-    </InteractiveButton> : <div className={`${styles.empty} ${!showDevices ? styles.emptySolo : ''}`}><Globe2 size={24} aria-hidden /><p role={disposition === 'pending' && !capture ? 'status' : undefined}>{capture || disposition === 'unavailable' ? C.captureUnavailable : disposition === 'pending' ? C.capturePending : C.noCapture}</p></div>}
+    </InteractiveButton> : <div className={`${styles.empty} ${!showDevices ? styles.emptySolo : ''}`}><Globe2 size={24} aria-hidden /><p role="status">{capture || disposition === 'unavailable' ? C.captureUnavailable : disposition === 'pending' ? C.capturePending : C.noCapture}</p></div>}
     {available && capture.previous ? <p className="px-4 pb-3 text-xs text-muted-foreground">{C.previousCapture} · {capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}
       {disposition === 'pending' ? ` · ${C.capturePending}` : disposition === 'unavailable' ? ` · ${C.latestCaptureUnavailable}` : ''}</p> : null}
     {capture ? <ResponsiveDepth header={<DialogTitle>{host}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }} className="max-w-4xl">

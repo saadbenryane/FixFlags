@@ -8,7 +8,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.access.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'resolved-site' } } })
   mocks.flag.mockResolvedValue({ site: { userId: 'private-user' }, flag: {
-    id: 'flag-1', sourceAuditId: 'audit', problem: 'Problem', evidence: 'Observation', evidenceMissing: false,
+    id: 'flag-1', checkId: null, sourceAuditId: 'audit', problem: 'Problem', evidence: 'Observation', evidenceMissing: false,
     whyItMatters: 'Reason', expectedBehavior: 'Expected', fix: 'Guidance', repairGuidance: 'ready',
     pageUrl: 'https://example.com/', affectedPaths: ['https://example.com/'], viewport: 'mobile',
     verifying: false, status: 'OPEN', attempts: [{ privateReference: 'not-exposed' }],

@@ -223,7 +223,7 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByRole('button', { name: 'Copy fix prompt' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Verification history' })).not.toBeInTheDocument()
-    for (const label of ['Copy fix prompt', 'View prompt']) {
+    for (const label of [SITE_BOARD_COPY.copyPrompt, SITE_BOARD_COPY.viewPrompt]) {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
     }
   })

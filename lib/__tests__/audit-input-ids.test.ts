@@ -72,11 +72,11 @@ function collectFiles(
   for (const entry of entries) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === '.next') continue
+      if (entry.name === 'node_modules' || entry.name === '.next' || entry.name === '__tests__') continue
       collectFiles(full, usages, bareUsages)
       continue
     }
-    if (!entry.name.endsWith('.tsx')) continue
+    if (!entry.name.endsWith('.tsx') || /\.(?:test|spec)\.tsx$/.test(entry.name)) continue
     const content = readFileSync(full, 'utf8')
     const lines = content.split('\n')
     for (let i = 0; i < lines.length; i++) {

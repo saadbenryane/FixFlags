@@ -22,7 +22,6 @@ import { readExecutionSpec } from '../sites/domain/execution-spec'
 import { startAdminOperationRuntime } from '@/lib/admin/runtime'
 import { probeBrowserRendering } from '@/lib/audit/browser/health-probe'
 import { browserCapacity } from '@/lib/audit/progressive/capacity'
-import { startMemorySampler } from '@/lib/runtime/memory-sampler.mjs'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -212,7 +211,6 @@ export function startWorker() {
   const tasks = startProgressiveWorkers()
   const uptime = startUptimeRuntime()
   const adminOperations = startAdminOperationRuntime()
-  const memorySampler = startMemorySampler({ role: 'worker', readCounts: async () => ({ activeTasks: tasks.activeCount(), browserContexts: getBrowserDiagnostics().activeContexts }), emit: (sample: Record<string, string | number | null>) => logger.info('Runtime memory sample', sample) })
   const waitForAuditWorker = worker.waitUntilReady.bind(worker)
   worker.waitUntilReady = async () => {
     const [connection] = await Promise.all([waitForAuditWorker(), tasks.waitUntilReady(), uptime.waitUntilReady(), adminOperations.waitUntilReady()])

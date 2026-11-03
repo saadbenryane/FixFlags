@@ -17,6 +17,7 @@ const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get
   $queryRaw: mocks.lockOutcome,
   siteOutcome: {
     findFirst: mocks.txFindFirst,
+    update: mocks.update,
     updateMany: mocks.txUpdateMany,
     findUniqueOrThrow: mocks.txFindUniqueOrThrow,
   },
@@ -211,6 +212,6 @@ describe('renameSiteOutcome', () => {
       kind: 'CHECKOUT',
       bindings: [{ key: 'checkout-browser-v1' }],
     })
-    expect(mocks.transaction).not.toHaveBeenCalled()
+    expect(mocks.transaction).toHaveBeenCalledOnce()
   })
 })

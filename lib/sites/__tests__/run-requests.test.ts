@@ -40,7 +40,9 @@ vi.mock('@/lib/db', () => ({
     } },
     $queryRaw: (query: TemplateStringsArray | { sql: string }, ...values: unknown[]) => {
       const sql = Array.isArray(query) ? query.join('') : (query as { sql: string }).sql
-      return (sql.includes('console:page_load:%') ? mocks.historicalConsoleScope : mocks.historicalPageScope)(query, ...values)
+      if (sql.includes('SELECT DISTINCT target FROM targets')) return Promise.resolve(mocks.historicalConsoleScope(query, ...values))
+        .then((rows: Array<{ context: string }>) => rows.map(target => ({ target })))
+      return mocks.historicalPageScope(query, ...values)
     },
     user: { findUnique: mocks.userFindUnique },
     provisionalSite: { findMany: vi.fn().mockResolvedValue([]) },

@@ -106,9 +106,11 @@ describe('canonical repair context through MCP', () => {
     expect((await handler({ siteId: 'site', flagId: 'original' })).isError).toBe(true)
     expect(mocks.flag).not.toHaveBeenCalled()
   })
-  it('does not invent a task when evidence is unreadable', async () => {
+  it('offers evidence recovery without inventing a website repair when evidence is unreadable', async () => {
     mocks.flag.mockResolvedValue(repairFlag({ supportingEvidenceUnreadable: true }))
-    expect((await handler({ siteId: 'site', flagId: 'original' })).structuredContent.repairBrief).toMatchObject({ repair: { readiness: 'unavailable', guidance: null } })
-    await expect(loadSiteFlagCopyTask(authorizedSite, 'original')).rejects.toMatchObject({ status: 422 })
+    expect((await handler({ siteId: 'site', flagId: 'original' })).structuredContent.repairBrief).toMatchObject({ repair: { readiness: 'ready', definition: { kind: 'evidence-recovery' } } })
+    const task = await loadSiteFlagCopyTask(authorizedSite, 'original')
+    expect(task.prompt).toContain('Do not change the website based on this record')
+    expect(task.prompt).not.toContain(repairFlag().fix)
   })
 })

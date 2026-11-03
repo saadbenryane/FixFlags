@@ -244,9 +244,7 @@ describe('VERIFY_FLAG', () => {
       userId: 'user_1',
       builder: 'copy',
     })
-    expect(mocks.executeProductCommand).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'HANDOFF_COPIED' })
-    )
+    expect(mocks.executeProductCommand.mock.calls[0]?.[0]).toMatchObject({ action: 'HANDOFF_COPIED' })
     expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
     expect(mocks.requestOutcomeRun).not.toHaveBeenCalled()
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
