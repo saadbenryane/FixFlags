@@ -129,13 +129,21 @@ describe('validateAiProviderCredentials', () => {
     expect(result?.error).toContain('Unknown provider')
   })
 
-  it('surfaces SDK failures as invalid credentials', async () => {
+  it('distinguishes a typed authentication rejection from provider unavailability', async () => {
     getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
     getOpenAIProviderKey.mockReturnValue('sk-test')
-    openaiCreate.mockRejectedValueOnce(new Error('401 invalid api key'))
+    openaiCreate.mockRejectedValueOnce(Object.assign(new Error('401 invalid api key'), { status: 401 }))
 
     const result = await validateAiProviderCredentials()
-    expect(result).toMatchObject({ ok: false, provider: 'openai' })
+    expect(result).toMatchObject({ ok: false, provider: 'openai', failure: 'authentication_rejected' })
     expect(result?.error).toContain('401 invalid api key')
+  })
+
+  it.each([[403, 'permission_denied'], [429, 'rate_limited'], [503, 'provider_unavailable'],
+    [undefined, 'provider_unavailable']] as const)('retains SDK availability failure %s without inventing invalid credentials', async (status, failure) => {
+    getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
+    getOpenAIProviderKey.mockReturnValue('sk-test')
+    openaiCreate.mockRejectedValueOnce(Object.assign(new Error('Provider request did not complete'), { status }))
+    expect(await validateAiProviderCredentials()).toMatchObject({ ok: false, provider: 'openai', failure })
   })
 })

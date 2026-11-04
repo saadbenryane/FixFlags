@@ -16,6 +16,7 @@ export interface AiProviderHealth {
 export interface AiProviderValidation {
   ok: boolean
   provider: string
+  failure?: 'authentication_rejected' | 'permission_denied' | 'rate_limited' | 'provider_unavailable'
   error?: string
 }
 
@@ -60,9 +61,12 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
     return { ok: true, provider }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    const status = err && typeof err === 'object' && 'status' in err ? err.status : undefined
     return {
       ok: false,
       provider,
+      failure: status === 401 ? 'authentication_rejected' : status === 403 ? 'permission_denied'
+        : status === 429 ? 'rate_limited' : 'provider_unavailable',
       error: sanitizeAuditErrorMessage(message),
     }
   }

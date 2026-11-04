@@ -101,7 +101,8 @@ describe('GET /api/health/ai', () => {
     validateAiProviderCredentials.mockResolvedValueOnce({
       ok: false,
       provider: 'openai',
-      error: 'OPENAI_API_KEY is not configured',
+      failure: 'authentication_rejected',
+      error: '401 Authentication rejected',
     })
 
     const response = await GET(
@@ -110,7 +111,26 @@ describe('GET /api/health/ai', () => {
     const body = await response.json()
     expect(body.ok).toBe(false)
     expect(body.credentialValidation).toBe('invalid')
-    expect(body.validation?.error).toContain('OPENAI_API_KEY')
+    expect(body.validation?.error).toContain('401')
+  })
+
+  it('keeps provider quota failure distinct from invalid credentials', async () => {
+    getAiProviderHealth.mockReturnValue(HEALTH)
+    validateAiProviderCredentials.mockResolvedValueOnce({ ok: false, provider: 'openai', failure: 'rate_limited' })
+    const response = await GET(new NextRequest('https://example.com/api/health/ai?validate=1', {
+      headers: { origin: 'https://example.com' },
+    }))
+    expect(await response.json()).toMatchObject({ ok: false, credentialValidation: 'unavailable',
+      validation: { failure: 'rate_limited' } })
+  })
+
+  it('does not claim credential validation when no provider is configured', async () => {
+    getAiProviderHealth.mockReturnValue({ ...HEALTH, configured: false })
+    validateAiProviderCredentials.mockResolvedValueOnce(null)
+    const response = await GET(new NextRequest('https://example.com/api/health/ai?validate=1', {
+      headers: { origin: 'https://example.com' },
+    }))
+    expect(await response.json()).toMatchObject({ ok: false, credentialValidation: 'not_configured' })
   })
 
   it('returns 503 when the probe handler itself throws', async () => {

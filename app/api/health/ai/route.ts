@@ -32,9 +32,8 @@ export async function GET(request: NextRequest) {
     const validation = validate ? await validateAiProviderCredentials() : undefined
     const credentialsOk = validation ? validation.ok : true
     const credentialValidation = validate
-      ? validation?.ok
-        ? 'valid'
-        : 'invalid'
+      ? !validation ? 'not_configured' : validation.ok ? 'valid'
+        : validation.failure === 'authentication_rejected' ? 'invalid' : 'unavailable'
       : 'not_checked'
 
     return NextResponse.json({
