@@ -28,6 +28,13 @@ const run = args => {
 try {
   const files = git(['ls-tree', '-r', '--name-only', previous, '--', 'prisma/migrations']).trim().split('\n').filter(Boolean)
   if (!files.length) throw new Error('Previous revision has no migration history')
+  const previousPackages = JSON.parse(git(['show', previous + ':package-lock.json'])).packages
+  const require = createRequire(import.meta.url)
+  const previousClientVersion = previousPackages['node_modules/@prisma/client'].version
+  const previousGeneratorVersion = previousPackages['node_modules/prisma'].version
+  if (require('@prisma/client/package.json').version !== previousClientVersion ||
+    require('prisma/package.json').version !== previousGeneratorVersion)
+    throw new Error('Rollback rehearsal requires the exact previous production Prisma client and generator versions')
   const previousClientDirectory = path.join(directory, 'previous-client')
   const previousSchema = git(['show', previous + ':prisma/schema.prisma'])
   writeFileSync(path.join(directory, 'schema.prisma'), previousSchema.replace(/generator client \{/, match =>
@@ -103,6 +110,7 @@ try {
     throw new Error('Compatibility rehearsal left synthetic writes behind')
   if (JSON.stringify(await retained()) !== before) throw new Error('Compatibility rehearsal changed retained evidence')
   const evidence = { schemaVersion: 1, status: 'PASS', gitSha: git(['rev-parse', 'HEAD']).trim(), previousGitSha: previous,
+    previousClientVersion, previousGeneratorVersion,
     completedAt: new Date().toISOString(), checks: ['previous migrations applied', 'retained subscription and Site identity',
       'retained historical private evidence reference', 'retained check definition and initial authorization revision',
       'current migrations applied', 'migration ledger current', 'schema drift absent',
