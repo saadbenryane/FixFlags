@@ -1723,7 +1723,9 @@ run('migrated progressive execution', () => {
       const watch = await requestScheduledSiteRun({ projectId: siteId, userId: owner, interval: 'weekly', scheduledAt: tick, now: tick })
       await completed(watch.auditId!, true)
       const recurring = await prisma.flag.findFirstOrThrow({ where: { auditId: watch.auditId!, checkId: flag.checkId } })
-      expect(recurring).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
+      // No comparable recovery occurred. This remains the original incident.
+      expect(recurring).toMatchObject({ status: 'OPEN', fingerprint: flag.fingerprint })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
       expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurring.id } })).toMatchObject({ improvementId: original.improvementId, kind: 'OBSERVED' })
     } finally { inputSizing = 'failed'; transport.mockRestore() }
   }, 180_000)
@@ -1833,6 +1835,8 @@ run('migrated progressive execution', () => {
 
   it('observes Tracking library failures in loading and the public walk, then verifies both repaired scopes without delivering events', async () => withNativeScenario(async ({ projectId, userId }) => {
     const transport = fixtureTransport()
+    // This fixture owns page-load and public-action Tracking observations.
+    // Unrelated browser duties remain explicitly unavailable, not simulated passes.
     try {
       await getAuditTaskQueue('browser').pause(); await pauseExternalQueues()
       const admitted = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', url: origin + '/tracking', idempotencyKey: 'tracking-source' })
@@ -1841,12 +1845,13 @@ run('migrated progressive execution', () => {
         expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: beforeId, workKind: 'browser' } })).not.toBeNull()
       }, { timeout: 10_000, interval: 100 })
       await prisma.auditExecutionTask.updateMany({ where: { auditId: beforeId,
-        workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google'] } }, data: { workRecoveryUntil: new Date(0) } })
+        workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google', 'slow-replay', 'journeys', 'motion', 'overlays'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(beforeId))
       await getAuditTaskQueue('browser').resume(); await resumeExternalQueues()
       await vi.waitFor(async () => {
         expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: beforeId, workKind: 'finalize' } })).toMatchObject({ workState: 'COMPLETED' })
       }, { timeout: 30_000, interval: 100 })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: beforeId } })).toMatchObject({ reportCompleteness: 'PARTIAL' })
       const walk = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: beforeId, targetKey: 'task:p0:flow' } })
       expect(await loadTechnologyProfile(beforeId)).toMatchObject({ status: 'complete',
         technologies: expect.arrayContaining([expect.objectContaining({ name: 'Vercel Analytics', category: 'analytics' })]) })
@@ -1894,13 +1899,30 @@ run('migrated progressive execution', () => {
       expect(site!.cards.find(card => card.id === 'tracking')?.sources).toContain('FixFlags browser')
       trackingRepaired = false
       const recurring = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WATCH', scope: 'SITE', url: origin + '/tracking', idempotencyKey: 'tracking-recurrence' })
+      // Care includes discovery and recorded-control continuations, each with
+      // its own 40-second flow budget. Wait for their real committed evidence.
       await vi.waitFor(async () => {
         await prisma.auditExecutionTask.updateMany({ where: { auditId: recurring.auditId!,
-          workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google'] }, workState: { not: 'COMPLETED' } },
+          workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google', 'slow-replay', 'journeys', 'motion', 'overlays'] }, workState: { not: 'COMPLETED' } },
           data: { workRecoveryUntil: new Date(0) } })
         await dispatchReadyTasks(await reconcileTasks(recurring.auditId!))
         expect(await prisma.audit.findUniqueOrThrow({ where: { id: recurring.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
-      }, { timeout: 30_000, interval: 100 })
+      }, { timeout: 90_000, interval: 100 }).catch(async error => {
+        console.log('Unfinished Tracking recurrence tasks', await prisma.auditExecutionTask.findMany({
+          where: { auditId: recurring.auditId!, workKind: { not: null }, workState: { not: 'COMPLETED' } },
+          select: { targetKey: true, workKind: true, workState: true, workErrorCode: true, workDependencies: true },
+        }))
+        throw error
+      })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: recurring.auditId! } })).toMatchObject({ reportCompleteness: 'PARTIAL' })
+      const recurrenceFlow = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: recurring.auditId!, targetKey: 'task:p0:flow' } })
+      expect(recurrenceFlow.workState).toBe('COMPLETED')
+      const flowData = readArtifact(recurrenceFlow.workResult, 'flow').data as {
+        tracking: { requests: Array<{ role: string; status: number | null }> }; controlProgress?: { completed: number; total: number }
+      }
+      expect(flowData.tracking.requests).toContainEqual(expect.objectContaining({ role: 'library', status: 503 }))
+      const controlContexts = (recurrenceFlow.workInput as { verificationContexts?: string[] }).verificationContexts
+      if (controlContexts?.length) expect(flowData.controlProgress).toMatchObject({ completed: controlContexts.length + 1, total: controlContexts.length + 1 })
       const again = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: 'tracking-library-http-error' } })
       expect(again).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
       expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: again.id } })).toMatchObject({ improvementId: original.improvementId })
