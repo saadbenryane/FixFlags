@@ -813,6 +813,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.auditFindUnique.mockResolvedValue({
       id: 'audit-care', url: 'https://shop.example/', userId: 'user-1',
       projectId: 'project-1', status: 'FAILED', executionSpec: null,
+      project: { userId: 'user-1', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     })
     mocks.runFindFirst
       .mockResolvedValueOnce(null)

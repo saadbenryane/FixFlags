@@ -401,7 +401,7 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('keeps sample settings across navigation without calling the signed-in APIs', () => {
+  it('keeps sample settings across navigation without calling the signed-in APIs', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -409,7 +409,7 @@ describe('comprehensive homepage experience', () => {
     fireEvent.change(within(board).getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
     fireEvent.click(within(board).getByRole('button', { name: 'Pause monitoring' }))
     fireEvent.click(within(board).getByText('Advanced settings', { selector: 'strong' }))
-    fireEvent.click(within(board).getByRole('button', { name: 'Test signup again' }))
+    fireEvent.click(await within(board).findByRole('button', { name: 'Test signup again' }))
     expect(within(board).getByRole('status')).toHaveTextContent('Sample account check completed.')
     fireEvent.click(within(board).getByRole('button', { name: 'Delete FixFlags test accounts' }))
     expect(within(board).getByRole('status')).toHaveTextContent('Sample test accounts deleted.')
@@ -419,7 +419,8 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(board).getByRole('button', { name: 'Settings', exact: true }))
     expect(within(board).getByRole('combobox', { name: 'Email me' })).toHaveValue('OFF')
     expect(within(board).getByRole('checkbox', { name: /when a fix is verified/ })).toBeDisabled()
-    expect(within(board).getByRole('switch', { name: 'Test signup and signed-in pages' })).not.toBeChecked()
+    fireEvent.click(within(board).getByText('Advanced settings', { selector: 'strong' }))
+    expect(await within(board).findByRole('switch', { name: 'Test signup and signed-in pages' })).not.toBeChecked()
     expect(within(board).getByRole('button', { name: 'Resume monitoring' })).toBeVisible()
     expect(within(board).getByRole('button', { name: 'Remove Site', exact: true })).toBeDisabled()
     expect(fetchMock).not.toHaveBeenCalled()

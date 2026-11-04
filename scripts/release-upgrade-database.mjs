@@ -22,12 +22,16 @@ const run = args => {
   const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...args], {
     env: { ...process.env, DATABASE_URL: url.href }, encoding: 'utf8', timeout: 120_000,
   })
-  if (result.status !== 0) throw new Error('Upgrade migration command failed: ' + (result.stderr || result.stdout).replace(/postgres(?:ql)?:\/\/[^\s]+/gi, '[REDACTED]'))
+  if (result.status !== 0) throw new Error('Upgrade verification command failed: ' +
+    [result.stderr, result.stdout, result.error?.message].filter(Boolean).join('\n').replace(/postgres(?:ql)?:\/\/[^\s]+/gi, '[REDACTED]'))
 }
 try {
   const files = git(['ls-tree', '-r', '--name-only', previous, '--', 'prisma/migrations']).trim().split('\n').filter(Boolean)
   if (!files.length) throw new Error('Previous revision has no migration history')
-  writeFileSync(path.join(directory, 'schema.prisma'), git(['show', previous + ':prisma/schema.prisma']))
+  const previousClientDirectory = path.join(directory, 'previous-client')
+  const previousSchema = git(['show', previous + ':prisma/schema.prisma'])
+  writeFileSync(path.join(directory, 'schema.prisma'), previousSchema.replace(/generator client \{/, match =>
+    match + '\n  output = ' + JSON.stringify(previousClientDirectory)))
   for (const file of files) {
     const destination = path.join(directory, file.replace('prisma/', ''))
     mkdirSync(path.dirname(destination), { recursive: true })
@@ -71,10 +75,38 @@ try {
   if (JSON.stringify(await retained()) !== before) throw new Error('Upgrade changed subscription, Site, history or private evidence identity')
   const permissions = await db.$queryRaw`SELECT "authorizationRevision" FROM site_outcomes WHERE id = ${outcomeId}`
   if (permissions[0]?.authorizationRevision !== 1) throw new Error('Upgrade did not establish the retained authorization baseline')
+  run(['generate', '--config', previousConfig])
+  const { PrismaClient: PreviousClient } = createRequire(import.meta.url)(previousClientDirectory)
+  const previousDb = new PreviousClient({ datasourceUrl: url.href })
+  const rehearsalId = 'rollback-rehearsal-' + randomUUID()
+  const rollback = new Error('Roll back compatibility rehearsal')
+  try {
+    try {
+      await previousDb.$transaction(async tx => {
+        // Full previous-client reads catch removed or incompatible columns.
+        await tx.user.findUniqueOrThrow({ where: { id: user.id } })
+        await tx.project.findUniqueOrThrow({ where: { id: site.id } })
+        await tx.audit.findUniqueOrThrow({ where: { id: audit.id } })
+        await tx.improvement.create({ data: { id: rehearsalId, projectId: site.id, fingerprint: rehearsalId,
+          title: 'Compatibility rehearsal', judgment: 'Controlled local observation', expectedBenefit: 'Schema compatibility',
+          recommendedChange: 'No website change', successCondition: 'Previous client reads and writes succeed' } })
+        await tx.improvementAttempt.create({ data: { id: rehearsalId, improvementId: rehearsalId,
+          sourceAuditId: audit.id, builder: 'rollback-schema-rehearsal' } })
+        await tx.improvementAttempt.findUniqueOrThrow({ where: { id: rehearsalId } })
+        throw rollback
+      }, { timeout: 30_000 })
+      throw new Error('Compatibility rehearsal unexpectedly committed')
+    } catch (error) { if (error !== rollback) throw error }
+  } finally { await previousDb.$disconnect() }
+  if (await db.improvement.count({ where: { id: rehearsalId } }) ||
+    await db.improvementAttempt.count({ where: { id: rehearsalId } }))
+    throw new Error('Compatibility rehearsal left synthetic writes behind')
+  if (JSON.stringify(await retained()) !== before) throw new Error('Compatibility rehearsal changed retained evidence')
   const evidence = { schemaVersion: 1, status: 'PASS', gitSha: git(['rev-parse', 'HEAD']).trim(), previousGitSha: previous,
     completedAt: new Date().toISOString(), checks: ['previous migrations applied', 'retained subscription and Site identity',
       'retained historical private evidence reference', 'retained check definition and initial authorization revision',
-      'current migrations applied', 'migration ledger current', 'schema drift absent'],
+      'current migrations applied', 'migration ledger current', 'schema drift absent',
+      'previous production client full reads and repair writes against current schema', 'compatibility writes rolled back and absence verified'],
     retainedRecordsSha256: createHash('sha256').update(before).digest('hex') }
   if (process.env.RELEASE_UPGRADE_EVIDENCE_FILE) {
     mkdirSync(path.dirname(process.env.RELEASE_UPGRADE_EVIDENCE_FILE), { recursive: true, mode: 0o700 })

@@ -143,7 +143,7 @@ describe('runAiReview', () => {
     expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
   })
 
-  it('retains original source references while excluding private comparison fields and provider prompt identities', async () => {
+  it('retains observed evidence while excluding private comparison fields and provider prompt identities', async () => {
     const supportingObservations = mergeSupportingObservations([0, 1].map(index => observationsForFlag({
       source: 'DETERMINISTIC', checkId: 'no-https', pageUrl: `https://example.com/page-${index}`, evidence: `Original observation ${index}`,
       evidenceTargets: [{ kind: 'element', source: 'measured', device: index ? 'mobile' : 'desktop', label: 'Original target', context: 'private-context' }],
@@ -156,8 +156,8 @@ describe('runAiReview', () => {
       ['https://example.com/page-0', 'https://example.com/page-1'])
     assert.equal(context.rubrics[0].grade, null)
     assert.equal(context.rubrics[0].score, null)
-    assert.equal(context.existingFlags[0].supportingObservations[0].sourceAuditId, 'private-audit')
-    assert.doesNotMatch(JSON.stringify(context), /private-context|private-task/)
+    assert.equal(context.existingFlags[0].supportingObservations[0].sourceAuditId, undefined)
+    assert.doesNotMatch(JSON.stringify(context), /private-context|private-audit|private-task/)
     const prompt = buildPrescriptionUserPrompt({ ...context, pageText: 'Recorded page text',
       metadata: { title: 'Example', description: null, h1s: [], h2s: [], ctaTexts: [] } })
     assert.doesNotMatch(prompt, /private-context|private-audit|private-task/)

@@ -4,12 +4,12 @@ import { SupportProvider, useSupportContext } from '@/components/live-support/Su
 import { SiteChatWidget } from '../SiteChatWidget'
 import { siteAgentConversationKey } from '@/hooks/useSiteAgentConversation'
 
-const polling = vi.hoisted(() => ({ unread: 3, messages: vi.fn(), mutate: vi.fn() }))
+const polling = vi.hoisted(() => ({ unread: 3, messages: vi.fn(), mutate: vi.fn(), supportMessages: [] as Array<{ id: string; sequence: string; role: string; body: string; createdAt: string }> }))
 vi.mock('@/components/live-support/useSupportPolling', () => ({
   useSupportSession: () => ({ data: { session: { id: 'support-1', unreadByVisitor: polling.unread } }, mutate: polling.mutate }),
   useSupportMessages: (sessionId: string | null, active: boolean) => {
     polling.messages(sessionId, active)
-    return { data: { messages: [] }, mutate: vi.fn() }
+    return { data: { messages: polling.supportMessages }, mutate: vi.fn() }
   },
 }))
 const history = { threadId: 'thread-1', messages: [] }
@@ -31,6 +31,7 @@ async function open() {
 beforeEach(() => {
   sessionStorage.clear()
   polling.messages.mockClear()
+  polling.supportMessages = []
   polling.mutate.mockClear()
   vi.stubGlobal('fetch', vi.fn(async () => response(history)))
 })
@@ -164,6 +165,7 @@ describe('shared Site chat', () => {
   })
 
   it('does not read support messages while the site conversation is showing', async () => {
+    polling.supportMessages = [{ id: 'support-message', sequence: '3', role: 'AGENT', body: 'How can we help?', createdAt: reply.createdAt }]
     render(<Fixture />)
     await open()
     expect(polling.messages).not.toHaveBeenCalled()

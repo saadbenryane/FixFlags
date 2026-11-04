@@ -32,7 +32,8 @@ describe('customer-visible truth', () => {
     expect(board).not.toContain('1 required')
     expect(siteSurfaces[2]).toContain('Monitoring')
     expect(siteSurfaces[2]).not.toContain('Developer access')
-    expect(siteSurfaces[3]).toContain('outcomeStatusLabel')
+    expect(siteSurfaces[3]).toContain('<OutcomeStateLabel')
+    expect(source('components/sites/OutcomeStateLabel.tsx')).toContain('outcomeStatusLabel')
     expect(siteSurfaces.join('\n')).not.toMatch(/Analytics marked this Clear|paid checkout is open/i)
   })
 

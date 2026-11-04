@@ -108,7 +108,7 @@ describe('product contract limits', () => {
 describe('AI report access', () => {
   it('blocks AI content without aiReviewAt', () => {
     assert.equal(
-      canViewPrescriptionContent({ userId: 'u1', aiReviewAt: null }, { id: 'u1' }),
+      canViewPrescriptionContent({ userId: 'u1', projectId: null, user: { lifecycleStatus: 'ACTIVE' }, aiReviewAt: null }, { id: 'u1' }),
       false
     )
   })
@@ -116,7 +116,7 @@ describe('AI report access', () => {
   it('allows AI content for owner after review', () => {
     assert.equal(
       canViewPrescriptionContent(
-        { userId: 'u1', aiReviewAt: new Date() },
+        { userId: 'u1', projectId: null, user: { lifecycleStatus: 'ACTIVE' }, aiReviewAt: new Date() },
         { id: 'u1' }
       ),
       true
