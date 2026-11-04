@@ -6,10 +6,10 @@ const { resolve4, resolve6 } = vi.hoisted(() => ({
   resolve6: vi.fn(),
 }))
 
-vi.mock('node:dns/promises', () => ({
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({
   resolve4,
   resolve6,
-}))
+})))
 
 import {
   isPublicIp,

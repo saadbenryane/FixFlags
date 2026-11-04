@@ -84,12 +84,21 @@ export async function commitObservation(context: TaskContext, artifact: TaskArti
         cohortId: cohort.id, total: progress.members.length, completed: progress.completed } } }
     }
   }
-  await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: { auditId: context.audit.id,
-    targetKey: OBSERVATION_TARGET, scopeKey: recorded.kind + ':' + capturePageKey(context.input.pageUrl) + ':' + scope } },
+  const pageScope = recorded.kind + ':' + capturePageKey(context.input.pageUrl)
+  const legacyScope = pageScope + ':' + scope
+  const legacy = await tx.auditVerificationReceipt.findUnique({ where: { auditId_targetKey_scopeKey: {
+    auditId: context.audit.id, targetKey: OBSERVATION_TARGET, scopeKey: legacyScope } }, select: { taskId: true } })
+  // Several physical tasks can observe the same page, kind and discovery phase.
+  // Reuse a historical identity only for its recorded task; other tasks own
+  // separate checkpoints rather than silently borrowing the first observation.
+  const scopeKey = legacy?.taskId === context.task.id ? legacyScope : pageScope + ':task:' + context.task.id + ':' + scope
+  const receipt = await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: { auditId: context.audit.id,
+    targetKey: OBSERVATION_TARGET, scopeKey } },
   create: { auditId: context.audit.id, taskId: context.task.id, targetKey: OBSERVATION_TARGET,
-    scopeKey: recorded.kind + ':' + capturePageKey(context.input.pageUrl) + ':' + scope, source: 'EXECUTION',
+    scopeKey, source: 'EXECUTION',
     status: 'COMPLETED', pageUrl: context.input.pageUrl, executionGeneration: context.task.workGeneration,
-    detail: recorded as Prisma.InputJsonValue }, update: {} })
+    detail: recorded as Prisma.InputJsonValue }, update: {}, select: { taskId: true } })
+  if (receipt.taskId !== context.task.id) throw new TaskFailure('OBSERVATION_CHECKPOINT_INVALID', false)
   return recorded
 }
 

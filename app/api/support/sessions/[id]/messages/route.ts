@@ -70,7 +70,7 @@ export async function POST(
 }
 
 export async function PATCH(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -81,7 +81,10 @@ export async function PATCH(
     const session = await getSessionForVisitor(id, visitorToken)
     if (!session) return apiError('Not found', 404)
 
-    await markReadByVisitor(id)
+    const body = await req.json().catch(() => null)
+    const parsed = z.object({ through: z.string().regex(/^\d{1,19}$/) }).strict().safeParse(body)
+    if (!parsed.success) return apiError('A read cursor is required', 400)
+    await markReadByVisitor(id, BigInt(parsed.data.through))
     return NextResponse.json({ ok: true })
   } catch (err) {
     return handleRouteError(err)

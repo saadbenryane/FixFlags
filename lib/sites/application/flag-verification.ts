@@ -6,6 +6,7 @@ import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 import { SiteRunRefusal } from './run-refusal'
 import { buildSiteRepairBrief } from '@/lib/sites/repair-brief'
 import { getAppUrl } from '@/lib/get-app-url'
+import { readRepairSources } from '@/lib/sites/domain/repair-source'
 
 export async function recordSiteFlagFix(input: {
   siteId: string
@@ -40,6 +41,11 @@ export async function recordSiteFlagFix(input: {
   const recordedSource = recorded?.handoffReference?.startsWith('flag:') ? recorded.handoffReference.slice(5) : null
   const sourceFlagIds = recorded ? recorded.sourceFlagIds
     : input.flagId === flag.improvementId && (flag.sourceFlagIds?.length ?? 0) > 1 ? flag.sourceFlagIds : undefined
+  const validateRepair = !recorded && input.expectedContextHash ? async () => {
+    const current = await loadSiteFlagDetail(site, input.flagId)
+    if (!current) throw new SiteRunRefusal('Flag not found', 404)
+    buildSiteRepairBrief(site.siteId, current, getAppUrl(), input.flagId, 0, input.expectedContextHash)
+  } : undefined
   const result = await recordFlagImprovementAttempt({
     flagId: recordedSource ?? sourceFlagId,
     ...(sourceFlagIds?.length ? { sourceFlagIds } : {}),
@@ -52,7 +58,7 @@ export async function recordSiteFlagFix(input: {
     deploymentReference: input.deploymentReference,
     commitReference: input.commitReference,
     idempotencyKey: key,
-  })
+  }, { validateRepair })
   if (!result.attemptId) throw new Error('Could not record this fix attempt')
 
   return {
@@ -87,7 +93,7 @@ export async function requireSiteFlagAttempt(input: {
       improvement: { projectId: site.projectId, project: { userId: input.userId } },
       sourceAudit: { projectId: site.projectId },
     },
-    select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true, sourceFlagIds: true },
+    select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true, sourceFlagIds: true, sourceObservations: true },
   })
   if (!attempt) throw new SiteRunRefusal('Fix attempt not found or already verified', 409)
   // Monitoring may advance the durable incident while a repair is being made.
@@ -105,5 +111,8 @@ export async function requireSiteFlagAttempt(input: {
       (source.sourceFlagId ?? source.id) !== recordedFlagId) {
     throw new SiteRunRefusal('Fix attempt has no matching source Flag', 409)
   }
-  return { site, flag: source, attemptId: attempt.id, attempt }
+  const original = readRepairSources(attempt.sourceObservations)?.flags.find(flag => flag.id === recordedFlagId)
+  if (attempt.sourceObservations != null && (!original || original.auditId !== attempt.sourceAuditId))
+    throw new SiteRunRefusal('Fix attempt has no readable source comparison', 409)
+  return { site, flag: original ? { ...source, pageUrl: original.pageUrl, checkId: original.checkId } : source, attemptId: attempt.id, attempt }
 }

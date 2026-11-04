@@ -25,6 +25,7 @@ import { dispatchReadyTasks, reconcileTasks, recoverProgressiveTasks } from '../
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { loadSiteFlags, loadSiteFlagDetail } from '@/lib/sites/flags'
+import { sendSiteAgentMessage } from '@/lib/sites/application/agent'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { getOwnedRun } from '@/lib/sites/application/run-queries'
@@ -51,12 +52,15 @@ import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
 
 const cookieState = vi.hoisted(() => ({ values: new Map<string, string>() }))
+const chatModel = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/workspace/chat', async original => ({ ...await original<typeof import('@/lib/workspace/chat')>(),
+  runWorkspaceChat: chatModel.mockImplementation(async () => { throw new Error('External chat calls are disabled in the native fixture') }) }))
 // Retain deterministic public DNS outside TEST-NET-3. The controlled transport
 // below supplies responses; neither real DNS nor live websites supply this proof.
-vi.mock('node:dns/promises', async importOriginal => ({
+vi.mock('node:dns/promises', async importOriginal => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({
   ...await importOriginal<typeof import('node:dns/promises')>(),
   resolve4: async () => ['203.0.114.1'], resolve6: async () => [],
-}))
+})))
 vi.mock('next/headers', () => ({
   cookies: async () => ({
     get: (name: string) => cookieState.values.has(name) ? { value: cookieState.values.get(name) } : undefined,
@@ -237,6 +241,9 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect(mcpFlag.isError).not.toBe(true)
     // Claim publishes the durable incident without declaring a customer repair.
     const identity = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id }, include: { improvement: true } })
+    const askAgent = (requestKey: string, flagId?: string) => sendSiteAgentMessage({ siteId: site.projectId!, userId: owner,
+      requestKey, message: `Is ${flag.checkId} fixed?`, ...(flagId ? { flagId } : {}) })
+    expect((await askAgent('agent-original', flag.id)).reply).toMatch(/^Not yet\./)
     expect(identity.improvement).toMatchObject({ status: 'PROPOSED', acceptedAt: null })
     expect(await loadSiteFlagDetail(site, flag.id)).toMatchObject({ status: 'PROPOSED', verificationState: 'still_open' })
     expect(mcpFlag.structuredContent).toMatchObject({ siteId: site.siteId,
@@ -276,6 +283,7 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect(mcpRun.structuredContent).toMatchObject({ id: verification.runId, result: 'CLEAR', scope: 'DIAGNOSTIC' })
     expect((await mcpCall(owner, MCP_TOOLS.getFlag.name, { siteId: site.siteId, flagId: flag.id })).structuredContent)
       .toMatchObject({ flag: { sourceFlagId: flag.id, verificationState: 'verified' } })
+    expect((await askAgent('agent-recovered')).reply).toMatch(/^Yes\./)
     expect((await loadMonitoringHistory(site)).timeline.find(entry => entry.id === source.id)?.flags).toEqual(expect.arrayContaining([{ id: flag.id, title: flag.problem }]))
     repaired = false
     const tick = new Date()
@@ -292,6 +300,11 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect(await loadSiteFlags(site)).toEqual(expect.arrayContaining([expect.objectContaining({ sourceFlagId: repeated.id, verificationState: 'regressed' })]))
     expect((await mcpCall(owner, MCP_TOOLS.getFlag.name, { siteId: site.siteId, flagId: repeated.id })).structuredContent)
       .toMatchObject({ flag: { sourceFlagId: repeated.id, verificationState: 'regressed' } })
+    expect((await askAgent('agent-recurrence')).reply).toMatch(/^No\./)
+    const historicalAnswer = await askAgent('agent-historical', flag.id)
+    expect(historicalAnswer.reply).toMatch(/^Yes\./)
+    expect(historicalAnswer.citations.filter(citation => citation.type === 'flag')).toMatchObject([{ id: flag.id,
+      href: `/sites/${site.projectId}/flags/${flag.id}` }])
     const stranger = await prisma.user.create({ data: { email: 'stranger-' + randomUUID() + '@example.test' } })
     try {
       expect((await mcpCall(stranger.id, MCP_TOOLS.getFlag.name, { siteId: site.siteId, flagId: repeated.id })).isError).toBe(true)
@@ -317,6 +330,8 @@ run('URL-first analysis through claim and monitored repair', () => {
       .toMatchObject({ result: 'CLEAR', scope: 'DIAGNOSTIC', source: 'MCP' })
     expect((await mcpCall(owner, MCP_TOOLS.getFlag.name, { siteId: site.siteId, flagId: repeated.id })).structuredContent)
       .toMatchObject({ flag: { sourceFlagId: repeated.id, verificationState: 'verified' } })
+    expect((await askAgent('agent-repaired-recurrence', repeated.id)).reply).toMatch(/^Yes\./)
+    expect(chatModel).not.toHaveBeenCalled()
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: verification.verificationAuditId })
     expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId: site.projectId! } })).toMatchObject({ id: monitor.id, version: monitor.version })
 

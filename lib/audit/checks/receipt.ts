@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { CHECK_OBSERVATION_REASONS, type CheckAssertion } from './assertion'
-import { CHECK_ASSERTIONS, CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY } from '../check-registry'
+import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import type { DeterministicFlag } from '../flag-types'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { currentFormFeedbackObservation } from './form-validation'

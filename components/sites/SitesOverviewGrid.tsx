@@ -1,36 +1,56 @@
 import Link from 'next/link'
 import type { Route } from 'next'
-import { ArrowRight, Globe2, Loader2 } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import type { SiteSummary } from '@/lib/sites/application/list-sites'
 import { WEBSITES_COPY } from '@/lib/marketing/copy/terminology'
 import { customerAttention } from '@/lib/sites/presentation'
 import styles from './SitesOverviewGrid.module.css'
+import { SiteCaptureThumb } from './SiteCaptureThumb'
+import { SiteEvidenceTime } from './SiteEvidenceTime'
+import { Skeleton } from '@/components/ui/skeleton'
+
+/** Loading shares the same container queries, card sizes, and spacing as the list. */
+export function SitesOverviewSkeleton() {
+  return <div className={styles.overview} aria-hidden="true">
+    <Skeleton className="mb-3 h-4 w-24 animate-none" />
+    <ul className={styles.list}>{[0, 1, 2].map(index => <li key={index}>
+      <div className={`${styles.site} pointer-events-none`}>
+        <Skeleton className={`${styles.preview} animate-none`} />
+        <div className={styles.identity}>
+          <Skeleton className="h-5 w-40 max-w-full animate-none" />
+          <div className={styles.context}><Skeleton className="h-4 w-20 animate-none" /><Skeleton className="h-4 w-24 animate-none" /></div>
+        </div>
+        <div className={styles.facts}>{[0, 1].map(fact => <div key={fact}>
+          <Skeleton className="mb-1 h-3 w-16 max-w-full animate-none" />
+          <Skeleton className="h-4 w-24 max-w-full animate-none" />
+        </div>)}</div>
+        <Skeleton className={`${styles.arrow} h-4 w-4 animate-none`} />
+      </div>
+    </li>)}</ul>
+  </div>
+}
 
 export function SitesOverviewGrid({ sites }: { sites: SiteSummary[] }) {
   if (sites.length === 0) return null
 
   return (
     <section className={styles.overview} aria-labelledby="sites-heading">
-      <h2 id="sites-heading" className={styles.count}>{WEBSITES_COPY.count(sites.length)}</h2>
+      <h2 id="sites-heading" tabIndex={-1} className={`${styles.count} rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{WEBSITES_COPY.count(sites.length)}</h2>
       <ul className={styles.list}>
         {sites.map((site) => {
           const attention = customerAttention(site.presentation)
           const checking = site.presentation.result.state === 'checking'
+          const showFreshness = site.presentation.freshness.label !== attention.text
           return <li key={site.id}>
             <Link href={`/sites/${site.id}` as Route} className={styles.site}>
-              <span className={styles.preview}>
-                {site.presentation.identity.preview ? (
-                  // Authorized captures use the current browser session.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={site.presentation.identity.preview.url} alt="" width={176} height={128} loading="lazy" />
-                ) : <Globe2 size={20} aria-hidden />}
-              </span>
+              <SiteCaptureThumb className={styles.preview} src={site.presentation.identity.preview?.url ?? null} />
               <span className={styles.identity}>
                 <strong>{site.hostname || site.name}</strong>
                 <span className={styles.context}>
                   <span>{site.presentation.coverage.label}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{site.presentation.freshness.label}</span>
+                  {showFreshness ? <><span aria-hidden="true">·</span>{site.presentation.freshness.checkedAt
+                    ? <SiteEvidenceTime checkedAt={site.presentation.freshness.checkedAt} label={site.presentation.freshness.label} />
+                    : <span>{site.presentation.freshness.label}</span>}</> : null}
                 </span>
               </span>
               <dl className={styles.facts}>

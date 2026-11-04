@@ -1,11 +1,11 @@
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY } from '../check-registry'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { validateTaskGraph, type TaskPlan, type TaskInput, type TaskKind } from './contracts'
 import { SEARCH_CHECK_REGISTRY } from '../search/definitions'
-import { ACTION_CHECK_DEFINITIONS } from '../checks/definitions'
+import { ACTION_CHECK_DEFINITIONS, CHECK_MODULES } from '../checks/definitions'
 import { motionRequested } from '../checks/motion-evidence'
 import { monitoringReviewUrls } from '../review-depth'
-import { browserDevicesForCheck } from './browser-requirements'
+import { browserDevicesForCheck } from './collection-requirements'
 
 /** Admission and execution share public behavior policy. Frozen scope retains
  * responsibility even when a queued category has not created task rows yet. */
@@ -14,7 +14,7 @@ export function publicPageBehaviors(input: Pick<TaskInput, 'pageUrl' | 'primary'
   const retained = new Set((spec.scope === 'SITE' || spec.scope === 'CATEGORY') ? spec.monitoringBehaviors?.find(scope => scope.pageUrl === input.pageUrl)?.behaviors ?? [] : [])
   const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
   const publicAction = entry || retained.has('flow') || Boolean(spec.category && ['conversion', 'tracking'].includes(spec.category.area)) || spec.scope === 'DIAGNOSTIC' &&
-    (modules.has('overlays') || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))
+    (modules.has('overlays') || modules.has('network') || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))
   const behaviors: NonNullable<ExecutionSpec['monitoringBehaviors']>[number]['behaviors'] = []
   if (publicAction) behaviors.push('flow')
   if (retained.has('pricing-navigation') || publicAction && (spec.checks['flow-pricing-nav-broken'] || modules.has('overlays') && spec.scope !== 'DIAGNOSTIC' || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl &&
@@ -35,7 +35,8 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   const browserChecks = diagnosticCheck && spec.checks[diagnosticCheck]
     ? { [diagnosticCheck]: spec.checks[diagnosticCheck] } : spec.checks
   const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
-  const mobile = independentProfiles && (motionRequested(spec) || [...modules].some(module => browserDevicesForCheck(module, browserChecks).includes('mobile')))
+  const browserModules = new Set(Object.keys(browserChecks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
+  const mobile = independentProfiles && (motionRequested(spec) || [...browserModules].some(module => browserDevicesForCheck(module, browserChecks).includes('mobile')))
   const plans = [make('http'), { ...make('browser'), input: { ...input, ...(independentProfiles ? { device: 'desktop' as const } : {}) } },
     ...(mobile ? [{ ...make('browser', [], 'browser-mobile'), input: { ...input, device: 'mobile' as const } }] : []), make('captures'),
     { ...make('pagespeed', [], 'pagespeed-desktop'), input: { ...input, device: 'desktop' as const } },
@@ -136,16 +137,24 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       if (!task) throw new Error('Category dependency is unavailable: ' + key)
       selected.add(key); task.dependencies.forEach(include)
     }
-    for (const task of pages) if (['http', 'browser', 'check'].includes(task.kind) ||
+    // Select observations first. Their dependency closure owns collection;
+    // unused captures cannot add work or an unrelated coverage failure.
+    for (const task of pages) if (task.kind === 'check' ||
       area === 'search' && ['search', 'google'].includes(task.kind) ||
       area === 'performance' && task.kind === 'slow-replay' ||
       (area === 'conversion' || area === 'tracking') && task.kind === 'flow' ||
       area === 'conversion' && ['bindings', 'journeys', 'overlays'].includes(task.kind)) include(task.key)
     for (const task of accounts) include(task.key)
+    const crossPage = area === 'search' || Object.keys(spec.checks).some(id => CHECK_REGISTRY[id]?.module === 'corridor')
+    if (crossPage) for (const task of pages.filter(task => task.kind === 'browser' && task.input.device !== 'mobile')) include(task.key)
     const plans = [...selected].map(key => available.get(key)!)
-    if (area === 'search' || Object.keys(spec.checks).some(id => CHECK_REGISTRY[id]?.module === 'corridor'))
+    if (area === 'search' && spec.checks['broken-internal-links'])
+      plans.push({ kind: 'discovery', key: 'discovery', scope: 'category:search', input,
+        dependencies: plans.filter(task => task.kind === 'http' || task.kind === 'browser').map(task => task.key) })
+    if (crossPage)
       plans.push({ kind: 'cross-page', key: 'cross-page', scope: 'category:' + area, input,
-        dependencies: pages.filter(task => task.kind === 'browser' || area === 'search' && task.kind === 'search' && task.input.module === 'summary').map(task => task.key) })
+        dependencies: plans.filter(task => task.kind === 'browser' && task.input.device !== 'mobile' ||
+          area === 'search' && task.kind === 'search' && task.input.module === 'summary').map(task => task.key) })
     plans.push({ kind: 'finalize', key: 'finalize', scope: 'category:' + area, input, dependencies: plans.map(task => task.key) })
     validateTaskGraph(plans)
     return plans
@@ -170,7 +179,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     }
     const resources = siteResourcePlans(input)
     const available = new Map([...resources, ...pages].map(task => [task.key, task]))
-    const target = checkId === 'flow-pricing-nav-broken' ? 'p0:pricing-navigation' : checkId === 'inp-critical' || checkId === 'inp-poor' ? 'p0:inp-mobile'
+    const target = checkModule === 'network' ? 'p0:flow' : checkId === 'flow-pricing-nav-broken' ? 'p0:pricing-navigation' : checkId === 'inp-critical' || checkId === 'inp-poor' ? 'p0:inp-mobile'
       : search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
       : search.evaluator === 'cross-page' ? null : 'p0:search-' + search.evaluator : checkModule && available.has('p0:' + checkModule) ? 'p0:' + checkModule : null
     // Unknown historical targets remain an explicit limitation, not a made-up

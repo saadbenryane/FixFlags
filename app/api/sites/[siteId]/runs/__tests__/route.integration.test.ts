@@ -8,7 +8,9 @@ const mocks = vi.hoisted(() => ({
   requireSiteAccess: vi.fn(),
   outcomeFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
+  provisionalSiteFindMany: vi.fn(),
   runFindUnique: vi.fn(),
+  runKeyFindUnique: vi.fn(),
   runFindFirst: vi.fn(),
   runFindMany: vi.fn(),
   runCreate: vi.fn(),
@@ -26,10 +28,16 @@ vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers(
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
 vi.mock('@/lib/db', () => ({
   prisma: {
+    $transaction: (operation: (tx: unknown) => Promise<unknown>) => operation({
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 'user-1' }]),
+      runRequestKey: { findUnique: mocks.runKeyFindUnique },
+    }),
     $queryRaw: vi.fn().mockResolvedValue([]),
     user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
+    provisionalSite: { findMany: mocks.provisionalSiteFindMany },
+    runRequestKey: { findUnique: mocks.runKeyFindUnique },
     runRequest: {
       findUnique: mocks.runFindUnique,
       findFirst: mocks.runFindFirst,
@@ -63,7 +71,9 @@ describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
     mocks.outcomeFindMany.mockResolvedValue([])
     mocks.flagFindMany.mockResolvedValue([])
     mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example/' })
+    mocks.provisionalSiteFindMany.mockResolvedValue([])
     mocks.runFindUnique.mockResolvedValue(null)
+    mocks.runKeyFindUnique.mockResolvedValue(null)
     mocks.runFindFirst.mockResolvedValue(null)
     mocks.runFindMany.mockResolvedValue([])
     mocks.runCreate.mockResolvedValue({ id: 'run-care' })

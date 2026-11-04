@@ -1,16 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 
 const startScanWithHandoff = vi.hoisted(() => vi.fn())
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }))
 
 vi.mock('@/lib/audit/start-scan-handoff', () => ({
   startScanWithHandoff,
 }))
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => router,
   usePathname: () => '/report/a1',
   useSearchParams: () => ({ get: () => null }),
 }))
@@ -58,6 +59,9 @@ const scanMessages: AgentMessage[] = [
 ]
 
 beforeEach(() => {
+  startScanWithHandoff.mockReset()
+  router.replace.mockClear()
+  router.push.mockClear()
   vi.stubGlobal('fetch', vi.fn())
 })
 
@@ -66,6 +70,49 @@ afterEach(() => {
 })
 
 describe('WorkspaceChatPanel', () => {
+  it('normalizes a bare website and retains its port, query, and fragment when starting a check', async () => {
+    startScanWithHandoff.mockResolvedValueOnce({ ok: false, message: 'Try again' })
+    render(<WorkspaceChatPanel auditId="a1" capabilities={capabilities(false)} gateReason="sign-in" />)
+    fireEvent.click(screen.getByRole('button', { name: 'New review' }))
+    fireEvent.change(screen.getByLabelText('URL to review'), { target: { value: 'example.com:8443/plans/?return=/account/#/pricing/' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://example.com:8443/plans/?return=/account/#/pricing/',
+      body: { url: 'https://example.com:8443/plans/?return=/account/#/pricing/', source: 'report' },
+    }))
+  })
+
+  it('retires an earlier report’s scan without redirecting or blocking a new request', async () => {
+    let finish!: (result: { ok: false; code: string; message: string }) => void
+    startScanWithHandoff.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+      .mockResolvedValueOnce({ ok: false, message: 'The new request can be retried.' })
+    const panel = (auditId: string) => <WorkspaceChatPanel auditId={auditId} capabilities={capabilities(false)} gateReason="sign-in" agentMessages={scanMessages} />
+    const view = render(panel('a1'))
+    fireEvent.click(screen.getByRole('button', { name: 'New review' }))
+    fireEvent.change(screen.getByLabelText('URL to review'), { target: { value: 'https://first.example.com' } })
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+    })
+    expect(startScanWithHandoff).toHaveBeenCalledOnce()
+    const options = startScanWithHandoff.mock.calls[0][0]
+    view.rerender(panel('a2'))
+    expect(options.signal.aborted).toBe(true)
+    expect(screen.getByRole('button', { name: 'Start review' })).toBeEnabled()
+    fireEvent.change(screen.getByLabelText('URL to review'), { target: { value: 'https://second.example.com' } })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start review' })) })
+    expect(screen.getByText('The new request can be retried.')).toBeVisible()
+    await act(async () => {
+      options.navigate('/sites/retired-site')
+      finish({ ok: false, code: 'AUTH_REQUIRED', message: 'Create an account' })
+    })
+    expect(router.replace).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('The new request can be retried.')).toBeVisible()
+    expect(startScanWithHandoff.mock.calls[1][0].signal.aborted).toBe(false)
+  })
+
   it('scrolls the Agent transcript to the latest message on open', async () => {
     const scrollTo = vi.fn()
     Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {

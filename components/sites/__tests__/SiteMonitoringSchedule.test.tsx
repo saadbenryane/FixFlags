@@ -1,0 +1,131 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { SiteMonitoringSchedule } from '../SiteMonitoringSchedule'
+import { MONITORING_SCHEDULE_COPY as C } from '@/lib/marketing/copy/monitoring'
+import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy-barrel'
+
+afterEach(() => vi.unstubAllGlobals())
+
+it('keeps a valid stored custom hourly schedule editable beyond the old per-unit cap', async () => {
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json({ intervals: ['custom'] }))
+    .mockResolvedValueOnce(Response.json({ ok: true, interval: 'custom', everyMinutes: 999 * 60 }))
+  vi.stubGlobal('fetch', fetcher)
+  const close = vi.fn(), refresh = vi.fn().mockResolvedValue(undefined)
+  render(<SiteMonitoringSchedule siteId="site" interval="custom" everyMinutes={999 * 60} onClose={close} onRefresh={refresh} />)
+  await waitFor(() => expect(screen.getByRole('combobox', { name: C.frequency })).toBeEnabled())
+  expect(screen.getByRole('spinbutton', { name: C.every })).toHaveValue(999)
+  expect(screen.getByRole('button', { name: C.save })).toBeEnabled()
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  await waitFor(() => expect(close).toHaveBeenCalledOnce())
+  expect(fetcher).toHaveBeenLastCalledWith('/api/sites/site/watch', expect.objectContaining({ method: 'POST',
+    body: JSON.stringify({ interval: 'custom', everyMinutes: 999 * 60 }) }))
+  expect(refresh).toHaveBeenCalledOnce()
+})
+
+it('clears expired-session recovery after a confirmed save while retaining a real plan explanation', async () => {
+  const reason = 'Daily monitoring is unavailable. Weekly monitoring was saved.'
+  const fetch = vi.fn().mockResolvedValueOnce(Response.json({ intervals: ['weekly', 'daily'] }))
+    .mockResolvedValueOnce(Response.json({ error: 'Your session expired.' }, { status: 401 }))
+    .mockResolvedValueOnce(Response.json({ ok: true, interval: 'weekly', requested: 'daily', code: 'INTERVAL_NOT_ALLOWED', message: reason }))
+  vi.stubGlobal('fetch', fetch)
+  const close = vi.fn(), refresh = vi.fn().mockResolvedValue(undefined)
+  render(<SiteMonitoringSchedule siteId="site" interval="daily" onClose={close} onRefresh={refresh} />)
+  await waitFor(() => expect(screen.getByRole('button', { name: C.save })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  expect(await screen.findByRole('link', { name: C.signIn })).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  expect(await screen.findByText(reason)).toBeVisible()
+  expect(screen.queryByRole('link', { name: C.signIn })).not.toBeInTheDocument()
+  expect(screen.queryByText('Your session expired.')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: SCAN_LIMIT_GATE.upgrade.secondaryCta })).toHaveAttribute('href', '/pricing')
+  expect(refresh).toHaveBeenCalledOnce()
+  expect(close).not.toHaveBeenCalled()
+})
+
+it('recovers from an expired session without retaining a sign-in or upgrade message', async () => {
+  let first!: (response: Response) => void, retry!: (response: Response) => void
+  const fetch = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { first = resolve }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { retry = resolve }))
+    .mockResolvedValueOnce(Response.json({ ok: true, interval: 'daily' }))
+  vi.stubGlobal('fetch', fetch)
+  const close = vi.fn(), refresh = vi.fn().mockResolvedValue(undefined)
+  render(<SiteMonitoringSchedule siteId="site" interval="daily" onClose={close} onRefresh={refresh} />)
+  const frequency = screen.getByRole('combobox', { name: C.frequency })
+  expect(frequency).toBeDisabled()
+  expect(screen.queryByRole('link', { name: SCAN_LIMIT_GATE.upgrade.secondaryCta })).not.toBeInTheDocument()
+  await act(async () => { first(Response.json({ error: 'Your session expired.' }, { status: 401 })) })
+  expect(screen.getByRole('link', { name: C.signIn })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite')
+  expect(screen.queryByRole('link', { name: SCAN_LIMIT_GATE.upgrade.secondaryCta })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: C.retry }))
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+  expect(frequency).toBeDisabled()
+  await act(async () => { retry(Response.json({ intervals: ['weekly', 'daily'] })) })
+  expect(frequency).toBeEnabled()
+  expect(frequency).toHaveValue('daily')
+  expect(frequency).toHaveFocus()
+  expect(screen.queryByRole('link', { name: C.signIn })).not.toBeInTheDocument()
+  expect(screen.queryByText('Your session expired.')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  await waitFor(() => expect(close).toHaveBeenCalledOnce())
+  expect(refresh).toHaveBeenCalledOnce()
+  expect(fetch).toHaveBeenLastCalledWith('/api/sites/site/watch', expect.objectContaining({ method: 'POST', body: JSON.stringify({ interval: 'daily' }) }))
+})
+
+it('keeps a custom schedule draft through option recovery and submits that exact timing', async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(Response.json({ message: C.loadFailed }, { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ intervals: ['weekly', 'custom'] }))
+    .mockResolvedValueOnce(Response.json({ ok: true, interval: 'custom', everyMinutes: 300 }))
+  vi.stubGlobal('fetch', fetch)
+  const close = vi.fn(), refresh = vi.fn().mockResolvedValue(undefined)
+  render(<SiteMonitoringSchedule siteId="site" interval="custom" everyMinutes={180} onClose={close} onRefresh={refresh} />)
+  await screen.findByText(C.loadFailed)
+  const every = screen.getByRole('spinbutton', { name: C.every })
+  fireEvent.change(every, { target: { value: '5' } })
+  fireEvent.click(screen.getByRole('button', { name: C.retry }))
+  await waitFor(() => expect(screen.getByRole('combobox', { name: C.frequency })).toBeEnabled())
+  expect(every).toHaveValue(5)
+  expect(screen.getByRole('combobox', { name: C.frequency })).toHaveFocus()
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  await waitFor(() => expect(close).toHaveBeenCalledOnce())
+  expect(fetch).toHaveBeenLastCalledWith('/api/sites/site/watch', expect.objectContaining({ method: 'POST',
+    body: JSON.stringify({ interval: 'custom', everyMinutes: 300 }) }))
+})
+
+it('retires a schedule save when its editor leaves, even if the response arrives later', async () => {
+  let finish!: (response: Response) => void
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json({ intervals: ['daily'] }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+  vi.stubGlobal('fetch', fetcher)
+  const close = vi.fn(), refresh = vi.fn().mockResolvedValue(undefined)
+  const page = render(<SiteMonitoringSchedule siteId="site" interval="daily" onClose={close} onRefresh={refresh} />)
+  await waitFor(() => expect(screen.getByRole('button', { name: C.save })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  const signal = fetcher.mock.calls[1][1].signal as AbortSignal
+  page.unmount()
+  await act(async () => { finish(Response.json({ ok: true, interval: 'daily' })) })
+  expect(signal.aborted).toBe(true)
+  expect(refresh).not.toHaveBeenCalled()
+  expect(close).not.toHaveBeenCalled()
+})
+
+it('opens a different Site with its own draft and action owner while an earlier save is pending', async () => {
+  let finish!: (response: Response) => void
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json({ intervals: ['daily'] }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+    .mockResolvedValueOnce(Response.json({ intervals: ['weekly'] }))
+    .mockResolvedValueOnce(Response.json({ ok: true, interval: 'weekly' }))
+  vi.stubGlobal('fetch', fetcher)
+  const oldClose = vi.fn(), oldRefresh = vi.fn(), close = vi.fn(), refresh = vi.fn()
+  const page = render(<SiteMonitoringSchedule siteId="first" interval="daily" onClose={oldClose} onRefresh={oldRefresh} />)
+  await waitFor(() => expect(screen.getByRole('button', { name: C.save })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  page.rerender(<SiteMonitoringSchedule siteId="second" interval="weekly" onClose={close} onRefresh={refresh} />)
+  await waitFor(() => expect(screen.getByRole('button', { name: C.save })).toBeEnabled())
+  expect(screen.getByRole('combobox', { name: C.frequency })).toHaveValue('weekly')
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  await waitFor(() => expect(close).toHaveBeenCalledOnce())
+  await act(async () => { finish(Response.json({ ok: true, interval: 'daily' })) })
+  expect(oldClose).not.toHaveBeenCalled()
+  expect(oldRefresh).not.toHaveBeenCalled()
+  expect(refresh).toHaveBeenCalledOnce()
+})

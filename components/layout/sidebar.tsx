@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { APP_NAV_COPY } from '@/lib/marketing/copy/navigation'
 import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
@@ -38,6 +38,7 @@ interface SidebarItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
 }
+type SidebarGate = (href: string, trigger: HTMLElement) => boolean
 
 const PRIMARY_ITEMS: SidebarItem[] = [
   { href: '/dashboard', label: SITE_WORKSPACE_COPY.websites, icon: Boxes },
@@ -62,7 +63,7 @@ export function SidebarNav({
   onNav?: () => void
   showAdmin?: boolean
   compact?: boolean
-  onGatedItem?: (href: string, trigger: HTMLElement) => boolean
+  onGatedItem?: SidebarGate
 }) {
   const pathname = usePathname()
 
@@ -87,6 +88,7 @@ export function SidebarNav({
         key={item.href}
         href={item.href as Route}
         onClick={(event) => {
+          if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
           if (onGatedItem?.(item.href, event.currentTarget)) {
             event.preventDefault()
             return
@@ -183,27 +185,41 @@ export function DesktopSidebar({ showAdmin }: { showAdmin?: boolean }) {
   )
 }
 
-export function MobileSidebar({ showAdmin }: { showAdmin?: boolean }) {
+type MobileSidebarProps = { showAdmin?: boolean; variant?: 'account' | 'report'; onGatedItem?: SidebarGate }
+
+export function MobileSidebar(props: MobileSidebarProps) {
+  const pathname = usePathname()
+  return <MobileSidebarMenu key={pathname} {...props} />
+}
+
+function MobileSidebarMenu({ showAdmin, variant = 'account', onGatedItem }: MobileSidebarProps) {
   const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open menu">
+        <Button ref={trigger} variant="ghost" size="icon" className={variant === 'report' ? 'md:hidden' : undefined} aria-label="Open menu">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-[260px] flex-col p-0">
+      <SheetContent side="left" className="flex w-[260px] flex-col p-0" aria-describedby={undefined} onClick={event => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        const link = event.target instanceof Element ? event.target.closest('a[href]') : null
+        // Next links prevent the browser default after accepting navigation.
+        // A cancelled Settings navigation stops propagation before this owner.
+        if (link instanceof HTMLAnchorElement && (!link.target || link.target === '_self') && !link.hasAttribute('download')) setOpen(false)
+      }}>
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>
         <div className="flex h-[var(--header-height)] shrink-0 items-center px-4">
-          <Logo variant="lockup" size="md" href="/dashboard" />
+          <Logo variant="lockup" size="md" href={variant === 'report' ? '/' : '/dashboard'} />
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-4">
-          <SidebarNav showAdmin={showAdmin} onNav={() => setOpen(false)} />
+          <SidebarNav showAdmin={showAdmin} onGatedItem={onGatedItem ? (href, link) => onGatedItem(href, trigger.current ?? link) : undefined} />
         </div>
-        <SidebarFooter />
+        {variant === 'account' ? <SidebarFooter /> : null}
       </SheetContent>
     </Sheet>
   )

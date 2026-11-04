@@ -9,14 +9,14 @@ import { ACCOUNT_CHECK_COPY as C } from '@/lib/marketing/copy/account-checks'
 export function SiteAccountChecksControls({ siteId, initial, onRefresh }: {
   siteId: string; initial?: AccountChecksView; onRefresh: () => Promise<unknown>
 }) {
-  const { busy, message, error, submit, requestKey, completeIntent } = useSiteAction(`site:${siteId}:accounts`)
+  const { busy, message, error, submit, requestKey, completeIntent } = useSiteAction({ namespace: `site:${siteId}:accounts` })
   const enabled = initial?.enabled ?? true
   async function toggle(value: boolean) {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/settings`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/settings`, { signal, method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accountChecksEnabled: value }) }, 'settings'), () => C.saved, onRefresh)
   }
   async function request(mode: 'retest' | 'cleanup') {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/account-checks`, { method: 'POST',
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/account-checks`, { signal, method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey(mode) }, body: JSON.stringify({ action: mode }) }, 'run'),
       () => { completeIntent(mode); return C.requested }, onRefresh)
   }

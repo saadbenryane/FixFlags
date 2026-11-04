@@ -57,6 +57,35 @@ run('execution Site authority', () => {
       data: { errorMsg: 'Former owner write' } })))).rejects.toBeInstanceOf(ExecutionOwnershipLost)
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).errorMsg).toBeNull()
   })
+  it.each([false, true].flatMap(task => ['transferred', 'removed', 'erased', 'suspended'].map(state => ({ task, state }))))
+  ('rechecks a $state Site after acquiring its pending lock (task=$task)', async ({ task, state }) => {
+    const { original, project, replacement, audit, owner } = await fixture(task)
+    let announce!: () => void, release!: () => void, settled = false
+    const acquired = new Promise<void>(resolve => { announce = resolve }), held = new Promise<void>(resolve => { release = resolve })
+    const change = prisma.$transaction(async tx => {
+      if (state === 'suspended') await tx.user.update({ where: { id: original.id }, data: { lifecycleStatus: 'SUSPENDED' } })
+      if (state === 'erased') await tx.project.delete({ where: { id: project.id } })
+      else await tx.project.update({ where: { id: project.id }, data: state === 'transferred' ? { userId: replacement.id }
+        : state === 'removed' ? { deletedAt: new Date() } : { name: 'Suspended Site' } })
+      announce(); await held
+    }, { timeout: 10_000 })
+    await acquired
+    const writing = withExecutionOwnership(owner, () => executionWrite(tx => tx.audit.update({ where: { id: audit.id },
+      data: { errorMsg: 'Stale authorization from before the lock wait' } })))
+      .then(() => null, error => error).finally(() => { settled = true })
+    try {
+      await expect.poll(async () => {
+        const [row] = await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+            AND pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+            AND query LIKE '%FROM "projects" p%' AND query LIKE '%FOR SHARE%') AS waiting`
+        return settled ? 'settled' : row.waiting ? 'waiting' : 'pending'
+      }, { timeout: 3000 }).toBe('waiting')
+      release(); await change
+      expect(await writing).toBeInstanceOf(ExecutionOwnershipLost)
+      expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).errorMsg).toBeNull()
+    } finally { release(); await change; await writing }
+  })
   it('refuses coordinator admission without consuming another generation after transfer', async () => {
     const { project, replacement, audit } = await fixture()
     await prisma.audit.update({ where: { id: audit.id }, data: { executionLeaseUntil: new Date(0) } })
@@ -118,6 +147,52 @@ run('execution Site authority', () => {
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
       userId: claimant.id, projectId: project.id, executionToken: token, executionGeneration: 1, progress: 20,
     })
+  })
+  it.each([false, true])('retains the claimed Site fence when an anonymous write waits for claim (task=%s)', async task => {
+    const claimant = await user(), replacement = await user(), token = randomUUID()
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/', status: 'CHECKING',
+      executionToken: token, executionGeneration: 1, executionLeaseUntil: new Date(Date.now() + 60_000) } })
+    unlinkedAudits.push(audit.id)
+    const project = await prisma.project.create({ data: { userId: claimant.id, name: 'Claimed while waiting',
+      canonicalHost: randomUUID() + '.example.test', url: audit.url } })
+    const owner: ExecutionOwnership = { auditId: audit.id, token, generation: 1 }
+    if (task) owner.taskId = (await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:anonymous',
+      source: 'EXECUTION', status: 'RUNNING', workKind: 'http', workState: 'RUNNING', workToken: token,
+      workGeneration: 1, workLeaseUntil: new Date(Date.now() + 60_000) } })).id
+    let announceClaim!: () => void, releaseClaim!: () => void, releaseWrite!: () => void
+    const claimed = new Promise<void>(resolve => { announceClaim = resolve }), claimGate = new Promise<void>(resolve => { releaseClaim = resolve })
+    const writeGate = new Promise<void>(resolve => { releaseWrite = resolve })
+    const claim = prisma.$transaction(async tx => {
+      await tx.audit.update({ where: { id: audit.id }, data: { userId: claimant.id, projectId: project.id } })
+      announceClaim(); await claimGate
+    }, { timeout: 10_000 })
+    await claimed
+    let writes = 0
+    const writing = withExecutionOwnership(owner, () => executionWrite(async tx => {
+      writes++; await writeGate
+      await tx.audit.update({ where: { id: audit.id }, data: { progress: 20 } })
+    })).then(() => null, error => error)
+    try {
+      await expect.poll(async () => {
+        const [row] = await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+            AND pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+            AND query LIKE '%audits%' AND query LIKE '%FOR UPDATE%') AS waiting`
+        return row.waiting
+      }, { timeout: 3000 }).toBe(true)
+      releaseClaim(); await claim
+      await vi.waitFor(() => expect(writes).toBe(1), { timeout: 3000, interval: 10 })
+      await expect(prisma.$transaction(async tx => {
+        await tx.$executeRaw`SET LOCAL lock_timeout = '150ms'`
+        await tx.project.update({ where: { id: project.id }, data: { userId: replacement.id } })
+      })).rejects.toThrow(/lock timeout/)
+      releaseWrite()
+      expect(await writing).toBeNull()
+      expect(writes).toBe(1)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
+        userId: claimant.id, projectId: project.id, executionToken: token, executionGeneration: 1, progress: 20,
+      })
+    } finally { releaseClaim(); releaseWrite(); await claim; await writing }
   })
   it('holds the Site fence through the observation commit', async () => {
     const { project, replacement, owner, audit } = await fixture()

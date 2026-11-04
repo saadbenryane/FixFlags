@@ -8,7 +8,9 @@ import { createQueueRedis } from '@/lib/queue/redis'
 import { probeUptime } from './probe'
 import { executeUptimeProbe, scheduleUptimeProbes } from './service'
 import { startUptimeWorker, uptimeJobId } from './queue'
-import { loadUptimeHistory, loadUptimeSummary } from './queries'
+import { loadUptimeHistory, loadUptimeSummary, loadUptimeStatus } from './queries'
+import { uptimeAssessment } from './status'
+import { answerProductQuestion } from '@/lib/workspace/chat'
 import { UPTIME_INTERVAL_MS } from './domain'
 
 const run = process.env.UPTIME_TEST_DATABASE_URL && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
@@ -74,21 +76,31 @@ run('redirect evidence through public HTTP and the installed uptime worker', () 
     const due = (await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitorId } })).nextProbeAt
     instant = new Date(Math.max(instant.getTime() + 1, due.getTime()))
   }
+  async function answerAvailability(message = 'What needs attention?') {
+    const status = (await loadUptimeStatus(uptimeReadSite({ id: projectId, userId }), clock.now()))!
+    return answerProductQuestion({ message, flags: [], improvements: [], learnings: [],
+      diff: { hasParent: false, fixed: [], regressed: [], newIssues: [] },
+      uptime: { status, assessment: uptimeAssessment(status, clock.now()) } })!
+  }
   it('confirms loops, retains the incident across inconclusive redirects, independently recovers and detects recurrence', async () => {
     await observe(1, 'FAILED', 'redirect_loop')
     expect(await prisma.uptimeIncident.count({ where: { monitorId } })).toBe(0)
+    expect((await answerAvailability()).reply).toContain('An outage has not been confirmed')
     const original = await prisma.uptimeProbe.findFirstOrThrow({ where: { monitorId } })
     instant = (await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitorId } })).confirmationDueAt!
     await observe(2, 'FAILED', 'redirect_loop')
     const incident = await prisma.uptimeIncident.findFirstOrThrow({ where: { monitorId } })
     expect(incident).toMatchObject({ reason: 'redirect_loop', recoveredAt: null })
     expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), clock.now())).toMatchObject({ state: 'offline', openIncidentCount: 1 })
+    expect(await answerAvailability()).toMatchObject({ reply: expect.stringContaining('offline'), uptime: true, flagIds: [] })
     phase = 'chain'; await advance(); await observe(3, 'UNKNOWN', 'redirect_unresolved')
     phase = 'cookie'; await advance(); await observe(4, 'UNKNOWN', 'redirect_unresolved')
     expect(await prisma.uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: null })
+    expect((await answerAvailability()).reply).toContain('unresolved uptime incident')
     expect(await prisma.uptimeNotification.count({ where: { incidentId: incident.id, kind: 'RECOVERED' } })).toBe(0)
     phase = 'repaired'; await advance(); await observe(5, 'ONLINE', 'response_received')
     expect(await prisma.uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: instant })
+    expect((await answerAvailability('Is my website online?')).reply).toContain('found your website online')
     expect(await prisma.uptimeNotification.findMany({ where: { incidentId: incident.id }, orderBy: { createdAt: 'asc' } }))
       .toMatchObject([{ kind: 'DOWN', status: 'PENDING' }, { kind: 'RECOVERED', status: 'PENDING' }])
     phase = 'loop'; await advance(); await observe(6, 'FAILED', 'redirect_loop')
@@ -96,6 +108,7 @@ run('redirect evidence through public HTTP and the installed uptime worker', () 
     await observe(7, 'FAILED', 'redirect_loop')
     expect(await prisma.uptimeIncident.count({ where: { monitorId } })).toBe(2)
     expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), clock.now())).toMatchObject({ state: 'offline', openIncidentCount: 1 })
+    expect((await answerAvailability('What should I do next?')).reply).toContain('offline')
     expect((await loadUptimeHistory(uptimeReadSite({ id: projectId, userId }), '24h', null, clock.now()))!.probes).toHaveLength(7)
     expect(await prisma.uptimeProbe.findUniqueOrThrow({ where: { id: original.id } })).toEqual(original)
     expect(await prisma.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ auditsUsed: 3 })

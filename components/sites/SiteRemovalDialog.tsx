@@ -1,7 +1,7 @@
 'use client'
 
 import { InteractiveInput } from '@/components/ui/interactive-controls'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDepth } from './ResponsiveDepth'
@@ -10,9 +10,10 @@ import { ACCOUNT_CHECK_COPY as A } from '@/lib/marketing/copy/account-checks'
 import { SITE_SETTINGS_COPY as S } from '@/lib/marketing/copy/site-settings'
 import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
 
-export function SiteRemovalDialog({ open, onOpenChange, accounts, busy, onCleanup, onRemove, onCloseAutoFocus }: {
+export function SiteRemovalDialog({ open, onOpenChange, accounts, busy, onCleanup, onRemove, onCloseAutoFocus, feedback }: {
   open: boolean; onOpenChange: (open: boolean) => void; accounts?: AccountChecksView; busy: boolean;
   onCleanup: () => void; onRemove: (remaining: AccountChecksView['accounts']) => void; onCloseAutoFocus: (event: Event) => void;
+  feedback?: ReactNode;
 }) {
   const remaining = accounts?.accounts.filter(account => account.state !== 'DELETED') ?? []
   const snapshot = JSON.stringify(remaining)
@@ -30,6 +31,7 @@ export function SiteRemovalDialog({ open, onOpenChange, accounts, busy, onCleanu
       <label className="flex min-h-11 items-start gap-3 py-2 text-sm"><InteractiveInput type="checkbox" className="mt-1" checked={acknowledged}
         disabled={busy} onChange={event => setAcknowledged(event.target.checked)} /><span>{A.removalAcknowledgement}</span></label>
     </div> : null}
+    {feedback}
     <div className="mt-5 flex flex-wrap justify-end gap-2">
       <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>{C.cancel}</Button>
       <Button variant="destructive" disabled={busy || remaining.length > 0 && !acknowledged} onClick={() => onRemove(remaining)}>{S.remove}</Button>

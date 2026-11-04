@@ -10,6 +10,71 @@ function Example({ titleFocus = false, onOpenAutoFocus }: { titleFocus?: boolean
 }
 
 describe('shared dialog focus contract', () => {
+  it.each(['disabled', 'removed'] as const)('returns to the page heading when a confirmed action leaves its opener %s', async mode => {
+    function Verification() {
+      const [open, setOpen] = useState(false)
+      const [started, setStarted] = useState(false)
+      return <main tabIndex={-1}><h1 tabIndex={-1}>Recorded Flag</h1>
+        {mode === 'removed' && started ? null : <button disabled={started} onClick={() => setOpen(true)}>Verify repair</button>}
+        <Dialog open={open} onOpenChange={setOpen}><DialogContent header={<DialogTitle>Check this repair</DialogTitle>}>
+          <DialogDescription>Independent verification of the original scope.</DialogDescription>
+          <button onClick={() => { setStarted(true); setOpen(false) }}>Start verification</button>
+        </DialogContent></Dialog>
+      </main>
+    }
+    render(<Verification />)
+    const opener = screen.getByRole('button', { name: 'Verify repair' })
+    opener.focus(); fireEvent.click(opener)
+    fireEvent.click(screen.getByRole('button', { name: 'Start verification' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Recorded Flag' })).toHaveFocus())
+  })
+
+  it('returns to the parent detail heading when a nested verification disables its opener', async () => {
+    function Verification() {
+      const [open, setOpen] = useState(false)
+      const [started, setStarted] = useState(false)
+      return <Dialog defaultOpen><DialogContent header={<DialogTitle>Original Flag evidence</DialogTitle>} initialFocus="title">
+        <DialogDescription>The recorded problem and its evidence.</DialogDescription>
+        <button disabled={started} onClick={() => setOpen(true)}>Verify repair</button>
+        <Dialog open={open} onOpenChange={setOpen}><DialogContent header={<DialogTitle>Check this repair</DialogTitle>}>
+          <DialogDescription>Independent verification of the original scope.</DialogDescription>
+          <button onClick={() => { setStarted(true); setOpen(false) }}>Start verification</button>
+        </DialogContent></Dialog>
+      </DialogContent></Dialog>
+    }
+    render(<Verification />)
+    const opener = screen.getByRole('button', { name: 'Verify repair' })
+    opener.focus(); fireEvent.click(opener)
+    fireEvent.click(screen.getByRole('button', { name: 'Start verification' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toHaveAccessibleName('Original Flag evidence'))
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Original Flag evidence' })).toHaveFocus())
+  })
+
+  it('does not restore the old page context after a confirmed action navigates elsewhere', async () => {
+    const original = window.location.href
+    const closed = vi.fn()
+    function Verification() {
+      const [open, setOpen] = useState(false)
+      const [started, setStarted] = useState(false)
+      return <main tabIndex={-1}><h1 tabIndex={-1}>{started ? 'Another workspace' : 'Recorded Flag'}</h1>
+        <button disabled={started} onClick={() => setOpen(true)}>Verify repair</button>
+        <Dialog open={open} onOpenChange={setOpen}><DialogContent header={<DialogTitle>Check this repair</DialogTitle>} onCloseAutoFocus={closed}>
+          <DialogDescription>Independent verification of the original scope.</DialogDescription>
+          <button onClick={() => { window.history.replaceState(null, '', '/another-workspace'); setStarted(true); setOpen(false) }}>Start verification</button>
+        </DialogContent></Dialog>
+      </main>
+    }
+    try {
+      render(<Verification />)
+      const opener = screen.getByRole('button', { name: 'Verify repair' })
+      opener.focus(); fireEvent.click(opener)
+      fireEvent.click(screen.getByRole('button', { name: 'Start verification' }))
+      await waitFor(() => expect(closed).toHaveBeenCalledOnce())
+      expect(screen.getByRole('heading', { name: 'Another workspace' })).not.toHaveFocus()
+    } finally { window.history.replaceState(null, '', original) }
+  })
+
   it('returns a controlled repair dialog to its opener when there is no Radix Trigger', async () => {
     function ControlledRepair() {
       const [open, setOpen] = useState(false)

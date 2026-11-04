@@ -83,6 +83,22 @@ describe('POST /api/checks - billing gating enforcement', () => {
     })
   })
 
+  it.each(['not a URL', 'ftp://example.com', 'https://user:password@example.com', 'https://example.internal'])
+  ('identifies an invalid URL before admission: %s', async url => {
+    const response = await POST(postReq({ url }))
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'INVALID_URL', message: expect.any(String) })
+    expect(getSession).not.toHaveBeenCalled()
+    expect(checkAndPlan).not.toHaveBeenCalled()
+  })
+
+  it('does not classify an unrelated request validation error as an invalid URL', async () => {
+    const response = await POST(postReq({ url: 'https://example.com', mode: 'unknown' }))
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'HTTP_400' })
+    expect(checkAndPlan).not.toHaveBeenCalled()
+  })
+
   it('passes the supplied browser route into shared admission without replacing it with its document', async () => {
     const url = 'https://example.com/app/#/pricing'
     expect((await POST(postReq({ url }))).status).toBe(201)

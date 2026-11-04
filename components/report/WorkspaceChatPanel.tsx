@@ -30,13 +30,16 @@ import {
   WORKSPACE_TRANSCRIPT_CLASS,
 } from '@/components/report/workspace-geometry'
 import type { AgentMessage } from '@/lib/audit/agent-message'
-import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
+import { startScanWithHandoff, type CreateCheckResult } from '@/lib/audit/start-scan-handoff'
+import { parseWebsiteAddress } from '@/lib/utils/website-address'
+import { WEBSITE_ADDRESS_ERROR_COPY } from '@/lib/marketing/copy/errors'
 import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { displaySiteAddress } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
+import { useTranscriptScroll } from '@/hooks/useTranscriptScroll'
 
 export type WorkspaceChatGateReason = 'sign-in' | 'owner'
 
@@ -153,9 +156,16 @@ export function WorkspaceChatPanel({
   )
   const [claimNextOverride, setClaimNextOverride] = useState<string | undefined>()
   const authGate = useReportAuthGate()
-  const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
-  const stickToBottomRef = useRef(true)
+  const scanOwner = useRef<AbortController | null>(null)
+  const scanSubmitting = useRef(false)
+  useLayoutEffect(() => {
+    const owner = new AbortController()
+    scanOwner.current = owner
+    if (scanSubmitting.current) { setLoading(false); setScanError(null) }
+    scanSubmitting.current = false
+    return () => { owner.abort(); if (scanOwner.current === owner) scanOwner.current = null }
+  }, [auditId])
 
   const claimNextPath =
     claimNextOverride ??
@@ -218,7 +228,6 @@ export function WorkspaceChatPanel({
 
   useEffect(() => {
     void loadConversation()
-    stickToBottomRef.current = true
     // The callback deliberately reloads when the selected observation changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auditId, observationAuditId, canChat])
@@ -233,15 +242,9 @@ export function WorkspaceChatPanel({
     })
   }, [agentMessages, conversation])
 
-  useLayoutEffect(() => {
-    const node = transcriptRef.current
-    if (!node || !stickToBottomRef.current) return
-    if (typeof node.scrollTo === 'function') {
-      node.scrollTo({ top: node.scrollHeight, behavior: 'instant' })
-    } else {
-      node.scrollTop = node.scrollHeight
-    }
-  }, [messages.length, historyLoaded, loading])
+  const { transcriptRef, onScroll: onTranscriptScroll } = useTranscriptScroll(messages.length, {
+    busy: loading, ready: historyLoaded, threshold: 96, scope: JSON.stringify([auditId, observationAuditId, canChat]),
+  })
 
   function gateToSignIn() {
     openSaveReportClaim()
@@ -334,16 +337,23 @@ export function WorkspaceChatPanel({
   }
 
   async function startScan() {
-    const url = scanUrl.trim()
-    if (!url || loading) return
+    const owner = scanOwner.current
+    if (!owner || owner.signal.aborted || !scanUrl.trim() || loading || scanSubmitting.current) return
+    const address = parseWebsiteAddress(scanUrl, { inferHttps: true })
+    if (!address.ok) { setScanError(WEBSITE_ADDRESS_ERROR_COPY[address.reason]); return }
+    const url = address.url
+    const current = () => scanOwner.current === owner && !owner.signal.aborted
+    scanSubmitting.current = true
     setLoading(true)
     setScanError(null)
-    const result = await startScanWithHandoff({
+    const result: CreateCheckResult = await startScanWithHandoff({
       url,
+      signal: owner.signal,
       body: { url, source: 'report' },
       errorFallback: chatCopy.startError,
-      navigate: (href) => router.replace(href as Route),
-    })
+      navigate: (href) => { if (current()) router.replace(href as Route) },
+    }).catch(() => ({ ok: false, message: chatCopy.startError }))
+    if (!current()) return
     if (!result.ok) {
       if (result.code === 'AUTH_REQUIRED') {
         if (authGate) {
@@ -361,6 +371,7 @@ export function WorkspaceChatPanel({
         setScanError(result.message)
       }
       setLoading(false)
+      scanSubmitting.current = false
     }
   }
 
@@ -534,11 +545,7 @@ export function WorkspaceChatPanel({
           aria-label="Agent messages"
           aria-live="polite"
           aria-relevant="additions"
-          onScroll={(event) => {
-            const node = event.currentTarget
-            stickToBottomRef.current =
-              node.scrollHeight - node.scrollTop - node.clientHeight < 96
-          }}
+          onScroll={onTranscriptScroll}
         >
           {newScan ? (
             <p className="max-w-[92%] whitespace-pre-line leading-relaxed text-muted-foreground">
@@ -561,6 +568,13 @@ export function WorkspaceChatPanel({
             <div className="flex min-w-0 gap-2">
               <Input
                 ref={scanInputRef}
+                type="text"
+                inputMode="url"
+                autoComplete="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
                 value={scanUrl}
                 onChange={(event) => setScanUrl(event.target.value)}
                 placeholder={chatCopy.startPlaceholder}

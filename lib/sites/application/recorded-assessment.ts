@@ -8,7 +8,8 @@ import { recordedSiteAssessmentSchema, type SiteAssessment } from '../assessment
 import { projectSiteAssessment, recordedRunFlags } from '../assessment'
 import { canonicalIntent, readExecutionSpec } from '../domain/execution-spec'
 import { currentOutcomeState } from '../outcome-state'
-import { buildCoverageFacts, type CoverageExecution } from '../coverage'
+import { buildCoverageFacts, coverageObservationTimes, type CoverageExecution } from '../coverage'
+import { SITE_COVERAGE_MAX_AGE_MS } from '../evidence-freshness'
 import { executionPageCoverage } from '../page-coverage'
 import { categoryCoverageFact, type CategoryEvidenceAudit } from './category-evidence'
 import { categoryCoverageExecutionSelect } from './site-execution'
@@ -52,10 +53,24 @@ export function projectRecordedSiteResult(input: {
           saved.assessment.completeness === 'FULL' && !comparisonEvidenceComplete(summary)) throw new Error('Recorded finding evidence changed')
         findings = savedFindings
         if (status === 'COMPLETED' && audit.status === 'COMPLETED') {
-          const assessment: SiteAssessment = saved.assessment
-          if (assessment.validUntil && Date.parse(assessment.validUntil) <= now.getTime() && !assessment.gaps.some(gap => gap.reason === 'stale'))
-            return { assessment: { ...assessment, result: assessment.result === 'CLEAR' ? 'STALE' : assessment.result,
-              gaps: [...assessment.gaps, { area: null, reason: 'stale' }] }, findings }
+          const observationTimes = coverageObservationTimes(audit.verifierExecutions)
+          const observedAreas = saved.assessment.requiredAreas.flatMap(area => {
+            const observedAt = observationTimes.get(area)
+            return observedAt ? [{ area, deadline: Date.parse(observedAt) + SITE_COVERAGE_MAX_AGE_MS }] : []
+          })
+          const publishedDeadline = saved.assessment.validUntil ? Date.parse(saved.assessment.validUntil) : Infinity
+          const deadline = Math.min(publishedDeadline, ...observedAreas.map(item => item.deadline))
+          // Expiry qualifies current assurance without rewriting the stored
+          // publication or applying a different finding/attention policy.
+          const assessment: SiteAssessment = deadline < publishedDeadline
+            ? { ...saved.assessment, validUntil: new Date(deadline).toISOString() } : saved.assessment
+          if (assessment.validUntil && Date.parse(assessment.validUntil) <= now.getTime()) {
+            const gaps = [...assessment.gaps]
+            for (const item of observedAreas.filter(item => item.deadline <= now.getTime()))
+              if (!gaps.some(gap => gap.area === item.area && gap.reason === 'stale')) gaps.push({ area: item.area, reason: 'stale' })
+            if (!gaps.some(gap => gap.reason === 'stale')) gaps.push({ area: null, reason: 'stale' })
+            return { assessment: { ...assessment, result: assessment.result === 'CLEAR' ? 'STALE' : assessment.result, gaps }, findings }
+          }
           return { assessment, findings }
         }
       }

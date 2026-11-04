@@ -1,18 +1,18 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
-import { sectionLinkObservations } from './section-links'
+import { sectionLinkObservations, type SectionLinkInventory } from './section-links'
 import type { CaptureObservationScope } from '../browser/observation-scope'
 import type { CheckAssertion } from './assertion'
 
 export async function runSeoChecks(
   url: string,
-  meta: PageMetadata,
-  options?: { renderedScope?: CaptureObservationScope; record?: (assertion: CheckAssertion) => void;
+  meta: PageMetadata | null,
+  options?: { sectionLinks?: SectionLinkInventory | null; renderedScope?: CaptureObservationScope; record?: (assertion: CheckAssertion) => void;
     scope?: { complete?: boolean; limitation?: string } }
 ): Promise<DeterministicFlag[]> {
   const findings: DeterministicFlag[] = []
 
-  if (meta.h1s.length === 0) {
+  if (meta && meta.h1s.length === 0) {
     findings.push({
       checkId: 'h1-missing',
       rubric: 'REACH',
@@ -24,7 +24,7 @@ export async function runSeoChecks(
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else {
+  } else if (meta) {
     // Only flag genuinely competing headings. Responsive layouts render the same
     // H1 twice (one hidden per breakpoint), which is not an SEO problem, so
     // dedupe by text and flag only when more than one distinct H1 remains.
@@ -44,9 +44,15 @@ export async function runSeoChecks(
     }
   }
 
-  const sections = sectionLinkObservations(url, meta, options?.renderedScope)
+  const inventory = options?.sectionLinks === undefined ? meta : options.sectionLinks
+  if (!inventory) {
+    if (options?.scope) Object.assign(options.scope, { complete: false, limitation: 'Section link evidence was not collected. Section targets remain unknown.' })
+    return findings
+  }
+  const sections = sectionLinkObservations(url, inventory, options?.renderedScope)
   sections.assertions.forEach(assertion => options?.record?.(assertion))
-  if (options?.scope) Object.assign(options.scope, { complete: sections.complete, limitation: sections.limitation })
+  if (options?.scope) Object.assign(options.scope, { complete: sections.complete && Boolean(meta),
+    limitation: !meta ? 'Full page metadata was not collected. Heading checks remain unknown. ' + sections.limitation : sections.limitation })
   findings.push(...sections.flags)
 
   return findings

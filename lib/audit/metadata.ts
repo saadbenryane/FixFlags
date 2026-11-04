@@ -5,7 +5,7 @@ import { safeFetchHtml } from './url'
 import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
 import { normalizeHeadingText } from './checks/utils'
 import { collectResourceTransport, type ResourceTransport } from './resource-transport'
-import { htmlDocumentBase, htmlDocumentIds, isInertHtmlNode } from './html-document'
+import { htmlDocumentBase, htmlDocumentIds, htmlDocumentLinks, metadataHtmlDocument, isInertHtmlNode } from './html-document'
 import { collectFormInventory } from './metadata-form-inventory'
 
 export interface PageMetadata {
@@ -152,8 +152,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
   const linkBaseUrl = htmlDocumentBase(document, url)
   // HTTP metadata retains crawler fallbacks. Browser metadata describes the
   // scripting-enabled document, where these descendants are inactive.
-  const $ = mode === 'rendered' ? document : cheerio.load(html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_, inner: string) => inner))
-  if (mode === 'rendered') $('noscript,template').empty()
+  const $ = metadataHtmlDocument(html, mode, document)
   const documentIds = htmlDocumentIds($)
 
   // Extract structured data
@@ -188,13 +187,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
   })
 
   // Links analysis
-  const links: Array<{ href: string; text: string; rel: string | null }> = []
-  $('a[href]').each((_, el) => {
-    const href = $(el).attr('href') || ''
-    const text = $(el).text().trim()
-    const rel = $(el).attr('rel') || null
-    links.push({ href, text, rel })
-  })
+  const { links } = htmlDocumentLinks($)
 
   // Accessible-name detection shared by links and buttons. An interactive element
   // is "named" if it has visible text, an aria-label/aria-labelledby/title, or a

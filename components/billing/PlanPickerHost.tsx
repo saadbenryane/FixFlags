@@ -10,6 +10,7 @@ import {
   resetPlanPickerDismissal,
 } from '@/components/billing/PlanPickerDialog'
 import type { PickerSource } from '@/lib/billing/pick-plan'
+import { postAuthDestination, sanitizeNextPath } from '@/lib/auth/redirects'
 
 interface PlanPickerHostProps {
   source: PickerSource
@@ -17,16 +18,13 @@ interface PlanPickerHostProps {
   from?: string
 }
 
-function fallbackRoute(next: string | undefined): Route {
-  if (next && next.startsWith('/') && !next.startsWith('//')) return next as Route
-  return '/dashboard'
-}
-
 export function PlanPickerHost({ source, next, from }: PlanPickerHostProps) {
   const router = useRouter()
   const { isLoading, user } = useMe({ load: true })
   const [open, setOpen] = useState(false)
   const [resolved, setResolved] = useState(false)
+  const safeNext = sanitizeNextPath(next ?? null)
+  const destination = postAuthDestination(safeNext)
 
   useEffect(() => {
     if (isLoading || resolved) return
@@ -34,7 +32,7 @@ export function PlanPickerHost({ source, next, from }: PlanPickerHostProps) {
 
     if (!user) {
       const params = new URLSearchParams()
-      if (next) params.set('next', next)
+      if (safeNext) params.set('next', safeNext)
       if (from) params.set('from', from)
       params.set('source', source)
       const qs = params.toString()
@@ -43,18 +41,18 @@ export function PlanPickerHost({ source, next, from }: PlanPickerHostProps) {
     }
 
     if (user.plan && user.plan !== 'FREE') {
-      router.replace(fallbackRoute(next))
+      router.replace(destination)
       return
     }
 
     if (isPlanPickerDismissed() && source !== 'post_signup') {
-      router.replace(fallbackRoute(next))
+      router.replace(destination)
       return
     }
 
     resetPlanPickerDismissal()
     setOpen(true)
-  }, [isLoading, user, resolved, router, next, from, source])
+  }, [isLoading, user, resolved, router, safeNext, destination, from, source])
 
   if (isLoading) {
     return (
@@ -71,14 +69,11 @@ export function PlanPickerHost({ source, next, from }: PlanPickerHostProps) {
   return (
     <PlanPickerDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
-        if (!nextOpen) {
-          router.replace(fallbackRoute(next))
-        }
-      }}
+      onOpenChange={setOpen}
+      onDismiss={() => router.replace(destination)}
       source={source}
-      fallbackPath={next}
+      fallbackPath={destination}
+      respectActiveReport={!safeNext}
     />
   )
 }

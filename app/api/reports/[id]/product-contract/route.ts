@@ -2,17 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { canManageAudit } from '@/lib/audit/access'
+import { auditAccessSourceSelect, canManageAudit } from '@/lib/audit/access'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import {
   buildUserProductContract,
   validateProductContractInput,
 } from '@/lib/audit/product-contract'
-import { mergeContractIntoProductIntelligence } from '@/lib/audit/product-intelligence'
-import {
-  ensureProductProject,
-  mutateProjectIntelligence,
-} from '@/lib/audit/ensure-product-project'
+import { saveOwnedReportProductContract } from '@/lib/audit/save-product-contract'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 interface RouteContext {
@@ -33,7 +29,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: { userId: true, status: true, url: true, projectId: true },
+      select: auditAccessSourceSelect,
     })
     if (!audit) return apiError('Report not found', 404)
     if (!canManageAudit(audit, session?.user)) {
@@ -54,26 +50,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     const productContract = buildUserProductContract(validated.value)
 
-    let projectId = audit.projectId
-    if (!projectId && audit.userId) {
-      const project = await ensureProductProject(audit.userId, audit.url)
-      projectId = project.id
-    }
-
-    const updated = await prisma.audit.update({
-      where: { id },
-      data: {
-        productContract: productContract as object,
-        ...(projectId ? { projectId } : {}),
-      },
-      select: { id: true, productContract: true, projectId: true },
-    })
-
-    if (projectId) {
-      await mutateProjectIntelligence(projectId, (current) =>
-        mergeContractIntoProductIntelligence(current, productContract)
-      )
-    }
+    const updated = await saveOwnedReportProductContract(id, session!.user.id, productContract)
 
     return NextResponse.json({
       id: updated.id,

@@ -127,6 +127,31 @@ describe('scope completion in monitoring history', () => {
   it('shows complete proved uptime despite the absence of broad report pages', () => {
     expect(projectHistory(row({ state: 'CLEAR', coverage, evidence: { reason: 'available' } }) as never, [])).toMatchObject({ completionState: 'COMPLETED', result: 'CLEAR', scope: 'OUTCOMES' })
   })
+  it.each(['missing-binding', 'missing-evidence'] as const)('does not publish a Clear declaration with %s in the selected scope', missing => {
+    const audit = row({ state: 'CLEAR', coverage: missing === 'missing-binding' ? { ...coverage, observedBindings: [] } : coverage,
+      evidence: missing === 'missing-evidence' ? {} : { reason: 'available' } })
+    const history = projectHistory(audit as never, [])
+    expect(history).toMatchObject({ executionState: 'COMPLETED', completionState: 'PARTIAL', result: 'COULD_NOT_VERIFY' })
+    const view = siteViewFixture(); view.monitoringHistory = [history]
+    const parsed = readSiteHomeView(JSON.parse(JSON.stringify(view)), view.site.siteId)
+    expect(projectSiteBoard(parsed, view.site.siteId, true, false, null).timelineEvents[0])
+      .toMatchObject({ title: BOARD_PREVIEW_COPY.complete, state: 'unknown', resultLabel: BOARD_PREVIEW_COPY.history.uncertain })
+  })
+
+  it('preserves a confirmed Flag when other selected evidence remains incomplete', () => {
+    const audit = row({ state: 'FLAG', coverage: { ...coverage, observedBindings: [] }, evidence: { reason: 'unavailable' } })
+    expect(projectHistory(audit as never, [])).toMatchObject({ completionState: 'PARTIAL', result: 'FLAG' })
+  })
+
+  it('does not publish Clear from a failed account check with a retained positive artifact', () => {
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'ACCOUNT_CHECKS', targetUrl: 'https://example.com/',
+      environment: 'production', checks: {}, outcomes: [], verificationTarget: null, accountChecks: { revision: 2, mode: 'routine' } })
+    const audit = { ...row(null), status: 'FAILED', executionSpec: spec, runRequests: [] }
+    const artifact = serializeArtifact('automatic-accounts', { observations: [
+      { kind: 'signed_in', state: 'verified', detail: 'Signed-in navigation was observed.', pageUrl: spec.targetUrl, evidence: {} },
+    ] })
+    expect(projectHistory(audit as never, [], [], artifact)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'FAILED' })
+  })
   it('links recovery to the exact recorded original Flag and source audit', () => {
     const audit = { ...row({ state: 'CLEAR', coverage, evidence: { reason: 'available' } }),
       executionSpec: { scope: 'DIAGNOSTIC', verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt', pageUrl: 'https://example.com/billing' } },

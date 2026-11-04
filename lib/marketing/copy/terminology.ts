@@ -305,6 +305,14 @@ export const API_KEY_COPY = {
   accessName: 'Fix and verify',
   accessLabel: 'Access',
   accessDescription: 'Read Site evidence, start checks, and use the Monitor → Flag → Fix loop for Sites you own.',
+  listFailed: 'Could not load developer keys.',
+  retryList: 'Refresh keys',
+  revokeFailed: 'Could not revoke this key.',
+  createUnconfirmed: 'Couldn’t confirm key creation. Refresh the key list before creating another key.',
+  copyUnconfirmed: 'Couldn’t confirm the copy. The key is selected so you can copy it manually.',
+  accountChanged: 'Your account changed. Refresh to load its developer keys.',
+  accountUnavailable: 'Sign in again to manage developer keys.',
+  refreshAccount: 'Refresh account',
 } as const
 
 export const CUSTOMER_TERMS = {

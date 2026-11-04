@@ -4,6 +4,7 @@ import {
   detectSoft404,
   openCheckDestination,
   openCheckDestinations,
+  planOpenCheckDestinations,
   type OpenCheckFetch,
 } from '@/lib/audit/open-check'
 
@@ -19,6 +20,18 @@ function jsonResponse(status: number, body = '', headers: Record<string, string>
 }
 
 describe('open-check', () => {
+  it('freezes the same exact destination inventory that the shared collector executes', async () => {
+    const urls = ['https://example.com/en/details?plan=one', 'https://example.com/en/details?plan=one',
+      'https://example.com/details?plan=two', 'https://other.example/details', 'https://example.com/tail']
+    const planned = planOpenCheckDestinations(urls, { origin: 'https://example.com/', ceiling: 2 })
+    expect(planned).toEqual({ urls: [urls[0], urls[2]], truncated: true })
+    const fetched: string[] = []
+    const observed = await openCheckDestinations(urls, { origin: 'https://example.com/', ceiling: 2,
+      fetchImpl: async url => { fetched.push(String(url)); return jsonResponse(200, '<h1>Useful details</h1>', {}, String(url)) } })
+    expect(fetched).toEqual(planned.urls)
+    expect(observed.results.map(result => result.url)).toEqual(planned.urls)
+    expect(observed.truncated).toBe(true)
+  })
   it('uses GET evidence even when HEAD claims success', async () => {
     const fetchImpl: OpenCheckFetch = async (_url, init) => jsonResponse(init?.method === 'HEAD' ? 200 : 404,
       '<title>Page not found</title>', { 'content-type': 'text/html' }, 'https://example.com/gone')

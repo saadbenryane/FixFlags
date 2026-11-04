@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const probe = vi.hoisted(() => ({ scan: vi.fn(), close: vi.fn(), dispose: vi.fn(), refused: true }))
+const probe = vi.hoisted(() => ({ scan: vi.fn(), close: vi.fn(), dispose: vi.fn(), refused: true,
+  failures: [] as import('../../browser/network-monitor').NetworkFailureRecord[],
+  engagement: { version: 1, requests: [], truncated: false } as import('../../network-engagement-evidence').EngagementEvidence }))
 vi.mock('../../flow/run-flow-scan', () => ({ runFlowScan: probe.scan }))
 vi.mock('../../scan-access-store', () => ({ resolveAuditScanAccess: async () => null }))
 vi.mock('../../screenshot', () => ({ getAuditBrowser: async () => ({}) }))
@@ -7,11 +9,13 @@ vi.mock('../evaluators', () => ({ browserEvidence: () => null }))
 vi.mock('../../browser/page-session', () => ({ createAuditPage: async (_browser: unknown, url: string, options: { onSafetyRefusal?: (reason: string) => void }) => {
   if (probe.refused) options.onSafetyRefusal?.('protected_action_requires_fixture')
   return { page: { url: () => url, context: () => ({ close: probe.close }) }, setTrackingPhase: () => undefined,
-    tracking: () => undefined, networkFailures: [], formProbe: { result: null, probed: false }, disposeNetwork: probe.dispose }
+    tracking: () => undefined, engagement: () => probe.engagement, settleEngagement: async () => undefined,
+    networkFailures: probe.failures, formProbe: null, disposeNetwork: probe.dispose }
 } }))
 import { actionHandlers } from '../actions'
 import { readArtifact } from '../contracts'
 import type { TaskContext } from '../registry'
+import { trackingRequestKey } from '../../tracking/identity'
 
 const pageUrl = 'https://example.com/'
 const handler = actionHandlers.find(handler => handler.kind === 'flow')!
@@ -21,9 +25,26 @@ function context(): TaskContext {
     task: { id: 'flow', workGeneration: 1 }, input: { pageUrl, position: 0, primary: false, role: 'secondary' },
     deadline: Date.now() + 10_000, dependencies: new Map() } as unknown as TaskContext
 }
-beforeEach(() => { vi.clearAllMocks(); probe.refused = true })
+beforeEach(() => { vi.clearAllMocks(); probe.refused = true; probe.failures = []; probe.engagement = { version: 1, requests: [], truncated: false } })
 
 describe('flow observations after a protected action refusal', () => {
+  it.each(['skipped', 'timeout'] as const)('retains an independent recorded API failure after a %s walk without certifying action completion', async status => {
+    probe.refused = false
+    const destination = 'https://example.com/api/account'
+    probe.failures = [{ url: destination, method: 'GET', status: 503, sameOrigin: true, engagementPath: true, resourceType: 'fetch', at: Date.now() }]
+    probe.engagement = { version: 1, truncated: false, requests: [{ phase: 'page_load', method: 'GET', status: 503, state: 'completed',
+      destination, requestKey: trackingRequestKey(destination, 'GET'), captureKey: 'b'.repeat(64) }] }
+    probe.scan.mockResolvedValue({ status, steps: [], finalUrl: pageUrl })
+    const artifact = readArtifact(await handler.evaluate(context()), 'flow')
+    expect(() => handler.validateResult(artifact)).not.toThrow()
+    expect(artifact.data.flags).toEqual(expect.arrayContaining([expect.objectContaining({ checkId: 'api-engagement-server-error',
+      evidenceTargets: [expect.objectContaining({ context: expect.stringContaining('engagement:page_load:control:page:') })] })]))
+    expect(artifact.data.networkReceipt).toMatchObject({ passed: false,
+      assertions: expect.arrayContaining([expect.objectContaining({ key: 'engagement-server-response', passed: false, complete: true })]) })
+    expect(artifact.data.flowReceipt).toMatchObject({ passed: false, complete: false })
+    expect(probe.close).toHaveBeenCalledOnce()
+    expect(probe.dispose).toHaveBeenCalledOnce()
+  })
   it('returns a valid committable artifact and retains independent response evidence', async () => {
     probe.scan.mockResolvedValue({ status: 'success', steps: [], finalUrl: pageUrl, ctaText: 'Continue',
       actionEvidence: { version: 1, pageContext: 'flow:page:' + 'a'.repeat(64), controlContext: 'flow:control:' + 'b'.repeat(64),

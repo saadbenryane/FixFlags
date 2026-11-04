@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
-vi.mock('node:dns/promises', () => dns)
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 import { prisma } from '@/lib/db'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { parseMetadataFromHtml } from '../../metadata'

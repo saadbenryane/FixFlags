@@ -7,6 +7,7 @@ import { repairEvidenceSchema } from './repair-evidence-contract'
 export const repairContextHashSchema = z.string().regex(/^[a-f0-9]{64}$/)
 export const REPAIR_OBSERVATIONS_PER_PAGE = 25
 export const repairObservationOffsetSchema = z.number().int().min(0).max(5000)
+export const repairDocumentOffsetSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 const id = z.string().min(1)
 const definition = z.object({ schemaVersion: z.literal('fixflags.repair-definition.v1'),
   kind: z.enum(['repair', 'investigation', 'evidence-recovery']),
@@ -16,7 +17,8 @@ const definition = z.object({ schemaVersion: z.literal('fixflags.repair-definiti
 }).strict()
 const repairRequestSchema = z.object({ tool: z.literal(MCP_TOOLS.getFlag.name),
   arguments: z.object({ siteId: id, flagId: id, expectedContextHash: repairContextHashSchema,
-    observationOffset: repairObservationOffsetSchema.optional(), includeEvidence: z.boolean().optional() }).strict(),
+    observationOffset: repairObservationOffsetSchema.optional(), includeEvidence: z.boolean().optional(),
+    documentOffset: repairDocumentOffsetSchema.optional(), expectedDocumentHash: repairContextHashSchema.optional() }).strict(),
 }).strict()
 const reference = z.object({ selector: z.string().optional(), label: z.string().optional(),
   device: z.enum(['desktop', 'mobile']).optional() }).strict()
@@ -61,3 +63,23 @@ export const repairBriefSchema = z.object({
 }).strict()
 
 export type RepairBrief = z.infer<typeof repairBriefSchema>
+
+/** Lossless transport for a public brief page that cannot fit in one response.
+ * Offsets count UTF-8 bytes. Concatenate text in order, verify sha256, then parse
+ * the completed JSON with repairBriefSchema before acting on its contents. */
+export const repairBriefFragmentSchema = z.object({
+  schemaVersion: z.literal('fixflags.repair-brief-fragment.v1'),
+  siteId: id, referenceFlagId: id, contextHash: repairContextHashSchema,
+  observationPage: repairBriefSchema.shape.observationPage,
+  document: z.object({
+    schemaVersion: z.literal('fixflags.repair-brief.v1'), encoding: z.literal('utf8-json'),
+    sha256: repairContextHashSchema, totalBytes: repairDocumentOffsetSchema,
+    offset: repairDocumentOffsetSchema, returnedBytes: repairDocumentOffsetSchema,
+    text: z.string(), nextOffset: repairDocumentOffsetSchema.nullable(),
+  }).strict(),
+  instructions: z.array(z.string()),
+  links: repairBriefSchema.shape.links,
+  retrieval: repairBriefSchema.shape.retrieval,
+}).strict()
+
+export const repairBriefDeliverySchema = z.discriminatedUnion('schemaVersion', [repairBriefSchema, repairBriefFragmentSchema])

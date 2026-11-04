@@ -56,7 +56,7 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
   // spent, which is both false and leaves the customer with nothing to do.
   if (err instanceof SiteRunRefusal || err instanceof ImprovementAttemptConflict) {
     return apiError(err.message, err.status, { code: err.code, requestId,
-      ...(err.code === 'REPAIR_CONTEXT_CHANGED' ? { action: 'prepare_new_prompt' } : {}) })
+      ...(err instanceof SiteRunRefusal && err.action ? { action: err.action } : {}) })
   }
 
   if (err instanceof AuditLimitError) {

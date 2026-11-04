@@ -25,7 +25,7 @@ export interface RunAllChecksResult {
   executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; complete?: boolean; limitation?: string; collectedAt?: string; assertions?: CheckAssertion[] }>
 }
 
-/** Legacy adapter and progressive tasks invoke the same validated registrations. */
+/** Runtime tasks and offline fixtures invoke the same validated registrations. */
 export async function runAllChecks(
   url: string, metadata: PageMetadata | null, desktop: PageSpeedResult | null, mobile: PageSpeedResult | null,
   consoleErrors: Array<{ type: string; text: string }>, onAreaComplete?: (index: number) => void,
@@ -33,12 +33,19 @@ export async function runAllChecks(
   axeViolations?: AxeViolation[], searchHandled = false, selectedModules?: readonly string[],
   runtimeEvidence?: { renderedCopy?: import('../browser/rendered-copy').RenderedCopy | null; tracking?: import('../tracking/contracts').TrackingEvidence; consoleCoverage?: import('../console-evidence').ConsoleCoverage;
     head?: import('./head-metadata').HeadMetadataObservation;
+    sectionLinks?: import('./section-links').SectionLinkInventory | null;
+    pageLinks?: import('./public-links').PageLinkInventory | null;
+    sectionScope?: import('../browser/observation-scope').CaptureObservationScope;
+    publicTrustSignals?: import('../browser/public-page-signals').PublicPageSignals | null;
+    publicTrustScope?: import('../browser/observation-scope').CaptureObservationScope;
+    publicTrustCopy?: import('../browser/rendered-copy').RenderedCopy | null;
     publicDocument?: import('../search/contracts').PublicDocument;
+    resourceTransport?: import('../resource-transport').ResourceTransport;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
     renderedCopyScope?: import('../browser/observation-scope').CaptureObservationScope | null;
     mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
     allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea;
-    destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'> },
+    destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt' | 'originalContexts' | 'retainedContexts'> },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
@@ -47,14 +54,18 @@ export async function runAllChecks(
     const assertions: CheckAssertion[] = []
     const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
       head: runtimeEvidence?.head,
+      sectionLinks: runtimeEvidence?.sectionLinks,
+      pageLinks: runtimeEvidence?.pageLinks,
+      sectionScope: runtimeEvidence?.sectionScope,
+      publicTrustSignals: runtimeEvidence?.publicTrustSignals, publicTrustCopy: runtimeEvidence?.publicTrustCopy,
       scope: {}, deadline: runtimeEvidence?.deadline, destinations: runtimeEvidence?.destinations, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
       accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, mobileAccessibility: runtimeEvidence?.mobileAccessibility, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
       renderedCopyScope: runtimeEvidence?.renderedCopyScope,
-      publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
+      publicDocument: runtimeEvidence?.publicDocument, resourceTransport: runtimeEvidence?.resourceTransport, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
       record: assertion => { assertions.push(assertion) } }
     try {
       const evaluated = await check.evaluate(input)
-      if (check.id !== 'metadata' && check.id !== 'measurement' && check.id !== 'accessibility' && check.id !== 'security') assertions.push(...recordCheckObservations(check.id, {
+      if (check.id !== 'metadata' && check.id !== 'trust' && check.id !== 'measurement' && check.id !== 'accessibility' && check.id !== 'security') assertions.push(...recordCheckObservations(check.id, {
         url, metadata, desktop, mobile, headers: responseHeaders, consoleCoverage: runtimeEvidence?.consoleCoverage,
       }))
       const admitted = scopeCheckEvidence({ module: check.id, flags: evaluated, assertions, scope: runtimeEvidence })
@@ -65,7 +76,7 @@ export async function runAllChecks(
         if (!input.scope.complete) input.scope.limitation = SECURITY_HEADER_LIMITATION
       }
       const scoped = scopeRenderedPageEvidence({ module: check.id, flags, assertions,
-        desktop: check.id === 'metadata' ? runtimeEvidence?.head?.scope ?? runtimeEvidence?.renderedScope
+        desktop: ['trust', 'measurement'].includes(check.id) && !metadata ? runtimeEvidence?.publicTrustScope : check.id === 'metadata' ? runtimeEvidence?.head?.scope ?? runtimeEvidence?.renderedScope
           : RENDERED_COPY_MODULES.has(check.id) && runtimeEvidence?.renderedCopyScope !== undefined ? runtimeEvidence.renderedCopyScope ?? undefined : runtimeEvidence?.renderedScope,
         mobile: captureMetrics?.loadingObservation?.scope })
       flags = scoped.flags

@@ -1,11 +1,40 @@
 import { act } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { hydrateRoot } from 'react-dom/client'
-import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { SiteMonitoringHistory } from '../SiteMonitoringHistory'
 
 describe('monitoring evidence chart', () => {
+  it('opens evidence in its owning workspace while retaining modified native link navigation', () => {
+    const open = vi.fn()
+    render(<SiteMonitoringHistory points={[]} events={[{ id: 'incident', title: 'Website went offline', time: 'Oct 12', state: 'attention',
+      evidenceHref: '/sites/site-1#category-uptime', evidenceLabel: 'Uptime details', onOpenEvidence: open }]} emptyMessage="No history" />)
+    const link = screen.getByRole('link', { name: 'Uptime details' })
+    expect(link).toHaveAttribute('href', '/sites/site-1#category-uptime')
+    for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey']) {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, [modifier]: true })
+      link.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(false)
+    }
+    expect(open).not.toHaveBeenCalled()
+    fireEvent.click(link)
+    expect(open).toHaveBeenCalledExactlyOnceWith(link)
+  })
+
+  it('keeps the incident destination while opening timeline evidence in place', () => {
+    const open = vi.fn()
+    render(<SiteMonitoringHistory points={[]} events={[
+      { id: 'check-1', title: 'Check completed', time: 'Oct 12', state: 'attention', flags: [
+        { id: 'incident-1', title: 'Pricing unavailable', href: '/sites/site-1/flags/incident-1', onOpen: open },
+      ] },
+    ]} emptyMessage="No history" />)
+    const target = screen.getByRole('link', { name: 'Pricing unavailable' })
+    expect(target).toHaveAttribute('href', '/sites/site-1/flags/incident-1')
+    fireEvent.click(target)
+    expect(open).toHaveBeenCalledExactlyOnceWith(target)
+  })
+
   it('shows the Overview trend without duplicating the latest count or timeline', () => {
     render(<SiteMonitoringHistory variant="overview" points={[{ label: 'Oct 11', flagCount: 2 }, { label: 'Oct 12', flagCount: 1 }]} events={[
       { id: 'one', title: 'Check completed', time: 'Oct 12', state: 'attention' },

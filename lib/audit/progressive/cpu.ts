@@ -2,9 +2,10 @@ import { Worker } from 'node:worker_threads'
 import path from 'node:path'
 import { BoundedSemaphore } from './capacity'
 import { TaskFailure } from './contracts'
-import { pageMetadataSchema } from './snapshots'
+import { pageMetadataSchema, httpNavigationSchema } from './snapshots'
 import { searchObservationSchema, type SearchPageEvidence, type SearchReceipt } from '../search/contracts'
 import type { MetadataMode } from '../metadata'
+import { resourceTransportSchema } from '../resource-transport'
 import { currentExecutionOwnership, ExecutionOwnershipLost } from '../execution-ownership'
 
 const capacity = new BoundedSemaphore(1)
@@ -85,6 +86,14 @@ export async function parseMetadataIsolated(html: string, url: string, deadline:
   if (!result.success && result.error.issues.every(issue => issue.code === 'too_big')) return null
   if (!result.success) throw result.error
   return result.data
+}
+export async function parseResourceTransportIsolated(html: string, url: string, deadline: number) {
+  if (Buffer.byteLength(html) > 1_000_000) throw new TaskFailure('HTML_BODY_LIMIT', false)
+  return resourceTransportSchema.parse(await isolated({ operation: 'resource-transport', html, url }, deadline))
+}
+export async function parseHttpNavigationIsolated(html: string, url: string, deadline: number) {
+  if (Buffer.byteLength(html) > 1_000_000) throw new TaskFailure('HTML_BODY_LIMIT', false)
+  return httpNavigationSchema.parse(await isolated({ operation: 'http-navigation', html, url }, deadline))
 }
 export async function evaluateSearchIsolated(evidence: SearchPageEvidence, previous: SearchReceipt | null | undefined, deadline: number, evaluators?: readonly string[]) {
   const observations = await isolated({ operation: 'search', evidence, previous, evaluators }, deadline)

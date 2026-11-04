@@ -230,6 +230,34 @@ describe('pickPlan', () => {
   })
 })
 
+describe('plan request ownership', () => {
+  it.each(['redirect', 'unavailable', 'paid-checkout-closed'] as const)('discards a late %s outcome without navigation, gates, or notifications', async kind => {
+    const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
+    const { toast } = await import('sonner')
+    vi.mocked(toast.message).mockClear(); vi.mocked(toast.error).mockClear()
+    let finish!: (outcome: Awaited<ReturnType<typeof requestPlanCheckout>>) => void
+    vi.mocked(requestPlanCheckout).mockReset().mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const controller = new AbortController(), navigate = vi.fn(), gated = vi.fn()
+    const pending = pickPlan({ plan: 'BUILDER', isLoggedIn: true, signal: controller.signal, onCheckoutRedirect: navigate, onPrivateBeta: gated })
+    expect(requestPlanCheckout).toHaveBeenCalledExactlyOnceWith('BUILDER', controller.signal)
+    controller.abort()
+    finish(kind === 'redirect' ? { kind, url: 'https://checkout.example/obsolete', existingSubscription: true }
+      : kind === 'unavailable' ? { kind, message: 'Unavailable' } : { kind })
+    await expect(pending).resolves.toEqual({ kind: 'cancelled' })
+    expect(navigate).not.toHaveBeenCalled(); expect(gated).not.toHaveBeenCalled()
+    expect(toast.message).not.toHaveBeenCalled(); expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('does not start a choice that has already been cancelled', async () => {
+    const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
+    vi.mocked(requestPlanCheckout).mockClear()
+    const controller = new AbortController(), gated = vi.fn()
+    controller.abort()
+    await expect(pickPlan({ plan: 'TEAM', isLoggedIn: true, signal: controller.signal, waitlistGated: true, onPrivateBeta: gated })).resolves.toEqual({ kind: 'cancelled' })
+    expect(requestPlanCheckout).not.toHaveBeenCalled(); expect(gated).not.toHaveBeenCalled()
+  })
+})
+
 describe('routerForPlanResult', () => {
   it('navigates only for dashboard/report routing results', () => {
     const push = vi.fn()

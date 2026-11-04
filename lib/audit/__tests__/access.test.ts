@@ -2,11 +2,13 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { Audit } from '@prisma/client'
 
 const dbMocks = vi.hoisted(() => ({
+  auditFindUnique: vi.fn(),
   shareLinkFindUnique: vi.fn<() => Promise<unknown>>(),
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    audit: { findUnique: dbMocks.auditFindUnique },
     shareLink: {
       findUnique: dbMocks.shareLinkFindUnique,
     },
@@ -30,15 +32,21 @@ import {
 const mockedShareLinkFindUnique = dbMocks.shareLinkFindUnique
 const mockedVerifyShareGrant = vi.mocked(verifyShareGrant)
 
-type AuditPick = Pick<Audit, 'id' | 'userId' | 'isPublic'>
+type AuditPick = Pick<Audit, 'id' | 'userId' | 'isPublic' | 'projectId'> & {
+  user: { lifecycleStatus: string } | null
+}
 
 function makeAudit(overrides: Partial<AuditPick> = {}): AuditPick {
-  return {
+  const source = {
     id: 'audit-1',
     userId: 'user-1',
     isPublic: false,
+    projectId: null,
+    user: { lifecycleStatus: 'ACTIVE' },
     ...overrides,
   }
+  dbMocks.auditFindUnique.mockResolvedValue(source)
+  return source
 }
 
 function grantClaims(overrides: Partial<ShareGrantClaims> = {}): ShareGrantClaims {

@@ -3,6 +3,8 @@ import { classifyTrackingEndpoint } from '../tracking/endpoints'
 import { MAX_TRACKING_REQUESTS, type TrackingEvidence, type TrackingRequest } from '../tracking/contracts'
 import { trackingRequestKey } from '../tracking/identity'
 import { auditPageObservation, captureObservationKey } from './observation-scope'
+import { MAX_ENGAGEMENT_REQUESTS, type EngagementEvidence, type EngagementRequest } from '../network-engagement-evidence'
+import { displayDestination } from '../checks/destination-evidence'
 
 export interface NetworkFailureRecord {
   url: string
@@ -19,6 +21,8 @@ export interface NetworkMonitor {
   resources: TechnologyResourceRecord[]
   resourcesTruncated: () => boolean
   tracking: (phase?: TrackingRequest['phase']) => TrackingEvidence
+  engagement: () => EngagementEvidence
+  settleEngagement: (deadline: number, signal?: AbortSignal) => Promise<void>
   setTrackingPhase: (phase: TrackingRequest['phase']) => void
   suppressTracking: (request: Request) => void
   dispose: () => void
@@ -76,6 +80,10 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
   let technologyResourcesTruncated = false
   const startedAt = Date.now(), trackingRequests: TrackingRequest[] = []
   const tracked = new WeakMap<Request, TrackingRequest>()
+  const engagementRequests: EngagementRequest[] = [], engagementTracked = new WeakMap<Request, EngagementRequest>()
+  const engagementWaiters = new Set<() => void>()
+  let disposed = false
+  let engagementTruncated = false
   let phase: TrackingRequest['phase'] = 'page_load', trackingTruncated = false
   const phaseStarts: Partial<Record<TrackingRequest['phase'], number>> = { page_load: startedAt }
   const phaseCaptures: Partial<Record<TrackingRequest['phase'], string>> = {}
@@ -85,6 +93,21 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     return key === 'unknown' ? undefined : key
   }
   const onRequest = (request: Request) => {
+    if (!engagementTracked.has(request)) {
+      try {
+        const url = new URL(request.url())
+        if (url.origin === new URL(pageOrigin).origin && isEngagementPath(url.pathname) &&
+          ['xhr', 'fetch', 'document'].includes(request.resourceType()) && request.frame() === page.mainFrame() &&
+          !classifyTrackingEndpoint(request.url(), request.resourceType(), pageOrigin)) {
+          if (engagementRequests.length >= MAX_ENGAGEMENT_REQUESTS) engagementTruncated = true
+          else {
+            const observed: EngagementRequest = { requestKey: trackingRequestKey(request.url(), request.method()),
+              method: request.method().slice(0, 32), destination: displayDestination(request.url()), phase, status: null, state: 'pending' }
+            engagementTracked.set(request, observed); engagementRequests.push(observed)
+          }
+        }
+      } catch { /* Uninspectable or embedded requests cannot supply comparison evidence. */ }
+    }
     if (tracked.has(request)) return
     const endpoint = classifyTrackingEndpoint(request.url(), request.resourceType(), pageOrigin)
     if (!endpoint || endpoint.role === 'event' && ['HEAD', 'OPTIONS'].includes(request.method())) return
@@ -97,10 +120,14 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     tracked.set(request, record); trackingRequests.push(record)
   }
   const onFinished = (request: Request) => {
+    const engagement = engagementTracked.get(request)
+    if (engagement) { engagement.state = 'completed'; for (const changed of engagementWaiters) changed() }
     const record = tracked.get(request)
     if (record && record.state !== 'suppressed') record.state = 'completed'
   }
   const onFailed = (request: Request) => {
+    const engagement = engagementTracked.get(request)
+    if (engagement) { engagement.state = 'failed'; for (const changed of engagementWaiters) changed() }
     const record = tracked.get(request)
     if (!record || record.state === 'suppressed') return
     record.state = 'failed'
@@ -117,6 +144,15 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
   const onResponse = (response: Response) => {
     const request = response.request()
     const resourceType = request.resourceType()
+    const engagement = engagementTracked.get(request)
+    if (engagement) {
+      engagement.status = response.status(); engagement.state = 'response'
+      const observation = auditPageObservation(page)
+      const identity = observation && !observation.restricted && response.headers()['cf-mitigated'] !== 'challenge'
+        ? captureObservationKey(observation.scope) : undefined
+      if (identity && identity !== 'unknown') engagement.captureKey = identity
+      for (const changed of engagementWaiters) changed()
+    }
     const tracking = tracked.get(request)
     if (tracking && tracking.state !== 'suppressed') { tracking.status = response.status(); tracking.state = 'response' }
     const resource = sanitizeTechnologyResource(response.url(), resourceType, response.status())
@@ -173,6 +209,22 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     failures,
     resources,
     resourcesTruncated: () => technologyResourcesTruncated,
+    engagement: () => ({ version: 1, requests: engagementRequests.map(request => ({ ...request })), truncated: engagementTruncated }),
+    async settleEngagement(deadline, signal) {
+      if (signal?.aborted || disposed || Date.now() >= deadline) return
+      await new Promise<void>(resolve => {
+        const done = () => { clearTimeout(timer); engagementWaiters.delete(changed); signal?.removeEventListener('abort', done); resolve() }
+        const changed = () => {
+          if (disposed || !engagementRequests.some(request => request.state === 'pending' ||
+            request.state === 'response' && request.captureKey && request.status !== null && request.status >= 200 && request.status < 300)) done()
+        }
+        const timer = setTimeout(done, Math.max(1, Math.min(4000, deadline - Date.now())))
+        engagementWaiters.add(changed)
+        signal?.addEventListener('abort', done, { once: true })
+        if (signal?.aborted) done()
+        else changed()
+      })
+    },
     tracking: (selected = phase) => ({ version: 1, phase: selected,
       captureKey: selected === phase ? captureKey() : phaseCaptures[selected],
       requests: trackingRequests.filter(record => record.phase === selected).map(record => ({ ...record })),
@@ -188,6 +240,8 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
       if (record) { record.state = 'suppressed'; record.reason = 'scanner_suppressed' }
     },
     dispose: () => {
+      disposed = true
+      for (const changed of engagementWaiters) changed()
       page.off('request', onRequest)
       page.off('response', onResponse)
       page.off('requestfinished', onFinished)

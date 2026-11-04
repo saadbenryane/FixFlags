@@ -22,8 +22,9 @@ import { currentOutcomeAssessment } from '../outcome-assessment'
 import { loadOutcomeBindingRevisions } from './outcome-binding-revisions'
 import { categoryEvidenceBaselines, loadCategoryEvidence } from './category-evidence'
 import { projectCurrentSiteEvidence } from './current-evidence'
-import { currentImprovementFlags, currentUnboundFindings, incidentAffectedPaths } from '../flag-resolution'
-import { currentImprovementWhere, loadIncidentRecoveryProofs, unboundSiteFindingWhere } from './incident-proofs'
+import { incidentAffectedPaths, newestRecordedFlag } from '../flag-resolution'
+import { currentImprovementWhere } from './incident-proofs'
+import { loadCurrentFindingSources } from './current-finding-sources'
 import { executionPageCoverage } from '../page-coverage'
 import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/status'
 import { loadOutcomeSummaryReferencesForProjects } from './outcome-references'
@@ -53,7 +54,7 @@ async function loadWatchedOutcomeSummaries(projectIds: string[]) {
 
 /**
  * Website rows need a summary, not a complete Site home. These batched reads
- * keep query count constant as the account grows and deliberately omit
+ * release recovered history before loading current evidence and omit
  * connections, settings, alert history, and full task artifacts. Watched
  * assessment state is read in one batch because it contributes to Site health.
  */
@@ -125,36 +126,11 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
     prisma.improvement.findMany({
       where: { projectId: { in: projectIds }, ...currentImprovementWhere },
       select: {
+        id: true,
         projectId: true,
         outcomeId: true,
         status: true,
         fingerprint: true,
-        attempts: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 12, select: {
-          outcome: true, comparable: true, sourceAuditId: true, handoffReference: true, verificationAuditId: true,
-          verificationAudit: { select: { id: true, projectId: true, parentId: true, status: true } },
-        } },
-        occurrences: {
-          orderBy: { createdAt: 'desc' },
-          select: {
-            flag: {
-              select: {
-                status: true,
-                id: true,
-                auditId: true,
-                fingerprint: true,
-                resolvedInId: true,
-                affectedPaths: true,
-                severity: true,
-                confidence: true,
-                pageUrl: true,
-                checkId: true,
-                attentionPolicy: true,
-                rubric: true,
-                impactTag: true,
-              },
-            },
-          },
-        },
       },
     }),
     loadWatchedOutcomeSummaries(projectIds),
@@ -163,7 +139,7 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
   const latestByProject = new Map(latestAudits.flatMap((audit) => audit.projectId ? [[audit.projectId, audit] as const] : []))
   const completedByProject = new Map(latestCompletedAudits.flatMap((audit) => audit.projectId ? [[audit.projectId, audit] as const] : []))
   const auditIds = [...new Set([...latestAudits, ...latestCompletedAudits].map((audit) => audit.id))]
-  const [auditPages, screenshots, unboundFlags, categoryAudits, bindingRevisions] = await Promise.all([
+  const [auditPages, screenshots, sources, categoryAudits, bindingRevisions] = await Promise.all([
     prisma.auditPage.findMany({
       where: { auditId: { in: auditIds } },
       select: { auditId: true, url: true, status: true },
@@ -181,26 +157,7 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
         page: { select: { url: true, updatedAt: true } },
       },
     }),
-    prisma.flag.findMany({
-      where: unboundSiteFindingWhere(projectIds),
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: {
-        id: true,
-        status: true,
-        resolvedInId: true,
-        audit: { select: { projectId: true } },
-        auditId: true,
-        fingerprint: true,
-        severity: true,
-        confidence: true,
-        pageUrl: true,
-        checkId: true,
-        rubric: true,
-        impactTag: true,
-        affectedPaths: true,
-        attentionPolicy: true,
-      },
-    }),
+    loadCurrentFindingSources(projectIds, improvements),
     loadCategoryEvidence(latestAudits.flatMap(audit => categoryEvidenceBaselines(audit.projectId, audit,
       audit.projectId ? completedByProject.get(audit.projectId) : null))),
     loadOutcomeBindingRevisions(outcomes),
@@ -208,38 +165,26 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
 
   const pagesByAudit = groupBy(auditPages, (page) => page.auditId)
   const shotsByAudit = groupBy(screenshots, (shot) => shot.auditId)
-  const unboundByProject = groupBy(unboundFlags, flag => flag.audit.projectId ?? '')
   const improvementsByProject = groupBy(improvements, (improvement) => improvement.projectId)
-  const recoveryGroups = [
-    ...improvements.map(improvement => ({ projectId: improvement.projectId, flags: improvement.occurrences.map(occurrence => occurrence.flag) })),
-    ...[...unboundByProject].map(([projectId, flags]) => ({ projectId, flags })),
-  ]
-  // Historical membership establishes scope. Private comparison inputs are
-  // needed only for recorded recoveries and the selected current findings.
-  const fixedIds = [...new Set(recoveryGroups.flatMap(group => group.flags.flatMap(flag =>
-    flag.status === 'FIXED' && flag.resolvedInId ? [flag.id] : [])))]
-  const recoveryEvidence = fixedIds.length ? await prisma.flag.findMany({ where: { id: { in: fixedIds }, audit: { projectId: { in: projectIds } } },
-    select: { id: true, verificationRule: true, supportingObservations: true, evidenceTargets: true } }) : []
-  const recoveryById = new Map(recoveryEvidence.map(flag => [flag.id, flag]))
-  const recoveryIds = await loadIncidentRecoveryProofs(recoveryGroups.map(group => ({ ...group,
-    flags: group.flags.map(flag => ({ ...flag, ...recoveryById.get(flag.id) })),
-  })))
   const activeByImprovement = new Map(improvements.map(improvement => [improvement,
-    currentImprovementFlags(improvement.occurrences.map(occurrence => occurrence.flag), recoveryIds.get(improvement.projectId) ?? new Set<string>(),
-      improvement.status, improvement.attempts ?? [], improvement.projectId),
+    (sources.byImprovement.get(improvement.id) ?? []).map(occurrence => occurrence.flag),
   ]))
-  const currentUnboundByProject = new Map([...unboundByProject].map(([projectId, flags]) => {
-    const represented = new Set((improvementsByProject.get(projectId) ?? []).filter(improvement => improvement.occurrences.length)
+  const currentUnboundByProject = new Map([...sources.unbound].map(([projectId, flags]) => {
+    const represented = new Set((improvementsByProject.get(projectId) ?? []).filter(improvement => sources.represented.has(improvement.id))
       .map(improvement => improvement.fingerprint))
-    return [projectId, currentUnboundFindings(flags, recoveryIds.get(projectId) ?? new Set<string>())
-      .filter(flag => !flag.fingerprint || !represented.has(flag.fingerprint))] as const
+    return [projectId, flags.filter(flag => !flag.fingerprint || !represented.has(flag.fingerprint))] as const
   }))
-  const selectedIds = [...new Set([...activeByImprovement.values()].flatMap(flags => flags[0] ? [flags[0].id] : [])
+  const selectedIds = [...new Set([...activeByImprovement.values()].flatMap(flags => {
+    const latest = newestRecordedFlag(flags)
+    return latest ? [latest.id] : []
+  })
     .concat([...currentUnboundByProject.values()].flatMap(flags => flags.map(flag => flag.id))))]
-  const missingIds = selectedIds.filter(id => !recoveryById.has(id))
-  const currentEvidence = missingIds.length ? await prisma.flag.findMany({ where: { id: { in: missingIds }, audit: { projectId: { in: projectIds } } },
-    select: { id: true, supportingObservations: true } }) : []
-  const evidenceById = new Map([...recoveryEvidence, ...currentEvidence].map(flag => [flag.id, flag]))
+  const currentEvidence = []
+  for (let offset = 0; offset < selectedIds.length; offset += 128) currentEvidence.push(...await prisma.flag.findMany({
+    where: { id: { in: selectedIds.slice(offset, offset + 128) }, audit: { projectId: { in: projectIds } } },
+    select: { id: true, supportingObservations: true },
+  }))
+  const evidenceById = new Map(currentEvidence.map(flag => [flag.id, flag]))
   const withCurrentEvidence = <T extends { id: string }>(flag: T) => evidenceById.has(flag.id)
     ? { ...flag, supportingObservations: evidenceById.get(flag.id)!.supportingObservations }
     : { ...flag, supportingEvidenceUnreadable: true }
@@ -267,7 +212,8 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
     let evidenceComplete = true
     const durableFlags = durable.flatMap((improvement) => {
       const active = activeByImprovement.get(improvement)!
-      const occurrence = active[0] ? withCurrentEvidence(active[0]) : null
+      const latestSource = newestRecordedFlag(active)
+      const occurrence = latestSource ? withCurrentEvidence(latestSource) : null
       if (occurrence && hasUnresolvedFlagEvidence(occurrence)) evidenceComplete = false
       if (!occurrence || !isCustomerFlag(occurrence)) return []
       const affectedPageCount = incidentAffectedPaths(active).length

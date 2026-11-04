@@ -6,6 +6,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { readVerificationIntent, completeVerificationIntent } from '@/lib/sites/client-verification-intent'
 
 function copyResponse(prompt: string) {
   return vi.fn(async (_url, options) => ({ ok: true, json: async () => JSON.parse(options!.body as string).action === 'prepare'
@@ -14,10 +15,10 @@ function copyResponse(prompt: string) {
 }
 
 const refresh = vi.fn()
-const resource = vi.hoisted(() => ({ view: null as SiteHomeView | null, update: undefined as ((update: SiteResourceUpdate) => void) | undefined }))
+const resource = vi.hoisted(() => ({ view: null as SiteHomeView | null, update: undefined as ((update: SiteResourceUpdate) => void) | undefined, refresh: vi.fn() }))
 vi.mock('@/hooks/useSiteResource', () => ({ useSiteResource: (_siteId: string, initial: unknown, update?: (update: SiteResourceUpdate) => void) => {
   resource.update = update
-  return { view: resource.view ?? initial, refresh: vi.fn().mockResolvedValue(undefined), disconnected: false }
+  return { view: resource.view ?? initial, refresh: resource.refresh, disconnected: false }
 } }))
 
 vi.mock('next/navigation', () => ({
@@ -25,6 +26,137 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  it('keeps a recorded verification pending when the Site summary still predates it', () => {
+    const initial = siteViewFixture()
+    initial.flags = [siteFlagFixture({ repairGuidance: 'pending', verificationState: 'unverified' })]
+    render(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" verifying />)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifying })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.verifyFix })).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])('follows verification started in another session without losing the open declaration (compact: %s)', compact => {
+    vi.stubGlobal('fetch', vi.fn())
+    const initial = siteViewFixture()
+    initial.flags = [siteFlagFixture({ repairGuidance: 'pending' })]
+    const props = { compact, repairGuidance: 'pending' as const, initial, siteId: 'p_site', flagId: 'flag-1' }
+    const rendered = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    const note = within(screen.getByRole('dialog')).getByRole('textbox')
+    fireEvent.change(note, { target: { value: 'Keep my publication note.' } })
+    resource.view = { ...initial, flags: [{ ...initial.flags[0], verificationState: 'verifying' }] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifying })).toBeDisabled()
+    expect(note).toHaveValue('Keep my publication note.')
+    resource.view = { ...initial, flags: [{ ...initial.flags[0], verificationState: 'still_open' }] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+    expect(note).toHaveValue('Keep my publication note.')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('retires a confirmed declaration before a slow follow-up read even if the Flag closes', async () => {
+    let finishRefresh!: () => void
+    resource.refresh.mockImplementationOnce(() => new Promise<void>(resolve => { finishRefresh = resolve }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ ok: true, accepted: true,
+      siteId: 'p_site', flagId: 'flag-1', verificationAuditId: 'verification', runId: 'run', runRequestId: 'run',
+      attemptId: 'attempt', parentAuditId: 'original', expectedBehavior: null })))
+    const props = { repairGuidance: 'pending' as const, initial: siteViewFixture(), siteId: 'p_site', flagId: 'flag-1' }
+    const first = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'Published the first repair.' } })
+    await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+    expect(screen.getByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+    expect(resource.refresh).toHaveBeenCalledOnce()
+    first.unmount()
+    render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('')
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).not.toHaveAttribute('readonly')
+    await act(async () => { finishRefresh() })
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('restores the submitted declaration after the Flag closes and retries it without changing the request', async () => {
+    let finish!: (response: Response) => void
+    const accepted = { ok: true, accepted: true, siteId: 'p_site', flagId: 'flag-1',
+      verificationAuditId: 'verification', runId: 'run', runRequestId: 'run', attemptId: 'attempt',
+      parentAuditId: 'original', expectedBehavior: 'The recorded control has a name.' }
+    const fetcher = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+      .mockResolvedValueOnce(Response.json(accepted))
+    vi.stubGlobal('fetch', fetcher)
+    const props = { repairGuidance: 'pending' as const, initial: siteViewFixture(), siteId: 'p_site', flagId: 'flag-1' }
+    const first = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'Published the original contact repair.' } })
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    first.unmount()
+    expect(fetcher.mock.calls[0][1].signal.aborted).toBe(true)
+    await act(async () => { finish(Response.json(accepted)) })
+    const reopened = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    const note = within(screen.getByRole('dialog')).getByRole('textbox')
+    expect(note).toHaveValue('Published the original contact repair.')
+    expect(note).toHaveAttribute('readonly')
+    await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+    expect(fetcher.mock.calls[1][1].body).toBe(fetcher.mock.calls[0][1].body)
+    expect(fetcher.mock.calls[1][1].headers['Idempotency-Key']).toBe(fetcher.mock.calls[0][1].headers['Idempotency-Key'])
+    expect(screen.getByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+    reopened.unmount()
+    render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('')
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).not.toHaveAttribute('readonly')
+  })
+
+  it.each(['site', 'flag', 'reference', 'source'] as const)('retires the verification draft when the selected %s changes', change => {
+    const props = { repairGuidance: 'pending' as const, initial: siteViewFixture(), siteId: 'p_site', flagId: 'flag-1',
+      referenceFlagId: 'incident-1', sourceAuditId: 'original-audit' }
+    const rendered = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'A note for the first repair.' } })
+    const next = { ...props, ...(change === 'site' ? { siteId: 'other-site' } : change === 'flag' ? { flagId: 'other-flag' }
+      : change === 'reference' ? { referenceFlagId: 'displayed-capture' } : { sourceAuditId: 'later-audit' }) }
+    rendered.rerender(<SiteFlagActions {...next} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('')
+  })
+
+  it.each(['flag', 'owner'] as const)('retires a command after a %s change without letting its late receipt refresh the new selection or consume the original retry key', async change => {
+    let finish!: (response: Response) => void
+    const fetch = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+      .mockResolvedValueOnce(Response.json({ ok: true, accepted: true, siteId: 'p_site', flagId: 'flag-1',
+        verificationAuditId: 'verification', runId: 'run', runRequestId: 'run', attemptId: 'attempt',
+        parentAuditId: 'original', expectedBehavior: 'The recorded control has a name.' }))
+    vi.stubGlobal('fetch', fetch)
+    const props = { repairGuidance: 'pending' as const, initial: siteViewFixture(), siteId: 'p_site', flagId: 'flag-1' }
+    const rendered = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'Published the original button label.' } })
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    const key = fetch.mock.calls[0][1].headers['Idempotency-Key']
+    rendered.rerender(<SiteFlagActions {...props} {...(change === 'flag' ? { flagId: 'flag-2' }
+      : { initial: { ...props.initial, site: { ...props.initial.site, userId: 'another-owner' } } })} />)
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('')
+    await act(async () => { finish(Response.json({ ok: true, accepted: true, siteId: 'p_site', flagId: 'flag-1',
+      verificationAuditId: 'late-verification', runId: 'late-run', runRequestId: 'late-run', attemptId: 'late-attempt',
+      parentAuditId: 'original', expectedBehavior: null })) })
+    expect(refresh).not.toHaveBeenCalled()
+    expect(screen.queryByText(SITE_BOARD_COPY.verificationStarted)).not.toBeInTheDocument()
+    rendered.rerender(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('Published the original button label.')
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveAttribute('readonly')
+    await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+    expect(fetch.mock.calls[1][1].headers['Idempotency-Key']).toBe(key)
+    expect(fetch.mock.calls[1][1].body).toBe(fetch.mock.calls[0][1].body)
+    expect(screen.getByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
   it('releases an interrupted verification for retry with its note and original request key intact', async () => {
     vi.useFakeTimers()
     const fetchMock = vi.fn().mockImplementationOnce(() => new Promise<Response>(() => {}))
@@ -210,6 +342,11 @@ describe('SiteFlagActions', () => {
   })
 
   afterEach(() => {
+    for (const key of Object.keys(sessionStorage).filter(key => key.startsWith('fixflags:verification:'))) {
+      const saved = JSON.parse(sessionStorage.getItem(key)!)
+      const intent = readVerificationIntent(saved.selection, saved.flagId)
+      if (intent) completeVerificationIntent(saved.selection, intent)
+    }
     vi.unstubAllGlobals()
   })
 
@@ -217,6 +354,7 @@ describe('SiteFlagActions', () => {
     vi.clearAllMocks()
     resource.view = null
     resource.update = undefined
+    resource.refresh.mockReset().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },

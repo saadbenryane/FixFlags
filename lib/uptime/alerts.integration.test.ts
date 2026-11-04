@@ -18,7 +18,7 @@ import { deliverUptimeNotifications } from './alerts'
 const now = new Date('2026-10-12T12:00:00Z')
 const db = () => fixture.db!
 async function receiptFixture(kind = 'DOWN', label = 'alerts') {
-  const user = await db().user.create({ data: { email: label + '@uptime-test.example', role: 'admin', preferredTools: [] } })
+  const user = await db().user.create({ data: { email: label + '@uptime-test.example', emailVerified: true, role: 'admin', preferredTools: [] } })
   const project = await db().project.create({ data: { userId: user.id, name: 'Example', canonicalHost: 'example.com', url: 'https://example.com/', watchInterval: 'WEEKLY', watchNextRunAt: new Date(now.getTime() + 86400_000) } })
   const monitor = await db().uptimeMonitor.create({ data: { projectId: project.id, targetUrl: project.url, nextProbeAt: now } })
   const incident = await db().uptimeIncident.create({ data: { monitorId: monitor.id, version: 1, targetUrl: project.url, startedAt: now, confirmedAt: now,
@@ -36,6 +36,22 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     vi.useRealTimers()
     try { await fixture.db?.user.deleteMany({ where: { email: { endsWith: '@uptime-test.example' } } }) }
     finally { await fixture.db?.$disconnect() }
+  })
+  it('retains the current incident without sending to an unverified recipient and resumes after verification', async () => {
+    const { user, monitor, incident, receipt } = await receiptFixture()
+    await db().user.update({ where: { id: user.id }, data: { emailVerified: false } })
+    await deliverUptimeNotifications(now)
+    expect(fixture.send).not.toHaveBeenCalled()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } }))
+      .toMatchObject({ status: 'PENDING', attempts: 0, deliveryPayload: null })
+    expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({ enabled: true, version: 1 })
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } }))
+      .toMatchObject({ confirmedAt: now, recoveredAt: null })
+    await db().user.update({ where: { id: user.id }, data: { emailVerified: true } })
+    await deliverUptimeNotifications(now)
+    expect(fixture.send).toHaveBeenCalledOnce()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } }))
+      .toMatchObject({ status: 'SENT', attempts: 1, providerId: 'provider-receipt' })
   })
   it.each([false, true])('does not replay an uncertain delivery after provider deduplication expires (legacy: %s)', async legacy => {
     const { receipt } = await receiptFixture()
@@ -94,7 +110,7 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     expect(fixture.send.mock.calls[0][1]).toEqual(expect.objectContaining({ idempotencyKey: `uptime-${receipt.id}`, signal: expect.any(AbortSignal) }))
     expect((await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).status).toBe('SENT')
   })
-  it.each(['preferences', 'recipient'] as const)('rejects a %s change at frozen-body admission', async change => {
+  it.each(['preferences', 'recipient', 'verification'] as const)('rejects a %s change at frozen-body admission', async change => {
     const { user, project, receipt } = await receiptFixture()
     const update = db().uptimeNotification.updateMany.bind(db().uptimeNotification)
     let changed = false
@@ -102,6 +118,7 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
       if (!changed && input.data.deliveryPayload) {
         changed = true
         if (change === 'preferences') await db().project.update({ where: { id: project.id }, data: { notificationLevel: 'OFF' } })
+        else if (change === 'verification') await db().user.update({ where: { id: user.id }, data: { emailVerified: false } })
         else await db().user.update({ where: { id: user.id }, data: { email: 'changed@uptime-test.example' } })
       }
       return update(input)
@@ -111,6 +128,16 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     expect(fixture.send).not.toHaveBeenCalled()
     expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
       status: 'PENDING', attempts: 0, deliveryPayload: null, leaseUntil: null, providerId: null })
+  })
+  it('selects verified recipients before limiting a delivery batch', async () => {
+    const older = await receiptFixture('DOWN', 'unverified'), later = await receiptFixture('DOWN', 'verified')
+    await db().user.update({ where: { id: older.user.id }, data: { emailVerified: false } })
+    await db().uptimeNotification.update({ where: { id: older.receipt.id }, data: { nextAttemptAt: new Date(now.getTime() - 1000) } })
+    await deliverUptimeNotifications(now, 1)
+    expect(fixture.send).toHaveBeenCalledOnce()
+    expect(fixture.send.mock.calls[0][0].to).toBe(later.user.email)
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: older.receipt.id } }))
+      .toMatchObject({ status: 'PENDING', attempts: 0, deliveryPayload: null })
   })
   it('does not start a provider request after a delayed claim consumes its request window', async () => {
     const { receipt } = await receiptFixture()

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repairFlag, repairObservations } from '@/lib/sites/__tests__/fixtures/repair-brief'
+import { createHash } from 'node:crypto'
+import { MAX_REPAIR_BRIEF_BYTES } from '@/lib/sites/repair-budgets'
 
 const mocks = vi.hoisted(() => ({ owner: vi.fn(), key: vi.fn(), site: vi.fn(), flag: vi.fn(), evidence: vi.fn() }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.owner }))
@@ -23,6 +25,37 @@ beforeEach(() => {
   mocks.flag.mockResolvedValue(repairFlag())
 })
 describe('private agent repair context URL', () => {
+  it('serves complete oversized evidence through private revision-bound document continuations', async () => {
+    const flag = repairFlag({ evidence: 'Observed 🧭 checkout failure\n'.repeat(20_000) })
+    mocks.flag.mockResolvedValue(flag)
+    const first = await (await read({ Authorization: 'Bearer test-key' })).json()
+    expect(first.schemaVersion).toBe('fixflags.repair-brief-fragment.v1')
+    let current = first
+    const pieces = []
+    for (;;) {
+      expect(Buffer.byteLength(JSON.stringify(current))).toBeLessThanOrEqual(MAX_REPAIR_BRIEF_BYTES)
+      pieces.push(current.document.text)
+      if (!current.document.nextOffset) break
+      const response = await read({ Authorization: 'Bearer test-key' }, new URL(current.links.next).search)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+      current = await response.json()
+    }
+    const json = pieces.join('')
+    expect(createHash('sha256').update(json).digest('hex')).toBe(first.document.sha256)
+    expect(JSON.parse(json)).toMatchObject({ flag: { evidence: flag.evidence } })
+    const nextQuery = new URL(first.links.next).search
+    expect((await read({}, '?documentOffset=100')).status).toBe(400)
+    mocks.flag.mockResolvedValue({ ...flag, status: 'READY_TO_VERIFY' })
+    const changed = await read({}, nextQuery)
+    expect(changed.status).toBe(409)
+    expect(await changed.json()).toMatchObject({ code: 'REPAIR_DOCUMENT_CHANGED', action: 'read_document_from_start' })
+    mocks.flag.mockResolvedValue(flag)
+    mocks.key.mockResolvedValue(null)
+    const calls = mocks.flag.mock.calls.length
+    expect((await read({ Authorization: 'Bearer revoked' }, nextQuery)).status).toBe(401)
+    expect(mocks.flag).toHaveBeenCalledTimes(calls)
+  })
   it('keeps optional evidence and image bytes behind the same credential and revision boundary', async () => {
     const brief = await (await read()).json()
     const evidence = { sourceAuditId: 'scan', sourceFlagId: 'original', performanceMeasurements: [], capture: { state: 'not_recorded' } }

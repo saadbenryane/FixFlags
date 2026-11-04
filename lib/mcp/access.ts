@@ -1,6 +1,6 @@
 import type { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { canAccessAudit } from '@/lib/audit/access'
+import { resolveAuditAccess } from '@/lib/audit/access'
 
 export async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
@@ -11,9 +11,9 @@ export async function assertMcpAccess(user: User): Promise<User> {
 }
 
 export async function assertAuditAccess(
-  audit: { userId: string | null; isPublic: boolean },
+  audit: { id: string; userId: string | null; isPublic: boolean },
   userId: string,
   message = 'Unauthorized'
 ): Promise<void> {
-  if (!canAccessAudit(audit, { id: userId })) throw new Error(message)
+  if (await resolveAuditAccess(audit, { id: userId }) === 'denied') throw new Error(message)
 }

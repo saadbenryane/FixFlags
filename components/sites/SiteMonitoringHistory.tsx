@@ -1,6 +1,6 @@
 'use client'
 
-import { InteractiveButton } from '@/components/ui/interactive-controls'
+import { SiteFlagTarget } from './SiteFlagTarget'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { ArrowUpRight } from 'lucide-react'
@@ -25,6 +25,7 @@ export type MonitoringTimelineEvent = {
   detail?: string
   evidenceHref?: string
   evidenceLabel?: string
+  onOpenEvidence?: (trigger: HTMLElement) => void
   resultLabel?: string
 }
 
@@ -103,12 +104,16 @@ export function SiteMonitoringHistory({ points, events, emptyMessage, variant = 
     {!compact && events.length > 0 ? <><h2 className={styles.timelineHeading}>{C.checkHistory}</h2><ol className={styles.timeline} aria-label={C.checkHistory}>
       {events.map(event => <li key={event.id} className={styles.event}><i data-state={event.state} aria-hidden="true" /><div>
         <div className={styles.eventHeader}><strong>{event.title}</strong><time dateTime={event.dateTime}>{event.time}</time></div>
-        {event.evidenceHref ? <Link className={styles.count} href={event.evidenceHref as Route}>{event.evidenceLabel}</Link> : null}
+        {event.evidenceHref ? <Link className={styles.count} href={event.evidenceHref as Route} prefetch={event.onOpenEvidence ? false : undefined} onClick={click => {
+          if (!event.onOpenEvidence || click.defaultPrevented || click.button !== 0 || click.metaKey || click.ctrlKey || click.shiftKey || click.altKey) return
+          click.preventDefault()
+          event.onOpenEvidence(click.currentTarget)
+        }}>{event.evidenceLabel}</Link> : null}
         {event.detail ? <p className={styles.count}>{event.detail}</p> : null}
         {event.resultLabel ? <p className={styles.count}>{event.resultLabel}</p> : null}
         {event.flagCount !== undefined && (event.state !== 'unknown' || event.flagCount > 0) ? <span className={styles.count}>{C.flags(event.flagCount)}</span> : null}
         {event.flags?.length ? <ul className={styles.flags}>{event.flags.map(flag => <li key={flag.id}>
-          {flag.onOpen ? <InteractiveButton type="button" onClick={event => flag.onOpen?.(event.currentTarget)}>{flag.title}<ArrowUpRight size={14} aria-hidden /></InteractiveButton> : flag.href ? <Link href={flag.href as Route}>{flag.title}<ArrowUpRight size={14} aria-hidden /></Link> : <span>{flag.title}</span>}
+          <SiteFlagTarget href={flag.href} onOpen={flag.onOpen}>{flag.title}{flag.onOpen || flag.href ? <ArrowUpRight size={14} aria-hidden /> : null}</SiteFlagTarget>
           {flag.copyAction ? <div className={styles.flagActions}>{flag.copyAction}</div> : null}
         </li>)}</ul> : null}
       </div></li>)}

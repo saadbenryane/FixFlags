@@ -14,8 +14,9 @@ function deferred<T>() {
 }
 function controlledContext() {
   const events = new EventEmitter()
+  const nativeClose = vi.fn(async () => { events.emit('close') })
   const context = Object.assign(events, { newPage: vi.fn().mockRejectedValue(new Error('Controlled page setup failure')),
-    close: vi.fn(async () => { events.emit('close') }) })
+    close: nativeClose, nativeClose })
   return context
 }
 function controlledBrowser(newContext: () => Promise<BrowserContext>) {
@@ -44,7 +45,7 @@ describe('physical browser context lifetime', () => {
       await result
     }
     expect(context.newPage).not.toHaveBeenCalled()
-    expect(context.close).toHaveBeenCalledOnce()
+    expect(context.nativeClose).toHaveBeenCalledOnce()
     expect(browser.close).not.toHaveBeenCalled()
     expect(browserCapacity.running).toBe(starting)
   })
@@ -59,7 +60,7 @@ describe('physical browser context lifetime', () => {
   it('does not close the shared browser or release a live context when isolated cleanup fails', async () => {
     vi.useFakeTimers()
     const context = controlledContext(), browser = controlledBrowser(async () => context as unknown as BrowserContext)
-    context.close.mockRejectedValue(new Error('Controlled close failure'))
+    context.nativeClose.mockRejectedValue(new Error('Controlled close failure'))
     const starting = browserCapacity.running
     const result = await createAuditPage(browser as unknown as Browser, target, options()).catch(error => error)
     try {
@@ -101,7 +102,7 @@ describe('physical browser context lifetime', () => {
     vi.spyOn(executions, 'currentExecutionOwnership').mockReturnValue({ auditId: 'fixture', token: 'fixture', generation: 1, signal: controller.signal })
     const context = controlledContext(), browser = controlledBrowser(async () => context as unknown as BrowserContext)
     context.newPage.mockReturnValue(pending.promise)
-    context.close.mockReturnValue(cleanup.promise)
+    context.nativeClose.mockReturnValue(cleanup.promise)
     const configurePage = vi.fn(), navigation = vi.fn(), starting = browserCapacity.running
     const result = createAuditPage(browser as unknown as Browser, target, { profile: DESKTOP_CAPTURE_PROFILE, configurePage }).catch(error => error)
     try {
@@ -113,7 +114,7 @@ describe('physical browser context lifetime', () => {
       await Promise.resolve(); await Promise.resolve()
       expect(configurePage).not.toHaveBeenCalled()
       expect(navigation).not.toHaveBeenCalled()
-      expect(context.close).toHaveBeenCalledOnce()
+      expect(context.nativeClose).toHaveBeenCalledOnce()
     } finally { context.emit('close'); cleanup.resolve() }
     expect(browserCapacity.running).toBe(starting)
   })
@@ -125,7 +126,7 @@ describe('physical browser context lifetime', () => {
     expect(await openAuditContext(browser as unknown as Browser, {}, { deadline: Date.now() + 50 }, async () => 'prepared')).toBe('prepared')
     expect(browserCapacity.running).toBe(starting + 1)
     await vi.advanceTimersByTimeAsync(60)
-    expect(context.close).toHaveBeenCalledOnce()
+    expect(context.nativeClose).toHaveBeenCalledOnce()
     expect(browserCapacity.running).toBe(starting)
   })
 
@@ -139,7 +140,7 @@ describe('physical browser context lifetime', () => {
     expect(browserCapacity.running).toBe(starting)
     pending.resolve(context as unknown as BrowserContext)
     await Promise.resolve(); await Promise.resolve()
-    expect(context.close).toHaveBeenCalledOnce()
+    expect(context.nativeClose).toHaveBeenCalledOnce()
     expect(context.newPage).not.toHaveBeenCalled()
     expect(browserCapacity.running).toBe(starting)
   })
@@ -155,7 +156,7 @@ describe('physical browser context lifetime', () => {
     pending.resolve(context as unknown as BrowserContext)
     expect(await result).toMatchObject({ code: 'AUDIT_TIMEOUT' })
     expect(context.newPage).not.toHaveBeenCalled()
-    expect(context.close).toHaveBeenCalledOnce()
+    expect(context.nativeClose).toHaveBeenCalledOnce()
   })
 
 
@@ -168,14 +169,14 @@ describe('physical browser context lifetime', () => {
     pending.resolve(context as unknown as BrowserContext)
     await vi.advanceTimersByTimeAsync(0)
     expect(context.newPage).not.toHaveBeenCalled()
-    expect(context.close).toHaveBeenCalledOnce()
+    expect(context.nativeClose).toHaveBeenCalledOnce()
 
     const prepared = controlledContext(), healthy = controlledBrowser(async () => prepared as unknown as BrowserContext)
     const starting = browserCapacity.running
     expect(await openAuditContext(healthy as unknown as Browser, {}, {}, async () => 'ready')).toBe('ready')
     try {
       await vi.advanceTimersByTimeAsync(CONTEXT_SETUP_TIMEOUT_MS + 1)
-      expect(prepared.close).not.toHaveBeenCalled()
+      expect(prepared.nativeClose).not.toHaveBeenCalled()
       expect(browserCapacity.running).toBe(starting + 1)
     } finally { await prepared.close() }
     expect(browserCapacity.running).toBe(starting)
@@ -186,13 +187,13 @@ describe('physical browser context lifetime', () => {
     vi.useFakeTimers()
     const context = controlledContext(), browser = controlledBrowser(async () => context as unknown as BrowserContext)
     // Playwright returns early from a second close while the first is still closing.
-    context.close.mockResolvedValue(undefined)
+    context.nativeClose.mockResolvedValue(undefined)
     browser.contexts.mockReturnValue([context as unknown as BrowserContext])
     const starting = browserCapacity.running
     await openAuditContext(browser as unknown as Browser, {}, { deadline: Date.now() + 50 }, async () => 'prepared')
     try {
       await vi.advanceTimersByTimeAsync(60)
-      expect(context.close).toHaveBeenCalledOnce()
+      expect(context.nativeClose).toHaveBeenCalledOnce()
       expect(browserCapacity.running).toBe(starting + 1)
     } finally { context.emit('close') }
     expect(browserCapacity.running).toBe(starting)

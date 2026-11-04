@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { acceptEmailProviderEvent, emailRecipientHash, loadEmailDeliveryHistory, notificationRecipientAllowed, recordEmailAcceptance } from '../delivery-events'
+import { acceptEmailProviderEvent, deferEmailAcceptanceProjection, emailRecipientHash, loadEmailDeliveryHistory, notificationRecipientAllowed, recordEmailAcceptance } from '../delivery-events'
 import { emailDeliveryState } from '../delivery-state'
 import { FROM_EMAIL } from '../from'
-import { maintainEmailDelivery } from '../maintenance'
+import { maintainEmailDelivery, recoverEmailDeliveryHistory } from '../maintenance'
 
 const run = process.env.NOTIFICATION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('provider delivery facts and recovery', () => {
@@ -43,6 +43,46 @@ run('provider delivery facts and recovery', () => {
       attempts: 1, providerId: original.providerId, sentAt: original.acceptedAt, deliveryPayload: payload } })
     await prisma.project.update({ where: { id: project.id }, data: { userId: current.userId } })
     return { original, current, receipt, payload }
+  }
+  async function acceptedSource(input: Awaited<ReturnType<typeof fixture>>, channel: 'summary' | 'watch' | 'uptime' | 'onboarding', invalid = false) {
+    const payload = { ownerId: input.userId, to: input.email, firstAttemptAt: invalid ? 'unreadable' : input.acceptedAt.toISOString() }
+    const data = { id: input.sourceId, status: 'SENT' as const, attempts: 1, providerId: input.providerId,
+      sentAt: input.acceptedAt, nextAttemptAt: input.acceptedAt }
+    if (channel === 'summary') {
+      await prisma.notificationPreference.create({ data: { userId: input.userId, cadence: 'OFF' } })
+      await prisma.notificationDigest.create({ data: { ...data, userId: input.userId, revision: 0, scheduledAt: input.acceptedAt, payload } })
+    } else if (channel === 'onboarding') {
+      await prisma.emailLog.create({ data: { ...data, userId: input.userId, emailType: 'welcome', payload } })
+    } else if (channel === 'watch') {
+      await prisma.audit.create({ data: { id: input.sourceId, userId: input.userId, url: 'https://example.com/', status: 'COMPLETED',
+        watchNotificationStatus: 'SENT', watchNotificationAttempts: 1, watchNotificationProviderId: input.providerId,
+        watchNotifiedAt: input.acceptedAt, watchNotificationNextAttemptAt: input.acceptedAt, watchNotificationPayload: payload } })
+    } else {
+      const project = await prisma.project.create({ data: { userId: input.userId, name: 'Accepted uptime alert',
+        url: 'https://example.com/', canonicalHost: 'example.com' } })
+      const monitor = await prisma.uptimeMonitor.create({ data: { projectId: project.id, targetUrl: project.url } })
+      const incident = await prisma.uptimeIncident.create({ data: { monitorId: monitor.id, version: 1, targetUrl: project.url,
+        startedAt: input.acceptedAt, confirmedAt: input.acceptedAt, reason: 'response_error' } })
+      await prisma.uptimeNotification.create({ data: { ...data, incidentId: incident.id, kind: 'DOWN', deliveryPayload: payload } })
+    }
+    return {
+      async read() {
+        if (channel === 'summary') return prisma.notificationDigest.findUniqueOrThrow({ where: { id: input.sourceId } })
+        if (channel === 'onboarding') return prisma.emailLog.findUniqueOrThrow({ where: { id: input.sourceId } })
+        if (channel === 'uptime') return prisma.uptimeNotification.findUniqueOrThrow({ where: { id: input.sourceId } })
+        const source = await prisma.audit.findUniqueOrThrow({ where: { id: input.sourceId } })
+        return { status: source.watchNotificationStatus, attempts: source.watchNotificationAttempts,
+          providerId: source.watchNotificationProviderId, sentAt: source.watchNotifiedAt,
+          nextAttemptAt: source.watchNotificationNextAttemptAt, deliveryProjectedAt: source.watchDeliveryProjectedAt }
+      },
+      async repairTimestamp() {
+        const fixed = { ...payload, firstAttemptAt: input.acceptedAt.toISOString() }
+        if (channel === 'summary') await prisma.notificationDigest.update({ where: { id: input.sourceId }, data: { payload: fixed } })
+        else if (channel === 'onboarding') await prisma.emailLog.update({ where: { id: input.sourceId }, data: { payload: fixed } })
+        else if (channel === 'uptime') await prisma.uptimeNotification.update({ where: { id: input.sourceId }, data: { deliveryPayload: fixed } })
+        else await prisma.audit.update({ where: { id: input.sourceId }, data: { watchNotificationPayload: fixed } })
+      },
+    }
   }
   it('deduplicates events, keeps facts in order and does not downgrade delivery to delayed', async () => {
     const input = await fixture(); await recordEmailAcceptance(input)
@@ -128,6 +168,80 @@ run('provider delivery facts and recovery', () => {
     await event(input, 'email.delivered', input.acceptedAt)
     await maintainEmailDelivery(new Date(input.acceptedAt.getTime() + 1000))
     expect((await loadEmailDeliveryHistory(input.userId))[0].state).toBe('delivered')
+  })
+  it.each((['summary', 'watch', 'uptime', 'onboarding'] as const).flatMap(channel =>
+    (['invalid timestamp', 'receipt identity conflict'] as const).map(failure => ({ channel, failure }))))(
+    'does not let an older $channel $failure starve unrelated accepted mail', async ({ channel, failure }) => {
+    const older = await fixture(), later = await fixture()
+    later.acceptedAt = new Date(older.acceptedAt.getTime() + 1000)
+    const source = await acceptedSource(older, channel, failure === 'invalid timestamp')
+    await acceptedSource(later, 'summary')
+    if (failure === 'receipt identity conflict') await recordEmailAcceptance({ ...later, providerId: older.providerId })
+    const now = new Date(later.acceptedAt.getTime() + 1000)
+    await recoverEmailDeliveryHistory(now, 1)
+    expect(await prisma.emailDelivery.findUnique({ where: { providerId: later.providerId } })).toBeNull()
+    await recoverEmailDeliveryHistory(now, 1)
+    expect(await prisma.emailDelivery.findUniqueOrThrow({ where: { providerId: later.providerId } }))
+      .toMatchObject({ userId: later.userId, acceptedAt: later.acceptedAt })
+    const deferred = await source.read()
+    expect(deferred).toMatchObject({ status: 'SENT', attempts: 1, providerId: older.providerId,
+      sentAt: older.acceptedAt, deliveryProjectedAt: null })
+    expect(deferred.nextAttemptAt!.getTime()).toBeGreaterThan(now.getTime())
+    if (failure === 'receipt identity conflict') await prisma.emailDelivery.delete({ where: { providerId: older.providerId } })
+    else await source.repairTimestamp()
+    await recoverEmailDeliveryHistory(new Date(deferred.nextAttemptAt!.getTime() - 1), 1)
+    expect(await prisma.emailDelivery.findUnique({ where: { providerId: older.providerId } })).toBeNull()
+    await recoverEmailDeliveryHistory(deferred.nextAttemptAt!, 1)
+    expect(await prisma.emailDelivery.findUniqueOrThrow({ where: { providerId: older.providerId } }))
+      .toMatchObject({ userId: older.userId, acceptedAt: older.acceptedAt, firstAttemptAt: older.acceptedAt })
+    expect(await source.read())
+      .toMatchObject({ status: 'SENT', attempts: 1, deliveryProjectedAt: expect.any(Date) })
+  })
+  it.each(['summary', 'watch', 'uptime', 'onboarding'] as const)('does not defer completed %s history after a stale recovery read', async channel => {
+    const input = await fixture(), source = await acceptedSource(input, channel)
+    const now = new Date(input.acceptedAt.getTime() + 1000)
+    await recoverEmailDeliveryHistory(now, 1)
+    const completed = await source.read()
+    expect(completed.deliveryProjectedAt).toEqual(expect.any(Date))
+    await deferEmailAcceptanceProjection({ ...input, channel }, new Date(now.getTime() + 300_000))
+    expect(await source.read()).toMatchObject({ status: 'SENT', attempts: 1,
+      deliveryProjectedAt: completed.deliveryProjectedAt, nextAttemptAt: completed.nextAttemptAt })
+  })
+  it('continues recovering independent mail when a failed source cannot save its retry clock', async () => {
+    const older = await fixture(), later = await fixture()
+    later.acceptedAt = new Date(older.acceptedAt.getTime() + 1000)
+    await acceptedSource(older, 'summary', true)
+    await acceptedSource(later, 'summary')
+    const update = prisma.notificationDigest.updateMany.bind(prisma.notificationDigest)
+    const unavailable = vi.spyOn(prisma.notificationDigest, 'updateMany').mockImplementation(args => {
+      if (args?.where?.id === older.sourceId) throw new Error('Controlled source retry interruption')
+      return update(args)
+    })
+    try { await recoverEmailDeliveryHistory(new Date(later.acceptedAt.getTime() + 1000), 2) }
+    finally { unavailable.mockRestore() }
+    expect(await prisma.emailDelivery.findUniqueOrThrow({ where: { providerId: later.providerId } }))
+      .toMatchObject({ userId: later.userId, acceptedAt: later.acceptedAt })
+    expect(await prisma.notificationDigest.findUniqueOrThrow({ where: { id: older.sourceId } }))
+      .toMatchObject({ status: 'SENT', attempts: 1, deliveryProjectedAt: null })
+  })
+  it.each([
+    { status: 'SENDING', attempts: 5, leaseMs: 1, expected: 'sending' },
+    { status: 'SENDING', attempts: 5, leaseMs: 0, expected: 'unconfirmed' },
+    { status: 'SENDING', attempts: 5, leaseMs: null, expected: 'unconfirmed' },
+    { status: 'FAILED', attempts: 5, leaseMs: 1000, expected: 'unconfirmed' },
+    { status: 'FAILED', attempts: 4, leaseMs: null, expected: 'sending' },
+  ] as const)('reports $status attempt $attempts with lease $leaseMs as $expected', async ({ status, attempts, leaseMs, expected }) => {
+    const input = await fixture()
+    await prisma.notificationPreference.create({ data: { userId: input.userId, cadence: 'OFF' } })
+    await prisma.notificationDigest.create({ data: { id: input.sourceId, userId: input.userId, revision: 0,
+      scheduledAt: input.acceptedAt, status, attempts, createdAt: input.acceptedAt,
+      leaseUntil: leaseMs === null ? null : new Date(input.acceptedAt.getTime() + leaseMs) } })
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(input.acceptedAt)
+    try {
+      expect(await loadEmailDeliveryHistory(input.userId)).toEqual([
+        { id: input.sourceId, channel: 'summary', state: expected, at: input.acceptedAt.toISOString() },
+      ])
+    } finally { vi.useRealTimers() }
   })
   it('recovers accepted uptime mail for its frozen owner after Site transfer without resending or reassigning it', async () => {
     const { original, current, receipt, payload } = await acceptedUptime()

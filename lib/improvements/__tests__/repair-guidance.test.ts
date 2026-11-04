@@ -39,6 +39,16 @@ describe('repair guidance evidence custody', () => {
     expect(resolveRepairDefinition({ ...flag, evidence: '' })).toMatchObject({ kind: 'evidence-recovery' })
   })
 
+  it.each(['', '   ', null])('does not turn saved change instructions into authority without recorded evidence: %j', evidence => {
+    const flag = { ...finding, problem: 'HTTPS unavailable', evidence }
+    const definition = resolveRepairDefinition(flag)
+    expect(definition).toMatchObject({ kind: 'evidence-recovery', source: 'evidence-recovery' })
+    expect(definition?.guidance).toContain('Do not change the website based on this record')
+    expect(definition?.guidance).not.toContain(finding.fix)
+    expect(repairGuidanceText(flag)).toBe(definition?.guidance)
+    expect(prepareEvidenceRepairGuidance(flag)).toBe(definition?.guidance)
+  })
+
   it('preserves an existing task and provides conditional inspection when the cause is unknown', () => {
     expect(prepareEvidenceRepairGuidance({ ...finding, problem: 'No HTTPS', evidence: 'Observed HTTP' })).toBe(finding.fix)
     const plan = prepareEvidenceRepairGuidance({ checkId: null, problem: 'A control did not respond', evidence: 'No change after activation', fix: '' })

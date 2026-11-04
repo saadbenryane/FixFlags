@@ -37,13 +37,14 @@ async function probeAvailabilityOnce(input: {
   try { response = await safeFetchDocument(input.url, { timeoutMs: 8_000, deadline: Date.now() + 8000, maxBytes: 64_000 }) }
   catch (error) {
     const failure = classifyPublicRequestFailure(error)
-    if (failure.result !== 'FAILED') return { disposition: 'BLOCKED', reason: 'request_failed' }
     const partial = error instanceof PublicResponseBodyError || error instanceof PublicRedirectError ? error.response : null
-    return { disposition: 'FAILED', reason: failure.reason, detail: {
+    const detail = {
       status: partial?.statusCode ?? null, url: input.url,
       finalUrl: error instanceof PublicCertificateError ? error.url : partial?.finalUrl ?? input.url,
       source: 'public-http', collectedAt: new Date().toISOString(),
-    } }
+    }
+    if (failure.result !== 'FAILED') return { disposition: 'BLOCKED', reason: 'request_failed', ...(partial ? { detail } : {}) }
+    return { disposition: 'FAILED', reason: failure.reason, detail }
   }
   const status = response.statusCode
   const issue = availabilityResponseIssue({ body: response.body, headers: response.headers, status })

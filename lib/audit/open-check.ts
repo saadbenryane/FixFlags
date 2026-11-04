@@ -5,6 +5,7 @@ import { parseActiveHtmlDocument } from './html-document'
 import type { EvidenceTarget } from './evidence-targets'
 import { PublicRedirectError } from './redirect-evidence'
 import { hasMissingPageContent } from './soft-404'
+import { PublicResponseBodyError } from './http-evidence'
 import {
   canonicalizeDestination,
   isEligiblePublicDestination,
@@ -90,6 +91,8 @@ export function classifyPublicGet(input: {
   html: string | null
   cfMitigated: string | null
   httpErrorsOnly?: boolean
+  /** Interrupted required content may establish failure, never success. */
+  bodyUnavailable?: boolean
 }): { outcome: OpenCheckOutcome; shouldFlagDead: boolean; evidence: string } {
   const { status, finalUrl, requestedUrl, wwwAuthenticate, html } = input
 
@@ -99,7 +102,7 @@ export function classifyPublicGet(input: {
 
   const authDestination = hasAuthPath(finalUrl)
   if (status === 401 || wwwAuthenticate || authDestination || hasAuthPath(requestedUrl)) {
-    if (status === 401 || status === 403 || (status >= 200 && status < 300 && authDestination && !(html && detectSoft404(html, status)))) {
+    if (status === 401 || status === 403 || (status >= 200 && status < 300 && !input.bodyUnavailable && authDestination && !(html && detectSoft404(html, status)))) {
       return {
         outcome: 'auth_required',
         shouldFlagDead: false,
@@ -148,6 +151,8 @@ export function classifyPublicGet(input: {
         evidence: `GET ${finalUrl} returned 200 but the page reads as not found.`,
       }
     }
+    if (input.bodyUnavailable) return { outcome: 'unknown', shouldFlagDead: false,
+      evidence: `GET ${displayDestination(requestedUrl)} returned HTTP ${status}, but its response body could not be collected.` }
     const redirected = canonicalizeIfPossible(finalUrl) !== canonicalizeIfPossible(requestedUrl)
     return {
       outcome: redirected ? 'redirected' : 'reachable',
@@ -182,7 +187,7 @@ async function fetchOnce(
   url: string,
   timeoutMs: number,
   deadline?: number,
-): Promise<{ response: Response; html: string | null } | { error: 'timeout' | 'network' | 'blocked' } |
+): Promise<{ response: Response; html: string | null; bodyUnavailable?: boolean } | { error: 'timeout' | 'network' | 'blocked' } |
   { error: 'redirect_loop'; status: number; finalUrl: string }> {
   const remaining = Math.min(timeoutMs, (deadline ?? Infinity) - Date.now())
   if (remaining <= 0) return { error: 'timeout' }
@@ -202,6 +207,12 @@ async function fetchOnce(
     const html = contentType.includes('html') || !contentType ? (await response.text()).slice(0, 20_000) : null
     return { response, html }
   } catch (error) {
+    if (error instanceof PublicResponseBodyError) {
+      const document = error.response
+      return { response: { status: document.statusCode, url: document.finalUrl, headers: new Headers(document.headers) } as Response,
+        html: /html/i.test(document.headers['content-type'] ?? '') || !document.headers['content-type'] ? document.body : null,
+        bodyUnavailable: true }
+    }
     if (error instanceof PublicRedirectError && error.reason === 'redirect_loop')
       return { error: 'redirect_loop', status: error.response.statusCode, finalUrl: error.response.finalUrl }
     if (error instanceof AuditUrlError) return { error: 'blocked' }
@@ -254,7 +265,7 @@ function finalizeGet(
     requestedUrl: requested,
     wwwAuthenticate: get.response.headers.get('www-authenticate'),
     html: get.html,
-    cfMitigated: get.response.headers.get('cf-mitigated'), httpErrorsOnly,
+    cfMitigated: get.response.headers.get('cf-mitigated'), httpErrorsOnly, bodyUnavailable: get.bodyUnavailable,
   })
 
   return {
@@ -266,6 +277,23 @@ function finalizeGet(
     evidence: classified.evidence,
     shouldFlagDead: classified.shouldFlagDead,
   }
+}
+
+/** Planning and execution share exact request admission and deduplication. */
+export function planOpenCheckDestinations(urls: readonly string[], options: { origin?: string; ceiling?: number } = {}) {
+  const ceiling = options.ceiling ?? DEFAULT_OPEN_CHECK_CEILING
+  const unique: string[] = []
+  const seen = new Set<string>()
+  for (const url of urls) {
+    if (options.origin && !isEligiblePublicDestination(url, options.origin)) continue
+    const destination = canonicalizeDestination(url, options.origin)
+    const key = destination?.url ?? url
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(key)
+  }
+
+  return { urls: unique.slice(0, ceiling), truncated: unique.length > ceiling }
 }
 
 export async function openCheckDestinations<T extends OpenCheckObservation = OpenCheckResult>(
@@ -280,20 +308,7 @@ export async function openCheckDestinations<T extends OpenCheckObservation = Ope
     openDestination?: (...args: Parameters<typeof openCheckDestination>) => Promise<T>
   } = {}
 ): Promise<{ results: Array<OpenCheckResult | T>; truncated: boolean }> {
-  const ceiling = options.ceiling ?? DEFAULT_OPEN_CHECK_CEILING
-  const unique: string[] = []
-  const seen = new Set<string>()
-  for (const url of urls) {
-    if (options.origin && !isEligiblePublicDestination(url, options.origin)) continue
-    const destination = canonicalizeDestination(url, options.origin)
-    const key = destination?.url ?? url
-    if (seen.has(key)) continue
-    seen.add(key)
-    unique.push(key)
-  }
-
-  const truncated = unique.length > ceiling
-  const batch = unique.slice(0, ceiling)
+  const { urls: batch, truncated } = planOpenCheckDestinations(urls, options)
   const concurrency = Math.max(1, options.concurrency ?? 6)
   const results: Array<OpenCheckResult | T> = []
 

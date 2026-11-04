@@ -6,11 +6,13 @@ import { parseMetadataFromHtml } from '../../metadata'
 import { serializeArtifact } from '../contracts'
 import { siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
 import { recordedPages, recordedPageEvidence } from '../lifecycle'
-import { commitFindings, recordedTaskFindings } from '../results'
+import { checkArtifactSchema, commitFindings, recordedTaskFindings } from '../results'
+import { actionHandlers } from '../actions'
 import type { TaskContext } from '../registry'
 import { evaluatorHandlers } from '../evaluators'
 import { finalizeDeterministicOnly } from '../../finalize'
 import { reconcileImprovementVerification } from '@/lib/improvements/verification'
+import { loadRecordedPageSpeedCoverage } from '../../recorded-performance'
 
 const localDatabase = process.env.PROGRESSIVE_PROJECTION_DB_REQUIRED === 'true' ? describe : describe.skip
 localDatabase('bounded PostgreSQL completion projection', () => {
@@ -18,6 +20,100 @@ localDatabase('bounded PostgreSQL completion projection', () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+  })
+  it('assembles page findings and gaps without transferring retained assertion and flow receipts', async () => {
+    const url = 'https://example.com/', metadata = parseMetadataFromHtml('<h1>Recorded page</h1>', url)
+    const audit = await prisma.audit.create({ data: { url, status: 'CHECKING' } })
+    try {
+      const input = { pageUrl: url, position: 0, primary: true, role: 'primary' }
+      const page = await prisma.auditPage.create({ data: { auditId: audit.id, url, normalizedUrl: url, position: 0, role: 'primary' } })
+      const flag = { checkId: 'axe-control-names', pageUrl: url, rubric: 'EXPERIENCE' as const, severity: 'IMPORTANT' as const,
+        problem: 'Recorded control has no name', evidence: 'Recorded native control observation', fix: 'Name the control',
+        confidence: 1, source: 'DETERMINISTIC' as const }
+      // Schema-valid retained observations model a large native receipt. This
+      // fixture proves summary transfer and custody, not website collection.
+      const receipt = { kind: 'site-module-check' as const, version: 1 as const, module: 'accessibility', pageUrl: url,
+        applicable: true, passed: false, complete: false, assertions: Array.from({ length: 120 }, (_, index) => ({
+          key: 'automated-accessibility', name: 'Recorded control name', passed: false, complete: index === 0,
+          expected: 'Native observation context. '.repeat(65), observed: 'Retained native target detail. '.repeat(60),
+          targets: Array.from({ length: 8 }, (_, target) => ({ selector: '#control-' + index + '-' + target + '-'.repeat(1400), label: 'Recorded control' })),
+        })) }
+      const checked = serializeArtifact('check', checkArtifactSchema.parse({ flags: [flag], receipt }))
+      const flowFlag = { ...flag, checkId: 'flow-cta-click-failed', problem: 'Recorded action could not activate' }
+      const flow = serializeArtifact('flow', { flags: [flowFlag], networkReceipt: { ...receipt, module: 'network',
+        assertions: receipt.assertions.map(assertion => ({ ...assertion, key: 'engagement-observation' })) },
+        result: { status: 'unclickable', steps: [], finalUrl: url, ctaText: 'Continue', ctaHref: null } })
+      actionHandlers.find(handler => handler.kind === 'flow')!.validateResult?.(flow)
+      const browser = serializeArtifact('browser', { pageId: page.id, metadata,
+        snapshot: { desktopUrl: null, mobileUrl: null, desktopBase64: null, mobileBase64: null,
+          desktopHtml: '<h1>Recorded page</h1>', consoleErrors: [], captureStatus: { desktop: 'ok', mobile: 'pending' }, captureFailures: [] } })
+      const tasks = []
+      for (const [kind, result] of [['browser', browser], ['check', checked], ['flow', flow]] as const) tasks.push(await prisma.auditExecutionTask.create({
+        data: { auditId: audit.id, pageUrl: url, targetKey: 'task:p0:' + kind, source: 'EXECUTION',
+          workKind: kind, workState: 'COMPLETED', status: 'COMPLETED', workInput: input, workResult: result },
+      }))
+      await prisma.auditVerificationReceipt.create({ data: { auditId: audit.id, taskId: tasks[1].id,
+        targetKey: 'module:accessibility', scopeKey: 'page:' + url, pageUrl: url, source: 'DETERMINISTIC', status: 'COMPLETED', detail: receipt } })
+      const read = vi.fn(prisma.$queryRaw.bind(prisma))
+      const pages = await recordedPageEvidence(audit.id, url, { $queryRaw: read })
+      expect(pages).toHaveLength(1)
+      expect(pages[0]).toMatchObject({ pageId: page.id, url, metadata: { h1s: ['Recorded page'] }, flowScan: true,
+        flags: [flag, flowFlag], failedModules: ['accessibility'] })
+      const transferred = JSON.stringify(await Promise.all(read.mock.results.map(result => result.value)))
+      console.info('Recorded page findings projection', { transferredBytes: Buffer.byteLength(transferred) })
+      expect(Buffer.byteLength(transferred)).toBeLessThan(40_000)
+      expect(transferred).not.toContain('Retained native target detail.')
+      expect(await prisma.auditExecutionTask.findMany({ where: { auditId: audit.id }, orderBy: { targetKey: 'asc' } }))
+        .toEqual([...tasks].sort((left, right) => left.targetKey.localeCompare(right.targetKey)))
+      expect((await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: audit.id } })).detail).toEqual(receipt)
+      for (const kind of ['check', 'flow', 'journeys', 'cross-page', 'slow-replay']) {
+        const invalid = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: url,
+          targetKey: 'task:invalid:' + kind, source: 'EXECUTION', workKind: kind, workState: 'COMPLETED', status: 'COMPLETED',
+          workInput: input, workResult: { ...checked, kind, data: 'Unreadable retained artifact' } } })
+        try { await expect(recordedPageEvidence(audit.id, url)).rejects.toThrow() }
+        finally { await prisma.auditExecutionTask.delete({ where: { id: invalid.id } }) }
+      }
+    } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
+  })
+  it('projects actual page measurements and retained field data without legacy summaries or raw provider payloads', async () => {
+    const url = 'https://example.com/', peer = url + 'pricing'
+    const spec = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: url, environment: 'production', checks: {}, outcomes: [], verificationTarget: null }
+    const audit = await prisma.audit.create({ data: { url, executionSpec: spec, pages: { create: [url, peer].map((pageUrl, position) => ({
+      url: pageUrl, normalizedUrl: pageUrl, role: position ? 'linked' : 'primary', position,
+    })) } }, include: { pages: true } })
+    const measured = (strategy: 'desktop' | 'mobile') => ({ strategy, score: 90, lcp: 1200, cls: 0.01, fcp: 800, tbt: 30,
+      inp: null, opportunities: [], failedAccessibilityAudits: [], diagnostics: {}, raw: { privateTrace: 'x'.repeat(2_000_000) }, crux: null })
+    const mobile = { ...measured('mobile'), score: null, lcp: null, cls: null, fcp: null, tbt: null, inp: 900 }
+    const field = serializeArtifact('pagespeed', { desktop: null, mobile, mobileError: 'Lab collection unavailable' })
+    try {
+      const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: url, targetKey: 'task:p0:pagespeed-mobile',
+        source: 'EXECUTION', workKind: 'pagespeed', workState: 'BLOCKED', status: 'FAILED',
+        workInput: { pageUrl: url, position: 0, primary: true, role: 'primary' }, workResult: field } })
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: url, targetKey: 'task:p0:pagespeed-desktop',
+        source: 'EXECUTION', workKind: 'pagespeed', workState: 'COMPLETED', status: 'COMPLETED',
+        workInput: { pageUrl: url, position: 0, primary: true, role: 'primary' },
+        workResult: serializeArtifact('pagespeed', { desktop: measured('desktop'), mobile: null }) } })
+      const read = vi.fn(prisma.$queryRaw.bind(prisma))
+      const observed = await loadRecordedPageSpeedCoverage(audit, { $queryRaw: read } as Pick<typeof prisma, '$queryRaw'>)
+      expect(observed).toEqual({ status: 'partial', totalRoutes: 2, observedRoutes: 1,
+        missingRoutes: [{ url, missing: ['mobile'] }, { url: peer, missing: ['desktop', 'mobile'] }] })
+      expect(Buffer.byteLength(JSON.stringify(await read.mock.results[0].value))).toBeLessThan(1500)
+      const pageEvidence = await recordedPageEvidence(audit.id, url)
+      expect(pageEvidence[0]).toMatchObject({ mobile: { score: null, inp: 900 },
+        mobileError: 'Lab collection unavailable', failedModules: ['pagespeed'] })
+      expect(JSON.stringify(pageEvidence)).not.toContain('privateTrace')
+      expect((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).workResult).toEqual(field)
+      await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState: 'COMPLETED', status: 'COMPLETED',
+        workResult: serializeArtifact('pagespeed', { desktop: null, mobile: measured('mobile') }) } })
+      expect(await loadRecordedPageSpeedCoverage(audit)).toMatchObject({ status: 'partial', observedRoutes: 1,
+        missingRoutes: [{ url: peer, missing: ['desktop', 'mobile'] }] })
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: peer, targetKey: 'task:p1:pagespeed',
+        source: 'EXECUTION', workKind: 'pagespeed', workState: 'COMPLETED', status: 'COMPLETED',
+        workInput: { pageUrl: peer, position: 1, primary: false, role: 'linked' },
+        workResult: serializeArtifact('pagespeed', { desktop: measured('desktop'), mobile: measured('mobile') }) } })
+      expect(await loadRecordedPageSpeedCoverage(audit)).toMatchObject({ status: 'complete', observedRoutes: 2, missingRoutes: [] })
+      expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id }, include: { pages: true } })).pages.every(page => page.performanceData === null)).toBe(true)
+    } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
   })
   it('publishes a new responsibility without transferring or rewriting unrelated historical findings', async () => {
     const pageUrl = 'https://example.com/'

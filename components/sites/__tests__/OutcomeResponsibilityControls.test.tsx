@@ -45,6 +45,20 @@ describe('Outcome responsibility controls', () => {
     expect(await screen.findByText('Outcome enabled. Fresh verification started.')).toBeVisible()
   })
 
+  it.each([
+    { id: 'another-outcome', enabled: false },
+    { id: 'outcome-1', enabled: true },
+  ])('does not acknowledge a mismatched pause receipt: %j', async outcome => {
+    const accepted = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond({ outcome, verificationQueued: false, verificationError: null })))
+    render(<OutcomeEnabledControl siteId="site-1" outcomeId="outcome-1" enabled running={false} onAccepted={accepted} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Pause Outcome' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('FixFlags could not confirm this action.')
+    expect(accepted).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Pause Outcome' })).toBeEnabled()
+  })
+
   it('saves only accessible target descriptors while keeping fixture secrets write-only', async () => {
     const saved = {
       id: 'fixture-1', name: 'Signup verification', targetUrl: 'https://example.com/signup',

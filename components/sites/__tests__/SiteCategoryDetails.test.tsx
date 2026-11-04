@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { SiteCategoryDetails } from '../SiteCategoryDetails'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import type { BoardCardView } from '@/lib/sites/board-card'
-import type { SiteCheckResult } from '@/lib/sites/check-results'
+import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { SITE_ACTION_COPY as A } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY as B } from '@/lib/marketing/copy/terminology'
@@ -34,7 +34,7 @@ it('defers optional evidence and its capture until disclosure, then retains load
   expect(screen.getByRole('heading', { name: 'security' })).toBeVisible()
   expect(fetcher).not.toHaveBeenCalled()
   expect(screen.queryByRole('img', { name: 'Recorded security capture', hidden: true })).not.toBeInTheDocument()
-  const summary = screen.getByText(C.checkDetails, { selector: 'summary' })
+  const summary = await screen.findByText(C.checkDetails, { selector: 'summary' })
   const details = summary.closest('details')!
   fireEvent.click(summary)
   expect(await screen.findByText('First security evidence')).toBeVisible()
@@ -55,7 +55,7 @@ it.each(['category', 'site'])('opens a fresh disclosure for a different %s witho
   const fetcher = vi.fn(async () => Response.json({ results: [result('Original evidence')], nextCursor: null }))
   vi.stubGlobal('fetch', fetcher)
   const rendered = render(panel())
-  fireEvent.click(screen.getByText(C.checkDetails, { selector: 'summary' }))
+  fireEvent.click(await screen.findByText(C.checkDetails, { selector: 'summary' }))
   await screen.findByText('Original evidence')
   rendered.rerender(scope === 'category' ? panel(card('search')) : panel(card(), 'another-site'))
   expect(screen.getByText(C.checkDetails, { selector: 'summary' }).closest('details')!.open).toBe(false)
@@ -93,7 +93,7 @@ it('gives stale evidence one visible explanation and one recheck action across d
   expect(screen.getByText(B.checkOutOfDateDetail)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Retry this category' })).toBeVisible()
   expect(fetcher).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByText(C.checkDetails, { selector: 'summary' }))
+  fireEvent.click(await screen.findByText(C.checkDetails, { selector: 'summary' }))
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
   expect(screen.getAllByText(B.checkOutOfDateDetail)).toHaveLength(1)
   expect(screen.getAllByRole('button', { name: 'Retry this category' })).toHaveLength(1)
@@ -116,7 +116,7 @@ it('keeps an incomplete explanation in its existing recovery location', async ()
   render(panel({ ...card(), answer: B.cardCheckIncomplete, incompleteReason: B.cardCheckIncomplete }))
   expect(screen.queryByText(C.noFlags)).not.toBeInTheDocument()
   expect(screen.getByText(new RegExp(B.cardCheckIncomplete))).toBeVisible()
-  fireEvent.click(screen.getByText(C.checkDetails, { selector: 'summary' }))
+  fireEvent.click(await screen.findByText(C.checkDetails, { selector: 'summary' }))
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
   expect(screen.getAllByRole('button', { name: 'Retry this category' })).toHaveLength(1)
 })

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createServer } from 'node:net'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
-vi.mock('node:dns/promises', () => dns)
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 import { redirectAllowedForClient } from '../oauth'
 
 const clientId = 'https://mcp-client.example/client.json', redirectUri = 'https://assistant.example/callback'

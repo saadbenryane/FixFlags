@@ -16,6 +16,11 @@ describe('verification state from admitted work', () => {
     expect(attemptHasActiveVerification({ ...attempt, verificationAudit: { ...attempt.verificationAudit, status: 'COMPLETED',
       verifierExecutions: [{ workKind: 'finalize', workState: 'RETRY_WAIT' }] } }, 'site')).toBe(true)
   })
+  it('keeps a legacy single-Flag handoff from making another Flag on the same source look active', () => {
+    const scoped = { ...attempt, handoffReference: 'flag:original' }
+    expect(attemptHasActiveVerification(scoped, 'site', 'source', 'original')).toBe(true)
+    expect(attemptHasActiveVerification(scoped, 'site', 'source', 'unrelated')).toBe(false)
+  })
   it('recognizes every frozen grouped capture while retaining execution authority and source scope', () => {
     const grouped = { ...attempt, sourceFlagIds: ['representative', 'earlier-capture'] }
     expect(attemptHasActiveVerification(grouped, 'site', 'earlier-audit', 'earlier-capture')).toBe(true)

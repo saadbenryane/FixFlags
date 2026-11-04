@@ -11,7 +11,7 @@ const nullableText = text.nullable(), nullableTime = z.string().datetime({ offse
 export const sitePresentationSchema: z.ZodType<SitePresentation> = z.object({
   identity: z.object({ siteId: text, name: text, host: text,
     preview: z.object({ url: text, pageUrl: text, viewport: text, recordedAt: nullableTime }).nullable() }),
-  result: z.object({ state: z.enum(['checking', 'flags', 'clear', 'could_not_verify', 'stale', 'failed']), label: text }),
+  result: z.object({ state: z.enum(['checking', 'flags', 'clear', 'could_not_verify', 'stale', 'failed']), label: text, source: z.literal('uptime').optional() }),
   monitoring: z.object({ state: z.enum(['not_monitored', 'weekly', 'daily', 'hourly', 'custom', 'paused', 'delayed', 'quota_blocked']), label: text }),
   coverage: z.object({ pagesReached: count, pagesExpected: count, label: text, complete: z.boolean() }),
   freshness: z.object({ checkedAt: nullableTime, stale: z.boolean(), label: text }),

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   $transaction:vi.fn(),$queryRaw:vi.fn(),
-  apiKey: { count: vi.fn(), create: vi.fn(), findMany: vi.fn() },
+  apiKey: { count: vi.fn(), create: vi.fn(), findMany: vi.fn(), updateMany: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
 
@@ -28,7 +28,8 @@ vi.mock('@/lib/security/api-keys', () => ({
   }),
 }))
 
-import { GET, POST } from '@/app/api/api-keys/route'
+import { GET, POST, DELETE } from '@/app/api/api-keys/route'
+import { ACCOUNT_CHANGED_CODE, ACCOUNT_OWNER_HEADER } from '@/lib/api/account-response'
 
 const postReq = {
   json: async () => ({ name: 'Test key' }),
@@ -42,6 +43,7 @@ describe('POST /api/api-keys', () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.apiKey.count.mockResolvedValue(0)
     prismaMock.apiKey.findMany.mockResolvedValue([])
+    prismaMock.apiKey.updateMany.mockResolvedValue({ count: 1 })
     prismaMock.apiKey.create.mockResolvedValue({
       id: 'key-1',
       name: 'Test key',
@@ -57,6 +59,39 @@ describe('POST /api/api-keys', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  const handlers = { GET, POST, DELETE }
+  function scopedRequest(method: 'GET' | 'POST' | 'DELETE', owner = 'user-1') {
+    return new Request('http://localhost/api/api-keys?id=key-1', { method,
+      headers: { [ACCOUNT_OWNER_HEADER]: owner, 'Content-Type': 'application/json' },
+      ...(method === 'POST' ? { body: JSON.stringify({ name: 'Fixture' }) } : {}),
+    }) as NextRequest
+  }
+  it.each(['GET', 'POST', 'DELETE'] as const)('refuses a stale account before %s reads or mutations', async method => {
+    const response = await handlers[method](scopedRequest(method, 'previous-account'))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: ACCOUNT_CHANGED_CODE })
+    expect(prismaMock.apiKey.findMany).not.toHaveBeenCalled()
+    expect(prismaMock.$transaction).not.toHaveBeenCalled()
+    expect(prismaMock.apiKey.updateMany).not.toHaveBeenCalled()
+  })
+  it.each(['GET', 'POST', 'DELETE'] as const)('does not authenticate %s through an account header', async method => {
+    getSession.mockResolvedValue(null)
+    const response = await handlers[method](scopedRequest(method))
+    expect(response.status).toBe(401)
+    expect(prismaMock.apiKey.findMany).not.toHaveBeenCalled()
+    expect(prismaMock.$transaction).not.toHaveBeenCalled()
+    expect(prismaMock.apiKey.updateMany).not.toHaveBeenCalled()
+  })
+  it.each(['GET', 'POST', 'DELETE'] as const)('identifies private %s responses with the authenticated account', async method => {
+    const response = await handlers[method](scopedRequest(method))
+    expect(response.status).toBe(method === 'POST' ? 201 : 200)
+    expect(response.headers.get(ACCOUNT_OWNER_HEADER)).toBe('user-1')
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+    if (method === 'DELETE') expect(prismaMock.apiKey.updateMany).toHaveBeenCalledWith({
+      where: { id: 'key-1', userId: 'user-1' }, data: { revokedAt: expect.any(Date) },
+    })
   })
 
   it('returns 401 when there is no session', async () => {

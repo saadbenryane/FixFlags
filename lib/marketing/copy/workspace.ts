@@ -27,16 +27,21 @@ export const OUTCOME_DETAIL_COPY = {
 } as const
 
 export const SITE_WORKSPACE_COPY = {
+  unavailableTitle: 'This page is unavailable',
+  unavailableBody: 'The link may be out of date, or you may not have access to this page.',
+  navigation: { home: 'Overview', pages: 'Pages', timeline: 'Timeline', integrations: 'Integrations', settings: 'Settings' },
   websites: 'Websites',
   attempts: (count: number) => `${count} ${count === 1 ? 'attempt' : 'attempts'}`,
   remaining: (count: number) => `${count} ${count === 1 ? 'task' : 'tasks'} remaining`,
   milestones: { done: 'Recorded', current: 'In progress', pending: 'Queued', partial: 'Incomplete' },
   disconnected: 'Updates disconnected', queued: 'Queued', analyzing: 'Analyzing',
+  retryUpdates: 'Retry updates',
   findings: 'Findings',
   siteMenu: 'Website navigation', accountMenu: 'Account navigation',
   preview: 'Website preview', desktop: 'Desktop', mobile: 'Mobile',
   noCapture: 'No screenshot recorded', capturePending: 'Preparing screenshot', captureUnavailable: 'Screenshot unavailable',
   latestCaptureUnavailable: 'Latest screenshot unavailable',
+  retryCapture: 'Try again',
   latestCapture: 'Latest capture', previousCapture: 'Previous capture', timeUnknown: 'Capture time unavailable',
   openCapture: (host: string) => `Open captured page for ${host}`,
   analysisCadence: 'Website analysis', monitoringOff: 'Not scheduled',

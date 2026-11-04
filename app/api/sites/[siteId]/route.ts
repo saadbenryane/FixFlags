@@ -3,23 +3,36 @@ import { loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
+import { readSiteEvidence } from '@/lib/sites/application/site-evidence-read'
 
 export async function GET(
   request: Request,
   context: { params: Promise<{ siteId: string }> }
 ) {
+  let response: Response
   try {
-    const { siteId } = await context.params
-    const access = await requireSiteAccess(siteId)
-    if (!access.ok) return apiError(access.message, access.status)
-
-    const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated, site: access.decision.site,
-      readScope: new URL(request.url).searchParams.get('scope') === 'settings' && access.decision.role === 'owner' ? 'settings' : 'overview' })
-    if (!home) return apiError('Site not found', 404)
-    return NextResponse.json(home, { headers: { 'Cache-Control': 'private, no-store' } })
+    response = await readSite(request, context)
   } catch (error) {
-    return handleRouteError(error)
+    response = handleRouteError(error)
   }
+  response.headers.set('Cache-Control', 'private, no-store')
+  return response
+}
+
+async function readSite(request: Request, context: { params: Promise<{ siteId: string }> }) {
+  const { siteId } = await context.params
+  const access = await requireSiteAccess(siteId)
+  if (!access.ok) return apiError(access.message, access.status)
+  const scope = new URL(request.url).searchParams.get('scope')
+  if (scope === 'identity') {
+    // Echo the authorized request alias, which can survive a provisional claim.
+    const identity = await readSiteEvidence(access.decision.site, async () => ({ siteId,
+      hostname: new URL(access.decision.site.url).hostname.replace(/^www\./, '') }))
+    return NextResponse.json(identity)
+  }
+  const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated, site: access.decision.site,
+    readScope: scope === 'settings' && access.decision.role === 'owner' ? 'settings' : 'overview' })
+  return home ? NextResponse.json(home) : apiError('Site not found', 404)
 }
 
 export async function DELETE(

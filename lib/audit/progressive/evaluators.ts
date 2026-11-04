@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { readDiagnosticSources } from '@/lib/sites/domain/verification-source'
 import { runAllChecks } from '../checks'
 import { isUnresolvedPublicRedirect } from '../redirect-evidence'
 import { runPerformanceChecks, runInpChecks } from '../checks/performance'
@@ -7,8 +9,8 @@ import { runMobileChecks } from '../checks/mobile'
 import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION, SECURITY_HEADER_WITHHELD_LIMITATION } from '../checks/security-headers'
 import { recordCheckObservations, recordInpObservation } from '../checks/observations'
 import { runConsoleChecks, consoleObservations } from '../checks/console'
-import { readScreenshotSnapshot, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
-import { serializeArtifact, readArtifact, TaskFailure, taskIsSettled } from './contracts'
+import { readScreenshotSnapshot, captureArtifactSchema, httpArtifactSchema, hasSettledPageSpeedEvidence, readSettledPageSpeedEvidence, resourceArtifactSchema } from './snapshots'
+import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import { checkArtifactSchema, commitFindings, commitCheckReceipt, flagSchema } from './results'
 import type { TaskContext, TaskHandler } from './registry'
 import { runSearchWorkflow, priorSearchReceipt, recordSearchVerifiers, combineSearchReceipts } from '../search/workflow'
@@ -17,31 +19,36 @@ import { searchReceiptSchema } from '../search/contracts'
 import { searchFindings } from '../search/registry'
 import { collectSearchEvidence, missingDocument } from '../search/collect'
 import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY } from '../check-registry'
+import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { runKeyboardChecks } from '../checks/keyboard'
-import { runTrackingChecks } from '../checks/tracking'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
 import { scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
-import { capturedPageLinks, checkPublicLinks, missingPublicLinkEvidence } from '../checks/public-links'
+import { capturedPageLinks, checkPublicLinks, missingPublicLinkEvidence, originalPublicLinkContexts } from '../checks/public-links'
 import { runInteractionChecks, type InteractionEvidence } from '../checks/interaction'
 import { loadingDelayObservation, mobileLoadingDelayFlag } from '../checks/loading-evidence'
 import { applyMotionObservation, motionObservationSchema } from '../checks/motion-evidence'
-import { scopeRenderedPageEvidence } from '../checks/rendered-page-evidence'
 import { assessPageResponse } from '../checks/page-response'
 import { publicResponseRestriction } from '../browser/page-capture'
 import { renderedDocumentForSearch } from '../browser/document-evidence'
 import { capturedHeadMetadata } from '../checks/head-metadata'
+import { capturedSectionLinks, capturedSectionScope } from '../checks/section-links'
+import { capturedPublicPageSignals } from '../browser/public-page-signals'
 import { nativeHttpCollection } from '../native-http-evidence'
 import { readBrowserEvidence } from './browser-evidence'
+import { originalDestinationContexts, destinationContext, DESTINATION_VERIFICATION_RULE } from '../checks/destination-evidence'
+import { actionDestinations, MAX_ACTION_DESTINATIONS } from '../checks/auth-checkout'
+import { recordedMatchingContexts } from '../recorded-targets'
+import { collectResourceTransportEvidence } from '../resource-transport-collection'
 
 function collectedDependencies(context: TaskContext, kind: string) {
   return [...context.dependencies.values()].filter(item => item.workKind === kind &&
-    (item.workState === 'COMPLETED' || kind === 'pagespeed' && taskIsSettled(item.workState) && item.workResult))
+    (item.workState === 'COMPLETED' || hasSettledPageSpeedEvidence(item)))
 }
 function dependency(context: TaskContext, kind: string) {
   return collectedDependencies(context, kind)[0]
@@ -58,10 +65,7 @@ export function captureEvidence(context: TaskContext) {
   return value?.workResult ? captureArtifactSchema.parse(readArtifact(value.workResult, 'captures').data) : null
 }
 export function speedEvidence(context: TaskContext) {
-  const values = collectedDependencies(context, 'pagespeed').filter(item => item.workResult)
-    .map(item => speedArtifactSchema.parse(readArtifact(item.workResult, 'pagespeed').data))
-  return values.length ? { desktop: values.find(value => value.desktop)?.desktop ?? null,
-    mobile: values.find(value => value.mobile)?.mobile ?? null } : null
+  return readSettledPageSpeedEvidence(context.dependencies.values())
 }
 
 export const searchArtifactSchema = z.object({ receipt: searchReceiptSchema, flags: z.array(flagSchema).max(500) }).strict()
@@ -90,6 +94,20 @@ export const evaluatorHandlers: TaskHandler[] = [
       const metadata = definition.input === 'http' ? response?.metadata : browser?.metadata
       const snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       const head = ['metadata', 'og-image', 'slop'].includes(checkModule) ? capturedHeadMetadata(snapshot) : undefined
+      const sectionScope = checkModule === 'seo' ? capturedSectionScope(snapshot) : undefined
+      const publicSignals = ['trust', 'measurement'].includes(checkModule) && !metadata ? capturedPublicPageSignals(snapshot) : undefined
+      const resourceTransport = checkModule === 'security'
+        ? await collectResourceTransportEvidence(context.input.pageUrl, metadata ?? null, response?.document, context.deadline) : undefined
+      const actionRepair = checkModule === 'auth-checkout' && spec?.verificationTarget?.kind === 'DIAGNOSTIC'
+      const actionSources = actionRepair && context.audit.projectId ? await readDiagnosticSources(prisma, spec, context.audit.projectId) : []
+      const actionContexts = actionRepair ? originalDestinationContexts(actionSources, context.input.pageUrl, DESTINATION_VERIFICATION_RULE) : undefined
+      const actionInventory = checkModule === 'auth-checkout' ? capturedPageLinks(snapshot, metadata ?? null, { requireLabels: true }) : undefined
+      const actionUrl = snapshot?.desktopFinalUrl ?? context.input.pageUrl
+      const actionCandidates = actionInventory && !actionRepair ? actionDestinations(actionUrl, actionInventory) : []
+      const retainedActionContexts = actionCandidates.length > MAX_ACTION_DESTINATIONS && context.audit.projectId ? await recordedMatchingContexts({
+        projectId: context.audit.projectId, environment: spec?.environment ?? 'production', excludeAuditId: context.audit.id,
+        verificationRule: DESTINATION_VERIFICATION_RULE,
+      }, new Set(actionCandidates.map(candidate => destinationContext(actionUrl, candidate.url)))) : undefined
       let flags: import('../flag-types').DeterministicFlag[], assertions: import('../checks/assertion').CheckAssertion[] = []
       let applicable = true, complete: boolean | undefined, limitation: string | undefined
       let collectedAt: string | undefined
@@ -104,7 +122,10 @@ export const evaluatorHandlers: TaskHandler[] = [
           const missing = missingPublicLinkEvidence()
           flags = missing.flags; assertions = missing.assertions; complete = missing.complete; limitation = missing.limitation
         } else {
-          const checked = await checkPublicLinks(pageUrl, inventory, context.deadline, nativeHttp.options.openDestination)
+          const sources = context.audit.projectId ? await readDiagnosticSources(prisma, spec, context.audit.projectId) : []
+          const contexts = originalPublicLinkContexts(sources, pageUrl)
+          const checked = await checkPublicLinks(pageUrl, inventory, context.deadline, nativeHttp.options.openDestination,
+            contexts.length ? contexts : undefined)
           flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
           collectedAt = nativeHttp.options.collectedAt(); collectedDestinations = true
         }
@@ -167,10 +188,6 @@ export const evaluatorHandlers: TaskHandler[] = [
           complete = assertions[0].complete === true
         }
         limitation = 'This targeted execution evaluates the recorded mobile loading window. Other mobile layout responsibilities remain separate.'
-      } else if (checkModule === 'measurement') {
-        pageUrl = snapshot?.desktopFinalUrl ?? context.input.pageUrl
-        const checked = runTrackingChecks(metadata ?? null, snapshot?.tracking, pageUrl)
-        flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
       } else if (checkModule === 'performance' || checkModule === 'mobile') {
         const inpOnly = checkModule === 'performance' && context.input.device === 'mobile'
         const measurement = checkModule === 'mobile' || inpOnly ? speed?.mobile : speed?.desktop
@@ -220,7 +237,13 @@ export const evaluatorHandlers: TaskHandler[] = [
         const observedUrl = definition.input === 'http' ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
-            deadline: context.deadline, destinations: nativeHttp.options, head, publicDocument: response?.document, renderedCopy: snapshot?.renderedCopy,
+            deadline: context.deadline, destinations: { ...nativeHttp.options, originalContexts: actionContexts?.length ? actionContexts : undefined,
+              retainedContexts: retainedActionContexts }, head, sectionScope,
+            publicTrustSignals: publicSignals?.signals, publicTrustScope: publicSignals?.scope, publicTrustCopy: publicSignals?.copy,
+            sectionLinks: checkModule === 'seo' ? capturedSectionLinks(snapshot, metadata ?? null, sectionScope) : undefined,
+            pageLinks: actionInventory,
+            publicDocument: response?.document, resourceTransport, renderedCopy: snapshot?.renderedCopy,
+            tracking: snapshot?.tracking,
             renderedCopyScope: snapshot?.renderedCopyScope, accessibilityEvidence: snapshot?.accessibilityEvidence, mobileAccessibility: snapshot?.mobileAccessibility, renderedScope: snapshot?.renderedScope,
             ...evidenceScope })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
@@ -231,11 +254,6 @@ export const evaluatorHandlers: TaskHandler[] = [
         complete = checked.executions[0]?.complete
         limitation = checked.executions[0]?.limitation
         collectedAt = checked.executions[0]?.collectedAt
-      }
-      // Other rendered modules already use the shared page evaluator adapter.
-      if (checkModule === 'measurement') {
-        const scoped = scopeRenderedPageEvidence({ module: checkModule, flags, assertions, desktop: snapshot?.renderedScope })
-        flags = scoped.flags; assertions = scoped.assertions
       }
       flags = suppressFlagsForPageRole(flags, context.input.role)
         .map(flag => ({ ...flag, pageUrl }))
@@ -252,7 +270,8 @@ export const evaluatorHandlers: TaskHandler[] = [
       }
       const summary = summarizeCheckAssertions({ passed: flags.length === 0, complete, assertions })
       complete = summary.complete
-      const evidenceCollectedAt = collectedAt ?? source?.collectedAt
+      const evidenceCollectedAt = source ? [source.collectedAt, ...(collectedAt ? [collectedAt] : [])]
+        .sort((left, right) => Date.parse(left) - Date.parse(right))[0] : undefined
       const device = checkModule === 'mobile' || context.input.device === 'mobile' ? 'mobile' : 'desktop'
       return serializeArtifact('check', checkArtifactSchema.parse({ flags, httpEvidence: nativeHttp.snapshot(), receipt: {
         kind: 'site-module-check', version: 1, module: checkModule, passed: summary.passed, applicable, pageUrl, assertions,
@@ -305,7 +324,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         renderedCollectedAt: dependency(context, 'browser')?.workResult ? readArtifact(dependency(context, 'browser')!.workResult, 'browser').collectedAt : undefined,
         renderedComplete: rendered.renderedComplete, headers: snapshot?.responseHeaders ?? undefined,
         finalUrl: snapshot?.desktopFinalUrl, status: snapshot?.desktopHttpStatus, deadline: context.deadline, cache,
-        privateCapture: Boolean(context.audit.scanAccessEncrypted), collectCanonicalTargets: !evaluator || evaluator === 'canonical' }
+        renderedPrivate: Boolean(context.audit.scanAccessEncrypted), collectCanonicalTargets: !evaluator || evaluator === 'canonical' }
       if (!evaluator) {
         const result = await runSearchWorkflow({ ...input,
           evaluate: (evidence, previous) => evaluateSearchIsolated(evidence, previous, context.deadline) })

@@ -1,11 +1,11 @@
 import { startUptimeRuntime } from '@/lib/uptime/runtime'
-import { Worker, UnrecoverableError } from 'bullmq'
+import { UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
 import { enqueuePendingAiReview } from '../audit/enqueue-ai-review'
 import { runRepoScan } from '../repo-scan/runner'
 import { runFixPr } from '../repo-scan/fix-pr-runner'
-import { createWorkerRedis } from './redis'
+import { createOwnedWorker } from './bullmq-ownership'
 import { recordStalledJob, touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
@@ -35,7 +35,7 @@ function workerBrowserDiagnostics() {
 }
 
 export function startWorker() {
-  const worker = new Worker(
+  const worker = createOwnedWorker(
     'audit',
     async (job) => {
       void runBestEffort(
@@ -86,7 +86,6 @@ export function startWorker() {
       }
     },
     {
-      connection: createWorkerRedis(),
       concurrency: WORKER_CONCURRENCY,
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
       // Replaying an active Playwright scan deletes and recaptures evidence,
@@ -220,12 +219,14 @@ export function startWorker() {
   recoverBrowser()
   probeBrowser()
   const closeAuditWorker = worker.close.bind(worker)
-  worker.close = async force => {
+  let workerClosing: Promise<void> | undefined
+  worker.close = force => {
+    if (workerClosing) return workerClosing
     closing = true
     memorySampler.stop()
     probeController.abort(new Error('Worker stopping'))
     clearInterval(heartbeatTimer)
-    await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()])
+    return workerClosing = Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()]).then(() => undefined)
   }
   return Object.assign(worker, { ready: () => Promise.all([
     worker.waitUntilReady(), tasks.ready(), adminOperations.ready(),

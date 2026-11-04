@@ -276,7 +276,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       watchNotificationAttemptCeiling: true,
       watchNotificationLeaseUntil: true,
       watchNotificationPayload: true,
-      user: { select: { email: true, name: true, lifecycleStatus: true } },
+      user: { select: { email: true, emailVerified: true, name: true, lifecycleStatus: true } },
       project: { select: { userId: true, deletedAt: true, watchInterval: true, watchPausedAt: true, notificationLevel: true, notifyOnRecovery: true } },
     },
   })
@@ -306,7 +306,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
   const currentOwner = { userId: child.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' as const } }
   const currentEligibility: Prisma.AuditWhereInput = {
     ...completedSource,
-    user: { lifecycleStatus: 'ACTIVE', email: child.user.email },
+    user: { lifecycleStatus: 'ACTIVE', email: child.user.email, emailVerified: child.user.emailVerified },
     project: { ...currentOwner, watchPausedAt: child.project.watchPausedAt ?? null,
       notificationLevel: child.project.notificationLevel, notifyOnRecovery: child.project.notifyOnRecovery },
   }
@@ -372,6 +372,9 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   const prepared = await prepareWatchNotification(parentAuditId, childAuditId, true)
   if (!prepared) return
   const { child, currentEligibility, projectId, regressCount, recoveryCount, alertRegressions, alertRecoveries } = prepared
+  // Classification and monitoring remain available while address ownership is
+  // unconfirmed. Keep the delivery intent for a later verified recipient read.
+  if (!child.user?.emailVerified) return
 
   // Never overwrite a claim another worker still holds. Writing FAILED here
   // would both lose their delivery and mark the alert failed while it is still
@@ -556,7 +559,7 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
     ) a
     JOIN projects p ON p.id = a."projectId" AND p."userId" = a."userId"
     JOIN users u ON u.id = a."userId"
-    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE'
+    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND u."emailVerified" = true
     ORDER BY a."updatedAt" ASC, a.id ASC
     LIMIT ${limit}
   `)

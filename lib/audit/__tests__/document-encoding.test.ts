@@ -11,6 +11,7 @@ import type { TaskContext } from '../progressive/registry'
 import { checkPublicLinks } from '../checks/public-links'
 import { scopedAssertionForTarget } from '../checks/verification'
 import { checkReceiptSchema } from '../checks/receipt'
+vi.mock('@/lib/db', () => ({ prisma: { auditExecutionTask: { findMany: async () => [{ workKind: 'discovery', workInput: null }] } } }))
 
 const title = 'Café à Montréal, 10€'
 const latinTitle = Buffer.from('Caf\xe9 \xe0 Montr\xe9al, 10\x80', 'latin1')
@@ -90,6 +91,7 @@ describe('declared document encodings through native public HTTP', () => {
 
   it('publishes the same decoded document and metadata from the actual HTTP task handler', async () => {
     const artifact = await collectionHandlers.find(handler => handler.kind === 'http')!.evaluate({
+      audit: { id: 'encoded-document' }, task: { id: 'http-document', targetKey: 'task:p0:http' },
       input: { pageUrl: origin + '/header' }, deadline: Date.now() + 12_000,
     } as TaskContext)
     const stored = httpArtifactSchema.parse(readArtifact(artifact, 'http').data)

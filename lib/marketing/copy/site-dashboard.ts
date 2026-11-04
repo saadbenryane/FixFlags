@@ -52,6 +52,8 @@ export const SITE_DASHBOARD_COPY = {
   flagPrevious: 'Previous recorded observation',
   fullFlag: 'Full details and history',
   flagResolved: 'This Flag is resolved. The observation below is from before the fix.',
+  flagVerificationStillOpen: 'The latest check still found a problem.',
+  flagVerificationInconclusive: 'The latest check couldn’t establish whether this fix worked.',
   previousObservation: 'Previous observation',
   whyItMatters: 'Why it matters',
   fixAll: 'Copy all fix prompts',

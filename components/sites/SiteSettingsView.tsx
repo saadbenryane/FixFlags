@@ -14,7 +14,7 @@ export function SiteSettingsView(props: { siteId: string; view: SiteHomeView }) 
 }
 
 function SiteSettingsContent({ siteId }: { siteId: string }) {
-  const { view, refresh, disconnected } = useSharedSiteResource(siteId)
+  const { view, refresh, disconnected, readUnavailable } = useSharedSiteResource(siteId)
   return (
     <SiteShell
       actions={view.actions}
@@ -24,7 +24,7 @@ function SiteSettingsContent({ siteId }: { siteId: string }) {
       description={S.description}
       presentation={view.presentation}
       watch={view.watch}
-      analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
+      analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} readUnavailable={readUnavailable} onRetry={refresh} />}
     >
       <SiteSettingsControls key={`monitoring:${siteId}`} target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh}>
         {view.site.projectId ? <SiteScanAccessSettings key={`scan-access:${view.site.projectId}`} siteId={siteId} /> : null}

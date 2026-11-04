@@ -1,10 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import { readSiteHomeView } from '../site-view-contract'
-import { siteViewFixture } from './site-view-fixture'
+import { siteFlagFixture, siteViewFixture } from './site-view-fixture'
 import { buildBoardCards } from '../board-card'
 import { categoryExecutionRecovery, executionRecovery } from '../execution-recovery'
 
 describe('authoritative Site refresh contract', () => {
+  it('preserves read ordering without changing recorded evidence freshness', () => {
+    const fixture = siteViewFixture()
+    const view = readSiteHomeView({ ...fixture, readAt: 1_793_000_000_000 }, 'fixture-site')
+    expect(view.readAt).toBe(1_793_000_000_000)
+    expect(view.presentation.freshness).toEqual(fixture.presentation.freshness)
+    expect(view.watch).toEqual(fixture.watch)
+    expect(readSiteHomeView(fixture, 'fixture-site').readAt).toBeUndefined()
+    for (const readAt of [-1, 1.5, '1793000000000', Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => readSiteHomeView({ ...fixture, readAt }, 'fixture-site')).toThrow()
+    }
+  })
+
+  it('preserves repair evidence revisions across every finding collection and validates present revisions', () => {
+    const fixture = siteViewFixture()
+    const finding = siteFlagFixture({ repairEvidenceRevision: 'a'.repeat(64) })
+    fixture.flags = [finding]; fixture.recommendations = [finding]; fixture.resolvedFlags = [finding]
+    const recorded = readSiteHomeView(JSON.parse(JSON.stringify(fixture)), 'fixture-site')
+    for (const collection of [recorded.flags, recorded.recommendations, recorded.resolvedFlags]) {
+      expect(collection[0].repairEvidenceRevision).toBe(finding.repairEvidenceRevision)
+    }
+    expect(() => readSiteHomeView({ ...fixture, flags: [{ ...finding, repairEvidenceRevision: 'invalid' }] }, 'fixture-site')).toThrow()
+    expect(readSiteHomeView({ ...fixture, flags: [siteFlagFixture()] }, 'fixture-site').flags[0]).not.toHaveProperty('repairEvidenceRevision')
+  })
+
   it.each([
     { name: 'no recovery actions', recorded: [] },
     { name: 'one blocked protected form', recorded: [{ kind: 'flow', state: 'BLOCKED', reason: 'PROTECTED_ACTION_REQUIRES_FIXTURE' }] },

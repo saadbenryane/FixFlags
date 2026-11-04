@@ -8,9 +8,16 @@ export function useSiteWorkspaceNavigation(siteId: string, initial: SiteWorkspac
   const { viewMode, selectedCard, selectedFlag } = initial
   const [location, setLocation] = useState(initial)
   const previousView = useRef(location.viewMode)
+  const destination = useRef<{ siteId: string; view: SiteBoardView; id: string } | null>(null)
   useEffect(() => {
     const changed = previousView.current !== location.viewMode
     previousView.current = location.viewMode
+    const requested = destination.current
+    destination.current = null
+    if (requested?.siteId === siteId && requested.view === location.viewMode && !location.selectedFlag && !location.selectedCard) {
+      const target = document.getElementById(requested.id)
+      if (target) { target.focus({ preventScroll: true }); target.scrollIntoView({ behavior: 'instant', block: 'start' }); return }
+    }
     // In-place route changes need the same focus destination as a page load.
     // Detail dialogs own their focus and Back keeps the browser's scroll position.
     if (changed && !location.selectedFlag && !location.selectedCard) {
@@ -18,10 +25,10 @@ export function useSiteWorkspaceNavigation(siteId: string, initial: SiteWorkspac
       const target = main?.querySelector<HTMLElement>('h1') ?? main
       target?.focus({ preventScroll: true })
     }
-  }, [location.viewMode, location.selectedFlag, location.selectedCard])
+  }, [location, siteId])
   useEffect(() => { setLocation({ viewMode, selectedCard, selectedFlag }) }, [siteId, viewMode, selectedCard, selectedFlag])
   useEffect(() => {
-    const restore = () => setLocation(readWorkspaceLocation(new URLSearchParams(window.location.search)))
+    const restore = () => { destination.current = null; setLocation(readWorkspaceLocation(new URLSearchParams(window.location.search))) }
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])
@@ -30,14 +37,15 @@ export function useSiteWorkspaceNavigation(siteId: string, initial: SiteWorkspac
     const href = url.pathname + url.search + url.hash
     if (href !== window.location.pathname + window.location.search + window.location.hash) window.history[method](state, '', href)
   }
-  function openWorkspace(view: SiteBoardView) {
+  function openWorkspace(view: SiteBoardView, targetId?: string) {
     const url = new URL(window.location.href)
     url.searchParams.delete('category'); url.searchParams.delete('flag')
     if (view === 'home') url.searchParams.delete('view')
     else url.searchParams.set('view', view)
-    url.hash = view === 'home' ? '' : view
+    url.hash = targetId || (view === 'home' ? '' : view)
+    destination.current = targetId ? { siteId, view, id: targetId } : null
     publish(url, 'pushState')
-    window.scrollTo(0, 0)
+    if (!targetId) window.scrollTo(0, 0)
   }
   function selectCategory(area: SiteCardArea | null) {
     const url = new URL(window.location.href)

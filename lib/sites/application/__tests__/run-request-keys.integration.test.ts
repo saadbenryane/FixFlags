@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { loadRunRequestByKey, retainSharedRunKey } from '../run-request-keys'
+import { loadOwnedRunRequestByKey, loadRunRequestByKey, retainSharedRunKey } from '../run-request-keys'
+import { requestSiteRun } from '../run-requests'
+import { executionIntentHash } from '../execution-spec'
+import * as runSelection from '../run-selection'
+import type { ExecutionSpec } from '../../domain/execution-spec'
 
 const enabled = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 enabled('durable keys on the existing Site request ledger', () => {
@@ -16,6 +20,7 @@ enabled('durable keys on the existing Site request ledger', () => {
     projectId = (await prisma.project.create({ data: { userId, name: 'Replay keys', url: 'https://example.com/', canonicalHost: 'example.com' } })).id
   })
   afterEach(async () => {
+    vi.restoreAllMocks()
     await prisma.adminOperation.deleteMany({ where: { actorId: { in: [userId, userId + '-other'] } } })
     await prisma.project.deleteMany({ where: { id: projectId } })
     await prisma.user.deleteMany({ where: { id: { in: [userId, userId + '-other'] } } })
@@ -27,6 +32,46 @@ enabled('durable keys on the existing Site request ledger', () => {
   }
   const join = (runRequestId: string, idempotencyKey = 'joined', requestHash = 'same-intent') =>
     retainSharedRunKey({ ...key(idempotencyKey), userId, runRequestId, cleanup: false }, run => run.requestHash === requestHash)
+
+  it.each(['SITE', 'CATEGORY', 'OUTCOMES', 'DIAGNOSTIC', 'FIXTURE_SETUP', 'ACCOUNT_CHECKS'] as const)('recovers an accepted %s receipt without current planning, configuration or another admission', async scope => {
+    const targetUrl = 'https://example.com/'
+    const outcome = scope === 'OUTCOMES' ? await prisma.siteOutcome.create({ data: {
+      projectId, slug: 'recorded-checkout', name: 'Recorded checkout', kind: 'CHECKOUT', environment: 'production', enabled: false,
+    } }) : null
+    const spec: ExecutionSpec = { version: 1, engine: 'progressive-v1', targetUrl, environment: 'production', scope,
+      checks: scope === 'FIXTURE_SETUP' ? {} : { 'title-missing': 1 }, outcomes: outcome ? [{ id: outcome.id, kind: outcome.kind,
+        expectation: null, bindingPolicy: 'ALL_REQUIRED', bindings: [] }] : [],
+      verificationTarget: scope === 'DIAGNOSTIC' ? { kind: 'DIAGNOSTIC', pageUrl: targetUrl, checkId: 'title-missing',
+        attemptId: 'recorded-attempt', parentAuditId: 'recorded-parent' } : null,
+      ...(scope === 'CATEGORY' ? { category: { area: 'search', sourceAuditId: 'recorded-source', pages: [targetUrl] } } : {}),
+      ...(scope === 'FIXTURE_SETUP' ? { fixtureSetup: { id: 'retired-fixture', version: 1 } } : {}),
+      ...(scope === 'ACCOUNT_CHECKS' ? { accountChecks: { revision: 1, mode: 'routine' } } : {}) }
+    const audit = await prisma.audit.create({ data: { projectId, userId, url: targetUrl,
+      executionSpec: spec, status: 'COMPLETED', completedAt: new Date() } })
+    const run = await prisma.runRequest.create({ data: { projectId, source: 'WEB', idempotencyKey: 'accepted', requestedByUserId: userId,
+      auditId: audit.id, executionSpec: spec, requestHash: executionIntentHash(spec), status: 'COMPLETED', completedAt: new Date(),
+      ...(spec.verificationTarget ? { verificationTarget: spec.verificationTarget } : {}),
+      ...(outcome ? { selections: { create: [{ outcomeId: outcome.id }] } } : {}) } })
+    const planning = vi.spyOn(runSelection, 'resolveRunExecution').mockRejectedValue(new Error('Current planning unavailable'))
+    const input = { projectId, userId, source: 'WEB' as const, scope: scope === 'DIAGNOSTIC' ? 'OUTCOMES' as const : scope, outcomeIds: outcome ? [outcome.id] : [],
+      ...(scope === 'CATEGORY' ? { categoryArea: 'search' as const } : {}),
+      ...(scope === 'FIXTURE_SETUP' ? { fixtureId: 'retired-fixture' } : {}), idempotencyKey: 'accepted' }
+    if (spec.verificationTarget) Object.assign(input, { verificationTarget: spec.verificationTarget })
+    expect(await requestSiteRun(input)).toEqual({ runId: run.id, auditId: audit.id, outcomeIds: input.outcomeIds, reused: true })
+    expect(planning).not.toHaveBeenCalled()
+    const different = scope === 'CATEGORY' ? { categoryArea: 'security' as const }
+      : scope === 'FIXTURE_SETUP' ? { fixtureId: 'different-fixture' }
+        : scope === 'OUTCOMES' ? { outcomeIds: ['different-outcome'] }
+          : scope === 'DIAGNOSTIC' ? { verificationTarget: { ...spec.verificationTarget!, attemptId: 'different-attempt' } }
+            : scope === 'ACCOUNT_CHECKS' ? { accountMode: 'retest' as const } : { url: targetUrl + 'different-page' }
+    await expect(requestSiteRun({ ...input, ...different })).rejects.toMatchObject({ status: 409 })
+    expect(planning).not.toHaveBeenCalled()
+    await expect(requestSiteRun({ ...input, idempotencyKey: 'new-request' })).rejects.toThrow('Current planning unavailable')
+    expect(planning).toHaveBeenCalledOnce()
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: run.id } })).toEqual(run)
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.audit.count({ where: { projectId } })).toBe(1)
+  })
 
   it('registers original keys atomically and gives concurrent same-key joins one immutable winner', async () => {
     const original = await recorded(), other = await recorded('other')
@@ -66,6 +111,8 @@ enabled('durable keys on the existing Site request ledger', () => {
     } else if (change === 'removal') await prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } })
     else await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'SUSPENDED' } })
     await expect(join(original.id)).rejects.toMatchObject({ status: change === 'suspension' ? 403 : 404 })
+    await expect(loadOwnedRunRequestByKey({ ...key('original'), userId, cleanup: false }))
+      .rejects.toMatchObject({ status: change === 'suspension' ? 403 : 404 })
     expect(await prisma.runRequestKey.count({ where: { projectId, idempotencyKey: 'joined' } })).toBe(0)
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: original.id } })).toEqual(original)
   })
@@ -109,6 +156,7 @@ enabled('durable keys on the existing Site request ledger', () => {
     await prisma.project.update({ where: { id: projectId }, data: { userId: userId + '-other' } })
     await prisma.user.delete({ where: { id: userId } })
     expect(await loadRunRequestByKey(key('joined'))).toMatchObject({ id: original.id, keyRequestedByUserId: null })
+    await expect(loadOwnedRunRequestByKey({ ...key('joined'), userId: userId + '-other', cleanup: false })).rejects.toMatchObject({ status: 409 })
     expect(await prisma.runRequestKey.count({ where: { projectId, requestedByUserId: null } })).toBe(2)
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ projectId, requestedByUserId: null })
   })
@@ -131,8 +179,10 @@ enabled('durable keys on the existing Site request ledger', () => {
     expect(await retainSharedRunKey({ ...input, operator }, run => run.id === original.id))
       .toMatchObject({ id: original.id, requestedByUserId: userId, keyRequestedByUserId: actorId })
     expect(await loadRunRequestByKey(input)).toMatchObject({ id: original.id, keyRequestedByUserId: actorId })
+    expect(await loadOwnedRunRequestByKey({ ...input, operator })).toMatchObject({ id: original.id, keyRequestedByUserId: actorId })
     await prisma.user.update({ where: { id: actorId }, data: { role: 'user' } })
     await expect(retainSharedRunKey({ ...input, operator }, () => true)).rejects.toMatchObject({ code: 'ADMIN_ACCESS_REVOKED' })
+    await expect(loadOwnedRunRequestByKey({ ...input, operator })).rejects.toMatchObject({ code: 'ADMIN_ACCESS_REVOKED' })
     expect(await prisma.runRequestKey.count({ where: { projectId } })).toBe(2)
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: original.id } })).toEqual(original)
   })

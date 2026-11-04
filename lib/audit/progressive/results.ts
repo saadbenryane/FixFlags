@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { Prisma } from '@prisma/client'
 import { checkReceiptSchema, scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
-import { CHECK_MODULES } from '../check-registry'
+import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { recordAssertionVerifiers } from '../checks/verification'
 import { searchAttentionSchema } from '../search/contracts'
 import { persistDeterministicFlags } from '../persist'
@@ -10,7 +10,7 @@ import type { TaskContext } from './registry'
 import type { TaskArtifact } from './contracts'
 import { observationsForFlag, supportingObservationsSchema } from '../flag-observations'
 import { nativeHttpEvidenceSchema } from '../native-http-evidence'
-import { OBSERVATION_TARGETS } from './observation-progress'
+import { recordedFindingArtifactsSql } from './recorded-findings'
 import { relatedProjectionChecks } from '../suppression'
 
 export const flagSchema = z.object({
@@ -75,20 +75,7 @@ export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.Tran
   ) selected ON selected.findings IS NOT NULL` : Prisma.empty
   const rows = await db.$queryRaw<Array<{ findings: unknown; taskId?: string; collectedAt?: string }>>(Prisma.sql`
     SELECT ${checkIds ? Prisma.sql`selected.findings` : Prisma.sql`observed.findings`} AS findings, observed."taskId", observed."collectedAt"
-    FROM (
-    SELECT "workResult"->'data'->'flags' AS findings, "id" AS "taskId",
-      COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt", "createdAt", "id" FROM "audit_execution_tasks"
-    WHERE "auditId" = ${auditId} AND "workState" = 'COMPLETED'
-      AND "workKind" IN ('check', 'search', 'google', 'flow', 'overlays', 'journeys', 'slow-replay', 'cross-page', 'discovery', 'automatic-accounts')
-      AND "workResult"->'data'->'flags' <> '[]'::jsonb
-      AND ("workInput"->'verificationContexts') IS NULL
-      AND ("workResult"->'data'->'observationProgress') IS NULL
-    UNION ALL
-    SELECT detail->'data'->'flags' AS findings, "taskId",
-      COALESCE(detail->'data'->'receipt'->'execution'->>'collectedAt', detail->>'collectedAt') AS "collectedAt", "createdAt", "id"
-      FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" IN (${Prisma.join(OBSERVATION_TARGETS)})
-        AND status = 'COMPLETED' AND detail->'data'->'flags' <> '[]'::jsonb
-    ) observed ${selection} ORDER BY observed."createdAt", observed."id"`)
+    FROM (${recordedFindingArtifactsSql(auditId)}) observed ${selection} ORDER BY observed."createdAt", observed."id"`)
   return rows.flatMap(row => row.findings == null ? [] : z.array(flagSchema).max(500).parse(row.findings).map(flag => ({
     ...flag, supportingObservations: observationsForFlag(flag, row.taskId ? { auditId, taskId: row.taskId,
       checkVersion: spec?.checks[flag.checkId.split('::page:')[0]] ?? null, collectedAt: row.collectedAt } : undefined),

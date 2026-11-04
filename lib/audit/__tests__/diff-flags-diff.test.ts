@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, expect } from 'vitest'
 import type { FlagStatus, Severity } from '@prisma/client'
 
-const { prismaMock } = vi.hoisted(() => ({
+const { prismaMock, recoveryProofs } = vi.hoisted(() => ({
+  recoveryProofs: vi.fn(),
   prismaMock: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
+    $queryRaw: vi.fn().mockResolvedValue([]),
     flag: {
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
@@ -19,6 +21,13 @@ const { prismaMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+vi.mock('@/lib/sites/application/incident-proofs', async original => ({ ...await original<typeof import('@/lib/sites/application/incident-proofs')>(),
+  loadIncidentRecoveryProofs: recoveryProofs,
+}))
+beforeEach(() => {
+  recoveryProofs.mockResolvedValue(new Map())
+  prismaMock.$queryRaw.mockResolvedValue([])
+})
 
 const { mutateProjectIntelligence, appendVerifiedLearning, productIntelligenceFromContract, notifyWatchRegression } =
   vi.hoisted(() => ({
@@ -66,6 +75,7 @@ type FlagRow = {
   rubric: string
   severity: Severity
   status: FlagStatus
+  resolvedInId?: string | null
   pageUrl?: string | null
   affectedPaths?: unknown
   fingerprint?: string
@@ -80,6 +90,7 @@ function flag(overrides: Partial<FlagRow>): FlagRow {
     rubric: 'EXPERIENCE',
     severity: 'IMPORTANT',
     status: 'OPEN',
+    resolvedInId: null,
     pageUrl: null,
     affectedPaths: null,
     ...overrides,
@@ -233,12 +244,18 @@ describe('durable diagnostic continuity', () => {
     expect(prismaMock.flag.update).not.toHaveBeenCalled()
   })
   it('marks recurrence while preserving the original completed recovery', async () => {
+    recoveryProofs.mockResolvedValue(new Map([['project-1', Object.assign(new Map([
+      ['recovery', new Date('2026-10-11T12:00:00Z')], ['independent-repair', new Date('2026-10-11T12:00:00Z')],
+    ]), { hasFlag: (flag: { id: string }) => flag.id === 'original' })]]))
     prismaMock.flag.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([previous({ id: 'current' })])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: { ...previous({ status: 'FIXED' }), resolvedInId: 'recovery' } }], attempts: [] }])
     await diffFlagsAgainstParent('current-audit', 'gap')
     expect(prismaMock.flag.update.mock.calls).toEqual([[{ where: { id: 'current' }, data: { status: 'REGRESSED' } }]])
   })
   it('reads historical and targeted incident history when the first broad run has no parent', async () => {
+    recoveryProofs.mockResolvedValue(new Map([['project-1', Object.assign(new Map([
+      ['recovery', new Date('2026-10-11T12:00:00Z')], ['independent-repair', new Date('2026-10-11T12:00:00Z')],
+    ]), { hasFlag: (flag: { id: string }) => flag.id === 'original' })]]))
     const child = prismaMock.audit.findUnique.getMockImplementation()!
     prismaMock.audit.findUnique.mockImplementation(async () => ({ ...await child(), parentId: null }))
     prismaMock.flag.findMany.mockResolvedValueOnce([previous({ id: 'current' })]).mockResolvedValue([])
@@ -410,6 +427,7 @@ describe('isFoundOnNewlyReviewedPage', () => {
 describe('getFlagDiffSummary', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
+    prismaMock.flag.update.mockReset()
     prismaMock.audit.findUnique.mockReset()
     prismaMock.audit.findUnique.mockResolvedValue(childAudit())
   })
@@ -434,11 +452,11 @@ describe('getFlagDiffSummary', () => {
     )
     assert.deepEqual(
       summary.fixed.map((i) => i.checkId).sort(),
-      ['b', 'c']
+      ['b']
     )
     assert.deepEqual(
       summary.fixed.map((i) => i.id).sort(),
-      ['p2', 'p3']
+      ['p2']
     )
     assert.deepEqual(
       summary.newIssues.map((i) => i.checkId),
@@ -625,6 +643,7 @@ describe('getFlagDiffSummary', () => {
 describe('diffFlagsAgainstParent', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
+    prismaMock.flag.update.mockReset()
     prismaMock.audit.findUnique.mockReset()
     prismaMock.audit.findUnique.mockResolvedValue(childAudit())
     prismaMock.$transaction.mockReset()
@@ -667,9 +686,7 @@ describe('diffFlagsAgainstParent', () => {
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
-    const updates = (await prismaMock.$transaction.mock.results[0].value) as Array<{
-      data: { status: string; resolvedInId?: string }
-    }>
+    const updates = prismaMock.flag.update.mock.calls.map(([input]) => input)
     assert.equal(updates.length, 1)
     assert.equal(updates[0].data.status, 'FIXED')
     assert.equal(updates[0].data.resolvedInId, 'monitoring-audit')
@@ -697,9 +714,7 @@ describe('diffFlagsAgainstParent', () => {
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
-    const updates = (await prismaMock.$transaction.mock.results[0].value) as Array<{
-      data: { status: string; resolvedInId?: string }
-    }>
+    const updates = prismaMock.flag.update.mock.calls.map(([input]) => input)
     assert.equal(updates.length, 1)
     assert.equal(updates[0].data.status, 'FIXED')
   })
@@ -726,7 +741,7 @@ describe('diffFlagsAgainstParent', () => {
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
-    expect(prismaMock.$transaction).not.toHaveBeenCalled()
+    expect(prismaMock.flag.update).not.toHaveBeenCalled()
   })
 
   it('keeps matched flags OPEN when severity is unchanged', async () => {
@@ -740,14 +755,7 @@ describe('diffFlagsAgainstParent', () => {
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
-    const updates = (await prismaMock.$transaction.mock.results[0].value) as Array<{
-      id: string
-      data: { status: string; resolvedInId?: string | null }
-    }>
-    const parentUpdate = updates.find((u) => u.id === 'p1')
-    assert.ok(parentUpdate)
-    assert.equal(parentUpdate.data.status, 'OPEN')
-    assert.equal(parentUpdate.data.resolvedInId, null)
+    expect(prismaMock.flag.update).not.toHaveBeenCalled()
   })
 
   it('regresses when monitoring severity increases', async () => {
@@ -761,9 +769,7 @@ describe('diffFlagsAgainstParent', () => {
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
-    const updates = (await prismaMock.$transaction.mock.results[0].value) as Array<{
-      data: { status: string }
-    }>
+    const updates = prismaMock.flag.update.mock.calls.map(([input]) => input)
     assert.ok(updates.every((u) => u.data.status === 'REGRESSED'))
   })
 

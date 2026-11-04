@@ -6,6 +6,11 @@ import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 import { loadRecoveryExecutions } from '@/lib/audit/recovery-executions'
 
+/** Source scope and comparison conditions travel together in recovery reads. */
+export const incidentRecoveryFlagSelect = { id: true, auditId: true, status: true, resolvedInId: true, fingerprint: true,
+  checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, verificationRule: true,
+  supportingObservations: true, evidenceTargets: true } satisfies Prisma.FlagSelect
+
 export function unboundSiteFindingWhere(projects: string | string[]): Prisma.FlagWhereInput {
   return { audit: { projectId: typeof projects === 'string' ? projects : { in: projects }, ...siteAnalysisAuditWhere },
     improvementOccurrence: null, status: { in: ['OPEN', 'REGRESSED', 'FIXED'] } }
@@ -18,6 +23,7 @@ export const currentImprovementWhere = { OR: [
 ] } satisfies Prisma.ImprovementWhereInput
 
 type IncidentFlag = RecoveryFlag & { id?: string; auditId?: string | null; fingerprint?: string | null; status?: string | null; resolvedInId?: string | null }
+type RecoveryDatabase = Pick<Prisma.TransactionClient, 'audit' | 'auditVerificationReceipt' | 'outcomeAssessment'>
 type RecoveryCertificate = { outcomeId: string; incidentRunRequestId: string; flagIds: Set<string> }
 
 function supersededAssessment(evidence: unknown) {
@@ -46,7 +52,7 @@ function namedByRecovery(flag: IncidentFlag, certificates: RecoveryCertificate[]
 
 /** Batch recovery provenance once for the authorized projects. A pointer to
  * another tenant's completed Audit cannot clear this project's incident. */
-export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: string; flags: IncidentFlag[] }>) {
+export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: string; flags: IncidentFlag[] }>, database: RecoveryDatabase = prisma) {
   const ids = [...new Set(groups.flatMap(group => group.flags.flatMap(flag =>
     flag.status === 'FIXED' && flag.resolvedInId ? [flag.resolvedInId] : [])))]
   type Proofs = Map<string, Date> & { hasFlag: (flag: { id?: string; resolvedInId?: string | null }) => boolean }
@@ -62,11 +68,11 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
     if (flags) flags.push(flag)
     else flagsByRecovery.set(key, [flag])
   }
-  const audits = await prisma.audit.findMany({ where: { id: { in: ids }, projectId: { in: projectIds },
+  const audits = await database.audit.findMany({ where: { id: { in: ids }, projectId: { in: projectIds },
     status: 'COMPLETED', completedAt: { not: null } }, select: { id: true, projectId: true, completedAt: true, executionSpec: true,
       outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } } } })
   const executions = await loadRecoveryExecutions(audits.flatMap(audit => audit.projectId ? [{ auditId: audit.id,
-    flags: flagsByRecovery.get(JSON.stringify([audit.projectId, audit.id])) ?? [] }] : []))
+    flags: flagsByRecovery.get(JSON.stringify([audit.projectId, audit.id])) ?? [] }] : []), database)
   const certificatesByAudit = new Map<string, RecoveryCertificate[]>()
   const remember = (projectId: string, flagId: string, auditId: string, at: Date) => {
     const keys = provenFlagsByProject.get(projectId) ?? new Set<string>()
@@ -95,7 +101,7 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
       !provenFlagsByProject.get(group.projectId)?.has(`${flag.id}:${flag.resolvedInId}`) ? [{ projectId: group.projectId, owner, flag }] : []
   }))
   if (pending.length) {
-    const membership = await prisma.outcomeAssessment.findMany({ where: {
+    const membership = await database.outcomeAssessment.findMany({ where: {
       auditId: { in: [...new Set(pending.map(item => item.flag.auditId!))] }, audit: { projectId: { in: projectIds } } },
       select: { auditId: true, outcomeId: true, evidence: true, audit: { select: { projectId: true } } } })
     const auditsById = new Map(audits.map(audit => [audit.id, audit]))

@@ -1,5 +1,42 @@
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { attemptProvesFlagRecovery } from '@/lib/improvements/attempt-state'
+import { attemptHasActiveVerification, attemptTargetsFlag } from '@/lib/improvements/attempt-state'
+import { verificationResult } from './presentation'
+
+export const FLAG_VERIFICATION_FEEDBACK_RESULTS = ['still_open', 'regressed', 'could_not_verify', 'missing_evidence', 'incomparable_scope'] as const
+export type FlagVerificationFeedback = { result: typeof FLAG_VERIFICATION_FEEDBACK_RESULTS[number]; checkedAt: string | null }
+
+/** Current unsuccessful verification belongs to the captured source. Recovery
+ * remains owned by the Flag's independently established resolution proof. */
+export function flagVerificationFeedback(input: {
+  projectId: string | null; sourceAuditId: string; sourceFlagId: string; observedAt?: Date;
+  attempts: Array<{ outcome: string | null; comparable: boolean | null; verificationReason: string | null;
+    sourceAuditId: string; sourceFlagIds?: readonly string[]; handoffReference?: string | null; verificationAuditId: string | null;
+    verificationAudit?: { id: string; projectId: string | null; parentId: string | null; status: string; createdAt?: Date | null; completedAt?: Date | null;
+      verifierExecutions?: Array<{ workKind?: string | null; workState?: string | null }> } | null }>
+}): FlagVerificationFeedback | null {
+  if (!input.projectId) return null
+  const matching = input.attempts.filter(item => {
+    const audit = item.verificationAudit
+    if (!audit || audit.id !== item.verificationAuditId || audit.projectId !== input.projectId || audit.parentId !== item.sourceAuditId) return false
+    return attemptTargetsFlag(item, input.sourceAuditId, input.sourceFlagId)
+  })
+  // Tasks may be copied long before their checks are admitted. Prefer actual
+  // check order, retaining the supplied newest-task order for legacy records.
+  const attempt = matching.reduce<typeof matching[number] | undefined>((latest, item) => {
+    const nextAt = item.verificationAudit?.createdAt?.getTime() ?? Number.NaN
+    const latestAt = latest?.verificationAudit?.createdAt?.getTime() ?? Number.NaN
+    return !latest || nextAt > latestAt ? item : latest
+  }, undefined)
+  const audit = attempt?.verificationAudit
+  if (!attempt || !audit || !['COMPLETED', 'FAILED'].includes(audit.status) ||
+    attemptHasActiveVerification(attempt, input.projectId, input.sourceAuditId, input.sourceFlagId)) return null
+  const checkedAt = audit.completedAt && Number.isFinite(audit.completedAt.getTime()) ? audit.completedAt : null
+  if (checkedAt && input.observedAt && checkedAt < input.observedAt) return null
+  const result = verificationResult({ outcome: audit.status === 'FAILED' ? null : attempt.outcome,
+    comparable: attempt.comparable, reason: attempt.verificationReason, verificationAuditId: attempt.verificationAuditId })
+  if (result === 'unverified' || result === 'verifying' || result === 'verified') return null
+  return { result, checkedAt: checkedAt?.toISOString() ?? null }
+}
 
 export type FlagProofAudit = {
   id: string
@@ -19,7 +56,7 @@ export type FlagResolutionInput = {
 }
 
 export type FlagProofNote = {
-  observedAt: string
+  observedAt: string | null
   auditId: string
   showAuditId: boolean
   observation: string
@@ -39,7 +76,8 @@ export function siteFlagDetailStatus(
   verifiedForSource = false,
 ): string {
   if (['FIXED', 'REGRESSED', 'IGNORED'].includes(flagStatus)) return flagStatus
-  if (improvementStatus === 'VERIFIED' && !verifiedForSource) return flagStatus
+  if (verifiedForSource) return 'VERIFIED'
+  if (improvementStatus === 'VERIFIED') return flagStatus
   return improvementStatus ?? flagStatus
 }
 
@@ -83,16 +121,6 @@ export function currentUnboundFindings<T extends { id: string; fingerprint?: str
     seen.add(identity)
     return true
   })
-}
-
-/** Legacy successful repairs may precede Flag status projection. Their proof
- * can close only the same captured occurrence, never later incident peers. */
-export function currentImprovementFlags<T extends { id: string; auditId: string; status?: string | null; resolvedInId?: string | null }>(
-  flags: T[], completedRecoveryIds: { has(id: string): boolean }, improvementStatus: string,
-  attempts: Parameters<typeof attemptProvesFlagRecovery>[0][], projectId: string,
-) {
-  return currentIncidentFlags(flags, completedRecoveryIds).filter(flag => !(improvementStatus === 'VERIFIED' && flag.status === 'OPEN' &&
-    attempts.some(attempt => attemptProvesFlagRecovery(attempt, projectId, flag.auditId, flag.id))))
 }
 
 /** An unbound legacy finding must not replace a newer recorded occurrence.
@@ -150,12 +178,13 @@ function proofNote(input: FlagResolutionInput): FlagProofNote | null {
   if (!proofId || !proof) return null
   if (proof.id !== proofId) return null
   if (proof.status !== 'COMPLETED') return null
+  // Creation anchors a retained legacy report, never its missing check time.
   const raw = proof.completedAt ?? proof.createdAt
   if (!raw) return null
   const observed = new Date(raw)
   if (Number.isNaN(observed.getTime())) return null
   return {
-    observedAt: observed.toISOString(),
+    observedAt: proof.completedAt ? observed.toISOString() : null,
     auditId: proof.id,
     showAuditId: proof.id !== input.sourceAuditId,
     observation: SITE_BOARD_COPY.flagProofObserved,

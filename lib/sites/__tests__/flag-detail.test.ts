@@ -5,11 +5,16 @@ import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tes
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 import { buildSiteRepairHandoff } from '../repair-brief'
-const mocks = vi.hoisted(() => ({ flag: vi.fn(), attempts: vi.fn(), occurrences: vi.fn(), outcome: vi.fn(), proofs: vi.fn() }))
+const mocks = vi.hoisted(() => ({ flag: vi.fn(), attempts: vi.fn(), occurrences: vi.fn(), outcome: vi.fn(), proofs: vi.fn(), current: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) },
-  flag: { findFirst: mocks.flag }, improvementAttempt: { findMany: mocks.attempts },
+  flag: { findFirst: mocks.flag, findMany: async (query: { select?: { improvementOccurrence?: { select?: { createdAt?: boolean } } }; where?: { id?: { in: string[] } } }) => {
+    const rows = await mocks.occurrences(query)
+    if (query.select?.improvementOccurrence?.select?.createdAt) return rows.map((row: { createdAt: Date; flag: object }) => ({ ...row.flag,
+      audit: { projectId: 'project-1' }, improvementOccurrence: { improvementId: 'improvement-1', createdAt: row.createdAt } }))
+    return rows.map((row: { flag: { id: string } }) => row.flag).filter((flag: { id: string }) => !query.where?.id || query.where.id.in.includes(flag.id))
+  } }, improvementAttempt: { findMany: mocks.attempts },
   improvementOccurrence: { findMany: mocks.occurrences }, siteOutcome: { findFirst: mocks.outcome },
-  audit: { findMany: mocks.proofs },
+  audit: { findMany: mocks.proofs }, $queryRaw: mocks.current,
   auditVerificationReceipt: { findMany: async () => (await mocks.proofs()).flatMap((audit: { id: string; verifierExecutions?: object[] }) =>
     (audit.verifierExecutions ?? []).map((receipt, index) => ({ ...receipt, id: audit.id + ':receipt:' + index, auditId: audit.id }))) },
 } }))
@@ -20,11 +25,32 @@ beforeEach(() => {
   mocks.flag.mockResolvedValue({ id: 'captured-flag', auditId: 'audit-1', checkId: 'journey-checkout-failed-http_error', rubric: 'EXPERIENCE', severity: 'CRITICAL', impactTag: 'REVENUE', problem: 'Checkout is unavailable', evidence: 'Two failed checks', whyItMatters: 'Checkout cannot open', fix: 'Restore checkout', pageUrl: 'https://shop.test/checkout', status: 'OPEN', resolvedInId: null, confidence: 0.95, improvementOccurrence: { improvement: { id: 'improvement-1', status: 'PROPOSED', outcomeId: 'outcome-1' } } })
   mocks.attempts.mockResolvedValue([]); mocks.occurrences.mockResolvedValue([])
   mocks.proofs.mockResolvedValue([])
+  mocks.current.mockResolvedValue([])
   mocks.outcome.mockResolvedValue({ id: 'outcome-1', name: 'Checkout', expectation: 'A customer can reach checkout from the product page.' })
 })
+function currentRow(attempt: { createdAt: Date; sourceFlagIds?: string[]; handoffReference?: string | null;
+  verificationAudit: { createdAt?: Date; completedAt?: Date } } & Record<string, unknown>) {
+  return { flagId: 'captured-flag', ...attempt, ...attempt.verificationAudit,
+    createdAt: attempt.verificationAudit.createdAt ?? attempt.createdAt, completedAt: attempt.verificationAudit.completedAt ?? null,
+    sourceFlagIds: attempt.sourceFlagIds ?? [], handoffReference: attempt.handoffReference ?? null, finalizeState: null }
+}
 it('preserves the captured Flag identity while projecting its durable Improvement', async () => {
   const detail = await loadSiteFlagDetail(site, 'improvement-1')
   expect(detail).toMatchObject({ id: 'improvement-1', sourceFlagId: 'captured-flag', sourceAuditId: 'audit-1', confidence: 0.95 })
+})
+it('projects the latest unsuccessful admitted verification without confusing a copied task with a check', async () => {
+  const captured = await mocks.flag()
+  mocks.attempts.mockResolvedValue([
+    { id: 'copied', createdAt: new Date('2026-11-03T01:00:00Z'), outcome: null, sourceAuditId: captured.auditId,
+      sourceFlagIds: [captured.id], verificationAuditId: null, verificationAudit: null },
+    { id: 'checked', createdAt: new Date('2026-11-02T00:00:00Z'), outcome: 'UNCHANGED', comparable: true,
+      verificationReason: null, sourceAuditId: captured.auditId, sourceFlagIds: [captured.id], verificationAuditId: 'checked-audit',
+      verificationAudit: { id: 'checked-audit', projectId: 'project-1', parentId: captured.auditId,
+        status: 'COMPLETED', completedAt: new Date('2026-11-02T01:00:00Z') } },
+  ])
+  mocks.current.mockResolvedValue([currentRow((await mocks.attempts())[1])])
+  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ verifying: false,
+    verificationFeedback: { result: 'still_open', checkedAt: '2026-11-02T01:00:00.000Z' } })
 })
 it.each(['same-source', 'other-source', 'other-flag', 'other-project', 'wrong-parent', 'unfinished'] as const)
 ('requires completed proof of this captured occurrence before inheriting Verified workflow: %s', async condition => {
@@ -38,8 +64,11 @@ it.each(['same-source', 'other-source', 'other-flag', 'other-project', 'wrong-pa
     verificationAudit: { id: 'repair-proof', projectId: condition === 'other-project' ? 'other-project' : 'project-1',
       parentId: condition === 'wrong-parent' ? 'older-source' : captured.auditId,
       status: condition === 'unfinished' ? 'FINALIZING' : 'COMPLETED' } }])
+  const proof = (await mocks.attempts())[0]
+  mocks.current.mockImplementation(async (parts: TemplateStringsArray) => parts.join('').includes('recovery.*') ? [currentRow(proof)] : [])
   expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({
     status: condition === 'same-source' ? 'VERIFIED' : 'OPEN',
+    resolvedInId: condition === 'same-source' ? 'repair-proof' : null,
     verificationState: condition === 'same-source' ? 'verified' : 'still_open', sourceAuditId: captured.auditId,
   })
 })
@@ -98,11 +127,12 @@ it.each(['ready', 'admitted', 'failed', 'later-source'] as const)('projects reco
     changeSummary: 'Declared repair', commitReference: 'declared-commit', deploymentReference: 'declared-deployment',
     verificationAuditId: state === 'ready' ? null : 'verification-audit', verificationAudit: state === 'ready' ? null
       : { projectId: 'project-1', parentId: state === 'later-source' ? 'older-audit' : 'audit-1', status: state === 'failed' ? 'FAILED' : 'QUEUED' } }
-  // An older admitted attempt must not make the latest unadmitted repair check.
-  mocks.attempts.mockResolvedValue([pending, { ...pending, id: 'older-attempt', verificationAuditId: 'older-verification',
+  // Draft history cannot retire the actual check of this captured source.
+  mocks.attempts.mockResolvedValue([pending, { ...pending, id: 'older-attempt', sourceAuditId: 'audit-1', verificationAuditId: 'older-verification',
     verificationAudit: { projectId: 'project-1', parentId: 'audit-1', status: 'QUEUED' } }])
+  mocks.current.mockResolvedValue([currentRow((await mocks.attempts())[state === 'ready' || state === 'later-source' ? 1 : 0])])
   const detail = await loadSiteFlagDetail(site, 'improvement-1')
-  expect(detail).toMatchObject({ verifying: state === 'admitted', verificationState: state === 'admitted' ? 'verifying' : 'still_open' })
+  expect(detail).toMatchObject({ verifying: state !== 'failed', verificationState: state !== 'failed' ? 'verifying' : 'still_open' })
   expect(detail?.attempts[0]).toMatchObject({ changeSummary: pending.changeSummary, sourceAuditId: pending.sourceAuditId,
     commitReference: pending.commitReference, deploymentReference: pending.deploymentReference, verifying: state === 'admitted' || state === 'later-source' })
 })
@@ -115,6 +145,7 @@ it.each([
     sourceAuditId, sourceFlagIds: ['representative-flag', ...(selected ? ['captured-flag'] : [])],
     handoffReference: 'flag:representative-flag', verificationAuditId: 'grouped-verification',
     verificationAudit: { projectId: 'project-1', parentId: sourceAuditId, status: 'QUEUED' } }])
+  mocks.current.mockResolvedValue(selected ? [currentRow((await mocks.attempts())[0])] : [])
   expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({
     verifying: selected, verificationState: selected ? 'verifying' : 'still_open', sourceAuditId: 'audit-1',
   })

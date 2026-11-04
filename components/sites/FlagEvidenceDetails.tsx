@@ -5,14 +5,15 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { presentObservedEvidence, type ObservedPage } from '@/lib/sites/observed-evidence'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { includesRepairAlternatives } from '@/lib/audit/evidence-presentation'
+import { RecordedPageLink } from './RecordedPageLink'
 
 function ObservedPageRow({ page }: { page: ObservedPage }) {
   return <li className="min-w-0">
     <div className="flex min-w-0 items-baseline justify-between gap-3">
-      <a href={page.url} target="_blank" rel="noreferrer" className="min-w-0 break-all underline decoration-border underline-offset-4 hover:decoration-foreground">{page.label}</a>
+      <RecordedPageLink url={page.url} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{page.label}</RecordedPageLink>
       {page.valueLabel ? <span className="shrink-0 font-medium tabular-nums">{page.valueLabel}</span> : null}
     </div>
-    {page.share != null ? <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(12, Math.round(page.share * 100))}%` }} /></span> : null}
+    {page.share != null ? <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className="block h-full rounded-full bg-brand" style={{ width: `${Math.round(page.share * 1000) / 10}%` }} /></span> : null}
     {page.valueLabel ? null : <p className="mt-1 break-words text-muted-foreground">{page.note}</p>}
   </li>
 }
@@ -45,6 +46,8 @@ export function FlagEvidenceDetails({ observed, expected, diagnosis, supportingO
   observed: string | null; expected: string; diagnosis?: string; supportingObservations?: ReturnType<typeof publicSupportingObservations>;
   supportingEvidenceUnreadable?: boolean; factsClassName?: string; observedLabel?: string; expectedLabel?: string; children?: ReactNode;
 }) {
+  const hasSupportingDetail = supportingObservations.length > 1 || supportingObservations.some(item =>
+    item.pageUrl || item.recordedAt || item.references.length || item.evidence !== observed)
   return <>
     <dl className={factsClassName ?? 'space-y-5 text-sm'}>
       <div><dt className="text-xs font-medium text-muted-foreground">{observedLabel}</dt>
@@ -53,7 +56,7 @@ export function FlagEvidenceDetails({ observed, expected, diagnosis, supportingO
         <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed">{expected}</dd></div>
     </dl>
     {supportingEvidenceUnreadable ? <p className="mt-5 text-sm text-muted-foreground">{EDITOR_EVIDENCE_COPY.unreadable}</p> : null}
-    {supportingObservations.length > 1 ? <details className="mt-5 text-sm">
+    {hasSupportingDetail ? <details className="mt-5 text-sm">
       <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.supporting}</summary>
       <ul className="mt-3 space-y-4">{supportingObservations.map((item, index) => <li key={index} className="space-y-1 rounded-control bg-muted/30 p-4">
         {item.pageUrl ? <p className="break-words text-xs text-muted-foreground">{item.pageUrl}</p> : null}

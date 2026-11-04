@@ -1,14 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { CLIENT_REQUEST_TIMEOUT_MS } from '@/lib/api/client-request'
+vi.mock('@/hooks/useMe', () => ({ useMe: () => ({ user: { id: 'owner' }, isLoading: false }) }))
 import { McpSetup } from '../McpSetup'
 import { MCP_SETUP_COPY as C } from '@/lib/marketing/copy/mcp-setup'
 
 describe('guided MCP setup', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ 'x-fixflags-account-id': 'owner' }), json: async () => [] }))
   })
+  afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
   it('honors the selected agent and changes the single configuration and instructions', async () => {
-    render(<McpSetup initialEditor="codex" />)
+    render(<McpSetup ownerId="owner" initialEditor="codex" />)
     await screen.findByText('No active keys.')
     expect(screen.getByRole('heading', { level: 2, name: C.keyTitle })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'Active keys' })).toBeVisible()
@@ -24,7 +27,7 @@ describe('guided MCP setup', () => {
   it('copies a read-only first-use check without claiming the connection is already verified', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    render(<McpSetup />)
+    render(<McpSetup ownerId="owner" />)
     await screen.findByText('No active keys.')
     fireEvent.click(screen.getByRole('button', { name: `${C.copy} ${C.verifyLabel}` }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(C.verifyPrompt))
@@ -33,7 +36,7 @@ describe('guided MCP setup', () => {
   })
   it('selects configuration for manual copy when the clipboard is unavailable', async () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
-    render(<McpSetup />)
+    render(<McpSetup ownerId="owner" />)
     await screen.findByText('No active keys.')
     fireEvent.click(screen.getByRole('button', { name: `${C.copy} ${C.configLabel}` }))
     expect(await screen.findByText(C.manualCopy)).toBeInTheDocument()
@@ -41,5 +44,52 @@ describe('guided MCP setup', () => {
     expect(input).toHaveFocus()
     expect(input).toHaveProperty('selectionStart', 0)
     expect(input).toHaveProperty('selectionEnd', (input as HTMLTextAreaElement).value.length)
+  })
+
+  it.each([C.configLabel, C.verifyLabel])('bounds a stalled copy of %s and permits a fresh explicit copy', async label => {
+    let finish!: () => void
+    const writeText = vi.fn().mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve }))
+      .mockResolvedValueOnce(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<McpSetup ownerId="owner" />)
+    await screen.findByText('No active keys.')
+    vi.useFakeTimers()
+    const button = screen.getByRole('button', { name: `${C.copy} ${label}` })
+    button.focus()
+    fireEvent.click(button)
+    fireEvent.click(button)
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(writeText).toHaveBeenCalledOnce()
+    await act(async () => { await vi.advanceTimersByTimeAsync(CLIENT_REQUEST_TIMEOUT_MS) })
+    expect(screen.getByText(C.manualCopy)).toBeVisible()
+    const input = screen.getByRole('textbox', { name: label }) as HTMLTextAreaElement
+    expect(input).toHaveFocus()
+    expect(input.selectionStart).toBe(0)
+    expect(input.selectionEnd).toBe(input.value.length)
+    expect(button).toBeEnabled()
+    await act(async () => { finish() })
+    expect(screen.queryByText(C.copied)).not.toBeInTheDocument()
+    await act(async () => { fireEvent.click(button) })
+    expect(screen.getByText(C.copied)).toBeVisible()
+    expect(writeText).toHaveBeenCalledTimes(2)
+    expect(writeText.mock.calls[0][0]).toBe(input.value)
+    expect(writeText.mock.calls[1][0]).toBe(input.value)
+  })
+
+  it('does not move focus back to configuration after the customer starts reading the connection prompt', async () => {
+    let refuse!: (reason: Error) => void
+    const writeText = vi.fn(() => new Promise<void>((_resolve, reject) => { refuse = reject }))
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<McpSetup ownerId="owner" />)
+    await screen.findByText('No active keys.')
+    const button = screen.getByRole('button', { name: `${C.copy} ${C.configLabel}` })
+    button.focus()
+    fireEvent.click(button)
+    const connection = screen.getByRole('textbox', { name: C.verifyLabel })
+    connection.focus()
+    await act(async () => { refuse(new Error('Clipboard refused')) })
+    expect(screen.getByText(C.manualCopy)).toBeVisible()
+    expect(connection).toHaveFocus()
   })
 })

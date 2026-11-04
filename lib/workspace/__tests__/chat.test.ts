@@ -99,6 +99,32 @@ describe('runWorkspaceChat', () => {
     expect(unicode).toBeGreaterThan(ascii)
   })
 
+  it('supplies canonical verification state and bounded source scope without treating completion as health', async () => {
+    const { runWorkspaceChat, workspaceChatTokenUpperBound } = await loadWorkspaceChat({
+      openai: { chat: { completions: { create: fakeCreate } } },
+    })
+    const input = { message: 'Explain this evidence', url: 'https://example.com', status: 'COMPLETED',
+      findingScope: { kind: 'site' as const, currentCount: 14, recentRecoveryCount: 1 },
+      uptime: { status: { enabled: true, state: 'unknown' as const, incidentOpen: true, targetUrl: 'https://example.com/',
+        lastCheckedAt: '2026-11-03T08:00:00Z', nextCheckAt: null },
+        assessment: { state: 'FLAG' as const, observedState: 'unknown' as const, validUntil: null } },
+      flags: [{ ...flags[0], status: 'OPEN', verificationState: 'verifying' as const,
+        pageUrl: 'https://example.com/pricing', latestOccurrenceAt: '2026-11-03T09:00:00Z' }] }
+    await runWorkspaceChat(input)
+    const call = fakeCreate.mock.calls[0]![0]
+    const prompt = call.messages.find((message: { role: string }) => message.role === 'user').content
+    expect(prompt).toContain('Known current Flags: 14')
+    expect(prompt).toContain('1 records are supplied below')
+    expect(prompt).toContain('do not establish website health')
+    expect(prompt).toContain('"assessment":{"state":"FLAG","observedState":"unknown","validUntil":null}')
+    expect(prompt).toContain('An unresolved incident remains attention')
+    expect(prompt).toContain('State: OPEN\n   Verification: verifying')
+    expect(prompt).toContain('Page: https://example.com/pricing')
+    expect(prompt).toContain('Recorded at: 2026-11-03T09:00:00Z')
+    const sentBytes = Buffer.byteLength(call.messages.map((message: { content: string }) => message.content).join('\n'))
+    expect(workspaceChatTokenUpperBound(input)).toBeGreaterThanOrEqual(sentBytes + call.max_tokens)
+  })
+
   it('reports unavailable when the model returns empty', async () => {
     const { runWorkspaceChat } = await loadWorkspaceChat({
       openai: {

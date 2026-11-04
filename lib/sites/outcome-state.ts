@@ -9,14 +9,26 @@ export type CustomerOutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STAL
 export const UNASSESSED_OUTCOME_SUMMARY = 'Not verified yet.'
 
 export function flagMatchesOutcome(
-  flag: { id: string; improvementId?: string | null; outcomeId?: string | null; pageUrl?: string | null; checkId?: string | null },
+  flag: { id: string; improvementId?: string | null; outcomeId?: string | null; relatedOutcome?: { id: string } | null; pageUrl?: string | null; checkId?: string | null },
   outcome: { id?: string; flagId: string | null; pageUrls: string[]; kind: string },
 ): boolean {
   // The persisted relationship is the only basis for a customer-facing link.
   // A diagnostic can share the same page and even a check-name fragment without
   // being the failure that produced this Outcome's assessment.
-  if (flag.outcomeId && outcome.id) return flag.outcomeId === outcome.id
+  const outcomeId = flag.outcomeId ?? flag.relatedOutcome?.id
+  if (outcomeId && outcome.id) return outcomeId === outcome.id
   return Boolean(outcome.flagId && (flag.id === outcome.flagId || flag.improvementId === outcome.flagId))
+}
+
+export function outcomeRelatedFlags<T extends Parameters<typeof flagMatchesOutcome>[0]>(
+  current: readonly T[], resolved: readonly T[], outcome: Parameters<typeof flagMatchesOutcome>[1],
+): T[] {
+  const related = new Map<string, T>()
+  // A current recurrence owns its durable identity ahead of recovered history.
+  for (const flag of [...current, ...resolved]) {
+    if (!related.has(flag.id) && flagMatchesOutcome(flag, outcome)) related.set(flag.id, flag)
+  }
+  return [...related.values()]
 }
 
 export function staleOutcomeRecovery(): string {

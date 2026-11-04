@@ -1,4 +1,4 @@
-import { CHECK_MODULES } from '@/lib/audit/check-registry'
+import { CHECK_MODULE_AREAS } from '@/lib/audit/checks/module-areas'
 import type { ExecutionProgress } from '@/lib/sites/application/execution-progress'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -13,7 +13,7 @@ export function taskArea(task: Pick<Task, 'kind' | 'module'>): SiteCardArea | nu
   if (task.kind === 'pagespeed' || task.kind === 'slow-replay') return 'performance'
   if (task.kind === 'keyboard') return 'accessibility'
   if (task.kind === 'flow' || task.kind === 'journeys') return 'conversion'
-  if (task.module && CHECK_MODULES[task.module]) return CHECK_MODULES[task.module].area
+  if (task.module && Object.hasOwn(CHECK_MODULE_AREAS, task.module)) return CHECK_MODULE_AREAS[task.module as keyof typeof CHECK_MODULE_AREAS]
   if (['http', 'browser', 'captures', 'discovery', 'cross-page'].includes(task.kind)) return 'site'
   return null
 }

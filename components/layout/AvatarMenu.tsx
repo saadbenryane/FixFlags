@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Boxes, CircleHelp, LogOut, Settings } from 'lucide-react'
+import { Boxes, CircleHelp, LoaderCircle, LogOut, Settings } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -17,6 +16,8 @@ import { planLabel } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
 import { SITE_SETTINGS_COPY } from '@/lib/marketing/copy/site-settings'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
+import { useSignOut } from '@/hooks/useSignOut'
+import { AUTH } from '@/lib/marketing/copy/auth'
 
 function getInitials(name: string | null | undefined, email: string): string {
   const trimmedName = name?.trim()
@@ -44,21 +45,11 @@ export function AvatarMenu({
   side?: 'top' | 'right' | 'bottom' | 'left'
   align?: 'start' | 'center' | 'end'
 }) {
-  const router = useRouter()
+  const { busy, signOut } = useSignOut()
   const { user: fetchedUser } = useMe()
   const user = providedUser ?? fetchedUser
 
   if (!user) return null
-
-  async function handleSignOut() {
-    const { authClient } = await import('@/lib/auth-client')
-    const result = await authClient.signOut()
-    if (result.error) return
-    const { clearSettingsDrafts } = await import('@/lib/settings/drafts')
-    clearSettingsDrafts()
-    router.push('/')
-    router.refresh()
-  }
 
   return (
     <DropdownMenu>
@@ -110,12 +101,19 @@ export function AvatarMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="gap-2"
-          onSelect={() => {
-            void handleSignOut()
+          disabled={busy}
+          aria-busy={busy || undefined}
+          onSelect={(event) => {
+            event.preventDefault()
+            void signOut()
           }}
         >
-          <LogOut className="h-4 w-4" />
-          Log out
+          {busy ? (
+            <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
+          ) : (
+            <LogOut className="h-4 w-4" aria-hidden />
+          )}
+          {busy ? AUTH.signOut.working : AUTH.signOut.menuCta}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

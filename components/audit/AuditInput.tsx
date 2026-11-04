@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
 import { REVIEW_ENTRY } from '@/lib/marketing/copy/terminology'
-import { AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy/errors'
+import { AUDIT_PROGRESS, AUDIT_ERRORS, WEBSITE_ADDRESS_ERROR_COPY } from '@/lib/marketing/copy/errors'
+import { parseWebsiteAddress } from '@/lib/utils/website-address'
 import type { PlanLimitKind } from '@/lib/marketing/copy/auth'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { cn } from '@/lib/utils'
@@ -23,7 +24,7 @@ import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
 import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 import { readPublicEntrySurface } from '@/lib/analytics/entry-surface'
 
-const AUTOSTART_DONE_KEY = 'ff:autostart-url'
+const AUTOSTART_DONE_PREFIX = 'ff:autostart-url'
 
 /**
  * A created check can be refused for two different reasons that need different
@@ -70,59 +71,79 @@ export function AuditInput({
   const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
   const { user, claimUpgrade, dismissClaimUpgrade } = useMe()
+  const actorId = user?.id ?? null
+  const autoStartKey = `${AUTOSTART_DONE_PREFIX}:${JSON.stringify(actorId)}`
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  const [urlError, setUrlError] = useState('')
+  const [failure, setFailure] = useState<{ kind: 'url' | 'request'; message: string } | null>(null)
+  const urlError = failure?.kind === 'url' ? failure.message : ''
   const [planLimit, setPlanLimit] = useState<{ kind: PlanLimitKind; message: string } | null>(null)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [pendingUrl, setPendingUrl] = useState('')
   const autoStartedRef = useRef(false)
   const submission = useRef(false)
+  const requestOwner = useRef<AbortController | null>(null)
+  const urlInput = useRef<HTMLInputElement>(null)
+  const recoveryFocus = useRef<{ owner: AbortController; origin: HTMLElement } | null>(null)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
   const isLanding = variant === 'landing'
 
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
+  useLayoutEffect(() => {
+    const owner = new AbortController()
+    requestOwner.current = owner
+    recoveryFocus.current = null
+    // Retire submission feedback while preserving the draft and sign-in continuation.
+    submission.current = false
+    autoStartedRef.current = false
+    setLoading(false)
+    setFailure(null)
+    setPlanLimit(null)
+    return () => {
+      owner.abort()
+      if (requestOwner.current === owner) { requestOwner.current = null; recoveryFocus.current = null }
+    }
+  }, [actorId])
+  useLayoutEffect(() => {
+    const recovery = recoveryFocus.current
+    if (!failure || loading || !recovery) return
+    recoveryFocus.current = null
+    if (requestOwner.current !== recovery.owner || recovery.owner.signal.aborted || !recovery.origin.isConnected ||
+      document.activeElement !== document.body && document.activeElement !== recovery.origin) return
+    const target = failure.kind === 'url' ? urlInput.current : recovery.origin
+    if (target?.isConnected && !target.matches(':disabled')) target.focus({ preventScroll: true })
+  }, [failure, loading])
+  useEffect(() => { setHydrated(true) }, [])
 
   async function submitUrl(inputUrl?: string) {
-    if (submission.current) return
-    setUrlError('')
+    const owner = requestOwner.current
+    if (!owner || owner.signal.aborted || submission.current) return
+    const current = () => requestOwner.current === owner && !owner.signal.aborted
+    const focused = document.activeElement
+    const origin = focused instanceof HTMLElement && urlInput.current?.form?.contains(focused) ? focused : null
+    recoveryFocus.current = null
+    setFailure(null)
     setPlanLimit(null)
 
+    const publishFailure = (kind: 'url' | 'request', message: string) => {
+      recoveryFocus.current = origin ? { owner, origin } : null
+      setFailure({ kind, message })
+    }
+
     const failValidation = (reason: string, message: string) => {
-      setUrlError(message)
+      publishFailure('url', message)
       trackEvent('scan_validation_failed', {
         reason,
         cta_placement: resolvedPlacement ?? (isLanding ? 'hero' : 'dashboard'),
       })
     }
 
-    let normalized = (inputUrl ?? url).trim()
-    if (!normalized) {
-      failValidation('empty', AUDIT_ERRORS.urlRequired)
+    const address = parseWebsiteAddress(inputUrl ?? url, { inferHttps: true })
+    if (!address.ok) {
+      failValidation(address.reason, WEBSITE_ADDRESS_ERROR_COPY[address.reason])
       return
     }
-
-    const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(normalized)
-    if (!hasScheme) {
-      normalized = 'https://' + normalized
-    }
-
-    let parsedUrl: URL
-    try {
-      parsedUrl = new URL(normalized)
-    } catch {
-      failValidation('malformed', AUDIT_ERRORS.urlMalformed)
-      return
-    }
-
-    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      failValidation('scheme', AUDIT_ERRORS.urlScheme)
-      return
-    }
-
+    const normalized = address.url, parsedUrl = address.parsed
     const hostname = parsedUrl.hostname.toLowerCase().replace(/\.$/, '')
     if (
       hostname === 'localhost' ||
@@ -143,8 +164,9 @@ export function AuditInput({
     const isPublicEntry = auditSource === 'homepage' || auditSource === 'tool_page' || auditSource === 'issue_page' || auditSource === 'benchmark_page'
     let journeyId: string | null = null
     try { if (isPublicEntry) journeyId = readOrCreateAnalyticsJourneyId() } catch { /* Attribution is optional. */ }
-    const result = await startScanWithHandoff({
+    const result: CreateCheckResult = await startScanWithHandoff({
       url: normalized,
+      signal: owner.signal,
       body: {
         url: normalized,
         source: auditSource,
@@ -155,8 +177,9 @@ export function AuditInput({
         fbclid: params.get('fbclid') ?? undefined,
         journeyId: journeyId ?? undefined,
       },
-      navigate: (href) => router.replace(href as Route),
+      navigate: (href) => { if (current()) router.replace(href as Route) },
       onStarted: (data) => {
+        if (!current()) return
         const isLoggedIn =
           typeof data.isLoggedIn === 'boolean' ? data.isLoggedIn : Boolean(user)
         trackStartedAudit({
@@ -170,7 +193,8 @@ export function AuditInput({
           reused: data.reused === true,
         })
       },
-    })
+    }).catch(() => ({ ok: false, message: AUDIT_ERRORS.admissionBusy }))
+    if (!current()) return
     if (!result.ok) {
       submission.current = false
       setLoading(false)
@@ -190,24 +214,30 @@ export function AuditInput({
         })
         return
       }
-      setUrlError(result.message)
+      publishFailure(result.status === 400 && result.code === 'INVALID_URL' ? 'url' : 'request', result.message)
     }
     // On success, navigation replaces this page with the Site board.
   }
 
   useEffect(() => {
     if (!autoStart || !initialUrl || autoStartedRef.current) return
-    autoStartedRef.current = true
-    try {
-      if (sessionStorage.getItem(AUTOSTART_DONE_KEY) === initialUrl) return
-      sessionStorage.setItem(AUTOSTART_DONE_KEY, initialUrl)
-    } catch {
-      // sessionStorage unavailable: fall through and submit once for this mount.
-    }
-    void submitUrl(initialUrl)
-    // Intentionally one-shot on mount when handoff URL is present.
+    const owner = requestOwner.current
+    let active = true
+    queueMicrotask(() => {
+      if (!active || !owner || owner.signal.aborted || autoStartedRef.current) return
+      autoStartedRef.current = true
+      try {
+        if (sessionStorage.getItem(autoStartKey) === initialUrl) return
+        sessionStorage.setItem(autoStartKey, initialUrl)
+      } catch {
+        // sessionStorage unavailable: fall through and submit once for this mount.
+      }
+      void submitUrl(initialUrl)
+    })
+    return () => { active = false }
+    // Automatic handoff belongs to this account; retained markers prevent remount duplicates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, initialUrl])
+  }, [autoStart, initialUrl, autoStartKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -257,11 +287,16 @@ export function AuditInput({
                 <Link2 className="h-5 w-5" strokeWidth={1.75} />
               </span>
               <InputGroupInput
+                ref={urlInput}
                 id={inputId}
                 name="url"
                 type="text"
                 inputMode="url"
                 autoComplete="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
                 placeholder={urlPlaceholder}
                 value={url}
                 onFocus={() => {
@@ -274,7 +309,7 @@ export function AuditInput({
                 }}
                 onChange={(e) => {
                   setUrl(e.target.value)
-                  setUrlError('')
+                  setFailure(null)
                 }}
                 disabled={!hydrated || busy}
                 aria-invalid={Boolean(urlError)}
@@ -312,16 +347,21 @@ export function AuditInput({
               Website URL
             </label>
             <Input
+              ref={urlInput}
               id={inputId}
               name="url"
               type="text"
               inputMode="url"
               autoComplete="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="go"
               placeholder={URL_PLACEHOLDER}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value)
-                setUrlError('')
+                setFailure(null)
               }}
               className={cn(fieldHeightInputClass, 'flex-1 text-base')}
               disabled={!hydrated || busy}
@@ -352,9 +392,9 @@ export function AuditInput({
             </Button>
           </div>
         )}
-        {urlError && (
+        {failure && (
           <p id={errorId} role="alert" className="text-xs text-destructive">
-            {urlError}
+            {failure.message}
           </p>
         )}
       </form>

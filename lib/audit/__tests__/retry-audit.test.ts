@@ -8,7 +8,8 @@ vi.mock('@/lib/audit/create-audit', () => ({
 }))
 import { retryAudit } from '../retry-audit'
 const owner = { userId: 'owner', visitorKey: 'visitor', anonymousAuditIds: [] }
-const prior = { id: 'before', status: 'FAILED', url: 'https://example.com/', userId: 'owner', isPublic: false, auditMode: 'CRITICAL_PATH' }
+const prior = { id: 'before', status: 'FAILED', url: 'https://example.com/', userId: 'owner', projectId: null, isPublic: false, auditMode: 'CRITICAL_PATH',
+  user: { lifecycleStatus: 'ACTIVE' }, project: { userId: 'owner', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } }
 beforeEach(() => { vi.clearAllMocks(); mocks.find.mockResolvedValue(prior); mocks.admit.mockResolvedValue({ auditId: 'after', status: 'QUEUED', siteId: 'site', reused: false }) })
 describe('new linked retry admission', () => {
   it('routes owned Site retries through admitted-scope reproduction and returns the persisted state', async () => {

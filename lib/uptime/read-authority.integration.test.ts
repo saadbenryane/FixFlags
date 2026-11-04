@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { loadUptimeEvents, loadUptimeHistory, loadUptimeSummary } from './queries'
+import { loadUptimeEvents, loadUptimeHistory, loadUptimeSummary, loadUptimeStatus } from './queries'
 import { uptimeReadSite } from './__tests__/read-site'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
@@ -13,7 +13,7 @@ run('Uptime private read authority', () => {
   })
   afterAll(() => prisma.$disconnect())
 
-  it.each((['history', 'summary', 'events'] as const).flatMap(reader => (['transfer', 'remove', 'suspend'] as const)
+  it.each((['history', 'summary', 'events', 'status'] as const).flatMap(reader => (['transfer', 'remove', 'suspend'] as const)
     .map(change => ({ reader, change }))))('withholds $reader after $change during its source snapshot read and retains historical evidence', async ({ reader, change }) => {
     const identity = randomUUID(), now = new Date(), userIds: string[] = []
     const oldOwner = await prisma.user.create({ data: { email: 'old-' + identity + '@uptime-read.example' } })
@@ -32,13 +32,21 @@ run('Uptime private read authority', () => {
         result: 'FAILED', confirmed: true, reason: 'response_error', statusCode: 503, durationMs: 50, finalUrl: project.url } })
       const site = uptimeReadSite(project)
       const read = () => reader === 'history' ? loadUptimeHistory(site, '24h', null, now)
-        : reader === 'summary' ? loadUptimeSummary(site, now) : loadUptimeEvents(site)
+        : reader === 'summary' ? loadUptimeSummary(site, now) : reader === 'status' ? loadUptimeStatus(site, now) : loadUptimeEvents(site)
       const original = prisma.uptimeMonitor.findUnique.bind(prisma.uptimeMonitor)
-      const transfer = vi.spyOn(prisma.uptimeMonitor, 'findUnique').mockImplementationOnce((async (args: Parameters<typeof original>[0]) => {
-        const snapshot = await original(args)
+      const originalProject = prisma.project.findUnique.bind(prisma.project)
+      const revoke = async () => {
         if (change === 'transfer') await prisma.project.update({ where: { id: project.id }, data: { userId: newOwner.id } })
         else if (change === 'remove') await prisma.project.update({ where: { id: project.id }, data: { deletedAt: now } })
         else await prisma.user.update({ where: { id: oldOwner.id }, data: { lifecycleStatus: 'SUSPENDED' } })
+      }
+      const transfer = reader === 'status' ? vi.spyOn(prisma.project, 'findUnique').mockImplementationOnce((async (args: Parameters<typeof originalProject>[0]) => {
+        const snapshot = await originalProject(args)
+        await revoke()
+        return snapshot
+      }) as never) : vi.spyOn(prisma.uptimeMonitor, 'findUnique').mockImplementationOnce((async (args: Parameters<typeof original>[0]) => {
+        const snapshot = await original(args)
+        await revoke()
         return snapshot
       }) as never)
       try { await expect(read()).rejects.toMatchObject({ status: 404 }) }
@@ -51,6 +59,7 @@ run('Uptime private read authority', () => {
       const currentSite = uptimeReadSite({ ...project, userId: change === 'transfer' ? newOwner.id : oldOwner.id })
       if (reader === 'history') expect(await loadUptimeHistory(currentSite, '24h', null, now)).toMatchObject({ probes: [{ id: probe.id }], incidents: [{ id: incident.id }] })
       else if (reader === 'summary') expect(await loadUptimeSummary(currentSite, now)).toMatchObject({ state: 'offline', incidentOpen: true, openIncidentCount: 1 })
+      else if (reader === 'status') expect(await loadUptimeStatus(currentSite, now)).toMatchObject({ state: 'offline', incidentOpen: true })
       else expect(await loadUptimeEvents(currentSite)).toEqual([expect.objectContaining({ id: incident.id })])
     } finally { await prisma.user.deleteMany({ where: { id: { in: userIds } } }) }
   })

@@ -48,7 +48,7 @@ describe('Flag feedback lifecycle boundary', () => {
     mocks.getSession.mockResolvedValue({ user: { id: 'owner-1' } })
     mocks.flagFindUnique.mockResolvedValue({
       id: 'flag-1',
-      audit: { userId: 'owner-1', projectId: 'project-1' },
+      audit: { userId: 'owner-1', projectId: 'project-1', project: { userId: 'owner-1', deletedAt: null } },
     })
     mocks.feedbackUpsert.mockResolvedValue({ id: 'feedback-1', vote: -1 })
     mocks.lifecycleUpsert.mockResolvedValue({})

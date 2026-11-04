@@ -7,10 +7,9 @@ import {
 /**
  * The customer notice for an alert FixFlags could not deliver.
  *
- * Delivery is not coverage. The Site really was checked, and saying so is the
- * point: the customer needs to know the checks are still happening and that only
- * the telling failed. Collapsing the two into one state is how a broken alert
- * channel ends up looking like a healthy Site.
+ * Historical delivery and current monitoring coverage are independent facts.
+ * Keep the delivery warning visible even if the schedule has since changed.
+ * Views use the current coverage projection when describing continued checks.
  *
  * Only a terminal failure produces a notice. A failure that is still being
  * retried is the system working, and reporting it would be a false alarm.

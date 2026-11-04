@@ -1,4 +1,4 @@
-import { Audit } from '@prisma/client'
+import type { Audit, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { verifyShareGrant } from '@/lib/security/share-grant'
 import type { AuditAccessContext } from '@/lib/audit/access-context'
@@ -10,37 +10,15 @@ export type {
 } from '@/lib/audit/access-context'
 export { resolveReportChatGate } from '@/lib/audit/access-context'
 
-type SessionUser = { id: string } | null | undefined
+import { canManageAudit, type SessionUser } from './access-ownership'
+export { canAccessAudit, canManageAudit, canRetryAnonymousAudit, type AuditOwnership } from './access-ownership'
 
-export function canAccessAudit(
-  audit: Pick<Audit, 'userId' | 'isPublic'>,
-  sessionUser: SessionUser
-): boolean {
-  if (audit.isPublic) return true
-  if (sessionUser?.id && audit.userId === sessionUser.id) return true
-  return false
-}
-
-export function canManageAudit(
-  audit: Pick<Audit, 'userId'>,
-  sessionUser: SessionUser
-): boolean {
-  if (!audit.userId) return false
-  return sessionUser?.id === audit.userId
-}
-
-/**
- * Anonymous visitors may retry their OWN failed teaser scan, gated on the
- * anonymous-audit cookie (ANON_AUDIT_IDS_COOKIE) instead of userId.
- * Private teasers stay retryable when the signed creator claim lists this id.
- */
-export function canRetryAnonymousAudit(
-  audit: Pick<Audit, 'userId' | 'isPublic'>,
-  auditId: string,
-  anonAuditIds: string[]
-): boolean {
-  if (audit.userId !== null) return false
-  return anonAuditIds.includes(auditId)
+export const auditAccessSourceSelect = { id: true, userId: true, projectId: true, isPublic: true, url: true, status: true,
+  user: { select: { lifecycleStatus: true } },
+  project: { select: { userId: true, deletedAt: true, user: { select: { lifecycleStatus: true } } } },
+} satisfies Prisma.AuditSelect
+export function loadAuditAccessSource(id: string, db: Pick<Prisma.TransactionClient, 'audit'> = prisma) {
+  return db.audit.findUnique({ where: { id }, select: auditAccessSourceSelect })
 }
 
 /** One live access decision for report pages, APIs, screenshots, and prompts.
@@ -49,15 +27,17 @@ export function canRetryAnonymousAudit(
  * an explicit current share grant. Curated samples never enter this path.
  */
 export async function resolveAuditAccess(
-  audit: Pick<Audit, 'id' | 'userId' | 'isPublic'>,
+  audit: Pick<Audit, 'id'> & Partial<Pick<Audit, 'userId' | 'isPublic'>>,
   sessionUser: SessionUser,
   shareGrantValue?: string,
   anonAuditIds: string[] = []
 ): Promise<AuditAccessContext> {
-  if (sessionUser?.id && audit.userId === sessionUser.id) return 'owner'
-  if (audit.userId === null && anonAuditIds.includes(audit.id)) return 'anonymous_teaser'
+  const source = await loadAuditAccessSource(audit.id)
+  if (!source) return 'denied'
+  if (canManageAudit(source, sessionUser)) return 'owner'
+  if (source.projectId === null && source.userId === null && anonAuditIds.includes(source.id)) return 'anonymous_teaser'
 
-  if (audit.isPublic) {
+  if (source.isPublic) {
     return 'public_viewer'
   }
 

@@ -1,5 +1,6 @@
 import { describe, it, vi, beforeEach, afterEach } from 'vitest'
 import assert from 'node:assert/strict'
+import { buildPrescriptionUserPrompt } from '@/lib/prompts/system-prompt'
 
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
@@ -142,7 +143,7 @@ describe('runAiReview', () => {
     expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
   })
 
-  it('sends all original supporting scopes to prescription without private comparison fields or invented grades', async () => {
+  it('retains original source references while excluding private comparison fields and provider prompt identities', async () => {
     const supportingObservations = mergeSupportingObservations([0, 1].map(index => observationsForFlag({
       source: 'DETERMINISTIC', checkId: 'no-https', pageUrl: `https://example.com/page-${index}`, evidence: `Original observation ${index}`,
       evidenceTargets: [{ kind: 'element', source: 'measured', device: index ? 'mobile' : 'desktop', label: 'Original target', context: 'private-context' }],
@@ -155,7 +156,11 @@ describe('runAiReview', () => {
       ['https://example.com/page-0', 'https://example.com/page-1'])
     assert.equal(context.rubrics[0].grade, null)
     assert.equal(context.rubrics[0].score, null)
-    assert.doesNotMatch(JSON.stringify(context), /private-context|private-audit|private-task/)
+    assert.equal(context.existingFlags[0].supportingObservations[0].sourceAuditId, 'private-audit')
+    assert.doesNotMatch(JSON.stringify(context), /private-context|private-task/)
+    const prompt = buildPrescriptionUserPrompt({ ...context, pageText: 'Recorded page text',
+      metadata: { title: 'Example', description: null, h1s: [], h2s: [], ctaTexts: [] } })
+    assert.doesNotMatch(prompt, /private-context|private-audit|private-task/)
   })
 
   it('refuses an unreadable recorded observation contract before provider generation', async () => {

@@ -7,8 +7,9 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
-import { auditHostname } from '@/lib/audit/active-audit'
+import { auditHostname, type ActiveAuditSnapshot } from '@/lib/audit/active-audit'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy/errors'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 const POLL_DELAYS_MS = [2_000, 4_000, 8_000, 15_000] as const
@@ -16,62 +17,59 @@ const POLL_DELAYS_MS = [2_000, 4_000, 8_000, 15_000] as const
 export function ActiveAuditBanner() {
   const { active, dismiss } = useActiveAudit()
   const pathname = usePathname()
+  return active ? <ActiveCheckBanner key={JSON.stringify([active.auditId, active.siteId])} active={active} dismiss={dismiss} pathname={pathname} /> : null
+}
+
+function ActiveCheckBanner({ active, dismiss, pathname }: {
+  active: ActiveAuditSnapshot
+  dismiss: (auditId?: string) => void
+  pathname: string | null
+}) {
+  const { auditId, siteId: initialSiteId } = active
   const [stillRunning, setStillRunning] = useState(true)
   const [hostname, setHostname] = useState<string | null>(null)
-  const [siteId, setSiteId] = useState<string | null>(active?.siteId ?? null)
+  const [siteId, setSiteId] = useState<string | null>(initialSiteId ?? null)
   const boardHref = siteId ? `/sites/${siteId}` : null
   const isActiveBoard = Boolean(
-    active &&
-      ((boardHref && pathname === boardHref) ||
-        pathname === `/report/${active.auditId}`)
+    (boardHref && pathname === boardHref) ||
+      pathname === `/report/${auditId}`
   )
 
   useEffect(() => {
-    if (!active) {
-      setStillRunning(false)
-      return
-    }
     if (isActiveBoard) {
       setStillRunning(false)
       return
     }
     setHostname(null)
-    setSiteId(active.siteId ?? null)
+    setSiteId(initialSiteId ?? null)
     setStillRunning(true)
-    const activeAudit = active
     let cancelled = false
     let attempt = 0
     let timeout: ReturnType<typeof setTimeout> | undefined
-    let controller: AbortController | undefined
+    const controller = new AbortController()
 
     async function poll() {
-      controller = new AbortController()
       try {
-        const response = await fetch(`/api/reports/${activeAudit.auditId}/status`, {
+        const { response, body } = await fetchJsonWithDeadline(`/api/reports/${auditId}/status`, {
           signal: controller.signal,
           cache: 'no-store',
         })
         if (cancelled) return
         if ([401, 403, 404, 410].includes(response.status)) {
-          dismiss(activeAudit.auditId)
+          dismiss(auditId)
           setStillRunning(false)
           return
         }
-        if (response.ok) {
-          const data = (await response.json()) as {
-            status?: string
-            url?: string
-            siteId?: string
-            projectId?: string | null
-          }
+        if (response.ok && body && typeof body === 'object' && !Array.isArray(body)) {
+          const data = body as Record<string, unknown>
           if (typeof data.url === 'string') setHostname(auditHostname(data.url))
           if (typeof data.siteId === 'string' && data.siteId.trim()) {
             setSiteId(data.siteId)
           } else if (typeof data.projectId === 'string' && data.projectId.trim()) {
             setSiteId(data.projectId)
           }
-          if (data.status && TERMINAL_STATUSES.has(data.status)) {
-            dismiss(activeAudit.auditId)
+          if (typeof data.status === 'string' && TERMINAL_STATUSES.has(data.status)) {
+            dismiss(auditId)
             setStillRunning(false)
             return
           }
@@ -86,12 +84,12 @@ export function ActiveAuditBanner() {
     void poll()
     return () => {
       cancelled = true
-      controller?.abort()
+      controller.abort()
       if (timeout) clearTimeout(timeout)
     }
-  }, [active, dismiss, isActiveBoard])
+  }, [auditId, initialSiteId, dismiss, isActiveBoard])
 
-  if (!active || !stillRunning || isActiveBoard) return null
+  if (!stillRunning || isActiveBoard) return null
 
   return (
     <div className="pointer-events-none px-3 pb-2 pt-0">

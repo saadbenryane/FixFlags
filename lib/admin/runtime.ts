@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { Queue, Worker } from 'bullmq'
+import type { Queue } from 'bullmq'
 import { Prisma, type AdminOperation } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { createQueueRedis, createWorkerRedis } from '@/lib/queue/redis'
+import { createOwnedQueue, createOwnedWorker } from '@/lib/queue/bullmq-ownership'
 import { createTimerScheduler } from '@/lib/queue/timer-scheduler'
 import { logger } from '@/lib/logger'
 import { AdminActionError, AdminDeferredAction, AdminOutcomeUnknown } from './errors'
@@ -18,8 +18,7 @@ const OPERATION_LEASE_MS = 5 * 60_000
 let queue: Queue | undefined
 function adminQueue() {
   if (!queue) {
-    queue = new Queue('admin-operations', {
-      connection: createQueueRedis(),
+    queue = createOwnedQueue('admin-operations', {
       defaultJobOptions: { attempts: 1, removeOnComplete: true, removeOnFail: true },
     })
     queue.on('error', (error) =>
@@ -236,11 +235,10 @@ export function startAdminOperationRuntime() {
   const scheduler = createTimerScheduler((error) =>
     logger.error('Admin operation recovery failed', error),
   )
-  const worker = new Worker(
+  const worker = createOwnedWorker(
     'admin-operations',
     async (job) => executeAdminOperation((job.data as { operationId: string }).operationId),
     {
-      connection: createWorkerRedis(),
       concurrency: 2,
       lockDuration: OPERATION_LEASE_MS,
       maxStalledCount: 0,
@@ -249,12 +247,13 @@ export function startAdminOperationRuntime() {
   worker.on('error', (error) => logger.error('Admin worker unavailable', error))
   scheduler.schedule(sweepAdminOperations, 1000)
   scheduler.schedule(sweepAdminOperations, 10_000, true)
+  let closing: Promise<void> | undefined
   return {
     ready: () => worker.waitUntilReady(),
-    async close() {
+    close: () => closing ??= (async () => {
       await Promise.all([scheduler.stop(), worker.close()])
       await queue?.close()
       queue = undefined
-    },
+    })(),
   }
 }

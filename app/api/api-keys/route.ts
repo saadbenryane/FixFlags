@@ -6,6 +6,7 @@ import { headers } from 'next/headers'
 import { generateApiKey, MAX_ACTIVE_API_KEYS } from '@/lib/security/api-keys'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { ACCOUNT_CHANGED_CODE, ACCOUNT_OWNER_HEADER } from '@/lib/api/account-response'
 import { isApiKeyClient } from '@/lib/mcp/builders'
 import {
   developerKeyExpiresAt,
@@ -13,10 +14,19 @@ import {
   developerKeyPreset,
 } from '@/lib/mcp/developer-key-policy'
 
-export async function GET() {
+const privateResponseHeaders = (ownerId: string) => ({ 'Cache-Control': 'private, no-store', [ACCOUNT_OWNER_HEADER]: ownerId })
+function staleAccount(req: NextRequest | undefined, ownerId: string) {
+  const expected = req?.headers?.get(ACCOUNT_OWNER_HEADER)
+  if (expected != null && expected !== ownerId) return apiError('The account changed. Refresh before continuing.', 409, { code: ACCOUNT_CHANGED_CODE })
+  return null
+}
+
+export async function GET(req?: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
+    const stale = staleAccount(req, session.user.id)
+    if (stale) return stale
 
     const keys = await prisma.apiKey.findMany({
       where: {
@@ -39,7 +49,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(keys)
+    return NextResponse.json(keys, { headers: privateResponseHeaders(session.user.id) })
   } catch (err) {
     return handleRouteError(err, 'Failed to list API keys')
   }
@@ -49,6 +59,8 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
+    const stale = staleAccount(req, session.user.id)
+    if (stale) return stale
 
     const clientId = requestClientId(await headers())
     await enforceRateLimit({
@@ -124,7 +136,7 @@ export async function POST(req: NextRequest) {
         scopes: apiKey.scopes,
         expiresAt: apiKey.expiresAt,
       },
-      { status: 201 },
+      { status: 201, headers: privateResponseHeaders(session.user.id) },
     )
   } catch (err) {
     return handleRouteError(err, 'Failed to create API key')
@@ -140,6 +152,8 @@ export async function DELETE(req: NextRequest) {
       })
 
     const { searchParams } = new URL(req.url)
+    const stale = staleAccount(req, session.user.id)
+    if (stale) return stale
     const id = searchParams.get('id')
     if (!id) return apiError('Missing API key id', 400, { code: 'INVALID_REQUEST' })
 
@@ -148,7 +162,7 @@ export async function DELETE(req: NextRequest) {
       data: { revokedAt: new Date() },
     })
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true }, { headers: privateResponseHeaders(session.user.id) })
   } catch (err) {
     return handleRouteError(err, 'Failed to revoke API key')
   }

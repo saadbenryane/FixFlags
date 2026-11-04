@@ -1,4 +1,5 @@
-import { CHECK_REGISTRY, CHECK_MODULES } from './check-registry'
+import { CHECK_REGISTRY } from './check-registry'
+import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { baseCheckId, parseAffectedPaths } from './flag-identity'
 import { checkReceiptSchema, recordedCheckVersion } from './checks/receipt'
 import { scopedAssertionForTarget, checkVerifierSchema } from './checks/verification'
@@ -154,7 +155,7 @@ function recordedConditionVerdict(flag: RecoveryFlag, snapshot: RecoverySnapshot
     }))
     const checkModule = CHECK_REGISTRY[checkId]?.module
     const source = checkModule === 'performance' ? 'pagespeed-desktop' : checkModule === 'mobile' ? 'pagespeed-mobile'
-      : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network'
+      : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' || checkModule === 'network' ? 'browser-network'
         : CHECK_MODULES[checkModule ?? '']?.input === 'http' || checkId === 'broken-internal-links' || ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
           : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom'
     const moduleReceipts = snapshot.modules.get('module:' + checkModule) ?? []
@@ -164,7 +165,7 @@ function recordedConditionVerdict(flag: RecoveryFlag, snapshot: RecoverySnapshot
     // Derived summaries cannot replace the original condition's source observations.
     if (!receipts.length && !flag.verificationRule && !Array.isArray(flag.evidenceTargets) && exact.length)
       return combinedVerdict(exact.map(proof => proof.comparable ? proof.verdict === 'unknown' ? null : proof.verdict : null))
-    if (flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || ['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['slow-replay', 'page-response', 'overlays', 'flow', 'accessibility', 'console', 'keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
+    if (flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || ['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['slow-replay', 'page-response', 'overlays', 'flow', 'accessibility', 'console', 'keyboard', 'measurement', 'network', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
       const sources = moduleReceipts.filter(receipt => !receipt.failed)
       return combinedVerdict(receipts.map(receipt => {
         if (!receipt.applicable || receipt.failed) return null

@@ -11,7 +11,8 @@ const targetUrl = 'https://example.com/original'
 const category = { version: 1 as const, engine: 'progressive-v1' as const, scope: 'CATEGORY' as const,
   targetUrl, environment: 'production', category: { area: 'search' as const, sourceAuditId: 'inventory', pages: [targetUrl, 'https://example.com/pricing'] },
   checks: { 'title-missing': CHECK_REGISTRY['title-missing'].version }, outcomes: [], verificationTarget: null }
-const audit = { id: 'failed', userId: 'owner', projectId: 'site', status: 'FAILED', url: targetUrl, executionSpec: category }
+const audit = { id: 'failed', userId: 'owner', projectId: 'site', status: 'FAILED', url: targetUrl, executionSpec: category,
+  user: { lifecycleStatus: 'ACTIVE' }, project: { userId: 'owner', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } }
 beforeEach(() => {
   vi.resetAllMocks(); mocks.audit.mockResolvedValue(audit)
   mocks.previous.mockResolvedValue({ id: 'previous', executionSpec: category, verificationTarget: null, selections: [] })
@@ -19,6 +20,13 @@ beforeEach(() => {
 })
 
 describe('shared admitted-scope retries', () => {
+  it.each([false, true])('uses the current Site owner and a distinct retry key after actor erasure=%s', async erased => {
+    mocks.audit.mockResolvedValue({ ...audit, userId: erased ? null : 'original-owner', user: erased ? null : audit.user })
+    await retryAdmittedRun('failed', owner)
+    expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ userId: 'owner', idempotencyKey: 'owner-retry:failed:owner',
+      expectedResponsibilityHash: admittedResponsibilityHash(category) }))
+    await expect(retryAdmittedRun('failed', { kind: 'owner', userId: 'original-owner' })).rejects.toMatchObject({ status: 403 })
+  })
   it('retains a category and all admitted pages instead of starting broad Site care', async () => {
     await retryAdmittedRun('failed', owner)
     expect(mocks.previous).toHaveBeenCalledWith(expect.objectContaining({ where: { auditId: 'failed', projectId: 'site' } }))

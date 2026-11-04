@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
-import { Worker } from 'bullmq'
-import { createWorkerRedis } from '@/lib/queue/redis'
+import { createOwnedWorker } from '@/lib/queue/bullmq-ownership'
 import { logger } from '@/lib/logger'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { claimExecution, withExecutionOwnership, executionTransaction } from '../execution-ownership'
@@ -27,7 +26,7 @@ for (const coverage of ADVERTISED_COVERAGE_REGISTRY.values()) for (const evaluat
 /** The Audit job admits a graph and returns. Physical work has separate, fenced
  * checkpoints and resource queues; a completed coordinator is not a completed analysis. */
 export async function coordinateProgressiveAudit(auditId: string): Promise<void> {
-  const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+  const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, select: { status: true, executionSpec: true } })
   const spec = readExecutionSpec(audit.executionSpec)
   if (!spec || spec.engine !== 'progressive-v1' || ['COMPLETED', 'FAILED'].includes(audit.status)) return
   const owner = await claimExecution(auditId, { resume: true })
@@ -76,12 +75,12 @@ export async function recoverProgressiveAudits(limit = 25) {
 export function startProgressiveWorkers() {
   let activeTasks = 0
   const workers = Object.entries(TASK_QUEUES).map(([resource, config]) => {
-    const worker = new Worker(config.name, async job => {
+    const worker = createOwnedWorker(config.name, async job => {
       activeTasks++
       try { return await executeTask(job.data, handlers) }
       finally { activeTasks-- }
     }, {
-      connection: createWorkerRedis(), concurrency: config.concurrency, lockDuration: 90_000, maxStalledCount: 0,
+      concurrency: config.concurrency, lockDuration: 90_000, maxStalledCount: 0,
     })
     worker.on('error', error => logger.error('Execution task worker error', { resource, message: error.message }))
     worker.on('failed', (job, error) => {
@@ -93,8 +92,9 @@ export function startProgressiveWorkers() {
     })
     return worker
   })
-  return { activeCount: () => activeTasks, ready: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: async () => {
+  let closing: Promise<void> | undefined
+  return { activeCount: () => activeTasks, ready: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: () => closing ??= (async () => {
     await Promise.all(workers.map(worker => worker.close()))
     await closeParserWorker()
-  } }
+  })() }
 }

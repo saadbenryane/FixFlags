@@ -95,14 +95,16 @@ export function TechnologyStrip({ items, label = 'Built with', onSelect }: { ite
   return <section className={styles.technologyStrip} aria-label={label ?? 'Detected technologies'}>
     {label ? <span className={styles.technologyLabel}>{label}</span> : null}
     <ul className={styles.technologyList}>
-      {items.map(item => <li key={item.name} title={`${item.name}: ${item.status}`}>
-        <InteractiveButton type="button" className={styles.technologyItem} onClick={() => onSelect?.(item)} disabled={!onSelect} aria-label={`${item.name}: ${item.status}`}>
-        <ToolLogo name={item.name} />
-        <span className={styles.technologyName}>{item.name}</span>
-        <i className={`${styles.statusDot} ${item.state === 'attention' ? styles.attention : ''}`} aria-hidden="true" />
-        <span className="sr-only">{item.status}</span>
-        </InteractiveButton>
-      </li>)}
+      {items.map(item => {
+        const content = <><span aria-hidden="true"><ToolLogo name={item.name} /></span>
+          <span className={styles.technologyName}>{item.name}</span>
+          <i className={`${styles.statusDot} ${item.state === 'attention' ? styles.attention : ''}`} aria-hidden="true" />
+          <span className="sr-only">{item.status}</span></>
+        return <li key={item.name} title={`${item.name}: ${item.status}`}>
+          {onSelect ? <InteractiveButton type="button" className={styles.technologyItem} onClick={() => onSelect(item)} aria-label={`${item.name}: ${item.status}`}>{content}</InteractiveButton>
+            : <span className={styles.technologyItem}>{content}</span>}
+        </li>
+      })}
     </ul>
   </section>
 }

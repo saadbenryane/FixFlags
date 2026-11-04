@@ -24,8 +24,8 @@ function SiteResourceOwner({ siteId, initial, children }: { siteId: string; init
     observers.add(observer)
     return () => { observers.delete(observer) }
   }, [observers])
-  const { view, refresh, disconnected } = useSiteResource(siteId, initial, notify)
-  const resource = useMemo(() => ({ siteId, view, refresh, disconnected, subscribe }), [siteId, view, refresh, disconnected, subscribe])
+  const { view, refresh, disconnected, readUnavailable } = useSiteResource(siteId, initial, notify)
+  const resource = useMemo(() => ({ siteId, view, refresh, disconnected, readUnavailable, subscribe }), [siteId, view, refresh, disconnected, readUnavailable, subscribe])
   return <SiteResourceContext.Provider value={resource}>{children}</SiteResourceContext.Provider>
 }
 

@@ -30,7 +30,7 @@ run('Watch notification admission through the database ledger', () => {
     } finally { await prisma.$disconnect() }
   })
   async function fixture() {
-    const owner = await prisma.user.create({ data: { email: `${randomUUID()}@notification.test`, role: 'admin' } })
+    const owner = await prisma.user.create({ data: { email: `${randomUUID()}@notification.test`, emailVerified: true, role: 'admin' } })
     users.push(owner.id)
     const project = await prisma.project.create({ data: { userId: owner.id, name: 'Notification fixture',
       canonicalHost: 'example.com', url: 'https://example.com/', watchInterval: 'WEEKLY' } })
@@ -43,6 +43,24 @@ run('Watch notification admission through the database ledger', () => {
     audits.push(audit.id)
     return { owner, project, audit }
   }
+
+  it('retains monitoring and pending findings while waiting for a verified recipient', async () => {
+    const { owner, project, audit } = await fixture()
+    await prisma.user.update({ where: { id: owner.id }, data: { emailVerified: false } })
+    await prisma.audit.update({ where: { id: audit.id }, data: { watchRegressionCount: null, watchRecoveryCount: null } })
+    await notifyWatchRegression(null, audit.id)
+    expect(provider.send).not.toHaveBeenCalled()
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
+      watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0, watchNotificationPayload: null,
+      watchRegressionCount: 1, watchRecoveryCount: 0, completedAt: now })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: project.id } }))
+      .toMatchObject({ watchInterval: 'WEEKLY', watchLastRunAt: now })
+    await prisma.user.update({ where: { id: owner.id }, data: { emailVerified: true } })
+    await notifyWatchRegression(null, audit.id)
+    expect(provider.send).toHaveBeenCalledOnce()
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
+      .toMatchObject({ watchNotificationStatus: 'SENT', watchNotificationAttempts: 1, completedAt: now })
+  })
 
   it.each([false, true])('does not replay an uncertain delivery after provider deduplication expires (legacy: %s)', async legacy => {
     const { audit } = await fixture()
@@ -138,7 +156,7 @@ run('Watch notification admission through the database ledger', () => {
       watchNotificationLastError: expect.stringContaining('idempotency window') })
   })
 
-  it.each(['preferences', 'recipient', 'owner'] as const)('rejects a %s change at frozen-body admission', async change => {
+  it.each(['preferences', 'recipient', 'verification', 'owner'] as const)('rejects a %s change at frozen-body admission', async change => {
     const { owner, project, audit } = await fixture()
     const update = prisma.audit.updateMany.bind(prisma.audit)
     let changed = false
@@ -147,6 +165,7 @@ run('Watch notification admission through the database ledger', () => {
         changed = true
         if (change === 'preferences') await prisma.project.update({ where: { id: project.id }, data: { notificationLevel: 'OFF' } })
         else if (change === 'recipient') await prisma.user.update({ where: { id: owner.id }, data: { email: `${randomUUID()}@notification.test` } })
+        else if (change === 'verification') await prisma.user.update({ where: { id: owner.id }, data: { emailVerified: false } })
         else {
           const replacement = await prisma.user.create({ data: { email: `${randomUUID()}@notification.test` } })
           users.push(replacement.id)

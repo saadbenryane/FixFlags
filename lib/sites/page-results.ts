@@ -9,22 +9,33 @@ export type PageResultData = {
 
 /** A single recorded page inventory, projected through an explicitly selected finding scope. */
 export function projectPageResults(checked: NonNullable<SiteHomeView['checkedPages']>, flags: SiteFlagSeed[]): PageResultData[] {
-  const urls = [...new Set([...checked.map(page => page.url), ...flags.flatMap(flag => flag.affectedPaths.length ? flag.affectedPaths : flag.pageUrl ? [flag.pageUrl] : [])])]
-  const paths = new Map<string, URL[]>()
-  for (const url of urls) {
-    try { const parsed = new URL(url); paths.set(parsed.pathname, [...paths.get(parsed.pathname) ?? [], parsed]) } catch { /* Keep the recorded address. */ }
+  const pages = new Map<string, { recorded?: typeof checked[number]; flags: SiteFlagSeed[]; parsed?: URL }>()
+  for (const page of checked) {
+    if (!pages.has(page.url)) pages.set(page.url, { recorded: page, flags: [] })
   }
-  return urls.map(url => {
-    const recorded = checked.find(page => page.url === url)
-    let label = url
+  for (const flag of flags) {
+    const affected = flag.affectedPaths.length ? flag.affectedPaths : flag.pageUrl ? [flag.pageUrl] : []
+    for (const url of new Set(affected)) {
+      let page = pages.get(url)
+      if (!page) { page = { flags: [] }; pages.set(url, page) }
+      page.flags.push(flag)
+    }
+  }
+  const paths = new Map<string, { count: number; hosts: Set<string> }>()
+  for (const [url, page] of pages) {
     try {
-      const parsed = new URL(url), matching = paths.get(parsed.pathname) ?? []
-      const multipleHosts = new Set(matching.map(item => item.host)).size > 1
-      label = `${multipleHosts ? parsed.host : ''}${parsed.pathname}${matching.length > 1 ? parsed.search + parsed.hash : ''}`
+      const parsed = new URL(url)
+      page.parsed = parsed
+      let path = paths.get(parsed.pathname)
+      if (!path) { path = { count: 0, hosts: new Set() }; paths.set(parsed.pathname, path) }
+      path.count++; path.hosts.add(parsed.host)
     } catch { /* Keep the recorded address. */ }
+  }
+  return Array.from(pages, ([url, { recorded, parsed, flags: pageFlags }]) => {
+    const matching = parsed ? paths.get(parsed.pathname)! : null
+    const label = parsed && matching ? `${matching.hosts.size > 1 ? parsed.host : ''}${parsed.pathname}${matching.count > 1 ? parsed.search + parsed.hash : ''}` : url
     return { url, label, status: recorded?.status ?? 'UNKNOWN',
       capture: recorded?.capture ? { src: recorded.capture.url, alt: recorded.title || url } : null,
-      flags: flags.filter(flag => (flag.affectedPaths.length ? flag.affectedPaths : flag.pageUrl ? [flag.pageUrl] : []).includes(url))
-        .sort(compareFlagPriority).map(({ id, problem, priorityBand, checkId, fix }) => ({ id, problem, priorityBand, checkId, fix })) }
+      flags: pageFlags.sort(compareFlagPriority).map(({ id, problem, priorityBand, checkId, fix }) => ({ id, problem, priorityBand, checkId, fix })) }
   })
 }

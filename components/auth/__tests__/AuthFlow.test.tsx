@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
+import { AUTH } from '@/lib/marketing/copy/auth'
+import { trackEvent } from '@/lib/analytics/events'
 
 const replace = vi.hoisted(() => vi.fn())
 const retry = vi.hoisted(() => vi.fn())
@@ -42,6 +44,112 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
     })
   })
 
+  it.each([
+    ['signup', '/sites/current?category=conversion&flag=incident#evidence'],
+    ['signin', '/sites/current/flags/captured?from=timeline#observation'],
+  ] as const)('keeps the current Site identity and exact %s handoff visible', async (mode, next) => {
+    const fetcher = vi.fn(async () => Response.json({ siteId: 'current', hostname: 'retained.example' }))
+    vi.stubGlobal('fetch', fetcher)
+    const request = mode === 'signup' ? authClient.signUp.email : authClient.signIn.email
+    request.mockResolvedValue({ data: { token: 'confirmed-session', user: { id: 'confirmed-user' } }, error: null })
+    const rendered = render(<AuthFlow mode={mode} nextPath={next} />)
+    try {
+      expect(await screen.findByText(AUTH.reportContext.title('retained.example'))).toBeVisible()
+      expect(screen.getByRole('link', { name: AUTH.reportContext.backCta })).toHaveAttribute('href', next)
+      expect(fetcher).toHaveBeenCalledExactlyOnceWith('/api/sites/current?scope=identity', expect.objectContaining({ cache: 'no-store' }))
+      fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+      fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+      fireEvent.click(screen.getByRole('button', { name: mode === 'signup' ? 'Create account' : 'Sign in', exact: true }))
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/post-login?next=' + encodeURIComponent(next)))
+      expect(request).toHaveBeenCalledOnce()
+    } finally { rendered.unmount(); vi.unstubAllGlobals() }
+  })
+
+  it('keeps sign-in available with the exact Site return link when identity access is refused', async () => {
+    const next = '/sites/private/settings#scan-access'
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({}, { status: 403 })))
+    authClient.signIn.email.mockResolvedValue({ data: { token: 'confirmed-session', user: { id: 'confirmed-user' } }, error: null })
+    const rendered = render(<AuthFlow mode="signin" nextPath={next} />)
+    try {
+      expect(screen.getByRole('region', { name: AUTH.reportContext.regionLabel })).toBeVisible()
+      expect(screen.getByText(AUTH.reportContext.loadingTitle)).toBeVisible()
+      expect(screen.getByRole('link', { name: AUTH.reportContext.backCta })).toHaveAttribute('href', next)
+      fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+      fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }))
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/post-login?next=' + encodeURIComponent(next)))
+    } finally { rendered.unmount(); vi.unstubAllGlobals() }
+  })
+
+  it('keeps general authentication free of Site identity requests', () => {
+    const fetcher = vi.fn()
+    vi.stubGlobal('fetch', fetcher)
+    const rendered = render(<AuthFlow mode="signup" nextPath="/dashboard" />)
+    try {
+      expect(screen.queryByRole('region', { name: AUTH.reportContext.regionLabel })).not.toBeInTheDocument()
+      expect(fetcher).not.toHaveBeenCalled()
+    } finally { rendered.unmount(); vi.unstubAllGlobals() }
+  })
+
+  it.each([
+    ['signup', null],
+    ['signup', { user: { id: 'unconfirmed-user' } }],
+    ['signup', { token: 'session-without-user' }],
+    ['signin', { token: null, user: { id: 'unconfirmed-user' } }],
+    ['signin', { token: '', user: { id: 'unconfirmed-user' } }],
+    ['signin', { twoFactorRedirect: 'true' }],
+  ] as const)('refuses an incomplete %s receipt and permits a confirmed retry: %j', async (mode, data) => {
+    const request = mode === 'signup' ? authClient.signUp.email : authClient.signIn.email
+    request.mockResolvedValueOnce({ data, error: null })
+      .mockResolvedValueOnce({ data: { token: 'confirmed-session', user: { id: 'confirmed-user' } }, error: null })
+    const onAuthenticated = vi.fn()
+    render(<AuthFlow mode={mode} onAuthenticated={onAuthenticated} nextPath="/sites/retained-site" />)
+    const email = screen.getByLabelText('Email'), password = screen.getByLabelText('Password')
+    fireEvent.change(email, { target: { value: 'owner@example.com' } })
+    fireEvent.change(password, { target: { value: 'StrongPassword123!' } })
+    const submit = screen.getByRole('button', { name: mode === 'signup' ? 'Create account' : 'Sign in', exact: true })
+    fireEvent.click(submit)
+    expect(await screen.findByRole('alert')).toHaveTextContent(mode === 'signup' ? AUTH.signUp.unexpectedError : AUTH.signIn.unexpectedError)
+    expect(onAuthenticated).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+    expect(trackEvent).not.toHaveBeenCalledWith(mode === 'signup' ? 'signed_up' : 'signed_in', expect.anything())
+    expect(email).toHaveValue('owner@example.com')
+    expect(password).toHaveValue('StrongPassword123!')
+    expect(submit).toBeEnabled()
+    fireEvent.click(submit)
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce())
+  })
+
+  it('keeps a valid two-factor challenge separate from an authenticated session', async () => {
+    const onAuthenticated = vi.fn()
+    authClient.signIn.email.mockResolvedValue({ data: { twoFactorRedirect: true }, error: null })
+    render(<AuthFlow mode="signin" onAuthenticated={onAuthenticated} nextPath="/sites/retained-site" />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+    const submit = screen.getByRole('button', { name: 'Sign in', exact: true })
+    fireEvent.click(submit)
+    await waitFor(() => expect(submit).toBeEnabled())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onAuthenticated).not.toHaveBeenCalled()
+    expect(trackEvent).not.toHaveBeenCalledWith('signed_in', expect.anything())
+  })
+
+  it.each([undefined, { status: false }])('does not claim that an unacknowledged verification link was requested: %j', async data => {
+    authClient.signUp.email.mockResolvedValue({ data: { token: null, user: { id: 'pending-user' } }, error: null })
+    authClient.sendVerificationEmail.mockResolvedValue({ data, error: null })
+    const onAuthenticated = vi.fn()
+    render(<AuthFlow mode="signup" onAuthenticated={onAuthenticated} />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }))
+    await screen.findByRole('heading', { name: AUTH.emailVerification.title })
+    fireEvent.click(screen.getByRole('button', { name: AUTH.emailVerification.resend }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(AUTH.emailVerification.error)
+    expect(screen.queryByText(AUTH.emailVerification.resent)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: AUTH.emailVerification.resend })).toBeEnabled()
+    expect(onAuthenticated).not.toHaveBeenCalled()
+  })
+
   it('keeps an unauthenticated signup at email verification instead of claiming its Site', async () => {
     const onAuthenticated = vi.fn()
     authClient.signUp.email.mockResolvedValue({ data: { token: null, user: { id: 'pending-user' } }, error: null })
@@ -73,7 +181,7 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send another link' }))
     await screen.findByText('Another verification link has been requested.')
     expect(authClient.sendVerificationEmail).toHaveBeenLastCalledWith({ email: 'owner@example.com',
-      callbackURL: '/post-login?next=%2Fsites%2Fretained-site&from=report' })
+      callbackURL: '/post-login?next=%2Fsites%2Fretained-site&from=report', fetchOptions: { signal: expect.any(AbortSignal) } })
     expect(onAuthenticated).not.toHaveBeenCalled()
     expect(replace).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Use another email' }))
@@ -94,7 +202,7 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
     const fetch = vi.fn()
     vi.stubGlobal('fetch', fetch)
     const onAuthenticated = vi.fn()
-    authClient.signUp.email.mockResolvedValue({ data: { user: { id: 'new-user' } }, error: null })
+    authClient.signUp.email.mockResolvedValue({ data: { token: 'session-token', user: { id: 'new-user' } }, error: null })
     try {
       render(<AuthFlow mode="signup" onAuthenticated={onAuthenticated} />)
       fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
@@ -257,7 +365,7 @@ describe('AuthFlow report gate (SSO/passkey default)', () => {
   })
 
   it('signs in with a passkey from the default path', async () => {
-    authClient.signIn.passkey.mockResolvedValue({ data: undefined, error: null })
+    authClient.signIn.passkey.mockResolvedValue({ data: { session: { id: 'session', token: 'session-token', userId: 'user' }, user: { id: 'user' } }, error: null })
 
     render(
       <AuthFlow
@@ -297,7 +405,7 @@ describe('AuthFlow report gate (SSO/passkey default)', () => {
       vi.fn(() => Promise.resolve(new Response(null, { status: 200 })))
     )
     authClient.signUp.email.mockResolvedValue({
-      data: { user: { id: 'u1' } },
+      data: { token: 'session-token', user: { id: 'u1' } },
       error: null,
     })
 
@@ -325,6 +433,7 @@ describe('AuthFlow report gate (SSO/passkey default)', () => {
         email: 'builder@example.com',
         password: 'hunter2hunter',
         callbackURL: '/post-login?next=%2Freport%2Faudit-1&from=report',
+        fetchOptions: { signal: expect.any(AbortSignal) },
       })
     )
     expect(replace).toHaveBeenCalledWith('/post-login?next=%2Freport%2Faudit-1&from=report')

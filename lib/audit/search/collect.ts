@@ -145,12 +145,14 @@ export async function collectSearchEvidence(input: {
   collectorVersion?: 1 | 2; renderedHtml: string | null; renderedSearchSnapshot?: RenderedSearchSnapshot; renderedComplete?: boolean; renderedCollectedAt?: string;
   headers?: Record<string, string> | null; finalUrl?: string; status?: number | null;
   deadline: number; cache: SearchResourceCache; privateCapture?: boolean; collectCanonicalTargets?: boolean;
+  /** The browser document alone used credentials; other inputs remain public. */
+  renderedPrivate?: boolean;
 }): Promise<SearchPageEvidence> {
   const collectedAt = new Date().toISOString()
   const origin = new URL(input.pageUrl).origin
   const empty = missingDocument(input.pageUrl, input.privateCapture ? 'private_capture' : 'capture_unavailable')
   const original = input.privateCapture ? empty : input.original ?? empty
-  const rendered: PublicDocument = input.privateCapture ? empty : {
+  const rendered: PublicDocument = input.privateCapture ? empty : input.renderedPrivate ? missingDocument(input.pageUrl, 'private_capture') : {
     url: input.pageUrl, finalUrl: input.finalUrl ?? input.pageUrl, status: input.status ?? null,
     headers: input.headers ?? {}, body: input.renderedHtml,
     searchSnapshot: input.renderedSearchSnapshot,

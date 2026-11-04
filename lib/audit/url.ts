@@ -1,19 +1,19 @@
-import { resolve4, resolve6 } from 'node:dns/promises'
+import { Resolver } from 'node:dns/promises'
 import { isIP, type LookupFunction } from 'node:net'
 import { addAbortSignal } from 'node:stream'
 import { createGunzip } from 'node:zlib'
 import { MIMEType } from 'node:util'
 import { decodeBuffer } from 'encoding-sniffer'
-import { Agent } from 'undici'
+import type { Agent } from 'undici'
 import { publicHttpCapacity } from './progressive/capacity'
 import { isPublicIp } from './public-ip'
 import { PublicCertificateError, readCertificateFailure } from './tls-evidence'
 import { PublicResponseBodyError, type PublicHttpDocument } from './http-evidence'
 import { PublicRedirectError, isAutomaticRedirectStatus } from './redirect-evidence'
 import { currentExecutionOwnership } from './execution-ownership'
+import { parseWebsiteAddress } from '@/lib/utils/website-address'
+import { createPublicHttpDispatchers } from './public-http-dispatchers'
 export { isPublicIp } from './public-ip'
-
-const PUBLIC_PROTOCOLS = new Set(['http:', 'https:'])
 
 async function readGzipDocument(input: Buffer, maxBytes: number, signal: AbortSignal) {
   const decoder = addAbortSignal(signal, createGunzip())
@@ -64,22 +64,17 @@ export function isBlockedHostname(hostname: string, allowDevLocalhost = process.
 
 type PublicUrlResult = { ok: true; url: string } | { ok: false; error: string }
 function normalizePublicUrl(raw: string, navigation: boolean): PublicUrlResult {
-  try {
-    const parsed = new URL(raw.trim())
-    if (!PUBLIC_PROTOCOLS.has(parsed.protocol)) {
-      return { ok: false, error: 'Only public HTTP and HTTPS URLs can be checked' }
-    }
-    if (parsed.username || parsed.password) {
-      return { ok: false, error: 'URLs containing credentials cannot be checked' }
-    }
-    if (isBlockedHostname(parsed.hostname)) {
-      return { ok: false, error: 'FixFlags can only check publicly accessible URLs' }
-    }
-    if (!navigation) parsed.hash = ''
-    return { ok: true, url: parsed.toString() }
-  } catch {
-    return { ok: false, error: 'Invalid URL format' }
+  const syntax = parseWebsiteAddress(raw)
+  if (!syntax.ok) {
+    return { ok: false, error: syntax.reason === 'scheme' ? 'Only public HTTP and HTTPS URLs can be checked'
+      : syntax.reason === 'credentials' ? 'URLs containing credentials cannot be checked' : 'Invalid URL format' }
   }
+  const parsed = syntax.parsed
+  if (isBlockedHostname(parsed.hostname)) {
+    return { ok: false, error: 'FixFlags can only check publicly accessible URLs' }
+  }
+  if (!navigation) parsed.hash = ''
+  return { ok: true, url: parsed.toString() }
 }
 
 /** HTTP requests address the document without its browser fragment state. */
@@ -103,19 +98,46 @@ export class PublicRequestError extends Error {
   readonly code = 'ETIMEDOUT'
 }
 
-export async function resolvePublicAddresses(hostname: string): Promise<string[]> {
+const PUBLIC_DNS_TIMEOUT_MS = 5000
+const DNS_UNAVAILABLE_MESSAGE = 'Domain lookup is temporarily unavailable. Try again shortly.'
+
+export async function resolvePublicAddresses(hostname: string, signal?: AbortSignal): Promise<string[]> {
+  signal?.throwIfAborted()
   hostname = hostname.replace(/^\[|\]$/g, '')
   if (isBlockedHostname(hostname)) {
     throw new AuditUrlError('Destination is not publicly accessible')
   }
   if (isIP(hostname)) return [hostname]
 
-  const results = await Promise.allSettled([resolve4(hostname), resolve6(hostname)])
+  // Each lookup owns its native queries. A caller stopping cannot cancel
+  // another Site's resolver or leave unbounded DNS work behind a rejected wait.
+  const resolver = new Resolver({ timeout: PUBLIC_DNS_TIMEOUT_MS, tries: 1 })
+  let expired = false
+  const cancel = () => resolver.cancel()
+  const timer = setTimeout(() => { expired = true; cancel() }, PUBLIC_DNS_TIMEOUT_MS)
+  signal?.addEventListener('abort', cancel, { once: true })
+  let results: PromiseSettledResult<string[]>[]
+  try {
+    signal?.throwIfAborted()
+    const collect = (query: Promise<string[]>) => query.then(addresses => {
+      // One unsafe answer already refuses this destination. Its other family
+      // cannot make it eligible, so do not keep that query running.
+      if (addresses.some(address => !isPublicIp(address))) cancel()
+      return addresses
+    })
+    results = await Promise.allSettled([collect(resolver.resolve4(hostname)), collect(resolver.resolve6(hostname))])
+    signal?.throwIfAborted()
+    if (expired) throw new AuditUrlError(DNS_UNAVAILABLE_MESSAGE, 'DNS_UNAVAILABLE')
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', cancel)
+  }
   const [v4, v6] = results.map(result => result.status === 'fulfilled' ? result.value : [])
   const addresses = [...v4, ...v6]
   if (addresses.length === 0) {
     const absent = results.every(result => result.status === 'fulfilled' || ['ENOTFOUND', 'ENODATA'].includes(result.reason?.code))
-    throw new AuditUrlError('We could not find that domain. Check the URL and try again.', absent ? 'DNS_NOT_FOUND' : 'DNS_UNAVAILABLE')
+    throw new AuditUrlError(absent ? 'We could not find that domain. Check the URL and try again.' : DNS_UNAVAILABLE_MESSAGE,
+      absent ? 'DNS_NOT_FOUND' : 'DNS_UNAVAILABLE')
   }
   if (addresses.some((address) => !isPublicIp(address))) {
     throw new AuditUrlError('Destination resolves to a private or reserved network')
@@ -125,34 +147,25 @@ export async function resolvePublicAddresses(hostname: string): Promise<string[]
 
 // Validate the addresses delivered to the socket, not only an earlier DNS
 // answer. Keep the URL hostname for Host, TLS identity and connection reuse.
-export const publicSocketLookup: LookupFunction = (hostname, options, callback) => {
-  void resolvePublicAddresses(hostname).then(addresses => {
-    const family = options.family === 'IPv4' ? 4 : options.family === 'IPv6' ? 6 : options.family
-    const eligible = family ? addresses.filter(address => isIP(address) === family) : addresses
-    if (!eligible.length) throw new AuditUrlError('No public address matches the requested family', 'DNS_NOT_FOUND')
-    if (options.all) callback(null, eligible.map(address => ({ address, family: isIP(address) })))
-    else callback(null, eligible[0], isIP(eligible[0]))
-  }).catch(error => callback(error instanceof Error ? error : new Error('Public address validation failed'), ''))
+function createPublicSocketLookup(signal?: AbortSignal): LookupFunction {
+  return (hostname, options, callback) => {
+    void resolvePublicAddresses(hostname, signal).then(addresses => {
+      const family = options.family === 'IPv4' ? 4 : options.family === 'IPv6' ? 6 : options.family
+      const eligible = family ? addresses.filter(address => isIP(address) === family) : addresses
+      if (!eligible.length) throw new AuditUrlError('No public address matches the requested family', 'DNS_NOT_FOUND')
+      if (options.all) callback(null, eligible.map(address => ({ address, family: isIP(address) })))
+      else callback(null, eligible[0], isIP(eligible[0]))
+    }).catch(error => callback(error instanceof Error ? error : new Error('Public address validation failed'), ''))
+  }
 }
-const publicDispatcher = new Agent({ connect: { lookup: publicSocketLookup, rejectUnauthorized: true } })
+export const publicSocketLookup = createPublicSocketLookup()
+const httpDispatchers = createPublicHttpDispatchers(createPublicSocketLookup)
 
 async function assertNormalizedPublicUrl(normalized: PublicUrlResult, signal?: AbortSignal, publicOnly = false): Promise<URL> {
   if (!normalized.ok) throw new AuditUrlError(normalized.error)
   const parsed = new URL(normalized.url)
   if (publicOnly && isBlockedHostname(parsed.hostname, false)) throw new AuditUrlError('Destination is not publicly accessible')
-  signal?.throwIfAborted()
-  const lookup = resolvePublicAddresses(parsed.hostname)
-  if (!signal) await lookup
-  else {
-    let abort: (() => void) | undefined
-    try {
-      await Promise.race([lookup, new Promise<never>((_resolve, reject) => {
-        abort = () => reject(signal.reason)
-        signal.addEventListener('abort', abort, { once: true })
-        if (signal.aborted) abort()
-      })])
-    } finally { if (abort) signal.removeEventListener('abort', abort) }
-  }
+  await resolvePublicAddresses(parsed.hostname, signal)
   return parsed
 }
 
@@ -201,7 +214,12 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
   const expiresAt = Math.min(deadline, responseExpiresAt)
   const controller = new AbortController()
   const signal = executionSignal ? AbortSignal.any([controller.signal, executionSignal]) : controller.signal
-  const timer = setTimeout(() => controller.abort(), Math.max(1, expiresAt - Date.now()))
+  let transport: ReturnType<typeof httpDispatchers.lease> | undefined
+  let expiredDuringDns = false
+  const timer = setTimeout(() => {
+    expiredDuringDns = transport?.resolvingDns ?? false
+    controller.abort()
+  }, Math.max(1, expiresAt - Date.now()))
   const redirects: string[] = []
   let uncertainRedirect = false
   const maxBytes = options.maxBytes ?? 1_000_000
@@ -216,9 +234,10 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
       signal.throwIfAborted()
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
       requestInFlight = true
+      transport ??= httpDispatchers.lease(signal)
       let response: Response
       try {
-        response = await fetch(current, { redirect: 'manual', signal, dispatcher: publicDispatcher,
+        response = await fetch(current, { redirect: 'manual', signal, dispatcher: transport.dispatcher,
           headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml',
             ...(new URL(current).origin === credentialOrigin ? options.headers ?? {} : {}) } } as RequestInit & { dispatcher: Agent })
       } catch (error) {
@@ -290,10 +309,16 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
     }
     throw new Error(requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : 'Public evidence redirect limit exceeded')
   } catch (error) {
-    if (controller.signal.aborted && !executionSignal?.aborted && requestInFlight && responseExpiresAt <= deadline)
+    if (requestInFlight && expiredDuringDns) throw new AuditUrlError(DNS_UNAVAILABLE_MESSAGE, 'DNS_UNAVAILABLE')
+    if (requestInFlight && transport?.dnsFailure) throw transport.dnsFailure
+    if (controller.signal.aborted && !executionSignal?.aborted && requestInFlight && responseExpiresAt <= deadline) {
       throw new PublicRequestError('Public response timed out')
+    }
     throw error
-  } finally { clearTimeout(timer); release() }
+  } finally {
+    clearTimeout(timer)
+    try { await transport?.release() } finally { release() }
+  }
 }
 
 /** Raw HTTP evidence shares the bounded transport and origin-scoped headers. */

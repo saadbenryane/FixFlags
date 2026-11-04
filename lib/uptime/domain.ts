@@ -48,6 +48,8 @@ export type UptimeSummary = {
   segments: UptimeSegment[]
 }
 export type UptimeHistory = UptimeSummary & {
+  /** Read bounds and monitor generation keep retained pages comparable. */
+  historyScope?: { key: string; from: string; through: string }
   window: '24h' | '7d' | '30d'
   probes: UptimeProbeView[]
   incidents: UptimeIncidentView[]

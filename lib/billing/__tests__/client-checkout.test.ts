@@ -6,10 +6,31 @@ import {
 import { BILLING_ACTION_COPY } from '@/lib/marketing/copy-barrel'
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
 describe('requestPlanCheckout', () => {
+  it.each(['javascript:alert(1)', 'http://checkout.example/session', 'https://user:secret@checkout.example/session', '', 123, null])
+  ('does not navigate to an unusable checkout destination: %j', async url => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ url })))
+    await expect(requestPlanCheckout('BUILDER')).resolves.toEqual({ kind: 'missing-destination' })
+  })
+
+  it.each(['connection', 'body'] as const)('bounds a stalled checkout %s and permits a fresh retry', async stage => {
+    vi.useFakeTimers()
+    let signal!: AbortSignal
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce((_url, options) => {
+      signal = options.signal
+      return stage === 'connection' ? new Promise<Response>(() => {}) : Promise.resolve({ ok: true, status: 200, json: () => new Promise(() => {}) })
+    }).mockImplementation(async () => Response.json({ url: 'https://checkout.example/session' })))
+    const pending = requestPlanCheckout('BUILDER')
+    await vi.advanceTimersByTimeAsync(30_000)
+    await expect(pending).resolves.toEqual({ kind: 'error', message: BILLING_ACTION_COPY.checkout.failed })
+    expect(signal.aborted).toBe(true)
+    await expect(requestPlanCheckout('BUILDER')).resolves.toMatchObject({ kind: 'redirect' })
+  })
+
   it('returns a redirect for a new checkout', async () => {
     vi.stubGlobal(
       'fetch',
@@ -149,6 +170,11 @@ describe('requestPlanCheckout', () => {
 })
 
 describe('submitWaitlistJoin', () => {
+  it.each([null, {}, { ok: false }, { ok: 'true' }])('does not report a waitlist join without its receipt: %j', async body => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(body)))
+    await expect(submitWaitlistJoin({ email: 'builder@example.com', plan: 'BUILDER' })).resolves.toEqual({ kind: 'error', message: BILLING_ACTION_COPY.waitlist.failed })
+  })
+
   it('submits the canonical waitlist payload', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)

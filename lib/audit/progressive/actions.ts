@@ -11,7 +11,8 @@ import { runFlowChecks } from '../checks/flow'
 import { POST_CLICK_CHECKS } from '../checks/flow-post-click'
 import { DESTINATION_CONTENT_CHECKS } from '../checks/flow-destination-content'
 import { assembleFlowModuleCheck } from '../checks/flow-module-receipt'
-import { runNetworkEngagementChecks } from '../checks/network-engagement'
+import { networkEngagementObservations } from '../checks/network-engagement'
+import { CHECK_REGISTRY } from '../check-registry'
 import { detectPagePurpose, needsFirstStep } from '../page-purpose'
 import { runSlowReplay } from '../flow/slow-replay-probe'
 import { runSlowReplayChecks, slowReplayAssertions } from '../checks/slow-replay'
@@ -35,7 +36,7 @@ import { originalPageActionContexts, originalPageActionTargets } from '../flow/v
 import { checkFormValidation } from '../checks/form-validation'
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import { diagnosticSourceWhere } from '@/lib/sites/domain/verification-source'
+import { readDiagnosticSources } from '@/lib/sites/domain/verification-source'
 import { collectOverlayObservation } from '../browser/overlay-observation'
 import { overlayObservationSchema, overlayAssertions, overlayTargetSchema, runObservedOverlayChecks, OVERLAY_CHECKS, scopedOverlayRule, scopedOverlayResult, overlayCheckReceipts, overlayReceiptScope, type OverlayTarget } from '../checks/overlay-evidence'
 import { createOverlayInteractionRecorder } from '../browser/overlay-interaction'
@@ -45,6 +46,7 @@ import { collectMobileNavigation } from '../flow/mobile-navigation'
 import { MOBILE_NAVIGATION_RULE, readMobileNavigationTarget, mobileNavigationAssertions, mobileNavigationFlags, mobileNavigationObservationSchema } from '../flow/mobile-navigation-evidence'
 
 const flowSchema = z.object({ tracking: trackingEvidenceSchema.optional(), receipt: checkReceiptSchema.optional(),
+  networkReceipt: checkReceiptSchema.optional(),
   navigationObservations: z.array(mobileNavigationObservationSchema).max(4).optional(), navigationReceipt: checkReceiptSchema.optional(),
   overlayReceipts: z.array(checkReceiptSchema).max(100).optional(),
   flowReceipt: checkReceiptSchema.optional(), controlProgress: controlProgressSchema.optional(),
@@ -66,8 +68,7 @@ export const actionHandlers: TaskHandler[] = [
     },
     async evaluate(context) {
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
-      const source = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(spec, context.audit.projectId),
-        take: spec?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true } }) : []
+      const source = target?.kind === 'DIAGNOSTIC' ? await readDiagnosticSources(prisma, spec, context.audit.projectId) : []
       const expectedTargets = source.flatMap(flag => scopedOverlayRule(flag.verificationRule) && Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
         const parsed = z.object({ device: z.enum(['desktop', 'mobile']), context: z.string(), selector: z.string(), label: z.string() }).safeParse(value)
         if (!parsed.success || parsed.data.device !== context.input.device) return []
@@ -90,7 +91,7 @@ export const actionHandlers: TaskHandler[] = [
   { kind: 'flow', replay: 'read_only', timeoutMs: 40_000, continuation: true,
     validateResult: artifact => { flowSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
-      const { receipt, formReceipt, flowReceipt, overlayReceipts, navigationReceipt, controlProgress } = flowSchema.parse(artifact.data)
+      const { receipt, networkReceipt, formReceipt, flowReceipt, overlayReceipts, navigationReceipt, controlProgress } = flowSchema.parse(artifact.data)
       if (context.input.verificationContexts) {
         const expected = nextControlProgress(context)
         if (!expected || !controlProgress || controlProgress.completed !== expected.completed || controlProgress.total !== expected.total ||
@@ -100,6 +101,7 @@ export const actionHandlers: TaskHandler[] = [
         context = { ...context, input: { ...context.input, verificationContexts: undefined, verificationContext: controlProgress.context ?? undefined } }
       }
       if (receipt) await commitCheckReceipt(context, receipt, tx, context.input.module === 'pricing-navigation' ? ':phase:pricing_navigation' : ':phase:public_action')
+      if (networkReceipt) await commitCheckReceipt(context, networkReceipt, tx, context.input.module === 'pricing-navigation' ? ':phase:pricing_navigation' : ':phase:public_action')
       if (formReceipt) await commitCheckReceipt(context, formReceipt, tx)
       if (flowReceipt) await commitCheckReceipt(context, flowReceipt, tx, context.input.module === 'pricing-navigation' ? ':pricing-navigation' : '')
       if (navigationReceipt) await commitCheckReceipt(context, navigationReceipt, tx)
@@ -129,8 +131,7 @@ export const actionHandlers: TaskHandler[] = [
       if (await resolveAuditPipelineMode(context.audit.id) === 'TEASER') throw new TaskFailure('SLOW_REPLAY_NOT_APPLICABLE', false)
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
       const batch = await nextObservationBatch(context, 'slow-replay', slowActionIdentitySchema, async () => {
-        const prior = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(spec, context.audit.projectId),
-          take: spec?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true, supportingObservations: true } }) : []
+        const prior = target?.kind === 'DIAGNOSTIC' ? await readDiagnosticSources(prisma, spec, context.audit.projectId) : []
         return target?.kind === 'DIAGNOSTIC' ? originalSlowActions(prior, context.input.pageUrl)
         : context.audit.projectId && spec ? await loadRecordedSlowActions({ projectId: context.audit.projectId,
           environment: spec.environment, pageUrl: context.input.pageUrl, excludeAuditId: context.audit.id }) : []
@@ -161,8 +162,7 @@ async function evaluateFlowObservation(context: TaskContext) {
     ? frozen.monitoringBehaviors?.find(scope => scope.pageUrl === context.input.pageUrl)?.actionContexts : undefined
   const excludedContexts = !context.input.verificationContext ? careContexts : undefined
   if (context.input.module === 'mobile-navigation') {
-    const sources = diagnostic?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(frozen, context.audit.projectId),
-      take: frozen?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true } }) : []
+    const sources = diagnostic?.kind === 'DIAGNOSTIC' ? await readDiagnosticSources(prisma, frozen, context.audit.projectId) : []
     const targets = sources.flatMap(flag => flag.verificationRule === MOBILE_NAVIGATION_RULE && Array.isArray(flag.evidenceTargets)
       ? flag.evidenceTargets.flatMap(value => { const target = readMobileNavigationTarget(value); return target ? [target] : [] }) : [])
     const deadline = Math.min(context.deadline, Date.now() + 15_000)
@@ -183,8 +183,7 @@ async function evaluateFlowObservation(context: TaskContext) {
     } finally { session.disposeNetwork(); await session.page.context().close() }
   }
   const overlayDiagnostic = diagnostic?.kind === 'DIAGNOSTIC' && Object.values(OVERLAY_CHECKS).some(id => id === diagnostic.checkId.split('::page:')[0])
-  const overlaySources = overlayDiagnostic && diagnostic?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(frozen, context.audit.projectId),
-    take: frozen?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true } }) : []
+  const overlaySources = overlayDiagnostic && diagnostic?.kind === 'DIAGNOSTIC' ? await readDiagnosticSources(prisma, frozen, context.audit.projectId) : []
   const originalOverlays: OverlayTarget[] = overlaySources.flatMap(flag => scopedOverlayRule(flag.verificationRule) && Array.isArray(flag.evidenceTargets)
     ? flag.evidenceTargets.flatMap(value => {
       const parsed = z.object({ device: z.literal('desktop'), context: z.string(), selector: z.string(), label: z.string() }).safeParse(value)
@@ -196,8 +195,7 @@ async function evaluateFlowObservation(context: TaskContext) {
     const token = randomUUID(), deadline = Math.min(context.deadline, Date.now() + 10_000)
     const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
     const sources = target?.kind === 'DIAGNOSTIC' && context.audit.projectId
-      ? await prisma.flag.findMany({ where: diagnosticSourceWhere(spec, context.audit.projectId),
-          take: spec?.verificationSourceFlagIds?.length ?? 100, select: { pageUrl: true, verificationRule: true, evidenceTargets: true, supportingObservations: true } }) : []
+      ? await readDiagnosticSources(prisma, spec, context.audit.projectId) : []
     const expectedTargets = careContexts && context.input.verificationContext ? [{ context: context.input.verificationContext,
       selector: 'form', label: 'Conversion form' }] : originalPageActionTargets(sources, context.input.pageUrl).flatMap(({ target: value }) => {
       const parsed = z.object({ context: z.string().startsWith('form:').max(160), selector: z.string().min(1).max(2000), label: z.string().min(1).max(160) }).safeParse(value)
@@ -233,15 +231,15 @@ async function evaluateFlowObservation(context: TaskContext) {
   const targetedPrimary = target?.kind === 'DIAGNOSTIC' && PRIMARY_ACTION_CHECKS.some(id => id === target.checkId.split('::page:')[0])
   const targetedLoading = target?.kind === 'DIAGNOSTIC' && POST_CLICK_CHECKS.includes(target.checkId.split('::page:')[0])
   const checkIdentity = target?.kind === 'DIAGNOSTIC' ? target.checkId.split('::page:')[0] : ''
+  const targetedNetwork = CHECK_REGISTRY[checkIdentity]?.module === 'network'
   const targetedTrust = checkIdentity === 'flow-cta-destination-no-trust'
   const targetedContent = DESTINATION_CONTENT_CHECKS.includes(checkIdentity)
   const targetedPricing = target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] === 'flow-pricing-nav-broken'
   const pricingOnly = targetedPricing || context.input.module === 'pricing-navigation'
   let expectedActionContexts: string[] | undefined = context.input.verificationContext ? [context.input.verificationContext] : undefined
-  if ((targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedPricing) && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
+  if ((targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedPricing || targetedNetwork) && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
     const scoped = frozen?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.actionContexts
-    const flags = scoped ? [] : await prisma.flag.findMany({ where: diagnosticSourceWhere(frozen, context.audit.projectId),
-      take: frozen?.verificationSourceFlagIds?.length ?? 100, select: { pageUrl: true, verificationRule: true, evidenceTargets: true, supportingObservations: true } })
+    const flags = scoped ? [] : await readDiagnosticSources(prisma, frozen, context.audit.projectId)
     expectedActionContexts = context.input.verificationContext ? [context.input.verificationContext]
       : scoped ?? originalPageActionContexts(flags, context.input.pageUrl)
   }
@@ -262,9 +260,13 @@ async function evaluateFlowObservation(context: TaskContext) {
         ...(overlayDiagnostic ? { captureSteps: false, overlayOnly: true, expectedOverlayTargets: originalOverlays.filter(target => ['primary_action', 'pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))),
           includeFormValidation: originalOverlays.some(target => target.context.split(':')[3].startsWith('flow_form_validation')),
           mode: !originalOverlays.some(target => ['pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))) ? 'primary' : undefined } : {}),
-        ...(targetedPrimary || targetedLoading || targetedTrust || targetedContent ? { mode: targetedLoading || targetedTrust || targetedContent ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
+        ...(targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedNetwork ? { mode: targetedLoading || targetedTrust || targetedContent ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
         ...(pricingOnly ? { mode: 'pricing', captureSteps: false, expectedPricingContexts: expectedActionContexts } : {}) })
-    if (!protectedActionRefused && result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
+    await session.settleEngagement(context.deadline, context.signal)
+    const network = networkEngagementObservations({ pageUrl: context.input.pageUrl, failures: session.networkFailures,
+      probe: session.formProbe, evidence: session.engagement(), actionContext: result.actionEvidence?.controlContext ?? undefined, expected: targetedNetwork })
+    if (!protectedActionRefused && result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence &&
+      !network.assertions.length && !targetedNetwork) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
     const tracking = session.tracking('public_action')
     const measured = runTrackingChecks(metadata ?? null, tracking, context.input.pageUrl)
     const purpose = metadata ? detectPagePurpose(metadata, context.input.pageUrl).purpose : null
@@ -274,7 +276,7 @@ async function evaluateFlowObservation(context: TaskContext) {
     const actionFlags = runFlowChecks(result, purpose).filter(flag => !protectedActionRefused ||
       flag.checkId === 'flow-cta-404' && result.actionEvidence?.response === 'error')
     const flags = [...measured.flags, ...actionFlags,
-      ...runNetworkEngagementChecks(session.networkFailures, session.formProbe)].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
+      ...network.flags].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
     const displayContext = (careContexts ?? frozen?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.actionContexts)?.find(value => value.startsWith('flow:control:'))
     const ownsDisplay = careContexts && displayContext ? context.input.verificationContext === displayContext
       : !context.input.verificationContext || context.input.verificationContext === displayContext
@@ -282,7 +284,11 @@ async function evaluateFlowObservation(context: TaskContext) {
       await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
     const flowCheck = assembleFlowModuleCheck({ result, actionRequired, actionFlags, pricingOnly, targetedPricing, protectedActionRefused,
       delegatedDiscovery: Boolean(excludedContexts?.length) })
-    return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking, receipt: {
+    return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking,
+      networkReceipt: { kind: 'site-module-check', version: 1, module: 'network', pageUrl: context.input.pageUrl,
+        passed: network.complete && !network.flags.length, applicable: network.applicable, complete: network.complete,
+        assertions: network.assertions, limitation: network.limitation,
+        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() } }, receipt: {
       kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: context.input.pageUrl, applicable: true,
       passed: measured.flags.length === 0 && measured.complete, complete: measured.complete, limitation: measured.limitation, assertions: measured.assertions,
       execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() },

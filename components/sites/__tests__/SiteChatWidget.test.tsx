@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportProvider, useSupportContext } from '@/components/live-support/SupportProvider'
 import { SiteChatWidget } from '../SiteChatWidget'
+import { siteAgentConversationKey } from '@/hooks/useSiteAgentConversation'
 
 const polling = vi.hoisted(() => ({ unread: 3, messages: vi.fn(), mutate: vi.fn() }))
 vi.mock('@/components/live-support/useSupportPolling', () => ({
@@ -18,9 +19,9 @@ function Escalate() {
   const support = useSupportContext()
   return <button onClick={() => support.openSupportChat({ prefill: 'Billing help' })}>Contact support</button>
 }
-function Fixture({ owner = true, siteId = 'site-1', flagId }: { owner?: boolean; siteId?: string; flagId?: string }) {
-  return <SupportProvider><Escalate /><SiteChatWidget key={`${siteId}:${flagId}:${owner}`} siteId={siteId} host="example.com"
-    ownsSite={owner} flagId={flagId} flagTitle={flagId ? 'Cart remained empty' : undefined} /></SupportProvider>
+function Fixture({ owner = true, ownerId = 'owner', siteId = 'site-1', flagId }: { owner?: boolean; ownerId?: string | null; siteId?: string; flagId?: string }) {
+  return <SupportProvider><Escalate /><SiteChatWidget siteId={siteId} host="example.com"
+    ownsSite={owner} ownerId={ownerId} flagId={flagId} flagTitle={flagId ? 'Cart remained empty' : undefined} /></SupportProvider>
 }
 async function open() {
   fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
@@ -36,6 +37,84 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('shared Site chat', () => {
+  it('keeps same-Site drafts separate by account and restores each account’s own draft on return', async () => {
+    const fixture = render(<Fixture ownerId="first-owner" />)
+    await open()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your question' }), { target: { value: 'First account question' } })
+    fixture.rerender(<Fixture ownerId="next-owner" />)
+    await open()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your question' }), { target: { value: 'Next account question' } })
+    fixture.rerender(<Fixture ownerId="first-owner" />)
+    await open()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('First account question')
+    expect(sessionStorage.getItem(`${siteAgentConversationKey('next-owner', 'site-1')}:draft`)).toBe('Next account question')
+    expect(vi.mocked(fetch).mock.calls.every(call => call[1]?.method !== 'POST')).toBe(true)
+  })
+
+  it('isolates Flag drafts without requiring a key on the caller', async () => {
+    const fixture = render(<Fixture flagId="first-flag" />)
+    await open()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your question' }), { target: { value: 'Explain the first Flag' } })
+    fixture.rerender(<Fixture flagId="next-flag" />)
+    await open()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your question' }), { target: { value: 'Explain the next Flag' } })
+    fixture.rerender(<Fixture flagId="first-flag" />)
+    await open()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('Explain the first Flag')
+  })
+
+  it('fences a previous account’s late reply and retains its exact intent for that account', async () => {
+    let finish!: (value: ReturnType<typeof response>) => void
+    const fetcher = vi.fn((_url: string, options?: RequestInit) => options?.method === 'POST'
+      ? new Promise<ReturnType<typeof response>>(resolve => { finish = resolve })
+      : Promise.resolve(response(history)))
+    vi.stubGlobal('fetch', fetcher)
+    const fixture = render(<Fixture ownerId="first-owner" />)
+    await open()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your question' }), { target: { value: 'Original account message' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send question' }))
+    const key = siteAgentConversationKey('first-owner', 'site-1')!
+    const original = sessionStorage.getItem(key)
+    expect(original).toContain('Original account message')
+    fixture.rerender(<Fixture ownerId="next-owner" />)
+    await open()
+    expect(screen.queryByText('Original account message')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your question' }), { target: { value: 'Next account draft' } })
+    await act(async () => { finish(response({ ...reply, reply: 'Private previous account reply' })) })
+    expect(screen.queryByText('Private previous account reply')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('Next account draft')
+    expect(sessionStorage.getItem(key)).toBe(original)
+    fixture.rerender(<Fixture ownerId="first-owner" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
+    expect(await screen.findByRole('button', { name: 'Recover reply' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('Original account message')
+    expect(fetcher.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1)
+  })
+
+  it('preserves unscoped legacy drafts without restoring or reposting them into an account', async () => {
+    const legacy = { requestKey: 'web:legacy', message: 'Unattributed old message' }
+    sessionStorage.setItem('fixflags:agent:site-1:site', JSON.stringify(legacy))
+    sessionStorage.setItem('fixflags:agent:site-1:site:draft', 'Unattributed old draft')
+    render(<Fixture />)
+    await open()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('')
+    expect(screen.queryByText(legacy.message)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Recover reply' })).not.toBeInTheDocument()
+    expect(vi.mocked(fetch).mock.calls.every(call => call[1]?.method !== 'POST')).toBe(true)
+    expect(sessionStorage.getItem('fixflags:agent:site-1:site')).toBe(JSON.stringify(legacy))
+    expect(sessionStorage.getItem('fixflags:agent:site-1:site:draft')).toBe('Unattributed old draft')
+  })
+
+  it('does not load private questions without a known account even if a stale ownership prop remains', async () => {
+    render(<Fixture ownerId={null} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
+    expect(await screen.findByRole('textbox', { name: 'Support message' })).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Your question' })).not.toBeInTheDocument()
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/agent'))).toBe(false)
+  })
+
   it('reveals an obscured background control without stealing its focus or discarding the draft', async () => {
     render(<Fixture />)
     await open()
@@ -148,7 +227,7 @@ describe('shared Site chat', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Open FixFlags chat' })).toHaveFocus()
-    expect(sessionStorage.getItem('fixflags:agent:site-1:site:draft')).toBe('My saved question')
+    expect(sessionStorage.getItem(`${siteAgentConversationKey('owner', 'site-1')}:draft`)).toBe('My saved question')
   })
 
   it('ignores an aborted old-context read and isolates drafts after a Site change', async () => {
@@ -163,7 +242,7 @@ describe('shared Site chat', () => {
     resolveOld(response({ threadId: 'old', messages: [{ id: 'private', role: 'assistant', content: 'Old Site evidence', citations: [], createdAt: reply.createdAt }] }))
     await waitFor(() => expect(screen.queryByText('Old Site evidence')).not.toBeInTheDocument())
     expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('')
-    expect(sessionStorage.getItem('fixflags:agent:site-1:site:draft')).toBe('Site one draft')
+    expect(sessionStorage.getItem(`${siteAgentConversationKey('owner', 'site-1')}:draft`)).toBe('Site one draft')
   })
 
   it('reconciles a saved reply after an interrupted send without issuing another POST', async () => {
@@ -188,7 +267,7 @@ describe('shared Site chat', () => {
     await screen.findByText(reply.reply)
     expect(screen.getAllByText('My retained message')).toHaveLength(1)
     expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('')
-    expect(sessionStorage.getItem('fixflags:agent:site-1:site')).toBeNull()
+    expect(sessionStorage.getItem(siteAgentConversationKey('owner', 'site-1')!)).toBeNull()
     expect(vi.mocked(fetch).mock.calls.filter(call => call[1]?.method === 'POST')).toHaveLength(1)
   })
 
@@ -202,7 +281,7 @@ describe('shared Site chat', () => {
     await screen.findByRole('button', { name: 'Recover reply' })
     expect(screen.queryByRole('link', { name: 'Other evidence' })).not.toBeInTheDocument()
     expect(screen.queryByText(reply.reply)).not.toBeInTheDocument()
-    const saved = JSON.parse(sessionStorage.getItem('fixflags:agent:site-1:site')!)
+    const saved = JSON.parse(sessionStorage.getItem(siteAgentConversationKey('owner', 'site-1')!)!)
     expect(saved.message).toBe('Explain my evidence')
     expect(saved.requestKey).toBe((vi.mocked(fetch).mock.calls.find(call => call[1]?.method === 'POST')![1]!.headers as Record<string, string>)['Idempotency-Key'])
   })

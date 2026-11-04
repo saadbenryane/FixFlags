@@ -3,9 +3,48 @@ const safeFetchDocument = vi.hoisted(() => vi.fn())
 vi.mock('../../url', () => ({ safeFetchDocument }))
 import { collectDocument, collectSearchEvidence, collectSiteResources, parseSitemap, SITEMAP_DOCUMENT_LIMIT } from '../collect'
 import { document, PAGE } from './fixtures'
+import { evaluateSearch, searchFindings } from '../registry'
 
 beforeEach(() => vi.clearAllMocks())
 describe('bounded Search resource collection', () => {
+  it('retains independently public sources while excluding a credentialed rendered document', async () => {
+    const canonical = PAGE + 'public-canonical', privateTarget = PAGE + 'private-canonical?token=PRIVATE_CAPTURE'
+    const original = document('<html><head><link rel="canonical" href="' + canonical + '"></head><body><h1>Public page</h1></body></html>')
+    safeFetchDocument.mockResolvedValue({ body: '<title>Public canonical</title>', finalUrl: canonical, statusCode: 200,
+      headers: { 'content-type': 'text/html' }, complete: true, redirects: [] })
+    const cache = new Map([[new URL(PAGE).origin, Promise.resolve({ robots: document('User-agent: *\nAllow: /'),
+      sitemaps: [], sitemapUrls: [], complete: true, declaredSitemaps: [] })]])
+    const result = await collectSearchEvidence({ auditId: 'separate-public-source', pageUrl: PAGE, original,
+      renderedHtml: '<title>PRIVATE_RENDERED_TEXT</title><link rel="canonical" href="' + privateTarget + '">',
+      headers: { 'x-private-marker': 'PRIVATE_CAPTURE' }, status: 200, finalUrl: privateTarget,
+      renderedPrivate: true, cache, deadline: Date.now() + 10_000 })
+    expect(result.original).toEqual(original)
+    expect(result.public).toBe(true)
+    expect(result.rendered).toMatchObject({ body: null, headers: {}, status: null, complete: false, reason: 'private_capture' })
+    expect(result.robots.body).toBe('User-agent: *\nAllow: /')
+    expect(result.sitemapsComplete).toBe(true)
+    expect(result.canonicalTargets).toMatchObject([{ url: canonical, status: 200 }])
+    expect(safeFetchDocument).toHaveBeenCalledOnce()
+    expect(safeFetchDocument).toHaveBeenCalledWith(canonical, expect.anything())
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_')
+  })
+
+  it.each([401, 403])('keeps a restricted public HTTP %s response unknown despite a successful private capture', async status => {
+    const original = document('<title>Restricted public response</title>', { status })
+    const cache = new Map([[new URL(PAGE).origin, Promise.resolve({ robots: document('User-agent: *\nAllow: /'),
+      sitemaps: [], sitemapUrls: [], complete: true, declaredSitemaps: [] })]])
+    const result = await collectSearchEvidence({ auditId: 'restricted-source', pageUrl: PAGE, original, renderedPrivate: true,
+      renderedHtml: '<title>PRIVATE_RENDERED_TEXT</title>', status: 200, cache, deadline: Date.now() + 10_000 })
+    const observations = await evaluateSearch(result, null, ['presentation', 'indexing', 'canonical'])
+    expect(result.original.status).toBe(status)
+    expect(result.rendered).toMatchObject({ body: null, status: null, reason: 'private_capture' })
+    expect(observations.some(item => item.source === 'original-html')).toBe(true)
+    expect(observations.filter(item => item.source === 'original-html' || item.source === 'rendered-dom')
+      .every(item => item.disposition === 'unknown')).toBe(true)
+    expect(searchFindings(observations)).toEqual([])
+    expect(safeFetchDocument).not.toHaveBeenCalled()
+  })
+
   it('requests a canonical target independently of a client-updated rendered URL', async () => {
     const target = PAGE + 'canonical?route=1', body = '<link rel="canonical" href="' + target + '">'
     safeFetchDocument.mockResolvedValue({ body: 'Missing target', finalUrl: target, statusCode: 404, headers: {}, complete: true, redirects: [] })

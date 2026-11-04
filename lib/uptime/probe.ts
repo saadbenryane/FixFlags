@@ -26,7 +26,9 @@ export async function probeUptime(url: string, fetchDocument = safeFetchDocument
       durationMs: duration(), finalUrl: document.finalUrl }
   } catch (error) {
     const bodyError = error instanceof PublicResponseBodyError || error instanceof PublicRedirectError ? error : null
-    return { ...classifyPublicRequestFailure(error),
+    const response = error instanceof PublicResponseBodyError
+      ? classifyUptimeResponse({ ...error.response, body: error.response.body ?? '' }) : null
+    return { ...(response && response.result !== 'ONLINE' ? response : classifyPublicRequestFailure(error)),
       statusCode: bodyError?.response.statusCode ?? null, durationMs: duration(), finalUrl: bodyError?.response.finalUrl ?? null }
   }
 }

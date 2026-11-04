@@ -78,6 +78,21 @@ describe('BoardCard chrome', () => {
     expect(screen.getByRole('button', { name: 'Open Pricing unavailable' }).closest('button')?.parentElement?.closest('button')).toBeNull()
   })
 
+  it.each(['card', 'row'] as const)('retains real Flag links and in-place opening in %s layout', layout => {
+    const category = vi.fn(), open = vi.fn()
+    render(<BoardCard compact showFlagPreview layout={layout} name="Pages" icon="site" state="problem" status="1 Flag" answer="Problems" onOpen={category} onOpenFlag={open} flags={[
+      { id: 'incident-1', title: 'Pricing unavailable', href: '/sites/site-1/flags/incident-1', priorityBand: 'fix_first' },
+    ]} />)
+    const target = screen.getByRole('link', { name: 'Open Pricing unavailable' })
+    expect(target).toHaveAttribute('href', '/sites/site-1/flags/incident-1')
+    expect(target.parentElement?.closest('button, a')).toBeNull()
+    fireEvent.click(target)
+    expect(open).toHaveBeenCalledExactlyOnceWith('incident-1', target)
+    expect(category).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pages' }))
+    expect(category).toHaveBeenCalledOnce()
+  })
+
   it('hydrates recorded freshness even when the browser arrives after a minute boundary', async () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-19T12:00:59Z'))
     const element = <BoardCard name="Search" status="Not checked yet" state="unknown" answer="Recorded checks"

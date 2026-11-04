@@ -205,6 +205,9 @@ export const SUPPORT_CHAT = {
   messageLabel: 'Support message',
   messagePlaceholder: 'Type a message…',
   sendLabel: 'Send message',
+  readError: 'Could not load the latest messages.',
+  retryMessages: 'Try loading messages again',
+  loadingMessages: 'Loading messages…',
 } as const
 
 /** Strict severity meanings (enum stays CRITICAL | IMPORTANT | POLISH). */

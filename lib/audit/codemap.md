@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Collect website facts, evaluate registered checks, retain evidence and supporting observations, assess repairs, and project recorded results. New website admissions use the canonical progressive execution path. Historical adapters remain available for their existing callers and stored evidence.
+Collect website facts, evaluate registered checks, retain evidence and supporting observations, assess repairs, and project recorded results. New website admissions use the canonical progressive execution path. Historical readers and shared projection adapters retain stored evidence.
 
 ## Canonical execution
 
@@ -37,7 +37,7 @@ Collect website facts, evaluate registered checks, retain evidence and supportin
 
 ## Compatibility and supporting paths
 
-`runner.ts`, `pipeline/run-page.ts`, `persist.ts` and `finalize.ts` retain their established adapter responsibilities. Their presence does not authorize a second admission path. `deterministic-audit.ts` supports controlled offline evaluation, which does not establish live provider accuracy. AI triage uses recorded findings and validated output contracts. Prescription owns repair guidance, never diagnosis, evidence or verification conditions. Journey assessment receipts retain unsupported candidates privately and expose incomplete coverage independently of completed native checks; unavailable or omitted evidence remains explicit.
+`runner.ts` coordinates the task pipeline and retires unfinished historical execution. `persist.ts` and `finalize.ts` retain shared result and projection responsibilities. The former serial page orchestrator has been removed; historical evidence does not require a second executable pipeline. `deterministic-audit.ts` supports controlled offline evaluation, which does not establish live provider accuracy. AI triage uses recorded findings and validated output contracts. Prescription owns repair guidance, never diagnosis, evidence or verification conditions. Journey assessment receipts retain unsupported candidates privately and expose incomplete coverage independently of completed native checks; unavailable or omitted evidence remains explicit.
 
 ## Invariants
 

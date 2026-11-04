@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChatComposer } from '@/components/ui/chat-composer'
@@ -9,11 +9,12 @@ import { MessageBubble } from '@/components/support/MessageBubble'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportMessages } from '@/components/live-support/useSupportPolling'
 import { SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
+import { useTranscriptScroll } from '@/hooks/useTranscriptScroll'
 
 export function SupportChatPanel({ auditId, composer, compact = false, onRead }: {
   auditId?: string | null
   compact?: boolean
-  composer?: { draft: string; setDraft: (value: string) => void; sending: boolean; beginSend: () => boolean; endSend: () => void
+  composer?: { draft: string; setDraft: Dispatch<SetStateAction<string>>; sending: boolean; beginSend: () => boolean; endSend: () => void
     error: string | null; setError: (value: string | null) => void }
   onRead?: () => void
 }) {
@@ -26,7 +27,7 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
     clearDraftPrefill,
   } = useSupportContext()
   const resolvedAuditId = auditId ?? contextAuditId
-  const { data, mutate, error: pollError } = useSupportMessages(sessionId, panelOpen)
+  const { data, mutate, error: pollError, isValidating } = useSupportMessages(sessionId, panelOpen)
   const [localDraft, setLocalDraft] = useState('')
   const [localSending, setLocalSending] = useState(false)
   const draft = composer?.draft ?? localDraft
@@ -36,8 +37,7 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
   const error = composer ? composer.error : localError
   const setError = composer?.setError ?? setLocalError
   const bottomRef = useRef<HTMLDivElement>(null)
-  const transcriptRef = useRef<HTMLDivElement>(null)
-  const stickToBottom = useRef(true)
+  const { transcriptRef, onScroll, followLatest } = useTranscriptScroll(data?.messages, { enabled: compact, scope: sessionId })
 
   useEffect(() => {
     if (draftPrefill) {
@@ -47,25 +47,29 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
   }, [draftPrefill, clearDraftPrefill, setDraft])
 
   useEffect(() => {
-    if (compact) {
-      if (stickToBottom.current && transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
-    } else {
+    if (!compact) {
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       bottomRef.current?.scrollIntoView?.({ behavior: reducedMotion ? 'instant' : 'smooth' })
     }
   }, [data?.messages, compact])
 
+  const readThrough = data?.messages.at(-1)?.sequence
   useEffect(() => {
-    if (!sessionId || !panelOpen) return
-    void fetch(`/api/support/sessions/${sessionId}/messages`, { method: 'PATCH' })
-      .then(response => { if (response.ok) onRead?.() }).catch(() => undefined)
-  }, [sessionId, panelOpen, data?.messages?.length, onRead])
+    if (!sessionId || !panelOpen || pollError || !readThrough || !/^\d{1,19}$/.test(readThrough)) return
+    const request = new AbortController()
+    void fetch(`/api/support/sessions/${sessionId}/messages`, {
+      method: 'PATCH', signal: request.signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ through: readThrough }),
+    }).then(response => { if (response.ok && !request.signal.aborted) onRead?.() }).catch(() => undefined)
+    return () => request.abort()
+  }, [sessionId, panelOpen, readThrough, pollError, onRead])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    const text = draft.trim()
+    const submittedDraft = draft
+    const text = submittedDraft.trim()
     if (!text || sending || (composer && !composer.beginSend())) return
-    stickToBottom.current = true
+    followLatest()
 
     setLocalSending(true)
     setError(null)
@@ -80,7 +84,7 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
           const json = await res.json().catch(() => ({}))
           throw new Error(json.message ?? 'Failed to send')
         }
-        setDraft('')
+        setDraft(current => current === submittedDraft ? '' : current)
         await mutate()
       } else {
         const res = await fetch('/api/support/sessions', {
@@ -100,7 +104,7 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
         if (!json.session?.id) {
           throw new Error(SUPPORT_CHAT.startError)
         }
-        setDraft('')
+        setDraft(current => current === submittedDraft ? '' : current)
         // Setting sessionId switches the SWR key so messages load from the new session.
         setSessionId(json.session.id)
       }    } catch (err) {
@@ -117,14 +121,12 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={transcriptRef} className="flex-1 space-y-3 overflow-y-auto p-4 min-h-0" onScroll={event => {
-        const node = event.currentTarget
-        stickToBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 60
-      }}>
-        {pollError && messages.length === 0 && sessionId && (
-          <p className="text-sm text-destructive text-center py-8" role="alert">
-            Could not load messages. Try sending a message to reconnect.
-          </p>
+      <div ref={transcriptRef} className="flex-1 space-y-3 overflow-y-auto p-4 min-h-0" onScroll={onScroll}>
+        {pollError && sessionId && (
+          <div className="space-y-2 rounded-control bg-muted/30 p-3 text-sm" role="status">
+            <p>{SUPPORT_CHAT.readError}</p>
+            <Button type="button" variant="outline" size="sm" loading={isValidating} loadingLabel={SUPPORT_CHAT.loadingMessages} onClick={() => void mutate()}>{SUPPORT_CHAT.retryMessages}</Button>
+          </div>
         )}
         {showLocalWelcome && (
           <p className="text-center text-xs text-muted-foreground px-2 py-1">

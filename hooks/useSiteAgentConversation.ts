@@ -5,15 +5,22 @@ import { z } from 'zod'
 import { agentHistorySchema, type AgentCitation } from '@/lib/sites/agent-contract'
 import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_AGENT_COPY as C } from '@/lib/marketing/copy/site-agent'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 
+const HISTORY_TIMEOUT_MS = 15_000
 const intentSchema = z.object({ requestKey: z.string().min(1), message: z.string().min(1).max(2000) }).strict()
 type Intent = z.infer<typeof intentSchema>
 type History = z.infer<typeof agentHistorySchema>
 type Turn = Intent & { reply?: History['messages'][number] }
 
-/** The caller keys this hook's owner by Site and Flag so async results cannot cross contexts. */
-export function useSiteAgentConversation<SiteId extends string | null>(siteId: SiteId, flagId: string | undefined, active: boolean) {
-  const storageKey = siteId ? `fixflags:agent:${siteId}:${flagId ?? 'site'}` : null
+/** Browser drafts are private to the account and exact conversation context. */
+export function siteAgentConversationKey(ownerId: string | null, siteId: string | null, flagId?: string) {
+  return ownerId && siteId ? `fixflags:agent:${JSON.stringify([ownerId, siteId, flagId ?? null])}` : null
+}
+
+/** ConversationWidget keys this owner by account, Site and Flag to retire async results. */
+export function useSiteAgentConversation<SiteId extends string | null>(siteId: SiteId, flagId: string | undefined, active: boolean, ownerId: string | null) {
+  const storageKey = siteAgentConversationKey(ownerId, siteId, flagId)
   const draftKey = storageKey ? `${storageKey}:draft` : null
   const [question, setQuestion] = useState('')
   const [intent, setIntent] = useState<Intent | null>(null)
@@ -48,6 +55,8 @@ export function useSiteAgentConversation<SiteId extends string | null>(siteId: S
     alive.current = true
     if (!storageKey || !draftKey) return () => { alive.current = false; read.current?.abort() }
     try {
+      // Legacy keys have no account provenance. Preserve them without restoring
+      // their text or request into an account-scoped conversation.
       const saved = intentSchema.safeParse(JSON.parse(sessionStorage.getItem(storageKey) ?? 'null'))
       if (saved.success) {
         intentRef.current = saved.data
@@ -66,16 +75,16 @@ export function useSiteAgentConversation<SiteId extends string | null>(siteId: S
   }, [siteId])
 
   const loadHistory = useCallback(async () => {
-    if (!siteId) return
+    if (!siteId || !ownerId) return
     read.current?.abort()
     const request = new AbortController()
     read.current = request
     setLoading(true)
     setHistoryError(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/agent`, { cache: 'no-store', signal: request.signal })
+      const { response, body } = await fetchJsonWithDeadline(`/api/sites/${siteId}/agent`, { cache: 'no-store', signal: request.signal }, HISTORY_TIMEOUT_MS)
       if (!response.ok) throw new Error(C.historyFailed)
-      const saved = agentHistorySchema.parse(await response.json())
+      const saved = agentHistorySchema.parse(body)
       saved.messages.forEach(item => validateCitations(item.citations))
       if (request.signal.aborted || !alive.current) return
       setHistory(saved)
@@ -92,7 +101,7 @@ export function useSiteAgentConversation<SiteId extends string | null>(siteId: S
     } finally {
       if (!request.signal.aborted && alive.current) setLoading(false)
     }
-  }, [siteId, validateCitations, saveIntent, changeQuestion])
+  }, [siteId, ownerId, validateCitations, saveIntent, changeQuestion])
 
   useEffect(() => {
     if (active && !pending.current) void loadHistory()
@@ -100,7 +109,7 @@ export function useSiteAgentConversation<SiteId extends string | null>(siteId: S
   }, [active, loadHistory])
 
   async function send() {
-    if (!siteId || pending.current || (!intentRef.current && (!history || loading || historyError)) || !question.trim()) return
+    if (!siteId || !ownerId || pending.current || (!intentRef.current && !history) || !question.trim()) return
     pending.current = true
     read.current?.abort()
     setLoading(false)
@@ -122,7 +131,9 @@ export function useSiteAgentConversation<SiteId extends string | null>(siteId: S
       } } : turn))
       saveIntent(null)
       changeQuestion('')
-      await loadHistory()
+      // The validated reply completes this send. Saved history reconciliation
+      // runs independently so the next question can proceed.
+      void loadHistory()
     } catch (failure) {
       if (alive.current) setError(failure instanceof SiteActionError ? failure : new SiteActionError(C.invalid))
     } finally {
@@ -142,7 +153,7 @@ export function useSiteAgentConversation<SiteId extends string | null>(siteId: S
   }
 
   return { question, changeQuestion, intent, messages, loading, busy, historyError, error, send, loadHistory,
-    canSend: Boolean(siteId) && !busy && Boolean(question.trim()) && (Boolean(intent) || Boolean(history && !loading && !historyError)),
+    canSend: Boolean(storageKey) && !busy && Boolean(question.trim()) && (Boolean(intent) || Boolean(history)),
     newMessage: () => { saveIntent(null); setError(null) }, siteId }
 }
 

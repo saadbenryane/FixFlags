@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuditUrlError } from '@/lib/audit/url'
 import { runAvailabilityBinding } from '../availability-binding'
 import { PublicRedirectError } from '@/lib/audit/redirect-evidence'
+import { PublicResponseBodyError } from '@/lib/audit/http-evidence'
 
 const fixture = vi.hoisted(() => ({ fetch: vi.fn(), record: vi.fn(), browser: vi.fn(), session: vi.fn() }))
 vi.mock('@/lib/audit/url', async original => ({ ...await original<typeof import('@/lib/audit/url')>(), safeFetchDocument: fixture.fetch }))
@@ -14,6 +15,20 @@ const input = { auditId: 'audit', outcomeId: 'availability', bindingKey: 'page-l
 beforeEach(() => { vi.clearAllMocks(); fixture.fetch.mockReset() })
 
 describe('availability transport evidence', () => {
+  it('retains an interrupted response without confirming an outage or exposing its error', async () => {
+    fixture.fetch.mockRejectedValue(new PublicResponseBodyError({ statusCode: 200, finalUrl: startUrl + 'ready',
+      body: '<main>Partial', headers: {}, redirects: [startUrl] },
+    new TypeError('PRIVATE_ERROR_VALUE', { cause: { code: 'ECONNRESET' } })))
+    await runAvailabilityBinding(input)
+    expect(fixture.fetch).toHaveBeenCalledOnce()
+    expect(fixture.record.mock.calls[0][0]).toMatchObject({ attempts: [{ disposition: 'BLOCKED', reason: 'request_failed',
+      detail: { status: 200, url: startUrl, finalUrl: startUrl + 'ready', source: 'public-http' } }],
+    conclusive: { disposition: 'BLOCKED' } })
+    expect(fixture.record.mock.calls[0][0].flag).toBeUndefined()
+    expect(JSON.stringify(fixture.record.mock.calls[0][0])).not.toContain('PRIVATE_ERROR_VALUE')
+    expect(fixture.browser).not.toHaveBeenCalled()
+  })
+
   function browserResponse(status: number | null, body = '<main>Example is ready</main>', headers = {}, responseUrl = startUrl, surfaceUrl = startUrl) {
     fixture.fetch.mockResolvedValue({ statusCode: 200, body: '<main>Example is ready</main>', headers: {}, finalUrl: startUrl })
     const close = vi.fn(async () => undefined), disposeNetwork = vi.fn()

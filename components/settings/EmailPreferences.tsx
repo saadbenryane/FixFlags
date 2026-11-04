@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -15,11 +15,12 @@ import { AUTH } from '@/lib/marketing/copy/auth'
 import type { EmailDeliveryView } from '@/lib/email/delivery-state'
 import { NOTIFICATIONS_COPY as C } from '@/lib/marketing/copy/notifications'
 import { notificationPreferencesSchema, type NotificationPreferences } from '@/lib/notifications/preferences'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 
 const responseSchema = z.object({ ok: z.literal(true), notifications: notificationPreferencesSchema.extend({
   nextSendAt: z.string().datetime().nullable(),
 }) })
-const selectClass = 'min-h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50'
+const selectClass = 'min-h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 py-2 text-sm max-sm:text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50'
 
 export function EmailPreferences({ ownerId, initial, nextSendAt, email, emailVerified, hasMonitoredSites, followCadence = null, history = [], blocked = false }: {
   ownerId: string;
@@ -28,8 +29,16 @@ export function EmailPreferences({ ownerId, initial, nextSendAt, email, emailVer
 }) {
   const draft = useSettingsDraft(ownerId, 'email-preferences', initial)
   const { values, saved, dirty } = draft
-  const [next, setNext] = useState(nextSendAt)
+  const scheduleSource = JSON.stringify([initial, nextSendAt])
+  const [confirmedNext, setConfirmedNext] = useState<{ source: string; at: string | null; preferences: NotificationPreferences } | null>(null)
+  const schedule = confirmedNext?.source === scheduleSource ? confirmedNext : { at: nextSendAt, preferences: initial }
+  const scheduleKnown = JSON.stringify(schedule.preferences) === JSON.stringify(saved)
+  const next = scheduleKnown ? schedule.at : null
+  // A refreshed schedule owns its delivery time. An old mutation receipt must
+  // not override that source or return if the previous props appear again.
+  if (confirmedNext && confirmedNext.source !== scheduleSource) setConfirmedNext(null)
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const zones = useMemo(() => typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [], [])
@@ -38,20 +47,21 @@ export function EmailPreferences({ ownerId, initial, nextSendAt, email, emailVer
   const change = (patch: Partial<NotificationPreferences>) => { draft.change(patch); setMessage(''); setError('') }
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    if (!dirty || busy) return
+    if (!dirty || submitting.current) return
     const snapshot = draft.snapshot()
     const submitted = { ...snapshot.values, timeZone: enabled ? snapshot.values.timeZone : saved.timeZone }
     if (!notificationPreferencesSchema.safeParse(submitted).success) { setError(C.invalid); return }
+    submitting.current = true
     setBusy(true); setError(''); setMessage('')
     try {
-      const response = await fetch('/api/me/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      const { response, body } = await fetchJsonWithDeadline('/api/me/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notifications: Object.fromEntries(Object.entries(submitted).filter(([key, value]) => value !== saved[key as keyof NotificationPreferences])) }) })
       if (!response.ok) throw new Error(C.error)
-      const result = responseSchema.parse(await response.json()).notifications
+      const result = responseSchema.parse(body).notifications
       const { nextSendAt: at, ...preferences } = result
-      draft.acknowledge(snapshot, preferences); setNext(at); setMessage(C.saved)
+      draft.acknowledge(snapshot, preferences); setConfirmedNext({ source: scheduleSource, at, preferences }); setMessage(C.saved)
     } catch { setError(C.error) }
-    finally { setBusy(false) }
+    finally { submitting.current = false; setBusy(false) }
   }
   return <Card variant="subtle" id="email-updates">
     {confirmDialog}
@@ -84,7 +94,7 @@ export function EmailPreferences({ ownerId, initial, nextSendAt, email, emailVer
         <p className="text-sm text-muted-foreground">{enabled ? C.timing : C.off}</p>
         {!emailVerified ? <p className="text-sm text-muted-foreground">{C.verify}</p> : null}
         {!hasMonitoredSites ? <p className="text-sm text-muted-foreground">{C.empty}</p> : null}
-        {!next && enabled && emailVerified && hasMonitoredSites && !blocked ? <p className="text-sm text-muted-foreground">{C.schedulePending}</p> : null}
+        {scheduleKnown && !next && enabled && emailVerified && hasMonitoredSites && !blocked ? <p className="text-sm text-muted-foreground">{C.schedulePending}</p> : null}
         {next && !dirty && enabled && emailVerified && hasMonitoredSites && !blocked ? <p className="text-sm">{C.next(new Intl.DateTimeFormat('en', {
           timeZone: saved.timeZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(next)) + ` (${saved.timeZone})`)}</p> : null}
         <div className="space-y-2 rounded-card bg-muted/50 p-4">

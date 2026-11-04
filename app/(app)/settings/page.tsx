@@ -70,6 +70,7 @@ export default async function SettingsPage() {
       </Card>
 
       <ConnectedAccounts
+        key={session.user.id}
         email={user.email}
         emailVerified={user.emailVerified}
         hasPassword={hasPassword}
@@ -89,7 +90,7 @@ export default async function SettingsPage() {
 
       <Card variant="subtle" className="border-destructive/30">
         <CardHeader><CardTitle as="h2" className="text-base">Danger zone</CardTitle><CardDescription>Permanently remove this FixFlags account.</CardDescription></CardHeader>
-        <CardContent><AccountDangerZone /></CardContent>
+        <CardContent><AccountDangerZone key={session.user.id} /></CardContent>
       </Card>
     </div>
   )

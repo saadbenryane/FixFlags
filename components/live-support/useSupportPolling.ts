@@ -1,17 +1,18 @@
 'use client'
 
 import useSWR from 'swr'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 import type {
   SupportMessageDto,
   SupportSessionDto,
   SupportSessionListItem,
 } from '@/lib/live-support/types'
 
-const jsonFetcher = (url: string) =>
-  fetch(url).then((r) => {
-    if (!r.ok) throw new Error('Request failed')
-    return r.json()
-  })
+async function jsonFetcher<T>(url: string): Promise<T> {
+  const { response, body } = await fetchJsonWithDeadline(url)
+  if (!response.ok || body === null) throw new Error('Request failed')
+  return body as T
+}
 
 /**
  * @param enabled - When false, skip the request entirely.

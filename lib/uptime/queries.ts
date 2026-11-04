@@ -3,7 +3,7 @@ import { normalizeAuditUrl } from '@/lib/audit/url'
 import { uptimeTimeline, type ProbeResult, type UptimeHistory, type UptimeProbeView, type UptimeSummary } from './domain'
 import { uptimeProjectInclude } from './eligibility'
 import { uptimeCursorSchema, uptimeHistorySchema, uptimeSummarySchema } from './contracts'
-import { projectUptimeStatus, uptimeStatusMonitorSelect } from './status'
+import { projectUptimeStatus, uptimeStatusMonitorSelect, uptimeStatusProjectSelect, type UptimeStatus } from './status'
 import { readSiteEvidence, type SiteEvidenceScope } from '@/lib/sites/application/site-evidence-read'
 
 function windowStart(window: UptimeHistory['window'], now: Date) {
@@ -50,6 +50,7 @@ async function readUptime(projectId: string, window: UptimeHistory['window'], cu
   // The Site URL can change before the monitor retargets. The new URL stays
   // unknown. An open incident remains open until that retarget supersedes it.
   return uptimeHistorySchema.parse({ ...projectUptimeStatus(monitor.project, monitor, now), openIncidentCount,
+    historyScope: { key: `${monitor.id}:${monitor.version}`, from: from.toISOString(), through: now.toISOString() },
     segments: uptimeTimeline(samples.map(row => ({ ...row, result: row.result as ProbeResult, scheduledAt: row.scheduledAt.toISOString(), observedAt: row.observedAt.toISOString() })), now, window),
     window, probes, incidents: incidents.map(row => ({ id: row.id, targetUrl: row.targetUrl, reason: row.reason,
       startedAt: row.startedAt.toISOString(), confirmedAt: row.confirmedAt.toISOString(), recoveredAt: row.recoveredAt?.toISOString() ?? null, supersededAt: row.supersededAt?.toISOString() ?? null })),
@@ -68,6 +69,17 @@ export async function loadUptimeSummary(site: SiteEvidenceScope, now = new Date(
   return readSiteEvidence(site, async () => {
     const projection = await readUptime(projectId, '24h', null, now, false)
     return projection ? uptimeSummarySchema.parse(projection) : null
+  })
+}
+
+/** Current attention needs only the owned target and active incident scope,
+ * never the probe samples required to render a history timeline. */
+export async function loadUptimeStatus(site: SiteEvidenceScope, now = new Date()): Promise<UptimeStatus | null> {
+  const projectId = site.kind === 'project' ? site.projectId : null
+  if (!projectId) return null
+  return readSiteEvidence(site, async () => {
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: uptimeStatusProjectSelect })
+    return project && !project.deletedAt ? projectUptimeStatus(project, project.uptimeMonitor, now) : null
   })
 }
 

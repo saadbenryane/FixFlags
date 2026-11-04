@@ -2,7 +2,7 @@ import type { RuntimeHeadMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { safeFetchResource } from '../url'
-import { previewImageResponse, PREVIEW_IMAGE_MAX_BYTES, type PreviewImageResponse } from './preview-image-response'
+import { collectPreviewImageResponse, PREVIEW_IMAGE_MAX_BYTES, type PreviewImageResponse } from './preview-image-response'
 import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
@@ -239,7 +239,7 @@ export async function runOgImageUrlCheck(
     try {
       const init = { timeoutMs: 5000, deadline: options.deadline, maxBytes: PREVIEW_IMAGE_MAX_BYTES, accept: 'image/*' }
       const response = options.observeImage ? await options.observeImage(imageUrl, init)
-        : await previewImageResponse(await (options.fetchDocument ?? safeFetchResource)(imageUrl, init), options.deadline)
+        : await collectPreviewImageResponse(() => (options.fetchDocument ?? safeFetchResource)(imageUrl, init), options.deadline)
       const status = response.statusCode, contentType = response.contentType, restricted = response.restriction !== null
       imageEligible = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
       decoding = response.decoding

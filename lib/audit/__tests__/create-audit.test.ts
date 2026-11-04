@@ -19,6 +19,7 @@ const prismaMock = vi.hoisted(() => ({
   runRequest: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   runRequestKey: { findUnique: vi.fn() },
   outcomeFixture: { updateMany: vi.fn() },
+  improvementAttempt: { findFirst: vi.fn(), update: vi.fn() },
   flag: { findMany: vi.fn() },
   audit: {
     create: vi.fn(),
@@ -125,6 +126,7 @@ describe('createAndEnqueueAudit', () => {
     process.env.TOKEN_ENCRYPTION_KEY = '0'.repeat(64)
     vi.clearAllMocks()
     prismaMock.audit.findUnique.mockReset().mockResolvedValue(null)
+    prismaMock.improvementAttempt.findFirst.mockReset().mockResolvedValue(null)
     prismaMock.project.findUnique.mockReset().mockResolvedValue(null)
     prismaMock.$queryRaw.mockResolvedValue([{ id: 'project-1', url: AUDIT_URL, canonicalHost: 'example.com' }])
     prismaMock.flag.findMany.mockReset().mockResolvedValue([])
@@ -205,12 +207,44 @@ describe('createAndEnqueueAudit', () => {
     expect(ensureProductProject).not.toHaveBeenCalled()
   })
 
+  it.each(['original-owner', null])('admits an owned Site source without replacing its original creator: %s', async creator => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: creator, projectId: 'project-1', status: 'COMPLETED' })
+    await createAndEnqueueAudit({ userId: 'user-1', url: AUDIT_URL, admission: { kind: 'site-run', parentId: 'parent-1',
+      request: { id: 'retained-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'retained-source' },
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'SITE',
+        checks: {}, outcomes: [], verificationTarget: null } } })
+    expect(prismaMock.audit.findUnique).toHaveBeenCalledWith({ where: { id: 'parent-1', projectId: 'project-1',
+      project: { userId: 'user-1', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } },
+    select: { id: true, userId: true, projectId: true, status: true, reviewDepth: true, isPublic: true } })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      userId: 'user-1', projectId: 'project-1', parentId: 'parent-1',
+    }) }))
+  })
+
   it('refuses attaching a Site command to a parent from another Site', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', projectId: 'other-project', status: 'COMPLETED' })
     await expect(createAndEnqueueAudit({ admission: { kind: 'site-run', parentId: 'parent-1', request: { id: 'run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'parent' }, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'SITE', checks: {}, outcomes: [], verificationTarget: null } },
     url: AUDIT_URL,
     userId: 'user-1' })).rejects.toThrow('same Site')
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
+  })
+
+  it.each(['missing', 'changed'] as const)('refuses an early repair with %s original comparison facts before dispatch', async scenario => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', projectId: 'project-1', status: 'CHECKING' })
+    const original = { version: 1 as const, flags: [{ id: 'flag-1', auditId: 'parent-1', source: 'DETERMINISTIC' as const,
+      checkId: 'viewport-missing', fingerprint: 'check:viewport-missing', pageUrl: AUDIT_URL, affectedPaths: null,
+      attentionPolicy: null, verificationRule: null, evidenceTargets: null, supportingObservations: null }] }
+    if (scenario === 'changed') prismaMock.improvementAttempt.findFirst.mockResolvedValue({ id: 'attempt-1', sourceFlagIds: [],
+      sourceObservations: { ...original, flags: original.flags.map(flag => ({ ...flag, pageUrl: 'https://example.com/other' })) } })
+    await expect(createAndEnqueueAudit({ userId: 'user-1', url: AUDIT_URL, admission: {
+      kind: 'site-run', parentId: 'parent-1', request: { id: 'run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'early-repair' },
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'DIAGNOSTIC',
+        checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt-1',
+          parentAuditId: 'parent-1', pageUrl: AUDIT_URL, checkId: 'viewport-missing' }, verificationSourceFlagIds: ['flag-1'], verificationSources: original },
+    } })).rejects.toMatchObject({ status: scenario === 'missing' ? 404 : 409 })
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(prismaMock.runRequest.create).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
   })
 

@@ -38,7 +38,10 @@ describe('published MCP guide', () => {
     const guide = renderedMcpGuide()
     const named = [...guide.matchAll(/`([a-z]+[_.][a-z_]+)`/g)].map((match) => match[1])
     const known = new Set(mcpToolNames())
-    const unknown = named.filter((token) => !known.has(token) && !token.startsWith('fixflags.'))
+    // These documented response paths describe continuation and attachment
+    // fields, rather than callable tool names.
+    const responsePaths = new Set(['retrieval.next', 'links.next', 'retrieval.evidence', 'links.evidence'])
+    const unknown = named.filter((token) => !known.has(token) && !token.startsWith('fixflags.') && !responsePaths.has(token))
     expect(unknown, 'guide names a tool FixFlags does not serve').toEqual([])
   })
 

@@ -60,7 +60,7 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
 }
 
 type Candidate = { id: string; projectId: string; userId: string; context: Prisma.JsonValue; status: string;
-  auditId: string; completedAt: Date; targetUrl: string; watchLastError: string | null; interrupted: boolean }
+  auditId: string; completedAt: Date; updatedAt: Date; targetUrl: string; watchLastError: string | null; interrupted: boolean }
 
 /** One cohort serves normal completion and bounded recovery. JSON comparisons
  * avoid trusting timestamp casts or interpreting malformed historical context. */
@@ -68,7 +68,7 @@ export async function reconcileScheduledCompletions(limit = 20, clock: Clock = s
   scope: { projectId?: string; runId?: string } = {}): Promise<number> {
   const now = clock.now()
   const rows = await prisma.$queryRaw<Candidate[]>(Prisma.sql`
-    SELECT r.id, r."projectId", "source"."userId", r.context, "source".status, "source".id AS "auditId", "source"."completedAt", p.url AS "targetUrl", p."watchLastError",
+    SELECT r.id, r."projectId", "source"."userId", r.context, r."updatedAt", "source".status, "source".id AS "auditId", "source"."completedAt", p.url AS "targetUrl", p."watchLastError",
       ${interruptedAnalysisWorkSql} AS interrupted
     FROM run_requests r JOIN audits "source" ON "source".id = r."auditId" AND "source"."projectId" = r."projectId"
     JOIN projects p ON p.id = r."projectId" AND p."userId" = "source"."userId" JOIN users u ON u.id = p."userId"
@@ -85,16 +85,26 @@ export async function reconcileScheduledCompletions(limit = 20, clock: Clock = s
       AND r.context#>>'{scheduled,targetHash}' = encode(sha256(convert_to(p.url, 'UTF8')), 'hex')
       ${scope.projectId ? Prisma.sql`AND p.id = ${scope.projectId}` : Prisma.empty}
       ${scope.runId ? Prisma.sql`AND r.id = ${scope.runId}` : Prisma.empty}
-    ORDER BY "source"."completedAt", r.id LIMIT ${Math.max(1, Math.min(100, limit))}`)
+    ORDER BY r."updatedAt", "source"."completedAt", r.id LIMIT ${Math.max(1, Math.min(100, limit))}`)
   let changed = 0
   for (const row of rows) {
-    const parsed = readScheduledContext(row.context)
-    if (!parsed.success) continue
-    const saved: ScheduledContext = parsed.data
-    const failed = row.status === 'FAILED' || row.interrupted
-    const delay = [15, 60, 360][Math.min(saved.failures, 2)] * 60_000
     try {
-    const result = await prisma.project.updateMany({ where: { id: row.projectId, userId: row.userId, url: row.targetUrl, deletedAt: null, watchPausedAt: null,
+      // Reuse the run-recovery activity clock. Persist effort before parsing or
+      // projecting so a failed oldest cohort yields across bounded sweeps.
+      // This timestamp never advances a Site clock or an execution lease.
+      const attempted = await prisma.runRequest.updateMany({ where: {
+        id: row.id, projectId: row.projectId, auditId: row.auditId, updatedAt: row.updatedAt,
+        status: row.status as 'FAILED' | 'COMPLETED', context: { equals: row.context as Prisma.InputJsonValue },
+        project: { userId: row.userId, deletedAt: null, watchPausedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
+        audit: { projectId: row.projectId, userId: row.userId, status: row.status as 'FAILED' | 'COMPLETED', completedAt: row.completedAt },
+      }, data: { updatedAt: new Date(Math.max(clock.now().getTime(), row.updatedAt.getTime() + 1)) } })
+      if (attempted.count !== 1) continue
+      const parsed = readScheduledContext(row.context)
+      if (!parsed.success) continue
+      const saved: ScheduledContext = parsed.data
+      const failed = row.status === 'FAILED' || row.interrupted
+      const delay = [15, 60, 360][Math.min(saved.failures, 2)] * 60_000
+      const result = await prisma.project.updateMany({ where: { id: row.projectId, userId: row.userId, url: row.targetUrl, deletedAt: null, watchPausedAt: null,
         user: { lifecycleStatus: 'ACTIVE' }, watchInterval: toStoredWatchInterval(saved.interval), watchEveryMinutes: saved.everyMinutes,
         watchNextRunAt: new Date(saved.nextRunAt), watchLastAttemptAt: new Date(saved.attemptedAt), watchLeaseUntil: null,
         watchConsecutiveFailures: saved.failures, watchLastError: row.watchLastError,

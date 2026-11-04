@@ -14,7 +14,7 @@ export function viewerRepairGuidance(flag: RepairGuidanceInput & { repairGuidanc
 export function projectSiteHomeForViewer(view: SiteHomeView): SiteHomeView {
   const owner = view.actions.ownership === 'owner'
   const flags = (items: SiteHomeView['flags']) => items.map(flag => ({ ...flag,
-    ...(!owner ? { repairDefinition: null } : {}), ...viewerRepairGuidance(flag, owner) }))
+    ...(!owner ? { repairDefinition: null, repairEvidenceRevision: undefined } : {}), ...viewerRepairGuidance(flag, owner) }))
   return readSiteHomeView({ ...view,
     settings: { ...view.settings, github: owner ? view.settings.github : undefined },
     flags: flags(view.flags), recommendations: flags(view.recommendations), resolvedFlags: flags(view.resolvedFlags),

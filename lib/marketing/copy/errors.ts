@@ -40,9 +40,17 @@ export const AUDIT_ERRORS = {
   urlRequired: 'Enter a URL like https://yoursite.com',
   urlMalformed: 'Enter a valid URL like https://yoursite.com',
   urlScheme: 'Only http:// and https:// URLs can be checked',
+  urlCredentials: 'URLs containing credentials cannot be checked',
   urlLocalhost: 'FixFlags can only check publicly accessible URLs',
   scanErrorTitle: 'Something went wrong during the review',
   scanErrorBody: 'The review encountered an unexpected error. Try again.',
+} as const
+
+export const WEBSITE_ADDRESS_ERROR_COPY = {
+  empty: AUDIT_ERRORS.urlRequired,
+  malformed: AUDIT_ERRORS.urlMalformed,
+  scheme: AUDIT_ERRORS.urlScheme,
+  credentials: AUDIT_ERRORS.urlCredentials,
 } as const
 
 export const REQUEST_ERROR_COPY = {
@@ -137,16 +145,15 @@ export const OUTCOME_KIND_NAMES = {
 
 export const WATCH_ALERT_DELIVERY = {
   undeliveredTitle: 'Watch could not confirm delivery',
-  undeliveredBody: (when: string | null) =>
-    when
-      ? `FixFlags found a change on ${when}, but could not confirm that the alert reached your inbox. Watch keeps checking. Check the email on your account so the next alert can reach you.`
-      : 'FixFlags found a change on this Site, but could not confirm that the alert reached your inbox. Watch keeps checking. Check the email on your account so the next alert can reach you.',
+  undeliveredBody: (when: string | null, covered: boolean) =>
+    `FixFlags found a change on ${when ?? 'this Site'}, but could not confirm that the alert reached your inbox.${covered ? ' Watch keeps checking.' : ''} Check the email on your account so the next alert can reach you.`,
   undeliveredAction: 'Check the email FixFlags sends to',
   sidebarUndelivered: 'Last Watch alert delivery was not confirmed',
   sidebarDelivering: 'Sending your last Watch alert',
 } as const
 
 export const SYSTEM_COPY = {
+  offline: 'You are offline. Existing pages remain visible. Reconnect to see updates before trying an action again.',
   actions: {
     retry: 'Try again',
     home: 'Home',
@@ -166,7 +173,7 @@ export const SYSTEM_COPY = {
     retryAudit: 'Could not retry the review. Try again.',
     root: {
       title: 'This page could not be loaded',
-      body: 'Your data was not changed. Try again or return to the dashboard.',
+      body: 'Try again or return to the dashboard.',
     },
     marketing: {
       title: 'This page could not be loaded',
@@ -174,7 +181,7 @@ export const SYSTEM_COPY = {
     },
     app: {
       title: 'Something went wrong',
-      body: 'Your data was not changed. Try again or return to the dashboard.',
+      body: 'Try again or return to the dashboard.',
     },
     site: {
       title: 'Could not load this Site',

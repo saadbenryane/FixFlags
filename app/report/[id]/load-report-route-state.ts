@@ -19,6 +19,7 @@ import { buildLiveExplorerModel, buildPartialExplorerModel } from '@/lib/report/
 import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-projection'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { previousScoreFromHistory } from '@/lib/audit/update-review-progress'
+import { resolveAuditAccess } from '@/lib/audit/access'
 
 const MAX_REVIEW_HISTORY_HOPS = 60
 
@@ -60,7 +61,7 @@ export async function loadCompletedReviewHistoryRows(input: {
     return prisma.audit.findMany({
       where: {
         projectId: input.projectId,
-        userId: input.userId,
+        project: { userId: input.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
         status: 'COMPLETED',
       },
       select: completedHistorySelect,
@@ -277,17 +278,18 @@ export async function loadReportRouteState(
     audit.status === 'COMPLETED' && audit.parentId
       ? getFlagDiffSummary(audit.parentId, id)
       : Promise.resolve(null),
-    isOwner && audit.userId
+    isOwner && session?.user
       ? loadCompletedReviewHistoryRows({
           auditId: id,
-          userId: audit.userId,
+          userId: session.user.id,
           projectId: audit.projectId,
         })
       : Promise.resolve([]),
-    isOwner && audit.userId && audit.status === 'COMPLETED' && Boolean(audit.parentId)
-      ? loadVerificationReceiptsForReview(id, audit.userId)
+    isOwner && session?.user && audit.status === 'COMPLETED' && Boolean(audit.parentId)
+      ? loadVerificationReceiptsForReview(id, session.user.id)
       : Promise.resolve([]),
   ])
+  if (isOwner && await resolveAuditAccess(audit, session?.user) !== 'owner') notFound()
   // Keep no-score observations so degraded/partial captures show as hollow
   // spine bars instead of vanishing from history.
   const scoreHistory = completedHistoryRows

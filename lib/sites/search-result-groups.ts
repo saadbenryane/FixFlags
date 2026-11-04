@@ -1,4 +1,4 @@
-import type { SiteCheckResult } from './check-results'
+import type { SiteCheckResult } from './check-result-contract'
 
 /** Combine identical recorded facts for display, retaining every execution source. */
 export function groupRecordedSearchResults(results: readonly SiteCheckResult[]) {

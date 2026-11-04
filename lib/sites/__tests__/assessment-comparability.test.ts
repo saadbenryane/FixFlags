@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { assessmentIsComparable, bindingEvidenceIsComparable } from '../domain/assessment-comparability'
+import { assessmentIsComparable, bindingEvidenceIsComparable, recordedBindingVersion } from '../domain/assessment-comparability'
 const binding = { key: 'http', required: true, version: 2, mechanism: 'HTTP_AVAILABILITY' }
 const coverage = { environment: 'production', requiredBindings: ['http'], bindings: [{ key: 'http', version: 2, mechanism: 'HTTP_AVAILABILITY' }] }
 describe('current assessment comparability', () => {
+  it('reads explicit observation revisions without borrowing a plan or overwriting a structured revision', () => {
+    expect(recordedBindingVersion({ bindingVersion: 1, detail: { bindingVersion: 2 } })).toBe(1)
+    expect(recordedBindingVersion({ bindingVersion: null, detail: { bindingVersion: 2 } })).toBe(2)
+    for (const detail of [null, [], {}, { version: 1 }, { bindingVersion: '1' }, { bindingVersion: 0 }, { bindingVersion: 1.5 }])
+      expect(recordedBindingVersion({ bindingVersion: null, detail })).toBeUndefined()
+    expect(recordedBindingVersion({ bindingVersion: 0, detail: { bindingVersion: 1 } })).toBeUndefined()
+  })
   it('matches only the exact required binding revisions and environment', () => {
     expect(assessmentIsComparable(coverage, [binding], 'production')).toBe(true)
     expect(assessmentIsComparable(coverage, [{ ...binding, version: 3 }], 'production')).toBe(false)

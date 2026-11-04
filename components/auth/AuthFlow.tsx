@@ -13,7 +13,7 @@ import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
-import { AuthReportContext } from '@/components/auth/AuthReportContext'
+import { SiteAuthContext } from '@/components/auth/SiteAuthContext'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { AuthCardSkeleton } from '@/components/auth/AuthCardSkeleton'
@@ -24,6 +24,9 @@ import {
 import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 import { trackEvent } from '@/lib/analytics/events'
+import { siteAuthDestination } from '@/lib/auth/report-context'
+import { withClientDeadline } from '@/lib/api/client-request'
+import { emailAuthReceipt, passkeySessionReceipt } from '@/lib/auth/client-session-receipt'
 
 export type AuthFlowMode = 'signup' | 'signin'
 export type AuthFlowPresentation = 'page' | 'report-dialog' | 'report-gate'
@@ -81,7 +84,14 @@ export function AuthFlow({
   useEffect(() => { if (verificationEmail) verificationRef.current?.focus() }, [verificationEmail])
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => { setHydrated(true) }, [])
-  const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
+  const [loading, setLoading] = useState<'email' | 'passkey' | 'oauth' | null>(null)
+  const submitting = useRef(false)
+  const requestOwner = useRef<AbortController | null>(null)
+  useEffect(() => {
+    const owner = new AbortController()
+    requestOwner.current = owner
+    return () => { owner.abort(); if (requestOwner.current === owner) requestOwner.current = null }
+  }, [])
   const [showEmailForm, setShowEmailForm] = useState(false)
   const signupStartedRef = useRef(false)
   const emailInputRef = useRef<HTMLInputElement>(null)
@@ -125,6 +135,7 @@ export function AuthFlow({
   }, [showEmailForm])
 
   function toggleEmailForm() {
+    if (submitting.current) return
     const next = !showEmailForm
     setShowEmailForm(next)
     if (isReportGate && next) {
@@ -146,6 +157,7 @@ export function AuthFlow({
   }
 
   function switchMode(nextMode: AuthFlowMode) {
+    if (submitting.current) return
     setFormError('')
     setVerificationEmail(null)
     setVerificationResent(false)
@@ -172,38 +184,48 @@ export function AuthFlow({
 
   async function handleEmailSubmit(event: React.FormEvent) {
     event.preventDefault()
+    const owner = requestOwner.current
+    if (!owner || owner.signal.aborted || submitting.current) return
+    const current = () => requestOwner.current === owner && !owner.signal.aborted
+    submitting.current = true
     setFormError('')
-    markStarted('email')
     setLoading('email')
     try {
+      markStarted('email')
       if (mode === 'signup') {
-        const { data, error } = await authClient.signUp.email({
+        const { data, error } = await withClientDeadline(signal => authClient.signUp.email({
           name: '',
           email: email.trim(),
           password,
           callbackURL: resolvedOauthCallbackURL,
-        })
+          fetchOptions: { signal },
+        }), owner.signal)
+        if (!current()) return
         if (error) {
           setFormError(error.message || AUTH.signUp.error)
           return
         }
+        const receipt = emailAuthReceipt.safeParse(data)
+        if (!receipt.success) throw new Error('Authentication receipt unavailable')
         trackEvent('signed_up', {
           method: 'email',
           plan: route.plan ?? undefined,
           email: email.trim(),
-          user_id: data?.user?.id,
+          user_id: receipt.data.user.id,
           from: resolvedFrom ?? undefined,
         })
-        if (data?.token === null) {
+        if (receipt.data.token === null) {
           setPassword('')
           setVerificationEmail(email.trim())
           return
         }
       } else {
-        const { data, error } = await authClient.signIn.email({
+        const { data, error } = await withClientDeadline(signal => authClient.signIn.email({
           email: email.trim(),
           password,
-        })
+          fetchOptions: { signal },
+        }), owner.signal)
+        if (!current()) return
         if (error) {
           if (error.code === 'EMAIL_NOT_VERIFIED') {
             setPassword('')
@@ -213,38 +235,50 @@ export function AuthFlow({
           setFormError(error.message || AUTH.signIn.error)
           return
         }
-        if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
+        if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect === true) {
           window.location.replace(twoFactorHref())
           return
         }
+        const receipt = emailAuthReceipt.safeParse(data)
+        if (!receipt.success || receipt.data.token === null) throw new Error('Authentication receipt unavailable')
         trackEvent('signed_in', { method: 'email' })
       }
       await finishEmailAuth()
     } catch {
-      setFormError(
+      if (current()) setFormError(
         mode === 'signup' ? AUTH.signUp.unexpectedError : AUTH.signIn.unexpectedError
       )
     } finally {
-      setLoading(null)
+      if (current()) { submitting.current = false; setLoading(null) }
     }
   }
 
   async function resendVerification() {
-    if (!verificationEmail || loading) return
+    const owner = requestOwner.current
+    if (!owner || owner.signal.aborted || !verificationEmail || submitting.current) return
+    const current = () => requestOwner.current === owner && !owner.signal.aborted
+    submitting.current = true
     setLoading('email'); setFormError(''); setVerificationResent(false)
     try {
-      const { error } = await authClient.sendVerificationEmail({ email: verificationEmail, callbackURL: resolvedOauthCallbackURL })
+      const { data, error } = await withClientDeadline(signal => authClient.sendVerificationEmail({ email: verificationEmail, callbackURL: resolvedOauthCallbackURL, fetchOptions: { signal } }), owner.signal)
+      if (!current()) return
       if (error) setFormError(error.message || AUTH.emailVerification.error)
-      else setVerificationResent(true)
-    } catch { setFormError(AUTH.emailVerification.error) }
-    finally { setLoading(null) }
+      else if (data?.status === true) setVerificationResent(true)
+      else setFormError(AUTH.emailVerification.error)
+    } catch { if (current()) setFormError(AUTH.emailVerification.error) }
+    finally { if (current()) { submitting.current = false; setLoading(null) } }
   }
 
   async function handlePasskeySignIn() {
+    const owner = requestOwner.current
+    if (!owner || owner.signal.aborted || submitting.current) return
+    const current = () => requestOwner.current === owner && !owner.signal.aborted
+    submitting.current = true
     setFormError('')
     setLoading('passkey')
     try {
-      const { error } = await authClient.signIn.passkey({ autoFill: false })
+      const { data, error } = await authClient.signIn.passkey({ autoFill: false })
+      if (!current()) return
       if (error) {
         const message = error.message ?? ''
         if (!/cancel|notallowed/i.test(message)) {
@@ -256,12 +290,13 @@ export function AuthFlow({
         }
         return
       }
+      if (!passkeySessionReceipt.safeParse(data).success) { setFormError(AUTH.passkeyErrors.cancelled); return }
       trackEvent('signed_in', { method: 'passkey' })
       await finishEmailAuth()
     } catch {
-      setFormError(AUTH.passkeyErrors.cancelled)
+      if (current()) setFormError(AUTH.passkeyErrors.cancelled)
     } finally {
-      setLoading(null)
+      if (current()) { submitting.current = false; setLoading(null) }
     }
   }
 
@@ -379,8 +414,8 @@ export function AuthFlow({
 
   const content = (
     <>
-      {!isDialog && resolvedNext?.match(/^\/report\/[^/?#]+$/) ? (
-        <AuthReportContext next={resolvedNext} />
+      {!isDialog && siteAuthDestination(resolvedNext) ? (
+        <SiteAuthContext next={resolvedNext} />
       ) : !isDialog && mode === 'signup' ? (
         <div className="rounded-card bg-muted/30 p-4 shadow-none">
           <AuthValueProps />
@@ -402,7 +437,15 @@ export function AuthFlow({
           from={resolvedFrom ?? undefined}
           mode={mode}
           hideDivider={isReportGate}
-          onMethodSelected={markStarted}
+          onMethodSelected={(method) => {
+            if (submitting.current) return false
+            submitting.current = true
+            setLoading('oauth')
+            setFormError('')
+            markStarted(method)
+            return true
+          }}
+          onRequestFinished={() => { submitting.current = false; setLoading(null) }}
         />
       ) : oauth.error ? (
         <div
@@ -447,6 +490,7 @@ export function AuthFlow({
           <InteractiveButton
             type="button"
             onClick={toggleEmailForm}
+            disabled={loading !== null}
             aria-expanded={showEmailForm}
             aria-controls="report-gate-email-form"
             className="group flex min-h-11 w-full items-center justify-center gap-2 py-2"
@@ -478,6 +522,7 @@ export function AuthFlow({
           type="button"
           className="inline-flex min-h-11 min-w-11 items-center justify-center font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           onClick={() => switchMode(mode === 'signup' ? 'signin' : 'signup')}
+          disabled={loading !== null}
         >
           {mode === 'signup' ? AUTH.signUp.footerLink : AUTH.signIn.footerLink}
         </InteractiveButton>

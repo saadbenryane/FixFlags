@@ -6,7 +6,7 @@ import { closeBrowser, getAuditBrowser, getChromePath } from '../screenshot'
 import { startPublicBrowserProxy } from './public-proxy'
 
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(async () => ['127.0.0.1']), resolve6: vi.fn(async () => []) }))
-vi.mock('node:dns/promises', () => dns)
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 async function listen(server: Server) {
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve) })

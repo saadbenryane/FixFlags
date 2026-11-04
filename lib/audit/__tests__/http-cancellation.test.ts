@@ -69,7 +69,11 @@ describe('execution-owned public HTTP lifetime', () => {
     const request = owned(controller.signal, () => fetch(origin + path, { timeoutMs: 3000 }))
     const settled = request.then(value => ({ value, error: null }), error => ({ value: null, error }))
     try {
-      await vi.waitFor(() => expect(requests).toEqual([path]))
+      await vi.waitFor(() => expect(requests).toEqual([path])).catch(async cause => {
+        const result = await settled
+        throw new Error('HTTP collection did not reach the fixture: ' + String(result.error),
+          { cause: result.error instanceof Error ? result.error : cause })
+      })
       expect(publicHttpCapacity.running).toBe(1)
       controller.abort()
       await vi.waitFor(() => expect(publicHttpCapacity.running).toBe(0), { timeout: 500 })

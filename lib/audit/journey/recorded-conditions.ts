@@ -2,6 +2,7 @@ import { capturePageKey } from '../browser/observation-scope'
 import { JOURNEY_VERIFICATION_RULE, readJourneyContext } from '../checks/journey-evidence'
 import { readSupportingObservations } from '../flag-observations'
 import { recordedTargetBatches } from '../recorded-targets'
+import { prisma } from '@/lib/db'
 
 type JourneyCondition = NonNullable<ReturnType<typeof readJourneyContext>>
 type Source = { verificationRule: string | null; evidenceTargets: unknown; supportingObservations?: unknown }
@@ -28,7 +29,7 @@ export async function loadRecordedJourneyConditions(input: {
   projectId: string; environment: string; pageUrl: string; excludeAuditId: string;
 }): Promise<JourneyCondition[]> {
   const conditions = new Map<string, JourneyCondition>()
-  for await (const targets of recordedTargetBatches({ ...input, verificationRule: JOURNEY_VERIFICATION_RULE })) {
+  for await (const targets of recordedTargetBatches({ ...input, verificationRule: JOURNEY_VERIFICATION_RULE }, prisma, { projection: 'context' })) {
     for (const condition of originalJourneyConditions([{ verificationRule: JOURNEY_VERIFICATION_RULE, evidenceTargets: targets }], input.pageUrl))
       conditions.set(JSON.stringify(condition), condition)
   }

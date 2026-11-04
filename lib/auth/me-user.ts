@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { getEntitlements } from '@/lib/auth/entitlements'
 import { getCheckUsage, isAdminUser } from '@/lib/auth/permissions'
 import { refreshUserUsagePeriod } from '@/lib/billing/usage-period'
+import type { MeUser } from './me-contract'
 
 export const meUserSelect = {
   id: true,
@@ -58,5 +59,5 @@ export async function serializeMeUser(
     entitlements,
     vibecodingLevel: user.vibecodingLevel,
     preferredTools: user.preferredTools,
-  }
+  } satisfies MeUser
 }

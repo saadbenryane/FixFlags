@@ -2,6 +2,7 @@ import { CircleHelp, Clock3, Files, LayoutGrid, Plug, Settings2, type LucideIcon
 import Link from 'next/link'
 import type { Route } from 'next'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { useRef, type ReactNode } from 'react'
 import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
 import styles from './SiteShell.module.css'
@@ -10,11 +11,11 @@ import { cn } from '@/lib/utils'
 export type SiteRoute = 'home' | 'pages' | 'timeline' | 'integrations' | 'settings'
 
 export const SITE_ROUTES = [
-  ['home', 'Overview', LayoutGrid],
-  ['pages', 'Pages', Files],
-  ['timeline', 'Timeline', Clock3],
-  ['integrations', 'Integrations', Plug],
-  ['settings', 'Settings', Settings2],
+  ['home', SITE_WORKSPACE_COPY.navigation.home, LayoutGrid],
+  ['pages', SITE_WORKSPACE_COPY.navigation.pages, Files],
+  ['timeline', SITE_WORKSPACE_COPY.navigation.timeline, Clock3],
+  ['integrations', SITE_WORKSPACE_COPY.navigation.integrations, Plug],
+  ['settings', SITE_WORKSPACE_COPY.navigation.settings, Settings2],
 ] as const
 
 export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = true, mobile = false, className, renderItem, helpHref }: {

@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
 
 export const EXECUTION_LEASE_MS = 90_000
 export type ExecutionOwnership = { auditId: string; token: string; generation: number; taskId?: string; signal?: AbortSignal }
@@ -9,6 +10,10 @@ const ownership = new AsyncLocalStorage<ExecutionOwnership>()
 
 export class ExecutionOwnershipLost extends Error {
   constructor() { super('This execution no longer owns the Audit'); this.name = 'ExecutionOwnershipLost' }
+}
+
+class ExecutionScopeChanged extends Error {
+  constructor() { super('The Audit acquired a different Site while its scope was being locked'); this.name = 'ExecutionScopeChanged' }
 }
 
 export function currentExecutionOwnership() { return ownership.getStore() }
@@ -30,7 +35,7 @@ export async function claimExecution(auditId: string, { projectionOnly = false, 
   assertExecutionActive(caller)
   const token = randomUUID()
   return runTransaction(async tx => {
-    if (!await lockExecutionSite(tx, auditId)) return null
+    if (!await lockExecutionScope(tx, auditId)) return null
     assertExecutionActive(caller)
     const now = new Date()
     const claimed = await tx.audit.updateMany({
@@ -50,8 +55,9 @@ export async function claimExecution(auditId: string, { projectionOnly = false, 
 const OWNERSHIP_WATCH_MS = 1_000
 
 // Cleanup keeps its lifecycle exception, never another tenant's authority.
-// These aliases are shared by the write fence and the read-only resource watch.
-const siteAuthority = Prisma.sql`a."userId" = p."userId" AND (
+// Fixed aliases a (Audit), p (Project) and u (owner) are shared by admission,
+// recovery selection, the write fence and the read-only resource watch.
+export const executionSiteAuthoritySql = Prisma.sql`a."userId" = p."userId" AND (
   COALESCE(a."executionSpec"#>>'{scope}'='ACCOUNT_CHECKS' AND a."executionSpec"#>>'{accountChecks,mode}'='cleanup', false)
   OR (p."deletedAt" IS NULL AND u."lifecycleStatus"='ACTIVE'))`
 
@@ -75,7 +81,7 @@ async function executionStillOwned(owner: ExecutionOwnership): Promise<boolean> 
     LEFT JOIN "users" u ON u."id"=p."userId"
     ${owner.taskId ? Prisma.sql`JOIN "audit_execution_tasks" e ON e."auditId"=a."id"` : Prisma.empty}
     WHERE a."id"=${owner.auditId} AND ${executionLease(owner)}
-      AND (a."projectId" IS NULL OR (${siteAuthority}))
+      AND (a."projectId" IS NULL OR (${executionSiteAuthoritySql}))
   `
   return rows.length === 1
 }
@@ -100,30 +106,43 @@ export async function renewExecution(owner: ExecutionOwnership): Promise<boolean
   }
 }
 
-/** Claims and writes retain this shared Site fence before locking the Audit. */
-export async function lockExecutionSite(tx: Prisma.TransactionClient, auditId: string): Promise<boolean> {
+/** Claims and writes acquire one stable Site and Audit scope in that order. */
+export async function lockExecutionScope(tx: Prisma.TransactionClient, auditId: string): Promise<boolean> {
   // Commands and workers share Project -> Audit -> task lock order. Removal
   // can fence queued work without deadlocking an account reservation.
   // FOR SHARE blocks Site removal without queueing every observation behind
   // one project writer. The task row stays exclusive for its own commit.
-  const projects = await tx.$queryRaw<Array<{ authorized: boolean | null }>>`
-    SELECT (${siteAuthority}) AS authorized FROM "projects" p JOIN "users" u ON u.id=p."userId" JOIN "audits" a ON a."projectId" = p."id"
-    WHERE a."id" = ${auditId} FOR SHARE OF p
+  const [scope] = await tx.$queryRaw<Array<{ projectId: string | null; lockedProjectId: string | null }>>`
+    SELECT a."projectId", (SELECT p.id FROM "projects" p WHERE p.id = a."projectId" FOR SHARE) AS "lockedProjectId"
+    FROM "audits" a WHERE a.id = ${auditId}
   `
-  return projects.every(project => Boolean(project.authorized))
+  if (!scope) return false
+  if (scope.projectId !== null) {
+    if (scope.lockedProjectId !== scope.projectId) return false
+    // A joined projection can retain its pre-wait authorization decision. Read
+    // authority in a new statement after the Site lock has actually been acquired.
+    const projects = await tx.$queryRaw<Array<{ authorized: boolean | null }>>`
+      SELECT (${executionSiteAuthoritySql}) AS authorized FROM "projects" p JOIN "users" u ON u.id=p."userId" JOIN "audits" a ON a."projectId" = p."id"
+      WHERE a."id" = ${auditId} AND p.id = ${scope.projectId}
+    `
+    if (projects.length !== 1 || !projects[0].authorized) return false
+  }
+  const [locked] = await tx.$queryRaw<Array<{ projectId: string | null }>>`
+    SELECT "projectId" FROM "audits" WHERE id = ${auditId} FOR UPDATE
+  `
+  if (!locked) return false
+  // Claim may attach an anonymous Audit while this transaction waits. Release
+  // its Audit lock and retry in Site-before-Audit order before publishing work.
+  if (locked.projectId !== scope.projectId) throw new ExecutionScopeChanged()
+  return true
 }
 
 /** The guard and the write share a transaction. The Audit row stays exclusive
  * so status and score updates keep one order. */
 async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: ExecutionOwnership): Promise<void> {
   assertExecutionActive(owner)
-  if (!await lockExecutionSite(tx, owner.auditId)) throw new ExecutionOwnershipLost()
+  if (!await lockExecutionScope(tx, owner.auditId)) throw new ExecutionOwnershipLost()
   if (owner.taskId) {
-    // Writers lock the parent before the task to preserve one lock order.
-    const parent = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT "id" FROM "audits" WHERE "id" = ${owner.auditId} AND "status" != 'FAILED' FOR UPDATE
-    `
-    if (parent.length !== 1) throw new ExecutionOwnershipLost()
     const task = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT e."id" FROM "audit_execution_tasks" e JOIN "audits" a ON a."id" = e."auditId"
       WHERE a."id" = ${owner.auditId} AND ${executionLease(owner)}
@@ -135,7 +154,6 @@ async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: Executi
   const rows = await tx.$queryRaw<Array<{ id: string }>>`
     SELECT a."id" FROM "audits" a
     WHERE a."id" = ${owner.auditId} AND ${executionLease(owner)}
-    FOR UPDATE
   `
   if (rows.length !== 1) throw new ExecutionOwnershipLost()
 }
@@ -153,8 +171,9 @@ export function transactionConflict(error: unknown): boolean {
     error.code === 'P2010' && (error.meta?.code === '40001' || error.meta?.code === '40P01'))
 }
 
-/** A serialization failure, deadlock or lock timeout aborted the transaction. */
+/** Scope changes, serialization failures, deadlocks and lock timeouts roll back the transaction. */
 export function transactionAborted(error: unknown): boolean {
+  if (error instanceof ExecutionScopeChanged) return true
   if (transactionConflict(error)) return true
   const message = error instanceof Error ? error.message : ''
   // Prisma sometimes reports Postgres 40P01 or 55P03 as a connector error
@@ -198,17 +217,20 @@ export async function executionWrite<T>(write: (tx: Prisma.TransactionClient) =>
 
 export async function executionTransaction<T>(
   write: (tx: Prisma.TransactionClient) => Promise<T>,
-  options?: TransactionOptions,
+  options?: TransactionOptions & { activeUserId?: string },
 ): Promise<T> {
   const owner = ownership.getStore()
   assertExecutionActive(owner)
+  const { activeUserId, ...transactionOptions } = options ?? {}
   return runTransaction(async tx => {
+    // A command actor precedes inherited worker Site and Audit locks too.
+    if (activeUserId !== undefined) await requireActiveAccountForWrite(tx, activeUserId)
     if (owner) await assertExecutionOwner(tx, owner)
     assertExecutionActive(owner)
     const result = await write(tx)
     assertExecutionActive(owner)
     return result
-  }, options)
+  }, options ? transactionOptions : undefined)
 }
 
 export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work: () => Promise<T>): Promise<T> {

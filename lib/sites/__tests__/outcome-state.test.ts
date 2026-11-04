@@ -100,4 +100,12 @@ describe('Outcome state', () => {
       pageUrl: null,
     }, { ...outcome, id: 'outcome-1' })).toBe(false)
   })
+
+  it('retains a persisted summary relationship after a clear assessment retires its active Flag', () => {
+    const outcome = { id: 'outcome-1', flagId: null, pageUrls: [], kind: 'CHECKOUT' }
+    const flag = { id: 'original', relatedOutcome: { id: 'outcome-1', name: 'Checkout' } }
+    expect(flagMatchesOutcome(flag, outcome)).toBe(true)
+    expect(flagMatchesOutcome(flag, { ...outcome, id: 'other', flagId: flag.id })).toBe(false)
+    expect(flagMatchesOutcome({ ...flag, outcomeId: 'other' }, outcome)).toBe(false)
+  })
 })

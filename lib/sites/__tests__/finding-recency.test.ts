@@ -3,9 +3,21 @@ import { loadSiteRecommendations } from '../flags'
 import { newestRecordedFlag } from '../flag-resolution'
 import type { SiteRecord } from '../types'
 
-const db = vi.hoisted(() => ({ project: { findFirst: async () => ({ id: 'owned' }) }, improvement: { findMany: vi.fn() }, flag: { findMany: vi.fn() } }))
-vi.mock('@/lib/db', () => ({ prisma: db }))
-vi.mock('../application/incident-proofs', () => ({ currentImprovementWhere: {}, unboundSiteFindingWhere: () => ({}), loadIncidentRecoveryProofs: vi.fn().mockResolvedValue(new Map()) }))
+const db = vi.hoisted(() => ({ $queryRaw: vi.fn().mockResolvedValue([]), project: { findFirst: async () => ({ id: 'owned' }) }, improvement: { findMany: vi.fn() }, flag: { findMany: vi.fn() } }))
+vi.mock('@/lib/db', () => ({ prisma: { ...db,
+  improvement: { findMany: async (query: unknown) => (await db.improvement.findMany(query)).map((row: object) => ({ ...row, projectId: 'owned-site' })) },
+  flag: { findMany: async (query: { select?: { improvementOccurrence?: { select?: { createdAt?: boolean } } }; where?: { id?: { in: string[] } } }) => {
+    const unbound = await db.flag.findMany(query)
+    const incidents = await db.improvement.findMany.mock.results.at(-1)?.value ?? []
+    const bound = incidents.flatMap((incident: { id: string; occurrences: Array<{ createdAt: Date; flag: ReturnType<typeof flag> }> }) =>
+      incident.occurrences.map(row => ({ ...row.flag, audit: { projectId: 'owned-site' },
+        improvementOccurrence: { improvementId: incident.id, createdAt: row.createdAt } })))
+    if (query.select?.improvementOccurrence?.select?.createdAt) return [...bound, ...unbound.map((row: object) => ({ ...row, audit: { projectId: 'owned-site' }, improvementOccurrence: null }))]
+    return query.where?.id?.in ? [...bound, ...unbound].filter((row: { id: string }) => query.where!.id!.in.includes(row.id)) : unbound
+  } },
+} }))
+vi.mock('../application/incident-proofs', async original => ({ ...await original<typeof import('../application/incident-proofs')>(),
+  currentImprovementWhere: {}, unboundSiteFindingWhere: () => ({}), loadIncidentRecoveryProofs: vi.fn().mockResolvedValue(new Map()) }))
 const site = { kind: 'project', projectId: 'owned-site', userId: 'owner' } as SiteRecord
 const time = (seconds: number) => new Date(Date.UTC(2026, 9, 17, 2, 0, seconds))
 const flag = (id: string, seconds: number) => ({ id, createdAt: time(seconds), auditId: 'audit-' + id, fingerprint: 'privacy-scope', checkId: 'no-privacy-policy',

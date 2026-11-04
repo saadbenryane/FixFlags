@@ -43,7 +43,7 @@ export async function ensureOwnedFlagIdentities(
   if (!projectId || flags.some(flag => flag.audit.projectId !== projectId)) {
     throw new Error('Flag is not attached to an owned Product')
   }
-  const authority = { userId: input.userId, projectId, project: { userId: input.userId, deletedAt: null } }
+  const authority = { projectId, project: { userId: input.userId, deletedAt: null } }
   const owned = flags.length === 1
     ? await tx.flag.findFirst({ where: { id: flags[0].id, audit: authority }, select: { id: true } }).then(row => row ? [row] : [])
     : await tx.flag.findMany({ where: { id: { in: flags.map(flag => flag.id) }, audit: authority }, select: { id: true } })

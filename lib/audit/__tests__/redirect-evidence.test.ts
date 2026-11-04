@@ -12,7 +12,7 @@ import { runAuthCheckoutChecks } from '../checks/auth-checkout'
 import { parseMetadataFromHtml } from '../metadata'
 import { assessSecurityTransport } from '../checks/security'
 
-vi.mock('node:dns/promises', () => ({ resolve4: async () => ['203.0.114.1'], resolve6: async () => [] }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: async () => ['203.0.114.1'], resolve6: async () => [] })))
 const origin = 'https://example.com', requests: string[] = []
 const server = createServer((request, response) => {
   const path = new URL(request.url!, origin)

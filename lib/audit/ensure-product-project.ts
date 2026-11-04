@@ -87,33 +87,37 @@ export async function loadProjectIntelligence(
 /**
  * The only Product Intelligence write path. Serializable read + compare-and-swap
  * prevents Contract edits, feedback, claims, and re-check learning from erasing
- * one another. Mutations are retried against the newest revision.
+ * one another. Mutations are retried against the newest revision. A supplied
+ * transaction commits context with its owning action instead of a later write.
  */
 export async function mutateProjectIntelligence(
   projectId: string,
-  mutation: (current: ProductIntelligence | null) => ProductIntelligence
+  mutation: (current: ProductIntelligence | null) => ProductIntelligence,
+  transaction?: Prisma.TransactionClient,
 ): Promise<ProductIntelligence> {
   for (let attempt = 0; attempt < MAX_PI_MUTATION_ATTEMPTS; attempt += 1) {
-    const outcome = await executionTransaction(async (tx) => {
-        const project = await tx.project.findUnique({
-          where: { id: projectId },
-          select: { productIntelligence: true, productIntelligenceRevision: true },
-        })
-        if (!project) throw new Error('Product not found')
+    const write = async (tx: Prisma.TransactionClient) => {
+      const project = await tx.project.findUnique({
+        where: { id: projectId },
+        select: { productIntelligence: true, productIntelligenceRevision: true },
+      })
+      if (!project) throw new Error('Product not found')
 
-        const next = mutation(parseProductIntelligence(project.productIntelligence))
-        const updated = await tx.project.updateMany({
-          where: {
-            id: projectId,
-            productIntelligenceRevision: project.productIntelligenceRevision,
-          },
-          data: {
-            productIntelligence: next as unknown as Prisma.InputJsonObject,
-            productIntelligenceRevision: { increment: 1 },
-          },
-        })
-        return updated.count === 1 ? next : null
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+      const next = mutation(parseProductIntelligence(project.productIntelligence))
+      const updated = await tx.project.updateMany({
+        where: {
+          id: projectId,
+          productIntelligenceRevision: project.productIntelligenceRevision,
+        },
+        data: {
+          productIntelligence: next as unknown as Prisma.InputJsonObject,
+          productIntelligenceRevision: { increment: 1 },
+        },
+      })
+      return updated.count === 1 ? next : null
+    }
+    const outcome = transaction ? await write(transaction)
+      : await executionTransaction(write, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     if (outcome) return outcome
   }
 

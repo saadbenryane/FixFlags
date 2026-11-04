@@ -118,6 +118,7 @@ function executionsNewestFirst() {
   return [
     {
       id: 'exec-checkout-new',
+      bindingVersion: 1,
       bindingKey: 'checkout-browser-v1',
       disposition: 'SUCCEEDED',
       reason: 'checkout_reached',
@@ -265,6 +266,22 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     expect(mcpOutcomePayload(detail!).methods.find(method => method.key === row.bindings[0].key)?.evidence).toBeNull()
   })
 
+  it.each([null, undefined])('does not infer an observed revision from matching admitted coverage: %s', async bindingVersion => {
+    mocks.executionFindMany.mockResolvedValue([{ ...executionsNewestFirst()[0], bindingVersion }])
+    const detail = await loadSiteOutcomeDetail(projectSite(), 'outcome-1')
+    expect(detail?.bindings[0]).toMatchObject({ latestEvidence: null, customerSentence: OUTCOME_DETAIL_COPY.currentEvidenceMissing })
+    expect(mcpOutcomePayload(detail!).methods[0].evidence).toBeNull()
+    expect(detail?.timeline).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'attempt:attempt-new' })]))
+  })
+
+  it('uses an explicit legacy observation revision without altering the raw detail', async () => {
+    const evidence = { ...executionsNewestFirst()[0], bindingVersion: null, detail: { bindingVersion: 1, finalUrl: 'https://shop.example/checkout' } }
+    mocks.executionFindMany.mockResolvedValue([evidence])
+    const detail = await loadSiteOutcomeDetail(projectSite(), 'outcome-1')
+    expect(detail?.bindings[0].latestEvidence).toMatchObject({ disposition: 'SUCCEEDED', detail: evidence.detail })
+    expect(mcpOutcomePayload(detail!).methods[0].evidence).not.toBeNull()
+  })
+
   it('retains the requested assessment and its failed method when an older request completes later', async () => {
     const row = outcomeRow(), current = { ...row.assessments[0], state: 'FLAG' as const, summary: 'The current purchase attempt failed.' }
     const old = { ...row.assessments[0], id: 'older-assessment', auditId: 'older-request', assessedAt: new Date(NEWER.getTime() + 1000) }
@@ -301,6 +318,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: 'exec-checkout-new',
+        bindingVersion: 1,
         bindingKey: 'checkout-browser-v1',
         disposition: 'BLOCKED',
         reason: 'no_buy_control',
@@ -339,6 +357,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: 'exec-bot',
+        bindingVersion: 1,
         bindingKey: 'checkout-browser-v1',
         disposition: 'BLOCKED',
         reason: 'bot_wall',
@@ -370,6 +389,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: `exec-${reason}`,
+        bindingVersion: 1,
         bindingKey: 'checkout-browser-v1',
         disposition: 'BLOCKED',
         reason,
@@ -405,6 +425,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: 'exec-page-new',
+        bindingVersion: 1,
         bindingKey: 'page-availability-v1',
         disposition: 'BLOCKED',
         reason: 'not_public',
@@ -458,6 +479,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: `exec-${reason}`,
+        bindingVersion: 1,
         bindingKey: 'page-availability-v1',
         disposition: 'BLOCKED',
         reason,
@@ -493,6 +515,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: 'exec-http',
+        bindingVersion: 1,
         bindingKey: 'page-availability-v1',
         disposition: 'FAILED',
         reason: 'http_unavailable',
@@ -525,6 +548,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: 'exec-signup',
+        bindingVersion: 1,
         bindingKey: 'signup-safe-form-v1',
         disposition: 'BLOCKED',
         reason: 'protected_or_irreversible',
@@ -550,6 +574,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     mocks.executionFindMany.mockResolvedValue([
       {
         id: 'exec-flag',
+        bindingVersion: 1,
         bindingKey: 'checkout-browser-v1',
         disposition: 'FAILED',
         reason: 'add_to_cart_noop',

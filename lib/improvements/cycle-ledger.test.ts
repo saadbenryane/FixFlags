@@ -4,7 +4,7 @@ import { appendImprovementCycleEvent } from './cycle-ledger'
 describe('appendImprovementCycleEvent', () => {
   it('uses the cycle and semantic action as durable idempotency boundaries', async () => {
     const cycleUpsert = vi.fn().mockResolvedValue({ id: 'cycle-1' })
-    const eventUpsert = vi.fn().mockResolvedValue({ id: 'event-1' })
+    const eventUpsert = vi.fn().mockImplementation(async input => ({ id: 'event-1', ...input.create }))
     const db = {
       improvementCycle: { upsert: cycleUpsert },
       improvementCycleEvent: { upsert: eventUpsert },

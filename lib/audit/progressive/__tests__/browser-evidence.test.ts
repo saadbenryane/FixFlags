@@ -20,6 +20,14 @@ function task(device: 'desktop' | 'mobile', state = 'COMPLETED', pageId = 'page'
 }
 
 describe('independent browser observation assembly', () => {
+  it('never renews a joined observation with the later profile timestamp', () => {
+    const desktop = task('desktop'), mobile = task('mobile')
+    desktop.workResult = { ...desktop.workResult as object, collectedAt: '2026-10-01T12:00:00.000Z' }
+    mobile.workResult = { ...mobile.workResult as object, collectedAt: '2026-10-20T12:00:00.000Z' }
+    expect(readBrowserEvidence([desktop, mobile])?.collectedAt).toBe('2026-10-01T12:00:00.000Z')
+    expect(readBrowserEvidence([mobile, desktop])?.collectedAt).toBe('2026-10-01T12:00:00.000Z')
+    expect(readBrowserEvidence([mobile])?.collectedAt).toBe('2026-10-20T12:00:00.000Z')
+  })
   it('retains desktop observations while mobile is pending or unavailable', () => {
     for (const state of ['RUNNING', 'EXHAUSTED', 'BLOCKED']) {
       const observed = readBrowserEvidence([task('desktop'), task('mobile', state)])!

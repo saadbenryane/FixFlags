@@ -1,6 +1,6 @@
 'use client'
 
-import { InteractiveInput, InteractiveSelect } from '@/components/ui/interactive-controls'
+import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
@@ -10,6 +10,7 @@ import { outcomeCoverageLabel, outcomeStatusLabel } from '@/lib/sites/outcome-st
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
+import { OutcomeNameControl } from './OutcomeNameControl'
 
 /**
  * "Looks right / Edit corrects inferred intent", which `docs/workspace-interface.md`
@@ -74,7 +75,7 @@ function ConfirmKind({
         {choices.includes('SIGNUP') ? (
           <label className="mt-3 block max-w-sm text-sm font-medium">
             Safe Signup fixture
-            <InteractiveSelect className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3" value={fixtureId} onChange={(event) => setFixtureId(event.target.value)}>
+            <InteractiveSelect className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3 max-sm:text-base" value={fixtureId} onChange={(event) => setFixtureId(event.target.value)}>
               {fixtures.map((fixture) => <option key={fixture.id} value={fixture.id}>{fixture.name}</option>)}
             </InteractiveSelect>
           </label>
@@ -93,76 +94,6 @@ function ConfirmKind({
         </p>
       ) : null}
     </div>
-  )
-}
-
-function RenameOutcome({ siteId, outcome }: { siteId: string; outcome: SiteOutcomeView }) {
-  const router = useRouter()
-  const [busy, setBusy] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState(outcome.name)
-  const [message, setMessage] = useState<string | null>(null)
-
-  if (!editing) {
-    return (
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEditing(true)}>
-        {OUTCOME_CONFIRMATION.edit}
-      </Button>
-    )
-  }
-
-  async function rename() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      // A rename corrects the label only. It does not renew, withdraw or change
-      // the customer's agreement about what FixFlags should execute.
-      const res = await fetch(`/api/sites/${siteId}/outcomes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'rename', outcomeId: outcome.id, name }),
-      })
-      if (!res.ok) {
-        setMessage(OUTCOME_CONFIRMATION.saveFailed)
-        return
-      }
-      setMessage(OUTCOME_CONFIRMATION.renamed)
-      setEditing(false)
-      router.refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <form
-      className="flex flex-wrap items-center gap-2"
-      onSubmit={(event) => {
-        event.preventDefault()
-        void rename()
-      }}
-    >
-      <label className="sr-only" htmlFor={`outcome-name-${outcome.id}`}>
-        {OUTCOME_CONFIRMATION.nameLabel}
-      </label>
-      <InteractiveInput
-        id={`outcome-name-${outcome.id}`}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm sm:w-64"
-      />
-      <Button type="submit" size="sm" disabled={busy}>
-        {OUTCOME_CONFIRMATION.save}
-      </Button>
-      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
-        {OUTCOME_CONFIRMATION.cancel}
-      </Button>
-      {message ? (
-        <span role="status" className="text-sm text-muted-foreground">
-          {message}
-        </span>
-      ) : null}
-    </form>
   )
 }
 
@@ -210,7 +141,7 @@ export function SiteOutcomeRow({ siteId, outcome, fixtures = [] }: { siteId: str
       </div>
       {confirmed ? (
         <div className="mt-2">
-          <RenameOutcome siteId={siteId} outcome={outcome} />
+          <OutcomeNameControl siteId={siteId} outcomeId={outcome.id} name={outcome.name} />
         </div>
       ) : choices.length > 0 ? (
         <ConfirmKind siteId={siteId} outcome={outcome} choices={choices} fixtures={fixtures} />

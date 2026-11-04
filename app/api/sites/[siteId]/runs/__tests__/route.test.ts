@@ -1,16 +1,51 @@
 import { ProductAdmissionBusy } from '@/lib/billing/product-transaction'
 import { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), run: vi.fn() }))
+const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), run: vi.fn(), read: vi.fn() }))
 vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers()) }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: mocks.session } } }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.access }))
-vi.mock('@/lib/sites/application/run-requests', () => ({ requestSiteRun: mocks.run }))
+vi.mock('@/lib/sites/application/run-requests', () => ({ requestSiteRun: mocks.run, getOwnedRun: mocks.read }))
 import { POST } from '../route'
+import { GET } from '../[runId]/route'
 const context = { params: Promise.resolve({ siteId: 'site' }) }
 const request = (body: unknown, key = 'category-request') => new NextRequest('http://localhost/api/sites/site/runs', {
   method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': key }, body: JSON.stringify(body),
+})
+
+describe('Site run result route', () => {
+  const context = { params: Promise.resolve({ siteId: 'site-alias', runId: 'run' }) }
+  const request = () => new NextRequest('http://localhost/api/sites/site-alias/runs/run')
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mocks.session.mockResolvedValue({ user: { id: 'owner' } })
+    mocks.access.mockResolvedValue({ ok: true, decision: { role: 'owner', site: { projectId: 'canonical-project' } } })
+    mocks.read.mockResolvedValue({ id: 'run', result: 'COULD_NOT_VERIFY' })
+  })
+  it('retains the canonical Site identity in the shared run read', async () => {
+    const response = await GET(request(), context)
+    expect(response.status).toBe(200)
+    expect(mocks.read).toHaveBeenCalledWith('owner', 'run', 'canonical-project')
+    expect(await response.json()).toMatchObject({ id: 'run', result: 'COULD_NOT_VERIFY' })
+  })
+  it.each([
+    { role: 'owner', site: { projectId: null } }, { role: 'visitor', site: { projectId: 'canonical-project' } },
+  ])('refuses a viewer without the owned Project: %j', async decision => {
+    mocks.access.mockResolvedValue({ ok: true, decision })
+    expect((await GET(request(), context)).status).toBe(404)
+    expect(mocks.read).not.toHaveBeenCalled()
+  })
+  it('keeps missing, revoked and unauthenticated results unavailable', async () => {
+    mocks.read.mockResolvedValue(null)
+    expect((await GET(request(), context)).status).toBe(404)
+    mocks.read.mockRejectedValue(new SiteRunRefusal('Site not found', 404))
+    expect((await GET(request(), context)).status).toBe(404)
+    mocks.session.mockResolvedValue(null)
+    expect((await GET(request(), context)).status).toBe(401)
+    expect(mocks.read).toHaveBeenCalledTimes(2)
+  })
 })
 describe('Site category run admission route', () => {
   beforeEach(() => {

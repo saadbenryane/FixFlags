@@ -58,7 +58,7 @@ export function mcpCoreError(error: unknown, defaults?: { code?: string; action?
 
   if (error instanceof SiteRunRefusal) {
     code = error.code; message = error.message
-    action = error.code === 'REPAIR_CONTEXT_CHANGED' ? 'prepare_new_prompt' : error.status === 400 ? 'check_arguments' : defaults?.action ?? 'retry'
+    action = error.action ?? (error.status === 400 ? 'check_arguments' : defaults?.action ?? 'retry')
   } else if (error instanceof RateLimitError) {
     code = 'RATE_LIMITED'
     action = 'wait_and_retry'

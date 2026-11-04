@@ -20,7 +20,7 @@ it('retains an unresolved current incident as attention while current reachabili
     const health = siteCardHealth({ ...base, uptime: status })
     expect(health).toMatchObject({ state: 'problem', statusLabel: 'Needs attention', assessment: { result: 'FLAG', gaps: [{ area: 'uptime', reason: 'incomplete' }] } })
     expect(resultPresentation({ auditStatus: 'COMPLETED', healthState: health.state, flagCount: 0,
-      stale: false, hasCurrentEvidence: true, uptime: health.uptime })).toEqual({ state: 'flags', label: 'Needs attention' })
+      stale: false, hasCurrentEvidence: true, uptime: health.uptime })).toEqual({ state: 'flags', label: 'Needs attention', source: 'uptime' })
     expect(health.uptime).toMatchObject({ state: 'FLAG', observedState: 'unknown', validUntil: null })
   }
 })
@@ -69,7 +69,7 @@ it('keeps confirmed downtime visible during another analysis, without adding syn
     uptime: projectUptimeStatus(project, { ...monitor, state: 'offline' }, now) })
   expect(health.state).toBe('problem')
   expect(resultPresentation({ auditStatus: 'CHECKING', healthState: health.state, flagCount: 0,
-    stale: false, hasCurrentEvidence: false, uptime: health.uptime })).toEqual({ state: 'flags', label: 'Offline' })
+    stale: false, hasCurrentEvidence: false, uptime: health.uptime })).toEqual({ state: 'flags', label: 'Offline', source: 'uptime' })
 })
 
 it('withholds Clear for an uptime gap but does not erase another problem or certify its repair', () => {

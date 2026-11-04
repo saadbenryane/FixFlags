@@ -3,10 +3,25 @@ import { projectPageResults } from '../page-results'
 import { readWorkspaceLocation, siteWorkspaceHref } from '../workspace-location'
 import { projectSiteBoard } from '../board-view'
 import { siteFlagFixture, siteViewFixture } from './site-view-fixture'
+import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 
 const root = 'https://example.com/'
 const pricing = 'https://example.com/pricing'
 describe('workspace projections', () => {
+  it('names a category once and keeps explicit page and visitor-action scope', () => {
+    const view = siteViewFixture()
+    const entry = { checkedAt: '2026-11-03T00:00:00Z', evidenceAt: '2026-11-03T00:00:00Z', flagCount: 0,
+      executionState: 'COMPLETED' as const, trigger: 'MANUAL' as const, result: 'CLEAR' as const }
+    view.monitoringHistory = [
+      { ...entry, id: 'category', scope: 'CATEGORY', targetLabel: 'Performance' },
+      { ...entry, id: 'diagnostic', scope: 'DIAGNOSTIC', targetLabel: '/pricing' },
+      { ...entry, id: 'outcome', scope: 'OUTCOMES', targetLabel: 'Reach checkout' },
+    ]
+    const events = projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents
+    expect(events.find(item => item.id === 'category')?.detail).toBe(`${B.history.manual} · Performance`)
+    expect(events.find(item => item.id === 'diagnostic')?.detail).toBe(`${B.history.manual} · ${B.history.diagnostic} · /pricing`)
+    expect(events.find(item => item.id === 'outcome')?.detail).toBe(`${B.history.manual} · ${B.history.outcomes} · Reach checkout`)
+  })
   it('keeps one shared Flag on each affected page with only that page’s capture', () => {
     const shared = siteFlagFixture({ affectedPaths: [root, pricing] })
     const pages = projectPageResults([{ url: root, title: 'Home', status: 'COMPLETED', checkedAt: '2026-10-24T12:00:00Z',

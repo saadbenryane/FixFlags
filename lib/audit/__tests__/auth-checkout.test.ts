@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 
-vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) })))
 import { actionDestinationObservation, runAuthCheckoutChecks } from '../checks/auth-checkout'
 import type { PageMetadata } from '../metadata'
+import { destinationContext } from '../checks/destination-evidence'
 
 function metaWithLinks(links: PageMetadata['links']): PageMetadata {
   return { links } as PageMetadata
@@ -34,6 +35,36 @@ function ids(flags: Awaited<ReturnType<typeof runAuthCheckoutChecks>>): string[]
 }
 
 describe('runAuthCheckoutChecks', () => {
+  it('retains monitoring responsibility when new actions precede the original destination', async () => {
+    const source = 'https://example.com/', original = source + 'checkout?plan=original'
+    const links = Array.from({ length: 10 }, (_, index) => ({ href: source + 'checkout?plan=new-' + index, text: 'Subscribe', rel: null }))
+    links.push({ href: original, text: 'Subscribe', rel: null })
+    const openDestination = vi.fn(async (url: string) => ({ url, status: url === original ? 404 : 200,
+      outcome: url === original ? 'not_found' as const : 'reachable' as const, shouldFlagDead: url === original }))
+    const scope: { complete?: boolean } = {}
+    const options = { openDestination, scope, retainedContexts: new Set([destinationContext(source, original)]) }
+    expect(ids(await runAuthCheckoutChecks(source, metaWithLinks(links), options))).toContain('checkout-link-dead')
+    expect(openDestination.mock.calls.map(([url]) => url)).toEqual([original, ...links.slice(0, 7).map(link => link.href)])
+    expect(scope.complete).toBe(false)
+    openDestination.mockClear()
+    await runAuthCheckoutChecks(source, metaWithLinks(links.slice(0, 10)), options)
+    expect(openDestination.mock.calls.map(([url]) => url)).not.toContain(original)
+  })
+  it('reserves targeted repair for original action destinations beyond new unrelated actions', async () => {
+    const source = 'https://example.com/', original = source + 'checkout?plan=original'
+    const links = Array.from({ length: 10 }, (_, index) => ({ href: source + 'checkout?plan=new-' + index, text: 'Subscribe', rel: null }))
+    links.push({ href: original, text: 'Subscribe', rel: null })
+    const openDestination = vi.fn(async (url: string) => ({ url, status: 200, outcome: 'reachable' as const, shouldFlagDead: false }))
+    const scope: { complete?: boolean } = {}
+    const options = { openDestination, scope, originalContexts: [destinationContext(source, original)] }
+    expect(await runAuthCheckoutChecks(source, metaWithLinks(links), options)).toEqual([])
+    expect(openDestination.mock.calls.map(([url]) => url)).toEqual([original])
+    expect(scope.complete).toBe(true)
+    openDestination.mockClear()
+    await runAuthCheckoutChecks(source, metaWithLinks(links.slice(0, 10)), options)
+    expect(openDestination).not.toHaveBeenCalled()
+    expect(scope.complete).toBe(false)
+  })
   it('keeps checkout recovery unknown at a sign-in response while retaining intended auth-entry evidence', () => {
     const source = 'https://example.com/', url = source + 'checkout'
     const result = { url, outcome: 'auth_required' as const, status: 200, shouldFlagDead: false }

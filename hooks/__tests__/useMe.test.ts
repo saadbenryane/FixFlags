@@ -1,12 +1,23 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { createElement, type PropsWithChildren } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MeProvider, useMe } from '../useMe'
+import { MeProvider, useMe, type MeUser } from '../useMe'
+import { AUTH } from '@/lib/marketing/copy/auth'
+import { CLIENT_REQUEST_TIMEOUT_MS } from '@/lib/api/client-request'
+import { trackEvent } from '@/lib/analytics/events'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock('@/lib/analytics/events', () => ({ trackEvent: vi.fn() }))
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks() })
+
+function account(): MeUser {
+  return { id: 'owner', email: 'owner@example.test', name: 'Owner', plan: 'FREE', role: 'user', isAdmin: false,
+    checks: { used: 0, pending: 0, limit: 5, isUnlimited: false, remaining: 5,
+      periodStart: '2026-11-01T00:00:00Z', periodEnd: '2026-12-01T00:00:00Z' },
+    entitlements: { canExportSummary: true, canAccessPaidFeatures: false, canMonitor: true, canWatchProduct: true },
+    vibecodingLevel: null, preferredTools: [] }
+}
 
 describe('session lookup recovery', () => {
   it('shares an in-flight claim with another claimant and session refresh without another request', async () => {
@@ -24,8 +35,8 @@ describe('session lookup recovery', () => {
       second = result.current.claimAnonymous()
       refresh = result.current.refresh()
     })
-    expect(fetch).toHaveBeenCalledExactlyOnceWith('/api/me/claim', { method: 'POST' })
-    const claimed = { user: { id: 'owner', email: 'owner@example.test' }, claimedCount: 1 }
+    expect(fetch).toHaveBeenCalledExactlyOnceWith('/api/me/claim', expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }))
+    const claimed = { user: account(), claimedCount: 1 }
     await act(async () => { finishClaim(Response.json(claimed)); await Promise.all([first, second, refresh]) })
     expect(await first).toEqual(claimed)
     expect(await second).toEqual(claimed)
@@ -36,7 +47,7 @@ describe('session lookup recovery', () => {
   it('retains a refused claim after an older lookup settles and admits an explicit retry', async () => {
     let finishLookup!: (response: Response) => void
     const lookup = new Promise<Response>(resolve => { finishLookup = resolve })
-    const owner = { id: 'owner', email: 'owner@example.test' }
+    const owner = account()
     const fetch = vi.fn().mockReturnValueOnce(lookup)
       .mockResolvedValueOnce(Response.json({ code: 'PROJECT_LIMIT' }, { status: 409 }))
       .mockResolvedValueOnce(Response.json({ user: owner, claimedCount: 1 }))
@@ -58,7 +69,7 @@ describe('session lookup recovery', () => {
   it.each([200, 503])('does not let an older session lookup overwrite a successful claim: %s', async status => {
     let finishLookup!: (response: Response) => void
     const lookup = new Promise<Response>(resolve => { finishLookup = resolve })
-    const owner = { id: 'owner', email: 'owner@example.test' }
+    const owner = account()
     vi.stubGlobal('fetch', vi.fn((url: string) => url === '/api/me' ? lookup : Promise.resolve(Response.json({ user: owner, claimedCount: 1 }))))
     const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, null, children)
     const { result } = renderHook(() => useMe(), { wrapper })
@@ -80,7 +91,7 @@ describe('session lookup recovery', () => {
     const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, null,
       children, showAdditionalConsumer ? createElement(AdditionalConsumer) : null)
     const { result, rerender } = renderHook(() => useMe(), { wrapper })
-    expect(fetchSession).toHaveBeenCalledExactlyOnceWith('/api/me')
+    expect(fetchSession).toHaveBeenCalledExactlyOnceWith('/api/me', expect.objectContaining({ signal: expect.any(AbortSignal) }))
 
     await act(async () => { pending[0](new Response('{}', { status: 503 })) })
     expect(fetchSession).toHaveBeenCalledTimes(1)
@@ -95,6 +106,7 @@ describe('session lookup recovery', () => {
     let retry!: ReturnType<typeof result.current.refresh>
     act(() => { retry = result.current.refresh() })
     expect(fetchSession).toHaveBeenCalledTimes(2)
+    expect(fetchSession).toHaveBeenLastCalledWith('/api/me', expect.objectContaining({ cache: 'no-store' }))
     await act(async () => {
       pending[1](new Response(JSON.stringify({ user: null })))
       await retry
@@ -102,5 +114,85 @@ describe('session lookup recovery', () => {
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
     expect(fetchSession).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['lookup', 'headers'], ['lookup', 'body'], ['claim', 'headers'], ['claim', 'body'],
+  ] as const)('bounds %s through stalled %s, retains the account, and allows an explicit retry', async (kind, stage) => {
+    vi.useFakeTimers()
+    const owner = account(), recovered = { ...owner, name: 'Recovered owner' }
+    let signal!: AbortSignal
+    let finish!: (body: unknown) => void
+    const fetcher = vi.fn().mockImplementationOnce((_url, options) => {
+      signal = options.signal
+      if (stage === 'headers') return new Promise<Response>(resolve => { finish = body => resolve(Response.json(body)) })
+      return Promise.resolve({ ok: true, json: () => new Promise(resolve => { finish = resolve }) } as Response)
+    }).mockImplementation(async () => Response.json(kind === 'claim' ? { user: recovered, claimedCount: 1 } : { user: recovered }))
+    vi.stubGlobal('fetch', fetcher)
+    const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, { initialUser: owner }, children)
+    const { result, unmount } = renderHook(() => useMe({ load: false }), { wrapper })
+    try {
+      let settled = false
+      let pending!: Promise<unknown>
+      act(() => { pending = (kind === 'claim' ? result.current.claimAnonymous() : result.current.refresh()).then(value => { settled = true; return value }) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(CLIENT_REQUEST_TIMEOUT_MS - 1) })
+      expect(settled).toBe(false)
+      expect(result.current.isLoading).toBe(true)
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); expect(await pending).toBeNull() })
+      expect(signal.aborted).toBe(true)
+      expect(result.current.user).toEqual(owner)
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.error).toBe(kind === 'claim' ? AUTH.me.claimError : AUTH.me.loadError)
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      await act(async () => { await (kind === 'claim' ? result.current.claimAnonymous() : result.current.refresh()) })
+      expect(result.current.user).toEqual(recovered)
+      expect(result.current.error).toBeNull()
+      await act(async () => { finish({ user: { ...owner, id: 'late-owner' }, claimedCount: 99 }); await vi.advanceTimersByTimeAsync(0) })
+      expect(result.current.user).toEqual(recovered)
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally { unmount(); vi.useRealTimers() }
+  })
+
+  it('retains a known account after a malformed lookup but accepts an explicit signed-out response', async () => {
+    const owner = account()
+    const fetcher = vi.fn().mockResolvedValueOnce(Response.json({})).mockResolvedValueOnce(Response.json({ user: null }))
+    vi.stubGlobal('fetch', fetcher)
+    const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, { initialUser: owner }, children)
+    const { result } = renderHook(() => useMe({ load: false }), { wrapper })
+    await act(async () => { expect(await result.current.refresh()).toBeNull() })
+    expect(result.current.user).toEqual(owner)
+    expect(result.current.error).toBe(AUTH.me.loadError)
+    await act(async () => { await result.current.refresh() })
+    expect(result.current.user).toBeNull()
+    expect(result.current.error).toBeNull()
+  })
+
+  it.each([
+    { user: account() },
+    { user: { id: 'owner', email: 'owner@example.test' }, claimedCount: 1 },
+  ])('does not celebrate a claim with incomplete account or claim facts', async body => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(body)))
+    const owner = account()
+    const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, { initialUser: owner }, children)
+    const { result } = renderHook(() => useMe({ load: false }), { wrapper })
+    await act(async () => { expect(await result.current.claimAnonymous()).toBeNull() })
+    expect(result.current.user).toEqual(owner)
+    expect(result.current.claimedCount).toBeNull()
+    expect(result.current.error).toBe(AUTH.me.claimError)
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('keeps an accepted claim successful when optional analytics fails', async () => {
+    const claimed = { user: account(), claimedCount: 1 }
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(claimed)))
+    vi.mocked(trackEvent).mockImplementationOnce(() => { throw new Error('Optional analytics unavailable') })
+    const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, { initialUser: null }, children)
+    const { result } = renderHook(() => useMe({ load: false }), { wrapper })
+    await act(async () => { expect(await result.current.claimAnonymous()).toEqual(claimed) })
+    expect(result.current.user).toEqual(claimed.user)
+    expect(result.current.claimedCount).toBe(1)
+    expect(result.current.error).toBeNull()
   })
 })

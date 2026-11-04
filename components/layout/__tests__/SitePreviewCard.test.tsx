@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SitePreviewCard, type SiteCapture } from '../SitePreviewCard'
 
@@ -7,6 +7,80 @@ const captures: SiteCapture[] = [
   { auditId: 'current', url: '/api/screenshots/current/mobile', pageUrl: 'https://example.com/', device: 'mobile', previous: false, viewport: '390 × 844', recordedAt: '2026-10-12T12:00:00.000Z' },
 ]
 describe('website capture preview', () => {
+  it('keeps inspected evidence and its metadata stable while the overview receives a new capture', async () => {
+    const original = captures[1]
+    const latest = { ...original, auditId: 'new-check', url: '/api/screenshots/new-check/mobile',
+      pageUrl: 'https://example.com/new-page', viewport: '430 × 932', recordedAt: '2026-11-03T00:00:00.000Z' }
+    const rendered = render(<SitePreviewCard host="example.com" captures={[original]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveTextContent('Latest capture')
+    rendered.rerender(<SitePreviewCard host="example.com" captures={[latest]} />)
+    expect(rendered.container.querySelector('img')).toHaveAttribute('src', latest.url)
+    expect(dialog.querySelector('img')).toHaveAttribute('src', original.url)
+    expect(dialog.querySelector('img')).toHaveAttribute('width', '390')
+    expect(dialog).toHaveTextContent('Previous capture')
+    expect(dialog).toHaveTextContent('Oct 12, 2026, 12:00 PM UTC')
+    expect(dialog).not.toHaveTextContent(latest.pageUrl)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    const trigger = screen.getByRole('button', { name: 'Open captured page for example.com' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+    fireEvent.click(trigger)
+    expect(screen.getByRole('dialog').querySelector('img')).toHaveAttribute('src', latest.url)
+    expect(screen.getByRole('dialog')).toHaveTextContent(latest.viewport)
+  })
+
+  it('retires an open inspection and device selection when the website changes', () => {
+    const rendered = render(<SitePreviewCard host="example.com" captures={captures} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Mobile' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
+    rendered.rerender(<SitePreviewCard host="other.example" captures={[{ ...captures[0], url: '/api/screenshots/other/desktop' }]} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(rendered.container.querySelector('img')).toHaveAttribute('src', '/api/screenshots/other/desktop')
+    expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'true')
+    rendered.rerender(<SitePreviewCard host="example.com" captures={captures} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('retries a failed enlargement using the same recorded source and then restores focus', async () => {
+    const rendered = render(<SitePreviewCard host="example.com" captures={[captures[1]]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.error(dialog.querySelector('img')!)
+    expect(within(dialog).getByRole('status')).toHaveTextContent('Screenshot unavailable')
+    expect(dialog.querySelector('img')).toBeNull()
+    rendered.rerender(<SitePreviewCard host="example.com" captures={[{ ...captures[1], auditId: 'fresh', url: '/api/screenshots/fresh/mobile' }]} />)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }))
+    expect(dialog.querySelector('img')).toHaveAttribute('src', captures[1].url)
+    expect(dialog.querySelector('img')).toHaveAttribute('height', '844')
+    expect(dialog).toHaveTextContent('Oct 12, 2026, 12:00 PM UTC')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open captured page for example.com' })).toHaveFocus())
+  })
+
+  it('retries a failed preview without substituting a different device or capture', () => {
+    const rendered = render(<SitePreviewCard host="example.com" captures={captures} />)
+    const originalImage = rendered.container.querySelector('img')!
+    fireEvent.error(originalImage)
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    const retry = rendered.container.querySelector('img')
+    expect(retry).not.toBe(originalImage)
+    expect(retry).toHaveAttribute('src', captures[0].url)
+    expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Open captured page for example.com' })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
+    expect(screen.getByRole('dialog').querySelector('img')).toHaveAttribute('src', captures[0].url)
+  })
+
+  it('restores focus to the preview region when its original image disappears during inspection', async () => {
+    const rendered = render(<SitePreviewCard host="example.com" captures={[captures[0]]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
+    rendered.rerender(<SitePreviewCard host="example.com" captures={[]} />)
+    expect(screen.getByRole('dialog').querySelector('img')).toHaveAttribute('src', captures[0].url)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Website preview' })).toHaveFocus())
+  })
+
   it('opens the available capture as it arrives and respects a later explicit device choice', () => {
     const view = render(<SitePreviewCard host="example.com" captures={[]} />)
     view.rerender(<SitePreviewCard host="example.com" captures={[captures[1]]} />)

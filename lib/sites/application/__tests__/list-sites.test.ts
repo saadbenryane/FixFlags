@@ -24,10 +24,25 @@ vi.mock('@/lib/db', () => ({
     project: { findMany: mocks.projectFindMany },
     audit: { findMany: mocks.auditFindMany },
     auditVerificationReceipt: { findMany: mocks.receiptFindMany },
-    improvement: { findMany: mocks.improvementFindMany },
+    improvement: { findMany: async (query: unknown) => (await mocks.improvementFindMany(query)).map((row: {
+      id?: string; projectId: string; fingerprint: string; status?: string; attempts?: unknown[];
+    }) => ({ ...row, id: row.id ?? 'fixture-incident:' + row.projectId + ':' + row.fingerprint,
+      status: row.status ?? 'PROPOSED', attempts: row.attempts ?? [] })) },
     auditPage: { findMany: mocks.auditPageFindMany },
     screenshot: { findMany: mocks.screenshotFindMany },
-    flag: { findMany: mocks.flagFindMany },
+    flag: { findMany: async (query: { select?: { improvementOccurrence?: unknown } }) => {
+      const unbound = await mocks.flagFindMany(query)
+      if (!query.select?.improvementOccurrence) return unbound
+      const incidents = await mocks.improvementFindMany.mock.results.at(-1)?.value ?? []
+      const bound = incidents.flatMap((incident: { id?: string; projectId: string; fingerprint: string;
+        occurrences?: Array<{ createdAt?: Date; flag: { id: string } }> }) => (incident.occurrences ?? []).map(row => ({
+        ...row.flag, audit: { projectId: incident.projectId }, improvementOccurrence: {
+          improvementId: incident.id ?? 'fixture-incident:' + incident.projectId + ':' + incident.fingerprint,
+          createdAt: row.createdAt ?? new Date(0),
+        },
+      })))
+      return [...bound, ...unbound.map((row: object) => ({ ...row, improvementOccurrence: null }))]
+    } },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     outcomeFixture: { findMany: mocks.fixtureFindMany },
   },

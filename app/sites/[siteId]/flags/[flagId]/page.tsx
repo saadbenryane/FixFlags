@@ -1,14 +1,20 @@
 import { repairGuidanceState } from '@/lib/improvements/repair-guidance'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { notFound } from 'next/navigation'
-import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, ExternalLink, History } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, History } from 'lucide-react'
+import { RecordedPageLink } from '@/components/sites/RecordedPageLink'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
+import { SiteFlagDetailRefresh } from '@/components/sites/SiteFlagDetailRefresh'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
+import { siteDetailContextHref, siteDetailReturnDestination, type SiteDetailOriginParams } from '@/lib/sites/workspace-location'
 import { customerAttemptSource } from '@/lib/sites/flag-label'
 import { customerFindingLabel } from '@/lib/sites/finding-label'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
@@ -39,15 +45,17 @@ function attemptLabel(attempt: Parameters<typeof verificationResult>[0]): string
   return verificationResultLabel(verificationResult(attempt))
 }
 
-function AttemptIcon({ outcome }: { outcome: string | null }) {
-  if (outcome === 'IMPROVED') return <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
-  if (outcome === 'UNCHANGED' || outcome === 'REGRESSED') return <CircleAlert className="h-5 w-5 text-brand" aria-hidden="true" />
+function AttemptIcon({ attempt }: { attempt: Parameters<typeof verificationResult>[0] }) {
+  const result = verificationResult(attempt)
+  if (result === 'verified') return <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+  if (result === 'still_open' || result === 'regressed') return <CircleAlert className="h-5 w-5 text-brand" aria-hidden="true" />
   return <CircleDashed className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 }
 
-export default async function SiteFlagPage({ params, searchParams }: { params: Promise<{ siteId: string; flagId: string }>; searchParams: Promise<{ source?: string }> }) {
+export default async function SiteFlagPage({ params, searchParams }: { params: Promise<{ siteId: string; flagId: string }>; searchParams: Promise<SiteDetailOriginParams & { source?: string | string[] }> }) {
   const { siteId, flagId } = await params
-  const { source } = await searchParams
+  const origin = await searchParams
+  const { source } = origin
   const access = await requireSiteAccess(siteId)
   if (!access.ok) notFound()
 
@@ -64,9 +72,10 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   }
 
   const { site, flag, capture } = detail
+  const returnDestination = siteDetailReturnDestination(resolvedId, flag.area, origin)
   const actionFlagId = flag.sourceFlagId ?? flag.id
   const repairGuidance = flag.repairGuidance ?? repairGuidanceState(flag)
-  const affectedPaths = flag.affectedPaths ?? (flag.pageUrl ? [flag.pageUrl] : [])
+  const affectedPaths = [...new Set(flag.affectedPaths?.length ? flag.affectedPaths : flag.pageUrl ? [flag.pageUrl] : [])]
   async function recordOpening() {
     if (ownsSite) {
       await recordSiteLifecycleEvent({
@@ -143,23 +152,24 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   return (
     <SiteShell actions={home.actions} siteId={resolvedId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
+      <SiteFlagDetailRefresh key={`${resolvedId}:${flagId}`} siteId={resolvedId} flagId={flagId} sourceFlagId={actionFlagId} initial={home} />
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground" asChild>
-            <Link href={`/sites/${resolvedId}?category=${flag.area}#category-${flag.area}`}>
+            <Link href={returnDestination.href as Route}>
               <ChevronLeft aria-hidden="true" />
-              Back to Overview
+              {SITE_DASHBOARD_COPY.backTo(SITE_WORKSPACE_COPY.navigation[returnDestination.view])}
             </Link>
           </Button>
           <p className="text-xs text-muted-foreground">
             {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
-        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home}>
+        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} verificationFeedback={ownsSite && !['DISMISSED', 'IGNORED'].includes(flag.status) ? flag.verificationFeedback : null}>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}
-              <Link href={`/sites/${resolvedId}/outcomes/${relatedOutcome.id}`} className="inline-flex min-h-11 max-w-full items-center font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
+              <Link href={siteDetailContextHref(`/sites/${resolvedId}/outcomes/${encodeURIComponent(relatedOutcome.id)}`, returnDestination.origin) as Route} className="inline-flex min-h-11 max-w-full items-center font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
                 {relatedOutcome.name}
               </Link>
             </p>
@@ -209,11 +219,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                         <dt className="text-xs text-muted-foreground">{(flag.affectedPageCount ?? affectedPaths.length) > 1 ? 'Affected pages' : 'Page'}</dt>
                         <dd className="mt-1 min-w-0 break-words font-medium">
                           {affectedPaths.length === 1 ? (
-                            <a href={affectedPaths[0]} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{recordedPathLabel(affectedPaths[0])}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a>
+                            <RecordedPageLink url={affectedPaths[0]} className="inline-flex min-h-11 max-w-full items-start gap-1.5 rounded-control break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{recordedPathLabel(affectedPaths[0])}</RecordedPageLink>
                           ) : affectedPaths.length > 1 ? (
                             <details>
                               <summary className="min-h-11 cursor-pointer py-2 text-sm">View all {affectedPaths.length} pages</summary>
-                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><a href={path} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{recordedPathLabel(path)}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a></li>)}</ul>
+                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><RecordedPageLink url={path} className="inline-flex min-h-11 max-w-full items-start gap-1.5 rounded-control break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{recordedPathLabel(path)}</RecordedPageLink></li>)}</ul>
                             </details>
                           ) : (
                             'This Site, page not recorded'
@@ -274,7 +284,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     const when = formatEvidenceTimestamp(attempt.createdAt)
                     return (
                       <li id={`attempt-${attempt.id}`} key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 pb-5 last:pb-0">
-                        <AttemptIcon outcome={attempt.outcome} />
+                        <AttemptIcon attempt={attempt} />
                         <div className="min-w-0">
                           <p className="font-medium">{attemptLabel(attempt)}</p>
                           <p className="mt-1 text-xs text-muted-foreground">

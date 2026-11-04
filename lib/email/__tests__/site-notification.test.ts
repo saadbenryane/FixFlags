@@ -175,6 +175,8 @@ describe('combined Site notification', () => {
     const remaining = message.attachments!.map(file => Buffer.from(file.content, 'base64').toString('utf8')).join('\n')
     for (const id of ['problem-6', 'problem-7', 'problem-8']) expect(remaining).toContain(id)
     expect(remaining).toContain('This is the first read of each remaining source')
+    expect(remaining).toContain('Download complete instructions')
+    expect(remaining).not.toContain('ask the owner to connect their tool')
     expect(message.html).not.toContain('/flags/problem-8?')
     expect(Buffer.byteLength(message.html)).toBeLessThan(20_000)
     const empty = siteNotificationEmail({ projectId: 'site', url: 'https://example.com', name: null, checkedAt: null,

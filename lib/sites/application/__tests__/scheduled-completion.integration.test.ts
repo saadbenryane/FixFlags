@@ -30,7 +30,7 @@ run('scheduled completion after cadence advancement', () => {
       throw new Error('Use the disposable execution verifier')
     otherOwners = []
     userId = 'scheduled-completion-' + randomUUID()
-    await prisma.user.create({ data: { id: userId, email: userId + '@example.test' } })
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.test', emailVerified: true } })
     const site = await prisma.project.create({ data: { userId, name: 'Scheduled completion', url: 'https://example.com/',
       canonicalHost: 'example.com', watchInterval: 'WEEKLY', watchNextRunAt: new Date(Date.now() - 60_000),
       accountChecksEnabled: false, notificationLevel: 'OFF' } })
@@ -58,6 +58,62 @@ run('scheduled completion after cadence advancement', () => {
     await prisma.audit.update({ where: { id: auditId }, data: { status: 'FAILED', completedAt: new Date() } })
     await markOutcomeRunsCouldNotVerify(auditId, 'CONTROLLED_EXECUTION_FAILURE', 'Controlled execution failure')
   }
+
+  it.each(['write-failure', 'unreadable-context'] as const)('rotates a full %s cohort so independent Sites receive completion recovery', async mode => {
+    const now = new Date(Date.now() + 60_000), clock = { now: () => now }
+    const sites = [projectId]
+    for (const host of ['second', 'following']) {
+      const owner = 'fair-completion-' + randomUUID(); otherOwners.push(owner)
+      await prisma.user.create({ data: { id: owner, email: owner + '@example.test', emailVerified: true } })
+      sites.push((await prisma.project.create({ data: { userId: owner, name: host, canonicalHost: 'example.com',
+        url: 'https://example.com/', watchInterval: 'WEEKLY', watchNextRunAt: new Date(Date.now() - 60_000),
+        accountChecksEnabled: false, notificationLevel: 'OFF' } })).id)
+    }
+    const rows = []
+    const originals = new Map<string, Prisma.JsonValue>()
+    for (const [index, siteId] of sites.entries()) {
+      expect(await processDueProjectWatches(1, { onlyProjectId: siteId })).toMatchObject({ enqueued: 1, errors: 0 })
+      const request = await prisma.runRequest.findFirstOrThrow({ where: { projectId: siteId, source: 'WATCH' } })
+      originals.set(request.id, request.context)
+      // Model interruption after terminal status commits, before the normal
+      // completion callback can project the Site clock. No collection is claimed.
+      await prisma.audit.update({ where: { id: request.auditId! }, data: { status: 'FAILED', completedAt: new Date() } })
+      await prisma.runRequest.update({ where: { id: request.id }, data: { status: 'FAILED', completedAt: new Date(), leaseUntil: null } })
+      const context = mode === 'unreadable-context' && index < 2
+        ? { scheduled: { ...(request.context as { scheduled: object }).scheduled, scheduledAt: 'unreadable historical time' } } : request.context!
+      rows.push(await prisma.runRequest.update({ where: { id: request.id }, data: { context: context as Prisma.InputJsonValue,
+        updatedAt: now } }))
+    }
+    const before = await prisma.project.findMany({ where: { id: { in: sites } } })
+    const rejected = new Set(sites.slice(0, 2)), update = prisma.project.updateMany.bind(prisma.project)
+    const projection = vi.spyOn(prisma.project, 'updateMany').mockImplementation(args => {
+      if (mode === 'write-failure' && rejected.has(String(args.where?.id))) throw new Error('Controlled persistent completion projection failure')
+      return update(args)
+    })
+    try {
+      for (let batch = 0; batch < 3; batch++) await reconcileScheduledCompletions(1, clock)
+      const following = await prisma.project.findUniqueOrThrow({ where: { id: sites[2] } })
+      expect(following).toMatchObject({ watchConsecutiveFailures: 1,
+        watchLastError: 'The scheduled check did not finish. FixFlags will try again.', watchInterval: 'WEEKLY' })
+      expect(following.watchNextRunAt!.getTime()).toBeLessThan(now.getTime() + 16 * 60_000)
+      for (const siteId of sites.slice(0, 2)) expect(await prisma.project.findUniqueOrThrow({ where: { id: siteId } }))
+        .toEqual(before.find(site => site.id === siteId))
+      for (const row of rows) {
+        const current = await prisma.runRequest.findUniqueOrThrow({ where: { id: row.id } })
+        expect(current).toEqual({ ...row, updatedAt: expect.any(Date) })
+        expect(current.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime())
+      }
+      rejected.clear()
+      if (mode === 'unreadable-context') for (const row of rows.slice(0, 2)) await prisma.runRequest.update({
+        where: { id: row.id }, data: { context: originals.get(row.id) as Prisma.InputJsonValue },
+      })
+      expect(await reconcileScheduledCompletions(1, clock)).toBe(1)
+      expect(await reconcileScheduledCompletions(1, clock)).toBe(1)
+      expect(await reconcileScheduledCompletions(1, clock)).toBe(0)
+      expect(await prisma.project.count({ where: { id: { in: sites }, watchConsecutiveFailures: 1 } })).toBe(3)
+      expect(await prisma.audit.count({ where: { projectId: { in: sites } } })).toBe(3)
+    } finally { projection.mockRestore() }
+  })
 
   it.each(['SITE', 'OUTCOMES'] as const)('retries exhausted %s work even when the containing execution completed', async scope => {
     // An older complete receipt must not hide the newest interruption when the

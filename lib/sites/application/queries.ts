@@ -74,7 +74,7 @@ async function loadLatestWatchAlert(projectId: string | null | undefined) {
         watchNotificationAttempts: true,
         watchNotificationAttemptCeiling:true,
         watchNotificationLeaseUntil: true,
-        updatedAt: true,
+        completedAt: true,
       },
     })
     : null
@@ -221,6 +221,7 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
 
   return projectSiteHomeForViewer({
     schemaVersion: 2,
+    readAt: now.getTime(),
     readScope: options.readScope ?? 'overview',
     actions: siteViewerActions(Boolean(options.ownerEvidence && site.projectId), options.viewerAuthenticated),
     counts: siteScopeCounts(flags, checkedPages, pageCount),
@@ -264,14 +265,13 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
       lastError: site.watchLastError,
       covered: watching,
       label: monitoring.label,
-      // Reported beside coverage rather than inside it, so an undelivered alert
-      // can never remove the honest fact that the Site is still being checked.
+      // Delivery history and current monitoring coverage are independent facts.
       alert: {
         state: alertState,
         status: latestAlert?.watchNotificationStatus ?? null,
         attempts: latestAlert?.watchNotificationAttempts ?? 0,
         leaseUntil: latestAlert?.watchNotificationLeaseUntil?.toISOString() ?? null,
-        at: latestAlert?.updatedAt.toISOString() ?? null,
+        at: latestAlert?.completedAt?.toISOString() ?? null,
       },
     },
     settings: {
@@ -309,6 +309,10 @@ export async function loadSiteBoardFlag(siteId: string, flagId: string, resolved
   const site = resolvedSite ?? await loadSiteRecord(siteId)
   if (site && site.siteId !== siteId) throw new Error('Site query identity mismatch')
   if (!site) return null
+  return readSiteEvidence(site, () => readSiteBoardFlag(site, flagId))
+}
+
+async function readSiteBoardFlag(site: SiteRecord, flagId: string) {
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) return null
   flag.performanceEvidenceSource = flag.evidenceContext?.source === 'DETERMINISTIC' ? performanceEvidenceSource(flag.checkId) : null

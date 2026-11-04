@@ -35,4 +35,17 @@ describe('required binding assessment', () => {
   it('never certifies a changed binding from an earlier version', () => {
     expect(assessRequiredBindings([{ key: 'checkout', required: true, version: 2 }], [{ key: 'checkout', disposition: 'SUCCEEDED', reason: 'checkout_reached', version: 1 }])).toMatchObject({ state: 'COULD_NOT_VERIFY', reason: 'binding_changed' })
   })
+  it.each(['SUCCEEDED', 'FAILED'] as const)('does not attribute an unversioned %s observation to revision one', disposition => {
+    expect(assessRequiredBindings([{ key: 'checkout', required: true, version: 1 }], [
+      { key: 'checkout', disposition, reason: disposition === 'SUCCEEDED' ? 'checkout_reached' : 'add_to_cart_noop' },
+    ])).toMatchObject({ state: 'COULD_NOT_VERIFY', reason: 'binding_changed', observedBindings: [] })
+  })
+  it('retains a comparable failure when another required binding has unversioned evidence', () => {
+    expect(assessRequiredBindings([
+      { key: 'checkout', required: true, version: 1 }, { key: 'signup', required: true, version: 1 },
+    ], [
+      { key: 'checkout', disposition: 'SUCCEEDED', reason: 'checkout_reached' },
+      { key: 'signup', disposition: 'FAILED', reason: 'success_text_missing', version: 1 },
+    ])).toMatchObject({ state: 'FLAG', reason: 'success_text_missing', observedBindings: ['signup'] })
+  })
 })

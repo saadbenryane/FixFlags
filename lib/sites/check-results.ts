@@ -1,52 +1,9 @@
-import type { SiteCardArea } from '@/lib/sites/card-areas'
-import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/check-registry'
+import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
-import { z } from 'zod'
-import { CHECK_OBSERVATION_REASONS, type CheckAssertion, type CheckObservationReason } from '@/lib/audit/checks/assertion'
-import { searchObservationSchema, searchReceiptSchema, type SearchObservation } from '@/lib/audit/search/contracts'
+import type { CheckAssertion, CheckObservationReason } from '@/lib/audit/checks/assertion'
+import { searchReceiptSchema } from '@/lib/audit/search/contracts'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
-import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { SEARCH_COPY } from '@/lib/marketing/copy/search'
-
-export type SiteCheckResult = {
-  id: string
-  auditId: string
-  area: SiteCardArea
-  name: string
-  kind: 'execution' | 'assertion'
-  status: 'passed' | 'completed' | 'findings' | 'failed' | 'not_applicable' | 'observed' | 'unknown'
-  pageUrl: string | null
-  checkedAt: string
-  historical: boolean
-  limitation: string
-  source: string
-  evidenceReference: { auditId: string; executionId: string; pageUrl: string | null }
-  reason?: CheckObservationReason
-  assertionKey?: string
-  observation?: string
-  expected?: string
-  search?: SearchObservation
-}
-
-/** A recorded collector identifies the source. An installed library or a
- * connection's authorization state does not establish provider evidence. */
-export function checkResultSourceLabel(source: string, area: SiteCardArea): string | null {
-  if (area === 'search' && Object.hasOwn(SEARCH_COPY.sources, source))
-    return SEARCH_COPY.sources[source as keyof typeof SEARCH_COPY.sources]
-  if (source === 'http' || source === 'original-html') return SEARCH_COPY.sources[source]
-  if (['pagespeed-desktop', 'pagespeed-mobile'].includes(source)) return SITE_BOARD_COPY.pageSpeedSource
-  if (['rendered-dom', 'browser-network', 'browser-console', 'browser-accessibility', 'axe', 'keyboard'].includes(source))
-    return SITE_BOARD_COPY.browserSource
-  return null
-}
-
-export function recordedCheckSources(results: readonly SiteCheckResult[], area: SiteCardArea): string[] {
-  return [...new Set(results.filter(result => result.area === area && !result.historical && result.kind === 'assertion' &&
-    ['passed', 'findings', 'observed'].includes(result.status)).flatMap(result => {
-    const label = checkResultSourceLabel(result.source, area)
-    return label ? [label] : []
-  }))]
-}
+import type { SiteCheckResult } from './check-result-contract'
 
 export function projectCheckResults(auditId: string, receipts: Array<{
   id: string; targetKey: string; status: string; pageUrl: string | null;
@@ -102,17 +59,6 @@ export function projectCheckResults(auditId: string, receipts: Array<{
         : 'This check returned findings. Their evidence and importance are shown separately.' } satisfies SiteCheckResult]
   })
 }
-
-export const siteCheckResultSchema = z.object({
-  id: z.string(), auditId: z.string(), area: z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility']),
-  name: z.string(), kind: z.enum(['execution', 'assertion']), status: z.enum(['passed', 'completed', 'findings', 'failed', 'not_applicable', 'observed', 'unknown']),
-  pageUrl: z.string().nullable(), checkedAt: z.string(), historical: z.boolean(), limitation: z.string(), source: z.string(),
-  evidenceReference: z.object({ auditId: z.string(), executionId: z.string(), pageUrl: z.string().nullable() }),
-  reason: z.enum(CHECK_OBSERVATION_REASONS).optional(), assertionKey: z.string().optional(), observation: z.string().optional(), expected: z.string().optional(),
-  search: searchObservationSchema.optional(),
-})
-export const siteCheckPageSchema = z.object({ results: z.array(siteCheckResultSchema), nextCursor: z.string().nullable(), total: z.number().int().nonnegative().nullable().optional() })
-export const RESULT_SELECTION_CHANGED = 'RESULT_SELECTION_CHANGED'
 
 /** Older receipts lack reason codes. Adapt only known incomplete tracking observations at the read boundary. */
 function historicalTrackingReason(assertion: CheckAssertion, source: string): CheckObservationReason | undefined {

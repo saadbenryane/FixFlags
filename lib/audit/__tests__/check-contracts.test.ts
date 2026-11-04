@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_CHECK_IDS } from '../check-ids'
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY } from '../check-registry'
 import { recordCheckObservations } from '../checks/observations'
 import { securityObservations } from '../checks/security'
 import { checkReceiptSchema, readCheckReceipt } from '../checks/receipt'
 import { isCustomerFlag } from '../attention'
 import type { PageMetadata } from '../metadata'
 import { registerPageEvaluators, PAGE_CHECKS } from '../checks/catalog'
-import { PAGE_CHECK_DEFINITIONS } from '../checks/definitions'
+import { PAGE_CHECK_DEFINITIONS, CHECK_MODULES } from '../checks/definitions'
+import { taskArea } from '@/lib/sites/card-execution'
 
 describe('registered check and evidence contracts', () => {
+  it('attributes every executable module to the same category in browser activity', () => {
+    for (const [module, definition] of Object.entries(CHECK_MODULES)) {
+      expect(taskArea({ kind: 'check', module }), module).toBe(definition.area)
+    }
+    expect(taskArea({ kind: 'check', module: 'unregistered-module' })).toBeNull()
+  })
+
   it('validates executable registration and rejects unsupported schemas or missing evaluators', () => {
     const entries = [...PAGE_CHECKS.values()]
     expect(registerPageEvaluators(entries).size).toBe(Object.keys(PAGE_CHECK_DEFINITIONS).length)

@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
-import { recordFlagImprovementAttempt } from './attempts'
+import { createImprovementAttempt, recordFlagImprovementAttempt } from './attempts'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagCopyTask } from '@/lib/sites/application/flag-copy-task'
+import { claimExecution, withExecutionOwnership } from '@/lib/audit/execution-ownership'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('retained clipboard handoff provenance in PostgreSQL', () => {
@@ -81,6 +82,137 @@ run('retained clipboard handoff provenance in PostgreSQL', () => {
     } finally {
       await prisma.project.update({ where: { id: projectId }, data: { userId: owner, deletedAt: null } })
       await prisma.user.delete({ where: { id: nextOwner } })
+    }
+  })
+
+  async function retainedRepairHistory() {
+    return Promise.all([
+      prisma.flag.findMany({ where: { auditId }, orderBy: { id: 'asc' } }),
+      prisma.improvement.findMany({ where: { projectId }, orderBy: { id: 'asc' } }),
+      prisma.improvementOccurrence.findMany({ where: { auditId }, orderBy: { id: 'asc' } }),
+      prisma.improvementAttempt.findMany({ where: { improvement: { projectId } }, orderBy: { id: 'asc' } }),
+      prisma.improvementCycleEvent.findMany({ where: { cycle: { projectId } }, orderBy: { id: 'asc' } }),
+    ])
+  }
+
+  it.each((['SUSPENDED', 'DELETING'] as const).flatMap(lifecycleStatus =>
+    (['ACCEPT', 'HANDOFF_COPIED', 'READY_TO_VERIFY', 'REJECT'] as const).map(action => ({ lifecycleStatus, action }))))(
+    'refuses $action when the account becomes $lifecycleStatus after its source read', async ({ lifecycleStatus, action }) => {
+      const before = await retainedRepairHistory(), read = prisma.flag.findFirst.bind(prisma.flag)
+      let changed = false
+      const source = vi.spyOn(prisma.flag, 'findFirst').mockImplementationOnce(async args => {
+        const flag = await read(args)
+        await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus } })
+        changed = true
+        return flag
+      })
+      try {
+        await expect(recordFlagImprovementAttempt({ flagId, userId: owner, builder: 'late-account-action', action,
+          rejectionReason: 'POOR_TIMING', idempotencyKey: 'late-account-action:' + lifecycleStatus }))
+          .rejects.toMatchObject({ status: 403, code: 'ACCOUNT_UNAVAILABLE' })
+        expect(changed).toBe(true)
+        expect(await retainedRepairHistory()).toEqual(before)
+      } finally {
+        source.mockRestore()
+        await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus: 'ACTIVE' } })
+      }
+    })
+
+  it.each(['SUSPENDED', 'DELETING'] as const)('refuses a fix declaration when the account becomes %s after identity preparation', async lifecycleStatus => {
+    await recordFlagImprovementAttempt({ flagId, userId: owner, builder: 'prepared-identity', action: 'HANDOFF_COPIED' })
+    const identity = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId } })
+    const before = await retainedRepairHistory(), read = prisma.improvement.findFirst.bind(prisma.improvement)
+    let changed = false
+    const source = vi.spyOn(prisma.improvement, 'findFirst').mockImplementationOnce(async args => {
+      const improvement = await read(args)
+      await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus } })
+      changed = true
+      return improvement
+    })
+    try {
+      await expect(createImprovementAttempt({ improvementId: identity.improvementId, projectId, userId: owner,
+        sourceAuditId: auditId, builder: 'late-fix', handoffReference: 'flag:' + flagId, idempotencyKey: 'late-fix:' + lifecycleStatus }))
+        .rejects.toMatchObject({ status: 403, code: 'ACCOUNT_UNAVAILABLE' })
+      expect(changed).toBe(true)
+      expect(await retainedRepairHistory()).toEqual(before)
+    } finally {
+      source.mockRestore()
+      await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus: 'ACTIVE' } })
+    }
+  })
+
+  it.each(['handoff', 'declaration'] as const)('settles a concurrent account suspension before a %s and resumes the original history after restoration', async stage => {
+    await recordFlagImprovementAttempt({ flagId, userId: owner, builder: 'account-lock-fixture', action: 'HANDOFF_COPIED' })
+    const identity = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId } })
+    const before = await retainedRepairHistory()
+    let release!: () => void, announce!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const acquired = new Promise<void>(resolve => { announce = resolve })
+    const suspension = prisma.$transaction(async tx => {
+      await tx.user.update({ where: { id: owner }, data: { lifecycleStatus: 'SUSPENDED' } })
+      announce()
+      await held
+    }, { timeout: 10_000 })
+    const declare = () => stage === 'handoff'
+      ? recordFlagImprovementAttempt({ flagId, userId: owner, builder: 'after-suspension', action: 'HANDOFF_COPIED' })
+      : createImprovementAttempt({ improvementId: identity.improvementId, projectId, userId: owner, sourceAuditId: auditId,
+        builder: 'after-suspension', handoffReference: 'flag:' + flagId, idempotencyKey: 'after-suspension' })
+    let pending: Promise<unknown> | undefined
+    try {
+      await acquired
+      pending = declare().then(result => ({ result }), error => ({ status: error.status, code: error.code }))
+      await expect.poll(async () => {
+        const waiting = await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+            AND pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+            AND query LIKE '%FROM "users"%FOR UPDATE%') AS waiting`
+        return waiting[0].waiting
+      }, { timeout: 3_000 }).toBe(true)
+      release()
+      await suspension
+      expect(await pending).toEqual({ status: 403, code: 'ACCOUNT_UNAVAILABLE' })
+      expect(await retainedRepairHistory()).toEqual(before)
+    } finally {
+      release()
+      await suspension
+      await pending
+      await prisma.user.update({ where: { id: owner }, data: { lifecycleStatus: 'ACTIVE' } })
+    }
+    await declare()
+    const restored = await retainedRepairHistory()
+    await declare()
+    expect(await retainedRepairHistory()).toEqual(restored)
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })).toEqual(before[0].find(flag => flag.id === flagId))
+  })
+
+  it('locks the active actor before inherited worker Site and Audit authority', async () => {
+    await recordFlagImprovementAttempt({ flagId, userId: owner, builder: 'worker-order-fixture', action: 'HANDOFF_COPIED' })
+    const identity = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId } })
+    const execution = await claimExecution(auditId, { projectionOnly: true })
+    expect(execution).not.toBeNull()
+    const original = prisma.$transaction.bind(prisma)
+    let statements: string[] = []
+    const transaction = vi.spyOn(prisma, '$transaction').mockImplementationOnce((async (...[operation, options]: Parameters<typeof original>) => {
+      if (typeof operation !== 'function') throw new Error('Expected a command transaction')
+      return original(async tx => {
+        const read = vi.fn(tx.$queryRaw.bind(tx))
+        const observed = new Proxy(tx, { get(target, key, receiver) { return key === '$queryRaw' ? read : Reflect.get(target, key, receiver) } })
+        try { return await operation(observed) }
+        finally { statements = read.mock.calls.map(([query]) => 'sql' in query ? query.sql : Array.from(query).join('')) }
+      }, options)
+    }) as typeof original)
+    try {
+      const attempt = await withExecutionOwnership(execution!, () => createImprovementAttempt({ improvementId: identity.improvementId,
+        projectId, userId: owner, sourceAuditId: auditId, builder: 'worker-order', handoffReference: 'flag:' + flagId,
+        idempotencyKey: 'worker-order' }))
+      expect(attempt).toMatchObject({ improvementId: identity.improvementId, sourceAuditId: auditId })
+      expect(statements[0]).toContain('FROM "users"')
+      expect(statements[0]).toContain('FOR UPDATE')
+      expect(statements.slice(1).some(sql => sql.includes('"projects"') && sql.includes('FOR SHARE'))).toBe(true)
+      expect(statements.slice(1).some(sql => sql.includes('"audits"') && sql.includes('FOR UPDATE'))).toBe(true)
+    } finally {
+      transaction.mockRestore()
+      await prisma.audit.update({ where: { id: auditId }, data: { executionToken: null, executionLeaseUntil: null } })
     }
   })
 

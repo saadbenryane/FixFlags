@@ -7,25 +7,25 @@ import { SITE_SUMMARY_OWNER_HEADER, SITE_SUMMARY_READ_AT_HEADER, siteSummariesSc
 import type { SiteSummary } from '@/lib/sites/application/list-sites'
 
 export type SiteSummariesSnapshot = { ownerId: string; sites: SiteSummary[]; readAt: number }
+type SummaryRead = { controller: AbortController; promise: Promise<SiteSummariesSnapshot> }
 class SiteSummariesError extends Error {
   constructor(readonly status?: number, readonly accountChanged = false) { super('Site summaries unavailable') }
 }
 
 /** One account-wide read, with independent cache and request ownership per user. */
 export function useSiteSummaries(ownerId: string | null, initial: SiteSummariesSnapshot) {
-  const owner = useMemo(() => ({ id: ownerId, active: true, requests: new Set<AbortController>() }), [ownerId])
+  const owner = useMemo(() => ({ id: ownerId, active: true, request: null as SummaryRead | null }), [ownerId])
   useLayoutEffect(() => {
     owner.active = true
-    return () => { owner.active = false; for (const request of owner.requests) request.abort(); owner.requests.clear() }
+    return () => { owner.active = false; owner.request?.controller.abort(); owner.request = null }
   }, [owner])
   const fallback = ownerId === initial.ownerId ? initial : undefined
   const newest = (data?: SiteSummariesSnapshot) => fallback && (!data || fallback.readAt > data.readAt) ? fallback : data
-  const read = useCallback(async ([, expectedOwner]: readonly [string, string]): Promise<SiteSummariesSnapshot> => {
+  const read = useCallback(([, expectedOwner]: readonly [string, string]): Promise<SiteSummariesSnapshot> => {
     if (!owner.active || owner.id !== expectedOwner) throw new SiteSummariesError()
+    if (owner.request) return owner.request.promise
     const controller = new AbortController()
-    owner.requests.add(controller)
-    try {
-      const { response, body } = await fetchJsonWithDeadline('/api/sites', { cache: 'no-store', signal: controller.signal }, 15_000)
+    const promise = fetchJsonWithDeadline('/api/sites', { cache: 'no-store', signal: controller.signal }, 15_000).then(({ response, body }) => {
       if (!response.ok) throw new SiteSummariesError(response.status)
       const actualOwner = response.headers.get(SITE_SUMMARY_OWNER_HEADER)
       if (actualOwner !== expectedOwner) throw new SiteSummariesError(undefined, Boolean(actualOwner))
@@ -34,7 +34,9 @@ export function useSiteSummaries(ownerId: string | null, initial: SiteSummariesS
       const sites = siteSummariesSchema.parse(body)
       if (!owner.active || controller.signal.aborted) throw new SiteSummariesError()
       return { ownerId: expectedOwner, sites, readAt }
-    } finally { owner.requests.delete(controller) }
+    }).finally(() => { if (owner.request?.controller === controller) owner.request = null })
+    owner.request = { controller, promise }
+    return promise
   }, [owner])
   const resource = useSWR<SiteSummariesSnapshot>(ownerId ? ['account-sites', ownerId] as const : null, read, {
     fallbackData: fallback,
@@ -60,6 +62,6 @@ export function useSiteSummaries(ownerId: string | null, initial: SiteSummariesS
   // follow the bounded retry policy instead of creating a render-driven loop.
   useEffect(() => { if (entry.current.error) void entry.current.refresh() }, [owner])
   return { sites: !authRequired && !accountChanged && snapshot?.ownerId === ownerId ? snapshot.sites : null,
-    failed: Boolean(resource.error), accountChanged, authRequired,
+    failed: Boolean(resource.error), accountChanged, authRequired, refreshing: resource.isValidating,
     refresh }
 }

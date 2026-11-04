@@ -17,15 +17,16 @@ import { readArtifact } from '../contracts'
 import { httpArtifactSchema } from '../snapshots'
 import { TASK_QUEUES } from '../queues'
 import { dispatchReadyTasks, reconcileTasks } from '../engine'
+import { recordedPageEvidence } from '../lifecycle'
 
-vi.mock('node:dns/promises', () => ({ resolve4: async () => ['203.0.114.1'], resolve6: async () => [] }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: async () => ['203.0.114.1'], resolve6: async () => [] })))
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('interrupted body evidence through URL admission and installed workers', () => {
   const userId = 'http-body-' + randomUUID(), pageUrl = 'http://example.com/'
   let phase = 'unsafe', requests = 0, projectId: string, dispatcher: Agent
   let worker: ReturnType<typeof startWorker> | undefined
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
     requests++
     if (phase === 'missing') { response.destroy(); return }
     for (const [key, value] of Object.entries({
@@ -35,6 +36,16 @@ run('interrupted body evidence through URL admission and installed workers', () 
       'permissions-policy': 'camera=(), microphone=(), geolocation=()', 'x-permitted-cross-domain-policies': 'none',
       'content-type': 'text/html',
     })) response.setHeader(key, value)
+    if (phase === 'navigation') {
+      if (request.url === '/navigation') response.end('<!doctype html><base href="/services/">' +
+        '<a href="pricing">Pricing</a><a href="missing">Missing page</a>' +
+        '<script type="application/ld+json">{"@type":"Product"}</script>'.repeat(51))
+      else { response.statusCode = request.url === '/services/missing' ? 404 : 200
+        response.end('<!doctype html><title>Service page</title><h1>' + (response.statusCode === 404 ? 'Page not found' : 'Service pricing') + '</h1>') }
+      return
+    }
+    if (phase === 'response-ok') { response.end('<!doctype html><title>Restored public page</title><h1>Useful service</h1>'); return }
+    if (phase === 'response-error') response.statusCode = 503
     if (phase === 'challenge') {
       response.statusCode = 503
       response.write('<html><head><title>Just a moment...</title></head><body>Checking your browser')
@@ -119,6 +130,55 @@ run('interrupted body evidence through URL admission and installed workers', () 
     const recurring = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'body-recurrence' })
     await complete(recurring.auditId!)
     const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: flag.checkId } })
+    expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
+    expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
+  }, 180_000)
+
+  it('discovers pages and flags an actual missing destination despite unavailable whole-page metadata', async () => {
+    phase = 'navigation'; requests = 0
+    const target = pageUrl + 'navigation'
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: target, userId })
+    await complete(source.auditId)
+    const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl: target } })
+    expect(task).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
+    expect(httpArtifactSchema.parse(readArtifact(task.workResult, 'http').data)).toMatchObject({ metadata: null,
+      navigation: { documentUrl: target, linkBaseUrl: pageUrl + 'services/', complete: true } })
+    const pages = await recordedPageEvidence(source.auditId)
+    expect(pages.find(page => page.url === target)?.navigation).toMatchObject({ complete: true,
+      links: [{ href: 'pricing', text: 'Pricing' }, { href: 'missing', text: 'Missing page' }] })
+    expect(pages.map(page => page.url)).toContain(pageUrl + 'services/pricing')
+    expect(await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'broken-internal-links', pageUrl: target } }))
+      .toMatchObject({ evidence: expect.stringContaining('/services/missing') })
+  }, 90_000)
+
+  it('retains a received server error through interrupted content, refuses partial recovery and independently verifies repair and recurrence', async () => {
+    phase = 'response-error'; requests = 0
+    const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: pageUrl, userId })
+    await complete(source.auditId)
+    projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } })).projectId!
+    const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'page-http-error' } })
+    expect(flag.evidence).toContain('HTTP 503')
+    const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+    for (const [next, outcome] of [['response-error', 'UNCHANGED'], ['unsafe', 'INCONCLUSIVE'],
+      ['challenge', 'INCONCLUSIVE'], ['response-ok', 'IMPROVED']] as const) {
+      phase = next; requests = 0
+      const fix = await recordSiteFlagFix({ siteId: projectId, userId, flagId: flag.id, idempotencyKey: 'page-body-fix-' + next,
+        changeSummary: 'Restore the original public page response' })
+      const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: projectId, userId, flagId: flag.id,
+        attemptId: fix.attemptId, idempotencyKey: 'page-body-verify-' + next })
+      if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Page response verification was not admitted')
+      await complete(verified.verificationAuditId!)
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }))
+        .toMatchObject({ outcome, comparable: outcome !== 'INCONCLUSIVE' })
+      const request = await prisma.runRequest.findFirstOrThrow({ where: { auditId: verified.verificationAuditId! } })
+      expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR'
+        : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
+    }
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED' })
+    phase = 'response-error'; requests = 0
+    const recurring = await requestSiteRun({ projectId, userId, scope: 'SITE', source: 'WATCH', outcomeIds: [], idempotencyKey: 'page-body-recurrence' })
+    await complete(recurring.auditId!)
+    const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: 'page-http-error' } })
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
   }, 180_000)

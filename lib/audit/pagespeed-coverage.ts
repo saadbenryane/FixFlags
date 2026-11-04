@@ -1,3 +1,5 @@
+import { cruxEvidenceSchema, readCruxMetric } from './crux'
+
 export type PageSpeedStrategy = 'desktop' | 'mobile'
 
 export interface PageSpeedMissingRoute {
@@ -12,8 +14,16 @@ export interface PageSpeedCoverage {
   missingRoutes: PageSpeedMissingRoute[]
 }
 
-function hasObservation(value: unknown): boolean {
-  return value !== null && typeof value === 'object'
+function observation(value: unknown, strategy: PageSpeedStrategy) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { observed: false, complete: false }
+  const data = value as Record<string, unknown>
+  if (data.strategy !== undefined && data.strategy !== strategy) return { observed: false, complete: false }
+  const metric = (key: string) => typeof data[key] === 'number' && Number.isFinite(data[key]) && data[key] >= 0 &&
+    (key !== 'score' || data[key] <= 100)
+  const lab = ['score', 'lcp', 'cls', 'fcp', 'tbt']
+  const crux = cruxEvidenceSchema.safeParse(data.crux)
+  const field = crux.success && (['lcp', 'cls', 'fcp', 'inp', 'ttfb'] as const).some(key => readCruxMetric(crux.data, key))
+  return { observed: lab.some(metric) || metric('inp') || field, complete: lab.every(metric) }
 }
 
 export function derivePageSpeedCoverage(
@@ -31,14 +41,14 @@ export function derivePageSpeedCoverage(
       route.performanceData && typeof route.performanceData === 'object'
         ? route.performanceData as Record<string, unknown>
         : {}
-    const desktop = hasObservation(data.desktop)
-    const mobile = hasObservation(data.mobile)
+    const desktop = observation(data.desktop, 'desktop')
+    const mobile = observation(data.mobile, 'mobile')
     const missing: PageSpeedStrategy[] = []
-    if (!desktop) missing.push('desktop')
-    if (!mobile) missing.push('mobile')
-    if (desktop || mobile) observedRoutes += 1
-    if (desktop) observedStrategies += 1
-    if (mobile) observedStrategies += 1
+    if (!desktop.complete) missing.push('desktop')
+    if (!mobile.complete) missing.push('mobile')
+    if (desktop.observed || mobile.observed) observedRoutes += 1
+    if (desktop.complete) observedStrategies += 1
+    if (mobile.complete) observedStrategies += 1
     if (missing.length > 0) missingRoutes.push({ url: route.url, missing })
   }
 
@@ -47,7 +57,7 @@ export function derivePageSpeedCoverage(
     status:
       observedStrategies === expectedStrategies
         ? 'complete'
-        : observedStrategies > 0
+        : observedRoutes > 0
           ? 'partial'
           : 'unavailable',
     observedRoutes,

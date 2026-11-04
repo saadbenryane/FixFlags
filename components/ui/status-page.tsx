@@ -44,7 +44,7 @@ export function StatusPage({
               key={action.label}
               variant={action.variant ?? 'default'}
               onClick={action.onClick}
-              disabled={action.loading}
+              loading={action.loading}
               asChild={Boolean(action.href)}
             >
               {action.href ? <Link href={action.href as Route}>{action.label}</Link> : action.label}

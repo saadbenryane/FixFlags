@@ -133,9 +133,22 @@ describe('agent repair brief', () => {
   it('labels missing evidence and machine acceptance without inventing either', () => {
     const brief = build(repairFlag({ evidenceMissing: true, verificationRule: null }))
     expect(brief.flag.evidence).toBeNull()
+    expect(brief.repair).toMatchObject({ definition: { kind: 'evidence-recovery' } })
     expect(brief.verification.rule).toBeNull()
     expect(brief.limitations).toHaveLength(2)
     expect(buildSiteRepairHandoff('site', repairFlag({ evidenceMissing: true }), 'https://fixflags.test').prompt)
       .not.toContain('Evidence: Clicking')
+  })
+  it('replaces a previously resolved repair with evidence recovery when the source evidence is known missing', () => {
+    const original = repairFlag()
+    const definition = build(original).repair
+    if (definition.readiness !== 'ready') throw new Error('The original repair must be ready')
+    const flag = repairFlag({ evidence: '', evidenceMissing: true, repairDefinition: definition.definition })
+    const handoff = buildSiteRepairHandoff('site', flag, 'https://fixflags.test')
+    expect(handoff.brief.repair).toMatchObject({ readiness: 'ready', definition: { kind: 'evidence-recovery' } })
+    expect(handoff.brief.flag.evidence).toBeNull()
+    expect(handoff.prompt).toContain('Do not change the website based on this record')
+    expect(handoff.prompt).not.toContain(original.fix)
+    expect(handoff.promptHash).not.toBe(buildSiteRepairHandoff('site', original, 'https://fixflags.test').promptHash)
   })
 })

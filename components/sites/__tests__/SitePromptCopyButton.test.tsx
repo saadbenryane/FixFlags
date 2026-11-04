@@ -4,8 +4,40 @@ import { Toaster, toast } from 'sonner'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { REPORT_COPY } from '@/lib/marketing/copy/report-workspace'
+import { AGENT_HANDOFF_COPY as H } from '@/lib/marketing/copy/agent-handoff'
+import { prepareSiteRepairBrief, buildSiteRepairHandoff } from '@/lib/sites/repair-brief'
+import { repairFlag } from '@/lib/sites/__tests__/fixtures/repair-brief'
 
 describe('SitePromptCopyButton', () => {
+  it('downloads complete instructions from the existing preview without copying or recording a handoff', async () => {
+    const flag = repairFlag({ id: 'flag-1', sourceFlagId: 'flag-1' })
+    const task = buildSiteRepairHandoff('site-1', flag, 'https://fixflags.test', 'flag-1')
+    const scope = { kind: 'flag', flagId: 'flag-1', expectedPromptHash: task.promptHash }
+    const file = { schemaVersion: 'fixflags.repair-file.v1', siteId: 'site-1', scope, instructions: [],
+      tasks: [prepareSiteRepairBrief('site-1', flag, 'https://fixflags.test', 'flag-1').complete()],
+      completion: { taskCount: 1, taskArraySha256: 'a'.repeat(64), complete: true } }
+    const writeText = vi.fn()
+    Object.assign(navigator, { clipboard: { writeText } })
+    const NativeURL = URL
+    const create = vi.fn(() => 'blob:repair-test')
+    vi.stubGlobal('URL', class extends NativeURL { static createObjectURL = create; static revokeObjectURL = vi.fn() })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn(async (url) => String(url).endsWith('?view=file')
+      ? new Response(JSON.stringify(file) + '\n', { headers: { 'Content-Type': 'application/json' } })
+      : Response.json({ ok: true, prompt: task.prompt, sourceFlagId: 'flag-1', referenceFlagId: 'flag-1', promptHash: task.promptHash })))
+    const rendered = render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
+    try {
+      expect(screen.queryByRole('button', { name: H.fileDownload })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'View instructions' }))
+      fireEvent.click(await screen.findByRole('button', { name: H.fileDownload }))
+      expect(await screen.findByText(H.fileReady)).toBeVisible()
+      expect(click).toHaveBeenCalledOnce()
+      expect(writeText).not.toHaveBeenCalled()
+      const bodies = vi.mocked(fetch).mock.calls.map(call => JSON.parse(call[1]!.body as string))
+      expect(bodies.some(body => body.action === 'copy')).toBe(false)
+      expect(bodies.at(-1)).toEqual(scope)
+    } finally { rendered.unmount(); click.mockRestore(); vi.stubGlobal('URL', NativeURL) }
+  })
   it('starts a promised native clipboard write during the click before preparation resolves', async () => {
     let resolvePreparation!: (response: Response) => void
     let supplied: Promise<Blob> | undefined

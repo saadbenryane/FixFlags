@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createServer } from 'node:http'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
-vi.mock('node:dns/promises', () => dns)
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 import { isPublicIp, normalizeAuditUrl, resolvePublicAddresses, publicSocketLookup, safeFetchDocument, AuditUrlError } from '../url'
+import { classifyPublicRequestFailure } from '../http-failure'
 
 describe('public network classification', () => {
   it.each(['192.0.1.1', '192.0.3.1', '192.0.255.254', '198.51.99.255', '198.51.101.0', '203.0.112.255', '203.0.114.0',
@@ -76,7 +77,9 @@ describe('native HTTP socket admission', () => {
       const port = (server.address() as { port: number }).port
       const failure = await safeFetchDocument(`http://rebound.fixture.test:${port}/capture`, { publicOnly: true, timeoutMs: 2000 })
         .then(() => null, (error: unknown) => error)
-      expect(failure).toMatchObject({ cause: expect.any(AuditUrlError) })
+      expect(failure).toBeInstanceOf(AuditUrlError)
+      expect(failure).toMatchObject({ code: 'UNSAFE_DESTINATION' })
+      expect(classifyPublicRequestFailure(failure).result).toBe('UNKNOWN')
       expect(dns.resolve4).toHaveBeenCalledTimes(2)
       expect(requests).toBe(0)
     } finally {

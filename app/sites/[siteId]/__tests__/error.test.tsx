@@ -7,10 +7,22 @@ const { siteParams } = vi.hoisted(() => ({ siteParams: { current: 'p_site-1' as 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ siteId: siteParams.current }),
   usePathname: () => '/sites/p_site-1',
+  useSearchParams: () => new URLSearchParams(),
 }))
 vi.mock('@/hooks/useMe', () => ({ useMe: () => ({ user: null }) }))
 
 describe('Site error recovery', () => {
+  it('uses native refetching recovery when supplied by the route boundary', () => {
+    siteParams.current = 'p_site-1'
+    const reset = vi.fn(), retry = vi.fn()
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      render(<SiteError error={new Error('temporary server read failure')} reset={reset} retry={retry} />)
+      fireEvent.click(screen.getByRole('button', { name: SYSTEM_COPY.actions.retry }))
+      expect(retry).toHaveBeenCalledOnce()
+      expect(reset).not.toHaveBeenCalled()
+    } finally { logged.mockRestore() }
+  })
   it('keeps the Site path and offers a separate all-Sites escape', () => {
     siteParams.current = 'p_site-1'
     const reset = vi.fn()

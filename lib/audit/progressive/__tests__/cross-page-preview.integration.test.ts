@@ -16,7 +16,7 @@ import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
-import type { SiteRecord } from '@/lib/sites/types'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('Cross-page preview worker verification', () => {
@@ -93,7 +93,12 @@ run('Cross-page preview worker verification', () => {
     const spec = readExecutionSpec(audit.executionSpec)!
     expect(spec.checks).toMatchObject({ 'corridor-og-title-drift': 2, 'corridor-og-description-drift': 1 })
     const broad = await prisma.audit.findUniqueOrThrow({ where: { id: spec.category!.sourceAuditId } })
-    const page = await loadSiteCheckResultPage({ projectId } as SiteRecord, broad, undefined, undefined, { area: 'search' }, true)
+    const site = await loadSiteRecord(projectId)
+    if (!site) throw new Error('The preview fixture Site is unavailable')
+    const page = await loadSiteCheckResultPage(site, broad, undefined, undefined, { area: 'search' }, true)
+    const captures = await prisma.auditExecutionTask.findMany({ where: { auditId, workKind: 'browser' }, select: { workInput: true } })
+    expect(captures).toHaveLength(urls.length)
+    expect(captures.every(task => (task.workInput as { device?: string }).device === 'desktop')).toBe(true)
     const previews = page.results.filter(result => result.name === 'Cross-page previews' ||
       ['preview-titles', 'preview-descriptions'].includes(result.assertionKey ?? ''))
     expect(previews).toHaveLength(8)

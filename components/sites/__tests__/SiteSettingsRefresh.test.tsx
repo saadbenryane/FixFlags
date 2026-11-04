@@ -172,6 +172,10 @@ describe('authoritative Site settings refresh', () => {
     vi.stubGlobal('fetch', fetch)
     render(<SWRConfig value={{ provider: () => new Map(), shouldRetryOnError: false }}><Settings initial={initial} /></SWRConfig>)
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    if (setting === 'accounts') {
+      fireEvent.click(screen.getByText(SITE_SETTINGS_COPY.advanced))
+      await screen.findByRole('switch', { name: ACCOUNT_CHECK_COPY.enabled })
+    }
     const control = setting === 'notifications' ? screen.getByRole('combobox', { name: 'Email me' })
       : screen.getByRole('switch', { name: ACCOUNT_CHECK_COPY.enabled })
     if (setting === 'notifications') fireEvent.change(control, { target: { value: 'OFF' } })

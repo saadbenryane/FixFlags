@@ -80,4 +80,25 @@ describe('VerifyOutcomeButton', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[1][1].headers['Idempotency-Key']).toBe(fetchMock.mock.calls[0][1].headers['Idempotency-Key'])
   })
+
+  it('publishes accepted verification activity before reading the source again', async () => {
+    const steps: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ runId: 'run-1', auditId: 'audit-1', outcomeIds: ['outcome-1'], reused: false }, { status: 202 })))
+    render(<VerifyOutcomeButton siteId="site-1" outcomeId="outcome-1"
+      onAccepted={() => { steps.push('accepted') }} onRefresh={async () => { steps.push('refresh') }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
+    expect(await screen.findByText('Check started')).toBeVisible()
+    expect(steps).toEqual(['accepted', 'refresh'])
+  })
+
+  it.each([{ outcomeIds: [] }, { outcomeIds: ['another-outcome'] }])('rejects an acceptance receipt that does not select this Outcome: %j', async ({ outcomeIds }) => {
+    const accepted = vi.fn()
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ runId: 'run-1', auditId: 'audit-1', outcomeIds, reused: false }, { status: 202 })))
+    render(<VerifyOutcomeButton siteId="site-1" outcomeId="outcome-1" onAccepted={accepted} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
+    expect(await screen.findByText('FixFlags could not confirm this action. Refresh before trying again.')).toBeVisible()
+    expect(accepted).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(screen.queryByText('Check started')).not.toBeInTheDocument()
+  })
 })

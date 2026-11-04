@@ -535,7 +535,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     tool: 'browser-capture',
     implementation: 'implemented',
 
-    verify: 'npm run test:unit -- lib/audit/__tests__/run-page-production-path.test.ts',
+    verify: 'node scripts/verify-progressive-execution.mjs --only lib/audit/progressive/__tests__/execution.integration.test.ts -t "collects faithful slow connection timing"',
     notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s. Collected by progressive action tasks.',
   },
 

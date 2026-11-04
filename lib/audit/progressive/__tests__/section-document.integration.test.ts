@@ -8,6 +8,12 @@ import { parseMetadataFromHtml } from '@/lib/audit/metadata'
 import { runAllChecks } from '@/lib/audit/checks'
 import { checkReceiptSchema } from '@/lib/audit/checks/receipt'
 import { scopedAssertionForTarget } from '@/lib/audit/checks/verification'
+import { collectRenderedSearchSnapshot } from '@/lib/audit/search/rendered-snapshot'
+import { capturedPageLinks, publicLinkUrls, resolvedPageLinks } from '@/lib/audit/checks/public-links'
+import { prisma } from '@/lib/db'
+import { recordedPageEvidence } from '../lifecycle'
+import { serializeArtifact } from '../contracts'
+import { planReviewTargets } from '@/lib/audit/review-depth'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('shared section evaluation against actual redirected browser documents', () => {
@@ -21,8 +27,9 @@ run('shared section evaluation against actual redirected browser documents', () 
     }
     response.setHeader('content-type', 'text/html')
     response.end('<!doctype html><html lang="en"><head><title>Useful service</title>' +
-      (phase === 'foreign-base' ? '<base href="/elsewhere">' : '') + '</head><body><main>' +
+      (phase === 'foreign-base' ? '<base href="/elsewhere">' : phase === 'discovery-base' ? '<base href="/catalog/">' : '') + '</head><body><main>' +
       '<h1>Useful service</h1><a href="#contact">Contact</a>' +
+      (phase.startsWith('discovery') ? '<a href="pricing?edition=original">Pricing</a><a href="?edition=other#contact">Other edition</a>' : '') +
       (['repaired', 'changed', 'foreign-base'].includes(phase) ? '<section id="contact">Contact our team</section>' : '') + '</main></body></html>')
   })
   beforeAll(async () => {
@@ -36,6 +43,7 @@ run('shared section evaluation against actual redirected browser documents', () 
   afterAll(async () => {
     await closeBrowser(); server.closeAllConnections()
     await new Promise<void>(resolve => server.close(() => resolve()))
+    await prisma.$disconnect()
   })
   async function inspect(next: string) {
     phase = next
@@ -69,4 +77,40 @@ run('shared section evaluation against actual redirected browser documents', () 
     expect(requested).toContain('/sections?edition=original')
     expect(requested).toContain('/sections?edition=other')
   }, 45_000)
+  it.each(['discovery', 'discovery-base'])('retains native document identity through PostgreSQL discovery without whole-document metadata: %s', async next => {
+    phase = next
+    const pageUrl = origin + '/start'
+    const session = await createAuditPage(await getAuditBrowser(), pageUrl, {
+      profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, deadline: Date.now() + 15_000,
+    })
+    let auditId: string | undefined
+    try {
+      const snapshot = await collectRenderedSearchSnapshot(session.page), scope = auditPageObservation(session.page)!.scope
+      const audit = await prisma.audit.create({ data: { url: pageUrl } }); auditId = audit.id
+      const page = await prisma.auditPage.create({ data: { auditId, url: pageUrl, normalizedUrl: pageUrl,
+        role: 'primary', position: 0, status: 'COMPLETED' } })
+      await prisma.auditExecutionTask.create({ data: { auditId, pageUrl, targetKey: 'task:p0:browser', source: 'EXECUTION',
+        workKind: 'browser', workState: 'COMPLETED', status: 'COMPLETED',
+        workInput: { pageUrl, position: 0, primary: true, role: 'primary', device: 'desktop' },
+        workResult: serializeArtifact('browser', { pageId: page.id, metadata: null, metadataFailure: { code: 'PARSER_CRASH', attempts: 2 },
+          snapshot: { desktopUrl: null, mobileUrl: null, renderedScope: scope, renderedSearchSnapshot: snapshot } }) } })
+      const [recorded] = await recordedPageEvidence(auditId)
+      expect(recorded).toMatchObject({ url: pageUrl, pageId: page.id, metadata: null, failedModules: ['metadata'],
+        navigation: { documentUrl: snapshot.finalUrl, linkBaseUrl: snapshot.documentBaseUrl, complete: true } })
+      const direct = capturedPageLinks({ renderedSearchSnapshot: snapshot }, null)!
+      expect(publicLinkUrls(pageUrl, recorded.navigation!)).toEqual(publicLinkUrls(pageUrl, direct))
+      const urls = publicLinkUrls(pageUrl, recorded.navigation!)
+      expect(urls).not.toContain(origin + '/sections?edition=original')
+      expect(urls).toContain(origin + (next === 'discovery-base' ? '/catalog/pricing?edition=original' : '/pricing?edition=original'))
+      expect(urls).toContain(origin + (next === 'discovery-base' ? '/catalog/?edition=other' : '/sections?edition=other'))
+      if (next === 'discovery-base') expect(urls).toContain(origin + '/catalog/')
+      else expect(urls).toHaveLength(2)
+      const planned = planReviewTargets({ pastedUrl: pageUrl, depth: 2, pastedLinks: resolvedPageLinks(pageUrl, recorded.navigation!) })
+      expect(planned.reviewUrls).not.toContain(origin + '/sections?edition=original')
+      expect(planned.openCheckUrls).not.toContain(origin + '/sections?edition=original')
+    } finally {
+      if (auditId) await prisma.audit.delete({ where: { id: auditId } })
+      session.disposeNetwork(); await session.page.context().close()
+    }
+  })
 })

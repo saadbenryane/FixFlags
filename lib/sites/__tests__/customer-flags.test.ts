@@ -12,7 +12,11 @@ const prisma = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) }, flag: prisma.flag, improvement: { findMany: vi.fn().mockResolvedValue([]) }, audit: { findFirst: vi.fn() } } }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) },
+  flag: { findMany: async (query: { select?: { audit?: unknown; improvementOccurrence?: unknown } }) => {
+    const rows = await prisma.flag.findMany(query)
+    return query.select?.audit ? rows.map((flag: object) => ({ ...flag, audit: { projectId: 'owned-site' }, improvementOccurrence: null })) : rows
+  } }, improvement: { findMany: vi.fn().mockResolvedValue([]) }, audit: { findFirst: vi.fn() } } }))
 
 const site = { kind: 'provisional', primaryAuditId: 'audit-1' } as SiteRecord
 
@@ -46,9 +50,9 @@ describe('customer Flag projector on Site load', () => {
       fix: 'Fix the form endpoint', pageUrl: 'https://example.com/contact', status: 'OPEN' }])
     const owned = { kind: 'project', projectId: 'owned-site', userId: 'owner', primaryAuditId: 'later-partial-check' } as SiteRecord
     expect((await loadSiteFlags(owned)).map(flag => flag.id)).toEqual(['claimed-contact'])
-    expect(prisma.flag.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      audit: expect.objectContaining({ projectId: 'owned-site' }), improvementOccurrence: null,
-    }) }))
+    expect(prisma.flag.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { OR: [expect.objectContaining({
+      audit: expect.objectContaining({ projectId: { in: ['owned-site'] } }), improvementOccurrence: null,
+    })] } }))
     expect(prisma.flag.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: {
       id: { in: ['claimed-contact'] }, audit: { projectId: 'owned-site' },
     } }))

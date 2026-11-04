@@ -1,7 +1,7 @@
 'use client'
 
 import { InteractiveSelect } from '@/components/ui/interactive-controls'
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Bell, ChevronDown, Clock3, UserRound, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -88,18 +88,34 @@ export function SiteRemovalSettingsPanel({ busy = false, onRemove }: { busy?: bo
 
 export function SiteAdvancedSettings({ children }: { children: ReactNode }) {
   const disclosure = useRef<HTMLDetailsElement>(null)
+  const [visited, setVisited] = useState(false)
+  const [destination, setDestination] = useState<{ id: string } | null>(null)
   useEffect(() => {
-    let frame: number | null = null
-    const reveal = () => {
-      const hash = window.location.hash
+    const reveal = (hash: string) => {
       if (!['#signup-setup', '#account-checks', '#scan-access', '#research'].includes(hash) || !disclosure.current) return
+      setVisited(true)
+      setDestination({ id: hash === '#signup-setup' ? 'account-checks' : hash.slice(1) })
       disclosure.current.open = true
-      if (frame !== null) cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => document.getElementById(hash === '#signup-setup' ? 'account-checks' : hash.slice(1))?.scrollIntoView({ block: 'start' }))
     }
-    reveal()
-    window.addEventListener('hashchange', reveal)
-    return () => { window.removeEventListener('hashchange', reveal); if (frame !== null) cancelAnimationFrame(frame) }
+    const fromLocation = () => reveal(window.location.hash)
+    const fromLink = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target && anchor.target !== '_self' || anchor.hasAttribute('download')) return
+      const next = new URL(anchor.href, window.location.href)
+      if (next.origin === window.location.origin && next.pathname === window.location.pathname && next.search === window.location.search) reveal(next.hash)
+    }
+    fromLocation()
+    window.addEventListener('hashchange', fromLocation)
+    document.addEventListener('click', fromLink, true)
+    return () => { window.removeEventListener('hashchange', fromLocation); document.removeEventListener('click', fromLink, true) }
   }, [])
-  return <details ref={disclosure} className={styles.advanced}><summary><span><strong>{S.advanced}</strong><span>{S.advancedBody}</span></span><ChevronDown size={16} aria-hidden /></summary><div>{children}</div></details>
+  useLayoutEffect(() => {
+    if (!visited || !destination) return
+    const target = disclosure.current?.querySelector<HTMLElement>(`#${destination.id}`)
+    if (!target) return
+    const frame = requestAnimationFrame(() => { target.focus({ preventScroll: true }); target.scrollIntoView({ block: 'start' }) })
+    return () => cancelAnimationFrame(frame)
+  }, [visited, destination])
+  return <details ref={disclosure} className={styles.advanced} onToggle={event => { if (event.currentTarget.open) setVisited(true) }}><summary><span><strong>{S.advanced}</strong><span>{S.advancedBody}</span></span><ChevronDown size={16} aria-hidden /></summary>{visited ? <div>{children}</div> : null}</details>
 }

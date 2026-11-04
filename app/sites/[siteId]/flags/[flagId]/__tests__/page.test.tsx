@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+import { verificationResultLabel } from '@/lib/sites/presentation'
 import SiteFlagPage from '../page'
 import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
@@ -53,6 +55,9 @@ vi.mock('@/components/sites/SiteShell', () => ({
     </div>
   ),
 }))
+
+vi.mock('@/components/sites/SiteFlagDetailRefresh', () => ({ SiteFlagDetailRefresh: ({ siteId, flagId, sourceFlagId }: { siteId: string; flagId: string; sourceFlagId: string }) =>
+  <span data-testid="live-flag-detail" data-site={siteId} data-flag={flagId} data-source={sourceFlagId} /> }))
 
 function attempt(id: string, builder: string, outcome: string | null) {
   return {
@@ -110,6 +115,28 @@ describe('Flag verification attempts', () => {
     })
   })
 
+  it.each([
+    { view: 'pages', label: 'Pages', href: '/sites/site-1?view=pages#pages' },
+    { view: 'timeline', label: 'Timeline', href: '/sites/site-1?view=timeline#timeline' },
+    { view: 'home', label: 'Overview', href: '/sites/site-1' },
+    { view: 'home', category: 'search', label: 'Overview', href: '/sites/site-1?category=search#category-search' },
+  ])('returns full Flag details to the originating $label workspace', async ({ view, category, label, href }) => {
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({ view, category }) }))
+    expect(screen.getByRole('link', { name: C.backTo(label) })).toHaveAttribute('href', href)
+  })
+
+  it('keeps the established category return for a direct notification or shared link', async () => {
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({ source: 'watch-email' }) }))
+    expect(screen.getByRole('link', { name: C.backTo(C.overview) })).toHaveAttribute('href', '/sites/site-1?category=conversion#category-conversion')
+  })
+
+  it('carries the originating workspace into related verification details', async () => {
+    const home = await mocks.loadSiteHome()
+    mocks.loadSiteHome.mockResolvedValue({ ...home, outcomes: [{ ...home.outcomes[0], id: 'checkout', name: 'Checkout', flagId: 'flag-1' }] })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({ view: 'pages' }) }))
+    expect(screen.getByRole('link', { name: 'Checkout' })).toHaveAttribute('href', '/sites/site-1/outcomes/checkout?view=pages')
+  })
+
   it('names how the attempt was recorded and uses the shared UTC evidence clock', async () => {
     const clock = formatEvidenceTimestamp(ATTEMPTED)
     render(
@@ -141,7 +168,30 @@ describe('Flag verification attempts', () => {
     expect(screen.getByRole('button', { name: 'Copy fix prompt' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Check now' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
-    expect(screen.getByRole('link', { name: '/products/tote' })).toHaveAttribute('href', 'https://shop.example/products/tote')
+    expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-site', 'site-1')
+    expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-flag', 'flag-1')
+    expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-source', 'flag-1')
+    expect(screen.getByRole('link', { name: C.open('https://shop.example/products/tote') })).toHaveAttribute('href', 'https://shop.example/products/tote')
+  })
+
+  it.each(['still_open', 'could_not_verify'])('shows the recorded %s check in the full Flag view', async result => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
+      verificationFeedback: { result, checkedAt: '2026-11-03T00:00:00.000Z' } } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    const notice = screen.getByText(result === 'still_open' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive, { exact: false })
+    expect(notice).toBeVisible()
+    expect(notice.querySelector('time')).toHaveAttribute('datetime', '2026-11-03T00:00:00.000Z')
+  })
+
+  it('gives an incomparable historical attempt an uncertain label and icon even if its stored outcome says improved', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
+      attempts: [{ ...attempt('historical', 'site', 'IMPROVED'), comparable: false }] } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    const label = screen.getByText(verificationResultLabel('incomparable_scope'))
+    expect(label).toBeVisible()
+    expect(label.closest('li')?.querySelector('svg')).not.toHaveClass('text-success')
   })
 
   it('does not give a browser-measured input Flag a PageSpeed provenance or action', async () => {
@@ -153,17 +203,24 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByRole('link', { name: 'Run a new PageSpeed measurement' })).not.toBeInTheDocument()
   })
 
-  it('copies instructions for the displayed capture even when its incident can advance', async () => {
+  it.each(['displayed-capture', 'grouped-incident'])('keeps the requested repair scope when the loaded Flag has an incident identity: %s', async reference => {
     const detail = await mocks.loadSiteBoardFlag()
     mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
       id: 'grouped-incident', sourceFlagId: 'displayed-capture' } })
-    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'Instructions for the displayed capture', handoff: null }) })
+    const fetch = vi.fn(async (_url, options) => Response.json(JSON.parse(options.body).action === 'prepare'
+      ? { ok: true, prompt: 'Canonical instructions for the requested scope', sourceFlagId: 'displayed-capture', referenceFlagId: reference, promptHash: 'a'.repeat(64) }
+      : { ok: true, prompt: 'Canonical instructions for the requested scope', handoff: {
+        flagId: 'displayed-capture', action: 'HANDOFF_COPIED', improvementId: 'grouped-incident', sourceReviewId: 'audit-1',
+      } }))
     vi.stubGlobal('fetch', fetch)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
-    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'grouped-incident' }), searchParams: Promise.resolve({}) }))
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: reference }), searchParams: Promise.resolve({}) }))
     fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt' }))
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/flags/displayed-capture/fix', expect.anything()))
-    expect(fetch).not.toHaveBeenCalledWith('/api/sites/site-1/flags/grouped-incident/fix', expect.anything())
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(`/api/sites/site-1/flags/${reference}/fix`, expect.objectContaining({ body: JSON.stringify({ action: 'copy', promptHash: 'a'.repeat(64) }) })))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Canonical instructions for the requested scope')
+    const repairCalls = fetch.mock.calls.filter(([url]) => String(url).endsWith('/fix'))
+    expect(repairCalls).toHaveLength(2)
+    expect(repairCalls.every(([url]) => url === `/api/sites/site-1/flags/${reference}/fix`)).toBe(true)
   })
 
   it('does not call an unproven recovery recovered when the completed audit is still on file', async () => {
@@ -193,6 +250,9 @@ describe('Flag verification attempts', () => {
   })
 
   it('keeps anonymous evidence visible while requiring sign-in for fixes and private attempts', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
+      verificationFeedback: { result: 'still_open', checkedAt: '2026-11-03T00:00:00.000Z' } } })
     mocks.loadSiteHome.mockResolvedValue({ ...siteViewFixture(), actions: siteViewerActions(false) })
     mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'site-1' } } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
@@ -202,8 +262,29 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByRole('button', { name: 'Copy fix prompt' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Verification history' })).not.toBeInTheDocument()
-    for (const label of ['Copy fix prompt', 'View prompt']) {
+    expect(screen.queryByText(C.flagVerificationStillOpen, { exact: false })).not.toBeInTheDocument()
+    for (const label of [SITE_BOARD_COPY.copyPrompt, SITE_BOARD_COPY.viewPrompt]) {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
     }
+  })
+
+  it('retains its recorded primary page when no additional affected paths were projected', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, affectedPaths: [] } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    const scope = screen.getByRole('heading', { name: SITE_BOARD_COPY.flagScope }).parentElement!
+    const link = within(scope).getByRole('link', { name: C.open(detail.flag.pageUrl) })
+    expect(link).toHaveAttribute('href', detail.flag.pageUrl)
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link).toHaveTextContent('/products/tote')
+  })
+
+  it.each(['javascript:alert(1)', 'https://user:secret@example.com/', '/relative-page'])('retains an invalid affected address as non-interactive scope: %s', async url => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, affectedPaths: [url] } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    const scope = screen.getByRole('heading', { name: SITE_BOARD_COPY.flagScope }).parentElement!
+    expect(within(scope).queryByRole('link')).toBeNull()
+    expect(screen.getByText('The cart stayed empty.')).toBeVisible()
   })
 })

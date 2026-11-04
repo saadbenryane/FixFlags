@@ -7,6 +7,8 @@ import { loadSiteSummaries, loadSiteNotificationSummaries } from '../list-sites'
 import { loadSiteSummaryReferences } from '../summary-references'
 import { includeLegacySiteAnalyses } from '../analysis-scope'
 import { loadLegacySiteAnalysisIds } from '../legacy-analysis'
+import { customerAttention } from '@/lib/sites/presentation'
+import { siteSummariesSchema } from '@/lib/sites/summary-contract'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 run('account summaries with retained analysis history', () => {
@@ -31,6 +33,39 @@ run('account summaries with retained analysis history', () => {
 
   const spec = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: url,
     environment: 'production', checks: {}, outcomes: [], verificationTarget: null }
+
+  it('keeps confirmed uptime attention ahead of other work and retains ordinary Flags after recovery', async () => {
+    const now = new Date()
+    await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: new Date(now.getTime() + 86400_000) } })
+    // Synthetic recorded observations exercise shared reads and ordering, not a
+    // live outage, provider notification or executed website check.
+    const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, state: 'offline',
+      lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000) } })
+    const incident = await prisma.uptimeIncident.create({ data: { monitorId: monitor.id, version: 1, targetUrl: url,
+      startedAt: now, confirmedAt: now, reason: 'response_error' } })
+    const audit = await prisma.audit.create({ data: { projectId, userId, url, status: 'COMPLETED', completedAt: now, executionSpec: spec } })
+    await prisma.flag.create({ data: { auditId: audit.id, source: 'DETERMINISTIC', rubric: 'REACH', severity: 'IMPORTANT',
+      checkId: 'title-missing', problem: 'Page title is missing', evidence: 'The captured title is empty.',
+      whyItMatters: 'Visitors cannot identify the page.', fix: 'Add a descriptive title.', pageUrl: url, confidence: 1, position: 0 } })
+    const peer = await prisma.project.create({ data: { userId, name: 'Checking Site', url: 'https://second.example/', canonicalHost: 'second.example' } })
+    await prisma.audit.create({ data: { projectId: peer.id, userId, url: peer.url, status: 'CHECKING', executionSpec: { ...spec, targetUrl: peer.url } } })
+    const offline = siteSummariesSchema.parse(await loadSiteSummaries(userId))
+    expect(offline[0].id).toBe(projectId)
+    expect(offline[0].presentation.flags.count).toBe(1)
+    expect(customerAttention(offline[0].presentation)).toEqual({ text: 'Offline', tone: 'attention' })
+    await prisma.uptimeMonitor.update({ where: { id: monitor.id }, data: { lastCheckedAt: new Date(now.getTime() - 3600_000) } })
+    const uncertain = siteSummariesSchema.parse(await loadSiteSummaries(userId))
+    expect(uncertain[0].id).toBe(projectId)
+    expect(customerAttention(uncertain[0].presentation)).toEqual({ text: 'Needs attention', tone: 'attention' })
+    await prisma.uptimeIncident.update({ where: { id: incident.id }, data: { recoveredAt: new Date() } })
+    await prisma.uptimeMonitor.update({ where: { id: monitor.id }, data: { state: 'online', lastCheckedAt: new Date() } })
+    const recovered = siteSummariesSchema.parse(await loadSiteSummaries(userId))
+    expect(recovered[0].id).toBe(peer.id)
+    const retained = recovered.find(site => site.id === projectId)!
+    expect(retained.presentation.flags.count).toBe(1)
+    expect(retained.presentation.result.source).toBeUndefined()
+    expect(customerAttention(retained.presentation)).toEqual({ text: '1 Flag', tone: 'attention' })
+  })
 
   it('preserves snapshot, request and claimed-analysis authority before loading evidence', async () => {
     expect(await loadSiteSummaryReferences([])).toEqual([])

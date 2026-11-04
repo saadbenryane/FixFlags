@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { classifyUptimeResponse, probeUptime } from './probe'
 import { classifyPublicRequestFailure } from '@/lib/audit/http-failure'
 import { AuditUrlError, PublicRequestError } from '@/lib/audit/url'
+import { PublicResponseBodyError } from '@/lib/audit/http-evidence'
 
 const document = { body: '<html>Website</html>', finalUrl: 'https://example.com/', statusCode: 200, headers: {}, complete: true, redirects: [] }
 describe('public HTTP reachability', () => {
@@ -24,6 +25,14 @@ describe('public HTTP reachability', () => {
     expect(await probeUptime(document.finalUrl, fetch)).toMatchObject({ result: 'ONLINE', statusCode: 200, finalUrl: document.finalUrl })
     expect(fetch).toHaveBeenCalledWith(document.finalUrl, { timeoutMs: 8000, maxBytes: 64_000, maxRedirects: 5, publicOnly: true,
       onRequestStart: expect.any(Function) })
+  })
+  it.each(['ECONNRESET', 'ETIMEDOUT', 'UND_ERR_HEADERS_TIMEOUT'])('does not mistake interrupted response content for a pre-response outage: %s', async code => {
+    const failure = new TypeError('Interrupted body', { cause: { code } })
+    expect(classifyPublicRequestFailure(failure).result).toBe('FAILED')
+    const partial = new PublicResponseBodyError({ body: '<h1>Partial content', statusCode: 200,
+      finalUrl: document.finalUrl, headers: { 'content-type': 'text/html' }, redirects: [] }, failure)
+    expect(await probeUptime(document.finalUrl, async () => { throw partial }))
+      .toMatchObject({ result: 'UNKNOWN', statusCode: 200, finalUrl: document.finalUrl })
   })
   it.each([
     ['CERT_HAS_EXPIRED', 'certificate_expired'], ['CERT_NOT_YET_VALID', 'certificate_not_yet_valid'],

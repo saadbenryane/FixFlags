@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { cruxEvidenceSchema } from '../crux'
 import { renderedCopySchema } from '../browser/rendered-copy'
 import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
+import { publicPageSignalsSchema } from '../browser/public-page-signals'
 import { publicDocumentSchema, SITEMAP_DOCUMENT_LIMIT, SITEMAP_URL_LIMIT } from '../search/contracts'
 export { publicDocumentSchema } from '../search/contracts'
 import { trackingEvidenceSchema } from '../tracking/contracts'
@@ -19,6 +20,7 @@ import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
 import { pageSpeedFailureSchema } from '../pagespeed'
 import type { ScreenshotResult } from '../screenshot'
+import { readArtifact, taskIsSettled } from './contracts'
 
 const text = z.string().max(1_000_000), strings = z.array(text).max(10_000)
 const count = z.number().finite().nonnegative()
@@ -52,6 +54,7 @@ export const pageSpeedSchema = z.object({
 }).strict() satisfies z.ZodType<PageSpeedResult>
 const object = z.record(z.string(), jsonValueSchema)
 export const screenshotSnapshotSchema = z.object({
+  publicTrustSignals: publicPageSignalsSchema.nullable().optional(),
   desktopUrl: text.nullable(), mobileUrl: text.nullable(), desktopHtml: text.nullable(),
   desktopHtmlTruncated: z.boolean().optional(), desktopHtmlCompacted: z.boolean().optional(), renderedSearchSnapshot: renderedSearchSnapshotSchema.optional(),
   desktopBase64: z.string().max(8_000_000).nullable(), mobileBase64: z.string().max(8_000_000).nullable(),
@@ -80,7 +83,11 @@ export function readScreenshotSnapshot(value: unknown): ScreenshotResult {
 }
 const metadataFailureSchema = z.object({ code: z.string().regex(/^[A-Z][A-Z0-9_]{0,79}$/), attempts: z.number().int().min(1).max(2) }).strict()
 export type MetadataFailure = z.infer<typeof metadataFailureSchema>
-export const httpArtifactSchema = z.object({ document: publicDocumentSchema, metadata: pageMetadataSchema.nullable(), metadataFailure: metadataFailureSchema.optional() }).strict()
+export const httpNavigationSchema = pageMetadataSchema.pick({ links: true }).extend({
+  documentUrl: z.string().url(), linkBaseUrl: z.string().url(), complete: z.boolean(),
+}).strict()
+export const httpArtifactSchema = z.object({ document: publicDocumentSchema, metadata: pageMetadataSchema.nullable(), metadataFailure: metadataFailureSchema.optional(),
+  navigation: httpNavigationSchema.optional() }).strict()
 export const resourceArtifactSchema = z.object({
   robots: publicDocumentSchema, sitemaps: z.array(publicDocumentSchema).max(SITEMAP_DOCUMENT_LIMIT), sitemapUrls: z.array(z.string().url()).max(SITEMAP_URL_LIMIT),
   complete: z.boolean(), declaredSitemaps: z.array(z.string()).max(SITEMAP_URL_LIMIT),
@@ -93,3 +100,18 @@ export const captureArtifactSchema = z.object({ pageId: z.string().min(1), snaps
 export const speedArtifactSchema = z.object({ desktop: pageSpeedSchema.nullable(), mobile: pageSpeedSchema.nullable(),
   desktopError: text.optional(), mobileError: text.optional(),
   desktopFailure: pageSpeedFailureSchema.optional(), mobileFailure: pageSpeedFailureSchema.optional() }).strict()
+
+type CollectedTask = { workKind: string | null; workState: string | null; workResult: unknown }
+/** A settled failed lab attempt can retain independent field observations.
+ * An unfinished retry cannot become final evidence through this reader. */
+export function hasSettledPageSpeedEvidence(task: CollectedTask) {
+  return task.workKind === 'pagespeed' && taskIsSettled(task.workState) && task.workResult != null
+}
+export function readSettledPageSpeedEvidence(tasks: Iterable<CollectedTask>) {
+  const values = [...tasks].filter(hasSettledPageSpeedEvidence)
+    .map(task => speedArtifactSchema.parse(readArtifact(task.workResult, 'pagespeed').data))
+  return values.length ? { desktop: values.find(value => value.desktop)?.desktop ?? null,
+    mobile: values.find(value => value.mobile)?.mobile ?? null,
+    desktopError: values.find(value => value.desktopError)?.desktopError,
+    mobileError: values.find(value => value.mobileError)?.mobileError } : null
+}

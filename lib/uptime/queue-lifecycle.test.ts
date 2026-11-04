@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  workerClose: vi.fn(), queueClose: vi.fn(), workerQuit: vi.fn(), producerQuit: vi.fn(), add: vi.fn(),
+  workerClose: vi.fn(), queueClose: vi.fn(), workerDisconnect: vi.fn(), producerDisconnect: vi.fn(), add: vi.fn(),
   getState: vi.fn(), retry: vi.fn(),
 }))
 vi.mock('bullmq', () => ({
@@ -16,8 +16,8 @@ vi.mock('bullmq', () => ({
   },
 }))
 vi.mock('@/lib/queue/redis', () => ({
-  createWorkerRedis: () => ({ quit: mocks.workerQuit }),
-  createQueueRedis: () => ({ quit: mocks.producerQuit }),
+  createWorkerRedis: () => ({ status: 'ready', disconnect() { mocks.workerDisconnect(); this.status = 'end' } }),
+  createQueueRedis: () => ({ status: 'ready', disconnect() { mocks.producerDisconnect(); this.status = 'end' } }),
 }))
 import { enqueueUptimeProbe, startUptimeWorker } from './queue'
 
@@ -25,8 +25,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.workerClose.mockResolvedValue(undefined)
   mocks.queueClose.mockResolvedValue(undefined)
-  mocks.workerQuit.mockResolvedValue(undefined)
-  mocks.producerQuit.mockResolvedValue(undefined)
   mocks.getState.mockResolvedValue('waiting')
   mocks.retry.mockResolvedValue(undefined)
   mocks.add.mockResolvedValue({ getState: mocks.getState, retry: mocks.retry })
@@ -58,18 +56,18 @@ describe('uptime queue lifecycle', () => {
     try {
       expect(mocks.workerClose).toHaveBeenCalledOnce()
       await Promise.resolve()
-      expect(mocks.workerQuit).not.toHaveBeenCalled()
+      expect(mocks.workerDisconnect).toHaveBeenCalledOnce()
       expect(mocks.queueClose).not.toHaveBeenCalled()
       const scheduledAt = new Date().toISOString()
       await enqueueUptimeProbe({ monitorId: 'monitor_1', version: 1, scheduledAt, attempt: 1 }, new Date())
       expect(mocks.add).toHaveBeenCalledOnce()
-      expect(mocks.producerQuit).not.toHaveBeenCalled()
+      expect(mocks.producerDisconnect).not.toHaveBeenCalled()
     } finally {
       finishMaintenance()
       await closing
     }
     expect(mocks.queueClose).toHaveBeenCalledOnce()
-    expect(mocks.workerQuit).toHaveBeenCalledOnce()
-    expect(mocks.producerQuit).toHaveBeenCalledOnce()
+    expect(mocks.workerDisconnect).toHaveBeenCalledOnce()
+    expect(mocks.producerDisconnect).toHaveBeenCalledOnce()
   })
 })

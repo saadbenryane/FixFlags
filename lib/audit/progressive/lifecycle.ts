@@ -1,15 +1,16 @@
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY } from '../check-registry'
+import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { journeyAssessmentSchema, hasIncompleteJourneyAssessment, type JourneyAssessment } from '../journey/evaluation-grounding'
 import { Prisma, type AuditExecutionTask } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import { diagnosticSourceWhere } from '@/lib/sites/domain/verification-source'
+import { readDiagnosticSources } from '@/lib/sites/domain/verification-source'
 import { executionWrite } from '../execution-ownership'
 import { loadTaskGraph, persistTaskPlan } from './engine'
 import { serializeArtifact, readArtifact, TaskFailure, prescriptionResultSchema, type TaskPlan, type TaskArtifact, MAX_TASKS_PER_AUDIT } from './contracts'
 import { pageTaskPlan } from './graph'
-import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, screenshotSnapshotSchema } from './snapshots'
+import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, readSettledPageSpeedEvidence, screenshotSnapshotSchema } from './snapshots'
 import { browserEvidence, captureEvidence, searchArtifactSchema } from './evaluators'
 import { flagSchema, commitFindings, recordedTaskFindings } from './results'
 import { OBSERVATION_TARGETS, commitObservation, nextObservationBatch, observationArtifact, observationBatchStart, observationProgressSchema, observationTotal } from './observation-progress'
@@ -19,7 +20,9 @@ import { detectPagePurpose } from '../page-purpose'
 import { asReviewDepth, planReviewTargets, openCheckCeilingForDepth, buildReviewCoverage } from '../review-depth'
 import { openCheckDestinations } from '../open-check'
 import { navigationDestinationKey } from '../url-identity'
-import { capturedPageLinks, publicLinkObservations, publicLinkUrls, resolvedPageLinks } from '../checks/public-links'
+import { capturedPageLinks, publicLinkUrls, resolvedPageLinks } from '../checks/public-links'
+import { documentEvidenceWithheld } from '../browser/document-evidence'
+import { DISCOVERY_BATCH_SIZE, discoveryMemberSchema, planRecordedDiscoveryObservations, discoveryObservations } from './discovery'
 import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
 import { checkReceiptSchema } from '../checks/receipt'
 import { commitCheckReceipt } from './results'
@@ -60,7 +63,7 @@ const findingsSchema = z.object({ flags: z.array(flagSchema).max(500) }).strict(
 const crossPageSchema = findingsSchema.extend({ receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const discoverySchema = z.object({ flags: z.array(flagSchema).max(500),
   pages: z.array(z.string().url()).max(24), openCheckCount: z.number().int().nonnegative().max(120), truncated: z.boolean(),
-  receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
+  receipts: z.array(checkReceiptSchema).max(24).optional(), observationProgress: observationProgressSchema.optional() }).strict()
 const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), bindingKey: z.string() }).strict()
 const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), assessments: z.array(journeyAssessmentSchema).max(6).optional(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional(), observationProgress: observationProgressSchema.optional() }).strict()
 const usageSchema = z.object({ inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), model: z.string(),
@@ -94,6 +97,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
           'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl',
           'collectionRestrictions', "workResult"->'data'->'snapshot'->'collectionRestrictions',
           'renderedSearchSnapshot', CASE WHEN "workResult"->'data'->'snapshot'->'renderedSearchSnapshot' IS NOT NULL THEN jsonb_build_object(
+            'finalUrl', "workResult"->'data'->'snapshot'->'renderedSearchSnapshot'->'finalUrl',
             'documentBaseUrl', "workResult"->'data'->'snapshot'->'renderedSearchSnapshot'->'documentBaseUrl',
             'sections', jsonb_build_object('links', "workResult"->'data'->'snapshot'->'renderedSearchSnapshot'->'sections'->'links')) ELSE NULL END,
           'renderedScope', "workResult"->'data'->'snapshot'->'renderedScope')))
@@ -101,8 +105,11 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
         'pageId', "workResult"->'data'->'pageId', 'snapshot', jsonb_build_object(
           'desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl', 'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
       WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata',
-        'metadataFailure', "workResult"->'data'->'metadataFailure'))
-      WHEN "workKind" IN ('journeys', 'cross-page', 'slow-replay') THEN jsonb_set("workResult", '{data}', jsonb_build_object(
+        'metadataFailure', "workResult"->'data'->'metadataFailure', 'navigation', "workResult"->'data'->'navigation'))
+      WHEN "workKind" = 'pagespeed' THEN jsonb_set(jsonb_set("workResult",
+        '{data,desktop,raw}', '{}'::jsonb, false), '{data,mobile,raw}', '{}'::jsonb, false)
+      WHEN "workKind" IN ('check', 'flow', 'journeys', 'cross-page', 'slow-replay')
+        AND jsonb_typeof("workResult"->'data') = 'object' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'flags', "workResult"->'data'->'flags', 'observationProgress', CASE WHEN "workResult"->'data'->'observationProgress' IS NOT NULL
           THEN jsonb_build_object('completed', "workResult"->'data'->'observationProgress'->'completed') ELSE NULL END))
       WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'fixture-setup', 'automatic-accounts', 'finalize') THEN NULL
@@ -144,20 +151,18 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
     const browser = browserTask?.workResult ? browserArtifactSchema.extend({ metadataFailure: browserArtifactSchema.shape.metadataFailure.nullish(), preview: pagePreviewSchema.nullish(), snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true, renderedScope: true }).extend({
       renderedScope: screenshotSnapshotSchema.shape.renderedScope.nullable(),
       collectionRestrictions: screenshotSnapshotSchema.shape.collectionRestrictions.nullish(),
-      renderedSearchSnapshot: renderedSearchSnapshotSchema.pick({ documentBaseUrl: true }).extend({
+      renderedSearchSnapshot: renderedSearchSnapshotSchema.pick({ finalUrl: true, documentBaseUrl: true }).extend({
+        finalUrl: renderedSearchSnapshotSchema.shape.finalUrl.nullish(),
         documentBaseUrl: renderedSearchSnapshotSchema.shape.documentBaseUrl.nullish(),
         sections: renderedSearchSnapshotSchema.shape.sections.pick({ links: true }),
       }).nullish(),
     }) }).parse(readArtifact(browserTask.workResult, 'browser').data) : null
     const captureTask = find('captures')
     const captures = captureTask?.workResult ? captureArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true }) }).parse(readArtifact(captureTask.workResult, 'captures').data) : null
-    const response = httpTask?.workResult ? httpArtifactSchema.pick({ metadata: true }).extend({ metadataFailure: httpArtifactSchema.shape.metadataFailure.nullish() }).parse(readArtifact(httpTask.workResult, 'http').data) : null
+    const response = httpTask?.workResult ? httpArtifactSchema.pick({ metadata: true }).extend({ metadataFailure: httpArtifactSchema.shape.metadataFailure.nullish(),
+      navigation: httpArtifactSchema.shape.navigation.nullish() }).parse(readArtifact(httpTask.workResult, 'http').data) : null
     const metadata = browser?.metadata ?? response?.metadata
-    const speedResults = pageTasks.filter(task => task.workKind === 'pagespeed' && task.workState === 'COMPLETED' && task.workResult)
-      .map(task => speedArtifactSchema.parse(readArtifact(task.workResult, 'pagespeed').data))
-    const speed = speedResults.length ? { desktop: speedResults.find(item => item.desktop)?.desktop ?? null,
-      mobile: speedResults.find(item => item.mobile)?.mobile ?? null,
-      desktopError: speedResults.find(item => item.desktopError)?.desktopError, mobileError: speedResults.find(item => item.mobileError)?.mobileError } : null
+    const speed = readSettledPageSpeedEvidence(pageTasks)
     const search = searchTask?.workResult ? searchArtifactSchema.parse(readArtifact(searchTask.workResult, 'search').data) : null
     const judgeArtifact = judgeTask?.workResult ? readArtifact(judgeTask.workResult, 'judge') : null
     const judged = judgeArtifact ? judgeSchema.parse(judgeArtifact.data) : null
@@ -175,7 +180,8 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       preview: browser?.preview ?? undefined, desktop: speed?.desktop ?? null, mobile: speed?.mobile ?? null,
       navigation: capturedPageLinks(browser?.snapshot, browser?.metadata ?? null) ?? capturedPageLinks({
         collectionRestrictions: browser?.snapshot.collectionRestrictions,
-      }, response?.metadata ?? null),
+      }, response?.metadata ?? null) ?? (response?.navigation ? { ...response.navigation,
+        complete: response.navigation.complete && !documentEvidenceWithheld(browser?.snapshot.collectionRestrictions) } : null),
       renderedScope: browser?.snapshot.renderedScope ?? undefined,
       desktopError: speed?.desktopError, mobileError: speed?.mobileError,
       desktopScreenshot: Boolean(captures?.snapshot.desktopUrl ?? browser?.snapshot.desktopUrl), mobileScreenshot: Boolean(captures?.snapshot.mobileUrl ?? browser?.snapshot.mobileUrl),
@@ -254,54 +260,70 @@ export const lifecycleHandlers: TaskHandler[] = [
         data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(artifact.collectedAt), lastDryRunResult: result, authorizedAt: null } })
     },
   },
-  { kind: 'discovery', replay: 'read_only', timeoutMs: 45_000,
+  { kind: 'discovery', replay: 'read_only', timeoutMs: 45_000, continuation: true,
     validateResult: artifact => { discoverySchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
+      const start = observationBatchStart(context, artifact, DISCOVERY_BATCH_SIZE)
+      const committed = start === null ? artifact : await commitObservation(context, artifact, tx, (context.input.module ?? 'first') + ':batch:' + start)
       const result = discoverySchema.parse(artifact.data)
-      for (const receipt of result.receipts ?? []) await commitCheckReceipt(context, receipt, tx, ':public-links:' + (context.input.module ?? 'first'))
-      await commitFindings(context, artifact, tx)
+      for (const receipt of result.receipts ?? []) await commitCheckReceipt(context, receipt, tx,
+        ':public-links:' + (context.input.module ?? 'first') + (start === null ? '' : ':batch:' + start))
+      await commitFindings(context, committed, tx)
+      return committed
     },
     async evaluate(context) {
       const spec = readExecutionSpec(context.audit.executionSpec)
       if (!spec) throw new TaskFailure('EXECUTION_SPEC_INVALID', false)
-      const pages = await recordedPageEvidence(context.audit.id), primary = pages.find(page => page.primary && page.url === spec.targetUrl)
-      const depth = asReviewDepth(spec.reviewDepth ?? context.audit.reviewDepth)
-      const plan = planReviewTargets({ pastedUrl: spec.targetUrl, depth, pastedLinks: primary?.navigation ? resolvedPageLinks(primary.url, primary.navigation) : [],
-        retainedUrls: spec.monitoringPages,
-        linkedPageLinks: context.input.module === 'second' ? pages.filter(page => page !== primary).map(page => ({ pageUrl: page.url, links: page.navigation ? resolvedPageLinks(page.url, page.navigation) : [] })) : [] })
-      const existing = await loadTaskGraph(context.audit.id)
-      const allPlans: TaskPlan[] = existing.map(task => ({ kind: task.workKind as TaskPlan['kind'], key: task.targetKey.slice(5),
-        scope: task.scopeKey, input: task.workInput as TaskPlan['input'], dependencies: task.workDependencies }))
-      const known = new Set(existing.filter(task => task.workKind === 'browser').map(task => task.pageUrl ? navigationDestinationKey(task.pageUrl) : null))
-      let nextPosition = Math.max(-1, ...allPlans.map(task => task.input.position)) + 1
-      for (const url of plan.reviewUrls) if (!known.has(navigationDestinationKey(url)) && nextPosition < 24) {
-        allPlans.push(...pageTaskPlan({ pageUrl: url, primary: false, position: nextPosition++, role: 'linked' }, spec))
-        known.add(navigationDestinationKey(url))
-      }
-      if (depth === 3 && context.input.module !== 'second' && !allPlans.some(task => task.key === 'discovery:second')) allPlans.push({ kind: 'discovery', key: 'discovery:second', scope: 'site:second',
-        input: { ...context.input, module: 'second' }, dependencies: ['discovery', ...allPlans.filter(task => task.input.position > 0 && ['browser', 'http'].includes(task.kind)).map(task => task.key)] })
-      for (const task of allPlans) {
-        if (task.kind === 'cross-page') task.dependencies = allPlans.filter(item => ['discovery', 'search'].includes(item.kind)).map(item => item.key)
-        if (task.kind === 'finalize') task.dependencies = allPlans.filter(item => item.kind !== 'finalize').map(item => item.key)
-      }
-      // Extend summary dependencies before this discovery checkpoint becomes settled.
-      await persistTaskPlan(context.audit.id, allPlans)
-      const opened = await openCheckDestinations(plan.openCheckUrls, {
-        origin: spec.targetUrl, ceiling: openCheckCeilingForDepth(depth),
-        deadline: context.deadline,
-      })
-      const sources = context.input.module === 'second' ? pages : primary ? [primary] : []
-      const observations = sources.map(page => {
-        const urls = page.navigation ? publicLinkUrls(page.url, page.navigation) : []
-        const checked = publicLinkObservations(page.url, urls, opened.results, Boolean(page.navigation && page.navigation.complete !== false))
-        return { ...checked, receipt: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'seo',
-          pageUrl: page.url, passed: checked.complete && checked.flags.length === 0, applicable: true,
-          assertions: checked.assertions, complete: checked.complete, limitation: checked.limitation,
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() } }) }
-      })
-      return serializeArtifact('discovery', discoverySchema.parse({ pages: plan.reviewUrls,
-        openCheckCount: opened.results.length, truncated: plan.truncated || opened.truncated || !primary?.navigation || sources.some(page => page.navigation?.complete !== true),
-        flags: observations.flatMap(result => result.flags), receipts: observations.map(result => result.receipt) }))
+      const previous = context.task.workResult == null ? null : discoverySchema.parse(readArtifact(context.task.workResult, 'discovery').data)
+      let reviewPages = previous?.pages ?? [], truncated = previous?.truncated ?? false
+      const batch = await nextObservationBatch(context, 'discovery', discoveryMemberSchema, async () => {
+        const pages = await recordedPageEvidence(context.audit.id), primary = pages.find(page => page.primary && page.url === spec.targetUrl)
+        const depth = asReviewDepth(spec.reviewDepth ?? context.audit.reviewDepth)
+        const history = context.audit.projectId ? { projectId: context.audit.projectId, environment: spec.environment, excludeAuditId: context.audit.id } : undefined
+        if (spec.scope === 'CATEGORY' && spec.category) {
+          // Recheck public destinations from the frozen page inventory without
+          // promoting newly linked destinations into browser or evaluator work.
+          const sources = spec.category.pages.map(url => ({ url, navigation: pages.find(page => page.url === url)?.navigation ?? null }))
+          const cohort = await planRecordedDiscoveryObservations({ origin: spec.targetUrl, ceiling: openCheckCeilingForDepth(depth), sources,
+            urls: sources.flatMap(source => source.navigation ? publicLinkUrls(source.url, source.navigation) : []) }, history)
+          reviewPages = spec.category.pages
+          truncated = cohort.truncated
+          return cohort.members
+        }
+        const plan = planReviewTargets({ pastedUrl: spec.targetUrl, depth, pastedLinks: primary?.navigation ? resolvedPageLinks(primary.url, primary.navigation) : [],
+          retainedUrls: spec.monitoringPages,
+          linkedPageLinks: context.input.module === 'second' ? pages.filter(page => page !== primary).map(page => ({ pageUrl: page.url, links: page.navigation ? resolvedPageLinks(page.url, page.navigation) : [] })) : [] })
+        const existing = await loadTaskGraph(context.audit.id)
+        const allPlans: TaskPlan[] = existing.map(task => ({ kind: task.workKind as TaskPlan['kind'], key: task.targetKey.slice(5),
+          scope: task.scopeKey, input: task.workInput as TaskPlan['input'], dependencies: task.workDependencies }))
+        const known = new Set(existing.filter(task => task.workKind === 'browser').map(task => task.pageUrl ? navigationDestinationKey(task.pageUrl) : null))
+        let nextPosition = Math.max(-1, ...allPlans.map(task => task.input.position)) + 1
+        for (const url of plan.reviewUrls) if (!known.has(navigationDestinationKey(url)) && nextPosition < 24) {
+          allPlans.push(...pageTaskPlan({ pageUrl: url, primary: false, position: nextPosition++, role: 'linked' }, spec))
+          known.add(navigationDestinationKey(url))
+        }
+        if (depth === 3 && context.input.module !== 'second' && !allPlans.some(task => task.key === 'discovery:second')) allPlans.push({ kind: 'discovery', key: 'discovery:second', scope: 'site:second',
+          input: { ...context.input, module: 'second' }, dependencies: ['discovery', ...allPlans.filter(task => task.input.position > 0 && ['browser', 'http'].includes(task.kind)).map(task => task.key)] })
+        for (const task of allPlans) {
+          if (task.kind === 'cross-page') task.dependencies = allPlans.filter(item => ['discovery', 'search'].includes(item.kind)).map(item => item.key)
+          if (task.kind === 'finalize') task.dependencies = allPlans.filter(item => item.kind !== 'finalize').map(item => item.key)
+        }
+        // Extend summary dependencies before this discovery checkpoint becomes settled.
+        await persistTaskPlan(context.audit.id, allPlans)
+        const sources = context.input.module === 'second' ? pages : primary ? [primary] : []
+        const cohort = await planRecordedDiscoveryObservations({ origin: spec.targetUrl, urls: plan.openCheckUrls,
+          ceiling: openCheckCeilingForDepth(depth), sources }, history)
+        reviewPages = plan.reviewUrls
+        truncated = plan.truncated || cohort.truncated || !primary?.navigation
+        return cohort.members
+      }, DISCOVERY_BATCH_SIZE)
+      const urls = batch.members.flatMap(member => member.kind === 'destination' ? [member.url] : [])
+      const opened = await openCheckDestinations(urls, { origin: spec.targetUrl, ceiling: DISCOVERY_BATCH_SIZE, deadline: context.deadline })
+      const observations = discoveryObservations(batch.members, opened.results,
+        { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() })
+      return observationArtifact('discovery', discoverySchema.parse({ pages: reviewPages,
+        openCheckCount: (previous?.openCheckCount ?? 0) + opened.results.length, truncated,
+        flags: observations.flatMap(result => result.flags), receipts: observations.map(result => result.receipt) }), batch.progress)
     },
   },
   { kind: 'cross-page', replay: 'read_only', timeoutMs: 12_000,
@@ -370,8 +392,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const metadata = browserEvidence(context)?.metadata ?? null
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
       const phases = spec?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.overlayPhases?.filter(phase => phase.startsWith('journey_'))
-      const sources = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: diagnosticSourceWhere(spec, context.audit.projectId),
-        take: spec?.verificationSourceFlagIds?.length ?? 100, select: { evidenceTargets: true, verificationRule: true, supportingObservations: true } }) : []
+      const sources = target?.kind === 'DIAGNOSTIC' ? await readDiagnosticSources(prisma, spec, context.audit.projectId) : []
       const expected = sources.flatMap(flag => scopedOverlayRule(flag.verificationRule) && Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
         const parsed = z.object({ context: z.string(), selector: z.string(), label: z.string() }).safeParse(value)
         if (!parsed.success || !parsed.data.context.startsWith('overlay:' + capturePageKey(context.input.pageUrl) + ':') || !phases?.includes(parsed.data.context.split(':')[3])) return []

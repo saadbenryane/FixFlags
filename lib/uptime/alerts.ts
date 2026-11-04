@@ -21,7 +21,7 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
   // Preserve the caller's due-time reference while advancing across slow sends.
   const currentTime = () => new Date(now.getTime() + Math.max(0, Date.now() - startedAt))
   const receipts = await prisma.uptimeNotification.findMany({ where: {
-    incident: { monitor: { project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } } },
+    incident: { monitor: { project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE', emailVerified: true } } } },
     ...(onlyReceiptId ? { id: onlyReceiptId } : {}),
     status: { in: ['PENDING', 'FAILED', 'SENDING'] }, nextAttemptAt: { lte: now },
     AND: [{ OR: [{ attempts: { lt: prisma.uptimeNotification.fields.maxAttempts } }, { status: 'SENDING' }] }],
@@ -41,7 +41,7 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           watchPausedAt: project.watchPausedAt,
           watchInterval: project.watchInterval ? { not: null } : null,
           notificationLevel: project.notificationLevel, notifyOnRecovery: project.notifyOnRecovery,
-          user: { id: project.user.id, email: project.user.email, lifecycleStatus: project.user.lifecycleStatus } } } } }
+          user: { id: project.user.id, email: project.user.email, emailVerified: true, lifecycleStatus: project.user.lifecycleStatus } } } } }
     const target = normalizeAuditUrl(project.url)
     try {
       // Delivery describes the still-current event. Retain older incidents and

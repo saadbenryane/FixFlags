@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { PasskeyTwoFactorSettings } from '@/components/settings/PasskeyTwoFactorSettings'
 import { Button } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { requestAccountChange } from '@/lib/auth/client-account-request'
+import { authorizationReceipt } from '@/lib/auth/client-authorization-receipt'
 import { PasswordSettings } from '@/components/settings/AccountSettingsForms'
 
 interface Props {
@@ -28,6 +30,14 @@ export function ConnectedAccounts({
   availableProviders = [],
 }: Props) {
   const [linking, setLinking] = useState<string | null>(null)
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const submitting = useRef(false)
+  const requestOwner = useRef<AbortController | null>(null)
+  useEffect(() => {
+    const owner = new AbortController()
+    requestOwner.current = owner
+    return () => { owner.abort(); if (requestOwner.current === owner) requestOwner.current = null }
+  }, [])
   const isGoogle = linkedProviders.includes('google')
   const isGithub = linkedProviders.includes('github')
   const primaryMethod = isGoogle
@@ -50,9 +60,26 @@ export function ConnectedAccounts({
   ].filter((method) => method.connected)
 
   async function connect(provider: 'google' | 'github') {
+    const owner = requestOwner.current
+    if (!owner || owner.signal.aborted || submitting.current || !availableProviders.includes(provider) || linkedProviders.includes(provider)) return
+    const current = () => requestOwner.current === owner && !owner.signal.aborted
+    submitting.current = true
     setLinking(provider)
-    const result = await authClient.linkSocial({ provider, callbackURL: '/settings' })
-    if (result.error) setLinking(null)
+    setLinkError(null)
+    try {
+      // The current request owns navigation. The SDK must not redirect from a
+      // response that arrives after this view or its request has been retired.
+      const result = await requestAccountChange(signal => authClient.linkSocial({
+        provider, callbackURL: '/settings', disableRedirect: true, fetchOptions: { signal },
+      }), authorizationReceipt, AUTH.connectedAccounts.linkError, owner.signal)
+      if (!current()) return
+      if (!result.ok) { setLinkError(result.error); return }
+      window.location.assign(result.data.url)
+    } catch {
+      if (current()) setLinkError(AUTH.connectedAccounts.linkError)
+    } finally {
+      if (current()) { submitting.current = false; setLinking(null) }
+    }
   }
 
   const available = availableProviders.filter((provider) => !linkedProviders.includes(provider))
@@ -79,9 +106,11 @@ export function ConnectedAccounts({
           ))}
           {available.map((provider) => <li key={provider} className="flex items-center justify-between gap-3 px-3 py-2.5">
             <div><p className="text-sm font-medium">{provider === 'google' ? 'Google' : 'GitHub'}</p><p className="text-xs text-muted-foreground">Available sign-in method</p></div>
-            <Button size="sm" variant="outline" disabled={Boolean(linking)} onClick={() => void connect(provider)}>{linking === provider ? 'Connecting…' : 'Connect'}</Button>
+            <Button size="sm" variant="outline" disabled={Boolean(linking)} aria-busy={linking === provider || undefined} aria-label={AUTH.connectedAccounts.connectProvider(provider === 'google' ? AUTH.connectedAccounts.google : AUTH.connectedAccounts.github)} onClick={() => void connect(provider)}>{linking === provider ? 'Connecting…' : 'Connect'}</Button>
           </li>)}
-        </ul></div> : null}
+        </ul>
+        {linkError ? <p role="alert" className="mt-3 text-sm text-destructive">{linkError}</p> : null}
+        </div> : null}
         {primaryMethod && !hasPassword && passkeyCount === 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
             {AUTH.connectedAccounts.signedInVia(primaryMethod)}

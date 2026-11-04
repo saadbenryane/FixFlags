@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["worker/__tests__/compiled-runtime.integration.test.ts"],
+  "exclude": []
+}

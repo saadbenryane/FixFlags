@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { monitoringResponsibility, monitoringBehaviorResponsibility } from '../application/monitoring-responsibility'
+import { monitoringResponsibility, monitoringBehaviorResponsibility, monitoringConsoleResponsibility } from '../application/monitoring-responsibility'
 
 describe('monitoring responsibility admission budget', () => {
+  it('does not make anonymous first-page admission depend on nonexistent Site history', async () => {
+    const read = vi.fn().mockRejectedValue(new Error('No Site history exists'))
+    expect(await monitoringConsoleResponsibility({ projectId: '', environment: 'production', pages: ['https://example.com/'] }, { $queryRaw: read })).toEqual([])
+    expect(read).not.toHaveBeenCalled()
+  })
   it('retains a full compatible cohort without reading history', async () => {
     const root = 'https://example.com/', recorded = Array.from({ length: 23 }, (_, index) => root + 'page-' + index)
     const read = vi.fn().mockRejectedValue(new Error('History is unnecessary'))

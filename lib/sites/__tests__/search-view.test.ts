@@ -5,7 +5,7 @@ import type { SearchObservation, SearchReceipt } from '@/lib/audit/search/contra
 import { SEARCH_DEFINITIONS } from '@/lib/audit/search/definitions'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { applyCardEvidence } from '../application/card-evidence'
-import type { SiteCheckResult } from '@/lib/sites/check-results'
+import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { siteCoverageMaxAgeMs } from '../evidence-freshness'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 
@@ -29,6 +29,40 @@ function receipt(overrides: Partial<SearchReceipt> = {}): SearchReceipt {
 }
 
 describe('Search evidence recovery', () => {
+  it('preserves the oldest current area observation through the full card projection', () => {
+    const old = new Date(now.getTime() - 2 * 86400_000).toISOString()
+    const search = card()
+    const audit = { status: 'COMPLETED', startedAt: now, completedAt: now, failureCode: null, verifierExecutions: [
+      { targetKey: 'module:search', status: 'COMPLETED', detail: receipt({ collectedAt: old }) },
+      { targetKey: 'module:search', status: 'COMPLETED', detail: receipt() },
+    ] }
+    const result = { id: 'latest', auditId: 'a', area: 'search', name: 'Latest assertion', kind: 'assertion', status: 'passed',
+      historical: false, checkedAt: collectedAt, pageUrl, source: 'original-html' } as SiteCheckResult
+    applyCardEvidence({ cards: [search], audit: audit as unknown as Parameters<typeof applyCardEvidence>[0]['audit'],
+      summaryResults: [result], inFlight: false, pageCount: 1, connectionNotes: {}, now, coverageMaxAgeMs: 86400_000 })
+    expect(search).toMatchObject({ state: 'unknown', checkedAt: old, answer: SITE_BOARD_COPY.checkOutOfDate })
+  })
+  it('does not renew older link observations with a fresh Search summary', () => {
+    const old = new Date(now.getTime() - 2 * 86400_000).toISOString()
+    const search = card()
+    applySearchCardEvidence(search, [
+      { targetKey: 'module:search', detail: receipt() },
+      { targetKey: 'module:seo', detail: { kind: 'site-module-check', version: 1, module: 'seo', pageUrl,
+        applicable: true, passed: true, complete: true, assertions: [{ key: 'public-destination', name: 'Public link',
+          expected: 'Successful response', observed: 'GET HTTP 200', passed: true, complete: true }],
+        execution: { auditId: 'a', taskId: 'links', checkVersion: 1, source: 'http', collectedAt: old } } },
+    ], false, now, 86400_000)
+    expect(search).toMatchObject({ state: 'unknown', checkedAt: old, answer: SITE_BOARD_COPY.checkOutOfDate })
+  })
+  it('keeps old provider enrichment separate from fresh local Search assurance', () => {
+    const search = card()
+    applySearchCardEvidence(search, [
+      { targetKey: 'module:search', detail: receipt() },
+      { targetKey: 'module:search-google', detail: receipt({ collectedAt: '2026-09-01T10:00:00.000Z', complete: false,
+        observations: [observation({ responsibility: 'google' })] }) },
+    ], false, now)
+    expect(search).toMatchObject({ state: 'healthy', checkedAt: collectedAt, answer: SITE_PRESENTATION_COPY.flags(0) })
+  })
   it('keeps the current care expiry visible through the complete Search card projection', () => {
     const search = card({ state: 'unknown' })
     const audit = { status: 'COMPLETED', startedAt: now, failureCode: null,
