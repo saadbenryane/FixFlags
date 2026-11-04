@@ -2714,11 +2714,18 @@ run('migrated progressive execution', () => {
         if (mode === 'pending') expect(primaryCompletedBeforeLinks).toBe(true)
         const flow = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: admitted.auditId!, targetKey: 'task:p0:flow' } })
         expect(flow.workState).toBe('COMPLETED')
-        const result = (readArtifact(flow.workResult, 'flow').data as { result: FlowScanResult }).result
+        const observedFlow = readArtifact(flow.workResult, 'flow').data as {
+          result: FlowScanResult; controlProgress?: { context: string | null }
+        }
+        const result = observedFlow.result
         expect(result.postClickMetrics).toMatchObject({ version: 2, contentComplete: true, loadingComplete: true, pageUrl: origin + '/post-click-destination' })
         expect(result.postClickMetrics!.timeToFirstContentMs! > 3000).toBe(delay > 3000)
         expect((await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId! } })).flowData).toMatchObject({ postClickMetrics: result.postClickMetrics })
-        const receipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: admitted.auditId!, targetKey: 'module:flow', scopeKey: 'page:' + pageUrl } })
+        const scopeKey = 'page:' + pageUrl + (observedFlow.controlProgress?.context ? ':control:' + observedFlow.controlProgress.context : '')
+        const receipt = await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { auditId_targetKey_scopeKey: {
+          auditId: admitted.auditId!, targetKey: 'module:flow', scopeKey,
+        } } })
+        expect(receipt.taskId).toBe(flow.id)
         expect(checkReceiptSchema.parse(receipt.detail).complete).toBe(mode !== 'pending')
         expect(checkReceiptSchema.parse(receipt.detail).assertions).toEqual(expect.arrayContaining([
           expect.objectContaining({ key: 'destination-content-timing', complete: true, passed: delay === 0, context: expect.stringMatching(/^flow:loading:v2:/) }),

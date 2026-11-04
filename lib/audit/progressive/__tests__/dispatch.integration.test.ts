@@ -17,7 +17,7 @@ import { initialTaskPlan } from '../graph'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { collectionHandlers } from '../collectors'
 import * as deliveryWindow from '../delivery-window'
-import { taskDeliveryWindow } from '../queues'
+import { taskDeliveryWindow, DELIVERY_RECHECK_MS } from '../queues'
 import { safeFetchDocument } from '../../url'
 import { publicHttpCapacity } from '../capacity'
 import { commitObservation, nextObservationBatch, observationArtifact, observationBatchStart, OBSERVATION_TARGET, OBSERVATION_COHORT_TARGET } from '../observation-progress'
@@ -778,7 +778,15 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(observed).toEqual([1])
     await executeTask({ auditId: audit.id, taskId: task.id, generation: 2 }, registry)
     const queued = await dispatch.queues.get('browser')!.getJob(task.id + '-g3')
-    expect(queued!.opts.priority).toBe(4)
+    expect(queued!.opts.priority).toBe(2)
+    // A delivery retained from the old policy keeps its identity and evidence
+    // when the normal producer recheck raises its queue priority.
+    await queued!.changePriority({ priority: 4 })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+    expect(await dispatchTask(task.id)).toBe(true)
+    expect((await dispatch.queues.get('browser')!.getJob(task.id + '-g3'))?.priority).toBe(2)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
+      .toMatchObject({ workGeneration: 2, workAttempts: 0, workResult: { data: { step: 2 } } })
     await executeTask({ auditId: audit.id, taskId: task.id, generation: 3 }, registry)
     expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1,
       workResult: { data: { step: 2 } } })
@@ -844,7 +852,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     } })
     const add = queue.add.bind(queue)
     // Model an already queued minute, without freezing worker or lease clocks.
-    const timestamp = Date.now() - 2 * deliveryWindow.DELIVERY_RECHECK_MS - 1000
+    const timestamp = Date.now() - 2 * DELIVERY_RECHECK_MS - 1000
     const published = vi.spyOn(queue, 'add').mockImplementationOnce((name, data, opts) => add(name, data, { ...opts, timestamp }))
     try { expect(await dispatchTask(older.id)).toBe(true) } finally { published.mockRestore() }
     expect(await dispatchTask(young.id)).toBe(true)
@@ -882,7 +890,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     } finally { await queue.pause(); await worker.close() }
   }, 20_000)
 
-  it('admits untried linked browser work before continued primary observations', async () => {
+  it.each([false, true])('finishes primary observations before new linked work and admits aged linked work first (aged: %s)', async aged => {
     const queue = dispatch.queues.get('browser')!
     await queue.drain()
     const { audit, tasks } = await admission([...Array<TaskKind>(8).fill('flow'), 'browser'])
@@ -892,11 +900,13 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     const fresh = tasks[8]
     await prisma.auditExecutionTask.update({ where: { id: fresh.id }, data: {
       workInput: { pageUrl: audit.url, position: 1, primary: false, role: 'linked' },
+      ...(aged ? { createdAt: new Date(Date.now() - 2 * DELIVERY_RECHECK_MS - 1000) } : {}),
     } })
     const ready = await reconcileTasks(audit.id)
-    expect(ready[0]).toBe(fresh.id)
+    expect(ready[0] === fresh.id).toBe(aged)
     await dispatchReadyTasks(ready)
-    expect((await queue.getJob(fresh.id + '-g1'))?.opts.priority).toBe(3)
+    if (aged) expect((await queue.getJob(fresh.id + '-g1'))?.opts.priority).toBe(1)
+    else expect(await queue.getJob(fresh.id + '-g1')).toBeUndefined()
     const sequence: string[] = []
     const selected = new Map<string, TaskHandler>(['browser', 'flow'].map(value => {
       const kind = value as TaskKind
@@ -909,7 +919,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       await worker.waitUntilReady(); await queue.resume()
       await vi.waitFor(async () => expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workState: { not: 'COMPLETED' } } })).toBe(0),
         { timeout: 20_000, interval: 50 })
-      expect(sequence[0]).toBe(fresh.id)
+      expect(aged ? sequence[0] : sequence.at(-1)).toBe(fresh.id)
       expect(new Set(sequence).size).toBe(9)
     } finally { await queue.pause(); await worker.close() }
   })

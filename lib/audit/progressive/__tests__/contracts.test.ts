@@ -1,4 +1,4 @@
-import { queueForTask, priorityForTask, TASK_QUEUES } from '../queues'
+import { queueForTask, priorityForTask, TASK_QUEUES, DELIVERY_RECHECK_MS } from '../queues'
 import { describe, expect, it } from 'vitest'
 import { retryDecision, validateTaskGraph, readArtifact, serializeArtifact, taskInputSchema } from '../contracts'
 import { registerTaskHandlers } from '../registry'
@@ -42,6 +42,15 @@ describe('durable bounded work contracts', () => {
     for (const kind of ['pagespeed', 'google', 'judge'] as const)
       expect(priorityForTask(kind, input)).toBeLessThan(priorityForTask(kind, { ...input, primary: false }))
     expect(priorityForTask('prescription', { ...input, primary: false })).toBeLessThan(priorityForTask('judge', { ...input, primary: false }))
+  })
+
+  it('keeps unfinished primary observations ahead of new linked captures while aging prevents starvation', () => {
+    const linked = { ...input, primary: false }
+    expect(priorityForTask('flow', input)).toBeLessThan(priorityForTask('flow', input, 0, true))
+    expect(priorityForTask('flow', input, 0, true)).toBeLessThan(priorityForTask('browser', linked))
+    expect(priorityForTask('browser', linked)).toBeLessThan(priorityForTask('flow', linked, 0, true))
+    expect(priorityForTask('browser', linked, 0, false, 2 * DELIVERY_RECHECK_MS))
+      .toBeLessThan(priorityForTask('flow', input, 0, true))
   })
 
   it('isolates pricing navigation from the primary action and selects only its original scope for repair', () => {

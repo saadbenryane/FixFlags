@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger'
 import { ScanAccessUnavailable } from '../scan-access-grants'
 import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
-import { queueForTask, priorityForTask } from './queues'
+import { DELIVERY_RECHECK_MS, queueForTask, priorityForTask } from './queues'
 import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettledPrescriptionCost, settleFailedFinalization, settlePrescriptionAudit } from './incomplete'
 import { executionTransaction, lockExecutionScope, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
@@ -16,7 +16,7 @@ import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
 import { PageCaptureError } from '../browser/page-capture'
-import { claimTaskDelivery, DELIVERY_RECHECK_MS, retireObsoleteTaskDeliveries } from './delivery-window'
+import { claimTaskDelivery, retireObsoleteTaskDeliveries } from './delivery-window'
 import { isBrowserEvidenceKey } from './collection-requirements'
 
 /** A cooperative deadline also has an enforced boundary. Late continuations
@@ -157,19 +157,20 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
       return false
     }
     const queue = getAuditTaskQueue(resource)
+    const priority = priorityForTask(task.workKind as TaskKind, input, task.workAttempts,
+      task.workGeneration > task.workAttempts, Date.now() - task.createdAt.getTime())
     const jobId = taskId + '-g' + (task.workGeneration + 1)
     const existingJob = await queue.getJob(jobId)
     const existingState = existingJob ? await existingJob.getState() : null
+    const queuedPriority = existingJob && Date.now() - existingJob.timestamp >= 2 * DELIVERY_RECHECK_MS ? 1 : priority
     if (existingJob && (existingState === 'failed' || existingState === 'completed')) await existingJob.retry(existingState)
     else if (!existingJob) await queue.add('audit-task', { auditId: task.auditId, taskId, generation: task.workGeneration + 1 },
       { jobId, attempts: 1, removeOnComplete: 100, removeOnFail: 500,
-        priority: priorityForTask(task.workKind as TaskKind, input, task.workAttempts, task.workGeneration > task.workAttempts) })
-    else if (['waiting', 'prioritized', 'paused'].includes(existingState ?? '') && existingJob.priority > 1 &&
-      Date.now() - existingJob.timestamp >= 2 * DELIVERY_RECHECK_MS) {
-      // Primary work gets an initial lead, not permanent precedence over an
-      // older observation. Promote once using the existing delivery recheck;
-      // repeated checks must retain its FIFO place within that priority.
-      await existingJob.changePriority({ priority: 1 })
+        priority })
+    else if (['waiting', 'prioritized', 'paused'].includes(existingState ?? '') && existingJob.priority > queuedPriority) {
+      // Reconcile retained deliveries to current admission policy. Promotion
+      // never resets an older observation's place within its priority.
+      await existingJob.changePriority({ priority: queuedPriority })
     }
     // A delivered job can wait in a busy queue without occupying every recovery
     // batch. Recheck later so a lost Redis delivery still gets reconstructed.
@@ -275,7 +276,7 @@ export async function reconcileTasks(auditId: string) {
       const input = taskInputSchema.safeParse(task.workInput)
       return input.success && queueForTask(task.workKind as TaskKind, input.data) === resource
         ? [{ id: task.id, priority: priorityForTask(task.workKind as TaskKind, input.data, task.workAttempts,
-          task.workGeneration > task.workAttempts) }] : []
+          task.workGeneration > task.workAttempts, Date.now() - task.createdAt.getTime()) }] : []
     })
     const ids = new Set(members.map(task => task.id))
     members.sort((left, right) => left.priority - right.priority || dueAt.get(left.id)! - dueAt.get(right.id)!)

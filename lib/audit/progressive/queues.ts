@@ -13,15 +13,19 @@ export const TASK_QUEUES = {
   availability: { name: 'audit-task-availability', concurrency: 1 },
 } as const
 export type TaskQueue = keyof typeof TASK_QUEUES
+export const DELIVERY_RECHECK_MS = 30_000
 /** Prioritize queued primary-page work over linked documents. Active graphs are
  * bounded, so linked work retains a finite cohort. */
-export function priorityForTask(kind: TaskKind, input: TaskInput, attempts = 0, continuation = false): number {
+export function priorityForTask(kind: TaskKind, input: TaskInput, attempts = 0, continuation = false, ageMs = 0): number {
   if (kind === 'prescription') return 1
   // A slow provider retry must not overtake untried linked-page measurements.
   // Bound the persisted attempt count to BullMQ's supported priority range.
   if (kind === 'pagespeed') return Math.min(500_000, Math.max(0, Math.floor(attempts))) * 4 + (input.primary ? 1 : 3)
   if (['pagespeed', 'google', 'judge'].includes(kind)) return input.primary ? 1 : 3
-  if (queueForTask(kind, input) === 'browser') return continuation ? 4 : input.primary ? 1 : 3
+  if (queueForTask(kind, input) === 'browser') {
+    if (ageMs >= 2 * DELIVERY_RECHECK_MS) return 1
+    return input.primary ? continuation ? 2 : 1 : continuation ? 4 : 3
+  }
   return kind === 'http' ? 1 : kind === 'check' ? 2 : 3
 }
 // First matching rule owns routing for both delivery and capacity accounting.

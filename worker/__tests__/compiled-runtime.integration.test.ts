@@ -1330,9 +1330,12 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
         idempotencyKey: 'read-only-must-refuse', changeSummary: 'Read-only key cannot claim a change' })
       expect(refusedWrite.status).toBe(403)
       expect((await browserHttp('/api/reports/' + initialAuditId)).id).toBe(initialAuditId)
+      const copiedRecording = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/fix') &&
+        response.request().method() === 'POST' && response.request().postDataJSON()?.action === 'copy')
       await copy.click()
       await browserExpect(page.getByRole('button', { name: SITE_DASHBOARD_COPY.bundleCopied, exact: true })).toBeVisible()
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(prepared.prompt)
+      expect((await copiedRecording).status()).toBe(200)
       expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: claimedProjectId }, type: 'HANDOFF_COPIED' } })).toBeGreaterThan(0)
 
       await page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()

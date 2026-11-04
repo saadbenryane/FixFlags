@@ -4,11 +4,10 @@ import { executionTransaction } from '../execution-ownership'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { logger } from '@/lib/logger'
 import { COMPLETION_TASK_KINDS, runsAfterCompletion, taskInputSchema, taskIsSettled, taskJobSchema, type TaskKind } from './contracts'
-import { deliveryResourceSql, queueForTask, taskDeliveryWindow, TASK_QUEUES, type TaskQueue } from './queues'
+import { deliveryResourceSql, queueForTask, taskDeliveryWindow, TASK_QUEUES, DELIVERY_RECHECK_MS, type TaskQueue } from './queues'
 
-export const DELIVERY_RECHECK_MS = 30_000
 const select = { id: true, auditId: true, workKind: true, workInput: true, workState: true, workGeneration: true,
-  workDispatchState: true, workDispatchLeaseUntil: true, workRetryAt: true, workAttempts: true, workRecoveryUntil: true } as const
+  workDispatchState: true, workDispatchLeaseUntil: true, workRetryAt: true, workAttempts: true, workRecoveryUntil: true, createdAt: true } as const
 
 /** Bounded reservation projection, without transferring task artifacts. */
 export function reservedDeliveryQuery(resource: TaskQueue, taskId: string, now: Date) {
@@ -48,6 +47,9 @@ export async function claimTaskDelivery(taskId: string) {
       // earlier waiting work, including a Site that could not enter a full
       // delivery window. Broker priority alone cannot see those database rows.
       if (task.workGeneration > task.workAttempts) {
+        // The primary page can finish its current observation before new linked
+        // captures take every slot. Other Sites, primary work and aged linked
+        // work retain the existing opportunity to enter the delivery window.
         const waiting = await tx.$queryRaw<Array<{ id: string }>>`
           SELECT delivery.id FROM audit_execution_tasks delivery JOIN audits a ON a.id = delivery."auditId"
           WHERE delivery.id <> ${task.id} AND delivery."workState" = 'READY'
@@ -56,6 +58,8 @@ export async function claimTaskDelivery(taskId: string) {
             AND (delivery."workRetryAt" IS NULL OR delivery."workRetryAt" <= ${now})
             AND (delivery."workGeneration" = 0 OR delivery."workRetryAt" IS NULL OR delivery."workRetryAt" < ${task.workRetryAt ?? now}
               OR delivery."workRetryAt" = ${task.workRetryAt ?? now} AND delivery.id < ${task.id})
+            AND (${resource !== 'browser' || !input.primary} OR delivery."auditId" <> ${task.auditId}
+              OR delivery."workInput"->>'primary' = 'true' OR delivery."createdAt" <= ${new Date(now.getTime() - 2 * DELIVERY_RECHECK_MS)})
             AND a.status <> 'FAILED' AND (a.status <> 'COMPLETED' OR delivery."workKind" IN (${Prisma.join([...COMPLETION_TASK_KINDS])}))
             AND (${deliveryResourceSql}) = ${resource} LIMIT 1`
         yielding = waiting.length > 0

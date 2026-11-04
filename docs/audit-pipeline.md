@@ -256,20 +256,26 @@ The full cohort finishes before explanation and finalization. Controlled care ru
 on the second repaired control, independent later recovery and discovery of a
 new form. Other capabilities are deliberately unavailable in those bounded
 fixtures; these are not full-site coverage or production monitoring claims.
-Continuations initially run behind untried browser work. The existing generation and lease
-fences protect every delivery; duplicate jobs cannot advance the checkpoint.
-Database reconciliation and initial broker delivery use the same continuation priority.
+Fresh primary-page work precedes primary continuations, which precede new linked
+captures and linked continuations. A slow secondary page cannot take every slot
+before the original page finishes its action observation. Other Sites and fresh
+primary observations retain their admission opportunity. The existing generation
+and lease fences protect every delivery; duplicate jobs cannot advance the checkpoint.
+Database reconciliation and broker delivery use the same queue priority owner.
 An admission that yields to earlier waiting work rotates its due time, just like
 a saturated admission, so it cannot repeatedly occupy a bounded dispatch pass
 and conceal an independent resource. Yielding creates no attempt or failure and
-retains the saved observation. Disposable PostgreSQL/Redis workers exercise fresh
-linked-page work ahead of primary continuations and HTTP progress while another
-Site awaits browser admission.
+retains the saved observation. Disposable PostgreSQL/Redis workers exercise
+continuing primary work, aged linked-page admission and independent HTTP progress
+while another Site awaits browser admission. Native Chromium reproduces blocked
+linked captures while the original action continues under its unchanged deadline.
 
-Queued observations receive primary priority after one minute at the broker,
-using the existing delivery recheck and persisted queue timestamp. Fresh primary
-work retains its initial lead, while later arrivals cannot perpetually displace
-an older linked page or continued observation. Promotion happens once and keeps
+Browser observations become eligible for primary priority after one minute from
+task admission or their broker timestamp, using the existing delivery recheck.
+Older linked work can enter the delivery window as well as advance inside the
+broker. Retained deliveries adopt the current policy without replacing their
+job or task. Fresh primary work retains its initial lead, while later arrivals
+cannot perpetually displace an older observation. Promotion happens once and keeps
 its place among equal-priority deliveries on later rechecks. It changes no task
 generation, attempt, lease or evidence. A disposable PostgreSQL/Redis worker
 fixture models an already queued minute, reproduces primary arrivals overtaking
