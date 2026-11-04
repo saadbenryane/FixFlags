@@ -932,6 +932,27 @@ run('migrated progressive execution', () => {
     } finally { await prisma.user.delete({ where: { id: userId } }) }
   }
 
+  /** These fixtures exercise native document and HTTP facts. Unrelated work
+   * settles as unavailable through the coordinator, never as passing evidence. */
+  async function completeDocumentScope(auditId: string, timeout = 25_000) {
+    await vi.waitFor(async () => {
+      await prisma.auditExecutionTask.updateMany({ where: { auditId,
+        workKind: { notIn: ['http', 'browser', 'check', 'finalize', 'bindings', 'search', 'search-resources', 'discovery', 'cross-page'] },
+        workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(auditId))
+      expect(await prisma.auditExecutionTask.findFirst({ where: { auditId, workKind: 'finalize' } }))
+        .toMatchObject({ workState: 'COMPLETED' })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } }))
+        .toMatchObject({ improvementProjectedAt: expect.any(Date), reportCompleteness: 'PARTIAL' })
+    }, { timeout, interval: 250 }).catch(async error => {
+      console.log('Unfinished document execution tasks', await prisma.auditExecutionTask.findMany({
+        where: { auditId, workKind: { not: null }, workState: { not: 'COMPLETED' } },
+        select: { targetKey: true, workKind: true, workState: true, workErrorCode: true, workDependencies: true },
+      }))
+      throw error
+    })
+  }
+
   beforeAll(async () => {
     const url = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(url.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(url.pathname))
@@ -2339,20 +2360,8 @@ run('migrated progressive execution', () => {
     const transport = fixtureTransport(), pageUrl = origin + '/public-links'
     try {
       await getAuditTaskQueue('browser').resume(); await resumeExternalQueues()
-      async function completeBroad(auditId: string) {
-        await vi.waitFor(async () => {
-          // Optional provider and capture capability is intentionally unavailable.
-          // HTTP, browser discovery and link evidence execute normally, including
-          // pages added by the discovery graph rather than only its initial tasks.
-          await prisma.auditExecutionTask.updateMany({ where: { auditId,
-            workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google', 'flow', 'slow-replay', 'journeys'] }, workState: { not: 'COMPLETED' } },
-            data: { workRecoveryUntil: new Date(0) } })
-          await dispatchReadyTasks(await reconcileTasks(auditId))
-          expect(await prisma.auditExecutionTask.findFirst({ where: { auditId, workKind: 'finalize' } })).toMatchObject({ workState: 'COMPLETED' })
-        }, { timeout: 25_000, interval: 250 })
-      }
       const source = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', url: pageUrl, idempotencyKey: 'public-links-source' })
-      await completeBroad(source.auditId!)
+      await completeDocumentScope(source.auditId!)
       const captures = await prisma.auditExecutionTask.findMany({ where: { auditId: source.auditId!, workKind: 'browser', workInput: { path: ['device'], equals: 'desktop' }, pageUrl: { in: [pageUrl, origin + '/public-links-peer'] } } })
       expect(captures).toHaveLength(2)
       for (const capture of captures) expect(capture.workResult).toMatchObject({ data: { metadata: null, snapshot: {
@@ -2391,7 +2400,7 @@ run('migrated progressive execution', () => {
       expect((await verify('healthy-with-restricted-peer')).attempt).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
       const restrictedWatch = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WATCH', scope: 'SITE', url: pageUrl,
         idempotencyKey: 'public-links-restricted-watch' })
-      await completeBroad(restrictedWatch.auditId!)
+      await completeDocumentScope(restrictedWatch.auditId!)
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
       const restrictedReceipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: restrictedWatch.auditId!,
         targetKey: 'module:seo', pageUrl: origin + '/public-links-peer', scopeKey: { contains: 'public-links:second' } } })
@@ -2409,7 +2418,7 @@ run('migrated progressive execution', () => {
       const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
       publicLinksMode = 'failed'
       const recurrence = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WATCH', scope: 'SITE', url: pageUrl, idempotencyKey: 'public-links-recurrence' })
-      await completeBroad(recurrence.auditId!)
+      await completeDocumentScope(recurrence.auditId!)
       const again = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: 'broken-internal-links' } })
       expect(again.status).toBe('REGRESSED')
       expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: again.id } })).toMatchObject({ improvementId: original.improvementId, kind: 'REGRESSED' })
@@ -2424,19 +2433,8 @@ run('migrated progressive execution', () => {
     const transport = fixtureTransport(), pageUrl = origin + '/sections'
     try {
       await getAuditTaskQueue('browser').resume(); await resumeExternalQueues()
-      async function completeBroad(auditId: string) {
-        await vi.waitFor(async () => {
-          // The declared document targets use the actual independent browser
-          // capture. Unrelated optional capabilities remain honestly unavailable.
-          await prisma.auditExecutionTask.updateMany({ where: { auditId,
-            workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google', 'flow', 'slow-replay', 'journeys'] }, workState: { not: 'COMPLETED' } },
-            data: { workRecoveryUntil: new Date(0) } })
-          await dispatchReadyTasks(await reconcileTasks(auditId))
-          expect(await prisma.audit.findUnique({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
-        }, { timeout: 30_000, interval: 250 })
-      }
       const source = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', url: pageUrl, idempotencyKey: 'sections-source' })
-      await completeBroad(source.auditId!)
+      await completeDocumentScope(source.auditId!, 30_000)
       const capture = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'browser', pageUrl,
         workInput: { path: ['device'], equals: 'desktop' } } })
       expect(readArtifact(capture.workResult, 'browser').data).toMatchObject({ metadata: null, snapshot: { desktopHtmlTruncated: true,
@@ -2488,7 +2486,7 @@ run('migrated progressive execution', () => {
       const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
       sectionLinksMode = 'failed'
       const recurrence = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WATCH', scope: 'SITE', url: pageUrl, idempotencyKey: 'sections-recurrence' })
-      await completeBroad(recurrence.auditId!)
+      await completeDocumentScope(recurrence.auditId!, 30_000)
       const again = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: 'broken-page-anchors' } })
       expect(again.status).toBe('REGRESSED')
       expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: again.id } })).toMatchObject({ improvementId: original.improvementId, kind: 'REGRESSED' })
