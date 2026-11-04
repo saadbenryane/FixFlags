@@ -32,7 +32,7 @@ import { useSiteWorkspaceLocation } from './SiteWorkspaceLocation'
 /** Keep inspected results mounted across collapse without reading hidden evidence on entry. */
 function CategoryCheckDetails({ children }: { children: ReactNode }) {
   const [requested, setRequested] = useState(false)
-  return <details className="mt-2 rounded-card p-4 shadow-board" onToggle={event => { if (event.currentTarget.open) setRequested(true) }}>
+  return <details data-site-check-details className="mt-2 rounded-card p-4 shadow-board" onToggle={event => { if (event.currentTarget.open) setRequested(true) }}>
     <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium"><FileCheck className="h-4 w-4 text-muted-foreground" aria-hidden />{C.checkDetails}</summary>
     {requested ? <div className="mt-4 space-y-5">{children}</div> : null}
   </details>

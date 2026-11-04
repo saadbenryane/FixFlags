@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, expect, it, vi } from 'vitest'
 import { SiteCategoryDetails } from '../SiteCategoryDetails'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import type { BoardCardView } from '@/lib/sites/board-card'
@@ -7,6 +7,9 @@ import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { SITE_ACTION_COPY as A } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY as B } from '@/lib/marketing/copy/terminology'
+
+// Module compilation is setup; disclosure and evidence reads remain under test.
+beforeAll(async () => { await import('../SiteCategoryContent') })
 
 function card(id: BoardCardView['id'] = 'security'): BoardCardView {
   return { id, name: id, question: 'Recorded check', state: 'unknown', status: 'Not verified', answer: 'Not verified',
@@ -36,6 +39,7 @@ it('defers optional evidence and its capture until disclosure, then retains load
   expect(screen.queryByRole('img', { name: 'Recorded security capture', hidden: true })).not.toBeInTheDocument()
   const summary = await screen.findByText(C.checkDetails, { selector: 'summary' })
   const details = summary.closest('details')!
+  expect(details).toHaveAttribute('data-site-check-details')
   fireEvent.click(summary)
   expect(await screen.findByText('First security evidence')).toBeVisible()
   expect(screen.getByRole('img', { name: 'Recorded security capture' })).toHaveAttribute('src', '/api/screenshots/security')

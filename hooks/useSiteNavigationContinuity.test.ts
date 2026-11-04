@@ -62,8 +62,23 @@ describe('Site authentication reading-position continuity', () => {
     expect(JSON.parse(sessionStorage.getItem(key)!)).toMatchObject({ checkDetailsOpen: open })
     body.innerHTML = `<details data-site-check-details ${open ? '' : 'open'}><summary>Check details</summary><button data-site-return-focus="check">Check again</button></details>`
     renderHook(() => useSiteNavigationContinuity('owned-site'))
-    await act(async () => { await vi.advanceTimersByTimeAsync(40) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(80) })
     expect(body.querySelector('details')?.open).toBe(open)
+    expect(body.scrollTop).toBe(180)
+    expect(sessionStorage.getItem(key)).toBeNull()
+  })
+  it('restores the original action after opening its lazily mounted check content', async () => {
+    depart()
+    sessionStorage.setItem(key, JSON.stringify({ ...JSON.parse(sessionStorage.getItem(key)!), checkDetailsOpen: true }))
+    const body = document.querySelector<HTMLElement>('[data-dialog-scroll]')!
+    body.innerHTML = '<details data-site-check-details><summary>Check details</summary></details>'
+    const details = body.querySelector('details')!
+    details.addEventListener('toggle', () => {
+      if (details.open) details.insertAdjacentHTML('beforeend', '<button data-site-return-focus="check">Check again</button>')
+    })
+    renderHook(() => useSiteNavigationContinuity('owned-site'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(80) })
+    expect(document.activeElement?.textContent).toBe('Check again')
     expect(body.scrollTop).toBe(180)
     expect(sessionStorage.getItem(key)).toBeNull()
   })
@@ -77,7 +92,7 @@ describe('Site authentication reading-position continuity', () => {
     expect(window.scrollTo).not.toHaveBeenCalled()
     expect(sessionStorage.getItem(key)).not.toBeNull()
     await act(async () => { body.innerHTML = '<details data-site-check-details><summary>Check details</summary><button data-site-return-focus="check">Check again</button></details>' })
-    await act(async () => { await vi.advanceTimersByTimeAsync(40) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(80) })
     expect(body.querySelector('details')?.open).toBe(true)
     expect(document.activeElement?.textContent).toBe('Check again')
     expect(sessionStorage.getItem(key)).toBeNull()

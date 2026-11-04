@@ -47,7 +47,13 @@ export function useSiteNavigationContinuity(siteId: string) {
             if (stopped || !container.isConnected) return
             const checkDetails = container.querySelector<HTMLDetailsElement>('details[data-site-check-details]')
             if (saved.checkDetailsOpen !== undefined && !checkDetails) return
-            if (checkDetails && saved.checkDetailsOpen !== undefined) checkDetails.open = saved.checkDetailsOpen
+            if (checkDetails && saved.checkDetailsOpen !== undefined && checkDetails.open !== saved.checkDetailsOpen) {
+              checkDetails.open = saved.checkDetailsOpen
+              // Native toggle handlers may mount the original action lazily.
+              // Restore position and focus after that content can commit.
+              restore()
+              return
+            }
             const control = accountControl ?? container.querySelector<HTMLElement>(`[data-site-return-focus="${saved.focus}"]`)
             const target = control && !control.matches(':disabled,[aria-disabled="true"]') ? control : container
             window.scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' })
