@@ -24,7 +24,7 @@ run('native BullMQ connection ownership', () => {
     try {
       for (let cycle = 0; cycle < 2; cycle++) {
         const start = created.length
-        workers = startProgressiveWorkers(); await workers.ready()
+        workers = startProgressiveWorkers(); await workers.waitUntilReady()
         const owned = created.slice(start)
         expect(owned).toHaveLength(Object.keys(TASK_QUEUES).length)
         const ids = new Set(await Promise.all(owned.map(async client => String(await client.client('ID')))))
