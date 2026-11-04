@@ -46,6 +46,7 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
 
 import { captureScreenshots } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
+import { StorageUploadError } from '../pipeline-errors'
 
 describe('independent rendered evidence', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.truncated.mockReturnValue(false); mocks.loading.mockReturnValue(false); mocks.wait.mockResolvedValue(undefined);
@@ -54,6 +55,14 @@ describe('independent rendered evidence', () => {
     mocks.axe.mockResolvedValue({ url: 'https://example.com/', testEngine: { version: 'fixture-axe' }, violations: [], incomplete: [],
       passes: [{ id: 'button-name', nodes: [{ target: ['button'] }] }], inapplicable: [] }) })
   afterEach(() => { vi.useRealTimers() })
+  it('releases a shared storage failure without allocating another native profile', async () => {
+    const failure = new StorageUploadError('Controlled unavailable private storage')
+    mocks.upload.mockRejectedValue(failure)
+    await expect(captureScreenshots('https://example.com/', 'audit', undefined,
+      { runFlow: false, mediaOnly: true })).rejects.toBe(failure)
+    expect(createAuditPage).toHaveBeenCalledTimes(1)
+    expect(mocks.close).toHaveBeenCalled()
+  })
   it.each(['head', 'markers', 'html', 'signals'] as const)('retains independent facts when the %s document reader is unavailable', async reader => {
     mocks.read.mockImplementation((fn, argument) => {
       if (reader === 'head' && typeof argument === 'number' || reader === 'markers' && Array.isArray(argument) ||

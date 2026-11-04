@@ -748,6 +748,9 @@ export async function captureScreenshots(
       desktopErrors,
       profileOptions,
     ))
+  // Shared storage or browser infrastructure cannot become available by
+  // allocating another profile. Independent DOM collectors own their work.
+  if (desktopSettled?.status === 'rejected' && isInfrastructureAuditError(desktopSettled.reason)) throw desktopSettled.reason
   const mobileSettled = !collectMobile ? null : await settleProfile(() => captureMobileViewport(
       b,
       url,
@@ -765,7 +768,6 @@ export async function captureScreenshots(
   if (desktopSettled?.status === 'fulfilled') {
     desktop = desktopSettled.value
   } else if (desktopSettled) {
-    if (isInfrastructureAuditError(desktopSettled.reason)) throw desktopSettled.reason
     captureFailures.push(pageCaptureFailureFromError('desktop', desktopSettled.reason))
     desktop = { base64: null, url: null, initialUrl: null, html: null, flowResult: null }
   } else desktop = { base64: null, url: null, initialUrl: null, html: null, flowResult: null }
