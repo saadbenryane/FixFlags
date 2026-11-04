@@ -23,11 +23,18 @@ if (!/^[a-f0-9]{40}$/.test(expectedCommit ?? '')) {
   throw new Error('RELEASE_EXPECTED_GIT_SHA must be the full candidate revision')
 }
 
-async function probe(path, label) {
+async function probe(path, label, admin = false) {
+  const headers = process.env.RELEASE_SMOKE_BEARER
+    ? { authorization: `Bearer ${process.env.RELEASE_SMOKE_BEARER}` } : {}
+  if (admin) {
+    if (!process.env.RELEASE_SMOKE_ADMIN_COOKIE?.trim())
+      throw new Error('RELEASE_SMOKE_ADMIN_COOKIE is required for the live AI credential probe')
+    headers.cookie = process.env.RELEASE_SMOKE_ADMIN_COOKIE.trim()
+    headers.origin = baseUrl
+  }
   const response = await fetch(`${baseUrl}${path}`, {
-    headers: process.env.RELEASE_SMOKE_BEARER
-      ? { authorization: `Bearer ${process.env.RELEASE_SMOKE_BEARER}` }
-      : undefined,
+    headers,
+    redirect: 'error',
     signal: AbortSignal.timeout(60_000),
   })
   const body = await response.json().catch(() => null)
@@ -51,7 +58,7 @@ console.log(`PASS candidate revision ${health.commit}`)
 
 await probe('/api/health/ready', 'launch readiness')
 await probe('/api/health/browser', 'Chromium and R2')
-await probe('/api/health/ai?validate=1', 'AI credentials')
+await probe('/api/health/ai?validate=1', 'AI credentials', true)
 
 const { runRouteBoundarySmoke } = await import('./route-boundary-smoke.mjs')
 const routeCount = await runRouteBoundarySmoke(

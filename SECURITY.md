@@ -294,6 +294,7 @@ observed status and final URL without creating a failure Flag.
 ## Production access
 
 - Railway deployment. Use the authenticated Railway dashboard or CLI within the owner's authorized scope. Production mutations require explicit authorization; prefer read-only aggregate diagnostics for investigation.
+- Public AI health reports configuration without provider effects. Live credential validation requires the current administrator session and trusted origin, uses one provider request with a 15-second SDK timeout and no retries, and returns uncached results. Release smoke sends its administrator cookie only to this validation endpoint and refuses redirects.
 - Database: production Railway metadata identified PostgreSQL 18 on October 28, 2026. Local fixture versions are separate. Recheck the actual server before version-specific migration or restore work.
 - Customer URLs, captures, account identities, saved credentials, support content and backup archives are sensitive. Keep payloads out of Git, chat and general diagnostics. A production deployment permission does not authorize exporting full customer backups to a local machine.
 - Paid-opening evidence may query production Watch records only through the operator-supplied `RELEASE_WATCH_READ_DATABASE_URL`. The release command starts a read-only transaction, serializes only aggregate metrics and a database identity hash, and refuses the disposable release database.

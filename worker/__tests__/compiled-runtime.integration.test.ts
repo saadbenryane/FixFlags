@@ -748,7 +748,8 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     expect(projected.ok).toBe(true)
     const site = siteHomeViewSchema.parse(await projected.json())
     expect(site.audit.id).toBe(admitted.reportId)
-    expect(site.cards.find(card => card.id === 'performance')?.sources).toEqual([SITE_BOARD_COPY.pageSpeedSource])
+    expect(site.cards.find(card => card.id === 'performance')?.sources.toSorted())
+      .toEqual([SITE_BOARD_COPY.browserSource, SITE_BOARD_COPY.pageSpeedSource].toSorted())
     const requests = ['desktop', 'mobile'].map(strategy => JSON.parse(readFileSync(pageSpeedObservation + strategy + '.json', 'utf8')))
     expect(requests.every(request => request.status === 200)).toBe(true)
     expect(!output.includes(process.env.COMPILED_PAGESPEED_API_KEY!)).toBe(true)
@@ -913,6 +914,32 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     }, null, 2))
     writeFileSync(join(directory, 'worker.log'), output)
   }, 45_000)
+
+  it.skipIf(!operationsProof)('fences the paid health probe with current administrator authority and trusted origin', async () => {
+    const read = (headers: Record<string, string> = {}) => fetch(webOrigin + '/api/health/ai?validate=1', {
+      headers, signal: AbortSignal.timeout(5000), redirect: 'error',
+    })
+    expect((await read()).status).toBe(403)
+    expect((await read({ origin: webOrigin })).status).toBe(401)
+    expect((await read({ origin: webOrigin, cookie: sessionCookie })).status).toBe(403)
+    try {
+      await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
+      expect((await read({ origin: 'https://attacker.invalid', cookie: sessionCookie })).status).toBe(403)
+      const admitted = await read({ origin: webOrigin, cookie: sessionCookie })
+      expect(admitted.status).toBe(200)
+      expect(admitted.headers.get('cache-control')).toBe('private, no-store')
+      // Providers are explicitly absent in this fixture. Admission is not
+      // credential or inference proof, and it cannot manufacture healthy AI.
+      expect(await admitted.json()).toMatchObject({ ok: false, ai: { configured: false } })
+      await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'SUSPENDED' } })
+      expect((await read({ origin: webOrigin, cookie: sessionCookie })).status).toBe(403)
+    } finally {
+      await prisma.user.update({ where: { id: userId }, data: { role: 'user', lifecycleStatus: 'ACTIVE' } })
+    }
+    const publicHealth = await fetch(webOrigin + '/api/health/ai', { signal: AbortSignal.timeout(5000) })
+    expect(publicHealth.status).toBe(200)
+    expect(await publicHealth.json()).toMatchObject({ credentialValidation: 'not_checked' })
+  })
 
   it('collects a native failure and independently verifies repair using the compiled parser and consumers', async () => {
     const source = webProof ? await http('/api/sites/' + projectId + '/runs', { scope: 'category', area: 'accessibility' }, 'compiled-source')

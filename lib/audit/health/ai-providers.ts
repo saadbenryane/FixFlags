@@ -39,7 +39,7 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
     if (provider === 'openai') {
       const key = getOpenAIProviderKey()
       if (!key) throw new Error('OPENAI_API_KEY is not configured')
-      const openai = new OpenAI({ apiKey: key })
+      const openai = new OpenAI({ apiKey: key, timeout: 15_000, maxRetries: 0 })
       await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         max_tokens: 5,
@@ -48,7 +48,7 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
     } else if (provider === 'anthropic') {
       const key = process.env.ANTHROPIC_API_KEY
       if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
-      const anthropic = new Anthropic({ apiKey: key })
+      const anthropic = new Anthropic({ apiKey: key, timeout: 15_000, maxRetries: 0 })
       await anthropic.messages.create({
         model: 'claude-haiku-4-5',
         max_tokens: 5,

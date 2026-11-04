@@ -148,7 +148,7 @@ npm run verify:release:stage deployed
 `scripts/release-deployment-attestation.mjs` records the deployed commit.
 `scripts/release-revision-attestation.mjs` refuses a release environment whose
 reported commit is not the full expected SHA. `npm run smoke:release` then probes
-the production origin. Record the actual attestation and smoke receipts for the candidate; an earlier revision does not satisfy this requirement.
+the production origin. Its live AI credential probe requires a current administrator session in `RELEASE_SMOKE_ADMIN_COOKIE` and sends the canonical origin. Keep the cookie in a private environment file or process environment, never in command arguments or committed evidence. The cookie is sent only to that probe, with redirects refused; route boundary checks remain anonymous. Basic public health does not call the AI provider. Record the actual attestation and smoke receipts for the candidate; an earlier revision does not satisfy this requirement.
 
 ### 2. Codex, Claude Code, and Cursor sessions (parked)
 

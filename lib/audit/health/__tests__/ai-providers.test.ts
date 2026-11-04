@@ -6,6 +6,8 @@ const getConfiguredJudgeProviderChain = vi.hoisted(() => vi.fn())
 const getOpenAIProviderKey = vi.hoisted(() => vi.fn())
 const openaiCreate = vi.hoisted(() => vi.fn())
 const anthropicCreate = vi.hoisted(() => vi.fn())
+const openaiOptions = vi.hoisted(() => vi.fn())
+const anthropicOptions = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/env', () => ({ isAiProviderConfigured }))
 vi.mock('@/lib/audit/judge-config', () => ({
@@ -18,13 +20,13 @@ vi.mock('@/lib/audit/pipeline/context', () => ({
 }))
 vi.mock('openai', () => ({
   default: class {
-    constructor(public options: Record<string, unknown>) {}
+    constructor(public options: Record<string, unknown>) { openaiOptions(options) }
     chat = { completions: { create: openaiCreate } }
   },
 }))
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
-    constructor(public options: Record<string, unknown>) {}
+    constructor(public options: Record<string, unknown>) { anthropicOptions(options) }
     messages = { create: anthropicCreate }
   },
 }))
@@ -97,6 +99,7 @@ describe('validateAiProviderCredentials', () => {
 
     const result = await validateAiProviderCredentials()
     expect(result).toEqual({ ok: true, provider: 'openai' })
+    expect(openaiOptions).toHaveBeenCalledWith({ apiKey: 'sk-test', timeout: 15_000, maxRetries: 0 })
     expect(openaiCreate).toHaveBeenCalledWith({
       model: 'gpt-4o-mini',
       max_tokens: 5,
@@ -111,6 +114,7 @@ describe('validateAiProviderCredentials', () => {
 
     const result = await validateAiProviderCredentials()
     expect(result).toEqual({ ok: true, provider: 'anthropic' })
+    expect(anthropicOptions).toHaveBeenCalledWith({ apiKey: 'sk-ant-test', timeout: 15_000, maxRetries: 0 })
     expect(anthropicCreate).toHaveBeenCalledWith({
       model: 'claude-haiku-4-5',
       max_tokens: 5,
