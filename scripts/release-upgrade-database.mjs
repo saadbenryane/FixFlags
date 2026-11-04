@@ -2,7 +2,6 @@ import { randomUUID, createHash } from 'node:crypto'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { PrismaClient } from '@prisma/client'
 import { config } from 'dotenv'
@@ -14,13 +13,16 @@ const source = new URL(process.env.DATABASE_URL ?? '')
 if (!['localhost', '127.0.0.1'].includes(source.hostname)) throw new Error('Upgrade proof requires isolated local PostgreSQL')
 const name = 'fixflags_upgrade_test_' + randomUUID().replaceAll('-', '')
 const url = new URL(source); url.pathname = '/' + name; url.search = ''
-const directory = mkdtempSync(path.join(tmpdir(), 'fixflags-upgrade-'))
+// Keep schema generation inside the installed, version-checked toolchain.
+const cacheDirectory = path.join(process.cwd(), '.cache')
+mkdirSync(cacheDirectory, { recursive: true })
+const directory = mkdtempSync(path.join(cacheDirectory, 'upgrade-rehearsal-'))
 const admin = new PrismaClient(), db = new PrismaClient({ datasourceUrl: url.href })
 let created = false
 const git = args => execFileSync('git', args, { encoding: 'utf8' })
 const run = args => {
   const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...args], {
-    env: { ...process.env, DATABASE_URL: url.href }, encoding: 'utf8', timeout: 120_000,
+    env: { ...process.env, DATABASE_URL: url.href, PRISMA_GENERATE_SKIP_AUTOINSTALL: '1' }, encoding: 'utf8', timeout: 120_000,
   })
   if (result.status !== 0) throw new Error('Upgrade verification command failed: ' +
     [result.stderr, result.stdout, result.error?.message].filter(Boolean).join('\n').replace(/postgres(?:ql)?:\/\/[^\s]+/gi, '[REDACTED]'))
