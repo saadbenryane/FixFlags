@@ -85,7 +85,9 @@ test('anonymous evidence survives ordinary sign-in and becomes private owner evi
     await authentication.getByRole('button', { name: AUTH.signUp.footerLink, exact: true }).click()
     await authentication.getByLabel('Email').fill(email)
     await authentication.getByLabel('Password', { exact: true }).fill(password)
+    const handoff = page.waitForURL(url => url.pathname === '/post-login')
     await authentication.getByRole('button', { name: AUTH.signIn.cta, exact: true }).click()
+    await handoff
     await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'search')
     const returnedCategory = page.getByRole('dialog')
     await expect(returnedCategory.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
