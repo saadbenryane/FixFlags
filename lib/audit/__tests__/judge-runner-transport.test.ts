@@ -6,7 +6,7 @@ vi.mock('@/lib/audit/llm-keys', () => ({
   hasOpenAIProviderKey: () => true,
   getOpenAIProviderKey: () => 'transport-test-key',
 }))
-vi.mock('@/lib/audit/judge', () => ({ isRetryableJudgeError: () => true }))
+vi.mock('@/lib/audit/judge', async () => ({ ...await vi.importActual('@/lib/audit/judge'), isRetryableJudgeError: () => true }))
 vi.mock('@/lib/db', () => ({ prisma: { audit: {
   updateMany: vi.fn(async () => ({ count: 1 })), findFirst: vi.fn(async () => ({ id: 'provider-owner' })),
 } } }))

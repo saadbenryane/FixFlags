@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import assert from 'node:assert/strict'
-import { isRetryableJudgeError } from '@/lib/audit/judge'
+import { classifyJudgeProviderFailure, isRetryableJudgeError } from '@/lib/audit/judge'
 import { validatePrescriptionOutput, prescriptionFlagBatches, prescriptionTaskPlans } from '@/lib/audit/judge-prescription'
 import { parsePrescriptionGuidance } from '@/lib/audit/prescription-guidance-schema'
 import type { ExistingFlagForPrescription } from '@/lib/audit/flag-types'
@@ -80,6 +80,19 @@ describe('prescription occurrence batching', () => {
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'
 
 describe('isRetryableJudgeError', () => {
+  it.each(['credit_balance_exhausted', 'organization_spend_limit_exceeded', 'project_spend_limit_exceeded',
+    'organization_usage_limit_exceeded', 'insufficient_quota', 'billing_hard_limit_reached'])('refuses retries for structured quota failure %s even when its message says 429', code => {
+    const failure = Object.assign(new Error('429 Provider quota requires operator action'), { status: 429, code })
+    assert.equal(classifyJudgeProviderFailure(failure), 'quota_exhausted')
+    assert.equal(isRetryableJudgeError(failure), false)
+  })
+
+  it('retains the distinction between pacing, unknown limits and authentication', () => {
+    assert.equal(classifyJudgeProviderFailure(Object.assign(new Error('Provider limit'), { status: 429 })), 'provider_limit')
+    assert.equal(classifyJudgeProviderFailure(Object.assign(new Error('Slow down'), { status: 429, code: 'slow_down' })), 'rate_limited')
+    assert.equal(classifyJudgeProviderFailure(Object.assign(new Error('Rejected'), { status: 401 })), 'authentication_rejected')
+    assert.equal(isRetryableJudgeError(Object.assign(new Error('503 appears in diagnostic text'), { status: 401 })), false)
+  })
   it('returns false for non-Error input', () => {
     assert.equal(isRetryableJudgeError(null), false)
     assert.equal(isRetryableJudgeError(undefined), false)

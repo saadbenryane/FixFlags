@@ -33,6 +33,7 @@ import { parseMetadataFromHtml } from '@/lib/audit/metadata'
 import { browserArtifactSchema } from '../snapshots'
 import { actionHandlers } from '../actions'
 import { nextControlProgress } from '../control-progress'
+import { JudgeProviderError } from '@/lib/audit/judge'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -715,6 +716,42 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'finalize' } })).toMatchObject({ workState: 'READY' })
     const events = await prisma.auditPipelineEvent.findMany({ where: { auditId: audit.id, event: 'task_observation_committed' }, orderBy: { sequence: 'asc' } })
     expect(events.map(event => event.status)).toEqual(ending === 'exhausted' ? ['partial'] : ['partial', 'completed'])
+  })
+
+  it.each(['judge', 'prescription'] as const)('settles a funded limit once in the real %s queue without losing independent evidence', async kind => {
+    const { audit, tasks } = await admission(['http', kind])
+    const independent = tasks.find(task => task.workKind === 'http')!
+    await executeTask({ auditId: audit.id, taskId: independent.id, generation: 1 }, handlers)
+    const observed = (await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: independent.id } })).workResult
+    expect(observed).toMatchObject({ kind: 'http', data: { observed: true } })
+    const task = tasks.find(task => task.workKind === kind)!
+    const attempts = vi.fn(async () => {
+      throw new JudgeProviderError(Object.assign(new Error('Provider credit exhausted'), {
+        status: 429, code: 'credit_balance_exhausted',
+      }), false)
+    })
+    const observer: TaskHandler = { kind, replay: 'read_only', timeoutMs: 1000,
+      evaluate: attempts, validateResult: () => {} }
+    const connection = createWorkerRedis()
+    connections.push(connection)
+    const worker = new Worker(dispatch.queues.get('provider')!.name,
+      job => executeTask(job.data, new Map([[kind, observer]])), { connection })
+    workers.push(worker)
+    try {
+      await worker.waitUntilReady()
+      await dispatchReadyTasks(await reconcileTasks(audit.id))
+      await vi.waitFor(async () => {
+        expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
+          .toMatchObject({ workState: 'BLOCKED', workAttempts: 1, workErrorCode: 'AI_PROVIDER_QUOTA_EXHAUSTED' })
+      }, { timeout: 10_000, interval: 25 })
+      await recoverProgressiveTasks()
+      await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, new Map([[kind, observer]]))
+      expect(attempts).toHaveBeenCalledTimes(1)
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: independent.id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: observed })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
+        .toMatchObject({ workState: 'BLOCKED', workAttempts: 1, workResult: null })
+    } finally { await worker.close() }
   })
 
   it.each(['protected', 'idempotent', 'kind', 'continuation', 'invalid'] as const)('refuses invalid failed-task observations before publishing: %s', async mode => {

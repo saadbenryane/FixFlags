@@ -4,6 +4,7 @@ import { getOpenAIProviderKey } from '@/lib/audit/llm-keys'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import { sanitizeAuditErrorMessage } from '@/lib/audit/pipeline/context'
+import { classifyJudgeProviderFailure, type JudgeProviderFailure } from '../judge'
 
 export interface AiProviderHealth {
   configured: boolean
@@ -16,7 +17,7 @@ export interface AiProviderHealth {
 export interface AiProviderValidation {
   ok: boolean
   provider: string
-  failure?: 'authentication_rejected' | 'permission_denied' | 'rate_limited' | 'provider_unavailable'
+  failure?: JudgeProviderFailure
   error?: string
 }
 
@@ -61,12 +62,10 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
     return { ok: true, provider }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    const status = err && typeof err === 'object' && 'status' in err ? err.status : undefined
     return {
       ok: false,
       provider,
-      failure: status === 401 ? 'authentication_rejected' : status === 403 ? 'permission_denied'
-        : status === 429 ? 'rate_limited' : 'provider_unavailable',
+      failure: classifyJudgeProviderFailure(err) ?? 'provider_unavailable',
       error: sanitizeAuditErrorMessage(message),
     }
   }

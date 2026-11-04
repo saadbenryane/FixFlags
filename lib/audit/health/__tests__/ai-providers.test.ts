@@ -139,11 +139,18 @@ describe('validateAiProviderCredentials', () => {
     expect(result?.error).toContain('401 invalid api key')
   })
 
-  it.each([[403, 'permission_denied'], [429, 'rate_limited'], [503, 'provider_unavailable'],
+  it.each([[403, 'permission_denied'], [429, 'provider_limit'], [503, 'provider_unavailable'],
     [undefined, 'provider_unavailable']] as const)('retains SDK availability failure %s without inventing invalid credentials', async (status, failure) => {
     getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
     getOpenAIProviderKey.mockReturnValue('sk-test')
     openaiCreate.mockRejectedValueOnce(Object.assign(new Error('Provider request did not complete'), { status }))
     expect(await validateAiProviderCredentials()).toMatchObject({ ok: false, provider: 'openai', failure })
+  })
+
+  it('reports a typed credit failure as unavailable quota rather than authentication or temporary pacing', async () => {
+    getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
+    getOpenAIProviderKey.mockReturnValue('sk-test')
+    openaiCreate.mockRejectedValueOnce(Object.assign(new Error('Provider credit unavailable'), { status: 429, code: 'credit_balance_exhausted' }))
+    expect(await validateAiProviderCredentials()).toMatchObject({ ok: false, provider: 'openai', failure: 'quota_exhausted' })
   })
 })

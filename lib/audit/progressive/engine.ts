@@ -18,6 +18,7 @@ import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-error
 import { PageCaptureError } from '../browser/page-capture'
 import { claimTaskDelivery, retireObsoleteTaskDeliveries } from './delivery-window'
 import { isBrowserEvidenceKey } from './collection-requirements'
+import { classifyJudgeProviderFailure, isRetryableJudgeError, JudgeProviderError } from '../judge'
 
 /** A cooperative deadline also has an enforced boundary. Late continuations
  * lose write authority, while the engine retains authority to record failure. */
@@ -414,7 +415,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       })
     } catch (error) {
       if (error instanceof ExecutionOwnershipLost) return
-      let failure = classifyTaskFailure(error), observation: TaskArtifact | undefined
+      let failure = classifyTaskFailure(error, handler.kind), observation: TaskArtifact | undefined
       if (failure.observation) {
         try {
           observation = taskArtifactSchema.parse(scopeTaskArtifact(failure.observation, original.audit.executionSpec))
@@ -462,9 +463,19 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   await dispatchReadyTasks(ready)
 }
 
-export function classifyTaskFailure(error: unknown): TaskFailure {
+export function classifyTaskFailure(error: unknown, kind?: TaskKind): TaskFailure {
   if (error instanceof ScanAccessUnavailable) return new TaskFailure(error.code, false)
   if (error instanceof TaskFailure) return error
+  if (kind === 'judge' || kind === 'prescription') {
+    const providerFailure = classifyJudgeProviderFailure(error)
+    if (providerFailure || error instanceof JudgeProviderError) {
+      const retryable = isRetryableJudgeError(error)
+      const code = !retryable && providerFailure === 'quota_exhausted' ? 'AI_PROVIDER_QUOTA_EXHAUSTED'
+        : !retryable && providerFailure === 'authentication_rejected' ? 'AI_PROVIDER_AUTH_REJECTED'
+          : !retryable && providerFailure === 'permission_denied' ? 'AI_PROVIDER_PERMISSION_DENIED' : 'AI_PROVIDER_UNAVAILABLE'
+      return new TaskFailure(code, retryable)
+    }
+  }
   // A refused navigation is a completed observation of unavailable scope. A
   // fresh scheduled run can observe recovery; repeating secondary browser work
   // inside this run cannot replace its already recorded page capture evidence.

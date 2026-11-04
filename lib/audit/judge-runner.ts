@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import { getConfiguredJudgeProviderChain } from './judge-config'
 import { hasAnthropicProviderKey, getOpenAIProviderKey } from './llm-keys'
-import { isRetryableJudgeError } from './judge'
+import { classifyJudgeProviderFailure, isRetryableJudgeError, JudgeProviderError } from './judge'
 import { JudgeContractError } from './validate-judge-output'
 import { logger } from '@/lib/logger'
 import { currentExecutionOwnership, ExecutionOwnershipLost } from './execution-ownership'
@@ -66,6 +66,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
 
   const attemptErrors: string[] = []
   let lastError: Error | null = null
+  let recoveryAvailable = false
 
   for (const provider of chain) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -83,7 +84,9 @@ export async function runLlmWithRetry<TInput, TOutput>({
         lastError = err instanceof Error ? err : new Error(String(err))
         attemptErrors.push(`${provider}#${attempt}: ${lastError.message}`)
         logger.warn(`${label} attempt failed`, { provider, attempt, err: lastError.message })
-        if (!isRetryable(err)) break
+        const retryable = isRetryable(err)
+        recoveryAvailable ||= retryable
+        if (!retryable) break
         if (attempt < MAX_RETRIES) {
           const delay = Math.min(RETRY_DELAY_MS * attempt, deadline === undefined ? Infinity : Math.max(0, deadline - Date.now()))
           if (signal) await sleep(delay, signal)
@@ -94,6 +97,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
   }
 
   const detail = attemptErrors.length > 0 ? attemptErrors.join('; ') : 'no attempts recorded'
+  if (lastError && classifyJudgeProviderFailure(lastError)) throw new JudgeProviderError(lastError, recoveryAvailable)
   throw lastError ?? new Error(`${label} failed: ${detail}`)
 }
 

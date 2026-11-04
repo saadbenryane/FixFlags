@@ -97,6 +97,7 @@ import { JOURNEY_VERIFICATION_RULE, nativeJourneyFlags } from '@/lib/audit/check
 import { collectMobileNavigation } from '@/lib/audit/flow/mobile-navigation'
 import { mobileNavigationFlags, MOBILE_NAVIGATION_RULE } from '@/lib/audit/flow/mobile-navigation-evidence'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import { captureProfileKey } from '@/lib/audit/browser/observation-scope'
 import { auditPageObservation } from '@/lib/audit/browser/observation-scope'
 import { persistProjectScanAccess } from '@/lib/audit/scan-access-store'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
@@ -4264,9 +4265,22 @@ run('migrated progressive execution', () => {
         expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
       }, { timeout: 90_000, interval: 100 })
       const collectedPages = await prisma.auditExecutionTask.findMany({ where: { auditId: recurrence.auditId!, workKind: 'browser' },
-        select: { workState: true } })
-      expect(collectedPages).toHaveLength(7)
-      expect(collectedPages.every(task => task.workState === 'COMPLETED')).toBe(true)
+        select: { pageUrl: true, workInput: true, workState: true, workResult: true } })
+      const expectedPages = [pageUrl, ...Array.from({ length: 6 }, (_, index) => origin + '/mobile-feature-' + index)]
+      expect(collectedPages).toHaveLength(expectedPages.length * 2)
+      expect([...new Set(collectedPages.map(task => task.pageUrl))].sort()).toEqual(expectedPages.sort())
+      for (const url of expectedPages) {
+        const captures = collectedPages.filter(task => task.pageUrl === url)
+        expect(captures.map(task => taskInputSchema.parse(task.workInput).device).sort()).toEqual(['desktop', 'mobile'])
+        for (const task of captures) {
+          const device = taskInputSchema.parse(task.workInput).device
+          expect(task.workState).toBe('COMPLETED')
+          expect(readArtifact(task.workResult, 'browser').data).toMatchObject({ snapshot: {
+            consoleCoverage: { pageUrl: url, [device!]: { complete: true, finalUrl: url,
+              profile: captureProfileKey(device === 'mobile' ? MOBILE_CAPTURE_PROFILE : DESKTOP_CAPTURE_PROFILE) } },
+          } })
+        }
+      }
       const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: flag.checkId }, include: { improvementOccurrence: true } })
       const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
       expect(repeated).toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: original.improvementId, kind: 'REGRESSED' } })

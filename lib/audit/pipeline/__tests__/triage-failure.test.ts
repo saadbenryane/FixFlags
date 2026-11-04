@@ -38,6 +38,11 @@ describe('parseTriageFailure', () => {
     }
   })
 
+  it('does not reintroduce retry for typed credit failure through the legacy 429 message path', () => {
+    const error = Object.assign(new Error('429 Provider credit unavailable'), { status: 429, code: 'credit_balance_exhausted' })
+    assert.deepEqual(parseTriageFailure(error), { reason: 'provider_exhausted', message: error.message, retryable: false })
+  })
+
   it('falls back to unknown for anything else', () => {
     const failure = parseTriageFailure('a plain string error')
     assert.equal(failure.reason, 'unknown')

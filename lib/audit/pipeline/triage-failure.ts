@@ -1,6 +1,6 @@
 import { AuditDeadlineError } from '../pipeline-errors'
 import { JudgeContractError } from '../validate-judge-output'
-import { isRetryableJudgeError } from '../judge'
+import { classifyJudgeProviderFailure, isRetryableJudgeError } from '../judge'
 
 export type TriageFailureReason =
   | 'no_provider_keys'
@@ -33,6 +33,10 @@ export function parseTriageFailure(error: unknown): TriageFailure {
 
   if (error instanceof JudgeContractError || lower.includes('invalid triage output')) {
     return { reason: 'contract_invalid', message, retryable: false }
+  }
+
+  if (classifyJudgeProviderFailure(error)) {
+    return { reason: 'provider_exhausted', message, retryable: isRetryableJudgeError(error) }
   }
 
   if (isRetryableJudgeError(error)) {

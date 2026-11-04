@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const sleep = vi.hoisted(() => vi.fn(async (ms: number) => { await vi.advanceTimersByTimeAsync(ms) }))
 vi.mock('@/lib/audit/judge-config', () => ({ getConfiguredJudgeProviderChain: () => ['first', 'fallback'] }))
 vi.mock('@/lib/audit/llm-keys', () => ({ hasAnthropicProviderKey: () => false, getOpenAIProviderKey: () => null }))
-vi.mock('@/lib/audit/judge', () => ({ isRetryableJudgeError: () => true }))
+vi.mock('@/lib/audit/judge', async () => ({ ...await vi.importActual('@/lib/audit/judge'), isRetryableJudgeError: () => true }))
 vi.mock('@/lib/utils/sleep', () => ({ sleep }))
 import { runLlmWithRetry } from '../judge-runner'
 

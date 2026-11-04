@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { PageCaptureError } from '@/lib/audit/browser/page-capture'
 import { StorageNotConfiguredError, StorageUploadError } from '@/lib/audit/pipeline-errors'
 import { TaskFailure, retryDecision } from '../contracts'
+import { JudgeProviderError } from '@/lib/audit/judge'
 
 vi.mock('@/lib/db', () => ({ prisma: {} }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: vi.fn() }))
@@ -11,6 +12,19 @@ vi.mock('@/lib/queue/worker-heartbeat', () => ({ readWorkerHeartbeat: vi.fn() })
 import { classifyTaskFailure } from '../engine'
 
 describe('observed scope and operational interruption policy', () => {
+  it('settles provider credit failures without inventing crashes or retrying an unchanged funded limit', () => {
+    const cause = Object.assign(new Error('429 Credit unavailable'), { status: 429, code: 'credit_balance_exhausted' })
+    for (const kind of ['judge', 'prescription'] as const) {
+      expect(classifyTaskFailure(cause, kind)).toMatchObject({ code: 'AI_PROVIDER_QUOTA_EXHAUSTED', retryable: false, crash: false })
+      expect(classifyTaskFailure(new JudgeProviderError(cause, false), kind))
+        .toMatchObject({ code: 'AI_PROVIDER_QUOTA_EXHAUSTED', retryable: false, crash: false })
+      // A different configured provider may still recover even when the last
+      // attempted provider reported a funding limit.
+      expect(classifyTaskFailure(new JudgeProviderError(cause, true), kind))
+        .toMatchObject({ code: 'AI_PROVIDER_UNAVAILABLE', retryable: true, crash: false })
+    }
+    expect(classifyTaskFailure(cause, 'http')).toMatchObject({ code: 'TASK_INTERRUPTED', retryable: true })
+  })
   it.each([
     ['HTTP_ERROR', 404], ['HTTP_ERROR', 503], ['HTTP_FORBIDDEN', 403], ['HTTP_FORBIDDEN', 200],
     ['HTTP_RATE_LIMIT', 429], ['NON_HTML_RESPONSE', 200],
