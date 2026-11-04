@@ -136,7 +136,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     }
 
   }
-  if (input.scope === 'SITE' || category?.area === 'conversion') {
+  if (input.projectId && (input.scope === 'SITE' || category?.area === 'conversion')) {
     // Carry recorded error horizons into care runs. A fast, healthy navigation
     // must not silently shorten observation after an earlier delayed failure.
     const scopes = await monitoringConsoleResponsibility({ projectId: input.projectId, environment: input.environment,

@@ -18,7 +18,8 @@ async function databaseIdentity(db: DB) {
   return createHash('sha256').update(JSON.stringify(rows)).digest('hex')
 }
 export function manifestDigest(manifest: Omit<PurgeManifest, 'digest'> | PurgeManifest) {
-  const { digest: _digest, ...material } = manifest as PurgeManifest
+  const material: Partial<PurgeManifest> = { ...manifest }
+  delete material.digest
   return createHash('sha256').update(JSON.stringify(material)).digest('hex')
 }
 

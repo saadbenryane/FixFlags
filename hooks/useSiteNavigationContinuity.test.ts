@@ -50,6 +50,38 @@ describe('Site authentication reading-position continuity', () => {
     expect(document.activeElement?.textContent).toBe('Check again')
     expect(window.location.search).toBe('?category=accessibility')
   })
+  it.each([true, false])('restores the original check disclosure before scroll and focus: %s', async open => {
+    const body = document.querySelector<HTMLElement>('[data-dialog-scroll]')!
+    const link = body.querySelector('a')!
+    const details = document.createElement('details')
+    details.dataset.siteCheckDetails = ''
+    details.open = open
+    body.append(details)
+    details.append(link)
+    depart()
+    expect(JSON.parse(sessionStorage.getItem(key)!)).toMatchObject({ checkDetailsOpen: open })
+    body.innerHTML = `<details data-site-check-details ${open ? '' : 'open'}><summary>Check details</summary><button data-site-return-focus="check">Check again</button></details>`
+    renderHook(() => useSiteNavigationContinuity('owned-site'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(40) })
+    expect(body.querySelector('details')?.open).toBe(open)
+    expect(body.scrollTop).toBe(180)
+    expect(sessionStorage.getItem(key)).toBeNull()
+  })
+  it('waits for the check disclosure before consuming its reading context', async () => {
+    depart()
+    sessionStorage.setItem(key, JSON.stringify({ ...JSON.parse(sessionStorage.getItem(key)!), checkDetailsOpen: true }))
+    const body = document.querySelector<HTMLElement>('[data-dialog-scroll]')!
+    body.innerHTML = ''
+    renderHook(() => useSiteNavigationContinuity('owned-site'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(40) })
+    expect(window.scrollTo).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem(key)).not.toBeNull()
+    await act(async () => { body.innerHTML = '<details data-site-check-details><summary>Check details</summary><button data-site-return-focus="check">Check again</button></details>' })
+    await act(async () => { await vi.advanceTimersByTimeAsync(40) })
+    expect(body.querySelector('details')?.open).toBe(true)
+    expect(document.activeElement?.textContent).toBe('Check again')
+    expect(sessionStorage.getItem(key)).toBeNull()
+  })
   it('does not move focus after the person starts another action while content is loading', async () => {
     depart()
     document.querySelector('[role="dialog"]')!.remove()

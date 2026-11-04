@@ -11,6 +11,18 @@ import { cardExecution } from '@/lib/sites/card-execution'
 
 describe('Site progress read boundary', () => {
   beforeEach(() => { progress.authorize.mockReset().mockResolvedValue({ id: 'project-one' }) })
+  it('projects primary capture work independently from linked-page collection', async () => {
+    const task = (id: string, primary: boolean, workState: string) => ({ id, primary, workKind: 'captures', status: 'COMPLETED', workState,
+      pageUrl: 'https://example.com/' + id, module: null, device: null,
+      workAttempts: 1, workErrorCode: null, workRetryAt: null })
+    const site = { siteId: 'site-one', projectId: 'project-one' } as SiteRecord
+    progress.audit.mockResolvedValue({ status: 'CHECKING', recoveryUntil: null })
+    progress.counts.mockResolvedValue([{ status: 'COMPLETED', workState: 'RUNNING', workErrorCode: null, _count: { _all: 2 } }])
+    progress.tasks.mockResolvedValue([task('primary', true, 'RUNNING'), task('linked', false, 'EXHAUSTED')])
+    expect((await loadExecutionProgress(site, 'audit'))?.captureState).toBe('pending')
+    progress.tasks.mockResolvedValue([task('primary', true, 'COMPLETED'), task('linked', false, 'RUNNING')])
+    expect((await loadExecutionProgress(site, 'audit'))?.captureState).toBe('not_recorded')
+  })
   it('keeps recovery from a late task visible across the complete supported graph', async () => {
     const rows = Array.from({ length: MAX_TASKS_PER_AUDIT }, (_, index) => ({ id: 'task-' + index, status: 'COMPLETED', workState: 'COMPLETED',
       workKind: 'check', pageUrl: 'https://example.com/', module: 'metadata', device: null,

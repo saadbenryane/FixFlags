@@ -30,6 +30,7 @@ export function startUptimeRuntime() {
     scheduler.schedule(task, 30_000, true)
   }
   return {
+    waitUntilReady: () => worker.waitUntilReady(),
     close: async () => {
       const pendingMaintenance = scheduler.stop()
       await Promise.all([pendingMaintenance, worker.close(pendingMaintenance)])

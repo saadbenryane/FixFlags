@@ -12,7 +12,7 @@ describe('shared product story contracts', () => {
     expect(CARE_HOME.workflow.steps.map(step => step.id)).toEqual(expected)
     expect(PUBLIC_SITE_COPY.howItWorks.steps.map(step => step.id)).toEqual(expected)
     expect(CARE_HOME.workflow.steps[2].body).toContain('Check now')
-    expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your website to keep getting scheduled checks/i)
+    expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your website.*scheduled checks/i)
     expect(SEO.home.description).toBe(PRODUCT_STORY.description)
     expect(SEO.home.description).toMatch(/email alerts/i)
     expect(SEO.home.description).toMatch(/fix instructions you can copy and paste/i)

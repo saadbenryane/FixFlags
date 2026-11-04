@@ -15,4 +15,3 @@ export function verifySvixSignature(payload: string, headers: Headers, secret: s
     return actual.length === expected.length && timingSafeEqual(expected, actual)
   })
 }
-

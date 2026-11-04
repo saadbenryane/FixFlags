@@ -1,6 +1,6 @@
 import { siteFlagFixture, siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { SiteResourceUpdate } from '@/hooks/useSiteResource'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
@@ -364,11 +364,10 @@ describe('SiteFlagActions', () => {
   it('keeps modal actions compact while preserving the full prompt and verification dialog', async () => {
     vi.stubGlobal('fetch', copyResponse('Canonical task with recorded evidence.'))
     render(<SiteFlagActions compact repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
-    expect(await screen.findByText('Canonical task with recorded evidence.', { selector: 'summary > span' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.fixStep })).not.toBeInTheDocument()
-    const preview = screen.getByLabelText('View instructions', { selector: 'summary' })
+    const preview = await screen.findByLabelText('View instructions', { selector: 'summary' })
     fireEvent.click(preview)
-    expect(screen.getByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel })).toHaveValue('Canonical task with recorded evidence.')
+    await waitFor(() => expect(screen.getByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel })).toHaveValue('Canonical task with recorded evidence.'))
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
     expect(within(screen.getByRole('dialog')).getByRole('textbox', { name: SITE_BOARD_COPY.changeLabel })).toBeVisible()

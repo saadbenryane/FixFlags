@@ -141,4 +141,3 @@ ALTER TABLE "notification_digests" ADD CONSTRAINT "notification_digests_preferen
 
 -- AddForeignKey
 ALTER TABLE "email_deliveries" ADD CONSTRAINT "email_deliveries_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

@@ -9,4 +9,3 @@ const scopeSchema = z.object({ id: z.string(), url: z.string(), watchInterval: z
   notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY']), notifyOnRecovery: z.boolean() }).strict()
 export const digestPayloadSchema = notificationEmailSnapshotSchema.extend({ ownerId: z.string(), revision: z.number().int(),
   sites: z.array(scopeSchema).min(1).max(20) }).strict()
-

@@ -94,4 +94,3 @@ async function lockSummaryOwner(tx: Prisma.TransactionClient, userId: string) {
     SELECT id FROM users WHERE id = ${userId} AND "lifecycleStatus" = 'ACTIVE' AND "emailVerified" = true FOR SHARE`
   return owners.length > 0
 }
-

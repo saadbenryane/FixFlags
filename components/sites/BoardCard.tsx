@@ -198,9 +198,11 @@ export function BoardCard({
     const recoveryText = incompleteReason && incompleteReason !== SITE_BOARD_COPY.cardCheckIncomplete && (previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail)) ? incompleteReason : null
     const rowMeta = <span className={styles.rowTrailing}>
       <span className={styles.rowStatus}>{visibleStatus || count > 0 ? <BoardStatus state={checking ? 'checking' : state} label={statusLabel} text={visibleStatus} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /> : null}</span>
-      {recoveryAction && !checking ? <span className={styles.rowRecheck}>{recoveryAction}</span> : null}
     </span>
-    const recovery = recoveryText && !checking ? <div className={styles.rowRecovery}><p>{recoveryText}</p></div> : null
+    const recovery = (recoveryText || recoveryAction) && !checking ? <div className={styles.rowRecovery}>
+      {recoveryText ? <p>{recoveryText}</p> : null}
+      {recoveryAction ? <span className={styles.rowRecheck}>{recoveryAction}</span> : null}
+    </div> : null
     if (previewFlags.length > 0) {
       const bounded = compact && Boolean(onOpen || href)
       const rowFlags = bounded ? visiblePreviewFlags : previewFlags

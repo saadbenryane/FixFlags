@@ -4,6 +4,7 @@ import type { AxeResults } from 'axe-core'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from '../browser/accessibility-evidence'
 import { accessibilityObservations, evaluateAccessibility, scopeAccessibilityFlags } from './accessibility-observations'
 import { isIframeAxeTarget, runAccessibilityChecks, type AxeViolation } from './accessibility'
+import { verificationRuleForCheckId } from '../verification-rules'
 import { parseMetadataFromHtml } from '../metadata'
 import { scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
@@ -33,6 +34,17 @@ const original = scopeAccessibilityFlags(runAccessibilityChecks(metadata, null, 
 const proof = (value: AccessibilityEvidence) => scopedAssertionForTarget({ receipt: receipt(value), checkId: original.checkId, flag: original })?.assertion
 
 describe('automated accessibility responsibilities', () => {
+  it('separates recorded rule and element facts from axe remediation without losing diagnostics', () => {
+    const flag = runAccessibilityChecks(metadata, null, [violation])[0]
+    expect(flag.evidence).toContain('button-name')
+    expect(flag.evidence).toContain('#submit')
+    expect(flag.evidence).toContain('<button id="submit"></button>')
+    expect(flag.evidence).not.toContain(violation.nodes[0].failureSummary)
+    expect(flag.evidence).not.toContain(violation.description)
+    expect(flag.fix).toContain(violation.nodes[0].failureSummary)
+    expect(verificationRuleForCheckId('buttons-no-text')).toContain('aria-labelledby')
+    expect(flag.fix).toContain('aria-labelledby')
+  })
   it('keeps a mobile-only native observation applicable without inventing desktop coverage', async () => {
     for (const state of ['failed', 'passed', 'incomplete'] as const) {
       const checked = await runAllChecks(pageUrl, null, null, null, [], undefined, null, undefined, undefined, true, ['accessibility'], {

@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: architecture
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-30
 supersedes: []
 ---
 
@@ -3744,6 +3744,17 @@ Progressive recovery windows are not legacy `AUDIT_DEADLINE_MS` call budgets.
 | `GET /api/health/browser` | Chromium + R2 connectivity                                                                                                                                   |
 | `GET /api/health/worker`  | Redis + worker heartbeat                                                                                                                                     |
 
+The worker launcher's separate HTTP endpoint returns 503 until its child has
+connected every queue consumer, and again while stopping or after 45 seconds
+without child acknowledgement. This is process readiness, not provider acceptance.
+The application worker diagnostic endpoint retains its JSON diagnostic contract;
+monitoring must inspect its `ok` field rather than treating HTTP 200 as health.
+`lastBrowserConnectedAt` records connection observation only. Allocator diagnostics
+report owned, unowned and expired contexts plus reserved capacity. Opaque context
+IDs correlate with private allocation/release logs; public diagnostics include no
+target URLs, credentials or tenant identifiers. Physical slots remain held until
+native closure, including after execution-scope cancellation.
+
 ## Debugging runbook
 
 1. `curl https://fixflags.com/api/health/ready` — confirm `ok: true`
@@ -4765,7 +4776,7 @@ these local verification steps.
 
 ## Claim identity and customer-loop checkpoint, 2026-10-27
 
-The current implementation/evidence status is recorded in the [canonical completion checkpoint](product-masterplan.md#implementation-checkpoint-2026-10-27), alongside the remaining provider, experience and production requirements.
+This is the October 27 local checkpoint. The [current completion plan](product-masterplan.md#current-completion-plan-2026-10-28) records the later deployment, retained-row preservation, current runtime observation and remaining provider, experience and recovery requirements.
 
 - `ensureOwnedFlagIdentities` is the shared identity writer for claim and first repair. The claim transaction publishes current native observations before ownership/defaults become visible. Bounded conflict-safe inserts preserve existing proposals, verification decisions and event metadata. Claim replay creates no customer action and truncates no observations.
 - Finding materialization, repair declarations, verification and legacy identity adoption share `lockImprovementLedger` on the durable Improvement ID. Materialization initializes a missing identity with a conflict-safe insert, takes that lock before updating an existing row, and re-reads its exact source observations. Resolved or dismissed attention cannot reopen a verified Improvement or replace its recovery criteria from a delayed snapshot. An unreferenced provisional identity is discarded within the same transaction. PostgreSQL race fixtures exercise delayed source reads and both commit orders, observe the actual advisory wait, preserve independent recovery, and require no lock retry. Rollback and recurrence keep the existing occurrence and cycle contracts.

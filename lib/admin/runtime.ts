@@ -249,7 +249,7 @@ export function startAdminOperationRuntime() {
   scheduler.schedule(sweepAdminOperations, 10_000, true)
   let closing: Promise<void> | undefined
   return {
-    ready: () => worker.waitUntilReady(),
+    waitUntilReady: () => worker.waitUntilReady(),
     close: () => closing ??= (async () => {
       await Promise.all([scheduler.stop(), worker.close()])
       await queue?.close()

@@ -46,6 +46,7 @@ export function startUptimeWorker(processProbe: (job: UptimeJob) => Promise<void
   worker.on('failed', (job, error) => logger.error('Uptime probe job failed', { jobId: job?.id, error: error.message }))
   let closing: Promise<void> | undefined
   return {
+    waitUntilReady: () => worker.waitUntilReady(),
     close: (pendingMaintenance: Promise<unknown> = Promise.resolve()) => closing ??= (async () => {
       // Stop intake now, but keep the producer usable until admitted dispatches finish.
       await Promise.all([worker.close(), pendingMaintenance])

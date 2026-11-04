@@ -6,9 +6,8 @@
 .preview { margin-top: 8px; min-width: 0; }
 .preview summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding-block: 4px; cursor: pointer; list-style: none; }
 .preview summary::-webkit-details-marker { display: none; }
-.preview summary > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; white-space: pre-line; font-size: 11px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+.preview summary > span { overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
 .preview summary > svg { flex-shrink: 0; color: hsl(var(--muted-foreground)); }
 .preview[open] summary > svg { transform: rotate(180deg); }
-.preview[open] summary > span { -webkit-line-clamp: 1; }
 .preview summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
 .preview textarea { margin-top: 8px; }

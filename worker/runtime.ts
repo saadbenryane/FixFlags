@@ -2,8 +2,8 @@ import { runBestEffort } from '@/lib/observability/best-effort'
 import { shutdownDeadlineMs } from '../lib/runtime/environment.mjs'
 
 export interface WorkerHandle {
+  waitUntilReady?(): Promise<unknown>
   close(): Promise<unknown>
-  ready?(): Promise<unknown>
 }
 export interface WorkerRuntimeLogger {
   info(message: string): void
@@ -21,6 +21,8 @@ export interface WorkerRuntimeDependencies {
   closeBrowser(): Promise<void>
   exit(code: number): void
   logger: WorkerRuntimeLogger
+  onReady?(): void
+  onStopping?(): void
   shutdownMs?: number
   publishState?(state: 'starting' | 'ready' | 'stopping'): void
 }
@@ -30,6 +32,8 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   let worker: WorkerHandle | null = null
   let scheduler: ReturnType<WorkerRuntimeDependencies['startScheduler']>
   let shuttingDown = false, startPromise: Promise<void> | undefined, stopPromise: Promise<void> | undefined
+  let interruptStartup!: () => void
+  const interrupted = new Promise<void>(resolve => { interruptStartup = resolve })
   let readinessTimer: ReturnType<typeof setInterval> | undefined
 
   async function runStart() {
@@ -40,9 +44,10 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     await dependencies.preflight()
     if (shuttingDown) return
     worker = dependencies.startWorker()
-    await worker.ready?.()
+    await Promise.race([worker.waitUntilReady?.(), interrupted])
     if (shuttingDown) return
     scheduler = dependencies.startScheduler()
+    dependencies.onReady?.()
     dependencies.publishState?.('ready')
     readinessTimer = setInterval(() => dependencies.publishState?.('ready'), 10_000)
     readinessTimer.unref?.()
@@ -53,6 +58,8 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   function shutdown(exitCode = 0): Promise<void> {
     if (stopPromise) return stopPromise
     shuttingDown = true
+    interruptStartup()
+    dependencies.onStopping?.()
     clearInterval(readinessTimer)
     dependencies.publishState?.('stopping')
     dependencies.logger.info('Worker stopping intake and draining active work')

@@ -39,6 +39,10 @@ vi.mock('@/lib/db', () => ({
     user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
+    runRequestKey: { findUnique: async (input: unknown) => {
+      const run = await mocks.runFindUnique(input)
+      return run ? { runRequest: run, requestedByUserId: 'user-1' } : null
+    } },
     runRequest: {
       findUnique: mocks.runFindUnique,
       findFirst: mocks.runFindFirst,

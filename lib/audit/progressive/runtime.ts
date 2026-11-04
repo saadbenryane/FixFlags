@@ -93,7 +93,7 @@ export function startProgressiveWorkers() {
     return worker
   })
   let closing: Promise<void> | undefined
-  return { activeCount: () => activeTasks, ready: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: () => closing ??= (async () => {
+  return { activeCount: () => activeTasks, waitUntilReady: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: () => closing ??= (async () => {
     await Promise.all(workers.map(worker => worker.close()))
     await closeParserWorker()
   })() }

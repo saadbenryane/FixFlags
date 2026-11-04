@@ -7,9 +7,11 @@ import { categoryExecutionRecovery, executionRecovery, type ExecutionRecovery } 
 import type { SiteCardArea } from '../card-areas'
 import { summarizeExecutionTasks, type ExecutionTaskSummary } from '../execution-summary'
 import { categoryExecutionActivity, type CategoryActivity } from '../card-execution'
+import { captureCollectionState, type CaptureCollectionState } from '../captures'
 import { readSiteEvidence } from './site-evidence-read'
 
 export type ExecutionProgress = {
+  captureState?: CaptureCollectionState
   summary?: ExecutionTaskSummary
   recovery?: ExecutionRecovery | null
   categoryRecovery?: Partial<Record<SiteCardArea, ExecutionRecovery>>
@@ -20,7 +22,7 @@ export type ExecutionProgress = {
 }
 function siteAuditScope(site: SiteRecord) { return site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } }
 type ProgressTask = Pick<AuditExecutionTask, 'id' | 'status' | 'workState' | 'workKind' | 'pageUrl' |
-  'workAttempts' | 'workErrorCode' | 'workRetryAt'> & { module: string | null; device: 'desktop' | 'mobile' | null }
+  'workAttempts' | 'workErrorCode' | 'workRetryAt'> & { module: string | null; device: 'desktop' | 'mobile' | null; primary: boolean }
 export function encodeEventCursor(siteId: string, sequence: bigint) {
   return Buffer.from(JSON.stringify({ version: 1, siteId, sequence: sequence.toString() })).toString('base64url')
 }
@@ -45,7 +47,7 @@ export async function readSiteEvents(site: SiteRecord, after: bigint) {
 export async function loadExecutionProgress(site: SiteRecord, auditId: string | null): Promise<ExecutionProgress | null> {
   if (!auditId) return null
   const audit = await prisma.audit.findFirst({ where: { AND: [{ id: auditId }, siteAuditScope(site)] },
-    select: { recoveryUntil: true } })
+    select: { status: true, recoveryUntil: true } })
   if (!audit) return null
   // Display facts do not require decoding today's executable task contract.
   // Extract only the scalar fields used here, never whole control cohorts,
@@ -56,7 +58,8 @@ export async function loadExecutionProgress(site: SiteRecord, auditId: string | 
         THEN task."workInput"->>'pageUrl' END) AS "pageUrl",
       CASE WHEN jsonb_typeof(task."workInput"->'module') = 'string' AND length(task."workInput"->>'module') BETWEEN 1 AND 120
         THEN task."workInput"->>'module' END AS module,
-      CASE WHEN task."workInput"->>'device' IN ('desktop', 'mobile') THEN task."workInput"->>'device' END AS device
+      CASE WHEN task."workInput"->>'device' IN ('desktop', 'mobile') THEN task."workInput"->>'device' END AS device,
+      COALESCE(task."workInput"->'primary' = 'true'::jsonb, false) AS primary
     FROM audit_execution_tasks task JOIN audits audit ON audit.id = task."auditId"
     WHERE audit.id = ${auditId} AND ${site.projectId ? Prisma.sql`audit."projectId" = ${site.projectId}`
       : Prisma.sql`audit.id = ${site.primaryAuditId ?? ''}`}
@@ -74,7 +77,9 @@ export async function loadExecutionProgress(site: SiteRecord, auditId: string | 
   const tasks = rows.map(row => ({ id: row.id, kind: row.workKind ?? '', module: row.module, device: row.device, pageUrl: row.pageUrl ?? '',
       state: row.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : row.workState ?? 'UNKNOWN', attempts: row.workAttempts,
       reason: row.workErrorCode, retryAt: row.workRetryAt?.toISOString() ?? null }))
-  return { summary, recovery: executionRecovery(tasks), categoryRecovery: categoryExecutionRecovery(tasks), categoryActivity: categoryExecutionActivity(tasks),
+  const captureState = captureCollectionState(audit.status, rows.filter(row => row.workKind === 'captures' && row.primary)
+    .map(row => row.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : row.workState ?? 'UNKNOWN'))
+  return { captureState, summary, recovery: executionRecovery(tasks), categoryRecovery: categoryExecutionRecovery(tasks), categoryActivity: categoryExecutionActivity(tasks),
     total: summary.total, completed: summary.recorded,
     running: countState(['RUNNING']), pending: countState(['WAITING', 'READY']),
     recovering: summary.recovering, unknown: summary.limited + summary.failed,

@@ -143,6 +143,7 @@ export async function createAuditPage(
   options: CreateAuditPageOptions
 ): Promise<AuditPageSession> {
   const consoleErrors = options.consoleErrors ?? []
+  const execution = currentExecutionOwnership()
   const playwrightAccess = scanAccessToPlaywrightContext(options.scanAccess, targetUrl)
 
   return openAuditContext(browser, {
@@ -163,8 +164,8 @@ export async function createAuditPage(
     ...playwrightAccess,
     ...(options.storageState ? { storageState: options.storageState } : {}),
     ...(options.allowLocalhost ? { proxy: publicBrowserProxyOptions(browser, true) } : {}),
-  }, { deadline: options.deadline, signal: currentExecutionOwnership()?.signal,
-    owner: currentExecutionOwnership() ? 'audit' : 'inspection',
+  }, { deadline: options.deadline, signal: execution?.signal, scope: execution?.taskId ? 'task' : execution ? 'execution' : 'standalone',
+    owner: execution ? { auditId: execution.auditId, taskId: execution.taskId, generation: execution.generation } : undefined,
     priority: options.resourcePriority === 'availability' ? 1 : 0 }, async (context, assertActive) => {
   assertActive()
   await applyScanAccessCookies(context, targetUrl, options.scanAccess)

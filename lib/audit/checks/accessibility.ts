@@ -66,7 +66,7 @@ function axeImpactToSeverity(impact: AxeViolation['impact']): string {
  * becomes a cluttered layout.
  */
 export const ACCESSIBLE_NAME_BUTTON_FIX =
-  '1. Keep the current icon or visual. Do not add visible text that changes the layout.\n2. Give the control an accessible name with aria-label or a visually hidden label that names the action.\n3. Confirm the name in a screen reader or the accessibility tree before shipping.'
+  '1. Keep the current icon or visual. Do not add visible text that changes the layout.\n2. Give the control an accessible name with aria-labelledby, aria-label or a visually hidden label that names the action.\n3. Confirm the name in a screen reader or the accessibility tree before shipping.'
 
 export const ACCESSIBLE_NAME_LINK_FIX =
   '1. Keep the current icon or visual. Do not add visible text that changes the layout.\n2. Give the link an accessible name with aria-label, a child img alt, or a visually hidden label that names the destination.\n3. Confirm the name in a screen reader or the accessibility tree before shipping.'
@@ -141,7 +141,7 @@ export function runAccessibilityChecks(
       const nodeCount = violation.nodes.length
       const evidence = violation.nodes
         .slice(0, 3)
-        .map((node) => `${node.target.join(' > ')}\n${node.failureSummary || violation.description}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
+        .map((node) => `${node.target.join(' > ')}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
         .join('\n')
 
       findings.push({
@@ -150,7 +150,7 @@ export function runAccessibilityChecks(
         impactTag: 'ACCESSIBILITY',
         severity: axeImpactToSeverity(violation.impact),
         problem: `${violation.help} (${nodeCount} element${nodeCount > 1 ? 's' : ''})`,
-        evidence: evidence || violation.description,
+        evidence: `Rule: ${violation.id}\nAffected elements: ${nodeCount}${evidence ? '\n' + evidence : ''}`,
         fix: buildAxeFix(violation),
         confidence: 1.0,
         source: 'DETERMINISTIC',

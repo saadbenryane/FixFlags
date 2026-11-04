@@ -9,6 +9,7 @@ export type SiteContinuation = {
   x: number
   y: number
   dialogTop: number | null
+  checkDetailsOpen?: boolean
   focus: SiteReturnFocus
 }
 
@@ -20,7 +21,7 @@ export function siteReturnFocus(value: string | undefined): SiteReturnFocus {
   return SITE_RETURN_FOCUS.find(key => key === value) ?? 'context'
 }
 
-/** Store navigation coordinates only. Evidence, credentials and form values never belong here. */
+/** Store navigation context only. Evidence, credentials and form values never belong here. */
 export function parseSiteContinuation(raw: string | null, current: URL, now: number): SiteContinuation | null {
   if (!raw || raw.length > 8192) return null
   try {
@@ -32,6 +33,7 @@ export function parseSiteContinuation(raw: string | null, current: URL, now: num
       now < state.recordedAt || now - state.recordedAt > SITE_CONTINUATION_LIFETIME_MS) return null
     const coordinate = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1_000_000
     if (!coordinate(state.x) || !coordinate(state.y) || (state.dialogTop !== null && !coordinate(state.dialogTop)) ||
+      (state.checkDetailsOpen !== undefined && typeof state.checkDetailsOpen !== 'boolean') ||
       !SITE_RETURN_FOCUS.some(key => key === state.focus)) return null
     return state as SiteContinuation
   } catch { return null }

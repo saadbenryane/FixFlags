@@ -10,10 +10,15 @@ describe('browser-local Site continuation contract', () => {
     expect(siteNavigationRoot('/sites/site-1/flags/flag-1')).toBe('/sites/site-1')
     expect(siteNavigationRoot('/sign-in')).toBeNull()
   })
+  it.each([true, false])('retains the check disclosure state: %s', checkDetailsOpen => {
+    const saved = { ...state, checkDetailsOpen }
+    expect(parseSiteContinuation(JSON.stringify(saved), current, 1001)).toEqual(saved)
+  })
   it.each([
     { destination: 'https://other.example/sites/site-1?category=accessibility' },
     { destination: '/sites/another?category=accessibility' }, { destination: '/sites/site-1?category=pages' },
     { x: -1 }, { y: '420' }, { dialogTop: -1 }, { focus: '[arbitrary-selector]' }, { version: 2 },
+    { checkDetailsOpen: 'open' }, { checkDetailsOpen: [] },
   ])('rejects another scope or malformed state: %j', change => {
     expect(parseSiteContinuation(JSON.stringify({ ...state, ...change }), current, 1001)).toBeNull()
   })

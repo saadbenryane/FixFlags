@@ -43,10 +43,39 @@ function dependencies(): WorkerRuntimeDependencies & {
 }
 
 describe('standalone worker runtime', () => {
+  it('acknowledges readiness only after consumers connect', async () => {
+    const deps = dependencies()
+    let connected!: () => void
+    deps.startWorker = () => ({ close: deps.closeWorker, waitUntilReady: () => new Promise<void>(resolve => { connected = resolve }) })
+    deps.onReady = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    const starting = runtime.start()
+    await vi.waitFor(() => expect(connected).toBeTypeOf('function'))
+    expect(deps.onReady).not.toHaveBeenCalled()
+    expect(deps.calls).not.toContain('scheduler:start')
+    connected()
+    await starting
+    expect(deps.onReady).toHaveBeenCalledOnce()
+  })
+
+  it('drains consumers when shutdown interrupts their readiness wait', async () => {
+    const deps = dependencies()
+    let waiting = false
+    deps.startWorker = () => ({ close: deps.closeWorker, waitUntilReady: () => { waiting = true; return new Promise<void>(() => {}) } })
+    deps.onReady = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    const starting = runtime.start()
+    await vi.waitFor(() => expect(waiting).toBe(true))
+    await runtime.shutdown()
+    await starting
+    expect(deps.onReady).not.toHaveBeenCalled()
+    expect(deps.closeWorker).toHaveBeenCalledOnce()
+  })
+
   it('publishes readiness only after consumer connections and stops publication before draining', async () => {
     const deps = dependencies()
     let ready!: () => void
-    deps.startWorker = () => ({ close: deps.closeWorker, ready: () => new Promise<void>(resolve => { ready = resolve }) })
+    deps.startWorker = () => ({ close: deps.closeWorker, waitUntilReady: () => new Promise<void>(resolve => { ready = resolve }) })
     deps.publishState = vi.fn()
     const runtime = createWorkerRuntime(deps)
     const start = runtime.start()

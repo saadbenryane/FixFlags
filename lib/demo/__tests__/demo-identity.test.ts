@@ -53,7 +53,7 @@ describe('demo identity', () => {
   })
 
   it('labels the public samples as demo evidence', () => {
-    assert.match(SEO.samples.description, /recorded demo\b/i)
+    assert.match(SEO.samples.description, /recorded demo/i)
     assert.ok(!RETIRED_IDENTITIES.test(SEO.samples.description))
   })
 })

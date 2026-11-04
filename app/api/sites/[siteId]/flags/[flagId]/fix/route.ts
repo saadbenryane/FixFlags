@@ -11,6 +11,7 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 const schema = z.object({
   action: z.enum(['prepare', 'copy']),
   promptHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  expectedSourceFlagId: z.string().min(1).max(200).optional(),
 })
 
 export async function POST(
@@ -27,7 +28,7 @@ export async function POST(
     if (!body.success) return apiError('Invalid action', 400)
 
     const task = await loadSiteFlagCopyTask(access.decision.site, flagId,
-      body.data.action === 'copy' ? body.data.promptHash : undefined)
+      body.data.action === 'copy' ? body.data.promptHash : undefined, body.data.expectedSourceFlagId)
     if (body.data.action === 'prepare') return NextResponse.json({ ok: true, prompt: task.prompt,
       promptHash: task.promptHash, sourceFlagId: task.sourceFlagId, referenceFlagId: task.referenceFlagId,
     }, { headers: { 'Cache-Control': 'private, no-store' } })

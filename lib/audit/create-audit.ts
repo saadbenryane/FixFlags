@@ -48,6 +48,7 @@ import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { assertScheduledClaim, staleScheduledClaim, type ScheduledClaimProject } from '@/lib/sites/application/scheduled-admission'
+import { RateLimitError, RateLimitUnavailableError } from '@/lib/security/rate-limit'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 import { readRepairSources } from '@/lib/sites/domain/repair-source'
 
@@ -573,7 +574,14 @@ export async function createAndEnqueueAudit(
         })
       }
       if (options.clientId) {
-        await enforceAnonymousIpSoftCeiling(options.clientId)
+        try {
+          await enforceAnonymousIpSoftCeiling(options.clientId)
+        } catch (error) {
+          if (!(error instanceof RateLimitError) || error instanceof RateLimitUnavailableError) throw error
+          throw new AuditLimitError('AUTH_REQUIRED', {
+            action: 'signup', message: PLAN_LIMIT_NOTICE.copy['anon-scan-limit'].body,
+          })
+        }
       }
 
       const created = await tx.audit.create({

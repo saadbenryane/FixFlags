@@ -8,6 +8,8 @@ import { PrismaClient } from '@prisma/client'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
@@ -185,10 +187,11 @@ test.describe('credentialed revenue journeys', () => {
     expect(reportId).toBeTruthy()
     await waitForReport(page.request, reportId!)
 
-    await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
+    await page.getByRole('button', { name: 'Open Search', exact: true }).click()
     const originalCategory = page.getByRole('dialog')
-    await expect(originalCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
-    const continuation = originalCategory.getByRole('button', { name: 'Check again', exact: true }).last()
+    await expect(originalCategory.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
+    await originalCategory.locator('summary').filter({ hasText: SITE_DASHBOARD_COPY.checkDetails }).click()
+    const continuation = originalCategory.getByRole('button', { name: /^Check(?: Search)? again$/ }).last()
     await continuation.focus()
     await originalCategory.locator('[data-dialog-scroll]').evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
     const beforeAuth = await originalCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY, destination: location.pathname + location.search + location.hash }))
@@ -203,9 +206,9 @@ test.describe('credentialed revenue journeys', () => {
     await page.waitForURL((url) => url.pathname === `/sites/${siteId}`, {
       timeout: 45_000,
     })
-    expect(new URL(page.url()).searchParams.get('category')).toBe('site')
+    expect(new URL(page.url()).searchParams.get('category')).toBe('search')
     const returnedCategory = page.getByRole('dialog')
-    await expect(returnedCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await expect(returnedCategory.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
     await expect.poll(() => returnedCategory.evaluate((node, before) =>
       node.contains(document.activeElement) && Math.abs(node.querySelector('[data-dialog-scroll]')!.scrollTop - before.dialogTop) <= 1 && Math.abs(scrollY - before.y) <= 1, beforeAuth), { timeout: 6000 }).toBe(true)
     const afterAuth = await returnedCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY,
@@ -215,8 +218,8 @@ test.describe('credentialed revenue journeys', () => {
     await page.keyboard.press('Escape')
     await expect(returnedCategory).toBeHidden()
     await page.goBack()
-    await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'site')
-    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'search')
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toBeHidden()
     await expect(page.getByRole('heading', { name: new RegExp(`^(?:${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|Settings|Flags)$`) })).toBeVisible()
@@ -422,7 +425,7 @@ test.describe('credentialed revenue journeys', () => {
       })
       expect(settings.status(), await settings.text()).toBe(200)
       const monitoringRequestedAt = new Date()
-      expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
+      expect((await user.page.request.post(`/api/sites/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
       // The owner command makes a paused schedule due. The real worker owns admission.
       await expect.poll(async () => fixtureDb.audit.findFirst({
         where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt }, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: { not: null } },
@@ -481,9 +484,13 @@ test.describe('credentialed revenue journeys', () => {
       try {
         expect((await otherOwner.page.request.get(`/api/sites/${projectId}/flags`)).status()).toBe(404)
         for (const link of distinctLinks) {
-          await user.page.goto(link)
-          await expect(user.page.getByRole('heading', { name: 'What FixFlags saw', exact: true })).toBeVisible()
           const url = new URL(link)
+          const linkedFlagId = url.pathname.split('/').at(-1)!
+          const recovered = recovery.recoveredFlagIds.includes(linkedFlagId)
+          expect(recovered || failure.flagIds.includes(linkedFlagId), 'Each delivered link belongs to its recorded failure or recovery').toBe(true)
+          await user.page.goto(link)
+          await expect(user.page.getByRole('heading', { name: recovered ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence, exact: true })).toBeVisible()
+          if (recovered) await expect(user.page.getByText(SITE_BOARD_COPY.noVerificationYet, { exact: true })).toHaveCount(0)
           const forbidden = await otherOwner.page.request.post('/api' + url.pathname + '/fix', { data: { action: 'copy' } })
           expect(forbidden.status(), 'An unrelated owner cannot retrieve a private notification fix prompt').toBe(404)
         }

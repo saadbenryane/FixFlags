@@ -134,16 +134,32 @@ describe('execution transaction conflicts', () => {
     expect(seen?.aborted).toBe(true)
   })
 
+  it.each([false, true])('retires dependent resources when the owning scope settles (failed=%s)', async failed => {
+    const dispose = vi.fn()
+    let seen: AbortSignal | undefined
+    const result = withExecutionOwnership({ auditId: 'audit', taskId: 'task', token: 'token', generation: 1 }, async () => {
+      seen = currentExecutionOwnership()?.signal
+      seen?.addEventListener('abort', dispose)
+      if (failed) throw new Error('Controlled work failure')
+      return 'recorded'
+    })
+    if (failed) await expect(result).rejects.toThrow('Controlled work failure')
+    else await expect(result).resolves.toBe('recorded')
+    expect(seen?.aborted).toBe(true)
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
   it('keeps the attempt while the ledger still owns the task', async () => {
     watchOwnership.mockReset().mockResolvedValue([{ id: 'audit' }])
     let seen: AbortSignal | undefined
     const running = withExecutionOwnership({ auditId: 'audit', taskId: 'task', token: 'token', generation: 1 }, async () => {
       seen = currentExecutionOwnership()?.signal
       await new Promise(resolve => setTimeout(resolve, 1_500))
+      expect(seen?.aborted).toBe(false)
       return 'kept'
     })
     await vi.advanceTimersByTimeAsync(1_500)
     await expect(running).resolves.toBe('kept')
-    expect(seen?.aborted).toBe(false)
+    expect(seen?.aborted).toBe(true)
   })
 })

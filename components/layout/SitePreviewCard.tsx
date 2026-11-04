@@ -10,14 +10,14 @@ import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 import { SITE_WORKSPACE_COPY as C } from '@/lib/marketing/copy/workspace'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import type { SiteCapture } from '@/lib/sites/captures'
-import type { SiteCaptureAvailability } from '@/lib/sites/captures'
+import type { SiteCaptureAvailability, CaptureCollectionState } from '@/lib/sites/captures'
 export type { SiteCapture } from '@/lib/sites/captures'
 import styles from './SitePreviewCard.module.css'
 
-export function SitePreviewCard({ host, captures, availability, priority = false }: {
-  host: string; captures: readonly SiteCapture[]; availability?: SiteCaptureAvailability; priority?: boolean
+export function SitePreviewCard({ host, captures, availability, priority = false, collectionState = 'not_recorded' }: {
+  host: string; captures: readonly SiteCapture[]; availability?: SiteCaptureAvailability; priority?: boolean; collectionState?: CaptureCollectionState
 }) {
-  return <SitePreviewContent key={host} host={host} captures={captures} availability={availability} priority={priority} />
+  return <SitePreviewContent key={host} host={host} captures={captures} availability={availability} priority={priority} collectionState={collectionState} />
 }
 
 function captureDimensions(capture: SiteCapture | null | undefined) {
@@ -25,7 +25,7 @@ function captureDimensions(capture: SiteCapture | null | undefined) {
   return { width: Number(dimensions?.[1]) || 1280, height: Number(dimensions?.[2]) || 720 }
 }
 
-function SitePreviewContent({ host, captures, availability, priority }: Parameters<typeof SitePreviewCard>[0]) {
+function SitePreviewContent({ host, captures, availability, priority, collectionState }: Parameters<typeof SitePreviewCard>[0]) {
   const [selectedDevice, setDevice] = useState<'desktop' | 'mobile' | null>(null)
   const device = selectedDevice ?? (captures.some(item => item.device === 'desktop') ? 'desktop' : captures[0]?.device ?? 'desktop')
   const showDevices = captures.length > 0 || availability?.desktop !== availability?.mobile
@@ -36,6 +36,7 @@ function SitePreviewContent({ host, captures, availability, priority }: Paramete
   const focusAfterRetry = useRef(false)
   const root = useRef<HTMLElement>(null)
   const capture = captures.find(item => item.device === device)
+  const disposition = availability?.[device] ?? collectionState
   const { width, height } = captureDimensions(capture)
   const inspected = inspection?.capture
   const inspectedDimensions = captureDimensions(inspected)
@@ -66,10 +67,10 @@ function SitePreviewContent({ host, captures, availability, priority }: Paramete
         <img key={`${capture.url}:${attempt}`} ref={image} src={capture.url} alt="" width={width} height={height} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : undefined} decoding="async"
           onError={() => setFailure({ url: capture.url, attempt })} data-device={device} />}
       <span className={styles.enlarge}><Maximize2 size={16} aria-hidden /></span>
-    </InteractiveButton> : <div className={`${styles.empty} ${!showDevices ? styles.emptySolo : ''}`}><Globe2 size={24} aria-hidden /><div><p role="status">{capture || availability?.[device] === 'unavailable' ? C.captureUnavailable : availability?.[device] === 'pending' ? C.capturePending : C.noCapture}</p>
+    </InteractiveButton> : <div className={`${styles.empty} ${!showDevices ? styles.emptySolo : ''}`}><Globe2 size={24} aria-hidden /><div><p role="status">{capture || disposition === 'unavailable' ? C.captureUnavailable : disposition === 'pending' ? C.capturePending : C.noCapture}</p>
       {capture ? <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => { focusAfterRetry.current = true; setFailure(null); setAttempt(value => value + 1) }}>{C.retryCapture}</Button> : null}</div></div>}
     {available && capture.previous ? <p className="px-4 pb-3 text-xs text-muted-foreground">{C.previousCapture} · {capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}
-      {availability?.[device] === 'pending' ? ` · ${C.capturePending}` : availability?.[device] === 'unavailable' ? ` · ${C.latestCaptureUnavailable}` : ''}</p> : null}
+      {disposition === 'pending' ? ` · ${C.capturePending}` : disposition === 'unavailable' ? ` · ${C.latestCaptureUnavailable}` : ''}</p> : null}
     <ResponsiveDepth header={<DialogTitle>{host}</DialogTitle>} open={Boolean(inspection)} onOpenChange={open => { if (!open) setInspection(null) }} onCloseAutoFocus={event => { event.preventDefault(); (opener.current ?? root.current)?.focus() }} className="max-w-4xl">
       {inspected ? <><DialogDescription>{inspectedPrevious ? C.previousCapture : C.latestCapture} · {inspected.pageUrl} · {inspected.viewport} · {inspected.recordedAt ? formatEvidenceTimestamp(inspected.recordedAt) : C.timeUnknown}</DialogDescription>
         {inspection?.failed ? (

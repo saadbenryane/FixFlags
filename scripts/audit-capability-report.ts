@@ -17,6 +17,7 @@ function main() {
   console.log(
     `Capabilities: ${summary.totalCapabilities} (${summary.byImplementation.implemented} implemented, ${summary.byImplementation.partial} partial, ${summary.byImplementation.planned} planned)\n`
   )
+  console.log('Implementation status does not establish runtime eligibility, customer availability, consent or acceptance.\n')
 
   console.log('Implementation inventory only. Runtime eligibility, consent, release policy and actual execution evidence remain separate.\n')
   console.log('By tool:')
@@ -33,7 +34,6 @@ function main() {
   console.log(
     `${pad('IMPLEMENTATION', col.status)} ${pad('TOOL', col.tool)} ${pad('DIMENSION', col.dim)} ${pad('CATEGORY', col.category)} LABEL`
   )
-  console.log('-'.repeat(90))
 
   for (const cap of AUDIT_CAPABILITIES) {
     const checks =
@@ -44,7 +44,7 @@ function main() {
     if (cap.verify) console.log(`         verify: ${cap.verify}`)
   }
 
-  console.log('\n--- Local iteration commands ---\n')
+  console.log('\nLocal iteration commands\n')
   console.log('  npm run demo:audit:offline   # HTML/metadata/copy (fastest)')
   console.log('  npm run demo:audit           # Live localhost rendered pages')
   console.log('  npm run demo:audit:flow      # CTA click flow on localhost')

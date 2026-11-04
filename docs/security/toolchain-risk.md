@@ -4,7 +4,7 @@ Runtime dependencies must have no moderate-or-higher known vulnerability. The
 repository enforces that separately from development tooling so a build-only
 advisory cannot hide a production vulnerability or stop all later verification.
 
-## Reviewed advisory
+## Reviewed advisories
 
 - `GHSA-vfj7-8cjw-p6xm`, `braces <= 3.0.3`, high severity denial of service from
   deeply nested untrusted patterns.
@@ -12,11 +12,22 @@ advisory cannot hide a production vulnerability or stop all later verification.
   production dependency tree or the pruned web/worker image.
 - FixFlags does not accept customer-controlled glob patterns in its build or lint
   processes.
-- `scripts/security-audit.mjs` accepts only this exact indirect advisory. A new
+- `scripts/security-audit.mjs` accepts only the recorded exact indirect advisories. A new
   advisory URL, direct dependency, runtime path, or different vulnerable package
   fails CI.
 - Owner: runtime release. Remove this record and its scoped rule when an upstream
   patched release is available.
+
+The November 2 integration audit also found moderate `GHSA-g3hv-75wg-m249`
+through legacy ESLint adapters using `minimatch@3.1.5`. The advisory concerns
+amplification from untrusted glob patterns. These lint callers receive trusted
+repository configuration, never customer-controlled patterns. They require the
+callable v3 API, so forcing the incompatible v11 API across those adapters is
+not a safe patch. The TypeScript parser's compatible path already uses patched
+`minimatch@11.0.3`. The exact indirect advisory is reviewed only for development
+tooling. The runtime audit still rejects every moderate-or-higher vulnerability,
+and other advisory URLs remain blocked. Remove this exception when the legacy
+adapters support the patched API or receive a compatible upstream fix.
 
 This is a bounded threat-model decision, not a blanket audit waiver. The full
 toolchain report remains inspected on every validation run.

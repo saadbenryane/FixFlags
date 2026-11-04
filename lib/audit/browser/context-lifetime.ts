@@ -1,15 +1,36 @@
 import type { Browser, BrowserContext, BrowserContextOptions } from 'playwright'
 import { browserCapacity } from '../progressive/capacity'
 import { AuditDeadlineError } from '../pipeline-errors'
-import { registerBrowserContext, type BrowserContextOwner } from './context-inventory'
+import { randomUUID } from 'node:crypto'
+import { logger } from '@/lib/logger'
 
 export const CONTEXT_SETUP_TIMEOUT_MS = 30_000
+
+type ContextOwner = { contextId: string; openedAt: number; deadline?: number; signal: AbortSignal; scope: 'task' | 'execution' | 'standalone' | 'probe';
+  closingAt?: number; state: 'preparing' | 'prepared' | 'closing' | 'close_failed' }
+const contextOwners = new WeakMap<BrowserContext, ContextOwner>()
+
+/** Operational lifecycle facts only. Never expose targets, credentials or tenant identifiers. */
+export function auditContextDiagnostics(browser: Browser | null, now = Date.now()) {
+  const contexts = browser?.isConnected() ? browser.contexts() : []
+  const owners = contexts.flatMap(context => {
+    const owner = contextOwners.get(context)
+    return owner ? [{ contextId: owner.contextId, scope: owner.scope, state: owner.state, ageMs: Math.max(0, now - owner.openedAt),
+      overdue: owner.closingAt !== undefined ? now > owner.closingAt + 30_000 : owner.deadline !== undefined && now > owner.deadline + 30_000,
+      expired: owner.signal.aborted || owner.deadline !== undefined && now >= owner.deadline }] : []
+  })
+  return { ownedContexts: owners.length, unownedContexts: contexts.length - owners.length,
+    expiredContexts: owners.filter(owner => owner.expired).length, reservedSlots: browserCapacity.running,
+    waitingAllocations: browserCapacity.queued, owners }
+}
+export type AuditContextDiagnostics = ReturnType<typeof auditContextDiagnostics>
 
 /** Logical cancellation never releases a context that Chromium may still own. */
 export async function openAuditContext<T>(
   browser: Browser,
   contextOptions: BrowserContextOptions,
-  lifetime: { deadline?: number; signal?: AbortSignal; priority?: number; owner?: BrowserContextOwner },
+  lifetime: { deadline?: number; signal?: AbortSignal; priority?: number; scope?: ContextOwner['scope'];
+    category?: 'audit' | 'inspection' | 'probe'; owner?: { auditId: string; taskId?: string; generation: number } },
   prepare: (context: BrowserContext, assertActive: () => void) => Promise<T>,
 ): Promise<T> {
   const deadline = new AbortController()
@@ -24,6 +45,8 @@ export async function openAuditContext<T>(
   if (remaining <= 0) expire()
   else { timer = setTimeout(expire, remaining); timer.unref?.() }
   const signal = lifetime.signal ? AbortSignal.any([deadline.signal, lifetime.signal]) : deadline.signal
+  const owner: ContextOwner = { contextId: randomUUID(), openedAt: Date.now(), deadline: hasDeadline ? deadlineAt : undefined, signal,
+    scope: lifetime.scope ?? (lifetime.category === 'probe' ? 'probe' : lifetime.category === 'audit' || lifetime.owner ? 'task' : 'standalone'), state: 'preparing' }
   const reason = () => signal.reason instanceof Error ? signal.reason : new Error('Browser capture cancelled')
   let release: () => void
   try { release = await browserCapacity.acquire(signal, lifetime.priority ?? 0) }
@@ -36,6 +59,10 @@ export async function openAuditContext<T>(
   const releaseOnce = () => {
     if (released) return
     released = true
+    if (context) {
+      contextOwners.delete(context)
+      logger.info('Native browser context released', { contextId: owner.contextId, scope: owner.scope, ...lifetime.owner })
+    }
     clearTimeout(timer)
     signal.removeEventListener('abort', onAbort)
     browser.off('disconnected', onDisconnected)
@@ -44,13 +71,18 @@ export async function openAuditContext<T>(
   const onDisconnected = () => { stop(new Error('Audit browser disconnected')); releaseOnce() }
   let closing: Promise<void> | undefined
   const closeContext = () => {
-    if (context && !closing) closing = context.close().then(() => {
-      // Playwright can acknowledge a second close before its first close ends.
-      if (!released && (!browser.isConnected() || !browser.contexts().includes(context!))) releaseOnce()
-    }, () => {
-      // A failed close cannot free a live native resource or close other Sites.
-      if (!browser.isConnected()) releaseOnce()
-    })
+    if (context && !closing) {
+      owner.state = 'closing'
+      closing = context.close().then(() => {
+        // Playwright can acknowledge a second close before its first close ends.
+        if (!released && (!browser.isConnected() || !browser.contexts().includes(context!))) releaseOnce()
+      }, () => {
+        owner.state = 'close_failed'
+        logger.warn('Native browser context closure was not confirmed', { contextId: owner.contextId, scope: owner.scope, ...lifetime.owner })
+        // A failed close cannot free a live native resource or close other Sites.
+        if (!browser.isConnected()) releaseOnce()
+      })
+    }
   }
   const onAbort = () => { stop(reason()); closeContext() }
   const assertActive = () => {
@@ -66,13 +98,22 @@ export async function openAuditContext<T>(
     catch (error) { releaseOnce(); throw error }
     try { context = await browser.newContext(contextOptions) }
     catch (error) { releaseOnce(); throw error }
-    registerBrowserContext(context, lifetime.owner ?? 'inspection', hasDeadline ? deadlineAt : undefined)
+    owner.openedAt = Date.now()
+    contextOwners.set(context, owner)
+    const nativeClose = context.close.bind(context)
+    context.close = async (...args) => {
+      owner.state = 'closing'; owner.closingAt ??= Date.now()
+      try { await nativeClose(...args) }
+      catch (error) { owner.state = 'close_failed'; throw error }
+    }
+    logger.info('Native browser context allocated', { contextId: owner.contextId, scope: owner.scope, ...lifetime.owner })
     context.once('close', () => { stop(new Error('Audit browser context closed')); releaseOnce() })
     try {
       assertActive()
       const value = await prepare(context, assertActive)
       assertActive()
       prepared = true
+      owner.state = 'prepared'
       if (!hasDeadline) clearTimeout(timer)
       return value
     } catch (error) {

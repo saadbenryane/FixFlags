@@ -21,9 +21,11 @@ const WORKER_SHA = resolveCommitSha() ?? 'unknown'
 let redis: Redis | null = null
 let stopping = false
 let draining = false
+let runtimeReady = false
 let diagnostics: WorkerDiagnostics = {
   browserOk: false,
   activeBrowserContexts: 0,
+  lastBrowserConnectedAt: null,
   lastSuccessfulBrowserProbeAt: null,
   uptimeReady: false, lastUptimeSweepAt: null,
   queueState: 'starting',
@@ -43,6 +45,8 @@ export interface WorkerDiagnostics {
   lastUptimeSweepAt?: string | null
   browserOk: boolean
   activeBrowserContexts: number
+  browserResources?: import('../audit/browser/context-lifetime').AuditContextDiagnostics
+  lastBrowserConnectedAt: string | null
   lastSuccessfulBrowserProbeAt: string | null
   queueState: 'starting' | 'idle' | 'active' | 'paused' | 'stopping'
 }
@@ -57,6 +61,12 @@ export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
   supportedScopes?: string[]
   accountChecksReady?: boolean
   accountConfigurationFingerprint?: string | null
+}
+
+/** Private readiness acknowledgement to the process that owns this worker. */
+export function publishWorkerState(state: 'starting' | 'ready' | 'stopping') {
+  runtimeReady = state === 'ready'
+  if (process.connected && process.send) process.send({ type: 'fixflags:worker-state', state }, () => {})
 }
 
 /** Called by the worker process on start, idle tick, and each job lifecycle event. */
@@ -83,6 +93,7 @@ export async function touchWorkerHeartbeat(
     'EX',
     HEARTBEAT_TTL_SECONDS
   )
+  if (runtimeReady && record.queueState !== 'starting') publishWorkerState(record.queueState === 'stopping' ? 'stopping' : 'ready')
 }
 
 export interface WorkerHeartbeatStatus {
@@ -103,7 +114,9 @@ export interface WorkerHeartbeatStatus {
     version: string
     sha: string
     supportedScopes?: string[]
+    lastBrowserConnectedAt: string | null
     lastSuccessfulBrowserProbeAt: string | null
+    browserResources: import('../audit/browser/context-lifetime').AuditContextDiagnostics | null
     queueState: WorkerDiagnostics['queueState']
   }>
 }
@@ -244,7 +257,9 @@ export function aggregateWorkerHeartbeats(
       version: record.version ?? 'unknown',
       sha: record.sha ?? 'unknown',
       supportedScopes: Array.isArray(record.supportedScopes) ? record.supportedScopes.filter(scope => typeof scope === 'string') : [],
+      lastBrowserConnectedAt: record.lastBrowserConnectedAt ?? null,
       lastSuccessfulBrowserProbeAt: record.lastSuccessfulBrowserProbeAt ?? null,
+      browserResources: record.browserResources ?? null,
       queueState: record.queueState ?? 'idle',
     })),
   }

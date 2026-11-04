@@ -104,6 +104,15 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
+  it('refuses a grouped repair when the displayed source has advanced before preparation', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/improvement-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'prepare', expectedSourceFlagId: 'previous-source' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'improvement-1' }) })
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe('REPAIR_TASK_CHANGED')
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
   it('refuses changed guidance rather than acknowledging a different copied task', async () => {
     const context = { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) }
     const request = (body: unknown) => new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {

@@ -76,7 +76,7 @@ function collectFiles(
       collectFiles(full, usages, bareUsages)
       continue
     }
-    if (!entry.name.endsWith('.tsx') || entry.name.endsWith('.test.tsx')) continue
+    if (!entry.name.endsWith('.tsx') || /\.(?:test|spec)\.tsx$/.test(entry.name)) continue
     const content = readFileSync(full, 'utf8')
     const lines = content.split('\n')
     for (let i = 0; i < lines.length; i++) {

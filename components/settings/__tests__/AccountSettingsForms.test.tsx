@@ -22,6 +22,8 @@ vi.mock('@/lib/auth-client', () => ({ authClient }))
 vi.mock('sonner', () => ({ toast }))
 
 import { AccountDangerZone, AccountSettingsForms, PasswordSettings } from '@/components/settings/AccountSettingsForms'
+import { EmailPreferences } from '@/components/settings/EmailPreferences'
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/lib/notifications/preferences'
 
 const ac = AUTH.settings.account
 const confirmed = { data: { status: true }, error: null }
@@ -386,5 +388,35 @@ describe('AccountSettingsForms', () => {
       expect(push).toHaveBeenCalledWith('/dashboard')
     })
     leave.remove()
+  })
+
+  it('discards all dirty Settings forms after one deliberate departure', async () => {
+    const profile = renderAccount()
+    const notifications = render(<EmailPreferences ownerId="account-owner" initial={DEFAULT_NOTIFICATION_PREFERENCES}
+      nextSendAt={null} email="owner@example.com" emailVerified hasMonitoredSites />)
+    fireEvent.change(screen.getByRole('textbox', { name: ac.nameLabel }), { target: { value: 'Unsaved name' } })
+    fireEvent.change(screen.getByLabelText('Website summary'), { target: { value: 'OFF' } })
+    fireEvent.click(screen.getByRole('link', { name: 'Manage website alerts' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: ac.unsavedLeave }))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard'))
+    profile.unmount(); notifications.unmount()
+    renderAccount()
+    render(<EmailPreferences ownerId="account-owner" initial={DEFAULT_NOTIFICATION_PREFERENCES}
+      nextSendAt={null} email="owner@example.com" emailVerified hasMonitoredSites />)
+    expect(screen.getByRole('textbox', { name: ac.nameLabel })).toHaveValue('Saad Benryane')
+    expect(screen.getByLabelText('Website summary')).toHaveValue('FOLLOW_MONITORING')
+  })
+
+  it('keeps failed profile edits available after returning to Settings', async () => {
+    authClient.updateUser.mockRejectedValue(new Error('Transport unavailable'))
+    const profile = renderAccount()
+    fireEvent.change(screen.getByRole('textbox', { name: ac.nameLabel }), { target: { value: 'Retained draft' } })
+    fireEvent.click(screen.getByRole('button', { name: ac.saveCta }))
+    await waitFor(() => expect(screen.getByText(ac.errorFallback)).toBeInTheDocument())
+    profile.unmount()
+    renderAccount()
+    expect(screen.getByRole('textbox', { name: ac.nameLabel })).toHaveValue('Retained draft')
+    expect(screen.getByRole('button', { name: ac.saveCta })).toBeEnabled()
   })
 })

@@ -23,4 +23,3 @@ export async function saveNotificationPreferences(userId: string, input: unknown
     return { ...readNotificationPreferences(saved), nextSendAt: saved.nextSendAt?.toISOString() ?? null }
   })
 }
-

@@ -10,6 +10,7 @@ import { hashPassword } from 'better-auth/crypto'
 import { scanLimitForPlan, deepReviewLimitForPlan } from '../lib/billing/plans'
 import { generateApiKey } from '../lib/security/api-keys'
 import { ANALYSIS_RECOVERY_MS } from '../lib/audit/progressive/contracts'
+import { ensureReleasePasswordAccount } from '../lib/release/fixture-authentication'
 import {
   assertNonProductionReleaseTarget,
   canonicalReleaseDatabaseIdentity,
@@ -45,12 +46,14 @@ export function readReleaseFixtureConfig(env = process.env): ReleaseFixtureConfi
   const watchMailbox = required('RELEASE_WATCH_MAILBOX')
   if (!/^validationalerts\+[a-z0-9-]+@fixflags\.com$/i.test(watchMailbox))
     throw new Error('Watch proof requires a unique controlled receiving alias')
+  const databaseUrl = required('RELEASE_FRESH_DATABASE_URL')
+  canonicalDatabaseIdentity(databaseUrl)
   const gitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   return {
     runId: required('RELEASE_RUN_ID'),
     gitSha,
     targetOrigin,
-    databaseUrl: required('RELEASE_FRESH_DATABASE_URL'),
+    databaseUrl,
     manifestPath: path.resolve(required('RELEASE_FIXTURE_MANIFEST')),
     auditUrl: required('E2E_AUDIT_URL'),
     watchMailbox,
@@ -131,11 +134,7 @@ async function main() {
           deepReviewsLimit: deepReviewLimitForPlan(role.plan),
         },
       })
-      await prisma.account.upsert({
-        where: { providerId_accountId: { providerId: 'credential', accountId: email } },
-        create: { userId: user.id, providerId: 'credential', accountId: email, password: passwordHash },
-        update: { userId: user.id, password: passwordHash },
-      })
+      await ensureReleasePasswordAccount(prisma, { userId: user.id, email, passwordHash })
       fixtureEntries[role.key] = { userId: user.id, email, password, plan: role.plan }
     }
 

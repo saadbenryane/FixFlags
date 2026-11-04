@@ -97,7 +97,7 @@ export const SITE_BOARD_COPY = {
   manualCopyBody: 'Couldn’t copy automatically. The complete instructions are selected below.',
   fixPromptLabel: 'Fix instructions',
   selectPrompt: 'Select instructions',
-  sendFlagToAi: 'Copy fix instructions',
+  sendFlagToAi: 'Copy fix prompt',
   changeLabel: 'What did you change?',
   changeHint: 'Optional. Saved with this verification attempt.',
   changePlaceholder: 'For example: moved the buy button above the fold',

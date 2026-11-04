@@ -33,6 +33,11 @@ describe('validate.mjs', () => {
       assert.ok(plan.commands.some((command) => command.label === 'container:build'))
     })
 
+    it('builds the image when the production infrastructure definition changes', () => {
+      const plan = buildPlan('affected', ['.railway/railway.ts'])
+      assert.ok(plan.commands.some(command => command.label === 'container:build'))
+    })
+
     it('runs full validation when prisma schema changes', () => {
       const plan = buildPlan('quick', ['prisma/schema.prisma'])
       assert.ok(plan.commands.length > 5)

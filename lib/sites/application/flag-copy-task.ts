@@ -7,10 +7,12 @@ import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { SiteRunRefusal } from './run-refusal'
 
 /** Prepare an owned task without recording a customer action. */
-export async function loadSiteFlagCopyTask(site: SiteRecord, flagId: string, expectedPromptHash?: string) {
+export async function loadSiteFlagCopyTask(site: SiteRecord, flagId: string, expectedPromptHash?: string, expectedSourceFlagId?: string) {
   if (!site.projectId || !site.userId) throw new SiteRunRefusal('Site not found', 404)
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) throw new SiteRunRefusal('Flag not found', 404)
+  if (expectedSourceFlagId && expectedSourceFlagId !== (flag.sourceFlagId ?? flag.id))
+    throw new SiteRunRefusal(SITE_ACTION_COPY.repairGuidance.changed, 409, 'REPAIR_TASK_CHANGED')
   const { prompt, promptHash, bundlePrompt, brief } = buildSiteRepairHandoff(site.siteId, flag, getAppUrl(), flagId)
   if (!prompt || !promptHash || !bundlePrompt) throw new SiteRunRefusal(EDITOR_EVIDENCE_COPY.unreadable, 422)
   if (expectedPromptHash && expectedPromptHash !== promptHash)
