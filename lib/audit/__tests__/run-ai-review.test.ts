@@ -145,10 +145,10 @@ describe('runAiReview', () => {
 
   it('retains observed evidence while excluding private comparison fields and provider prompt identities', async () => {
     const supportingObservations = mergeSupportingObservations([0, 1].map(index => observationsForFlag({
-      source: 'DETERMINISTIC', checkId: 'no-https', pageUrl: `https://example.com/page-${index}`, evidence: `Original observation ${index}`,
+      source: 'DETERMINISTIC', checkId: 'security-csp-missing', pageUrl: `https://example.com/page-${index}`, evidence: `Original observation ${index}`,
       evidenceTargets: [{ kind: 'element', source: 'measured', device: index ? 'mobile' : 'desktop', label: 'Original target', context: 'private-context' }],
     }, { auditId: 'private-audit', taskId: 'private-task-' + index, checkVersion: 1 })))
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], supportingObservations }],
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'security-csp-missing', supportingObservations }],
       rubrics: [{ ...AUDIT.rubrics[0], grade: null, score: null }] })
     await runAiReview('a1')
     const context = mocks.runPrescriptionWithRetry.mock.calls[0][0]
@@ -208,6 +208,22 @@ describe('runAiReview', () => {
     expect(mocks.loadAuditScreenshotBase64).not.toHaveBeenCalled()
     expect(mocks.loadTechnologyProfile).not.toHaveBeenCalled()
     expect(mocks.mergePrescriptionResults).not.toHaveBeenCalled()
+  })
+
+  it('prepares a complete source-bound native repair without a provider, page metadata or capture', async () => {
+    const evidence = 'The requested URL uses HTTP without transport encryption.'
+    const flag = { ...AUDIT.flags[0], source: 'DETERMINISTIC', evidence, pageUrl: 'http://example.com/',
+      supportingObservations: observationsForFlag({ source: 'DETERMINISTIC', checkId: 'no-https',
+        pageUrl: 'http://example.com/', evidence }, { auditId: 'a1', taskId: 'http-task', checkVersion: 1 }) }
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, url: 'http://example.com/', flags: [flag],
+      htmlMetadata: null, verdict: null, score: null })
+    mocks.mergePrescriptionResults.mockResolvedValue(true)
+    expect(await runAiReview('a1')).toMatchObject({ inputTokens: 0, outputTokens: 0, model: '' })
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', 'native-recipe',
+      expect.objectContaining({ scope: expect.objectContaining({ members: [expect.objectContaining({ id: 'f1' })] }) }))
+    expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
+    expect(mocks.loadAuditScreenshotBase64).not.toHaveBeenCalled()
+    expect(mocks.loadTechnologyProfile).not.toHaveBeenCalled()
   })
 
   it('throws when triage has not completed', async () => {

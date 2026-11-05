@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const isAiProviderConfigured = vi.hoisted(() => vi.fn())
 const getJudgeProviderChain = vi.hoisted(() => vi.fn())
 const getConfiguredJudgeProviderChain = vi.hoisted(() => vi.fn())
+const getTriageProviderConfig = vi.hoisted(() => vi.fn((provider: string) => ({ model: `${provider}-configured-triage` })))
 const getOpenAIProviderKey = vi.hoisted(() => vi.fn())
 const openaiCreate = vi.hoisted(() => vi.fn())
 const anthropicCreate = vi.hoisted(() => vi.fn())
@@ -13,6 +14,7 @@ vi.mock('@/lib/env', () => ({ isAiProviderConfigured }))
 vi.mock('@/lib/audit/judge-config', () => ({
   getJudgeProviderChain,
   getConfiguredJudgeProviderChain,
+  getTriageProviderConfig,
 }))
 vi.mock('@/lib/audit/llm-keys', () => ({ getOpenAIProviderKey }))
 vi.mock('@/lib/audit/pipeline/context', () => ({
@@ -98,10 +100,11 @@ describe('validateAiProviderCredentials', () => {
     openaiCreate.mockResolvedValueOnce({ id: 'probe' })
 
     const result = await validateAiProviderCredentials()
-    expect(result).toEqual({ ok: true, provider: 'openai' })
+    expect(result).toEqual({ ok: true, provider: 'openai', model: 'openai-configured-triage' })
+    expect(getTriageProviderConfig).toHaveBeenCalledWith('openai', 15_000)
     expect(openaiOptions).toHaveBeenCalledWith({ apiKey: 'sk-test', timeout: 15_000, maxRetries: 0 })
     expect(openaiCreate).toHaveBeenCalledWith({
-      model: 'gpt-4o-mini',
+      model: 'openai-configured-triage',
       max_tokens: 5,
       messages: [{ role: 'user', content: 'ok' }],
     })
@@ -113,10 +116,11 @@ describe('validateAiProviderCredentials', () => {
     anthropicCreate.mockResolvedValueOnce({ id: 'probe' })
 
     const result = await validateAiProviderCredentials()
-    expect(result).toEqual({ ok: true, provider: 'anthropic' })
+    expect(result).toEqual({ ok: true, provider: 'anthropic', model: 'anthropic-configured-triage' })
+    expect(getTriageProviderConfig).toHaveBeenCalledWith('anthropic', 15_000)
     expect(anthropicOptions).toHaveBeenCalledWith({ apiKey: 'sk-ant-test', timeout: 15_000, maxRetries: 0 })
     expect(anthropicCreate).toHaveBeenCalledWith({
-      model: 'claude-haiku-4-5',
+      model: 'anthropic-configured-triage',
       max_tokens: 5,
       messages: [{ role: 'user', content: 'ok' }],
     })

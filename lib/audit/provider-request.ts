@@ -49,15 +49,16 @@ export function openAIResponseUsage(response: { id?: string; model?: string; ser
   return parsed.success ? parsed.data : null
 }
 
-export function anthropicResponseUsage(response: { id?: string; model?: string; service_tier?: string | null; usage?: {
+export function anthropicResponseUsage(response: { id?: string; model?: string; usage?: {
   input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null
+  service_tier?: string | null
 } | null }, model: string): LlmUsage | null {
   if (!response.usage) return null
   const usage = { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens,
     cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0 }
   if (!Object.values(usage).every(value => Number.isSafeInteger(value) && value >= 0)) return null
   const parsed = llmUsageSchema.safeParse({ ...usage, model: response.model ?? model, provider: 'anthropic', api: 'messages',
-    ...(response.service_tier ? { serviceTier: response.service_tier } : {}),
+    serviceTier: response.usage.service_tier ?? 'unknown',
     ...(response.id ? { providerResponseId: response.id } : {}) })
   return parsed.success ? parsed.data : null
 }

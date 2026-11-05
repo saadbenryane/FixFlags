@@ -6,6 +6,8 @@ import { validatePrescriptionOutput, prescriptionFlagBatches, prescriptionTaskPl
 import { parsePrescriptionGuidance } from '@/lib/audit/prescription-guidance-schema'
 import type { ExistingFlagForPrescription } from '@/lib/audit/flag-types'
 import { REPAIR_GUIDANCE_COPY } from '@/lib/marketing/copy/repair-guidance'
+import { nativePrescriptionDefinitions } from '../prescription-plan'
+import { observationsForFlag } from '../flag-observations'
 
 describe('guidance validates repairs against immutable admitted facts', () => {
   const source: ExistingFlagForPrescription = { flagKey: 'about-headline', source: 'AI', rubric: 'MESSAGE',
@@ -45,6 +47,28 @@ describe('guidance validates repairs against immutable admitted facts', () => {
 })
 
 describe('prescription occurrence batching', () => {
+  const native = () => ({ flagKey: 'no-https', checkId: 'no-https', source: 'DETERMINISTIC', rubric: 'REACH', severity: 'CRITICAL',
+    problem: 'HTTP transport is not encrypted', evidence: 'The page uses HTTP.', fix: '',
+    supportingObservations: observationsForFlag({ source: 'DETERMINISTIC', checkId: 'no-https',
+      pageUrl: 'http://example.com/', evidence: 'The page uses HTTP.' }, { auditId: 'source', taskId: 'http', checkVersion: 1 }) })
+
+  it('separates complete native definitions from remaining contextual work', () => {
+    assert.equal(nativePrescriptionDefinitions([native()])?.get('no-https')?.kind, 'repair')
+    assert.deepEqual(prescriptionTaskPlans([native(),
+      { flagKey: 'headers', checkId: 'security-csp-missing', source: 'DETERMINISTIC' },
+      { flagKey: 'visual', source: 'AI' }]), [
+      { index: 0, flagKeys: ['no-https'] }, { index: 1, flagKeys: ['headers'] }, { index: 2, flagKeys: ['visual'] },
+    ])
+  })
+
+  it('does not certify old, unreadable, recommended or heterogeneous native guidance as complete', () => {
+    const old = native(); old.supportingObservations.items[0].checkVersion = 99
+    assert.equal(nativePrescriptionDefinitions([old]), null)
+    assert.equal(nativePrescriptionDefinitions([{ ...native(), supportingObservations: null }]), null)
+    assert.equal(nativePrescriptionDefinitions([{ ...native(), severity: 'POLISH' }]), null)
+    assert.equal(nativePrescriptionDefinitions([{ ...native(), fix: 'Enable HTTPS on the original origin.' },
+      { ...native(), fix: 'Repair the original HTTPS redirect configuration.' }]), null)
+  })
   it('keeps every occurrence of one Flag key in the same batch and preserves all page evidence', () => {
     const rows = Array.from({ length: 13 }, (_, index) => ({ flagKey: `flag-${index}`, pageUrl: `/page-${index}` }))
     rows.push({ flagKey: 'flag-0', pageUrl: '/another-page' })

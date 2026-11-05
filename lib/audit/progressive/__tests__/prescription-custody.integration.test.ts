@@ -11,6 +11,7 @@ import { openAIResponseUsage } from '@/lib/audit/provider-request'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { recordSettledPrescriptionCost, settlePrescriptionAudit } from '../incomplete'
 import type { PrescriptionOutput } from '@/lib/audit/judge-prescription-schema'
+import { observationsForFlag } from '@/lib/audit/flag-observations'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('prescription custody in PostgreSQL', () => {
@@ -72,6 +73,47 @@ run('prescription custody in PostgreSQL', () => {
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({
       failureCode: null, failureStage: null, errorMsg: null, failureMetadata: null, aiReviewAt: expect.any(Date),
     })
+  })
+
+  it('prepares native definitions without providers while retaining incomplete assessments and existing editor guidance', async () => {
+    const f = await fixture()
+    const originalAssessment = { score: null, verdict: null, reportCompleteness: 'PARTIAL' as const,
+      failedModules: ['judge'], failureCode: 'AI_CONTRACT_INVALID' as const, failureStage: 'judging',
+      failureMetadata: { phase: 'triage', reason: 'semantic_evidence_unavailable' } }
+    await prisma.audit.update({ where: { id: f.audit.id }, data: originalAssessment })
+    for (const [index, original] of f.audit.flags.entries()) {
+      const evidence = `The original HTTP page ${index} has no transport encryption.`
+      await prisma.flag.update({ where: { id: original.id }, data: { checkId: 'no-https', evidence,
+        ...(index === 0 ? { fix: 'Enable transport encryption on the original HTTP origin while preserving every current path.' } : {}),
+        agentPrompt: 'Enable HTTPS on the original HTTP origin and retain its existing paths.',
+        cursorPrompt: 'Preserve this existing editor-specific guidance.',
+        supportingObservations: observationsForFlag({ source: 'DETERMINISTIC', checkId: 'no-https',
+          pageUrl: original.pageUrl!, evidence }, { auditId: f.audit.id, taskId: 'original-http', checkVersion: 1 }) } })
+    }
+    const flags = await prisma.flag.findMany({ where: { auditId: f.audit.id }, orderBy: { position: 'asc' } })
+    const scope = freezePrescriptionScope(flags)
+    await expect(withExecutionOwnership(f.owner, () => runAiReview(f.audit.id, undefined, undefined, scope)))
+      .resolves.toMatchObject({ inputTokens: 0, outputTokens: 0, model: '' })
+    const prepared = await prisma.flag.findMany({ where: { auditId: f.audit.id }, orderBy: { position: 'asc' } })
+    expect(prepared.map(flag => ({ ...flag, fix: null }))).toEqual(flags.map(flag => ({ ...flag, fix: null })))
+    expect(prepared[0].fix).toBe(flags[0].fix)
+    expect(prepared[1].fix).toBe(prepared[1].agentPrompt)
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: { endsWith: '_provider_attempt' } } })).toBe(0)
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_native_prepared' } })).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({ ...originalAssessment, aiReviewAt: null })
+    await withExecutionOwnership(f.owner, () => runAiReview(f.audit.id, undefined, undefined, scope))
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_guidance_committed' } })).toBe(1)
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } }))
+      .toMatchObject({ ...originalAssessment, aiReviewAt: expect.any(Date) })
+  })
+
+  it('does not prepare an unsupported native definition or publish a completion receipt', async () => {
+    const f = await fixture(), scope = freezePrescriptionScope(f.audit.flags)
+    expect(await withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, 'native-recipe', { scope }))).toBe(false)
+    expect(await prisma.flag.count({ where: { auditId: f.audit.id, fix: { not: '' } } })).toBe(0)
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_guidance_committed' } })).toBe(0)
   })
 
   it('publishes completion after every batch settles without rewriting the original coverage', async () => {

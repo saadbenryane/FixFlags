@@ -3629,8 +3629,14 @@ Manual re-check is the core loop habit. Implementation invariants:
 9. **Verified learning** — Product Memory receives a learned fact only for an `IMPROVED` attempt with comparable before/after Review evidence and provenance.
 
 Prescription uses the recorded finding's evidence, without requiring an overall
-verdict or score. Native response, security, header, metadata, SEO and Search
-findings use text-only requests without unrelated page content or screenshot
+verdict or score. Complete native repair definitions prepare locally when every
+original observation has the matching registered check version and native
+provenance, the finding needs attention and every occurrence has the same task.
+Preparation preserves existing editor instructions and records its recipe identity
+in the existing pipeline ledger, without a provider attempt. Historical, ambiguous,
+unsupported and heterogeneous definitions retain contextual enrichment.
+Remaining response, security, header, metadata, SEO and Search enrichment uses
+text-only requests without unrelated page content or screenshot
 loading. Other and unknown findings retain their page-context and current-audit
 capture requirements. New admissions partition those dependencies while keeping
 every occurrence of a Flag key in one task. Empty frozen scopes make no provider
@@ -3650,8 +3656,11 @@ readable. OpenAI prompt totals are partitioned into ordinary input, cache reads
 and cache writes; Anthropic's separately reported categories are not subtracted
 again. Reasoning is already within output and is not charged twice. Missing or
 contradictory usage remains unknown, and unsupported processing tiers retain
-unpriced cost without losing valid token measurements. Current requests use
-default cache lifetimes; Responses API mixed-lifetime accounting and additional
+unpriced cost without losing valid token measurements. Receipts retain the actual
+response tier: OpenAI reports it at the response root, while Anthropic reports it
+inside `usage.service_tier`. Missing tiers stay unknown. See the
+[Anthropic service-tier response](https://platform.claude.com/docs/en/api/service-tiers).
+Current cache requests use default cache lifetimes; Responses API mixed-lifetime accounting and additional
 provider consumers remain separate unfinished work.
 
 ## AI phases
@@ -3665,7 +3674,7 @@ provider consumers remain separate unfinished work.
 ### `includeAi` vs `triageAt` vs `aiReviewAt`
 
 - **`triageAt`** — phase-1 triage succeeded (score, verdict, rubric grades, AI flag titles).
-- **`aiReviewAt`** — phase-2 prescription succeeded (fix prompts, evidence, whyItMatters).
+- **`aiReviewAt`**: the legacy completion marker for admitted phase-2 guidance tasks. Complete native definitions need no new inference. This marker never establishes semantic assessment, fresh evidence or verified recovery; those retain their own recorded facts.
 - **`includeAi`** — resolved by `lib/audit/ai-report-entitlement.ts` at audit create time. Controls whether prescription is enqueued after triage, not whether triage runs.
 
 Claiming a partial report preserves entitlement and monitoring without queuing

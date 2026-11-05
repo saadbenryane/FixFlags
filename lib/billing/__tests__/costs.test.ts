@@ -37,6 +37,7 @@ import {
   getCostOutliers,
 } from '@/lib/billing/costs'
 import { prisma } from '@/lib/db'
+import { anthropicResponseUsage } from '@/lib/audit/provider-request'
 
 const mockUpsert = vi.mocked(prisma.auditRunCost.upsert)
 const mockUpdate = vi.mocked(prisma.auditRunCost.update)
@@ -57,6 +58,20 @@ afterEach(() => {
 })
 
 describe('estimateLlmCostUsd', () => {
+  it.each(['priority', 'batch', 'unknown'])('retains Anthropic %s usage without applying Standard pricing', serviceTier => {
+    const usage = anthropicResponseUsage({ model: 'claude-haiku-4-5', usage: {
+      input_tokens: 100, output_tokens: 20, service_tier: serviceTier,
+    } }, 'claude-haiku-4-5')!
+    expect(usage).toMatchObject({ inputTokens: 100, outputTokens: 20, serviceTier })
+    expect(estimateLlmMeasurementCostUsd(usage)).toBeNull()
+  })
+
+  it('prices an explicitly reported Anthropic Standard response', () => {
+    const usage = anthropicResponseUsage({ model: 'claude-haiku-4-5', usage: {
+      input_tokens: 100, output_tokens: 20, service_tier: 'standard',
+    } }, 'claude-haiku-4-5')!
+    expect(estimateLlmMeasurementCostUsd(usage)).toBeCloseTo(0.0002, 10)
+  })
   it('prices measured ordinary input, cache writes, reads and output without double counting', () => {
     expect(estimateLlmMeasurementCostUsd({ model: 'gpt-6-luna', provider: 'openai', api: 'chat.completions',
       serviceTier: 'default', inputTokens: 1000, cacheReadTokens: 4000, cacheWriteTokens: 7000,

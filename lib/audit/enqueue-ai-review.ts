@@ -37,7 +37,7 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<num
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true } })
     if (existing.length > 0) return existing.map(task => task.id)
     const flags = await tx.flag.findMany({ where: { auditId }, orderBy: [{ position: 'asc' }, { id: 'asc' }] })
-    const plans = prescriptionTaskPlans(flags.map(flag => ({ flagKey: flagKeyForRow(flag), source: flag.source, checkId: flag.checkId })))
+    const plans = prescriptionTaskPlans(flags.map(flag => ({ ...flag, flagKey: flagKeyForRow(flag) })))
     const count = await tx.auditExecutionTask.count({ where: { auditId } })
     if (count + plans.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
     const created: string[] = []

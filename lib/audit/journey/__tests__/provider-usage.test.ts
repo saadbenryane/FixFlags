@@ -38,7 +38,7 @@ describe.each(calls)('$name provider consumption custody', ({ run }) => {
     await expect(run(async () => consumed)).rejects.toThrow()
     expect(consumed).toHaveBeenCalledExactlyOnceWith({ inputTokens: 13, outputTokens: 5, cacheReadTokens: 7,
       cacheWriteTokens: name === 'anthropic' ? 2 : 0, model: `actual-${name}-model`, provider: name,
-      api: name === 'anthropic' ? 'messages' : 'chat.completions', ...(name === 'openai' ? { serviceTier: 'unknown' } : {}) })
+      api: name === 'anthropic' ? 'messages' : 'chat.completions', serviceTier: 'unknown' })
   })
 
   it('records unknown consumption when the response is lost', async () => {

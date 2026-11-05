@@ -17,6 +17,7 @@ import { renderedContentMetadata } from './browser/rendered-copy'
 import { publicSupportingObservations } from './flag-observations'
 import { isCustomerFlag } from './attention'
 import { requiresPrescriptionPageContext } from './prescription-policy'
+import { nativePrescriptionDefinitions } from './prescription-plan'
 
 export type PrescriptionRunUsage = {
   inputTokens: number
@@ -92,6 +93,10 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
   const selectedRows = requested ? audit.flags.filter(flag => requested.includes(flagKeyForRow(flag))) : audit.flags
   assertPrescriptionScope(scope, selectedRows)
   if (!selectedRows.length) return NO_PRESCRIPTION_USAGE
+  if (nativePrescriptionDefinitions(selectedRows.map(flag => ({ ...flag, flagKey: flagKeyForRow(flag) })))) {
+    if (!await mergePrescriptionResults(auditId, 'native-recipe', { scope })) throw new TaskFailure('PRESCRIPTION_NATIVE_DEFINITION_CHANGED', false)
+    return NO_PRESCRIPTION_USAGE
+  }
   const needsPageContext = requiresPrescriptionPageContext(selectedRows)
   const recordedMetadata = audit.htmlMetadata as PageMetadata | null
   if (needsPageContext && !recordedMetadata) throw new TaskFailure('PRESCRIPTION_PRIMARY_METADATA_MISSING', false)

@@ -1,4 +1,4 @@
-import { getJudgeProviderChain, getConfiguredJudgeProviderChain } from '@/lib/audit/judge-config'
+import { getJudgeProviderChain, getConfiguredJudgeProviderChain, getTriageProviderConfig } from '@/lib/audit/judge-config'
 import { isAiProviderConfigured } from '@/lib/env'
 import { getOpenAIProviderKey } from '@/lib/audit/llm-keys'
 import Anthropic from '@anthropic-ai/sdk'
@@ -17,6 +17,7 @@ export interface AiProviderHealth {
 export interface AiProviderValidation {
   ok: boolean
   provider: string
+  model?: string
   failure?: JudgeProviderFailure
   error?: string
 }
@@ -37,13 +38,14 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
   if (providers.length === 0) return null
 
   const provider = providers[0]
+  const model = getTriageProviderConfig(provider, 15_000).model
   try {
     if (provider === 'openai') {
       const key = getOpenAIProviderKey()
       if (!key) throw new Error('OPENAI_API_KEY is not configured')
       const openai = new OpenAI({ apiKey: key, timeout: 15_000, maxRetries: 0 })
       await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model,
         max_tokens: 5,
         messages: [{ role: 'user', content: 'ok' }],
       })
@@ -52,19 +54,20 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
       if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
       const anthropic = new Anthropic({ apiKey: key, timeout: 15_000, maxRetries: 0 })
       await anthropic.messages.create({
-        model: 'claude-haiku-4-5',
+        model,
         max_tokens: 5,
         messages: [{ role: 'user', content: 'ok' }],
       })
     } else {
       throw new Error(`Unknown provider: ${provider}`)
     }
-    return { ok: true, provider }
+    return { ok: true, provider, model }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return {
       ok: false,
       provider,
+      model,
       failure: classifyJudgeProviderFailure(err) ?? 'provider_unavailable',
       error: sanitizeAuditErrorMessage(message),
     }

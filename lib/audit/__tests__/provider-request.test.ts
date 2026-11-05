@@ -15,9 +15,14 @@ describe('normalized provider consumption', () => {
 
   it('retains Anthropic separate input categories without subtracting cache counts', () => {
     expect(anthropicResponseUsage({ model: 'claude-sonnet-5', usage: { input_tokens: 100, output_tokens: 20,
-      cache_read_input_tokens: 400, cache_creation_input_tokens: 500 } }, 'requested-model'))
+      cache_read_input_tokens: 400, cache_creation_input_tokens: 500, service_tier: 'standard' } }, 'requested-model'))
       .toEqual({ model: 'claude-sonnet-5', provider: 'anthropic', api: 'messages',
-        inputTokens: 100, outputTokens: 20, cacheReadTokens: 400, cacheWriteTokens: 500 })
+        inputTokens: 100, outputTokens: 20, cacheReadTokens: 400, cacheWriteTokens: 500, serviceTier: 'standard' })
+  })
+
+  it('does not infer an Anthropic processing tier when the usage report omits it', () => {
+    expect(anthropicResponseUsage({ usage: { input_tokens: 10, output_tokens: 2 } }, 'claude-haiku-4-5'))
+      .toMatchObject({ inputTokens: 10, outputTokens: 2, serviceTier: 'unknown' })
   })
 
   it.each([

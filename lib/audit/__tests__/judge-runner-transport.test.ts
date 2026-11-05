@@ -112,7 +112,7 @@ describe('provider transport attempt custody', () => {
         : { id: 'message-fixture', type: 'message', role: 'assistant', model: 'claude-sonnet-5',
           content: [{ type: 'tool_use', id: 'tool-fixture', name: 'quality_prescription', input: payload }],
           stop_reason: 'tool_use', stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 7, cache_creation_input_tokens: 3 } }),
+          usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 7, cache_creation_input_tokens: 3, service_tier: 'standard' } }),
       { headers: { 'content-type': 'application/json' } })
     })
     vi.stubGlobal('fetch', transport)
@@ -128,6 +128,7 @@ describe('provider transport attempt custody', () => {
     expect(consumed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       provider, api: provider === 'openai' ? 'chat.completions' : 'messages',
       inputTokens: 10, outputTokens: 5, cacheReadTokens: 7, cacheWriteTokens: 3,
+      serviceTier: provider === 'openai' ? 'default' : 'standard',
     }))
     expect(result.output.flagPrescriptions[0]).toMatchObject({ evidence, fix: payload.flagPrescriptions[key].fix })
     const content = sent!.messages.find(message => message.role === 'user')!.content

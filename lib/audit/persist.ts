@@ -36,6 +36,8 @@ import { createRecordedRecoveryReader, type RecordedRecoveryReader } from './rec
 import { repairSourceSelect } from '@/lib/sites/domain/repair-source'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 import { lockImprovementLedger } from '@/lib/improvements/ledger-lock'
+import { nativePrescriptionDefinitions } from './prescription-plan'
+import { isUsableFixPrompt } from './prescription-policy'
 
 export type { DeterministicFlagRow, AiFlagRow } from './flag-types'
 
@@ -522,20 +524,31 @@ export async function persistTriageResults(
 
 export async function mergePrescriptionResults(
   auditId: string,
-  prescription: PrescriptionOutput,
+  prescription: PrescriptionOutput | 'native-recipe',
   options?: { scope?: PrescriptionScope }
-): Promise<void> {
-  await executionTransaction(async (tx) => {
+): Promise<boolean> {
+  return executionTransaction(async (tx) => {
     const flags = await tx.flag.findMany({ where: { auditId } })
+    const native = prescription === 'native-recipe'
+    if (native && !options?.scope) throw new Error('Native guidance requires its frozen scope')
+    if (options?.scope) assertPrescriptionScope(options.scope, flags)
+    const selectedKeys = options?.scope ? new Set(options.scope.members.map(member => member.key)) : null
+    const nativeDefinitions = native ? nativePrescriptionDefinitions(flags.filter(flag => !selectedKeys || selectedKeys.has(flagKeyForRow(flag)))
+      .map(flag => ({ ...flag, flagKey: flagKeyForRow(flag) }))) : null
+    if (native && !nativeDefinitions) return false
+    const sources = native ? new Map(flags.map(flag => [flagKeyForRow(flag), flag])) : null
+    const prescriptions = prescription === 'native-recipe' ? [...nativeDefinitions!].map(([flagKey, definition]) => ({
+      flagKey, fix: definition.guidance, evidence: sources!.get(flagKey)!.evidence,
+      agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null,
+    })) : prescription.flagPrescriptions
     if (options?.scope) {
-      assertPrescriptionScope(options.scope, flags)
       const expected = new Set(options.scope.members.map(member => member.key))
-      const received = prescription.flagPrescriptions.map(item => item.flagKey)
+      const received = prescriptions.map(item => item.flagKey)
       if (received.length !== expected.size || new Set(received).size !== expected.size || received.some(key => !expected.has(key)))
         throw new Error('PRESCRIPTION_MEMBERSHIP_INVALID')
     }
     const prescriptionByKey = new Map(
-      prescription.flagPrescriptions.map((item) => [item.flagKey, item])
+      prescriptions.map((item) => [item.flagKey, item])
     )
 
     for (const flag of flags) {
@@ -546,12 +559,13 @@ export async function mergePrescriptionResults(
       // schema's `.min(1)` accepts whitespace-only evidence, which would
       // otherwise overwrite real triage content with an empty string.
       if (isBlankText(item.evidence)) continue
+      if (native && isUsableFixPrompt(flag.fix)) continue
       // Prescription owns repair guidance only. Recorded diagnosis, evidence and
       // verification obligations belong to their original assessment for every source.
 
       await tx.flag.update({
         where: { id: flag.id },
-        data: {
+        data: native ? { fix: item.fix } : {
           fix: item.fix,
           agentPrompt: item.agentPrompt ?? null,
           cursorPrompt: item.cursorPrompt ?? null,
@@ -570,9 +584,16 @@ export async function mergePrescriptionResults(
       await tx.auditPipelineEvent.create({ data: { auditId, executionId: owner.taskId, traceId: auditId,
         attempt: owner?.generation ?? 1, stage: 'judging', event: 'prescription_guidance_committed', status: 'completed',
         detail: { version: 1, scopeHash: prescriptionHash(options.scope), guidance: selected.map(flag => ({ id: flag.id, hash: guidanceHash(flag) })) } } })
+      if (native) await tx.auditPipelineEvent.create({ data: { auditId, executionId: owner.taskId, traceId: auditId,
+        attempt: owner.generation, stage: 'judging', event: 'prescription_native_prepared', status: 'completed',
+        detail: { version: 1, scopeHash: prescriptionHash(options.scope), recipes: [...nativeDefinitions!].map(([key, definition]) => ({
+          key, checkId: definition.checkId, checkVersion: definition.recipeCheckVersion, recipeVersion: definition.recipeVersion,
+        })) } } })
     }
+    if (native) await tx.audit.update({ where: { id: auditId }, data: { includeAi: true } })
 
     // The settled task set publishes aggregate guidance from every recorded
     // definition. One partial provider batch cannot replace the whole rubric.
+    return true
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }

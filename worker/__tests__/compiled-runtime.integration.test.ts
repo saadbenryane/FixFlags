@@ -42,6 +42,8 @@ import { readArtifact } from '@/lib/audit/progressive/contracts'
 import { speedArtifactSchema } from '@/lib/audit/progressive/snapshots'
 import { checkArtifactSchema } from '@/lib/audit/progressive/results'
 import { performanceMeasurementSchema } from '@/lib/audit/performance-measurement-contract'
+import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
+import { taskInputSchema } from '@/lib/audit/progressive/contracts'
 
 const authProof = process.env.COMPILED_AUTH_REQUIRED === 'true'
 const pageSpeedProof = process.env.COMPILED_PAGESPEED_REQUIRED === 'true'
@@ -939,6 +941,34 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     const publicHealth = await fetch(webOrigin + '/api/health/ai', { signal: AbortSignal.timeout(5000) })
     expect(publicHealth.status).toBe(200)
     expect(await publicHealth.json()).toMatchObject({ credentialValidation: 'not_checked' })
+  })
+
+  it('prepares native repair guidance from observed sources with a completed admission fixture and no paid providers', async () => {
+    const source = await requestSiteRun({ projectId, userId, scope: 'SITE', source: 'WEB', outcomeIds: [],
+      idempotencyKey: 'compiled-native-guidance' })
+    await complete(source.auditId!)
+    const original = await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId! } })
+    const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId!, checkId: 'buttons-no-text' } })
+    const snapshot = { evidence: flag.evidence, verificationRule: flag.verificationRule, supportingObservations: flag.supportingObservations }
+    // Seed only the existing phase-admission marker. Native evidence came from
+    // the real worker; this fixture establishes no semantic or provider assessment.
+    await prisma.audit.update({ where: { id: source.auditId! }, data: { includeAi: true,
+      triageAt: original.triageAt ?? new Date() } })
+    expect(await enqueueAiReview(source.auditId!)).toBeGreaterThan(0)
+    let taskId = ''
+    await vi.waitFor(async () => {
+      const tasks = await prisma.auditExecutionTask.findMany({ where: { auditId: source.auditId!, workKind: 'prescription' } })
+      const task = tasks.find(item => taskInputSchema.parse(item.workInput).prescriptionScope?.members.some(member => member.id === flag.id))
+      expect(task?.workState).toBe('COMPLETED')
+      taskId = task!.id
+    }, { timeout: 60_000, interval: 100 })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject(snapshot)
+    expect((await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).fix.length).toBeGreaterThan(20)
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: source.auditId!, executionId: taskId, event: { endsWith: '_provider_attempt' } } })).toBe(0)
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: source.auditId!, executionId: taskId, event: 'prescription_native_prepared' } })).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId! } })).toMatchObject({ score: original.score,
+      verdict: original.verdict, reportCompleteness: original.reportCompleteness, evidenceCoverage: original.evidenceCoverage,
+      failedModules: original.failedModules })
   })
 
   it('collects a native failure and independently verifies repair using the compiled parser and consumers', async () => {
