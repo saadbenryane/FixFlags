@@ -25,7 +25,7 @@ function getChatOpenAIClient(): OpenAIClient | null {
   const baseURL = getEnv().CHAT_BASE_URL
   if (baseURL) {
     const key = getOpenAIProviderKey()
-    return key ? new OpenAI({ apiKey: key, baseURL }) : null
+    return key ? new OpenAI({ apiKey: key, baseURL, maxRetries: 0 }) : null
   }
   return openai ?? null
 }
@@ -95,7 +95,7 @@ async function runOpenAIChat(
         content: buildPrompt(input),
       },
     ],
-  })
+  }, { timeout: cfg.timeoutMs, maxRetries: 0 })
 
   const text = response.choices[0]?.message?.content?.trim() ?? ''
   return {
