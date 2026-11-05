@@ -3,7 +3,9 @@ import { beforeEach, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ heartbeat: vi.fn(), counts: vi.fn(), oldest: vi.fn(), overdue: vi.fn(), monitoring: vi.fn() }))
 vi.mock('@/lib/queue/worker-heartbeat', () => ({ readWorkerHeartbeat: mocks.heartbeat, readStalledJobCount: async () => 0 }))
 vi.mock('@/lib/queue/estimate', () => ({ getWorkerExecutionCounts: mocks.counts }))
-vi.mock('@/lib/db', () => ({ prisma: { audit: { findFirst: mocks.oldest, count: mocks.overdue } } }))
+vi.mock('@/lib/db', () => ({ prisma: { $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({
+  $executeRawUnsafe: async () => 0, audit: { findFirst: mocks.oldest, count: mocks.overdue },
+}) } }))
 vi.mock('@/lib/security/rate-limit', () => ({ getRateLimitRedisHealth: () => ({ redisDown: false }) }))
 vi.mock('@/lib/health/monitoring', () => ({ readMonitoringHealth: mocks.monitoring }))
 const { GET } = await import('../route')

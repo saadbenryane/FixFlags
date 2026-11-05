@@ -17,7 +17,7 @@ export type LoadingUiSnapshot = {
 export function loadingUiInDocument(waitForClear: boolean): LoadingUiSnapshot | false | number {
   ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
   let loadingLabel: string | null = null
-  for (const element of document.querySelectorAll('[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]')) {
+  for (const element of document.querySelectorAll('[aria-busy="true"], [role="progressbar"]:not([aria-valuenow]), progress:not([value]), [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]')) {
     if (element.getAttribute('data-loading') === 'false' && !element.matches('[aria-busy="true"], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]')) continue
     const box = element.getBoundingClientRect()
     const width = Math.min(box.right, innerWidth) - Math.max(box.left, 0)

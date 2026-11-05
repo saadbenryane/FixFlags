@@ -74,6 +74,19 @@ run('native same-page action panels', () => {
     })
   })
 
+  it.each(['ready', 'unchanged', 'loading'] as const)('requires observed content progress for a %s fragment route', async mode => {
+    const update = mode === 'ready'
+      ? 'document.querySelector("h1").textContent="Choose your project";document.querySelector("p").textContent="Create a useful project and invite the people who will work on it."'
+      : mode === 'loading' ? 'document.querySelector("main").innerHTML="<h1>Loading projects</h1><p role=progressbar>Loading</p>"' : ''
+    await inspect('<!doctype html><html><body><main><h1>Plan useful work with your team</h1><p>Organize the work your team needs to do.</p>' +
+      '<a id="start" href="#/projects">Get started</a></main><script>start.onclick=()=>{' + update + '}</script></body></html>', async page => {
+      const result = await runFlowScan(page, 'native-fragment-' + mode, page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+      expect(result.actionEvidence?.clicked).toBe(true)
+      expect(result.actionEvidence?.navigation).toBe(mode === 'ready' ? 'changed' : 'unknown')
+      expect(result.actionEvidence?.samePageProgress).toBe(mode === 'ready' ? 'rendered-route' : undefined)
+    })
+  })
+
   it('keeps an unavailable panel observation unknown', async () => {
     const page = { evaluate: vi.fn().mockRejectedValue(new Error('Observation unavailable')) } as unknown as Page
     expect(await visibleActionPanels(page)).toBeNull()

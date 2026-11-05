@@ -13,7 +13,7 @@ const pageUrl = 'https://example.com/'
 const scope = { pageUrl, finalUrl: pageUrl, profile: 'desktop', access: 'public' }
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 async function observed(state: AccessibilityEvidence['rules'][number]['state'], available = true) {
-  const evidence = { scope, engine: 'fixture-engine', rules: [{ id: 'button-name', state, nodes: 1 }] }
+  const evidence = { scope, documentScope: 'same-origin-v2', engine: 'fixture-engine', rules: [{ id: 'button-name', state, nodes: 1 }] }
   const context = {
     audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
       environment: 'production', scope: 'SITE', checks: { 'buttons-no-text': 1 }, outcomes: [], verificationTarget: null } },

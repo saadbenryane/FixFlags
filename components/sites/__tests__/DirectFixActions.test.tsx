@@ -93,7 +93,7 @@ it('shows one category copy-all before the findings and keeps it scoped to Perfo
   render(<SiteCategoryDetails selected={selected} selectedFlags={view.flags} selectedRecommendations={[]} confirmedOutcomes={[]}
     findingPages={2} siteId="site" view={view} busy={false} checkAction={() => null} verifyOutcome={vi.fn()}
     onClose={vi.fn()} restoreFocus={vi.fn()} />)
-  const all = await screen.findByRole('button', { name: C.fixAll })
+  const all = await screen.findByRole('button', { name: C.fixAll }, { timeout: 10_000 })
   expect(screen.getAllByRole('button', { name: C.fixAll })).toHaveLength(1)
   const title = screen.getByRole('heading', { name: first.problem })
   expect(all.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

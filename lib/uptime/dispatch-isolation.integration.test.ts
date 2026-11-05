@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
@@ -40,17 +41,18 @@ run('independent due Uptime dispatch with the installed runtime', () => {
       }, { timeout: 15_000 })
       await acquired
       runtime = startUptimeRuntime()
+      await runtime.waitUntilReady()
       await vi.waitFor(async () => {
         expect(await prisma.uptimeProbe.count({ where: { monitorId: independent.id } })).toBe(1)
       }, { timeout: 3000, interval: 20 })
-      expect(await loadUptimeSummary(second.id)).toMatchObject({ state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(second))).toMatchObject({ state: 'online' })
       expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: blocked.id } })).toEqual(blocked)
       expect(await prisma.uptimeProbe.count({ where: { monitorId: blocked.id } })).toBe(0)
       expect(observe.mock.calls.map(([url]) => url)).toEqual([second.url])
       release(); await held
       await dispatch(systemClock, 1)
       await vi.waitFor(async () => {
-        expect(await loadUptimeSummary(first.id)).toMatchObject({ state: 'online' })
+        expect(await loadUptimeSummary(uptimeReadSite(first))).toMatchObject({ state: 'online' })
       }, { timeout: 2000, interval: 20 })
       expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: blocked.id } })).toMatchObject({
         targetUrl: first.url, version: retarget ? 2 : 1,

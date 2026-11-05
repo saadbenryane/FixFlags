@@ -4,7 +4,7 @@ import { compareFlagPriority } from './presentation'
 
 export type PageResultData = {
   url: string; label: string; status: string; capture: { src: string; alt: string } | null;
-  flags: Array<Pick<SiteFlagSeed, 'id' | 'problem' | 'priorityBand' | 'checkId' | 'fix'>>;
+  flags: Array<Pick<SiteFlagSeed, 'id' | 'problem' | 'priorityBand' | 'checkId' | 'fix' | 'area' | 'evidence'>>;
 }
 
 /** A single recorded page inventory, projected through an explicitly selected finding scope. */
@@ -36,6 +36,6 @@ export function projectPageResults(checked: NonNullable<SiteHomeView['checkedPag
     const label = parsed && matching ? `${matching.hosts.size > 1 ? parsed.host : ''}${parsed.pathname}${matching.count > 1 ? parsed.search + parsed.hash : ''}` : url
     return { url, label, status: recorded?.status ?? 'UNKNOWN',
       capture: recorded?.capture ? { src: recorded.capture.url, alt: recorded.title || url } : null,
-      flags: pageFlags.sort(compareFlagPriority).map(({ id, problem, priorityBand, checkId, fix }) => ({ id, problem, priorityBand, checkId, fix })) }
+      flags: pageFlags.sort(compareFlagPriority).map(({ id, problem, priorityBand, checkId, fix, area, evidence }) => ({ id, problem, priorityBand, checkId, fix, area, evidence })) }
   })
 }

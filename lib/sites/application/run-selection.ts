@@ -1,3 +1,4 @@
+import { staleScheduledClaim } from './scheduled-admission'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
@@ -63,7 +64,10 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
     where: { id: input.projectId, userId: input.userId, ...(cleanup ? {} : { deletedAt: null }) },
     select: { url: true },
   })
-  if (!project) throw new SiteRunRefusal('Site not found', 404)
+  if (!project) {
+    if (input.scheduledClaim) throw staleScheduledClaim()
+    throw new SiteRunRefusal('Site not found', 404)
+  }
 
   const fixture = input.fixtureId ? await prisma.outcomeFixture.findFirst({
     where: { id: input.fixtureId, projectId: input.projectId, configuredByUserId: input.userId, enabled: true }, select: { id: true, version: true, targetUrl: true },

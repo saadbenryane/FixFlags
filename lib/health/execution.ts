@@ -21,7 +21,7 @@ function overdueExecutionWhere(now: Date): Prisma.AuditWhereInput {
 
 /** A consistent diagnostic snapshot is bounded independently of recovery.
  * It reads evidence and never settles, retries or modifies an execution. */
-export function readExecutionHealth(now: Date) {
+export async function readExecutionHealth(now: Date) {
   return prisma.$transaction(async tx => {
     await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY')
     await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '500ms'")

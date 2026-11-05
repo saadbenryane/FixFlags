@@ -317,15 +317,15 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
 
   it.each(['pause', 'retarget', 'suspend', 'lease'] as const)('refuses publication when %s changes after selection', async change => {
     const { user, project, monitor } = await monitorFixture()
-    const original = db().uptimeMonitor.updateMany.bind(db().uptimeMonitor)
-    const boundary = vi.spyOn(db().uptimeMonitor, 'updateMany').mockImplementation(async args => {
-      if (args.data.lastDispatchAttemptAt) {
+    const original = db().$executeRaw.bind(db())
+    const boundary = vi.spyOn(db(), '$executeRaw').mockImplementation(async (query, ...values) => {
+      if (Array.isArray(query) && String(query[0]).includes('UPDATE uptime_monitors m')) {
         if (change === 'pause') await db().project.update({ where: { id: project.id }, data: { watchInterval: null, watchNextRunAt: null } })
         if (change === 'retarget') await db().project.update({ where: { id: project.id }, data: { url: 'https://changed.example.com/' } })
         if (change === 'suspend') await db().user.update({ where: { id: user.id }, data: { lifecycleStatus: 'SUSPENDED' } })
         if (change === 'lease') await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { leaseUntil: new Date(originTime.getTime() + 30_000), leaseToken: 'concurrent-worker' } })
       }
-      return original(args)
+      return original(query, ...values)
     })
     try {
       await scheduleUptimeProbes(fixedClock(originTime), 1)

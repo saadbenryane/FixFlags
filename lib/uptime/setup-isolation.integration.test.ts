@@ -1,3 +1,4 @@
+import { uptimeReadSite } from './__tests__/read-site'
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
@@ -40,6 +41,7 @@ run('independent initial Uptime setup with the installed runtime', () => {
       }, { timeout: 15_000 })
       const pid = await owner
       runtime = startUptimeRuntime()
+      await runtime.waitUntilReady()
       await vi.waitFor(async () => {
         const [{ count }] = await prisma.$queryRaw<Array<{ count: number }>>`
           SELECT COUNT(*)::int AS count FROM pg_stat_activity WHERE ${pid} = ANY(pg_blocking_pids(pid))`
@@ -48,7 +50,7 @@ run('independent initial Uptime setup with the installed runtime', () => {
       await vi.waitFor(async () => {
         expect(await prisma.uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(1)
       }, { timeout: 2000, interval: 20 })
-      expect(await loadUptimeSummary(existing.id)).toMatchObject({ state: 'online' })
+      expect(await loadUptimeSummary(uptimeReadSite(existing))).toMatchObject({ state: 'online' })
       expect(await prisma.uptimeMonitor.count({ where: { projectId: initial.id } })).toBe(0)
       expect(observe.mock.calls.map(([url]) => url)).toEqual([existing.url])
       release(); await held
@@ -57,7 +59,7 @@ run('independent initial Uptime setup with the installed runtime', () => {
       }, { timeout: 2000, interval: 20 })
       await service.scheduleUptimeProbes(systemClock, 1, initial.id)
       await vi.waitFor(async () => {
-        expect(await loadUptimeSummary(initial.id)).toMatchObject({ state: 'online' })
+        expect(await loadUptimeSummary(uptimeReadSite(initial))).toMatchObject({ state: 'online' })
       }, { timeout: 2000, interval: 20 })
       expect(await prisma.uptimeProbe.count({ where: { monitor: { project: { userId: user.id } } } })).toBe(2)
       expect(await prisma.uptimeIncident.count({ where: { monitor: { project: { userId: user.id } } } })).toBe(0)
