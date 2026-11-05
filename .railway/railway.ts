@@ -49,6 +49,7 @@ export default defineRailway(ctx => {
       REDIS_URL: preserve(),
       RESEND_API_KEY: preserve(),
       RESEND_FROM_EMAIL: preserve(),
+      RESEND_DELIVERY_WEBHOOK_SECRET: preserve(),
       RESEND_RECEIVING_WEBHOOK_SECRET: preserve(),
       SAMPLE_AUDIT_URL: preserve(),
       STRIPE_API_VERSION: preserve(),
