@@ -14,7 +14,7 @@ import { FORM_VERIFICATION_RULE } from '../flow/form-evidence'
 import { currentFormFeedbackObservation } from './form-validation'
 import { SECURITY_HEADER_VERIFICATION_RULE, currentSecurityHeaderObservation } from './security-headers'
 import { CONSOLE_VERIFICATION_RULE, readConsoleContext } from '../console-evidence'
-import { ACCESSIBILITY_VERIFICATION_RULE } from './accessibility-rules'
+import { ACCESSIBILITY_VERIFICATION_RULE, currentControlNameObservation } from './accessibility-rules'
 import { PRIMARY_ACTION_VERIFICATION_RULE } from '../flow/primary-action-evidence'
 import { POST_CLICK_CHECKS, POST_CLICK_VERIFICATION_RULE, postClickTargetSchema } from './flow-post-click'
 import { DESTINATION_TRUST_VERIFICATION_RULE, destinationTrustTargetSchema } from './flow-destination-trust'
@@ -399,6 +399,7 @@ export function scopedAssertionForTarget(input: {
       const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
         (!headers || currentSecurityHeaderObservation(item)) &&
         (!form || currentFormFeedbackObservation(item)) &&
+        (!accessibility || currentControlNameObservation(item)) &&
         MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
       const matched = contexts.data.map(prior => matchingObservation(candidates, candidate => candidate.item.context === prior.context, candidate => candidate.item))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)

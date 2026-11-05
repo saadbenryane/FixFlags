@@ -29,6 +29,8 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   let category: ExecutionSpec['category']
   let monitoringPages: ExecutionSpec['monitoringPages']
   let monitoringBehaviors: ExecutionSpec['monitoringBehaviors']
+  let retainedConsoleScopes: ExecutionSpec['consoleObservationScopes']
+  let retainedConsoleMinimum = 0
   let targetUrl = input.targetUrl
   if ((input.scope === 'SITE' && input.projectId) || input.scope === 'CATEGORY') {
     if (input.scope === 'CATEGORY' && !input.categoryArea) throw new SiteRunRefusal('Select a category to check.', 400)
@@ -46,6 +48,10 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     }
     const prior = readExecutionSpec(source?.executionSpec)
     const compatible = prior?.scope === 'SITE' && prior.targetUrl === source?.url && prior.environment === input.environment
+    if (compatible) {
+      retainedConsoleScopes = prior.consoleObservationScopes
+      retainedConsoleMinimum = prior.consoleObservationMs ?? 0
+    }
     // The Site can enter at its configured origin after a URL-first analysis
     // began on another page. Keep that source's admitted responsibility.
     const recorded = [...(source?.url ? [source.url] : []), ...recordedPageUrls({ executionSpec: compatible ? prior : null,
@@ -136,12 +142,18 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     }
 
   }
-  if (input.projectId && (input.scope === 'SITE' || category?.area === 'conversion')) {
+  if (input.projectId && input.scope === 'SITE') {
     // Carry recorded error horizons into care runs. A fast, healthy navigation
     // must not silently shorten observation after an earlier delayed failure.
     const scopes = await monitoringConsoleResponsibility({ projectId: input.projectId, environment: input.environment,
       pages: category?.pages ?? monitoringPages ?? [targetUrl] })
-    if (scopes.length) consoleObservationScopes = scopes
+    const pages = category?.pages ?? monitoringPages ?? [targetUrl]
+    const windows = new Map(scopes.map(scope => [scope.pageUrl, scope.minimumMs]))
+    for (const scope of retainedConsoleScopes ?? []) if (pages.includes(scope.pageUrl))
+      windows.set(scope.pageUrl, Math.max(scope.minimumMs, windows.get(scope.pageUrl) ?? 0))
+    if (retainedConsoleMinimum) for (const pageUrl of pages)
+      windows.set(pageUrl, Math.max(retainedConsoleMinimum, windows.get(pageUrl) ?? 0))
+    if (windows.size) consoleObservationScopes = [...windows].map(([pageUrl, minimumMs]) => ({ pageUrl, minimumMs }))
   }
   let accountChecks = (['SITE', 'ACCOUNT_CHECKS'].includes(input.scope) || category?.area === 'conversion' || input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId.startsWith('account-')) ? await accountAdmission(input.projectId, input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId === 'account-signup-failed' ? 'retest' : input.accountMode) : undefined
   if (accountChecks?.siteUrl && new URL(accountChecks.siteUrl).origin !== new URL(input.targetUrl).origin) accountChecks = undefined

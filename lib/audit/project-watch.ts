@@ -197,13 +197,13 @@ export async function processDueProjectWatches(
 
       const admissionAt = clock.now()
       if (admissionAt >= leaseUntil) continue
-      await requestScheduledSiteRun({
+      const scheduled = await requestScheduledSiteRun({
         projectId: project.id, userId: project.userId, interval,
         everyMinutes: project.watchEveryMinutes, scheduledAt: project.watchNextRunAt ?? admissionAt, now: admissionAt,
         claim: { attemptedAt, leaseUntil },
         ...(dependencies.operator ? { operator: dependencies.operator } : {}),
       })
-      enqueued += 1
+      if (scheduled.runId) enqueued += 1
     } catch (error) {
       if (error instanceof SiteRunRefusal && error.code === 'WATCH_CLAIM_CHANGED') continue
       errors += 1

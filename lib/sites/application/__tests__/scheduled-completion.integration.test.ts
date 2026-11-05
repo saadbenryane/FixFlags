@@ -11,6 +11,9 @@ import { requestSiteRun } from '../run-requests'
 import { ensureDefaultMonitoring } from '../default-monitoring'
 import { commitScheduledRun, reconcileScheduledCompletions } from '../scheduled-completion'
 import { markOutcomeRunsCouldNotVerify } from '../run-reconciliation'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
+import { setSiteOutcomeEnabled } from '../outcome-commands'
+import { executeUptimeProbe } from '@/lib/uptime/service'
 import { dispatchAudit } from '@/lib/audit/dispatch'
 import { Prisma } from '@prisma/client'
 import { interruptedAnalysisWorkSql, interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
@@ -58,6 +61,165 @@ run('scheduled completion after cadence advancement', () => {
     await prisma.audit.update({ where: { id: auditId }, data: { status: 'FAILED', completedAt: new Date() } })
     await markOutcomeRunsCouldNotVerify(auditId, 'CONTROLLED_EXECUTION_FAILURE', 'Controlled execution failure')
   }
+
+  it.each(['outcome-off', 'binding-off', 'supporting-only'] as const)('keeps care scheduled without inventing execution when the remaining binding is %s', async mode => {
+    const now = new Date(), sourceAt = new Date(now.getTime() - 3600_000)
+    await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, projectId, userId, now))
+    const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId, slug: 'page-loads' } })
+    if (mode === 'outcome-off') await setSiteOutcomeEnabled({ site: (await loadSiteRecord(projectId))!, outcomeId: outcome.id, enabled: false })
+    else await prisma.outcomeExecutionBinding.updateMany({ where: { outcomeId: outcome.id },
+      data: mode === 'binding-off' ? { enabled: false } : { required: false } })
+    // Retained completion is a saved scheduling fixture, not a fresh website observation.
+    const source = await prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/', status: 'COMPLETED',
+      createdAt: sourceAt, completedAt: new Date(sourceAt.getTime() + 1000), reportCompleteness: 'FULL',
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    await prisma.project.update({ where: { id: projectId }, data: { watchConsecutiveFailures: 2,
+      watchLastError: 'The disabled binding did not finish.' } })
+    expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toEqual({ processed: 1, enqueued: 0, errors: 0 })
+    const current = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    const renewal = new Date(sourceAt.getTime() + 7 * 86400_000 - 60_000)
+    expect(current).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: renewal, watchLeaseUntil: null,
+      watchConsecutiveFailures: 0, watchLastError: null, watchLastRunAt: null })
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(0)
+    expect(await prisma.audit.count({ where: { projectId } })).toBe(1)
+    expect(queue.add).not.toHaveBeenCalled()
+    const scheduledAt = new Date(Math.floor(Date.now() / 300_000) * 300_000)
+    const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: source.url, nextProbeAt: scheduledAt } })
+    await executeUptimeProbe({ monitorId: monitor.id, version: monitor.version, scheduledAt: scheduledAt.toISOString(), attempt: 1 }, async () => ({
+      result: 'ONLINE', reason: 'response_received', statusCode: 200, durationMs: 10, finalUrl: source.url,
+    }))
+    expect(await prisma.uptimeProbe.findFirstOrThrow({ where: { monitorId: monitor.id } })).toMatchObject({ result: 'ONLINE' })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchNextRunAt: renewal, watchLastRunAt: null })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(renewal.getTime() + 1000)
+      expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    } finally { vi.useRealTimers() }
+    expect(await prisma.runRequest.findFirstOrThrow({ where: { projectId } })).toMatchObject({ executionSpec: { scope: 'SITE', outcomes: [] } })
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })).toMatchObject({ enabled: mode !== 'outcome-off' })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: source.id } })).toEqual(source)
+  })
+
+  it.each([
+    { interval: 'weekly' as const, stored: 'WEEKLY' as const, everyMinutes: null, age: 6 * 86400_000, period: 7 * 86400_000, entry: 'https://example.com/' },
+    { interval: 'weekly' as const, stored: 'WEEKLY' as const, everyMinutes: null, age: 6 * 86400_000, period: 7 * 86400_000, entry: 'https://www.example.com/catalog?sort=new#/bags' },
+    { interval: 'daily' as const, stored: 'DAILY' as const, everyMinutes: null, age: 20 * 3600_000, period: 86400_000, entry: 'https://example.com/catalog/' },
+    { interval: 'hourly' as const, stored: 'HOURLY' as const, everyMinutes: null, age: 23.5 * 3600_000, period: 86400_000, entry: 'https://www.example.com/?locale=fr' },
+    { interval: 'custom' as const, stored: 'CUSTOM' as const, everyMinutes: 4320, age: 2 * 86400_000, period: 3 * 86400_000, entry: 'https://example.com/#/catalog' },
+  ])('renews retained broad evidence at its own deadline during $interval care for $entry', async ({ stored, everyMinutes, age, period, entry }) => {
+    const now = new Date(), observedAt = new Date(now.getTime() - age)
+    // This saved terminal scope exercises scheduling, not webpage collection.
+    const source = await prisma.audit.create({ data: { projectId, userId, url: entry, status: 'COMPLETED',
+      reportCompleteness: 'FULL', createdAt: observedAt, completedAt: new Date(observedAt.getTime() + 1000),
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: entry,
+        monitoringPages: [...new Set([entry, 'https://example.com/'])],
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    await prisma.project.update({ where: { id: projectId }, data: { watchInterval: stored, watchEveryMinutes: everyMinutes } })
+    expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    const first = await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' } })
+    expect(first.executionSpec).toMatchObject({ scope: 'OUTCOMES' })
+    const saved = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    const renewal = new Date(observedAt.getTime() + period - 60_000)
+    expect(saved.watchNextRunAt).toEqual(renewal)
+    expect(first.context).toMatchObject({ scheduled: { nextRunAt: renewal.getTime() } })
+    expect(saved.watchLastRunAt).toBeNull()
+    await prisma.audit.update({ where: { id: first.auditId! }, data: { status: 'COMPLETED', completedAt: new Date() } })
+    await prisma.runRequest.update({ where: { id: first.id }, data: { status: 'COMPLETED', completedAt: new Date(), leaseUntil: null } })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(renewal.getTime() + 1000)
+      expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    } finally { vi.useRealTimers() }
+    const next = await prisma.runRequest.findFirstOrThrow({ where: { projectId, id: { not: first.id } } })
+    expect(next.executionSpec).toMatchObject({ scope: 'SITE' })
+    expect(next.executionSpec).toMatchObject({ monitoringPages: expect.arrayContaining([entry]) })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: source.id } })).toEqual(source)
+    expect((await prisma.runRequest.findUniqueOrThrow({ where: { id: first.id } })).context).toEqual(first.context)
+  })
+
+  it.each(['FAILED', 'EXHAUSTED'] as const)('does not hide a newer %s Site analysis on another entry URL behind older healthy evidence', async failure => {
+    const entry = 'https://www.example.com/catalog?sort=new#/bags'
+    const older = await prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/', status: 'COMPLETED',
+      createdAt: new Date(Date.now() - 3600_000), completedAt: new Date(Date.now() - 3599_000),
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    const admitted = await requestSiteRun({ projectId, userId, url: entry, scope: 'SITE', outcomeIds: [], idempotencyKey: 'other-entry-failed', source: 'WEB' })
+    if (failure === 'FAILED') await fail(admitted.auditId!)
+    else {
+      await prisma.auditExecutionTask.create({ data: { auditId: admitted.auditId!, targetKey: 'task:browser', source: 'EXECUTION',
+        workKind: 'browser', workState: 'EXHAUSTED', status: 'FAILED', workErrorCode: 'RECOVERY_EXHAUSTED' } })
+      await prisma.audit.update({ where: { id: admitted.auditId! }, data: { status: 'COMPLETED', completedAt: new Date(), reportCompleteness: 'PARTIAL' } })
+      await prisma.runRequest.update({ where: { id: admitted.runId }, data: { status: 'COMPLETED', completedAt: new Date(), leaseUntil: null } })
+    }
+    const interrupted = await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId! } })
+    expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' } })
+    expect(watch.executionSpec).toMatchObject({ scope: 'SITE', targetUrl: 'https://example.com/', monitoringPages: expect.arrayContaining([entry]) })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: older.id } })).toEqual(older)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: interrupted.id } })).toEqual(interrupted)
+  })
+
+  it.each(['https://example.com/', 'http://example.com:8080/', 'https://example.com/?locale=fr', 'https://example.com/#/catalog'])(
+    'requires broad care when the latest Site scope did not include the current target %s', async target => {
+      const entry = 'https://www.example.com/catalog?sort=new#/bags'
+      const older = await prisma.audit.create({ data: { projectId, userId, url: target, status: 'COMPLETED',
+        createdAt: new Date(Date.now() - 3600_000), completedAt: new Date(Date.now() - 3599_000),
+        executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: target,
+          environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+      const latest = await prisma.audit.create({ data: { projectId, userId, url: entry, status: 'COMPLETED',
+        createdAt: new Date(Date.now() - 60_000), completedAt: new Date(Date.now() - 59_000),
+        executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: entry,
+          monitoringPages: [entry], environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+      await prisma.project.update({ where: { id: projectId }, data: { url: target } })
+      expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+      const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' } })
+      expect(watch.executionSpec).toMatchObject({ scope: 'SITE', targetUrl: target, monitoringPages: expect.arrayContaining([target, entry]) })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: older.id } })).toEqual(older)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: latest.id } })).toEqual(latest)
+    })
+
+  it('renews broad care for retained responsibilities absent from the latest completed scope', async () => {
+    const retainedEntry = 'https://example.com/catalog?locale=fr#/bags', unobserved = 'https://example.com/help/shipping/'
+    const older = await prisma.audit.create({ data: { userId, url: retainedEntry, status: 'FAILED',
+      createdAt: new Date(Date.now() - 2 * 3600_000), completedAt: new Date(Date.now() - 2 * 3600_000 + 1000),
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: retainedEntry,
+        monitoringPages: [retainedEntry, unobserved], environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    const latest = await prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/', status: 'COMPLETED',
+      createdAt: new Date(Date.now() - 3600_000), completedAt: new Date(Date.now() - 3599_000),
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
+        monitoringPages: ['https://example.com/'], environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    // A claim can retain an older analysis after the latest broad collection.
+    // Its admitted but unobserved page remains owed. This fixture starts after
+    // that identity transfer and exercises actual scheduling and admission.
+    const retained = await prisma.audit.update({ where: { id: older.id }, data: { projectId } })
+    expect(await prisma.auditPage.count({ where: { auditId: retained.id } })).toBe(0)
+    expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' } })
+    expect(watch.executionSpec).toMatchObject({ scope: 'SITE', monitoringPages: expect.arrayContaining(['https://example.com/', retainedEntry, unobserved]) })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: retained.id } })).toEqual(retained)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: latest.id } })).toEqual(latest)
+  })
+
+  it('retries a failed broad attempt instead of letting an older completed source narrow its recovery', async () => {
+    const first = await admit()
+    expect(first.executionSpec).toMatchObject({ scope: 'SITE' })
+    const older = await prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/', status: 'COMPLETED',
+      createdAt: new Date(Date.now() - 3600_000), completedAt: new Date(Date.now() - 3599_000), reportCompleteness: 'FULL',
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    await fail(first.auditId!)
+    const saved = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(saved.watchNextRunAt!.getTime() + 1000)
+      expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    } finally { vi.useRealTimers() }
+    const retry = await prisma.runRequest.findFirstOrThrow({ where: { projectId, id: { not: first.id } } })
+    expect(retry.executionSpec).toMatchObject({ scope: 'SITE' })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: older.id } })).toEqual(older)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! } })).toMatchObject({ status: 'FAILED' })
+  })
 
   it.each(['write-failure', 'unreadable-context'] as const)('rotates a full %s cohort so independent Sites receive completion recovery', async mode => {
     const now = new Date(Date.now() + 60_000), clock = { now: () => now }

@@ -1,7 +1,9 @@
 import { PageMetadata } from '../metadata'
 import { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
-import { axeRuleToCheckId } from './accessibility-rules'
+import { axeRuleToCheckId, axeTargetSelector, isIframeAxeTarget, type AxeTarget } from './accessibility-rules'
+
+export { isIframeAxeTarget } from './accessibility-rules'
 
 export interface AxeViolation {
   id: string
@@ -11,29 +13,9 @@ export interface AxeViolation {
   helpUrl: string
   nodes: Array<{
     html: string
-    target: string[]
+    target: AxeTarget
     failureSummary: string
   }>
-}
-
-/**
- * Drop nodes whose axe target path points into an iframe/frame. Cross-origin
- * player DOM (YouTube, Calendly, Stripe) is not the site's code; same-origin
- * frames are still analyzed by axe when present in the top-level results.
- */
-export function isIframeAxeTarget(target: string[] | undefined): boolean {
-  if (!target || target.length < 2) return false
-  // The final selector is the affected element. A top-level iframe's own
-  // title belongs to the Site; only an ancestor frame places a node inside it.
-  return target.slice(0, -1).some((part) => {
-    const value = String(part).toLowerCase()
-    return (
-      value.includes('iframe') ||
-      value.includes('frame[') ||
-      value.startsWith('frame ') ||
-      /\bframe\b/.test(value)
-    )
-  })
 }
 
 export function filterOutIframeAxeViolations(
@@ -84,7 +66,7 @@ const ACCESSIBLE_NAME_FIX_BY_CHECK_ID: Record<string, string> = {
 function buildAxeFix(violation: AxeViolation): string {
   const nodeCount = violation.nodes.length
   const example = violation.nodes[0]
-  const selector = example?.target?.join(' > ') ?? 'unknown element'
+  const selector = example ? axeTargetSelector(example.target) : 'unknown element'
   const checkId = axeRuleToCheckId(violation.id)
   const safeNameFix = ACCESSIBLE_NAME_FIX_BY_CHECK_ID[checkId]
 
@@ -119,7 +101,8 @@ function buildAxeFix(violation: AxeViolation): string {
 export function runAccessibilityChecks(
   meta: PageMetadata | null,
   pagespeed: PageSpeedResult | null,
-  axeViolations?: AxeViolation[]
+  axeViolations?: AxeViolation[],
+  ownedDocuments = false
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
 
@@ -127,7 +110,7 @@ export function runAccessibilityChecks(
   const axeUnavailable = axeViolations == null
   const scopedAxeViolations = axeUnavailable
     ? []
-    : filterOutIframeAxeViolations(axeViolations)
+    : ownedDocuments ? axeViolations : filterOutIframeAxeViolations(axeViolations)
   if (!axeUnavailable && scopedAxeViolations.length > 0) {
     const processedCheckIds = new Set<string>()
 
@@ -141,7 +124,7 @@ export function runAccessibilityChecks(
       const nodeCount = violation.nodes.length
       const evidence = violation.nodes
         .slice(0, 3)
-        .map((node) => `${node.target.join(' > ')}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
+        .map((node) => `${axeTargetSelector(node.target)}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
         .join('\n')
 
       findings.push({

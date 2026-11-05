@@ -4,7 +4,6 @@ import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { OUTCOME_RUN_LEASE_MS } from './run-requests'
 import { validateBindingForOutcome } from './binding-config'
-import { storedAttemptIsPurchaseWalk } from '@/lib/integrity/purchase'
 import { recordExecution } from './binding-evidence'
 import { runCheckoutBinding } from './checkout-binding'
 import { runGenericBrowserJourneyBinding } from './browser-journey-binding'
@@ -165,29 +164,6 @@ export async function runBoundOutcomeExecutions(auditId: string, only?: { outcom
       }
       // BROWSER_JOURNEY: dispatch to checkout-specific or generic runner based on outcome kind
       if (selection.outcome.kind === 'CHECKOUT') {
-        const priorJourney = await prisma.journeyReview.findFirst({
-          where: { auditId, journeyType: 'checkout', startUrl },
-          select: {
-            goalAchieved: true,
-            blockedReason: true,
-            steps: { select: { actionType: true, actionDetail: true, elementDescription: true } },
-          },
-        })
-        // A wait-only review can be marked achieved by landing on checkout.
-        // Reuse the stored verdict only when that review already bought.
-        if (priorJourney && storedAttemptIsPurchaseWalk(priorJourney.steps)) {
-          const purchased = Boolean(priorJourney.goalAchieved)
-          await recordExecution({
-            auditId,
-            outcomeId: selection.outcome.id,
-            bindingKey: binding.key,
-            bindingVersion: binding.version,
-            mechanism: 'BROWSER_JOURNEY',
-            disposition: purchased ? 'SUCCEEDED' : priorJourney.blockedReason ? 'BLOCKED' : 'FAILED',
-            reason: priorJourney.blockedReason ?? (purchased ? 'checkout_reached' : 'checkout_failed'),
-          })
-          continue
-        }
         await runCheckoutBinding({
           auditId,
           runId: request.id,

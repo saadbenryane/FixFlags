@@ -1,8 +1,10 @@
+import { bindingEvaluator } from '../domain/outcome-evaluation'
 import { prisma } from '@/lib/db'
 import type { CurrentBindingRevision } from '../domain/assessment-comparability'
 import { fixtureOwnerCurrent } from '../domain/fixture-authority'
 
 type OutcomeBindings = {
+  kind?: string
   projectId?: string | null
   bindings: Array<Omit<CurrentBindingRevision, 'fixture'> & { config?: unknown }>
 }
@@ -28,7 +30,7 @@ export async function loadOutcomeBindingRevisions(outcomes: OutcomeBindings[]): 
   return outcomes.map(outcome => outcome.bindings.map(binding => {
     const id = binding.mechanism === 'SAFE_FORM' ? fixtureId(binding.config) : null
     const fixture = id && outcome.projectId ? byScope.get(identity(outcome.projectId, id)) : undefined
-    return { key: binding.key, required: binding.required, version: binding.version, mechanism: binding.mechanism,
+    return { ...(bindingEvaluator(outcome.kind, binding.mechanism) ? { evaluator: bindingEvaluator(outcome.kind, binding.mechanism) } : {}), key: binding.key, required: binding.required, version: binding.version, mechanism: binding.mechanism,
       ...(fixture ? { fixture: { id: fixture.id, version: fixture.version,
         authorized: fixtureOwnerCurrent(fixture) && fixture.enabled && Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version } } : {}) }
   }))

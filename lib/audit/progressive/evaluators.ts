@@ -1,3 +1,4 @@
+import { admittedCheckVersions } from './check-execution'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -19,7 +20,6 @@ import { searchReceiptSchema } from '../search/contracts'
 import { searchFindings } from '../search/registry'
 import { collectSearchEvidence, missingDocument } from '../search/collect'
 import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
-import { CHECK_REGISTRY } from '../check-registry'
 import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { runKeyboardChecks } from '../checks/keyboard'
@@ -84,10 +84,9 @@ export const evaluatorHandlers: TaskHandler[] = [
       if (!checkModule || !definition || checkModule === 'search') throw new TaskFailure('CHECK_NOT_REGISTERED', false)
       const spec = readExecutionSpec(context.audit.executionSpec)
       const evidenceScope = spec?.category ? { area: spec.category.area, allowedCheckIds: Object.keys(spec.checks) } : undefined
-      const selected = Object.entries(spec?.checks ?? {}).filter(([id]) => CHECK_REGISTRY[id]?.module === checkModule)
+      const checkVersions = admittedCheckVersions(context.audit.executionSpec, checkModule)
+      const selected = Object.entries(checkVersions)
       if (!selected.length) throw new TaskFailure('CHECK_NOT_ADMITTED', false)
-      if (selected.some(([id, version]) => CHECK_REGISTRY[id]?.version !== version))
-        throw new TaskFailure('CHECK_VERSION_UNAVAILABLE', false)
       const browserSource = readBrowserEvidence(context.dependencies.values())
       const browser = browserSource?.data ?? null, response = httpEvidence(context), speed = speedEvidence(context)
       const nativeHttp = nativeHttpCollection(context.replayHttpEvidence)

@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { deferMonitoringSetup, MONITORING_SETUP_UNAVAILABLE_RETRY_MS, monitoringSetupDue, monitoringSetupOrder } from '@/lib/sites/application/monitoring-setup'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
@@ -14,6 +14,10 @@ import { systemClock, type Clock } from '@/lib/time/clock'
 const slot = (now: Date) => new Date(Math.floor(now.getTime() / UPTIME_INTERVAL_MS) * UPTIME_INTERVAL_MS)
 const nextSlot = (now: Date) => new Date(slot(now).getTime() + UPTIME_INTERVAL_MS)
 
+function availableMonitorRow(id: string) {
+  return Prisma.sql`SELECT id FROM uptime_monitors WHERE id = ${id} FOR UPDATE SKIP LOCKED`
+}
+
 function currentProbeSlot(job: UptimeJob, scheduledAt: Date, now: Date) {
   return scheduledAt <= now && now.getTime() - scheduledAt.getTime() <= 2 * UPTIME_INTERVAL_MS &&
     (job.attempt === 2 || scheduledAt.getTime() === slot(now).getTime())
@@ -24,7 +28,8 @@ async function syncMonitor(snapshot: UptimeMonitor, project: MonitoringProject, 
   const transition = monitorSynchronization(snapshot, project, now)
   if (!transition) return snapshot
   return prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT id FROM uptime_monitors WHERE id = ${snapshot.id} FOR UPDATE`
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(availableMonitorRow(snapshot.id))
+    if (!locked.length) return null
     const current = await tx.uptimeMonitor.findUnique({ where: { id: snapshot.id }, include: { project: { include: uptimeProjectInclude } } })
     if (!current) return null
     if (current.version !== snapshot.version || current.targetUrl !== snapshot.targetUrl) return current
@@ -53,7 +58,7 @@ function monitorSynchronization(monitor: UptimeMonitor, project: MonitoringProje
 }
 
 /** Bounded sweeps plus durable due fields recover enqueue failures without a catch-up burst. */
-export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
+export async function initializeUptimeMonitors(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
   const setupCutoff = clock.now()
   const initializing: Prisma.ProjectWhereInput = { ...uptimeProjectWhere, ...(onlyProjectId ? { id: onlyProjectId } : {}), uptimeMonitor: null }
   const projects = await prisma.project.findMany({
@@ -81,9 +86,25 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
       watchInterval: project.watchInterval, monitoringSetupRetryAt: project.monitoringSetupRetryAt }, clock.now(),
       publicTarget ? undefined : MONITORING_SETUP_UNAVAILABLE_RETRY_MS)
   }
+}
+
+/** Due monitors cannot wait for unrelated setup. Durable due fields recover
+ * enqueue failures without a catch-up burst or synthetic observations. */
+export async function dispatchDueUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
   const selectedAt = clock.now()
+  // Locked rows must not consume the bounded cohort. The atomic attempt update
+  // below also yields if a row becomes busy after this short selection ends.
+  const available = await prisma.$queryRaw<Array<{ id: string }>>`SELECT m.id
+    FROM uptime_monitors m JOIN projects p ON p.id = m."projectId" JOIN users u ON u.id = p."userId"
+    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND p."watchInterval" IS NOT NULL AND p."watchPausedAt" IS NULL
+      ${onlyProjectId ? Prisma.sql`AND p.id = ${onlyProjectId}` : Prisma.empty}
+      AND (m."nextProbeAt" <= ${selectedAt} OR m."confirmationDueAt" <= ${selectedAt})
+      AND (m."leaseUntil" IS NULL OR m."leaseUntil" < ${selectedAt})
+    ORDER BY m."lastDispatchAttemptAt" ASC NULLS FIRST, m."nextProbeAt" ASC, m.id ASC
+    LIMIT ${limit} FOR UPDATE OF m SKIP LOCKED`
+  if (!available.length) return
   const due = await prisma.uptimeMonitor.findMany({
-    where: { ...(onlyProjectId ? { projectId: onlyProjectId } : {}), project: uptimeProjectWhere,
+    where: { id: { in: available.map(monitor => monitor.id) }, ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: uptimeProjectWhere,
       OR: [{ nextProbeAt: { lte: selectedAt } }, { confirmationDueAt: { lte: selectedAt } }],
       AND: [{ OR: [{ leaseUntil: null }, { leaseUntil: { lt: selectedAt } }] }] },
     include: { project: { include: uptimeProjectInclude } },
@@ -94,21 +115,28 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
       const monitor = await syncMonitor(snapshot, snapshot.project, clock.now())
       if (!monitor) continue
       if (!monitor.enabled || !uptimeEligible(snapshot.project)) {
-        await prisma.uptimeMonitor.updateMany({ where: { id: monitor.id, version: monitor.version }, data: { nextProbeAt: nextSlot(clock.now()) } })
+        await prisma.$executeRaw`UPDATE uptime_monitors SET "nextProbeAt" = ${nextSlot(clock.now())}, "updatedAt" = CURRENT_TIMESTAMP
+          WHERE id IN (${availableMonitorRow(monitor.id)}) AND version = ${monitor.version}`
         continue
       }
       // Record an attempt before publishing, so failed or unexecuted jobs cannot monopolize a batch.
       // Only the worker's observation advances due times or establishes reachability evidence.
       const attemptedAt = clock.now()
       if (monitor.nextProbeAt > attemptedAt && (!monitor.confirmationDueAt || monitor.confirmationDueAt > attemptedAt)) continue
-      const attempted = await prisma.uptimeMonitor.updateMany({ where: {
-        id: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl, enabled: true,
-        lastDispatchAttemptAt: monitor.lastDispatchAttemptAt, nextProbeAt: monitor.nextProbeAt,
-        confirmationDueAt: monitor.confirmationDueAt, pendingSlotAt: monitor.pendingSlotAt,
-        OR: [{ leaseUntil: null }, { leaseUntil: { lt: attemptedAt } }],
-        project: { ...uptimeProjectWhere, id: monitor.projectId, userId: snapshot.project.userId, url: snapshot.project.url },
-      }, data: { lastDispatchAttemptAt: attemptedAt } })
-      if (!attempted.count) continue
+      const attempted = await prisma.$executeRaw`UPDATE uptime_monitors m
+        SET "lastDispatchAttemptAt" = ${attemptedAt}, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE m.id IN (${availableMonitorRow(monitor.id)})
+          AND m.version = ${monitor.version} AND m."targetUrl" = ${monitor.targetUrl} AND m.enabled
+          AND m."lastDispatchAttemptAt" IS NOT DISTINCT FROM ${monitor.lastDispatchAttemptAt}
+          AND m."nextProbeAt" = ${monitor.nextProbeAt}
+          AND m."confirmationDueAt" IS NOT DISTINCT FROM ${monitor.confirmationDueAt}
+          AND m."pendingSlotAt" IS NOT DISTINCT FROM ${monitor.pendingSlotAt}
+          AND (m."leaseUntil" IS NULL OR m."leaseUntil" < ${attemptedAt})
+          AND EXISTS (SELECT 1 FROM projects p JOIN users u ON u.id = p."userId"
+            WHERE p.id = m."projectId" AND p.id = ${monitor.projectId} AND p."userId" = ${snapshot.project.userId}
+              AND p.url = ${snapshot.project.url} AND p."deletedAt" IS NULL
+              AND u."lifecycleStatus" = 'ACTIVE' AND p."watchInterval" IS NOT NULL AND p."watchPausedAt" IS NULL)`
+      if (!attempted) continue
       if (monitor.pendingFailureAt && monitor.pendingSlotAt && monitor.confirmationDueAt) {
         await enqueueUptimeProbe({ monitorId: monitor.id, version: monitor.version, scheduledAt: monitor.pendingSlotAt.toISOString(), attempt: 2 }, monitor.confirmationDueAt)
       } else {
@@ -117,6 +145,12 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
       }
     } catch (error) { logger.error('Uptime dispatch failed; persisted due intent retained', error) }
   }
+}
+
+/** Explicit Site reconciliation prepares its monitor and dispatches the current slot. */
+export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
+  await initializeUptimeMonitors(clock, limit, onlyProjectId)
+  await dispatchDueUptimeProbes(clock, limit, onlyProjectId)
 }
 
 /** Queue payloads carry references, never a URL or owner authority. */

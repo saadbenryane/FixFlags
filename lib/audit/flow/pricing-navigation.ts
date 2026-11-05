@@ -30,9 +30,12 @@ export async function probePricingNav(page: Page, overlayRecorder?: OverlayInter
   const inventory = await collectRenderedActionInventory(page, true)
   if (inventory.pageUrl !== before) return { pricingNav: 'skipped', pricingComplete: false }
   const candidates = inventory.controls.filter(control => control.labelComplete && control.tag === 'a' && control.inNavigation &&
-    /\bpricing\b|\bplans?\b/i.test(`${control.text} ${control.href ?? ''}`)).map(control => ({ ...control,
-      context: primaryControlContext({ pageContext, identity: control.identity, label: control.text, href: control.resolvedHref, controls: control.controls })
-        .replace('flow:control:', 'flow:pricing:v1:') }))
+    /\bpricing\b|\bplans?\b/i.test(`${control.text} ${control.href ?? ''}`)).map(control => {
+      const target = control.resolvedHref ? new URL(control.resolvedHref) : null, entry = new URL(before)
+      const fragment = target && target.origin === entry.origin && target.pathname === entry.pathname && target.search === entry.search && target.hash.length > 1
+      return { ...control, context: primaryControlContext({ pageContext, identity: control.identity, label: control.text,
+        href: control.resolvedHref, controls: control.controls }).replace('flow:control:', fragment ? 'flow:pricing:v2:' : 'flow:pricing:v1:') }
+    })
   const originalIndex = originalSelector ? await page.locator(originalSelector).getAttribute(FLOW_IDX_ATTR).catch(() => null) : null
   const link = candidates.find(control => (!originalSelector || String(control.idx) === originalIndex) && (!expectedContexts || expectedContexts.includes(control.context)) && !excludedContexts?.includes(control.context))
   if (!link) return { pricingNav: 'skipped', pricingComplete: inventory.complete, ...(expectedContexts?.[0] ? {
@@ -72,10 +75,7 @@ export async function probePricingNav(page: Page, overlayRecorder?: OverlayInter
         const ready = document.readyState === 'complete' || ((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.domContentLoadedEventEnd ?? 0) > 0
         if (!element) return { ready, visible: false }
         const rect = element.getBoundingClientRect()
-        for (let node: Element | null = element; node; node = node.parentElement) {
-          const style = getComputedStyle(node)
-          if (style.display === 'none' || style.contentVisibility === 'hidden' || style.visibility === 'hidden' || Number(style.opacity) === 0) return { ready, visible: false }
-        }
+        if (!element.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || getComputedStyle(element).contentVisibility === 'hidden') return { ready, visible: false }
         return { ready, visible: rect.width > 0 && rect.height > 0 && rect.top < innerHeight && rect.bottom > 0 && rect.left < innerWidth && rect.right > 0 }
       }, target.hash)
       const current = new URL(page.url())

@@ -1,3 +1,16 @@
+export type AxeTarget = Array<string | string[]>
+export const AXE_DOCUMENT_SCOPE_CONTEXT = 'same-origin-v2'
+
+/** Outer entries cross frame documents; nested entries cross shadow roots.
+ * The iframe element itself still belongs to the top document. */
+export function isIframeAxeTarget(target: ReadonlyArray<string | readonly string[]> | undefined): boolean {
+  return Boolean(target && target.length > 1)
+}
+
+export function axeTargetSelector(target: ReadonlyArray<string | readonly string[]>): string {
+  return target.map(part => typeof part === 'string' ? part : part.join(' >>> ')).join(' ::frame ')
+}
+
 /** Portable inventory of the installed axe WCAG policy. Runtime results retain actual rule outcomes. */
 export const ACCESSIBILITY_TAGS = ['wcag2a', 'wcag2aa', 'wcag22aa']
 export const MOBILE_ACCESSIBILITY_RULE_IDS = ['target-size'] as const
@@ -11,6 +24,15 @@ export const ACCESSIBILITY_RUN_OPTIONS = {
   rules: Object.fromEntries(ACCESSIBILITY_ADDITIONAL_RULE_IDS.map(id => [id, { enabled: true }])),
 }
 export const ACCESSIBILITY_DOM_CHECK_IDS = ['images-missing-alt', 'form-inputs-no-label', 'buttons-no-text', 'links-no-text', 'iframe-no-title', 'tabindex-positive', 'skip-link-missing'] as const
+export const HTML_CONTROL_NAMES_VERSION = 2
+export const HTML_CONTROL_NAME_CHECK_IDS = ['form-inputs-no-label', 'buttons-no-text', 'links-no-text'] as const
+export const HTML_CONTROL_NAMES_CONTEXT = ':html-control-names-v' + HTML_CONTROL_NAMES_VERSION
+
+/** Older counters remain recorded observations, not current positive name proof. */
+export function currentControlNameObservation(assertion: { key: string; passed: boolean; context?: string }): boolean {
+  return !HTML_CONTROL_NAME_CHECK_IDS.some(id => assertion.key === 'dom:' + id) || !assertion.passed ||
+    assertion.context?.endsWith(HTML_CONTROL_NAMES_CONTEXT) === true
+}
 export const AXE_POLICY_RULE_IDS = [
   'area-alt',
   'aria-allowed-attr',

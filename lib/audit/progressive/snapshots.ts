@@ -17,6 +17,7 @@ import { jsonValueSchema } from '@/lib/json-value'
 import { technologyCaptureSchema } from '../technology-capture'
 import { pagePreviewSchema } from '../checks/page-preview'
 import type { PageMetadata } from '../metadata'
+import { HTML_CONTROL_NAMES_VERSION } from '../checks/accessibility-rules'
 import type { PageSpeedResult } from '../pagespeed'
 import { pageSpeedFailureSchema } from '../pagespeed'
 import type { ScreenshotResult } from '../screenshot'
@@ -25,6 +26,7 @@ import { readArtifact, taskIsSettled } from './contracts'
 const text = z.string().max(1_000_000), strings = z.array(text).max(10_000)
 const count = z.number().finite().nonnegative()
 export const pageMetadataSchema = z.object({
+  controlNamesVersion: z.literal(HTML_CONTROL_NAMES_VERSION).optional(),
   renderedCopy: renderedCopySchema.nullable().optional(),
   linkBaseUrl: z.string().url().optional(),
   documentUrl: z.string().url().optional(),

@@ -69,14 +69,18 @@ export async function probeFormValidation(page: Page, options: {
         prefilled: fields.some(field => (field.required || field.getAttribute('aria-required') === 'true') &&
           (field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type) ? field.checked : field.value.trim().length > 0)),
         signature: JSON.stringify({ form: (form.getAttribute('name') || form.id || String(index)).slice(0, 200), action: form.action.slice(0, 2048),
-          fields: fields.map(field => ({ name: (field.name || field.id).slice(0, 200), tag: field.tagName })) }) })
+          // A repair must retain the original empty-field obligations. Native
+          // participation also covers disabled fieldsets and read-only controls.
+          // Logical requiredness allows an aria-required form to adopt native UI.
+          fields: fields.map(field => ({ name: (field.name || field.id).slice(0, 200), tag: field.tagName, type: field.type,
+            required: field.required || field.getAttribute('aria-required') === 'true', validates: field.willValidate })) }) })
     }
     return { candidates, incomplete: allForms.length > 40 }
   })
   const pageUrl = page.url()
   const captureScope = auditPageObservation(page)?.scope
   const scoped = candidates.candidates.map(candidate => ({ ...candidate,
-    context: 'form:' + createHash('sha256').update(JSON.stringify(['native-form-owner-v2', pageUrl, candidate.signature, ...(captureScope ? [captureObservationKey(captureScope)] : [])])).digest('hex') }))
+    context: 'form:' + createHash('sha256').update(JSON.stringify(['native-form-owner-v3', pageUrl, candidate.signature, ...(captureScope ? [captureObservationKey(captureScope)] : [])])).digest('hex') }))
   const phase = options.overlayPhase ?? 'form_validation'
   const originalSubmit = options.overlayRecorder?.expectedSelector('form', phase)
   const originalFormSelector = originalSubmit ? await page.evaluate(selector => {

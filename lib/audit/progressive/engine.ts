@@ -1,3 +1,4 @@
+import { analysisRecoveryEndsAt } from './recovery-window'
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -189,7 +190,7 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
 export async function reconcileTasks(auditId: string) {
   const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { createdAt: true, status: true, recoveryUntil: true, improvementProjectedAt: true } })
   if (!audit || audit.status === 'FAILED') return []
-  const until = audit.recoveryUntil?.getTime() ?? audit.createdAt.getTime() + ANALYSIS_RECOVERY_MS
+  const until = analysisRecoveryEndsAt(audit)
   const tasks = await loadTaskGraph(auditId), byKey = new Map(tasks.map(task => [task.targetKey.slice(5), task]))
   const ready: string[] = []
   for (const task of tasks) {
@@ -387,7 +388,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       const timeoutMs = typeof handler.timeoutMs === 'function' ? handler.timeoutMs(original.audit, input) : handler.timeoutMs
       if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new TaskFailure('TASK_BUDGET_INVALID', false)
       const context: TaskContext = { audit: original.audit, task, input,
-        deadline: Math.min(Date.now() + timeoutMs, original.audit.recoveryUntil?.getTime() ?? original.audit.createdAt.getTime() + ANALYSIS_RECOVERY_MS),
+        deadline: Math.min(Date.now() + timeoutMs, analysisRecoveryEndsAt(original.audit)),
         dependencies: new Map(task.workDependencies.flatMap(key => byKey.has(key) ? [[key, byKey.get(key)!] as const] : [])) }
       failedContext = context
       if (runsAfterCompletion(handler.kind)) context.deadline = Math.min(Date.now() + timeoutMs,

@@ -4,7 +4,7 @@ import type { CheckAssertion } from '../checks/assertion'
 import type { DeterministicFlag } from '../flag-types'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
 
-export const MOBILE_NAVIGATION_RULE = 'Mobile navigation observation v1'
+export const MOBILE_NAVIGATION_RULE = 'Mobile navigation observation v2'
 export const mobileNavigationObservationSchema = z.object({
   context: z.string().regex(/^mobile-nav:[a-f0-9]{64}$/), selector: z.string().min(1).max(2000), label: z.string().min(1).max(160),
   complete: z.boolean(), opened: z.boolean(), reason: z.string().min(1).max(160),

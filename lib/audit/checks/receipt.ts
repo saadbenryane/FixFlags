@@ -1,3 +1,4 @@
+import { currentControlNameObservation } from './accessibility-rules'
 import { z } from 'zod'
 import { CHECK_OBSERVATION_REASONS, type CheckAssertion } from './assertion'
 import { CHECK_REGISTRY } from '../check-registry'
@@ -82,6 +83,9 @@ export function readCheckReceipt(detail: unknown) {
     if (qualified.module === 'form-validation') qualified = { ...qualified,
       assertions: current.data.assertions.map(assertion => currentFormFeedbackObservation(assertion) ? assertion : { ...assertion, complete: false }),
     }
+    if (qualified.module === 'accessibility') qualified = { ...qualified,
+      assertions: qualified.assertions.map(assertion => currentControlNameObservation(assertion) ? assertion : { ...assertion, complete: false }),
+    }
     // Retain genuine HTTP facts without inventing historical pixel decoding.
     if (qualified.module === 'og-image' && qualified.assertions.some(assertion => assertion.key === 'preview-image-response' && assertion.passed) &&
       !qualified.assertions.some(assertion => assertion.key === 'preview-image-decoding')) qualified = { ...qualified, complete: false }
@@ -92,7 +96,7 @@ export function readCheckReceipt(detail: unknown) {
   if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true as const, unavailable: true }
   const assertions = Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
     const parsed = checkAssertionSchema.safeParse(value)
-    return parsed.success ? [currentFormFeedbackObservation(parsed.data) ? parsed.data : { ...parsed.data, complete: false }] : []
+    return parsed.success ? [currentFormFeedbackObservation(parsed.data) && currentControlNameObservation(parsed.data) ? parsed.data : { ...parsed.data, complete: false }] : []
   }) : []
   const currentAssertions = assertions.some(assertion => assertion.key === 'preview-image-decoding') ? assertions
     : assertions.map(assertion => assertion.key === 'preview-image-response' && assertion.passed ? { ...assertion, complete: false } : assertion)

@@ -1,14 +1,11 @@
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { prisma } from '@/lib/db'
-import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
-import { siteCareIntervalMinutes } from '../evidence-freshness'
-import { analysisEnvironmentWhere, siteWideAnalysisAuditWhere } from './analysis-scope'
 import { requestSiteRun } from './run-requests'
 import { SiteRunRefusal } from './run-refusal'
-import { commitScheduledRun } from './scheduled-completion'
-import { interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
+import { commitScheduledRun, settleIdleScheduledCare } from './scheduled-completion'
 import { readExecutionSpec } from '../domain/execution-spec'
+import { loadFreshScheduledBroadSource, scheduledOutcomesWhere } from './scheduled-scope'
 import { loadRunRequestByKey } from './run-request-keys'
 
 /** Reusing an admission does not make a failed or missing execution viable. */
@@ -44,20 +41,21 @@ export async function requestScheduledSiteRun(input: {
     assertScheduledExecution(input.projectId, existing)
     return commit({ runId: existing.id, auditId: existing.auditId, outcomeIds: existing.selections.map(item => item.outcomeId).sort(), reused: true })
   }
-  const target = normalizeAuditNavigationUrl(project.url)
-  const recentSiteCheck = await prisma.audit.findFirst({ where: { projectId: input.projectId,
-    status: 'COMPLETED', url: target.ok ? target.url : project.url, ...siteWideAnalysisAuditWhere,
-    AND: [analysisEnvironmentWhere('production')],
-    // One scheduler tick of tolerance avoids doubling daily/weekly periods
-    // merely because admission committed just after the preceding tick.
-    createdAt: { gt: new Date(input.now.getTime() - siteCareIntervalMinutes(input.interval, input.everyMinutes) * 60_000 + 60_000) },
-  }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true,
-    verifierExecutions: { where: interruptedAnalysisWorkWhere, select: { id: true }, take: 1 } } })
-  const scope = recentSiteCheck && !recentSiteCheck.verifierExecutions.length ? 'OUTCOMES' : 'SITE'
-  const outcomes = scope === 'OUTCOMES' ? await prisma.siteOutcome.findMany({
-    where: { projectId: input.projectId, enabled: true, environment: 'production',
-      bindings: { some: { enabled: true, required: true } } }, select: { id: true }, orderBy: { id: 'asc' },
+  const recentSiteCheck = await loadFreshScheduledBroadSource(prisma, { ...input, targetUrl: project.url })
+  let scope: 'OUTCOMES' | 'SITE' = recentSiteCheck ? 'OUTCOMES' : 'SITE'
+  let outcomes = scope === 'OUTCOMES' ? await prisma.siteOutcome.findMany({
+    where: scheduledOutcomesWhere(input.projectId), select: { id: true }, orderBy: { id: 'asc' },
   }) : []
+  if (scope === 'OUTCOMES' && !outcomes.length) {
+    const selected = await settleIdleScheduledCare({ projectId: input.projectId, userId: input.userId, targetUrl: project.url,
+      interval: input.interval, everyMinutes: input.everyMinutes, admittedAt: input.now, operator: input.operator,
+      ...(input.claim ? { claim: { ...input.claim, targetUrl: project.url, interval: input.interval,
+        everyMinutes: input.everyMinutes ?? null, scheduledAt: input.scheduledAt } } : {}),
+    })
+    if (selected.scope === 'NONE') return { runId: null, auditId: null, outcomeIds: [], reused: true, retainedAuditId: selected.retainedAuditId }
+    scope = selected.scope
+    outcomes = selected.outcomes
+  }
   const started = await requestSiteRun({ projectId: input.projectId, userId: input.userId, source: 'WATCH', scope, operator:input.operator,
     ...(input.claim ? { scheduledClaim: { ...input.claim, targetUrl: project.url, interval: input.interval,
       everyMinutes: input.everyMinutes ?? null, scheduledAt: input.scheduledAt } } : {}),

@@ -7,9 +7,9 @@ import { isIframeAxeTarget, runAccessibilityChecks, type AxeViolation } from './
 import { verificationRuleForCheckId } from '../verification-rules'
 import { parseMetadataFromHtml } from '../metadata'
 import { scopedAssertionForTarget } from './verification'
-import { checkReceiptSchema } from './receipt'
+import { checkReceiptSchema, readCheckReceipt } from './receipt'
 import { CHECK_REGISTRY } from '../check-registry'
-import { ACCESSIBILITY_TAGS, ACCESSIBILITY_ADDITIONAL_RULE_IDS, AXE_POLICY_RULE_IDS, axeRuleToCheckId } from './accessibility-rules'
+import { ACCESSIBILITY_TAGS, ACCESSIBILITY_ADDITIONAL_RULE_IDS, AXE_POLICY_RULE_IDS, axeRuleToCheckId, ACCESSIBILITY_VERIFICATION_RULE, HTML_CONTROL_NAMES_CONTEXT, HTML_CONTROL_NAME_CHECK_IDS } from './accessibility-rules'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '@/lib/audit/__tests__/recorded-flag-fixtures'
 import { runAllChecks } from './index'
@@ -21,7 +21,7 @@ const metadata = parseMetadataFromHtml('<html lang="en"><head><title>Fixture</ti
 const violation: AxeViolation = { id: 'button-name', impact: 'serious', description: 'Name required', help: 'Name required', helpUrl: 'https://example.com/rule',
   nodes: [{ target: ['#submit'], html: '<button id="submit"></button>', failureSummary: 'Add an accessible name' }] }
 function evidence(state: 'passed' | 'failed' | 'incomplete' | 'inapplicable', overrides: Partial<AccessibilityEvidence> = {}): AccessibilityEvidence {
-  return { scope, engine: 'fixture-engine', rules: [{ id: 'button-name', state, nodes: state === 'inapplicable' ? 0 : 1 }], ...overrides }
+  return { scope, documentScope: 'same-origin-v2', engine: 'fixture-engine', rules: [{ id: 'button-name', state, nodes: state === 'inapplicable' ? 0 : 1 }], ...overrides }
 }
 function receipt(value: AccessibilityEvidence, taskId = 'task') {
   const assertions = accessibilityObservations({ metadata, evidence: value, scope: value.scope })
@@ -102,9 +102,13 @@ describe('automated accessibility responsibilities', () => {
       incomplete: [{ id: 'button-name', nodes: [{ target: ['#other'] }] }, { id: 'color-contrast', nodes: [{ target: ['iframe', '#inside'] }] }],
       inapplicable: [{ id: 'image-alt', nodes: [] }] } as unknown as AxeResults
     expect(summarizeAccessibility(raw, scope).rules).toEqual([
-      { id: 'button-name', state: 'incomplete', nodes: 2 }, { id: 'color-contrast', state: 'inapplicable', nodes: 0 },
+      { id: 'button-name', state: 'incomplete', nodes: 2 }, { id: 'color-contrast', state: 'incomplete', nodes: 1 },
       { id: 'image-alt', state: 'inapplicable', nodes: 0 },
     ])
+  })
+  it('keeps legacy positive axe scope unverified while preserving observed failures', () => {
+    expect(proof(evidence('passed', { documentScope: undefined }))).toBeUndefined()
+    expect(receipt(evidence('failed', { documentScope: undefined })).assertions.some(item => !item.passed && item.complete)).toBe(true)
   })
   it('verifies the actual recorded rule and keeps unresolved or omitted results inconclusive', () => {
     expect(proof(evidence('failed'))).toMatchObject({ passed: false, complete: true })
@@ -174,6 +178,26 @@ describe('automated accessibility responsibilities', () => {
     expect(after.assertions.find(item => item.key === 'dom:skip-link-missing')).toMatchObject({ passed: false, complete: false, disposition: 'observed' })
     expect(scopedAssertionForTarget({ receipt: after, checkId: flag.checkId, flag })).toBeUndefined()
   })
+  it.each(HTML_CONTROL_NAME_CHECK_IDS)('retains legacy %s observations without upgrading older positive counters to repair proof', checkId => {
+    const oldMetadata = { ...metadata, controlNamesVersion: undefined }
+    const oldObservation = accessibilityObservations({ metadata: oldMetadata, scope }).find(item => item.key === 'dom:' + checkId)!
+    expect(oldObservation).toMatchObject({ passed: false, complete: false })
+    const current = accessibilityObservations({ metadata, scope }).find(item => item.key === oldObservation.key)!
+    expect(current).toMatchObject({ passed: true, complete: true })
+    expect(current.context).toContain(HTML_CONTROL_NAMES_CONTEXT)
+    const oldPositive = { ...current, context: current.context!.replace(HTML_CONTROL_NAMES_CONTEXT, '') }
+    const saved = { ...receipt(evidence('passed')), passed: true, complete: true, assertions: [oldPositive] }
+    const original = structuredClone(saved)
+    expect(readCheckReceipt(saved)).toMatchObject({ passed: false, complete: false,
+      assertions: [{ passed: true, complete: false, observed: oldPositive.observed }] })
+    const flag = { verificationRule: ACCESSIBILITY_VERIFICATION_RULE, evidenceTargets: [{ context: oldPositive.context }] }
+    expect(scopedAssertionForTarget({ receipt: saved, checkId, flag })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: { ...saved, assertions: [current] }, checkId, flag })).toBeUndefined()
+    const failed = { ...saved, passed: false, assertions: [{ ...oldPositive, passed: false }] }
+    expect(readCheckReceipt(failed)).toMatchObject({ passed: false, complete: true, assertions: [{ passed: false, complete: true }] })
+    expect(saved).toEqual(original)
+  })
+
   it('does not let a later page contaminate the original captured HTML responsibility', () => {
     const other = evidence('failed', { scope: { ...scope, finalUrl: pageUrl + 'other' } })
     const assertions = accessibilityObservations({ metadata, scope, evidence: other })

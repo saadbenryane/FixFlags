@@ -115,6 +115,13 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     expect(result.reason).toBe('add_to_cart_noop')
   }, 30_000)
 
+  it.each(['embedded-empty', 'embedded-challenge', 'top-empty', 'top-challenge'])('keeps %s checkout evidence unavailable until a usable surface is observed', async mode => {
+    const result = await runPathProbe({ runId: `unavailable-${mode}-${Date.now()}`, url: `${origin}/${mode}/`, allowLocalhost: true, browser, confirmRed: false })
+    expect(result.attempts[0].outcome.reachedCheckout).toBe(false)
+    expect(result.health).toBe('UNKNOWN')
+    expect(result.reason).toBe('checkout_surface_unavailable')
+  }, 30_000)
+
   it('recognizes a visible embedded checkout surface reached through the buy control', async () => {
     const result = await runPathProbe({ runId: `surface-embedded-${Date.now()}`, url: `${origin}/embedded-checkout/`, allowLocalhost: true, browser, confirmRed: false })
     expect(result.health).toBe('GREEN')
@@ -161,6 +168,11 @@ async function listenFixtures(): Promise<{ origin: string; close: () => Promise<
 
 async function serveFixture(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const raw = (request.url ?? '/').split('?')[0]
+  if (raw === '/top-empty/' || raw === '/top-challenge/') {
+    response.writeHead(200, { 'Content-Type': 'text/html' })
+    response.end('<h1>Canvas Tote</h1><a href="/checkout/' + (raw === '/top-empty/' ? 'empty' : 'challenge') + '">Buy now</a>')
+    return
+  }
   if (['/hidden-cart/', '/transparent-cart/', '/branding-text/', '/branding-frame/', '/branding-visible-frame/', '/embedded-checkout/', '/embedded-hidden/', '/embedded-empty/', '/embedded-challenge/', '/embedded-unavailable/'].includes(raw)) {
     const mode = raw.slice(1, -1)
     const markup = mode === 'hidden-cart' ? '<div id="CartDrawer" hidden>Your cart (1)<a href="/checkout">Checkout</a></div>'

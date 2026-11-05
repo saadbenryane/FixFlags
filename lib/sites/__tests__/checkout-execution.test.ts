@@ -362,7 +362,7 @@ describe('bound Checkout execution', () => {
     }))
   })
 
-  it('reuses a stored purchase walk without probing again', async () => {
+  it('independently probes checkout instead of upgrading a stored diagnostic purchase walk', async () => {
     mocks.journeyFindFirst.mockResolvedValue({
       goalAchieved: true,
       blockedReason: null,
@@ -374,9 +374,9 @@ describe('bound Checkout execution', () => {
 
     await runBoundCheckoutForAudit('audit-1')
 
-    expect(mocks.runPathProbe).not.toHaveBeenCalled()
+    expect(mocks.runPathProbe).toHaveBeenCalledOnce()
     expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'checkout_reached' }),
+      data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'flaky', detail: expect.objectContaining({ evaluator: 'checkout-entry-v2' }) }),
     }))
   })
 

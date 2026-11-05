@@ -1,3 +1,4 @@
+import { CHECKOUT_ENTRY_EVALUATOR } from '../domain/outcome-evaluation'
 import { currentExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
@@ -87,13 +88,13 @@ export async function runCheckoutBinding(input: {
       return {
         disposition: observation.disposition,
         reason: observation.reason,
-        detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl, httpStatus: attempt.outcome.httpStatus, finalUrl: attempt.finalUrl },
+        detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR, stepCount: attempt.steps.length, videoUrl: attempt.videoUrl, httpStatus: attempt.outcome.httpStatus, finalUrl: attempt.finalUrl },
       }
     }),
     conclusive: {
       disposition: verdict.disposition,
       reason: verdict.reason,
-      detail: { stepCount: result.steps.length },
+      detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR, stepCount: result.steps.length },
     },
   })
 }

@@ -1,3 +1,4 @@
+import { checkExecution } from './check-execution'
 import { CHECK_REGISTRY } from '../check-registry'
 import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { journeyAssessmentSchema, hasIncompleteJourneyAssessment, type JourneyAssessment } from '../journey/evaluation-grounding'
@@ -320,7 +321,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const urls = batch.members.flatMap(member => member.kind === 'destination' ? [member.url] : [])
       const opened = await openCheckDestinations(urls, { origin: spec.targetUrl, ceiling: DISCOVERY_BATCH_SIZE, deadline: context.deadline })
       const observations = discoveryObservations(batch.members, opened.results,
-        { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() })
+        checkExecution(context, 'overlays', 'rendered-dom'))
       return observationArtifact('discovery', discoverySchema.parse({ pages: reviewPages,
         openCheckCount: (previous?.openCheckCount ?? 0) + opened.results.length, truncated,
         flags: observations.flatMap(result => result.flags), receipts: observations.map(result => result.receipt) }), batch.progress)
@@ -422,8 +423,8 @@ export const lifecycleHandlers: TaskHandler[] = [
           onPageObservations: found => pages.push(...found), onJourneyFindings: found => findings.push(...found) })
       return observationArtifact('journeys', journeySchema.parse({ findingCount, assessments,
         flags: [...observations.flatMap(runObservedOverlayChecks), ...nativeJourneyFlags(findings)],
-        pageReceipts: journeyReceipts(pages, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
-        overlayReceipts: overlayCheckReceipts(observations, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }) }), batch.progress)
+        pageReceipts: journeyReceipts(pages, checkExecution(context, 'overlays', 'rendered-dom')),
+        overlayReceipts: overlayCheckReceipts(observations, checkExecution(context, 'overlays', 'rendered-dom')) }), batch.progress)
     },
   },
   { kind: 'judge', replay: 'read_only', timeoutMs: 75_000,

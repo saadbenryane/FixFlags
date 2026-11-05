@@ -1,6 +1,6 @@
 import { touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { startUptimeWorker } from './queue'
-import { executeUptimeProbe, retainUptimeHistory, scheduleUptimeProbes } from './service'
+import { executeUptimeProbe, retainUptimeHistory, dispatchDueUptimeProbes, initializeUptimeMonitors } from './service'
 import { deliverUptimeNotifications } from './alerts'
 import { logger } from '@/lib/logger'
 import { createTimerScheduler } from '@/lib/queue/timer-scheduler'
@@ -12,20 +12,21 @@ export function startUptimeRuntime() {
   let lastRetention = 0
   async function scheduling() {
     try {
-      await scheduleUptimeProbes()
+      await dispatchDueUptimeProbes()
       await touchWorkerHeartbeat({ uptimeReady: true, lastUptimeSweepAt: new Date().toISOString() })
     } catch (error) {
       logger.error('Uptime scheduling maintenance failed', error)
       await touchWorkerHeartbeat({ uptimeReady: false }).catch(heartbeatError => logger.error('Uptime heartbeat failed', heartbeatError))
     }
   }
+  const initialization = () => initializeUptimeMonitors()
   const notifications = () => deliverUptimeNotifications()
   async function retention() {
     if (Date.now() - lastRetention < 86400_000) return
     await retainUptimeHistory()
     lastRetention = Date.now()
   }
-  for (const task of [scheduling, notifications, retention]) {
+  for (const task of [initialization, scheduling, notifications, retention]) {
     scheduler.schedule(task, 1000)
     scheduler.schedule(task, 30_000, true)
   }

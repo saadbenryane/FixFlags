@@ -1,11 +1,10 @@
+import { readExecutionHealth } from './execution'
 import {
   readStalledJobCount,
   readWorkerHeartbeat,
 } from '@/lib/queue/worker-heartbeat'
 import { getWorkerExecutionCounts } from '@/lib/queue/estimate'
-import { prisma } from '@/lib/db'
 import { getRateLimitRedisHealth } from '@/lib/security/rate-limit'
-import { auditDeadlineMsForDepth } from '@/lib/audit/review-depth'
 import { readMonitoringHealth } from '@/lib/health/monitoring'
 
 const EVENT_LOOP_LAG_LIMIT_MS = 250
@@ -17,20 +16,10 @@ export async function readWorkerOperationalHealth() {
   const eventLoopLagMs = Math.round((performance.now() - eventLoopStarted) * 10) / 10
 
   const rateLimit = getRateLimitRedisHealth()
-  const [hb, est, oldest, overdue, stalled, monitoringResult] = await Promise.allSettled([
+  const [hb, est, executionResult, stalled, monitoringResult] = await Promise.allSettled([
     readWorkerHeartbeat(),
     getWorkerExecutionCounts(),
-    prisma.audit.findFirst({
-      where: { status: { notIn: ['COMPLETED', 'FAILED'] } },
-      orderBy: { createdAt: 'asc' },
-      select: { status: true, createdAt: true, startedAt: true },
-    }),
-    prisma.audit.count({
-      where: {
-        status: { notIn: ['COMPLETED', 'FAILED'] },
-        OR: ([1, 2, 3] as const).map((depth) => ({ reviewDepth: depth, startedAt: { lt: new Date(Date.now() - auditDeadlineMsForDepth(depth)) } })),
-      },
-    }),
+    readExecutionHealth(new Date()),
     readStalledJobCount(),
     readMonitoringHealth(),
   ])
@@ -64,7 +53,7 @@ export async function readWorkerOperationalHealth() {
   const ownership = 'contextOwnership' in worker ? worker.contextOwnership : null
   const unknownBrowserOwnership = worker.activeBrowserContexts > 0 && !ownership
   const excessiveEventLoopLag = eventLoopLagMs > EVENT_LOOP_LAG_LIMIT_MS
-  const overdueAuditCount = overdue.status === 'fulfilled' ? overdue.value : null
+  const overdueAuditCount = executionResult.status === 'fulfilled' ? executionResult.value.overdueAuditCount : null
   const monitoring = monitoringResult.status === 'fulfilled' ? monitoringResult.value : null
   const problems = {
     redis_unreachable: !redisReachable,
@@ -82,16 +71,7 @@ export async function readWorkerOperationalHealth() {
     monitoring_gaps: monitoring !== null && !monitoring.ok,
   }
   const status = Object.entries(problems).find(([, present]) => present)?.[0] ?? 'ok'
-  const oldestAudit =
-    oldest.status === 'fulfilled' && oldest.value
-      ? {
-          status: oldest.value.status,
-          ageSeconds: Math.round(
-            (Date.now() - oldest.value.createdAt.getTime()) / 1000
-          ),
-          startedAt: oldest.value.startedAt,
-        }
-      : null
+  const oldestAudit = executionResult.status === 'fulfilled' ? executionResult.value.oldestAudit : null
 
   return {
     ok: status === 'ok',

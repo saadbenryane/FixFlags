@@ -172,7 +172,7 @@ const LEGACY_CHECK_DEFINITIONS = {
   'flow-cta-dead-end': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-cta-flow"] },
   'flow-cta-external-leave': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-cta-flow"] },
   'flow-pricing-nav-broken': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-multi-step-flow"] },
-  'flow-mobile-menu-broken': { version: 1, area: 'conversion', module: 'mobile-navigation', capabilities: ["experience-multi-step-flow"] },
+  'flow-mobile-menu-broken': { version: 2, area: 'conversion', module: 'mobile-navigation', capabilities: ["experience-multi-step-flow"] },
   'flow-form-no-validation': { version: 1, area: 'conversion', module: 'form-validation', capabilities: ["experience-form-feedback"] },
   'flow-form-slow-feedback': { version: 1, area: 'conversion', module: 'form-validation', capabilities: ["experience-form-feedback"] },
   'scroll-ghost-sections': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-scroll-reveal"] },

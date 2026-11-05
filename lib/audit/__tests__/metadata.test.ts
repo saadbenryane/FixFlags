@@ -6,6 +6,18 @@ import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 const BASE_URL = 'https://example.com'
 
 describe('parseMetadataFromHtml', () => {
+  it.each([
+    ['<button aria-label=" "></button>', 1],
+    ['<button><span hidden>Hidden label</span></button>', 1],
+    ['<button aria-labelledby="missing"></button>', 1],
+    ['<span id="label" hidden>Submit</span><button aria-labelledby="label"></button>', 0],
+    ['<button><script>Submit</script></button>', 1],
+    ['<button><span class="sr-only">Submit</span></button>', 0],
+  ] as const)('measures actual control names for %s', (html, unnamed) => {
+    const metadata = parseMetadataFromHtml(html, BASE_URL)
+    assert.equal(metadata.controlNamesVersion, 2)
+    assert.equal(metadata.buttonsWithoutText, unnamed)
+  })
   it('keeps inactive forms, actions and trust declarations out of rendered metadata', () => {
     const markup = '<main><h1>Useful service</h1><a href="/details">Details</a></main>' +
       '<noscript><form><label>Email<input type="email"></label><button>Sign up</button></form><a href="/checkout">Buy now</a><a href="/privacy">Privacy policy</a></noscript>' +

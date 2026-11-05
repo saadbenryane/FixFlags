@@ -11,7 +11,7 @@ export function currentOutcomeAssessment(input: {
   staleAfterMinutes: number; now: Date;
 }): { state: CustomerOutcomeState; comparable: boolean; assessedAt: Date | null; validUntil: Date | null } {
   const assessment = input.assessment
-  const comparable = Boolean(assessment && assessmentIsComparable(assessment.coverage, input.bindings, input.environment))
+  const comparable = Boolean(assessment && assessmentIsComparable(assessment.coverage, input.bindings, input.environment, assessment.state !== 'FLAG'))
   if (!assessment || !comparable) return { state: 'COULD_NOT_VERIFY', comparable, assessedAt: null, validUntil: null }
   const observedAt = assessment.assessedAt?.getTime(), recordedUntil = assessment.validUntil?.getTime()
   if (!Number.isFinite(observedAt) || !Number.isFinite(recordedUntil) || !Number.isSafeInteger(input.staleAfterMinutes) || input.staleAfterMinutes <= 0)

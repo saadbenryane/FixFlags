@@ -1,3 +1,4 @@
+import { hasCurrentCheckoutEvidence } from '../domain/outcome-evaluation'
 import { Prisma } from '@prisma/client'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
@@ -33,7 +34,8 @@ export async function persistOutcomeAssessment(input: AssessmentInput) {
       evidence: { path: ['supersededByAssessmentId'], equals: Prisma.AnyNull },
       assessedAt: { lte: input.assessedAt as Date }, runRequest: { projectId, requestedAt: { lt: request.requestedAt } },
     }, orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }, { id: 'desc' }], take: 50 })
-    let before = previous.find(row => comparableOutcomeCoverage(row.coverage, input.coverage)) ?? null
+    let before = previous.find(row => comparableOutcomeCoverage(row.coverage, input.coverage) &&
+      (outcomeKind !== 'CHECKOUT' || row.state !== 'CLEAR' || hasCurrentCheckoutEvidence(row.coverage))) ?? null
     if (before?.state === 'FLAG' && before.improvementId && !readOutcomeIncident(before.evidence) && bindingKeys.length === 1) {
       const sourceRun = await tx.runRequest.findUnique({ where: { id: before.runRequestId }, select: {
         executionSpec: true, selections: { select: { outcomeId: true } },

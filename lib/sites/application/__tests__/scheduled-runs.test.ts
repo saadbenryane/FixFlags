@@ -1,15 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ project: vi.fn(), existing: vi.fn(), recent: vi.fn(), outcomes: vi.fn(), request: vi.fn(), operator: vi.fn() }))
+const mocks = vi.hoisted(() => ({ project: vi.fn(), existing: vi.fn(), recent: vi.fn(), outcomes: vi.fn(), request: vi.fn(), operator: vi.fn(), responsibilities: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: mocks.project }, runRequest: { findUnique: mocks.existing },
   runRequestKey: { findUnique: async (args: unknown) => {
     const runRequest = await mocks.existing(args)
     return runRequest ? { runRequest, requestedByUserId: runRequest.requestedByUserId ?? null } : null
   } },
-  audit: { findFirst: mocks.recent }, siteOutcome: { findMany: mocks.outcomes } } }))
+  audit: { findFirst: mocks.recent }, siteOutcome: { findMany: mocks.outcomes }, $queryRaw: mocks.responsibilities } }))
 vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.operator }))
 vi.mock('../run-requests', () => ({ requestSiteRun: mocks.request }))
 vi.mock('../scheduled-completion', () => ({ commitScheduledRun: vi.fn() }))
-import { interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
 import { analysisEnvironmentWhere } from '../analysis-scope'
 import { requestScheduledSiteRun } from '../scheduled-runs'
 import { siteCareIntervalMinutes } from '../../evidence-freshness'
@@ -21,6 +20,7 @@ beforeEach(() => {
   mocks.project.mockResolvedValue({ url: 'http://www.example.com:8080' })
   mocks.existing.mockResolvedValue(null); mocks.recent.mockResolvedValue(null)
   mocks.outcomes.mockResolvedValue([{ id: 'availability' }])
+  mocks.responsibilities.mockResolvedValue([])
   mocks.request.mockResolvedValue({ runId: 'run', auditId: 'audit', outcomeIds: ['availability'], reused: false })
 })
 
@@ -40,26 +40,21 @@ describe('automatic scheduled Site care', () => {
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'site', userId: 'owner', source: 'WATCH',
       scope: 'SITE', outcomeIds: [], context: { cadence: 'weekly' } }))
     expect(mocks.recent).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      url: 'http://www.example.com:8080/', status: 'COMPLETED', AND: [analysisEnvironmentWhere('production')],
-      createdAt: { gt: new Date('2026-10-05T12:01:00Z') },
+      projectId: 'site', status: { in: ['COMPLETED', 'FAILED'] }, AND: [analysisEnvironmentWhere('production')],
+      createdAt: { gt: new Date('2026-10-05T12:01:00Z'), lte: now },
     }) }))
     expect(mocks.outcomes).not.toHaveBeenCalled()
   })
   it('reuses fresh broad evidence while independently requesting enabled production bindings at their saved cadence', async () => {
-    mocks.recent.mockResolvedValue({ id: 'recent-site-check', verifierExecutions: [] })
+    mocks.recent.mockResolvedValue({ id: 'recent-site-check', url: 'http://www.example.com:8080/', status: 'COMPLETED', createdAt: new Date(now.getTime() - 3600_000), pages: [], verifierExecutions: [] })
     await requestScheduledSiteRun({ ...input, interval: 'hourly' })
     expect(mocks.outcomes).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'site', enabled: true,
       environment: 'production', bindings: { some: { enabled: true, required: true } } } }))
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ scope: 'OUTCOMES', outcomeIds: ['availability'], context: { cadence: 'hourly' } }))
-    expect(mocks.recent.mock.calls[0][0].select.verifierExecutions.where).toEqual(interruptedAnalysisWorkWhere)
-    expect(interruptedAnalysisWorkWhere).toEqual({
-      workState: 'EXHAUSTED', status: 'FAILED',
-      OR: [{ workKind: null }, { workKind: { notIn: ['prescription', 'pagespeed', 'google', 'judge'] } }],
-    })
     expect(mocks.recent.mock.calls[0][0].where.createdAt.gt).toEqual(new Date('2026-10-11T12:01:00Z'))
   })
   it('requests broad recovery when the latest completed analysis exhausted an obligation', async () => {
-    mocks.recent.mockResolvedValue({ id: 'interrupted-site-check', verifierExecutions: [{ id: 'interrupted-task' }] })
+    mocks.recent.mockResolvedValue({ id: 'interrupted-site-check', status: 'COMPLETED', createdAt: now, verifierExecutions: [{ id: 'interrupted-task' }] })
     await requestScheduledSiteRun({ ...input, interval: 'hourly' })
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ scope: 'SITE', outcomeIds: [] }))
     expect(mocks.outcomes).not.toHaveBeenCalled()

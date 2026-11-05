@@ -10,6 +10,13 @@ describe('current assessment comparability', () => {
       expect(recordedBindingVersion({ bindingVersion: null, detail })).toBeUndefined()
     expect(recordedBindingVersion({ bindingVersion: 0, detail: { bindingVersion: 1 } })).toBeUndefined()
   })
+  it('requires the observed checkout evaluator for success while retaining comparable failures', () => {
+    const current = { key: 'checkout', required: true, version: 1, mechanism: 'BROWSER_JOURNEY', evaluator: 'checkout-entry-v2' }
+    const saved = { environment: 'production', requiredBindings: ['checkout'], bindings: [{ key: 'checkout', version: 1, mechanism: 'BROWSER_JOURNEY' }] }
+    expect(assessmentIsComparable(saved, [current], 'production')).toBe(false)
+    expect(assessmentIsComparable(saved, [current], 'production', false)).toBe(true)
+    expect(assessmentIsComparable({ ...saved, bindings: [current] }, [current], 'production')).toBe(true)
+  })
   it('matches only the exact required binding revisions and environment', () => {
     expect(assessmentIsComparable(coverage, [binding], 'production')).toBe(true)
     expect(assessmentIsComparable(coverage, [{ ...binding, version: 3 }], 'production')).toBe(false)

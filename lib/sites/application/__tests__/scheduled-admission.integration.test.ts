@@ -7,6 +7,7 @@ import { requestScheduledSiteRun } from '../scheduled-runs'
 import { setProjectWatch } from '../monitoring-settings'
 import { processDueProjectWatches } from '@/lib/audit/project-watch'
 import { requestSiteRun } from '../run-requests'
+import { settleIdleScheduledCare } from '../scheduled-completion'
 import { dispatchAudit } from '@/lib/audit/dispatch'
 import * as betaPolicy from '@/lib/billing/beta-policy'
 import { expireUnownedExecution } from '@/lib/audit/execution-ownership'
@@ -39,6 +40,83 @@ run('scheduled admission against the current monitoring claim', () => {
 
   const input = () => ({ projectId, userId, interval: 'weekly' as const, scheduledAt, now,
     claim: { attemptedAt: now, leaseUntil } })
+
+  async function idleSource() {
+    return prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/', status: 'COMPLETED',
+      createdAt: new Date(now.getTime() - 3600_000), completedAt: new Date(now.getTime() - 3599_000),
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+  }
+  const idleInput = () => ({ projectId, userId, targetUrl: 'https://example.com/', interval: 'weekly' as const,
+    everyMinutes: null, admittedAt: now, claim: { ...input().claim, targetUrl: 'https://example.com/', interval: 'weekly' as const,
+      everyMinutes: null, scheduledAt } })
+
+  it.each(['pause', 'transfer', 'removed', 'suspended', 'cadence', 'target', 'expired-claim'] as const)(
+    'does not advance idle care after its current authority changes: %s', async change => {
+      await idleSource()
+      const foreignId = userId + '-new-owner'
+      const command = idleInput()
+      try {
+        if (change === 'pause') await prisma.project.update({ where: { id: projectId }, data: { watchNextRunAt: null } })
+        if (change === 'transfer') {
+          await prisma.user.create({ data: { id: foreignId, email: foreignId + '@example.test' } })
+          await prisma.project.update({ where: { id: projectId }, data: { userId: foreignId } })
+        }
+        if (change === 'removed') await prisma.project.update({ where: { id: projectId }, data: { deletedAt: now } })
+        if (change === 'suspended') await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'SUSPENDED' } })
+        if (change === 'cadence') await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'DAILY' } })
+        if (change === 'target') await prisma.project.update({ where: { id: projectId }, data: { url: 'https://changed.example.com/' } })
+        if (change === 'expired-claim') {
+          command.claim.leaseUntil = new Date(now.getTime() - 1000)
+          await prisma.project.update({ where: { id: projectId }, data: { watchLeaseUntil: command.claim.leaseUntil } })
+        }
+        const saved = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+        await expect(settleIdleScheduledCare(command)).rejects.toMatchObject({ code: 'WATCH_CLAIM_CHANGED' })
+        expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(saved)
+        expect(await prisma.runRequest.count({ where: { projectId } })).toBe(0)
+      } finally {
+        await prisma.project.update({ where: { id: projectId }, data: { userId } })
+        await prisma.user.deleteMany({ where: { id: foreignId } })
+      }
+    })
+
+  it.each(['binding-enabled', 'source-unavailable'] as const)('rechecks %s inside idle settlement before selecting the actual execution', async change => {
+    const source = await idleSource()
+    const dormant = await prisma.siteOutcome.create({ data: { projectId, slug: 'dormant', name: 'Dormant availability', kind: 'AVAILABILITY',
+      enabled: false, confirmedAt: now, bindings: { create: { key: 'dormant-http', mechanism: 'HTTP_AVAILABILITY',
+        config: { startUrl: source.url, expectedSelector: 'body' }, required: true } } } })
+    const find = prisma.siteOutcome.findMany.bind(prisma.siteOutcome)
+    let changed = false
+    const selection = vi.spyOn(prisma.siteOutcome, 'findMany').mockImplementation((async (query?: Prisma.SiteOutcomeFindManyArgs) => {
+      const result = await find(query)
+      if (!changed && query?.where?.projectId === projectId && query.where?.enabled === true) {
+        changed = true
+        if (change === 'binding-enabled') await prisma.siteOutcome.update({ where: { id: dormant.id }, data: { enabled: true } })
+        else await prisma.audit.update({ where: { id: source.id }, data: { status: 'FAILED' } })
+      }
+      return result
+    }) as typeof prisma.siteOutcome.findMany)
+    try {
+      const admitted = await requestScheduledSiteRun(input())
+      expect(changed).toBe(true)
+      expect(admitted.runId).not.toBeNull()
+      const run = await prisma.runRequest.findUniqueOrThrow({ where: { id: admitted.runId! } })
+      expect(run.executionSpec).toMatchObject({ scope: change === 'binding-enabled' ? 'OUTCOMES' : 'SITE' })
+      if (change === 'binding-enabled') expect(run.executionSpec).toMatchObject({ outcomes: [expect.objectContaining({ id: dormant.id })] })
+      expect(queue.add).toHaveBeenCalledTimes(1)
+    } finally { selection.mockRestore() }
+  })
+
+  it('advances an idle tick once while preserving observation time and rejecting its stale replay', async () => {
+    await idleSource()
+    const command = idleInput()
+    expect(await settleIdleScheduledCare(command)).toMatchObject({ scope: 'NONE' })
+    const saved = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    expect(saved.watchLastRunAt).toBeNull()
+    await expect(settleIdleScheduledCare(command)).rejects.toMatchObject({ code: 'WATCH_CLAIM_CHANGED' })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(saved)
+    expect(await prisma.runRequest.count({ where: { projectId } })).toBe(0)
+  })
 
   it.each(['FAILED', 'COMPLETED'] as const)('replays a shared request key after its physical check becomes %s without creating another execution', async status => {
     await prisma.siteOutcome.create({ data: { projectId, slug: 'page-loads', name: 'This page loads', kind: 'AVAILABILITY',
@@ -124,7 +202,7 @@ run('scheduled admission against the current monitoring claim', () => {
   it('retries an actually exhausted dispatch receipt without certifying a website result', async () => {
     queue.add.mockRejectedValueOnce(new Error('Controlled queue outage'))
     const admitted = await requestScheduledSiteRun(input())
-    await retainLegacyTick(admitted.runId)
+    await retainLegacyTick(admitted.runId!)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId! } }))
       .toMatchObject({ status: 'QUEUED', dispatchState: 'PENDING', startedAt: null })
     // End the real dispatch recovery budget locally. No website observation is
@@ -159,7 +237,7 @@ run('scheduled admission against the current monitoring claim', () => {
   it.each(['request-failed', 'audit-failed', 'missing-audit'] as const)(
     'backs off a %s saved receipt instead of advancing care for a week', async failure => {
       const admitted = await requestScheduledSiteRun(input())
-      await retainLegacyTick(admitted.runId)
+      await retainLegacyTick(admitted.runId!)
       const original = await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId! } })
       // This queued admission never visited a website. Model interruption after
       // the failed execution was saved but before the scheduler advanced its tick.
@@ -198,7 +276,7 @@ run('scheduled admission against the current monitoring claim', () => {
 
   it('recovers the saved scheduler receipt while its physical execution is still in flight', async () => {
     const admitted = await requestScheduledSiteRun(input())
-    await retainLegacyTick(admitted.runId)
+    await retainLegacyTick(admitted.runId!)
     const original = await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId! } })
     const request = await prisma.runRequest.findUniqueOrThrow({ where: { id: admitted.runId } })
     expect(queue.add).toHaveBeenCalledTimes(1)

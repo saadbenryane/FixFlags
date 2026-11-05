@@ -1,3 +1,4 @@
+import { checkExecution } from './check-execution'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
 import { getAuditBrowser } from '../screenshot'
@@ -84,7 +85,7 @@ export const actionHandlers: TaskHandler[] = [
         kind: 'site-module-check', version: 1, module: 'overlays', pageUrl: context.input.pageUrl, applicable: true,
         complete: assertions.every(assertion => assertion.complete === true), passed: assertions.every(assertion => assertion.passed), assertions,
         limitation: 'Initial viewport controls only. No control is clicked, no form is submitted and no consent decision is made.',
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+        execution: checkExecution(context, 'overlays', 'rendered-dom'),
       }) })
     },
   },
@@ -150,7 +151,7 @@ export const actionHandlers: TaskHandler[] = [
           limitation: collected
             ? 'Bounded top-level mobile viewport text, decoded main image and recognized-action timing on simulated 3G. Unclassified graphics, sampling gaps, missing controls and other devices remain separate or unknown.'
             : 'The slow connection page was not collected. Timing remains unknown.',
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+          execution: checkExecution(context, 'mobile-navigation', 'rendered-dom'),
         } }), batch.progress)
     },
   },
@@ -179,7 +180,7 @@ async function evaluateFlowObservation(context: TaskContext) {
         navigationReceipt: { kind: 'site-module-check', version: 1, module: 'mobile-navigation', pageUrl: context.input.pageUrl,
           applicable: observed.applicable, complete: observed.complete, passed: observed.complete && assertions.every(assertion => assertion.passed), assertions,
           limitation: 'Bounded 375px navigation panels and local menu opening. Links are observed for visibility, never followed; unsupported controls, embedded documents and unobserved original links remain unknown.',
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() } } }))
+          execution: checkExecution(context, 'form-validation', 'rendered-dom') } }))
     } finally { session.disposeNetwork(); await session.page.context().close() }
   }
   const overlayDiagnostic = diagnostic?.kind === 'DIAGNOSTIC' && Object.values(OVERLAY_CHECKS).some(id => id === diagnostic.checkId.split('::page:')[0])
@@ -217,12 +218,12 @@ async function evaluateFlowObservation(context: TaskContext) {
       const checked = checkFormValidation(probe.evidence)
       const overlays = scopedOverlayResult('form', probe.formOverlay, probe.formLabel, probe.formOverlayObservation).map(flag => ({ ...flag, pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl }))
       return serializeArtifact('flow', flowSchema.parse({ flags: [...checked.flags, ...overlays], formEvidence: probe.evidence,
-        overlayReceipts: overlayCheckReceipts(recorder.observations(), { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
+        overlayReceipts: overlayCheckReceipts(recorder.observations(), checkExecution(context, 'overlays', 'rendered-dom')),
         result: { status: 'success', steps: [], finalUrl: session.page.url(), ctaText: null, ctaHref: null },
         formReceipt: overlayDiagnostic ? undefined : { kind: 'site-module-check', version: 1, module: 'form-validation', pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl,
           applicable: checked.applicable, complete: checked.complete, passed: checked.complete && checked.flags.length === 0,
           assertions: checked.assertions, ...(!checked.complete ? { limitation: 'Empty-field form validation could not be observed safely.' } : {}),
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+          execution: checkExecution(context, 'slow-replay', 'rendered-dom'),
         } }))
     } finally { session.disposeNetwork(); await session.page.context().close() }
   }
@@ -288,15 +289,15 @@ async function evaluateFlowObservation(context: TaskContext) {
       networkReceipt: { kind: 'site-module-check', version: 1, module: 'network', pageUrl: context.input.pageUrl,
         passed: network.complete && !network.flags.length, applicable: network.applicable, complete: network.complete,
         assertions: network.assertions, limitation: network.limitation,
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() } }, receipt: {
+        execution: checkExecution(context, 'network', 'browser-network') }, receipt: {
       kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: context.input.pageUrl, applicable: true,
       passed: measured.flags.length === 0 && measured.complete, complete: measured.complete, limitation: measured.limitation, assertions: measured.assertions,
-      execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() },
-    }, overlayReceipts: overlayCheckReceipts(result.overlayObservations ?? [], { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
+      execution: checkExecution(context, 'measurement', 'browser-network'),
+    }, overlayReceipts: overlayCheckReceipts(result.overlayObservations ?? [], checkExecution(context, 'overlays', 'rendered-dom')),
     flowReceipt: overlayDiagnostic ? undefined : { kind: 'site-module-check', version: 1, module: 'flow', pageUrl: context.input.pageUrl, applicable: flowCheck.applicable,
       passed: flowCheck.passed, complete: flowCheck.complete, assertions: flowCheck.assertions,
       limitation: 'Public action observations cover the recorded page and control. Unsupported responses, changed controls, unsafe actions and intended business completion remain separate or unknown.',
-      execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+      execution: checkExecution(context, 'flow', 'rendered-dom'),
     } }))
   } finally { session.disposeNetwork(); await session.page.context().close() }
 }

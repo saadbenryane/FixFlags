@@ -14,21 +14,52 @@ import { SiteRunRefusal } from './run-refusal'
 import { interruptedAnalysisWorkSql, interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
 import { scheduledContextSchema, readScheduledContext, type ScheduledContext } from './scheduled-observation'
 
+import { loadFreshScheduledBroadSource, scheduledOutcomesWhere } from './scheduled-scope'
+
 const targetHash = (url: string) => createHash('sha256').update(url).digest('hex')
+
+type ScheduledOwner = { projectId: string; userId: string; interval: ScheduledRunClaim['interval']; operator?: AdminDomainActor }
+async function lockScheduledSite(tx: Prisma.TransactionClient, input: ScheduledOwner) {
+  const [site] = await tx.$queryRaw<Array<ScheduledClaimProject & { watchConsecutiveFailures: number }>>`
+    SELECT p.url, p."watchInterval", p."watchEveryMinutes", p."watchNextRunAt", p."watchLastAttemptAt", p."watchLeaseUntil", p."watchPausedAt", p."watchConsecutiveFailures"
+    FROM projects p JOIN users u ON u.id = p."userId" WHERE p.id = ${input.projectId} AND p."userId" = ${input.userId}
+      AND p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' FOR UPDATE OF p`
+  if (!site) throw staleScheduledClaim()
+  if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId, tx)
+  const policy = await loadEffectiveEntitlements(input.userId, tx)
+  if (!policy?.available || !policy.watchIntervals.includes(input.interval)) throw staleScheduledClaim()
+  return site
+}
+
+/** Empty selection is a scheduling decision, never a completed website check.
+ * Recheck the scope under the same authority lock as normal advancement. */
+export async function settleIdleScheduledCare(input: ScheduledOwner & { targetUrl: string; everyMinutes?: number | null;
+  admittedAt: Date; claim?: ScheduledRunClaim }) {
+  return productTransaction(async tx => {
+    const site = await lockScheduledSite(tx, input)
+    if (site.url !== input.targetUrl) throw staleScheduledClaim()
+    if (input.claim) assertScheduledClaim(site, input.claim)
+    const retained = await loadFreshScheduledBroadSource(tx, { ...input, now: input.admittedAt })
+    if (!retained) return { scope: 'SITE' as const, outcomes: [] }
+    const outcomes = await tx.siteOutcome.findMany({ where: scheduledOutcomesWhere(input.projectId), select: { id: true }, orderBy: { id: 'asc' } })
+    if (outcomes.length) return { scope: 'OUTCOMES' as const, outcomes }
+    if (input.claim) {
+      const nextRunAt = new Date(Math.min(calcWatchNextRun(input.interval, input.admittedAt, input.everyMinutes).getTime(), retained.renewAt.getTime()))
+      const changed = await tx.project.updateMany({ where: { id: input.projectId, userId: input.userId, deletedAt: null, watchPausedAt: null,
+        watchNextRunAt: input.claim.scheduledAt, watchLastAttemptAt: input.claim.attemptedAt, watchLeaseUntil: input.claim.leaseUntil },
+        data: { watchNextRunAt: nextRunAt, watchLeaseUntil: null, watchConsecutiveFailures: 0, watchLastError: null } })
+      if (changed.count !== 1) throw staleScheduledClaim()
+    }
+    return { scope: 'NONE' as const, retainedAuditId: retained.id }
+  })
+}
 
 /** The receipt's schedule context and the Site clock commit together, after
  * normal execution admission. No raw URL or claim lease enters that context. */
 export async function commitScheduledRun(input: { projectId: string; userId: string; runId: string; admittedAt: Date;
   claim: ScheduledRunClaim; operator?: AdminDomainActor }) {
   const complete = await productTransaction(async tx => {
-    const [site] = await tx.$queryRaw<Array<ScheduledClaimProject & { watchConsecutiveFailures: number }>>`
-      SELECT p.url, p."watchInterval", p."watchEveryMinutes", p."watchNextRunAt", p."watchLastAttemptAt", p."watchLeaseUntil", p."watchPausedAt", p."watchConsecutiveFailures"
-      FROM projects p JOIN users u ON u.id = p."userId" WHERE p.id = ${input.projectId} AND p."userId" = ${input.userId}
-        AND p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' FOR UPDATE OF p`
-    if (!site) throw staleScheduledClaim()
-    if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId, tx)
-    const policy = await loadEffectiveEntitlements(input.userId, tx)
-    if (!policy?.available || !policy.watchIntervals.includes(input.claim.interval)) throw staleScheduledClaim()
+    const site = await lockScheduledSite(tx, { ...input, interval: input.claim.interval })
     const run = await tx.runRequest.findFirst({ where: { id: input.runId, projectId: input.projectId, environment: 'production',
       status: { not: 'FAILED' }, audit: { projectId: input.projectId, userId: input.userId, status: { not: 'FAILED' } } },
       select: { context: true, executionSpec: true, status: true, audit: { select: { status: true } } } })
@@ -44,9 +75,19 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
       return false
     }
     assertScheduledClaim(site, input.claim)
+    const nextCadenceAt = calcWatchNextRun(input.claim.interval, input.admittedAt, input.claim.everyMinutes)
+    const retainedBroad = spec.scope === 'OUTCOMES' ? await loadFreshScheduledBroadSource(tx, {
+      projectId: input.projectId, targetUrl: site.url, interval: input.claim.interval,
+      everyMinutes: input.claim.everyMinutes, now: input.admittedAt,
+    }) : null
+    // A narrow check cannot renew the broad evidence it skipped. If that
+    // source disappeared, leave broad work due rather than adding a new period.
+    const nextRunAt = spec.scope === 'OUTCOMES'
+      ? Math.min(nextCadenceAt.getTime(), retainedBroad?.renewAt.getTime() ?? input.admittedAt.getTime())
+      : nextCadenceAt.getTime()
     const scheduled = scheduledContextSchema.parse({ version: 1, targetHash: targetHash(site.url), interval: input.claim.interval,
       everyMinutes: input.claim.everyMinutes, scheduledAt: input.claim.scheduledAt.getTime(), attemptedAt: input.claim.attemptedAt.getTime(),
-      nextRunAt: calcWatchNextRun(input.claim.interval, input.admittedAt, input.claim.everyMinutes).getTime(), failures: site.watchConsecutiveFailures })
+      nextRunAt, failures: site.watchConsecutiveFailures })
     const context = run.context && typeof run.context === 'object' && !Array.isArray(run.context) ? run.context : {}
     await tx.runRequest.update({ where: { id: input.runId }, data: { context: { ...context, scheduled } } })
     const changed = await tx.project.updateMany({ where: { id: input.projectId, userId: input.userId, deletedAt: null, watchPausedAt: null,
