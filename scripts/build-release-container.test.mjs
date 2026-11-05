@@ -1,5 +1,9 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, relative } from 'node:path'
+import ts from 'typescript'
 import { releaseContainerBuildArguments } from './build-release-container.mjs'
 
 const sha = 'a'.repeat(40)
@@ -11,6 +15,27 @@ const settings = {
   BETTER_AUTH_SECRET: 'private-auth-secret',
 }
 describe('release image configuration', () => {
+  it('checks generated route guards in standard and isolated builds while excluding copied output', () => {
+    const root = mkdtempSync(join(tmpdir(), 'fixflags-route-types-'))
+    try {
+      const guards = ['.next/types/validator.ts', '.next/types/app/api/example/route.ts',
+        '.next-e2e/types/validator.ts', '.next-e2e/types/app/api/example/route.ts',
+        '.next-verify/types/validator.ts', '.next-verify/types/app/api/example/route.ts']
+      const output = ['.next/standalone/copied.ts', '.next-e2e/standalone/copied.ts',
+        '.next-verify/server/generated.ts', '.next-e2e/cache/generated.ts']
+      for (const file of [...guards, ...output]) {
+        const path = join(root, file)
+        mkdirSync(dirname(path), { recursive: true })
+        writeFileSync(path, 'export {}\n')
+      }
+      const config = JSON.parse(readFileSync(new URL('../tsconfig.json', import.meta.url), 'utf8'))
+      const parsed = ts.parseJsonConfigFileContent(config, ts.sys, root)
+      assert.deepEqual(parsed.errors, [])
+      const selected = parsed.fileNames.map(file => relative(root, file))
+      for (const file of guards) assert.ok(selected.includes(file), `Missing route guard: ${file}`)
+      for (const file of output) assert.ok(!selected.includes(file), `Copied output entered type checking: ${file}`)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
   it('builds the designated public origin and exact revision without secrets', () => {
     const args = releaseContainerBuildArguments(settings, sha)
     assert.ok(args.includes(`GIT_COMMIT_SHA=${sha}`))

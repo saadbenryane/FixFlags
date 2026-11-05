@@ -118,13 +118,17 @@ it('keeps the polling cadence when the shared session refresh callback changes',
   expect(mocks.success).toHaveBeenCalledOnce()
 })
 
-it('preserves the dashboard destination and reading position even if optional analytics fails', async () => {
+it.each([
+  ['upgraded=1&plan=BUILDER&url=example.com', '/dashboard?url=example.com#websites'],
+  ['upgraded=1&plan=BUILDER', '/dashboard#websites'],
+])('preserves the dashboard destination and reading position even if optional analytics fails: %s', async (query, destination) => {
+  mocks.query = query
   window.history.replaceState(null, '', '/dashboard?' + mocks.query + '#websites')
   mocks.refresh.mockResolvedValue(account())
   mocks.track.mockImplementationOnce(() => { throw new Error('analytics unavailable') })
   render(<DashboardCheckoutToast />)
   await act(async () => { await vi.advanceTimersByTimeAsync(0) })
   expect(mocks.success).toHaveBeenCalledOnce()
-  expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/dashboard?url=example.com#websites', { scroll: false })
+  expect(mocks.replace).toHaveBeenCalledExactlyOnceWith(destination, { scroll: false })
   expect(mocks.message).not.toHaveBeenCalled()
 })

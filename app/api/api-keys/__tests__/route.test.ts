@@ -1,5 +1,5 @@
 import { describe, it, vi, expect, beforeEach, afterEach } from 'vitest'
-import type { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   $transaction:vi.fn(),$queryRaw:vi.fn(),
@@ -119,7 +119,7 @@ describe('POST /api/api-keys', () => {
       },
     ])
 
-    const res = await GET()
+    const res = await GET(new NextRequest('https://fixflags.test/api/api-keys'))
 
     expect(res.status).toBe(200)
     expect(prismaMock.apiKey.findMany).toHaveBeenCalledWith(

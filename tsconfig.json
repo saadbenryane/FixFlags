@@ -40,7 +40,14 @@
     ".next-verify/dev/types/**/*.ts"
   ],
   "exclude": [
-    ".next-*",
+    ".next/cache",
+    ".next/server",
+    ".next/standalone",
+    ".next/static",
+    ".next-*/cache",
+    ".next-*/server",
+    ".next-*/standalone",
+    ".next-*/static",
     "node_modules",
     "worker",
     "fixflags-cli",

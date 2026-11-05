@@ -67,7 +67,9 @@ On November 5 the remaining 41 native scenarios passed. Together with the preced
 
 Twenty-two additional PostgreSQL cases passed for guidance authority, consumption custody and the controlled native account lifecycle: signup/email verification, retained identity, signed-in failure and cleanup after opt-out. The queued quota case also proves a completed analysis keeps its results while guidance remains incomplete, with no AI-completion timestamp. Final review corrected recovery aggregation to use each provider's last observed failure, so an early temporary interruption cannot override its later definitive funding refusal. All 166 focused retry, native SDK transport, health and consumer checks passed after that correction.
 
-The clean runtime source at `d7a48c70` passed production web packaging, TypeScript and worker build. Its final three compiled web/worker cases passed automatic monitoring from an unconfigured Site, current-administrator/trusted-origin admission for paid health validation, and native Flag collection with independent repair. The local evidence and native scenario-to-log index are retained under `test-results/runtime/finish-release-20261105/`. This is local acceptance, not a deployed revision or real provider inference. The production promotion remains blocked by the observed provider credits failure and missing current administrator smoke session. No production promotion occurred.
+The clean runtime source at `d7a48c70` passed the isolated web build and worker build. Its final three compiled web/worker cases passed automatic monitoring from an unconfigured Site, current-administrator/trusted-origin admission for paid health validation, and native Flag collection with independent repair. The local evidence and native scenario-to-log index are retained under `test-results/runtime/finish-release-20261105/`. This is local acceptance, not a deployed revision or real provider inference. At that checkpoint no production promotion had occurred; provider credits and a current administrator smoke session remained unavailable.
+
+The user subsequently directed deployment with the known OpenAI limitation. Production main advanced to `237ea5ac`, but both Railway image builds failed before startup. The previous `7c227242` revision remained healthy with no reported monitoring gaps at 00:29 UTC on November 5. A local clean Linux Docker build reproduced two generated-contract errors: the API-key GET request was optional, and the checkout return URL widened to an arbitrary string. Earlier isolated builds excluded generated route guards through the broad `.next-*` TypeScript exclusion, limiting their type-check evidence. The correction requires the actual framework request, constructs statically valid dashboard destinations and excludes copied build output while including generated route guards. Thirty-one focused route/checkout cases, six build-contract cases, the strict isolated build, three packaged web/worker cases and the full local Linux ARM64 production image build passed. The image contains the web assets, worker/parser and Chromium; this remains distinct from Railway's production architecture and live acceptance. No type check is disabled. Failed deployment IDs are `b63fe05a-d9cf-4749-b600-a59c841c6520` and `db619701-1eca-444d-8522-b9129cf81b24`.
 
 A CPU-only full continuation measurement rebuilt all 200 response pages for 5,000 observations: 3,986,017 output bytes in 4,904 ms, with peak process RSS 228,294,656 bytes including module initialization. This excludes database hydration and network costs and does not close the full-path budget below. Complete offline files retain their existing one-task-at-a-time path. No additional cache or parallel repair state was introduced.
 
@@ -92,7 +94,7 @@ Complete owned repair files subsequently passed 108 focused server checks, 49 co
 
 | Priority | Current boundary | Required result |
 | --- | --- | --- |
-| P0 | The isolated candidate passed final packaging, compiled unattended monitoring, the secured live-probe boundary, native repair, the focused native cohort and rollback schema rehearsal. Production AI returned a credits-related error, and no current administrator smoke session is configured. | Restore the configured provider and obtain a current authorized administrator session for production credential smoke before the user-authorized promotion. Retain rollback/schema evidence and verify both deployed revisions and current gates afterward. Public production health was healthy at 23:50 UTC on November 4; the earlier notification gap's cause and actual delivery remain unproven. |
+| P0 | The user authorized shipping with the known AI limitation. Both initial image builds failed on generated route contracts omitted by earlier isolated validation. The corrected source passes strict Linux packaging, generated guards, focused checks and packaged customer paths. | Promote the corrected source and verify both deployed revisions, readiness, monitoring and retained gates. Full inference acceptance still needs a funded provider and a current administrator smoke session. Retain rollback evidence and the failed attempts. |
 | P0 | Registration and evaluator fixtures do not establish complete behavior for the 108 advertised responsibilities. | Reconcile actual collector, applicability, conclusion, fixability, comparison and recurrence evidence item by item. Correct producers where evidence fails. |
 | P1 acceptance | Complete owner-exported repair files are implemented locally for single, grouped, selected and category scopes. Local checks cover complete textual observations, revisions, privacy, cancellation and the preview action; the packaged native browser download and clipboard journey passed. | Demonstrate actual recipient/editor use. Files intentionally omit screenshots and additional provider data. Retain explicit unavailable evidence and current authorization. Local file parsing and browser delivery do not establish external tool acceptance. |
 | P1 | Large email continuations explicitly provide source IDs for an authorized first read, rather than frozen self-contained instructions for every remaining finding. | Prove the intended email-to-repair experience, including recipients without an already connected editor. Keep the distinction explicit and ensure complete authorized continuation. Do not call current source retrieval an immutable email snapshot. |
@@ -104,7 +106,7 @@ These are a mixture of demonstrated defects, incomplete integration and proof ob
 
 ## Next implementation decisions
 
-Complete repair handoff without an already connected reader is now implemented locally, and the intended source has been integrated with production. The next priorities are native acceptance, the observed delivery gap, capability evidence reconciliation and measured full-path costs. Native browser and external recipient acceptance remain separate. Investigate the weakest high-impact supported capability and correct any demonstrated failure before another broad review.
+Complete repair handoff without an already connected reader is implemented and locally verified, and the candidate has been pushed to production main under the user's November 5 direction. Deployment and external-provider acceptance retain their actual evidence boundaries. The next implementation priority is [AI efficiency and provider independence](#ai-efficiency-and-provider-independence-plan-2026-11-05), together with capability evidence reconciliation and measured full-path costs. Native browser and external recipient acceptance remain separate. Investigate the weakest high-impact supported capability and correct any demonstrated failure before another broad review.
 
 | Work | Implementation owners | Concrete next result and completion evidence |
 | --- | --- | --- |
@@ -116,6 +118,183 @@ Complete repair handoff without an already connected reader is now implemented l
 | Prepare external acceptance immediately | Existing provider adapters, notification delivery, account lifecycle and operational/release evidence owners | Prepare exact targets, expected receipts, cleanup, observation windows and access needs now. Run permitted local paths independently. Real sends, protected effects, deployment and external account mutations retain their existing authorization boundaries. |
 
 Each result closes its own requirement, not the whole objective. Reassess priority after each coherent change. A discovered shared defect takes precedence over the next item in this table.
+
+## AI efficiency and provider independence plan, 2026-11-05
+
+This is the implementation home for the November 5 request to ship the verified work and reduce dependence on expensive inference. The [research and current-source audit](cost-optimization.md#ai-efficiency-research-november-5-2026) contains the provider comparison, verified rate sources, serving constraints and evidence limits. These are planned changes unless an implementation receipt says otherwise. They do not supersede the full product completion requirements below.
+
+### Outcome and design
+
+Routine uptime and native checks keep their required cadence and fresh evidence without generative AI. Established check recipes produce useful instructions immediately. Semantic models handle bounded judgments; generative models contribute only missing contextual explanation. A provider outage cannot erase observations, stop independent checks, remove a known failure, fabricate an assessment or produce a false recovery. Preserve customer credits, commercial policy, the current interface and all advertised responsibilities.
+
+The logical path is:
+
+```text
+Site authority and scheduled intent
+  -> fresh required observations
+  -> deterministic conclusions and durable incident identity
+  -> one source-bound repair definition
+  -> compatible interpretation reuse or bounded semantic evaluation when needed
+  -> new contextual prose only when it adds required value
+  -> independent comparable verification and continuing monitoring
+```
+
+This describes responsibility, not one blocking serial pipeline. Independent collections publish independently. Existing PostgreSQL task/evidence ownership, BullMQ delivery, provider usage custody and repair definitions remain the foundation. Model choice belongs behind those contracts, with capability-specific adapters. Avoid a new generic agent platform, a second incident store, a second scheduler or a separate AI dashboard.
+
+### Acceptance targets
+
+Use these as engineering targets, not current savings claims:
+
+- Zero generative calls for HTTP uptime, deterministic checks, notification eligibility and native-only verification.
+- Zero regeneration of the same useful repair definition solely because another monitoring run or UI read occurred.
+- An unchanged compatible semantic input can reuse its interpretation while fresh native collection and required monitoring continue.
+- A deterministic repair is available when its own source evidence is available, without requiring an unrelated AI verdict, score or screenshot.
+- Provider calls have bounded input/output, one retry owner, exact usage provenance, atomic spend admission and interruption-safe settlement.
+- Required catalog coverage, false-positive/false-negative behavior, original-scope comparison and recurrence do not degrade to meet a cost target.
+- Tenant/access changes invalidate private interpretation reuse and fence in-flight writes. Unknown evidence remains explicit.
+- Report accepted-result cost and latency, not a speculative percentage reduction. Set numerical reduction targets after measuring a representative baseline.
+
+### 1. Measure the complete cost and dependency baseline
+
+Owners: `provider-usage.ts`, `provider-request.ts`, `prescription-usage.ts`, `billing/costs.ts`, current runtime metrics and the existing operator surfaces.
+
+Inventory every production inference entry: per-page triage, journey planner/evaluator, prescription, chat and live health validation. Keep the experimental Jev harness separate. For each task retain the actual provider, endpoint, snapshot, policy/prompt version, purpose, attempt identity, billable input/cache/output categories, known reasoning details, image quantity, elapsed time, response disposition and whether usable guidance was committed. Use hashes and counts rather than logging customer prompts or credentials.
+
+Extend existing usage custody rather than creating another spend ledger. Normalize provider/API schemas before calculating money. For newer OpenAI APIs, cache-read and cache-write counts can be included within total input, so subtract them into mutually exclusive categories before pricing. Do not add reported totals twice. Record requested versus actual processing tier and reject unsupported rate assumptions. Keep unknown cost unknown after a lost response; a failed parser may still have consumed tokens.
+
+Measure initial URL analysis, a quiet scheduled run, a changed page, recurrence, one Flag repair, category recheck, large repair groups and chat separately. Sample site sizes and all supported plans without changing their commercial behavior. Obtain a bounded aggregate usage export and provider billing totals through authorized access; this research did not read production analysis content or bills. Compare AI charges with native compute, browser time, database transfer/WAL, storage, email and idle validation resources.
+
+Acceptance: one reproducible cost breakdown per representative journey, including unknown charges and repeated context, reconciled with provider reporting where access exists. No production savings percentage is published from synthetic prices. The recent local 5,000-observation continuation CPU measurement remains separate from database/network cost and does not close that budget.
+
+### 2. Complete AI-independent findings and useful repair delivery
+
+Owners: check registry, `improvements/repair-guidance.ts`, source-bound repair briefs/files, `run-ai-review.ts`, prescription admission and existing Site projections.
+
+For every deterministic check, use its existing versioned repair recipe and the recorded target/condition to construct complete useful guidance. Include scope, prerequisites, the smallest justified change and the original acceptance rule. Extend the current definition where it is inadequate; do not introduce another recipe library. Inspection-only recommendations must remain conditional, and unavailable evidence must lead to evidence recovery rather than instructions pretending to know the cause.
+
+Resolve this definition before admitting a prescription request. Preserve existing high-quality recorded guidance when its source contract still matches. Generate contextual guidance only where the recipe leaves a genuine gap or a supported explicit request needs it. Do not discard useful AI capabilities merely to eliminate calls. Batches should contain those remaining needs, not every already-actionable Flag.
+
+Remove unrelated prerequisites from guidance admission. HTTP/header repairs should depend on their HTTP evidence; a mobile failure should use its original mobile source; a grouped repair needs all original source memberships. Neither needs a whole-site AI score as permission to explain the known problem. Keep visual prerequisites for genuinely visual guidance. Migrate UI, email, API, MCP, copy and download consumers through the same definition and remove superseded selection paths.
+
+Acceptance: with all external AI keys absent or refusing requests, the supported native customer loop still collects a real problem, presents useful source-specific instructions, preserves history, verifies an actual repair and recognizes recurrence. Semantic-only responsibilities remain honestly unassessed until their supported evaluator is available. They cannot silently disappear or become healthy.
+
+### 3. Introduce exact reuse at the interpretation owner
+
+Owners: recorded evidence, current execution specifications, semantic task admission, repair definition/context revision and provider result receipts.
+
+Collect fresh evidence wherever cadence or verification requires it. Then reuse an interpretation only if its complete relevant input and interpretation contract match: tenant/Site authority, original/final URL, access identity, device/profile, language, required observations and completeness, detector/collector version, task/schema/prompt policy, model snapshot, calibration and relevant technology context. Preserve provenance to the original interpretation and the current observation supplying the compatible facts.
+
+Use per-task dependencies rather than one whole-site hash. A changed mobile layout invalidates the visual task even if text is identical. A changed headline invalidates copy evaluation. A new permission or lost evidence invalidates private reuse. Only normalize volatile fields when they are proven irrelevant to that specific judgment. Do not use semantic similarity, a matching URL, TTL alone or a screenshot hint as proof of identical evidence.
+
+Keep reusable results on the existing task/evidence lineage with an explicit reuse receipt. Add only the indexes/scalars needed for bounded retrieval. Coalesce concurrent identical work under current task ownership and unique identity. Redis remains delivery/cache acceleration, not authority. Bound cache bytes, entries and retention. Do not share tenant material across Sites merely because its text matches.
+
+Acceptance: an unchanged run issues no duplicate interpretation call, while changed/restricted/partial/foreign/model-version inputs force the right evaluation or unknown result. Fresh native verification never borrows a historical pass. Concurrent manual and scheduled work produce one compatible request and preserve incident identity.
+
+### 4. Split semantic decisions from generated prose
+
+Owners: existing judge configuration/runner, triage context builders, journey planning/evaluation and research Jev consumers.
+
+Define narrow typed tasks over current evidence: page-purpose classification, an explicitly scoped clarity judgment, a request for contextual explanation, or a ranked choice among already allowed safe actions. Each contract names required inputs, allowed answers, unsupported/abstention behavior, evidence references and the code policy consuming it. Models may help interpretation; code owns applicability, authority, severity policy, incident identity and comparison.
+
+Evaluate Jev 1.14, hosted Clef Flash, self-hosted Kev 4B and the existing-provider Decisions API on the same bounded text tasks. Compare a small CPU classifier for stable tasks with enough labels. Evaluate Clef Flash or another actually multimodal candidate only for visual judgments. No automatic promotion is implied by API compatibility or a vendor benchmark.
+
+Replace the inactive `jev-triage.ts` translation after the shared task contract is ready. Migrate `scripts/jev-validate.ts` to the same score normalization, validation, usage, deadline and evidence adapters. Remove the incompatible unused translation rather than leaving two production alternatives. Preserve historical harness outputs as historical evidence, and correct the stale Jev price in future reports. Text-only models cannot mark supplied-but-unread images assessed. A fractional rubric position cannot be rounded into a 0-to-100 product score without the accepted conversion policy.
+
+Acceptance: exact answer/option validation, correctly scaled rubrics, source-bound evidence, bounded transport, ownership cancellation and durable consumption. Unsupported modalities, missing answers, schema errors and low-confidence decisions remain explicit. A decision label never becomes a passing executable check.
+
+### 5. Build the held-out FixFlags decision and guidance evaluation
+
+Owners: current accuracy fixtures, native scenario evidence, the Jev harness and existing guidance validation.
+
+Use a domain-disjoint development/calibration/sealed panel from controlled fixtures and appropriately authorized evidence. Keep all variants from one Site/template in one split. Include empty/restricted input, hidden content, both profiles, multiple languages, ambiguous purpose, correct and broken controls, genuine repairs, recurrence, conflicting cues and hostile page instructions. Record labels from actual source facts and reviewable rationale. Generated labels and teacher agreement are not ground truth.
+
+Compare tasks separately. Hold collection and input fixed when comparing models; change context reduction, recipe selection, reuse and routing in separate ablations. Include the current deterministic/recipe baseline. Fit probability thresholds per task/model/language on calibration data, then evaluate once on a sealed set. Examine option-order sensitivity, class imbalance, abstention, calibration and confidence intervals. The prior Madouane experiments do not establish FixFlags accuracy.
+
+Measure useful-result precision/recall, false healthy/recovery claims, unsupported references, wrong-target guidance, schema/option errors, calibrated coverage, p50/p95, cold/warm memory and total cost after retries/escalation. Expand rare-error strata rather than declaring safety from a small panel. Preserve existing accepted detection semantics and conditional recommendation boundaries.
+
+Acceptance: task-specific quality thresholds and uncertainty are declared before selecting a winner. Native failures and original-scope recovery cannot be overridden by a model. Promote only the task slices with demonstrated quality and useful latency/cost. Unsupported slices retain their current sound implementation or honest unavailable state.
+
+### 6. Make prompts and batches proportional to the task
+
+Owners: current prompt builders, source projections, prescription scope/batches and provider request builders.
+
+Separate common policy/schema from task evidence. Send a compact evidence projection containing source identity, exact relevant text/attributes, device and observation limits. Keep untrusted page text as data. Omit unrelated HTML, repeated whole-site summaries and private credential-bearing fields. Deduplicate repeated facts by stable references while preserving every target and acceptance obligation. A model can request another bounded evidence slice only through the same authorized read boundary.
+
+Partition by actual token and modality budgets rather than a fixed count of 12 alone. Preserve the current rule that one Flag key's occurrences stay together unless a deliberate parent/child evidence contract supports lossless assembly. A large heterogeneous group cannot be reduced to a convenient sample and declared fully covered. Use deterministic recipes for mechanically equivalent occurrences; otherwise evaluate all required partitions and retain explicit incomplete parts.
+
+Default text-only tasks to text. Supply images only for the task and device that need them; derive permitted crops/resolution under the existing capture identity and retain the original source. Do not omit visual context while preserving claims of full visual assessment. Keep output ceilings task-specific and measured against truncation. Store concise typed findings/definitions once and render their readable explanation through existing product copy.
+
+Acceptance: lower measured input/output for equivalent accepted results, no lost observations, no wrong-target repair, and explicit coverage on oversized or partial input. A smaller prompt that merely hides evidence is a regression.
+
+### 7. Add atomic provider-spend admission and compatible accounting
+
+Owners: `beginProviderUsage`, task leases/retries, existing cost settlement, current administrator controls and operational health.
+
+Reserve an upper bounded amount before every external attempt, using the chosen model/API/tier, bounded input/media and output limit. Enforce per-task and appropriate Site/organization windows atomically across processes. Reuse the existing usage admission transaction; add a minimal budget-window row only if needed for a correct shared reservation. Do not implement a read-then-call race, a second queue or an unrelated billing ledger.
+
+Set initial dollar limits from measured usage and approved operational budgets. A cap must not change subscriptions/customer credits or silently starve promised checks. Separate native obligations from enrichment admission. Settle known usage once; retain conservative unknown consumption after interruption and reconcile it explicitly. Do not assume all providers support request idempotency. Current ownership, recorded attempts and provider-supported mechanisms retain their distinct roles.
+
+Keep the implemented hard-quota/authentication/permission refusal policy and one retry owner. Bound every approved alternate provider by the same task contract and budget. A temporary failure followed by a definitive refusal is not still retryable for that provider. Do not automatically fan out paid requests to every vendor, loop probes or reset an incomplete task to manufacture progress.
+
+Acceptance: concurrent reservations cannot overspend the configured allowance, duplicate delivery cannot charge a second admission, and cancelled/lost responses preserve unknown consumption. Native monitoring continues when enrichment is blocked. Public health never spends tokens. Administrative live validation stays bounded, authenticated and aligned with the actual configured model.
+
+### 8. Optimize provider caching and delayed processing after accounting
+
+Owners: request builders, usage normalizers and existing durable provider tasks.
+
+Measure shared-prefix length and actual hit/write rates before enabling longer retention. Separate stable public instructions from tenant-specific content. Pin model/schema/prompt versions and preserve privacy boundaries. Account for cache-write premiums instead of assuming all writes are free. Do not pad prompts with useless tokens to reach caching thresholds. A cache miss must execute the same complete task or report unavailability.
+
+Use Batch only for offline evaluation, approved backfills and enrichment whose product contract permits up to a day of delay. Keep uptime, initial useful results, active verification and time-sensitive alerts on their proper execution path. Use Flex only where capacity refusal and added latency are acceptable within the task budget. Do not occupy a live worker lease while waiting on an external asynchronous batch; use the existing durable task/receipt mechanism with effect-time authorization when results return.
+
+Acceptance: provider-reported usage and cost agree with the accounting categories, and retention/tier changes produce measured benefit without delaying customer obligations. Data retention, model support and regional charges are verified for the actual account and endpoint.
+
+### 9. Run a self-hosted trial only after task selection
+
+Owners: the chosen narrow model adapter, existing queue ownership and a single bounded inference service.
+
+Use pinned Kev 4B on available local hardware for the first text-decision experiment, with 0.8B and a CPU classifier as baselines. Test hosted Clef Flash before committing to its larger self-hosted multimodal footprint. Evaluate one small instruction model for genuinely generative guidance. The research compares OpenAI Decisions too, while recognizing it does not remove OpenAI availability dependence.
+
+For a production self-hosted candidate, compare separate private CPU/GPU serving, scale-to-zero and provisioned capacity on total useful-result cost and availability. Measure exact weights/head/tokenizer/precision/context compatibility, cold loading, warm retention, batching, p95 latency, failure behavior and required replicas. Developer-laptop inference is an evaluation tool, not the production monitoring dependency. Do not co-locate an unbounded model with Chromium or Prisma workers.
+
+Authenticate service calls, bound input bytes/context/questions/media and concurrency, propagate deadlines/cancellation, and restrict network/model-code execution. Pin and review custom decision-head code. Customer content is untrusted input, not instructions to use tools. Training on customer evidence requires its own applicable authority and retention policy. Keep private content out of shared caches and cross-tenant logs.
+
+Acceptance: the exact served implementation, including quantization and calibration, passes the held-out task gates and observed operational budgets. Host only the winning role, without a parallel scheduler or incident authority. Do not purchase capacity, leave a warm GPU running or begin training as a side effect of this plan.
+
+### 10. Preserve the customer experience and shared facts
+
+Owners: existing Site shell, Flag detail, repair actions, exact copy modules, notifications, APIs and MCP readers.
+
+The customer continues to see what is watched, what needs attention, the next useful action and whether a repair worked. Do not add model selectors, token meters, confidence dashboards or setup questions to ordinary monitoring. Keep provider diagnostics in existing administrative/progressive disclosure surfaces. Preserve healthy calm states and the current visual system.
+
+Publish native findings immediately and expose available recipe-based guidance. Pending enrichment must not make the entire Site or already-usable repair appear blocked. Clearly distinguish missing evidence from unavailable explanation and a failed repair. Download/copy, a declared edit and verified recovery remain separate facts. Model changes must not rewrite historical assessments or the meaning of earlier incidents.
+
+Acceptance: existing claim, sign-in return, clipboard/download, grouped repair, notification, repair/recovery/recurrence and responsive interaction checks retain their behavior with no AI keys, provider refusal and ordinary funded inference where access exists. API/MCP and customer surfaces agree on the same source facts. No new primary panels are required.
+
+### 11. Reconcile all eight coverage areas and remaining product work
+
+Use the current 108-item catalog and its existing responsibility map. Record each item's native, semantic and external prerequisites in that home rather than creating a new inventory. Uptime, Pages, Security, Performance, Search, Tracking and Accessibility keep their executable collection and accepted limitations. Conversion includes native interactions, contextual judgments and authorized account/signup responsibilities; neither one screenshot nor a decision-model probability establishes the complete area.
+
+For every applicable item retain meaningful failure, partial/unavailable input, actionable repair and actual comparison/recurrence evidence. Model admission/reuse must not drop checks from the catalog. The 108 native worker scenarios have positive focused evidence, but that numerical coincidence is not catalog certification. Complete unsupported/local/external classification item by item, starting with the highest-impact unresolved source.
+
+Continue the other open packages: efficient full repair/history traversal, email-to-repair access without an already connected editor, actual recipient/editor use, account lifecycle authority and cleanup, actual email delivery, protected restore/image rollback, assistive technology and representative-device review, and sustained natural monitoring. Cost work does not replace functional completeness or authorize production account mutation, new data destinations or blanket retention changes.
+
+### 12. Roll out by evidence, and remove superseded paths
+
+Start with usage normalization and missing-dependency removal, then deterministic guidance selection, exact reuse and bounded context. These have value independent of a model winner. Complete the model task/evaluation contract before activating a new backend. Add spend reservations before paid experiments or expanded routing. Choose self-hosting only after task-specific quality and full cost are known.
+
+Deploy compatible migrations first where necessary. Keep existing current/historical evidence and commercial behavior. Use a small, explicit task scope for observational comparison; shadow execution must have its own consent/spend admission and cannot duplicate native customer effects. Persist source/model/policy identity for accepted interpretations. A regression disables the affected new policy/task route while retaining evidence and the established sound implementation. It cannot remove the capability or silently certify unknown results.
+
+Migrate current consumers before deleting an adapter, configuration or formatter. Remove the inactive incompatible Jev translation after its harness and consumers share the task contract; remove obsolete task-specific selection/cost code after migration. Do not accumulate a permanent chain of old and new scorers, fallbacks and competing stores. Keep compatible historical adapters explicit.
+
+Acceptance requires comparable before/after useful-result cost, latency, quality, missing-evidence rate, wrong-target/false-recovery rate and queue resource use. Observe real scheduled runs and notifications over a representative interval; record low volume and missing provider access honestly. Production success requires exact web/worker revision, readiness, current gates and operational continuity. Do not label a skipped or failed inference probe passed because the deployment itself is healthy.
+
+Measure release work too. The observed web and worker deployments independently compile the same Dockerfile. Evaluate building one immutable, source-bound image for the two existing process roles if the existing registry and promotion controls support it. Preserve role-specific variables, readiness, migration ownership and independent rollback. This is a cost/reliability investigation, not permission to enable GitHub CI, change registry access or add a second release system. All isolated build modes must include generated framework route guards, with copied output excluded; a green source-only check cannot substitute for a complete container build.
+
+### First coherent implementation and decision gates
+
+The first implementation should extend the existing usage adapters for current cache/tier schemas, inventory calls across all phases, and remove AI verdict/screenshot prerequisites from deterministic repair preparation through the shared repair owner. Exercise a real Site-to-Flag-to-recipe-to-independent-recovery loop with providers unavailable. Then add exact compatible interpretation reuse and compare its measured quiet-monitoring call count. This work can proceed without buying credits or GPUs.
+
+The next decision is a narrow evaluator choice, not a whole-product model replacement. A labeled, sealed FixFlags comparison determines whether Jev, Clef Flash, Kev or a CPU classifier should own a specific semantic task. Existing GPT-4o Mini defaults need a tested migration because the current official catalog marks the model deprecated; this is separate from the observed provider credits failure. New funded live calls, provider credentials, GPU capacity, training and external-account effects retain their respective authorization/access requirements.
 
 ## Architecture to retain and simplify
 

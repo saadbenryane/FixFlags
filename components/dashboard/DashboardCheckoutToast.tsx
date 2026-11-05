@@ -40,7 +40,9 @@ export function DashboardCheckoutToast() {
       next.delete('upgraded')
       next.delete('plan')
       const qs = next.toString()
-      router.replace(`${qs ? `/dashboard?${qs}` : '/dashboard'}${window.location.hash}`, { scroll: false })
+      const hash = window.location.hash
+      router.replace(qs ? `/dashboard?${qs}${hash}`
+        : hash ? `/dashboard#${hash.slice(1)}` : '/dashboard', { scroll: false })
     }
     const planParam = params.get('plan') ?? 'BUILDER'
     if (params.getAll('upgraded').length !== 1 || params.getAll('plan').length > 1 || (planParam !== 'BUILDER' && planParam !== 'TEAM')) {

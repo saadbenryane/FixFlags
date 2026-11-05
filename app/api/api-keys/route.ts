@@ -21,7 +21,7 @@ function staleAccount(req: NextRequest | undefined, ownerId: string) {
   return null
 }
 
-export async function GET(req?: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
