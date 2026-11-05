@@ -350,15 +350,15 @@ export const REPORT_COPY = {
     body: "This check found no Flags.",
   },
   aiPending: {
-    title: "Fix prompts generating",
-    body: "Generating fix prompts for every flag. This usually takes under a minute.",
-    stillPendingTitle: "Fix prompts still generating",
+    title: "Preparing fix instructions",
+    body: "Preparing instructions for the problems found so far.",
+    stillPendingTitle: "Still preparing fix instructions",
     stillPendingBody:
       "This is taking longer than usual. Refresh the page, or check back in a minute.",
     refreshCta: "Refresh",
   },
   prescriptionUnavailable: {
-    title: "Fix prompts unavailable",
+    title: "Fix instructions unavailable",
   },
   triageUnavailable: {
     title: "AI summary unavailable",
@@ -366,8 +366,8 @@ export const REPORT_COPY = {
     retryCta: "Retry AI summary",
   },
   partialReport: {
-    title: "Partial report",
-    body: "Some optional evidence was unavailable. Unassessed rubrics are left unmeasured rather than inferred.",
+    title: "Some results are unavailable",
+    body: "Some supporting information was unavailable. Results without enough evidence remain unverified.",
   },
   failedChecks: {
     title: "Some checks could not run",
@@ -440,16 +440,16 @@ export const REPORT_COPY = {
       "Only independently verified Improvements stay with this product across reviews.",
   },
   explorer: {
-    fixPrompt: "Fix Prompt",
-    copyPrompt: "Copy prompt",
+    fixPrompt: "Fix instructions",
+    copyPrompt: "Copy fix instructions",
     copied: "Copied!",
-    promptCopied: "Prompt copied",
+    promptCopied: "Fix instructions copied",
     promptCopiedRecordFailed:
-      "Prompt copied, but FixFlags could not confirm the handoff",
+      "Instructions copied. We couldn’t confirm they were saved to your history.",
     prioritiesTitle: "Your priorities",
     topFlagsTitle: "Top Flags",
     prioritiesHint: "Ranked by customer impact",
-    viewPrompt: "View prompt",
+    viewPrompt: "View instructions",
     whereLabel: "Where",
     coverageSentence: ({
       openCheckCount,

@@ -13,7 +13,7 @@ Exact rendered strings live in `lib/marketing/copy/` and their tests. Product di
 
 ## Audience and position
 
-FixFlags is for people responsible for live websites and software. They may be developers, founders, ecommerce operators, growth teams, or agencies. Write for technically literate readers without forcing implementation detail into every surface.
+FixFlags is for people responsible for live websites and software. They may be founders, ecommerce operators, growth teams, agencies, or developers. Write for people with no technical background. Lead with what happened, why it matters, and the next action. Keep technical evidence available in details.
 
 Describe the affected feature and its behavior. Do not imply that the reader personally clicked, submitted, ordered, or paid. Say a feature stopped working only when an earlier working result is recorded.
 

@@ -17,7 +17,7 @@ The [vision](knowledge/vision.md) owns the full promise and product direction. [
 
 Someone is paying attention. I can understand the problem. I can see the evidence. I know what to do. When FixFlags says recovery is verified, it has actually checked. When it stays quiet, I can see what it is watching and when it last verified it. 0 Flags means nothing important enough to act on, not that every optimization is done.
 
-The customer keeps building. FixFlags keeps watch. Speak to technically literate operators without dumbing the product down. Lead with what visitors cannot do and why that matters; technical depth remains available.
+The customer keeps building. FixFlags keeps watch. Assume no technical background. Lead with what visitors cannot do and what the customer can do next; technical depth remains available.
 
 ## Character
 

@@ -366,7 +366,7 @@ describe('site card packaging', () => {
     })
     expect(facts.find((f) => f.area === 'accessibility')).toMatchObject({
       state: 'healthy',
-      label: 'No axe violations recorded',
+      label: 'No automated issues found',
       detail: 'Automated rules checked the top-level page; manual accessibility was not evaluated',
       evidenced: true,
     })

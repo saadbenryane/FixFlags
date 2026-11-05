@@ -2,7 +2,9 @@
 .group { min-width: 0; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-width: 0; }
 .actions > * { min-width: 0; max-width: 100%; }
-.group > :is(h2, h3) { margin: 4px 0 12px; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 550; letter-spacing: -.01em; }
+.groupHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: 12px; }
+.group > :is(h2, h3), .groupHeader > :is(h2, h3) { margin: 4px 0 12px; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 550; letter-spacing: -.01em; }
+.groupHeader > :is(h2, h3) { margin: 0; }
 .checks .categoryGrid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .categoryGrid > :is(div, article) { display: flex; min-width: 0; }
 .categoryGrid > :is(div, article) > * { flex: 1; }

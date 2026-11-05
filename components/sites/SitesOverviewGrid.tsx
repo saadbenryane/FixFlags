@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import type { Route } from 'next'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import type { SiteSummary } from '@/lib/sites/application/list-sites'
@@ -30,12 +31,15 @@ export function SitesOverviewSkeleton() {
   </div>
 }
 
-export function SitesOverviewGrid({ sites }: { sites: SiteSummary[] }) {
+export function SitesOverviewGrid({ sites, action }: { sites: SiteSummary[]; action?: ReactNode }) {
   if (sites.length === 0) return null
 
   return (
     <section className={styles.overview} aria-labelledby="sites-heading">
-      <h2 id="sites-heading" tabIndex={-1} className={`${styles.count} rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{WEBSITES_COPY.count(sites.length)}</h2>
+      <div className={styles.heading}>
+        <h2 id="sites-heading" tabIndex={-1} className={`${styles.count} rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{WEBSITES_COPY.count(sites.length)}</h2>
+        {action}
+      </div>
       <ul className={styles.list}>
         {sites.map((site) => {
           const attention = customerAttention(site.presentation)

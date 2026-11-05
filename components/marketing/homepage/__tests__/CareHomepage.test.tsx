@@ -19,14 +19,13 @@ function openCategory(name: string) {
 }
 
 describe('comprehensive homepage experience', () => {
-  it('explains independent checks and token value with one optional connection link', () => {
+  it('explains how to confirm a fix without requiring technical setup', () => {
     render(<CareHomepage />)
     const section = screen.getByRole('region', { name: C.independent.title })
     expect(within(section).getByText(C.independent.body)).toBeVisible()
-    expect(within(section).getByText(C.independent.confirmation)).toBeVisible()
     expect(within(section).getAllByRole('link')).toHaveLength(1)
-    expect(within(section).getByRole('link', { name: 'Connect FixFlags to your AI agent' })).toHaveAttribute('href', '/connect-ai')
-    expect(section).not.toHaveTextContent(/MCP|API key/)
+    expect(within(section).getByRole('link', { name: C.independent.action })).toHaveAttribute('href', '/how-it-works')
+    expect(section).not.toHaveTextContent(/MCP|API key|tokens/)
     expect(within(section).queryByRole('button')).not.toBeInTheDocument()
   })
 

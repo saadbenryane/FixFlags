@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { SiteOverviewWorkspace } from '../SiteOverviewWorkspace'
 
-it('leads with actionable results while keeping bulk repair, context and quiet categories reachable', () => {
+it('leads with recorded scope and groups repair actions with the findings', () => {
   render(<SiteOverviewWorkspace summary={<section aria-label="Recorded context">Original capture and scope</section>}
     actions={<button>Review all fix prompts</button>}
     items={[{ id: 'security', flagCount: 2, render: () => <button>Inspect HTTPS Flag</button> },
@@ -11,8 +11,9 @@ it('leads with actionable results while keeping bulk repair, context and quiet c
   const flag = screen.getByRole('button', { name: 'Inspect HTTPS Flag' })
   const actions = screen.getByRole('group', { name: 'Website actions' })
   const context = screen.getByRole('region', { name: 'Recorded context' })
-  expect(flag.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(actions.compareDocumentPosition(context) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(context.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(actions.compareDocumentPosition(flag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.getByRole('region', { name: 'Needs attention' })).toContainElement(actions)
   expect(screen.getByRole('button', { name: 'Inspect Search results' })).toBeEnabled()
   expect(screen.getByRole('region', { name: 'Uptime' })).toBeInTheDocument()
 })

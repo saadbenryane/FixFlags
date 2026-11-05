@@ -8,6 +8,12 @@
 .stepNumber { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: hsl(var(--background)); color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 500; }
 .steps h3 { margin: 3px 0 6px; font-size: 13px; line-height: 1.5; font-weight: 600; }
 .steps p { max-width: 28ch; margin: 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.6; }
+@media (min-width: 900px) {
+  .entry[data-first='false'] { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); column-gap: 32px; align-items: center; }
+  .entry[data-first='false'] .title { align-self: end; }
+  .entry[data-first='false'] .description { grid-column: 1; margin-bottom: 0; align-self: start; }
+  .entry[data-first='false'] > :last-child { grid-column: 2; grid-row: 1 / span 2; }
+}
 @media (min-width: 640px) {
   .entry { padding: 24px; }
   .entry[data-first='true'] { padding: 40px 32px; }

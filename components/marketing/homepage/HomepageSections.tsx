@@ -14,7 +14,6 @@ import { Logo } from '@/components/brand/Logo'
 import { BrandClosing } from '@/components/marketing/BrandClosing'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
-import { AI_CONNECTION_PATH } from '@/lib/marketing/copy/ai-connection'
 import { HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 import t from './HomepageSections.module.css'
@@ -34,8 +33,7 @@ export function HomepageIndependentSection() {
     </div>
     <div className={t.independentBody}>
       <p>{C.independent.body}</p>
-      <p>{C.independent.confirmation}</p>
-      <Link href={AI_CONNECTION_PATH as Route} className={t.independentLink}>{C.independent.action}<ArrowRight size={16} aria-hidden="true" /></Link>
+      <Link href="/how-it-works" className={t.independentLink}>{C.independent.action}<ArrowRight size={16} aria-hidden="true" /></Link>
     </div>
   </section>
 }

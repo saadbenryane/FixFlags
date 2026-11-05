@@ -44,3 +44,13 @@
 @media (max-width: 639px) {
   .benefits { flex-direction: column; align-items: center; gap: 14px; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .copy { animation: hero-copy-arrive 500ms var(--ease-out) both; }
+  .note a svg, .productIntro a svg { transition: transform var(--motion-fast) var(--ease-out); }
+  .note a:is(:hover, :focus-visible) svg, .productIntro a:is(:hover, :focus-visible) svg { transform: translateX(3px); }
+}
+@keyframes hero-copy-arrive {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

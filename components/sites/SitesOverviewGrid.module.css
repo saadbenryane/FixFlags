@@ -1,5 +1,6 @@
 .overview { container: websites / inline-size; min-width: 0; }
-.count { margin: 0 0 12px; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 400; }
+.heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+.count { margin: 0; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 400; }
 .list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .site { display: grid; grid-template-columns: 64px minmax(0, 1fr) 18px; gap: 12px 16px; align-items: center; min-height: 112px; padding: 16px; border: 0; border-radius: var(--radius-card); background: hsl(var(--background)); box-shadow: var(--shadow-board); transition: background-color .16s ease, box-shadow .16s ease; }
 .site:hover { box-shadow: var(--shadow-board-hover); background: hsl(var(--muted) / .25); }

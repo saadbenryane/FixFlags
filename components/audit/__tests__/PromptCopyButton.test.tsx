@@ -38,7 +38,7 @@ describe('PromptCopyButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy prompt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy fix instructions' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       '/api/flags/flag-1/attempts',
@@ -54,7 +54,7 @@ describe('PromptCopyButton', () => {
     render(
       <PromptCopyButton prompt="" onLockedAction={onLockedAction} variant="brand" />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Copy prompt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy fix instructions' }))
     expect(onLockedAction).toHaveBeenCalledOnce()
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
   })

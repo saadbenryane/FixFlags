@@ -306,8 +306,8 @@ describe('AuditReportProgressive', () => {
         ]}
       />
     )
-    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.getByText('Fix instructions')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy fix instructions' })).toBeInTheDocument()
     expect(screen.queryByText('Name the outcome in the primary CTA.')).not.toBeInTheDocument()
   })
 

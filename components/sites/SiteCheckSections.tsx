@@ -13,13 +13,13 @@ export function SiteCheckSections({ items, summary, actions, uptime, trend, head
   const rows = items.filter(item => item.flagCount > 0)
   const quiet = items.filter(item => item.flagCount === 0)
   const Heading = headingLevel === 2 ? 'h2' : 'h3'
+  const actionGroup = actions ? <div role="group" aria-label={C.actions} className={styles.actions}>{actions}</div> : null
   return <div className={styles.checks}>
-    {rows.length ? <section className={styles.group} aria-label={C.attentionHeading}>
-      <Heading>{C.attentionHeading}</Heading>
-      <BoardGrid layout="rows" className={styles.categoryGrid}>{rows.map(item => <Fragment key={item.id}>{item.render('row')}</Fragment>)}</BoardGrid>
-    </section> : null}
-    {actions ? <div role="group" aria-label={C.actions} className={styles.actions}>{actions}</div> : null}
     {summary}
+    {rows.length ? <section className={styles.group} aria-label={C.attentionHeading}>
+      <div className={styles.groupHeader}><Heading>{C.attentionHeading}</Heading>{actionGroup}</div>
+      <BoardGrid layout="rows" className={styles.categoryGrid}>{rows.map(item => <Fragment key={item.id}>{item.render('row')}</Fragment>)}</BoardGrid>
+    </section> : actionGroup}
     {trend || uptime ? <div className={styles.monitoring}>{trend}{uptime}</div> : null}
     {quiet.length ? <section className={styles.group} aria-label={C.otherChecksHeading}><Heading>{C.otherChecksHeading}</Heading><BoardGrid className={styles.quietGrid}>{quiet.map(item => <Fragment key={item.id}>{item.render('card')}</Fragment>)}</BoardGrid></section> : null}
   </div>

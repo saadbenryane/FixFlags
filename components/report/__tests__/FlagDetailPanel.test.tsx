@@ -49,7 +49,7 @@ function makeFlag(overrides: Partial<ExplorerFlag> = {}): ExplorerFlag {
 describe('FlagDetailPanel', () => {
   it('renders the fix prompt when flag has one', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
-    fireEvent.click(screen.getByRole('button', { name: /^Fix Prompt$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Fix instructions$/i }))
     expect(screen.getByText('Add an Open Graph image meta tag.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Ready to verify' })).not.toBeInTheDocument()
   })
@@ -66,17 +66,17 @@ describe('FlagDetailPanel', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Copy prompt' })).toHaveClass('bg-brand', 'text-brand-foreground')
-    expect(screen.getByRole('button', { name: 'Fix Prompt' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Fix Prompt' }).closest('div')).toContainElement(
-      screen.getByRole('button', { name: 'Copy prompt' })
+    expect(screen.getByRole('button', { name: 'Copy fix instructions' })).toHaveClass('bg-brand', 'text-brand-foreground')
+    expect(screen.getByRole('button', { name: 'Fix instructions' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fix instructions' }).closest('div')).toContainElement(
+      screen.getByRole('button', { name: 'Copy fix instructions' })
     )
   })
 
   it('expands the fix prompt without a nested Markdown card', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /^Fix Prompt$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Fix instructions$/i }))
 
     expect(screen.getByLabelText('Fix prompt')).toBeInTheDocument()
     expect(screen.queryByText('Markdown')).not.toBeInTheDocument()
@@ -111,19 +111,19 @@ describe('FlagDetailPanel', () => {
         })}
       />
     )
-    expect(screen.getByRole('button', { name: /copy prompt/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /copy fix instructions/i })).toBeInTheDocument()
   })
 
   it('shows locked prompt chrome and opens create-account on click', async () => {
     renderWithProviders(
       <FlagDetailPanel flag={makeFlag()} aiLocked signUpHref="/sign-up?next=/report/a1&from=report" />
     )
-    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.getByText('Fix instructions')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy fix instructions' })).toBeInTheDocument()
     expect(screen.queryByText(/Create a free account to get the fix prompt/i)).not.toBeInTheDocument()
     expect(screen.queryByText('Add an Open Graph image meta tag.')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy prompt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy fix instructions' }))
     expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
     expect(screen.queryByText(/already used your anonymous product review/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
@@ -196,7 +196,7 @@ describe('FlagDetailPanel', () => {
       />
     )
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
+    expect(screen.getByText('Fix instructions')).toBeInTheDocument()
   })
 
   it('renders the evidence pair after the prompt row', () => {
@@ -206,7 +206,7 @@ describe('FlagDetailPanel', () => {
         evidencePair={<div data-testid="evidence-pair">pair</div>}
       />
     )
-    const prompt = screen.getByText('Fix Prompt')
+    const prompt = screen.getByText('Fix instructions')
     const pair = screen.getByTestId('evidence-pair')
     expect(prompt.compareDocumentPosition(pair) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

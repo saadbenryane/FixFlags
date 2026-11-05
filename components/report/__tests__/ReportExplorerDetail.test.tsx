@@ -124,7 +124,7 @@ describe('FlagDetailPane', () => {
     expect(screen.getAllByText((content) => content.includes(flagWithEvidence.evidence))).toHaveLength(1)
   })
 
-  it('keeps Copy prompt above the desktop and mobile comparison pair', () => {
+  it('keeps Copy fix instructions above the desktop and mobile comparison pair', () => {
     renderWithProviders(
       <FlagDetailPane
         model={MODEL}
@@ -136,7 +136,7 @@ describe('FlagDetailPane', () => {
         onSelectFlag={vi.fn()}
       />
     )
-    const copyPrompt = screen.getByRole('button', { name: 'Copy prompt' })
+    const copyPrompt = screen.getByRole('button', { name: 'Copy fix instructions' })
     const comparison = document.querySelector('[data-comparison-state]')
     expect(comparison).not.toBeNull()
     expect(
@@ -205,6 +205,6 @@ describe('FlagDetailPane', () => {
       />
     )
     expect(screen.getByRole('link', { name: 'View report' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy fix instructions' })).toBeInTheDocument()
   })
 })

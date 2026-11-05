@@ -138,10 +138,9 @@ export const CARE_HOME = {
   checks: HOMEPAGE_CHECK_COVERAGE,
   independent: {
     label: 'A second pair of eyes',
-    title: 'Save your tokens for building.',
-    body: 'FixFlags checks your live website independently, without using your AI tool’s tokens. You get focused fix prompts, so your AI can get straight to solving the problem.',
-    confirmation: 'After you publish a fix, a new check confirms whether it worked.',
-    action: 'Connect FixFlags to your AI agent',
+    title: 'Know the fix worked.',
+    body: 'Publish your changes, then check the same page and action again. See whether the problem is gone.',
+    action: 'See how we check',
   },
   story: {
     label: 'Website checks',

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { Plus } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { SitesOverviewGrid } from '@/components/sites/SitesOverviewGrid'
 import { Button } from '@/components/ui/button'
@@ -62,8 +63,10 @@ export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl }:
   const firstWebsite = sites.length === 0
   const handoff = user?.id === ownerId ? resumedUrl : null
   return <div ref={dashboard} key={user?.id} className="space-y-6">
+    {feedback}
+    <SitesOverviewGrid sites={sites} action={<Button asChild variant="outline" size="sm"><a href="#analyze-heading"><Plus aria-hidden />{C.analyzeTitle}</a></Button>} />
     <section aria-labelledby="analyze-heading" className={styles.entry} data-first={firstWebsite}>
-      <h2 id="analyze-heading" tabIndex={-1} className={`${styles.title} rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{firstWebsite ? C.firstTitle : C.analyzeTitle}</h2>
+      <h2 id="analyze-heading" tabIndex={-1} className={`${styles.title} scroll-mt-24 rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{firstWebsite ? C.firstTitle : C.analyzeTitle}</h2>
       <p className={styles.description}>{handoff ? SCAN_HANDOFF.resuming(handoff) : C.analyzeBody}</p>
       <AuditInput idSuffix="-dashboard" source="dashboard" initialUrl={handoff ?? undefined} autoStart={Boolean(handoff)} />
       {firstWebsite && !handoff ? <ol className={styles.steps}>{C.firstSteps.map((step, index) => <li key={step.title}>
@@ -71,7 +74,5 @@ export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl }:
         <div><h3>{step.title}</h3><p>{step.body}</p></div>
       </li>)}</ol> : null}
     </section>
-    {feedback}
-    <SitesOverviewGrid sites={sites} />
   </div>
 }
