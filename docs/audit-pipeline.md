@@ -3546,7 +3546,8 @@ audit job (BullMQ, always):
   QUEUED → CAPTURING → CHECKING → JUDGING (triage) → FINALIZING → COMPLETED
 
 prescription task (optional, gated, provider queue):
-  completed triage → prescription LLM → prompt enrichment (sets aiReviewAt)
+  completed analysis → frozen guidance scope → required enrichment → committed guidance
+  all admitted tasks settled → complete group guidance and aiReviewAt
 ```
 
 Legacy triage runs inline in the audit job. Prescription uses the shared task
@@ -3627,7 +3628,31 @@ Manual re-check is the core loop habit. Implementation invariants:
 8. **Inconclusive evidence is honest** — missing, partial, degraded, failed, or non-comparable verifier evidence records `INCONCLUSIVE`, leaves the Improvement unverified, and never writes Product Memory.
 9. **Verified learning** — Product Memory receives a learned fact only for an `IMPROVED` attempt with comparable before/after Review evidence and provenance.
 
-Screenshot base64 for prescription is loaded via `loadAuditScreenshotBase64` from the **current** audit's stored screenshots (`lib/audit/load-screenshot-base64.ts`).
+Prescription uses the recorded finding's evidence, without requiring an overall
+verdict or score. Native response, security, header, metadata, SEO and Search
+findings use text-only requests without unrelated page content or screenshot
+loading. Other and unknown findings retain their page-context and current-audit
+capture requirements. New admissions partition those dependencies while keeping
+every occurrence of a Flag key in one task. Empty frozen scopes make no provider
+request. Existing repair definitions remain available independently of enrichment.
+
+The individual commits own only their selected guidance. Once all admitted tasks
+complete, the existing settlement transaction composes complete rubric guidance
+from the same recorded repair definitions used by individual actions. One partial
+batch cannot replace a whole rubric, and replay does not rewrite it. Original
+observations, coverage, assessments and verification conditions retain ownership.
+
+Triage, journey planning/evaluation and prescription share provider response
+normalization and consumption custody. Version-two receipts retain provider,
+endpoint, reported model, actual processing tier when available, provider response
+identity and reported reasoning tokens. Version-one historical receipts remain
+readable. OpenAI prompt totals are partitioned into ordinary input, cache reads
+and cache writes; Anthropic's separately reported categories are not subtracted
+again. Reasoning is already within output and is not charged twice. Missing or
+contradictory usage remains unknown, and unsupported processing tiers retain
+unpriced cost without losing valid token measurements. Current requests use
+default cache lifetimes; Responses API mixed-lifetime accounting and additional
+provider consumers remain separate unfinished work.
 
 ## AI phases
 

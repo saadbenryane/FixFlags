@@ -555,7 +555,7 @@ describe('mergePrescriptionResults', () => {
     expect(original).toEqual(snapshot)
   })
 
-  it('applies rubric prescriptions to matching rubrics', async () => {
+  it('does not publish whole-rubric guidance from one provider batch', async () => {
     await mergePrescriptionResults('audit-1', {
       flagPrescriptions: [],
       rubricPrescriptions: [
@@ -571,13 +571,7 @@ describe('mergePrescriptionResults', () => {
       ],
     })
 
-    expect(mockTx.reportRubric.updateMany).toHaveBeenCalledWith({
-      where: { auditId: 'audit-1', name: 'MESSAGE' },
-      data: expect.objectContaining({
-        rubricPrompt: 'Fix the message clarity',
-        cursorPrompt: 'Improve headline',
-      }),
-    })
+    expect(mockTx.reportRubric.updateMany).not.toHaveBeenCalled()
   })
 
   it('skips flags with no matching prescription', async () => {

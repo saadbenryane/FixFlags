@@ -201,6 +201,15 @@ describe('runAiReview', () => {
     expect(mocks.auditUpdate).not.toHaveBeenCalled()
   })
 
+  it('does not spend tokens or load page resources for an empty frozen repair scope', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [], htmlMetadata: null, verdict: null, score: null })
+    expect(await runAiReview('a1')).toMatchObject({ inputTokens: 0, outputTokens: 0, model: '' })
+    expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
+    expect(mocks.loadAuditScreenshotBase64).not.toHaveBeenCalled()
+    expect(mocks.loadTechnologyProfile).not.toHaveBeenCalled()
+    expect(mocks.mergePrescriptionResults).not.toHaveBeenCalled()
+  })
+
   it('throws when triage has not completed', async () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, triageAt: null })
     await assert.rejects(() => runAiReview('a1'), /has not completed triage/)
@@ -233,8 +242,8 @@ describe('runAiReview', () => {
     expect(mocks.mergePrescriptionResults).toHaveBeenCalled()
   })
 
-  it('throws when metadata is missing', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata: null })
+  it('requires page metadata for visual guidance', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'visual-radius-inconsistent' }], htmlMetadata: null })
     await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_PRIMARY_METADATA_MISSING/)
   })
 
@@ -242,7 +251,7 @@ describe('runAiReview', () => {
     const htmlMetadata = { title: 'Recorded page', pageText: 'Lorem ipsum hidden copy', h1s: ['Your Company Name'], h2s: [],
       renderedCopy: { version: 1, pageUrl: AUDIT.url, pageText: 'Plan useful projects for your team.', h1s: ['Plan useful team projects'],
         h2s: [], complete: true, textTruncated: false } }
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata })
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'visual-radius-inconsistent' }], htmlMetadata })
     await runAiReview('a1')
     expect(mocks.runPrescriptionWithRetry.mock.calls[0][0].metadata).toMatchObject({ pageText: htmlMetadata.renderedCopy.pageText,
       h1s: htmlMetadata.renderedCopy.h1s })
@@ -250,17 +259,22 @@ describe('runAiReview', () => {
   })
 
   it('does not send unobserved rendered prose to prescription', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata: { title: 'Recorded page', renderedCopy: null } })
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'visual-radius-inconsistent' }], htmlMetadata: { title: 'Recorded page', renderedCopy: null } })
     await expect(runAiReview('a1')).rejects.toThrow('PRESCRIPTION_PRIMARY_COPY_INCOMPLETE')
     expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
   })
 
-  it('throws when the verdict is missing', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, verdict: null })
-    await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_ASSESSMENT_MISSING/)
+  it('prepares nonvisual guidance without an unrelated assessment, page content or screenshot', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, verdict: null, score: null, htmlMetadata: null })
+    await runAiReview('a1')
+    expect(mocks.loadAuditScreenshotBase64).not.toHaveBeenCalled()
+    expect(mocks.runPrescriptionWithRetry).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: null, existingFlags: [expect.objectContaining({ checkId: 'no-https', evidence: 'x' })] }),
+      null, null, undefined)
   })
 
-  it('throws when the desktop screenshot is missing', async () => {
+  it('still requires a desktop capture for visual guidance', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'visual-radius-inconsistent' }] })
     mocks.loadAuditScreenshotBase64.mockResolvedValue({ desktopBase64: null, mobileBase64: null })
     await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_PRIMARY_CAPTURE_MISSING/)
   })
@@ -293,7 +307,7 @@ describe('runAiReview', () => {
     const cause = new JudgeContractError('expected 2 flag prescriptions, got 1')
     mocks.runPrescriptionWithRetry.mockRejectedValue(new PartialPrescriptionError(PRESCRIPTION, cause))
     await expect(runAiReview('a1')).rejects.toBe(cause)
-    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ rubrics: false, scope: expect.objectContaining({ version: 1 }) }))
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ scope: expect.objectContaining({ version: 1 }) }))
   })
 
   it('prescribes only the requested Flags and leaves review completion to the task set', async () => {
@@ -304,7 +318,7 @@ describe('runAiReview', () => {
     ] })
     const usage = await runAiReview('a1', undefined, ['key-1'])
     expect(mocks.runPrescriptionWithRetry.mock.calls[0][0].existingFlags.map((flag: { flagKey: string }) => flag.flagKey)).toEqual(['key-1'])
-    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ rubrics: false, scope: expect.objectContaining({ version: 1 }) }))
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ scope: expect.objectContaining({ version: 1 }) }))
     expect(usage).toMatchObject({ inputTokens: 10, outputTokens: 5, model: 'gpt-4o-mini' })
   })
 

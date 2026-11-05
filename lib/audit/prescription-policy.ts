@@ -1,4 +1,14 @@
+import { registeredCheck } from './check-registry'
+
 export type PrescriptionAttention = 'flag' | 'recommendation'
+
+/** These collectors establish nonvisual facts. Unknown findings retain page context. */
+const NONVISUAL_GUIDANCE_MODULES = new Set(['page-response', 'security', 'security-headers', 'metadata', 'seo', 'search'])
+
+export function requiresPrescriptionPageContext(flags: readonly { source?: string | null; checkId?: string | null }[]): boolean {
+  return flags.some(flag => flag.source?.toUpperCase() !== 'DETERMINISTIC' ||
+    !NONVISUAL_GUIDANCE_MODULES.has(registeredCheck(flag.checkId)?.module ?? ''))
+}
 
 export const LEGACY_LOCKED_PROMPT_TEXT = [
   'Sign up',

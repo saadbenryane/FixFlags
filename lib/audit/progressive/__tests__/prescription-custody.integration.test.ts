@@ -7,6 +7,7 @@ import { freezePrescriptionScope } from '@/lib/audit/prescription-scope'
 import { runAiReview } from '@/lib/audit/run-ai-review'
 import { beginPrescriptionUsage } from '@/lib/audit/prescription-usage'
 import { beginProviderUsage } from '@/lib/audit/provider-usage'
+import { openAIResponseUsage } from '@/lib/audit/provider-request'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { recordSettledPrescriptionCost, settlePrescriptionAudit } from '../incomplete'
 import type { PrescriptionOutput } from '@/lib/audit/judge-prescription-schema'
@@ -91,6 +92,35 @@ run('prescription custody in PostgreSQL', () => {
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).aiReviewAt).toEqual(completed.aiReviewAt)
   })
 
+  it('publishes complete group guidance from the committed source definitions after independent batches finish', async () => {
+    const f = await fixture()
+    await prisma.reportRubric.create({ data: { auditId: f.audit.id, name: 'REACH', score: null,
+      summary: 'Original assessment summary', rubricPrompt: 'Original incomplete guidance' } })
+    const sibling = await prisma.auditExecutionTask.create({ data: { auditId: f.audit.id, targetKey: 'task:prescription:1',
+      scopeKey: 'custody-second-guidance', pageUrl: f.audit.url, source: 'EXECUTION', status: 'RUNNING', workKind: 'prescription',
+      workState: 'RUNNING', workToken: f.owner.token, workGeneration: 1, workLeaseUntil: new Date(Date.now() + 60_000) } })
+    await withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0']),
+      { scope: freezePrescriptionScope(f.audit.flags, ['custody-0']) }))
+    await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.reportRubric.findFirstOrThrow({ where: { auditId: f.audit.id, name: 'REACH' } }))
+      .toMatchObject({ rubricPrompt: 'Original incomplete guidance' })
+    await withExecutionOwnership({ ...f.owner, taskId: sibling.id }, () => mergePrescriptionResults(f.audit.id, f.output(['custody-1']),
+      { scope: freezePrescriptionScope(f.audit.flags, ['custody-1']) }))
+    await prisma.auditExecutionTask.update({ where: { id: sibling.id }, data: { workState: 'COMPLETED' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    const rubric = await prisma.reportRubric.findFirstOrThrow({ where: { auditId: f.audit.id, name: 'REACH' } })
+    expect(rubric).toMatchObject({ score: null, summary: 'Original assessment summary' })
+    for (const flag of f.audit.flags) {
+      expect(rubric.rubricPrompt).toContain(flag.evidence)
+      expect(rubric.rubricPrompt).toContain(flag.pageUrl)
+    }
+    expect(rubric.rubricPrompt).toContain('Restore the original title')
+    expect(rubric.rubricPrompt).not.toContain('Provider interpretation')
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.reportRubric.findUniqueOrThrow({ where: { id: rubric.id } })).toEqual(rubric)
+  })
+
   it('does not infer prescription ownership from an AI failure code recorded by another phase', async () => {
     const f = await fixture()
     const failure = { failureCode: 'AI_CONTRACT_INVALID' as const, failureStage: 'judging',
@@ -168,10 +198,37 @@ run('prescription custody in PostgreSQL', () => {
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, executionId: f.audit.id, event: 'triage_provider_response' } })).toBe(1)
   })
 
+  it('retains actual provider provenance and cache charges, deduplicating replayed responses without guessing priority prices', async () => {
+    const f = await fixture('judge')
+    await withExecutionOwnership(f.owner, async () => {
+      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-6-luna')
+      const usage = openAIResponseUsage({ id: 'controlled-provider-response', model: 'gpt-6-luna', service_tier: 'default',
+        usage: { prompt_tokens: 12000, completion_tokens: 1000,
+          prompt_tokens_details: { cached_tokens: 4000, cache_write_tokens: 7000 },
+          completion_tokens_details: { reasoning_tokens: 300 } } }, 'gpt-6-luna')!
+      await response(usage)
+      await response(usage)
+      const metrics = { phase: 'triage' as const, durationMs: 0, pagespeedCalls: 0,
+        llmInputTokens: 0, llmOutputTokens: 0, llmModel: '' }
+      await persistAuditRunCost(f.audit.id, metrics)
+      const cost = await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })
+      expect(cost).toMatchObject({ triageInputTokens: 1000, triageOutputTokens: 1000, pricingBasis: 'CONFIGURED_ESTIMATE' })
+      expect(cost.triageCostUsd?.toString()).toBe('0.001515')
+      const event = await prisma.auditPipelineEvent.findFirstOrThrow({ where: { auditId: f.audit.id, event: 'triage_provider_response' } })
+      expect(event.detail).toMatchObject({ version: 2, usage: { provider: 'openai', api: 'chat.completions', serviceTier: 'default',
+        providerResponseId: 'controlled-provider-response', cacheWriteTokens: 7000, reasoningTokens: 300 } })
+      const priority = await beginProviderUsage(f.audit.id, 'journey_evaluator', 'gpt-6-luna')
+      await priority({ ...usage, serviceTier: 'priority' })
+      await persistAuditRunCost(f.audit.id, metrics)
+      expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
+        .toMatchObject({ triageInputTokens: 2000, triageOutputTokens: 2000, triageCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
+  })
+
   it('rejects a changed source at commit without changing any repair guidance', async () => {
     const f = await fixture(), scope = freezePrescriptionScope(f.audit.flags)
     await prisma.flag.update({ where: { id: f.audit.flags[0].id }, data: { evidence: 'A newer observed condition' } })
-    await expect(withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0', 'custody-1']), { scope, rubrics: false })))
+    await expect(withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0', 'custody-1']), { scope })))
       .rejects.toThrow('PRESCRIPTION_SCOPE_CHANGED')
     expect(await prisma.flag.count({ where: { auditId: f.audit.id, fix: { not: '' } } })).toBe(0)
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_guidance_committed' } })).toBe(0)
@@ -189,7 +246,7 @@ run('prescription custody in PostgreSQL', () => {
       await tx.flag.update({ where: { id: flagId }, data: { evidence: 'Concurrent newer source observation' } })
     }, { timeout: 10_000 })
     await ready
-    const publishing = withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0', 'custody-1']), { scope, rubrics: false }))
+    const publishing = withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0', 'custody-1']), { scope }))
       .then(() => null, error => error as Error)
     try {
       const until = Date.now() + 5000
@@ -215,7 +272,7 @@ run('prescription custody in PostgreSQL', () => {
     const original = f.audit.flags.find(flag => flag.checkId === 'custody-0')!
     const sibling = f.audit.flags.find(flag => flag.checkId === 'custody-1')!
     const scope = freezePrescriptionScope(f.audit.flags, ['custody-0'])
-    await withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0']), { scope, rubrics: false }))
+    await withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0']), { scope }))
     const rows = await prisma.flag.findMany({ where: { auditId: f.audit.id }, orderBy: { position: 'asc' } })
     expect(rows).toHaveLength(2)
     expect(rows.find(flag => flag.id === original.id)).toMatchObject({

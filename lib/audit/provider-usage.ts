@@ -2,16 +2,21 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { currentExecutionOwnership, executionWrite } from './execution-ownership'
 import type { LlmUsage } from './judge-runner'
+import { llmUsageSchema } from './provider-request'
 
 export type ProviderUsagePhase = 'triage' | 'prescription' | 'journey_planner' | 'journey_evaluator'
 export const INITIAL_ANALYSIS_PROVIDER_PHASES = ['triage', 'journey_planner', 'journey_evaluator'] as const
 export type ProviderUsageAdmission = (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
 
-export const providerUsageSchema = z.object({ version: z.literal(1), responseId: z.string().uuid(),
+const legacyProviderUsageSchema = z.object({ version: z.literal(1), responseId: z.string().uuid(),
   model: z.string().min(1).max(200), usage: z.object({
     inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative(),
     cacheReadTokens: z.number().int().nonnegative(), cacheWriteTokens: z.number().int().nonnegative(),
   }).strict().nullable() }).strict()
+
+export const providerUsageSchema = z.discriminatedUnion('version', [legacyProviderUsageSchema,
+  z.object({ version: z.literal(2), responseId: z.string().uuid(), model: z.string().min(1).max(200),
+    usage: llmUsageSchema.omit({ model: true }).required({ cacheReadTokens: true, cacheWriteTokens: true }).nullable() }).strict()])
 
 /** Admission precedes the external request. Lost response authority leaves an
  * inspectable unknown attempt without granting late customer writes. */
@@ -19,15 +24,16 @@ export async function beginProviderUsage(auditId: string, phase: ProviderUsagePh
   const owner = currentExecutionOwnership()
   if (!owner || owner.auditId !== auditId || (phase === 'prescription' && !owner.taskId)) throw new Error('Provider usage requires its matching execution owner')
   const taskId = owner.taskId, executionId = taskId ?? auditId
-  const admitted = providerUsageSchema.parse({ version: 1, responseId: randomUUID(), model, usage: null })
+  const admitted = providerUsageSchema.parse({ version: 2, responseId: randomUUID(), model, usage: null })
   await executionWrite(tx => tx.auditPipelineEvent.create({ data: { auditId, executionId, traceId: auditId,
     attempt: owner.generation, stage: 'judging', event: `${phase}_provider_attempt`, status: 'info', detail: admitted } }))
   return async usage => {
     const active = currentExecutionOwnership()
     if (active?.auditId !== auditId || active.taskId !== taskId || active.token !== owner.token || active.generation !== owner.generation)
       throw new Error('Provider response no longer owns its admitted execution')
-    const detail = providerUsageSchema.parse({ ...admitted, model: usage?.model ?? model,
-      usage: usage ? { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+    const { model: responseModel, ...measurement } = usage ?? { model }
+    const detail = providerUsageSchema.parse({ ...admitted, model: responseModel,
+      usage: usage ? { ...measurement,
         cacheReadTokens: usage.cacheReadTokens ?? 0, cacheWriteTokens: usage.cacheWriteTokens ?? 0 } : null })
     await executionWrite(tx => tx.auditPipelineEvent.create({ data: { auditId, executionId, traceId: auditId,
       attempt: owner.generation, stage: 'judging', event: `${phase}_provider_response`, status: 'info', detail } }))

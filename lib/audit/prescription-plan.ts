@@ -1,3 +1,5 @@
+import { requiresPrescriptionPageContext } from './prescription-policy'
+
 export const PRESCRIPTION_BATCH_SIZE = 12
 
 /** Keep every occurrence of one Flag key in one batch. An empty review is one empty batch. */
@@ -19,8 +21,13 @@ export function prescriptionFlagBatches<T extends { flagKey: string }>(items: T[
 }
 
 /** One unscoped task covers a single batch. Larger reviews get one task per batch. */
-export function prescriptionTaskPlans(flags: readonly { flagKey: string }[]): Array<{ index: number | null; flagKeys?: string[] }> {
-  const batches = prescriptionFlagBatches(flags.filter(flag => flag.flagKey), PRESCRIPTION_BATCH_SIZE)
+export function prescriptionTaskPlans(flags: readonly { flagKey: string; source?: string | null; checkId?: string | null }[]): Array<{ index: number | null; flagKeys?: string[] }> {
+  const groups = prescriptionFlagBatches(flags.filter(flag => flag.flagKey), 1).filter(group => group.length)
+  // Keep exact key membership together while independent nonvisual work avoids image dependencies.
+  const batches = [false, true].flatMap(needsContext => {
+    const selected = groups.filter(group => requiresPrescriptionPageContext(group) === needsContext).flat()
+    return selected.length ? prescriptionFlagBatches(selected, PRESCRIPTION_BATCH_SIZE) : []
+  })
   if (batches.length <= 1) return [{ index: null }]
   return batches.map((batch, index) => ({ index, flagKeys: [...new Set(batch.map(flag => flag.flagKey))] }))
 }

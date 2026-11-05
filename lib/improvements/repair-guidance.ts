@@ -6,6 +6,7 @@ import type { AgentPrompts } from '@/lib/audit/flag-types'
 import { hasUnavailableFlagEvidence } from '@/lib/audit/attention'
 import { FINDING_GUIDANCE_COPY as G } from '@/lib/marketing/copy/finding-guidance'
 import { registeredRepairRecipe } from '@/lib/audit/check-registry'
+import { readSupportingObservationView } from '@/lib/audit/flag-observations'
 
 export type InspectionGuidancePlan = {
   inspection: string
@@ -35,6 +36,25 @@ export function formatCombinedRepairGuidance(rows: readonly {
       ...(scope.supportingEvidence || []).map(C.supporting)]).filter(Boolean), row.fix,
     ...row.scopes.map(scope => C.verify(scope.verificationRule || C.verificationUnavailable, scope.pageUrl)),
   ].join('\n')).join('\n\n')
+}
+
+/** Aggregate the same source-bound definitions used by individual repair actions. */
+export function formatRecordedRepairGuidance(flags: readonly (RepairGuidanceInput & {
+  problem: string; evidence: string; pageUrl?: string | null
+})[]): string | null {
+  const rows = flags.map(flag => {
+    const definition = resolveRepairDefinition(flag)
+    if (!definition) return null
+    return { problem: flag.problem, fix: definition.guidance,
+      scopes: [{ problem: flag.problem, evidence: flag.evidence, pageUrl: flag.pageUrl,
+        verificationRule: flag.verificationRule,
+        supportingEvidence: (readSupportingObservationView(flag.supportingObservations) ?? []).map(item => JSON.stringify({
+          source: item.source, checkId: item.checkId, checkVersion: item.checkVersion, pageUrl: item.pageUrl,
+          evidence: item.evidence, recordedAt: item.recordedAt, references: item.references,
+        })) }] }
+  })
+  if (rows.some(row => row === null)) return null
+  return formatCombinedRepairGuidance(rows.filter(row => row !== null))
 }
 
 export type RepairGuidanceState = 'ready' | 'pending' | 'unavailable'

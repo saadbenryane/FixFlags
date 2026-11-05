@@ -1,3 +1,4 @@
+import { measuredProviderRequest, openAIResponseUsage, anthropicResponseUsage } from './provider-request'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import type { ProviderUsageAdmission } from './provider-usage'
@@ -147,6 +148,7 @@ async function runAnthropicTriage(
   onAttempt?: ProviderUsageAdmission
 ): Promise<TriageResult> {
   if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+  const client = anthropic
 
   const imageContent: Anthropic.ImageBlockParam[] = []
   if (desktopBase64) {
@@ -163,12 +165,13 @@ async function runAnthropicTriage(
   }
 
   const cfg = getTriageProviderConfig('anthropic', maxTimeoutMs)
-  const recordUsage = await onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const response = await anthropic.messages.create(
+    const { response, usage } = await measuredProviderRequest({
+      model: cfg.model, onAttempt: onAttempt,
+      request: () => client.messages.create(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
@@ -198,19 +201,9 @@ async function runAnthropicTriage(
         ],
       },
       { signal: controller.signal }
-    ).catch(async error => {
-      await recordUsage?.(null)
-      throw error
+      ),
+      usage: response => anthropicResponseUsage(response, cfg.model),
     })
-
-    const usage: TriageUsage = {
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      model: response.model ?? cfg.model,
-      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-    }
-    await recordUsage?.(usage)
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -219,7 +212,7 @@ async function runAnthropicTriage(
 
     return {
       ...parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown', { ...context, screenshotHint: getScreenshotHint(desktopBase64, mobileBase64) }),
-      usage,
+      usage: usage ?? { inputTokens: 0, outputTokens: 0, model: cfg.model },
     }
   } finally {
     clearTimeout(timeout)
@@ -235,6 +228,7 @@ async function runOpenAITriage(
   onAttempt?: ProviderUsageAdmission
 ): Promise<TriageResult> {
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
+  const client = openai
 
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
   if (desktopBase64) {
@@ -264,12 +258,13 @@ async function runOpenAITriage(
   })
 
   const cfg = getTriageProviderConfig('openai', maxTimeoutMs)
-  const recordUsage = await onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const response = await openai.chat.completions.create(
+    const { response, usage } = await measuredProviderRequest({
+      model: cfg.model, onAttempt: onAttempt,
+      request: () => client.chat.completions.create(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
@@ -287,19 +282,9 @@ async function runOpenAITriage(
         ],
       },
       { signal: controller.signal }
-    ).catch(async error => {
-      await recordUsage?.(null)
-      throw error
+      ),
+      usage: response => openAIResponseUsage(response, cfg.model),
     })
-
-    const cacheReadTokens = response.usage?.prompt_tokens_details?.cached_tokens ?? 0
-    const usage: TriageUsage = {
-      inputTokens: (response.usage?.prompt_tokens ?? 0) - cacheReadTokens,
-      outputTokens: response.usage?.completion_tokens ?? 0,
-      cacheReadTokens,
-      model: response.model ?? cfg.model,
-    }
-    await recordUsage?.(response.usage ? usage : null)
 
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {
@@ -309,7 +294,7 @@ async function runOpenAITriage(
     const raw = JSON.parse(rawContent)
     return {
       ...parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown', { ...context, screenshotHint: getScreenshotHint(desktopBase64, mobileBase64) }),
-      usage,
+      usage: usage ?? { inputTokens: 0, outputTokens: 0, model: cfg.model },
     }
   } finally {
     clearTimeout(timeout)

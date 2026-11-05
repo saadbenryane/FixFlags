@@ -176,7 +176,7 @@ export function buildTriagePrompt(context: TriageContext): string {
  * per-request flags, metadata, and page text in the USER block only.
  */
 export function buildPrescriptionSystemPrompt(): string {
-  return `You are FixFlags. Phase 1 triage is complete. The founder already sees their score, verdict, flag titles, evidence, and why it matters. Produce PRESCRIPTION guidance under the version 2 schema, without a new diagnosis.
+  return `You are FixFlags. Produce PRESCRIPTION guidance for the recorded findings under the version 2 schema, without a new diagnosis. An overall page score or verdict is not required to explain an established finding.
 
 Return only flagPrescriptions keyed by every exact admitted flagKey. The server supplies each finding's Attention. You cannot change its classification, diagnosis, certainty, observations, evidence membership or verification obligations.
 
@@ -211,15 +211,13 @@ export interface PrescriptionContext {
   screenshotHint?: ScreenshotHint
   url: string
   pageText: string
-  verdict: string
-  score: number
   metadata: {
     title: string | null
     description: string | null
     h1s: string[]
     h2s: string[]
     ctaTexts: string[]
-  }
+  } | null
   techStack: string[]
   existingFlags: Array<PrescriptionGuidanceContext & {
     flagKey: string
@@ -263,12 +261,12 @@ Page text (first ${PRESCRIPTION_TEXT} chars):
 ${context.pageText.slice(0, PRESCRIPTION_TEXT)}
 ${context.pageText.length > PRESCRIPTION_TEXT ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
 
-Metadata:
-- Title: ${context.metadata.title || 'MISSING'}
+Metadata: ${context.metadata ? '' : 'Not supplied. Use the finding-specific observations below; do not infer page content.'}
+${context.metadata ? `- Title: ${context.metadata.title || 'MISSING'}
 - Description: ${context.metadata.description || 'MISSING'}
 - H1s: ${context.metadata.h1s.join(', ') || 'NONE'}
 - H2s: ${(context.metadata.h2s ?? []).join(', ').slice(0, 300) || 'NONE'}
-- CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
+- CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}` : ''}
 ${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
 
 Existing flags (return flagPrescriptions as an object with every unique exact flagKey below as a required property; each value contains its prescription, without repeating flagKey inside it):

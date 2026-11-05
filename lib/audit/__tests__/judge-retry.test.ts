@@ -76,6 +76,23 @@ describe('prescription occurrence batching', () => {
     assert.equal(plans[0]?.flagKeys?.length, 12)
     assert.deepEqual(plans[1], { index: 1, flagKeys: ['flag-12'] })
   })
+
+  it('admits nonvisual repairs independently from visual findings without losing repeated key membership', () => {
+    const plans = prescriptionTaskPlans([
+      { flagKey: 'visual', source: 'DETERMINISTIC', checkId: 'visual-radius-inconsistent' },
+      { flagKey: 'headers', source: 'DETERMINISTIC', checkId: 'security-hsts-missing' },
+      { flagKey: 'headers', source: 'DETERMINISTIC', checkId: 'security-hsts-missing' },
+      { flagKey: 'semantic', source: 'AI', checkId: null },
+    ])
+    assert.deepEqual(plans, [{ index: 0, flagKeys: ['headers'] }, { index: 1, flagKeys: ['visual', 'semantic'] }])
+  })
+
+  it('retains visual requirements for an entire key when its recorded occurrences have mixed prerequisites', () => {
+    assert.deepEqual(prescriptionTaskPlans([
+      { flagKey: 'shared', source: 'DETERMINISTIC', checkId: 'security-hsts-missing' },
+      { flagKey: 'shared', source: 'AI', checkId: null },
+    ]), [{ index: null }])
+  })
 })
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'
 

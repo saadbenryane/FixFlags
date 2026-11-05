@@ -92,4 +92,47 @@ describe('provider transport attempt custody', () => {
     await expect(request).rejects.toMatchObject({ status: 429 })
     expect(transport).toHaveBeenCalledTimes(1)
   })
+
+  it.each(['openai', 'anthropic'] as const)('prepares source-bound nonvisual guidance through the installed %s SDK without images', async provider => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'transport-test-key')
+    vi.stubEnv('JUDGE_PROVIDER_CHAIN', provider)
+    const key = 'security-hsts-missing'
+    const payload = { flagPrescriptions: { [key]: {
+      fix: 'Set the `Strict-Transport-Security` response header on the recorded HTTPS origin after confirming its routes support HTTPS.',
+      agentPrompt: null,
+    } } }
+    let sent: { messages: Array<{ role: string; content: Array<{ type: string; text?: string }> }> } | undefined
+    const transport = vi.fn<typeof fetch>(async (input, init) => {
+      sent = await new Request(input, init).json()
+      return new Response(JSON.stringify(provider === 'openai'
+        ? { id: 'completion-fixture', object: 'chat.completion', created: 1, model: 'gpt-6-luna', service_tier: 'default',
+          choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify(payload) }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25,
+            prompt_tokens_details: { cached_tokens: 7, cache_write_tokens: 3 }, completion_tokens_details: { reasoning_tokens: 2 } } }
+        : { id: 'message-fixture', type: 'message', role: 'assistant', model: 'claude-sonnet-5',
+          content: [{ type: 'tool_use', id: 'tool-fixture', name: 'quality_prescription', input: payload }],
+          stop_reason: 'tool_use', stop_sequence: null,
+          usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 7, cache_creation_input_tokens: 3 } }),
+      { headers: { 'content-type': 'application/json' } })
+    })
+    vi.stubGlobal('fetch', transport)
+    const { runPrescriptionWithRetry } = await import('../judge-prescription')
+    const consumed = vi.fn(async () => undefined), admitted = vi.fn(async () => consumed)
+    const evidence = 'The HTTPS response omits the Strict-Transport-Security header.'
+    const result = await runPrescriptionWithRetry({ url: 'https://example.test/', metadata: null, techStack: [], rubrics: [],
+      existingFlags: [{ flagKey: key, source: 'DETERMINISTIC', rubric: 'REACH', severity: 'IMPORTANT', attention: 'flag',
+        problem: 'Missing Strict-Transport-Security header', checkId: key, evidence,
+        verificationRule: 'Fetch the original HTTPS origin and inspect the response header.' }], onAttempt: admitted }, null, null)
+    expect(admitted).toHaveBeenCalledOnce()
+    expect(transport).toHaveBeenCalledOnce()
+    expect(consumed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      provider, api: provider === 'openai' ? 'chat.completions' : 'messages',
+      inputTokens: 10, outputTokens: 5, cacheReadTokens: 7, cacheWriteTokens: 3,
+    }))
+    expect(result.output.flagPrescriptions[0]).toMatchObject({ evidence, fix: payload.flagPrescriptions[key].fix })
+    const content = sent!.messages.find(message => message.role === 'user')!.content
+    expect(content.every(part => part.type === 'text')).toBe(true)
+    expect(content.map(part => part.text).join('\n')).toContain('Metadata: Not supplied.')
+    expect(content.map(part => part.text).join('\n')).toContain(evidence)
+  })
 })

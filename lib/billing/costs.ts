@@ -2,6 +2,7 @@ import { executionWrite } from '@/lib/audit/execution-ownership'
 import { Prisma } from '@prisma/client'
 import { INITIAL_ANALYSIS_PROVIDER_PHASES, sumAnalysisProviderResponses } from '@/lib/audit/provider-usage'
 import { prisma } from '@/lib/db'
+import { llmUsageSchema, type LlmUsage } from '@/lib/audit/provider-request'
 
 const MODEL_RATES: Record<string, { input: number; output: number; cacheReadMultiplier?: number; cacheWriteMultiplier?: number;
   longContext?: { after: number; input: number; output: number } }> = {
@@ -40,7 +41,7 @@ function cacheReadMultiplier(model: string): number {
 
 /**
  * Cache-write multiplier vs. the base input rate.
- * Anthropic charges 1.25x to write a 5-minute cache entry; OpenAI cache writes are free.
+ * Rates follow the model. Current requests use the providers' default lifetime.
  */
 function cacheWriteMultiplier(model: string): number {
   const configured = MODEL_RATES[model]?.cacheWriteMultiplier
@@ -71,9 +72,8 @@ function estimateSingleModelCostUsd(
 /**
  * Estimate LLM spend for a call (or a comma-joined multi-model run).
  *
- * `inputTokens` is the *uncached* input (both providers report this separately
- * from cache reads/writes). Pass cache tokens so the estimate reflects the
- * ~0.1x (Anthropic) / ~0.5x (OpenAI) discount instead of full input price.
+ * `inputTokens` is normalized ordinary input, excluding cache reads and writes.
+ * OpenAI includes both in its prompt total; Anthropic reports them separately.
  */
 export function estimateLlmCostUsd(
   model: string,
@@ -101,9 +101,18 @@ export function estimateLlmCostUsd(
 
 export type LlmCostPhase = 'triage' | 'prescription' | 'full'
 
+/** Preserve measured tokens when an unsupported processing tier cannot be priced. */
+export function estimateLlmMeasurementCostUsd(usage: LlmUsage): number | null {
+  if (!llmUsageSchema.safeParse(usage).success || (usage.reasoningTokens ?? 0) > usage.outputTokens) return null
+  if (usage.serviceTier !== undefined && usage.serviceTier !== 'default' && usage.serviceTier !== 'standard') return null
+  if (usage.provider === 'openai' && (usage.api !== 'chat.completions' || usage.serviceTier === 'standard')) return null
+  if (usage.provider === 'anthropic' && (usage.api !== 'messages' || usage.serviceTier === 'default')) return null
+  return estimateLlmCostUsd(usage.model, usage.inputTokens, usage.outputTokens, usage.cacheReadTokens, usage.cacheWriteTokens)
+}
+
 export interface AuditRunCostMetrics {
   llmUsageComplete?: boolean
-  llmMeasurements?: Array<{ model: string; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }>
+  llmMeasurements?: LlmUsage[]
   durationMs: number
   llmInputTokens: number
   llmOutputTokens: number
@@ -169,8 +178,7 @@ export async function persistAuditRunCost(
     metrics.llmCacheReadTokens ?? 0,
     metrics.llmCacheWriteTokens ?? 0,
   )
-  const measuredCosts = metrics.llmMeasurements?.map(item => estimateLlmCostUsd(item.model, item.inputTokens,
-    item.outputTokens, item.cacheReadTokens ?? 0, item.cacheWriteTokens ?? 0))
+  const measuredCosts = metrics.llmMeasurements?.map(estimateLlmMeasurementCostUsd)
   const llmCostUsd = metrics.llmUsageComplete === false ? null : measuredCosts
     ? measuredCosts.some(cost => cost === null) ? null : measuredCosts.reduce<number>((sum, cost) => sum + cost!, 0)
     : aggregateLlmCostUsd

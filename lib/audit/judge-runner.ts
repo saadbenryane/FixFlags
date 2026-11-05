@@ -29,13 +29,7 @@ export const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey, maxRetri
 export const MAX_RETRIES = 3
 export const RETRY_DELAY_MS = 2000
 
-export interface LlmUsage {
-  inputTokens: number
-  outputTokens: number
-  model: string
-  cacheReadTokens?: number
-  cacheWriteTokens?: number
-}
+export type { LlmUsage } from './provider-request'
 
 import { sleep } from '@/lib/utils/sleep'
 

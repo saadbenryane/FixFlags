@@ -16,6 +16,7 @@ import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-pr
 import { renderedContentMetadata } from './browser/rendered-copy'
 import { publicSupportingObservations } from './flag-observations'
 import { isCustomerFlag } from './attention'
+import { requiresPrescriptionPageContext } from './prescription-policy'
 
 export type PrescriptionRunUsage = {
   inputTokens: number
@@ -84,30 +85,24 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     assertPrescriptionScope(scope, audit.flags)
   }
 
-  const recordedMetadata = audit.htmlMetadata as PageMetadata | null
-  if (!recordedMetadata) throw new TaskFailure('PRESCRIPTION_PRIMARY_METADATA_MISSING', false)
-  if (recordedMetadata.renderedCopy !== undefined && !recordedMetadata.renderedCopy?.complete) throw new TaskFailure('PRESCRIPTION_PRIMARY_COPY_INCOMPLETE', false)
-  const metadata = renderedContentMetadata(recordedMetadata)
-  if (!audit.verdict || audit.score == null) {
-    throw new TaskFailure('PRESCRIPTION_ASSESSMENT_MISSING', false)
-  }
-
-  const { desktopBase64, mobileBase64 } = await loadAuditScreenshotBase64(auditId)
-  if (!desktopBase64) throw new TaskFailure('PRESCRIPTION_PRIMARY_CAPTURE_MISSING', true)
-
-  const techStack = technologyNamesForPrompt(await loadTechnologyProfile(auditId))
-
   const requested = flagKeys ? [...new Set(flagKeys)] : null
   if (requested?.some(key => !audit.flags.some(flag => flagKeyForRow(flag) === key))) {
     throw new TaskFailure('PRESCRIPTION_FLAGS_MISSING', false)
   }
   const selectedRows = requested ? audit.flags.filter(flag => requested.includes(flagKeyForRow(flag))) : audit.flags
   assertPrescriptionScope(scope, selectedRows)
-  const selectedKeys = new Set(selectedRows.map(flag => flagKeyForRow(flag)).filter(Boolean))
-  const coversAll = !requested || audit.flags.every(flag => {
-    const key = flagKeyForRow(flag)
-    return !key || selectedKeys.has(key)
-  })
+  if (!selectedRows.length) return NO_PRESCRIPTION_USAGE
+  const needsPageContext = requiresPrescriptionPageContext(selectedRows)
+  const recordedMetadata = audit.htmlMetadata as PageMetadata | null
+  if (needsPageContext && !recordedMetadata) throw new TaskFailure('PRESCRIPTION_PRIMARY_METADATA_MISSING', false)
+  const copyIncomplete = recordedMetadata?.renderedCopy !== undefined && !recordedMetadata.renderedCopy?.complete
+  if (needsPageContext && copyIncomplete) throw new TaskFailure('PRESCRIPTION_PRIMARY_COPY_INCOMPLETE', false)
+  // Nonvisual tasks use their complete recorded findings, without unrelated page content or images.
+  const metadata = needsPageContext && recordedMetadata ? renderedContentMetadata(recordedMetadata) : null
+  const { desktopBase64, mobileBase64 } = needsPageContext
+    ? await loadAuditScreenshotBase64(auditId) : { desktopBase64: null, mobileBase64: null }
+  if (needsPageContext && !desktopBase64) throw new TaskFailure('PRESCRIPTION_PRIMARY_CAPTURE_MISSING', true)
+  const techStack = technologyNamesForPrompt(await loadTechnologyProfile(auditId))
   const existingFlags = selectedRows.map((flag) => {
     const supportingObservations = publicSupportingObservations(flag.supportingObservations).map(item => ({
       source: item.source, checkId: item.checkId, checkVersion: item.checkVersion, pageUrl: item.pageUrl,
@@ -134,8 +129,6 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     }
   })
 
-  const { verdict, score } = audit
-  if (verdict == null || score == null) throw new Error('A recorded assessment is required before preparing this explanation')
   await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     // Prescription enriches an already completed report. Its lease and events
@@ -149,8 +142,6 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     prescription = await runPrescriptionWithRetry(
       {
         url: audit.url,
-        verdict,
-        score,
         metadata,
         techStack,
         existingFlags,
@@ -176,7 +167,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
       error: errorMsg,
     })
     if (error instanceof PartialPrescriptionError) {
-      await mergePrescriptionResults(auditId, error.partial.output, { rubrics: false, ...(scope ? { scope } : {}) })
+      await mergePrescriptionResults(auditId, error.partial.output, { scope })
     }
 
     // The durable task owner decides recovery or terminal failure. A failed
@@ -185,8 +176,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
   }
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'prescription_persist' })
-  if (coversAll) await mergePrescriptionResults(auditId, prescription.output, ...(scope ? [{ scope }] : []))
-  else await mergePrescriptionResults(auditId, prescription.output, { rubrics: false, ...(scope ? { scope } : {}) })
+  await mergePrescriptionResults(auditId, prescription.output, { scope })
 
   // The execution engine publishes aiReviewAt and cost only after every
   // admitted guidance task has committed its result.

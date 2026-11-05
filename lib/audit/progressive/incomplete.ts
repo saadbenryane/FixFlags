@@ -11,6 +11,8 @@ import { searchReceiptSchema } from '../search/contracts'
 import { settleRecordedPages } from './page-settlement'
 import { CHECK_REGISTRY } from '../check-registry'
 import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
+import { formatRecordedRepairGuidance } from '@/lib/improvements/repair-guidance'
+import { RUBRIC_ORDER } from '../constants'
 
 const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
 
@@ -48,7 +50,16 @@ export async function settlePrescriptionAudit(tx: Prisma.TransactionClient, audi
     const recovered = await tx.audit.updateMany({ where: { ...where, ...ownFailure }, data: {
       aiReviewAt, failureCode: null, failureStage: null, errorMsg: null, failureMetadata: Prisma.DbNull,
     } })
-    if (!recovered.count) await tx.audit.updateMany({ where, data: { aiReviewAt } })
+    const published = recovered.count || (await tx.audit.updateMany({ where, data: { aiReviewAt } })).count
+    if (published) {
+      const flags = await tx.flag.findMany({ where: { auditId }, orderBy: [{ position: 'asc' }, { id: 'asc' }] })
+      for (const name of RUBRIC_ORDER) {
+        const rubricPrompt = formatRecordedRepairGuidance(flags.filter(flag => flag.rubric === name))
+        if (rubricPrompt === null) continue
+        await tx.reportRubric.updateMany({ where: { auditId, name }, data: { rubricPrompt,
+          cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null } })
+      }
+    }
     return decision
   }
   await tx.audit.updateMany({ where: { ...where, OR: [{ failureCode: null }, ownFailure] }, data: {

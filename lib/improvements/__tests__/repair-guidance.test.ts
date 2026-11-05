@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { repairGuidanceState, repairGuidanceText, prepareEvidenceRepairGuidance, resolveRepairDefinition } from '../repair-guidance'
+import { repairGuidanceState, repairGuidanceText, prepareEvidenceRepairGuidance, resolveRepairDefinition, formatRecordedRepairGuidance } from '../repair-guidance'
 import { isConditionalInspection } from '@/lib/audit/prescription-policy'
 import { observationsForFlag, publicSupportingObservations } from '@/lib/audit/flag-observations'
 
@@ -7,6 +7,23 @@ describe('repair guidance evidence custody', () => {
   const finding = { checkId: 'no-https', fix: 'Preserve the original source and repair its observed transport failure.' }
   const recorded = observationsForFlag({ ...finding, source: 'DETERMINISTIC', pageUrl: 'https://example.com/', evidence: 'Original response' },
     { auditId: 'audit', taskId: 'task', checkVersion: 1, collectedAt: '2026-10-20T12:00:00.000Z' })
+  it('composes complete group guidance from the same definitions, retaining observations without private comparison fields', () => {
+    const observations = observationsForFlag({ source: 'DETERMINISTIC', checkId: 'no-https',
+      pageUrl: 'https://example.com/second', evidence: 'Second recorded response',
+      evidenceTargets: [{ kind: 'page', source: 'measured', device: 'mobile', label: 'Original mobile page', context: 'private-comparison' }] },
+    { auditId: 'private-source-audit', taskId: 'private-source-task', checkVersion: 1 })
+    for (const supporting of [observations, publicSupportingObservations(observations)]) {
+      const text = formatRecordedRepairGuidance([{ ...finding, problem: 'HTTPS unavailable', evidence: 'Original response',
+        supportingObservations: supporting, supportingEvidenceUnreadable: Array.isArray(supporting) ? false : undefined,
+        pageUrl: 'https://example.com/first', verificationRule: 'Fetch the same affected original pages.' }])!
+      expect(text).toContain(finding.fix)
+      expect(text).toContain('https://example.com/first')
+      expect(text).toContain('https://example.com/second')
+      expect(text).toContain('Second recorded response')
+      expect(text).toContain('Fetch the same affected original pages.')
+      expect(text).not.toMatch(/private-comparison|private-source-audit|private-source-task/)
+    }
+  })
   it('preserves usable guidance for native evidence, legacy findings and validated public projections', () => {
     for (const evidence of [{}, { supportingObservations: recorded },
       { supportingObservations: publicSupportingObservations(recorded), supportingEvidenceUnreadable: false }]) {

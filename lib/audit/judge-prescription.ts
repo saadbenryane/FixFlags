@@ -1,3 +1,4 @@
+import { measuredProviderRequest, openAIResponseUsage, anthropicResponseUsage } from './provider-request'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import type { PrescriptionOutput } from './judge-prescription-schema'
@@ -36,9 +37,7 @@ export interface PrescriptionContext {
   validationFeedback?: string
   onAttempt?: (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
   url: string
-  verdict: string
-  score: number
-  metadata: PageMetadata
+  metadata: PageMetadata | null
   techStack: string[]
   existingFlags: ExistingFlagForPrescription[]
   rubrics: Array<{
@@ -212,6 +211,7 @@ async function runAnthropicPrescription(
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
   if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+  const client = anthropic
 
   const imageContent: Anthropic.ImageBlockParam[] = []
   if (desktopBase64) {
@@ -228,12 +228,13 @@ async function runAnthropicPrescription(
   }
 
   const cfg = getPrescriptionProviderConfig('anthropic', maxTimeoutMs)
-  const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const response = await anthropic.messages.create(
+    const { response, usage } = await measuredProviderRequest({
+      model: cfg.model, onAttempt: context.onAttempt,
+      request: () => client.messages.create(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
@@ -256,16 +257,11 @@ async function runAnthropicPrescription(
                 type: 'text',
                 text: buildPrescriptionUserPrompt({
                   url: context.url,
-                  pageText: context.metadata.pageText,
-                  verdict: context.verdict,
-                  score: context.score,
-                  metadata: {
-                    title: context.metadata.title,
-                    description: context.metadata.description,
-                    h1s: context.metadata.h1s,
-                    h2s: context.metadata.h2s,
-                    ctaTexts: context.metadata.ctaTexts,
-                  },
+                  pageText: context.metadata?.pageText ?? '',
+                  metadata: context.metadata ? {
+                    title: context.metadata.title, description: context.metadata.description,
+                    h1s: context.metadata.h1s, h2s: context.metadata.h2s, ctaTexts: context.metadata.ctaTexts,
+                  } : null,
                   techStack: context.techStack,
                   existingFlags: context.existingFlags,
                   validationFeedback: context.validationFeedback,
@@ -278,16 +274,9 @@ async function runAnthropicPrescription(
         ],
       },
       { signal: controller.signal }
-    ).catch(async error => {
-      await recordUsage?.(null)
-      throw error
+      ),
+      usage: response => anthropicResponseUsage(response, cfg.model),
     })
-
-    const usage: LlmUsage = {
-      inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, model: response.model ?? cfg.model,
-      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-    }
-    await recordUsage?.(usage)
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -296,7 +285,7 @@ async function runAnthropicPrescription(
 
     return {
       output: parsePrescriptionOutput(toolUse.input, context.existingFlags),
-      usage,
+      usage: usage ?? { inputTokens: 0, outputTokens: 0, model: cfg.model },
     }
   } finally {
     clearTimeout(timeout)
@@ -310,6 +299,7 @@ async function runOpenAIPrescription(
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
+  const client = openai
 
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
   if (desktopBase64) {
@@ -329,16 +319,11 @@ async function runOpenAIPrescription(
     type: 'text',
     text: buildPrescriptionUserPrompt({
       url: context.url,
-      pageText: context.metadata.pageText,
-      verdict: context.verdict,
-      score: context.score,
-      metadata: {
-        title: context.metadata.title,
-        description: context.metadata.description,
-        h1s: context.metadata.h1s,
-        h2s: context.metadata.h2s,
-        ctaTexts: context.metadata.ctaTexts,
-      },
+      pageText: context.metadata?.pageText ?? '',
+      metadata: context.metadata ? {
+        title: context.metadata.title, description: context.metadata.description,
+        h1s: context.metadata.h1s, h2s: context.metadata.h2s, ctaTexts: context.metadata.ctaTexts,
+      } : null,
       techStack: context.techStack,
       existingFlags: context.existingFlags,
       validationFeedback: context.validationFeedback,
@@ -348,12 +333,13 @@ async function runOpenAIPrescription(
   })
 
   const cfg = getPrescriptionProviderConfig('openai', maxTimeoutMs)
-  const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const response = await openai.chat.completions.create(
+    const { response, usage } = await measuredProviderRequest({
+      model: cfg.model, onAttempt: context.onAttempt,
+      request: () => client.chat.completions.create(
       {
         model: cfg.model,
         ...(cfg.reasoningEffort ? { max_completion_tokens: cfg.maxTokens, reasoning_effort: cfg.reasoningEffort } : { max_tokens: cfg.maxTokens }),
@@ -371,17 +357,9 @@ async function runOpenAIPrescription(
         ],
       },
       { signal: controller.signal }
-    ).catch(async error => {
-      await recordUsage?.(null)
-      throw error
+      ),
+      usage: response => openAIResponseUsage(response, cfg.model),
     })
-
-    const cacheReadTokens = response.usage?.prompt_tokens_details?.cached_tokens ?? 0
-    const usage: LlmUsage = {
-      inputTokens: (response.usage?.prompt_tokens ?? 0) - cacheReadTokens,
-      outputTokens: response.usage?.completion_tokens ?? 0, cacheReadTokens, model: response.model ?? cfg.model,
-    }
-    await recordUsage?.(response.usage ? usage : null)
 
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {
@@ -391,7 +369,7 @@ async function runOpenAIPrescription(
     const raw = JSON.parse(rawContent)
     return {
       output: parsePrescriptionOutput(raw, context.existingFlags),
-      usage,
+      usage: usage ?? { inputTokens: 0, outputTokens: 0, model: cfg.model },
     }
   } finally {
     clearTimeout(timeout)
@@ -482,7 +460,10 @@ export async function runPrescriptionWithRetry(
   let rubricPrescriptions: PrescriptionOutput['rubricPrescriptions'] = []
   let inputTokens = 0
   let outputTokens = 0
-  let model = ''
+  let cacheReadTokens = 0
+  let cacheWriteTokens = 0
+  const models = new Set<string>()
+  const usage = () => ({ inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, model: [...models].join(',') })
 
   for (const batch of batches) {
     const batchContext: PrescriptionContext = {
@@ -501,14 +482,16 @@ export async function runPrescriptionWithRetry(
       if (flagPrescriptions.length === 0) throw error
       throw new PartialPrescriptionError({
         output: { flagPrescriptions, rubricPrescriptions },
-        usage: { inputTokens, outputTokens, model },
+        usage: usage(),
       }, error)
     }
     flagPrescriptions.push(...result.output.flagPrescriptions)
     rubricPrescriptions = composePrescriptionRubrics(flags, flagPrescriptions)
     inputTokens += result.usage.inputTokens
     outputTokens += result.usage.outputTokens
-    model = result.usage.model
+    cacheReadTokens += result.usage.cacheReadTokens ?? 0
+    cacheWriteTokens += result.usage.cacheWriteTokens ?? 0
+    models.add(result.usage.model)
   }
 
   const merged = validatePrescriptionOutput(
@@ -517,6 +500,6 @@ export async function runPrescriptionWithRetry(
   )
   return {
     output: merged,
-    usage: { inputTokens, outputTokens, model },
+    usage: usage(),
   }
 }

@@ -27,6 +27,7 @@ vi.mock('@/lib/db', () => ({
 
 import {
   estimateLlmCostUsd,
+  estimateLlmMeasurementCostUsd,
   computeInfraOverheadUsd,
   persistAuditRunCost,
   formatUsd,
@@ -56,6 +57,17 @@ afterEach(() => {
 })
 
 describe('estimateLlmCostUsd', () => {
+  it('prices measured ordinary input, cache writes, reads and output without double counting', () => {
+    expect(estimateLlmMeasurementCostUsd({ model: 'gpt-6-luna', provider: 'openai', api: 'chat.completions',
+      serviceTier: 'default', inputTokens: 1000, cacheReadTokens: 4000, cacheWriteTokens: 7000,
+      outputTokens: 1000, reasoningTokens: 300 })).toBeCloseTo(0.001515, 10)
+  })
+
+  it.each(['priority', 'flex', 'unknown', 'auto'])('leaves unsupported %s pricing unknown without losing tokens', serviceTier => {
+    expect(estimateLlmMeasurementCostUsd({ model: 'gpt-6-luna', provider: 'openai', api: 'chat.completions',
+      serviceTier, inputTokens: 1000, outputTokens: 20 })).toBeNull()
+  })
+
   describe('single model pricing', () => {
     it('estimates the exact Luna alias from measured uncached, cached, written and output tokens', () => {
       expect(estimateLlmCostUsd('gpt-6-luna', 1000, 1000, 1000, 1000)).toBeCloseTo(0.000735, 10)

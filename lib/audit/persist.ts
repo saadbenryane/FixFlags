@@ -523,7 +523,7 @@ export async function persistTriageResults(
 export async function mergePrescriptionResults(
   auditId: string,
   prescription: PrescriptionOutput,
-  options?: { rubrics?: boolean; scope?: PrescriptionScope }
+  options?: { scope?: PrescriptionScope }
 ): Promise<void> {
   await executionTransaction(async (tx) => {
     const flags = await tx.flag.findMany({ where: { auditId } })
@@ -572,23 +572,7 @@ export async function mergePrescriptionResults(
         detail: { version: 1, scopeHash: prescriptionHash(options.scope), guidance: selected.map(flag => ({ id: flag.id, hash: guidanceHash(flag) })) } } })
     }
 
-    if (options?.rubrics === false) return
-
-    for (const rubricRx of prescription.rubricPrescriptions) {
-      await tx.reportRubric.updateMany({
-        where: { auditId, name: rubricRx.name as RubricName },
-        data: {
-          rubricPrompt: rubricRx.rubricPrompt,
-          cursorPrompt: rubricRx.cursorPrompt ?? null,
-          claudePrompt: rubricRx.claudePrompt ?? null,
-          windsurfPrompt: rubricRx.windsurfPrompt ?? null,
-          lovablePrompt: rubricRx.lovablePrompt ?? null,
-          boltPrompt: rubricRx.boltPrompt ?? null,
-        },
-      })
-    }
-
-    // Enrichment does not reopen the completed analysis. The durable prescription
-    // task owns its progress and can retry after this transaction commits.
+    // The settled task set publishes aggregate guidance from every recorded
+    // definition. One partial provider batch cannot replace the whole rubric.
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }
