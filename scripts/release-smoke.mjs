@@ -61,13 +61,8 @@ await probe('/api/health/browser', 'Chromium and R2')
 await probe('/api/health/ai?validate=1', 'AI credentials', true)
 
 const { runRouteBoundarySmoke } = await import('./route-boundary-smoke.mjs')
-const routeCount = await runRouteBoundarySmoke(
-  baseUrl,
-  process.env.RELEASE_SMOKE_BEARER
-    ? { authorization: `Bearer ${process.env.RELEASE_SMOKE_BEARER}` }
-    : {},
-)
-console.log(`PASS route boundary smoke (${routeCount} routes)`)
+const routeCount = await runRouteBoundarySmoke(baseUrl)
+console.log(`PASS anonymous route boundary smoke (${routeCount} routes; CLI device issuance uses OPTIONS only)`)
 
 if (process.env.RELEASE_SMOKE_EVIDENCE_FILE) {
   const evidencePath = path.resolve(process.env.RELEASE_SMOKE_EVIDENCE_FILE)
@@ -78,6 +73,8 @@ if (process.env.RELEASE_SMOKE_EVIDENCE_FILE) {
     expectedCommit,
     runningCommit: health.commit,
     routeCount,
+    routeProbeScope: 'anonymous-boundary',
+    cliDeviceIssuanceProbe: 'method-support-only',
     completedAt: new Date().toISOString(),
   }, null, 2)}\n`, { mode: 0o600 })
 }

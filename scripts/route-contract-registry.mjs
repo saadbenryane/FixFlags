@@ -21,16 +21,16 @@ function walk(directory, files = []) {
 }
 
 function boundaryFor(file) {
+  if (file === 'app/api/mcp/route.ts' || file === 'app/api/cli/auth/session/route.ts') return 'api-key'
+  if (file.startsWith('app/api/api-keys/') || file === 'app/api/cli/auth/authorize/route.ts') return 'session'
+  if (file.startsWith('app/api/oauth/') || ['app/api/cli/auth/device/route.ts',
+    'app/api/cli/auth/token/route.ts', 'app/api/cli/release/route.ts'].includes(file)) return 'public'
   if (
-    file === 'app/api/mcp/route.ts' ||
-    file.startsWith('app/api/api-keys/') ||
-    file.startsWith('app/api/cli/') ||
     (file.startsWith('app/api/integrations/github/') && !/\/(connect|callback|disconnect)\/route\.ts$/.test(file)) ||
     file.startsWith('app/api/integrations/gsc/') ||
     file.startsWith('app/api/repo-scans/') ||
     file === 'app/api/stripe/credit-pack/route.ts' ||
     file === 'app/api/reports/[id]/chat/route.ts' ||
-    file.startsWith('app/api/webhooks/railway/') ||
     file.startsWith('app/api/well-known/mcp-json/')
   ) return 'parked'
   if (file === 'app/api/stripe/waitlist/route.ts') return 'public'
@@ -64,7 +64,7 @@ function casesFor(boundary, methods, file) {
   if (boundary === 'parked') return ['not-found']
   const cases = new Set(['success', 'dependency-failure'])
   if (boundary !== 'public') cases.add('unauthenticated')
-  if (boundary === 'session' || boundary === 'admin') cases.add('forbidden')
+  if (['session', 'admin', 'api-key'].includes(boundary)) cases.add('forbidden')
   if (methods.some((method) => method !== 'GET')) cases.add('invalid-input')
   if (file.includes('[')) cases.add('not-found')
   if (/checkout|credit-pack|portal|watch|repo-scans|retry/.test(file)) cases.add('plan-gated')
@@ -115,8 +115,8 @@ function collectExecutableEvidence(root, file) {
     }
   }
 
-  // Release verification executes every discovered method against the deployed
-  // boundary, so no generated contract can exist only as an inventory row.
+  // Release verification probes deployed boundaries. Public device issuance uses
+  // OPTIONS only; actual effects need handler or credentialed journey evidence.
   evidence.push({
     kind: 'boundary-e2e',
     file: 'scripts/route-boundary-smoke.mjs',

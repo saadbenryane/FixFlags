@@ -32,6 +32,17 @@ test('parked power-tool routes expose only the not-found contract', () => {
   assert.ok(parked.every(({ cases }) => JSON.stringify(cases) === JSON.stringify(['not-found'])))
 })
 
+test('active machine APIs retain their actual session, key and public protocol boundaries', () => {
+  const contracts = collectRouteContracts()
+  for (const [file, boundary] of [
+    ['app/api/api-keys/route.ts', 'session'], ['app/api/mcp/route.ts', 'api-key'],
+    ['app/api/cli/auth/authorize/route.ts', 'session'], ['app/api/cli/auth/session/route.ts', 'api-key'],
+    ['app/api/cli/auth/device/route.ts', 'public'], ['app/api/cli/auth/token/route.ts', 'public'],
+    ['app/api/cli/release/route.ts', 'public'], ['app/api/oauth/authorize/route.ts', 'public'],
+    ['app/api/webhooks/railway/route.ts', 'webhook'],
+  ]) assert.equal(contracts.find(contract => contract.file === file)?.boundary, boundary, file)
+})
+
 test('secret and webhook boundaries declare validation and retry contracts', () => {
   const contracts = collectRouteContracts()
   const secret = contracts.filter(({ boundary }) => boundary === 'secret')
