@@ -1,3 +1,4 @@
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import { authorizeAgentCitations } from './agent-citations'
 import { SiteAgentError, type AgentCitation } from '@/lib/sites/agent-contract'
 import { admitAgentMessage, completeAgentMessage, replayAgentMessage, saveAgentReply, recoverAgentReplies, recordAgentReservation, failAgentMessage } from './agent-intents'
@@ -57,7 +58,7 @@ async function requireOwnedSite(siteId: string, userId: string) {
       },
     },
   })
-  if (!project) throw new SiteAgentError('Site not found', 404)
+  if (!project) throw new SiteNotFound()
   return project
 }
 

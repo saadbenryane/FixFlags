@@ -85,16 +85,19 @@ export function readCheckReceipt(detail: unknown) {
     // Retain genuine HTTP facts without inventing historical pixel decoding.
     if (qualified.module === 'og-image' && qualified.assertions.some(assertion => assertion.key === 'preview-image-response' && assertion.passed) &&
       !qualified.assertions.some(assertion => assertion.key === 'preview-image-decoding')) qualified = { ...qualified, complete: false }
-    return { ...qualified, ...summarizeCheckAssertions(qualified), legacy: false }
+    return { ...qualified, ...summarizeCheckAssertions(qualified), legacy: false as const, unavailable: false }
   }
-  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return { passed: undefined, assertions: [], legacy: true }
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return { passed: undefined, assertions: [], legacy: true as const, unavailable: true }
   const old = detail as Record<string, unknown>
-  if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true }
+  if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true as const, unavailable: true }
   const assertions = Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
     const parsed = checkAssertionSchema.safeParse(value)
     return parsed.success ? [currentFormFeedbackObservation(parsed.data) ? parsed.data : { ...parsed.data, complete: false }] : []
   }) : []
   const currentAssertions = assertions.some(assertion => assertion.key === 'preview-image-decoding') ? assertions
     : assertions.map(assertion => assertion.key === 'preview-image-response' && assertion.passed ? { ...assertion, complete: false } : assertion)
-  return { passed: typeof old.passed === 'boolean' ? old.passed : undefined, assertions: currentAssertions, legacy: true }
+  const unavailable = typeof old.passed !== 'boolean' && currentAssertions.length === 0 ||
+    old.assertions !== undefined && !Array.isArray(old.assertions) ||
+    Array.isArray(old.assertions) && old.assertions.length !== assertions.length
+  return { passed: typeof old.passed === 'boolean' ? old.passed : undefined, assertions: currentAssertions, legacy: true as const, unavailable }
 }

@@ -20,6 +20,8 @@ import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/applicati
 import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy-barrel'
 import { assertAttemptReplay } from '@/lib/improvements/attempt-intent'
 import { handoffProtocolSuffix } from '@/lib/improvements/handoff-contract'
+import { ownedSiteContext } from '@/lib/sites/domain/site-context'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 
 export type SiteCommand =
   | {
@@ -182,8 +184,9 @@ export async function executeSiteCommand(command: SiteCommand) {
       return { ok: true as const, handoff }
     }
     case 'VERIFY_FLAG': {
-      const initialSite = await loadSiteRecord(command.siteId)
-      if (!initialSite?.projectId || initialSite.userId !== command.userId) return { ok: false as const, error: 'Claim this Site before verifying a fix.' }
+      const initialRecord = await loadSiteRecord(command.siteId)
+      if (!initialRecord) throw new SiteNotFound()
+      const { site: initialSite } = ownedSiteContext(initialRecord, command.userId)
       const initialFlag = await loadSiteFlagDetail(initialSite, command.flagId)
       if (!initialFlag) return { ok: false as const, error: 'Flag not found' }
       const source = command.source ?? 'WEB'

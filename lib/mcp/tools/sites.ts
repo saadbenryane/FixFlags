@@ -1,3 +1,5 @@
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
+import { ownedSiteContext } from '@/lib/sites/domain/site-context'
 import type { McpServer } from '@modelcontextprotocol/server'
 import type { User } from '@prisma/client'
 import { z } from 'zod'
@@ -27,8 +29,8 @@ import { loadSiteRepairEvidence } from '@/lib/sites/application/repair-evidence'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
-  if (!site?.projectId || site.userId !== userId) throw new Error('Site not found')
-  return site
+  if (!site) throw new SiteNotFound()
+  return ownedSiteContext(site, userId).site
 }
 
 function toolAnnotations(tool: { title: string; readOnly: boolean }) {

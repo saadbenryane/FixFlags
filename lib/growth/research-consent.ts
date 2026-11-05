@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import {
   RESEARCH_CONSENT_EVENT, RESEARCH_CONSENT_VERSION,
   researchConsentPropertiesSchema, researchConsentWriteSchema,
@@ -40,7 +41,7 @@ export function consentView(event: ConsentEvent | null, userId: string, siteIden
 
 export async function loadResearchConsent(owner: Owner): Promise<ResearchConsentView> {
   const project = await prisma.project.findFirst({ where: { id: owner.projectId, userId: owner.userId, deletedAt: null }, select: { id: true, url: true } })
-  if (!project) throw new SiteRunRefusal('Site not found.', 404)
+  if (!project) throw new SiteNotFound()
   const event = await prisma.siteLifecycleEvent.findFirst({
     where: { projectId: owner.projectId, name: RESEARCH_CONSENT_EVENT },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -55,7 +56,7 @@ export async function saveResearchConsent(owner: Owner, input: unknown): Promise
     const projects = await tx.$queryRaw<Array<{ id: string; url: string }>>`
       SELECT id, url FROM projects WHERE id = ${owner.projectId}
         AND "userId" = ${owner.userId} AND "deletedAt" IS NULL FOR UPDATE`
-    if (projects.length !== 1) throw new SiteRunRefusal('Site not found.', 404)
+    if (projects.length !== 1) throw new SiteNotFound()
     const previous = await tx.siteLifecycleEvent.findFirst({
       where: { projectId: owner.projectId, name: RESEARCH_CONSENT_EVENT },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

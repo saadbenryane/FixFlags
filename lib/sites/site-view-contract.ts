@@ -1,3 +1,4 @@
+import { CUSTOMER_OUTCOME_STATES } from './domain/outcome-states'
 import { uptimeSummarySchema, uptimeIncidentSchema } from '@/lib/uptime/contracts'
 import { accountViewSchema } from './accounts/contracts'
 import { z } from 'zod'
@@ -99,7 +100,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
     kind: z.enum(['GENERIC', 'CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY']), criticality: z.enum(['CRITICAL', 'IMPORTANT', 'INFORMATIONAL']),
     environment: text, enabled: z.boolean(), staleAfterMinutes: count, expectation: nullableText,
     bindings: z.array(z.object({ key: text, required: z.boolean(), scope: z.json(), mechanism: text, version: count })), coverage: z.json(),
-    state: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY', 'STALE']), summary: text, lastVerifiedAt: nullableTime,
+    state: z.enum(CUSTOMER_OUTCOME_STATES), summary: text, lastVerifiedAt: nullableTime,
     validUntil: nullableTime, flagId: nullableText, latestRunId: nullableText, running: z.boolean(),
   })),
   checkResults: z.array(siteCheckResultSchema).max(100).optional(), checkResultsNextCursor: nullableText.optional(),

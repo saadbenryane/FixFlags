@@ -15,6 +15,10 @@ export const SITE_CARD_AREAS = [
 
 export type SiteCardArea = (typeof SITE_CARD_AREAS)[number]
 
+/** The Pages card answers from the pages a Site discovered, not from check
+ * evidence, so it carries its own coverage path. */
+export const PAGES_CARD_AREA: SiteCardArea = 'site'
+
 export function siteCardArea(value: unknown): SiteCardArea | null {
   return typeof value === 'string' && SITE_CARD_AREAS.includes(value as SiteCardArea) ? value as SiteCardArea : null
 }
@@ -99,5 +103,5 @@ export function cardAreaForCheck(input: {
   if (impact === 'SEO' || impact === 'SHARING') return 'search'
   if (impact === 'ACCESSIBILITY') return 'accessibility'
 
-  return 'site'
+  return PAGES_CARD_AREA
 }

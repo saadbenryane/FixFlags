@@ -1,3 +1,4 @@
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 import { NextResponse } from 'next/server'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
@@ -32,7 +33,7 @@ async function readSite(request: Request, context: { params: Promise<{ siteId: s
   }
   const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated, site: access.decision.site,
     readScope: scope === 'settings' && access.decision.role === 'owner' ? 'settings' : 'overview' })
-  return home ? NextResponse.json(home) : apiError('Site not found', 404)
+  return home ? NextResponse.json(home) : apiError(SITE_ERRORS.notFound, 404)
 }
 
 export async function DELETE(

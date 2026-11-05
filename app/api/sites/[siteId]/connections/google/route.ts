@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { prisma } from '@/lib/db'
 import { requireSiteAccess } from '@/lib/sites/request-access'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 import {
   getGoogleConnectionAccess,
   buildGoogleAuthorizeUrl,
@@ -34,7 +35,7 @@ async function owner(siteId: string) {
     return { error: apiError('Claim this Site before connecting a provider.', 403) }
   }
   if (access.decision.site.userId !== session.user.id) {
-    return { error: apiError('Site not found', 404) }
+    return { error: apiError(SITE_ERRORS.notFound, 404) }
   }
   return {
     userId: session.user.id,

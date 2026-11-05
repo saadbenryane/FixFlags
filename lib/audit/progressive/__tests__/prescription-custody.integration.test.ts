@@ -46,6 +46,20 @@ run('prescription custody in PostgreSQL', () => {
     return { audit, task, owner, output }
   }
 
+  it('preserves both phase totals across concurrent settlement and replay', async () => {
+    const f = await fixture()
+    const metrics = { durationMs: 200, pagespeedCalls: 0, llmModel: 'gpt-6-luna', llmInputTokens: 100, llmOutputTokens: 20 }
+    await Promise.all([
+      persistAuditRunCost(f.audit.id, { ...metrics, phase: 'triage' }),
+      persistAuditRunCost(f.audit.id, { ...metrics, llmInputTokens: 50, llmOutputTokens: 10, phase: 'prescription' }),
+    ])
+    await persistAuditRunCost(f.audit.id, { ...metrics, phase: 'triage' })
+    const recorded = await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })
+    expect(recorded).toMatchObject({ triageInputTokens: 100, triageOutputTokens: 20,
+      prescriptionInputTokens: 50, prescriptionOutputTokens: 10, llmInputTokens: 150, llmOutputTokens: 30 })
+    expect(recorded.estimatedCostUsd).not.toBeNull()
+  })
+
   it.each(['COMPLETED', 'BLOCKED'] as const)('preserves an unrelated analysis failure when guidance settles as %s', async workState => {
     const f = await fixture()
     const failure = { failureCode: 'FINALIZATION_INCOMPLETE' as const, failureStage: 'finalizing',

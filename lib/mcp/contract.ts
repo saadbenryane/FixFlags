@@ -1,3 +1,4 @@
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { RateLimitError } from '@/lib/security/rate-limit'
@@ -63,6 +64,10 @@ export function mcpCoreError(error: unknown, defaults?: { code?: string; action?
     code = 'RATE_LIMITED'
     action = 'wait_and_retry'
     message = error.message
+  } else if (error instanceof SiteNotFound) {
+    code = 'NOT_FOUND'
+    action = 'check_identifier'
+    message = 'The requested Site, Outcome, run, or Flag was not found.'
   } else if (error instanceof ImprovementAttemptConflict) {
     code = error.code
     action = 'use_new_request_key'

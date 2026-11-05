@@ -1,3 +1,4 @@
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { Prisma, type SiteConnection, type SiteConnectionProvider } from '@prisma/client'
 import { getAuthBaseUrl } from '@/lib/auth/env'
@@ -410,7 +411,7 @@ export async function completeGoogleConnection(input: {
     where: { id: parsed.projectId, userId: parsed.userId, ...activeConnectionProject },
     select: { url: true, canonicalHost: true },
   })
-  if (!project) return { error: 'Site not found' }
+  if (!project) return { error: SITE_ERRORS.notFound }
   const client = input.client ?? liveGoogleClient()
   const tokens = await client.exchangeCode(input.code)
   const connection = await prisma.$transaction(async tx => {

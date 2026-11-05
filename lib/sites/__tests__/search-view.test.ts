@@ -8,6 +8,7 @@ import { applyCardEvidence } from '../application/card-evidence'
 import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { siteCoverageMaxAgeMs } from '../evidence-freshness'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
+import { searchEvidence } from '../search-evidence'
 
 const collectedAt = '2026-10-12T10:00:00.000Z'
 const now = new Date(collectedAt)
@@ -29,6 +30,14 @@ function receipt(overrides: Partial<SearchReceipt> = {}): SearchReceipt {
 }
 
 describe('Search evidence recovery', () => {
+  it('refuses retained Search receipts from unfinished or mismatched executions', () => {
+    const recorded = { targetKey: 'module:search', status: 'COMPLETED', auditId: 'a', pageUrl, detail: receipt() }
+    expect(searchEvidence([recorded])?.complete).toBe(true)
+    expect(searchEvidence([{ ...recorded, status: 'FAILED' }])).toBeNull()
+    expect(searchEvidence([{ ...recorded, status: 'RUNNING' }])).toBeNull()
+    expect(searchEvidence([{ ...recorded, auditId: 'foreign' }])).toBeNull()
+    expect(searchEvidence([{ ...recorded, pageUrl: 'https://example.com/another' }])).toBeNull()
+  })
   it('preserves the oldest current area observation through the full card projection', () => {
     const old = new Date(now.getTime() - 2 * 86400_000).toISOString()
     const search = card()

@@ -13,7 +13,7 @@ import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { BILLING_PAGE_COPY, HELP_CENTER } from '@/lib/marketing/copy-barrel'
+import { BILLING_PAGE_COPY, HELP_CENTER, MONITORING_COPY } from '@/lib/marketing/copy-barrel'
 import { billingAccountState } from '@/lib/billing/account-state'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
 import { helpHrefForSlug, helpHrefForSurface } from '@/lib/help/contextual'
@@ -112,9 +112,9 @@ export default async function BillingPage() {
           </Callout>
         )}
         <dl className="grid gap-3 pt-5 text-sm sm:grid-cols-3">
-          <div><dt className="text-xs text-muted-foreground">Websites</dt><dd className="mt-1 font-medium">{siteCount}{siteLimit !== null ? ` of ${siteLimit}` : ''}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">{copy.cadenceLabel}</dt><dd className="mt-1 font-medium">{betaAccess ? copy.betaCadence : isPaid ? 'Daily monitoring' : 'Weekly monitoring'}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Billing status</dt><dd className="mt-1 font-medium">{copy.state[accountState]}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{copy.websitesLabel}</dt><dd className="mt-1 font-medium">{siteCount}{siteLimit !== null ? ` of ${siteLimit}` : ''}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{copy.cadenceLabel}</dt><dd className="mt-1 font-medium">{betaAccess ? copy.betaCadence : MONITORING_COPY.heading(isPaid ? 'daily' : 'weekly')}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{copy.statusLabel}</dt><dd className="mt-1 font-medium">{copy.state[accountState]}</dd></div>
         </dl>
         {user.stripeCurrentPeriodEnd && isPaid && (
           <p className="text-xs text-muted-foreground">

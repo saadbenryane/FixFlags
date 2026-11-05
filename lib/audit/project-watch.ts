@@ -1,6 +1,7 @@
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { AdminActionError } from '@/lib/admin/errors'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { Prisma, type Audit } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -81,7 +82,7 @@ export async function processDueProjectWatches(
     if (!dependencies.onlyProjectId)
       throw new AdminActionError('Choose a Site for operator reconciliation.', 403, 'ADMIN_DOMAIN_SCOPE_DENIED')
     const project = await prisma.project.findFirst({ where: { id: dependencies.onlyProjectId, deletedAt: null }, select: { userId: true } })
-    if (!project) throw new SiteRunRefusal('Site not found', 404)
+    if (!project) throw new SiteNotFound()
     await assertAdminDomainActor(dependencies.operator, project.userId, dependencies.onlyProjectId)
     operatorOwnerId = project.userId
   }

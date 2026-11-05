@@ -5,6 +5,7 @@ import { systemClock, type Clock } from '@/lib/time/clock'
 import { fromStoredWatchInterval, toStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { watchScheduleSchema, type WatchInterval } from '../watch-schedule'
 import { outcomeFreshnessMinutes } from '../evidence-freshness'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 
 export type MonitoringChange = { interval: WatchInterval | null; everyMinutes?: number } | { action: 'pause' | 'resume' }
 type MonitoringResult = { ok: true; interval?: WatchInterval | null; everyMinutes?: number | null }
@@ -30,7 +31,7 @@ export async function setProjectWatch(input: { projectId: string; userId: string
     const owner = { id: input.projectId, userId: input.userId, deletedAt: null }
     const project = await tx.project.findFirst({ where: owner,
       select: { id: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true, watchPausedAt: true } })
-    if (!project) return { ok: false, error: 'Site not found' }
+    if (!project) return { ok: false, error: SITE_ERRORS.notFound, code: 'SITE_NOT_FOUND' }
     const previous = fromStoredWatchInterval(project.watchInterval)
     if (action && !previous)
       return { ok: false, error: 'Choose a monitoring schedule first.', code: 'SCHEDULE_REQUIRED' }

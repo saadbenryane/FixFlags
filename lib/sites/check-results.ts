@@ -1,3 +1,4 @@
+import { PAGES_CARD_AREA } from './card-areas'
 import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
 import type { CheckAssertion, CheckObservationReason } from '@/lib/audit/checks/assertion'
@@ -23,7 +24,7 @@ export function projectCheckResults(auditId: string, receipts: Array<{
     }
     const descriptor = CHECK_MODULES[receipt.targetKey.replace(/^module:/, '')]
     if (!receipt.targetKey.startsWith('module:')) return []
-    if (!descriptor) return [{ id: receipt.id, auditId, area: 'site',
+    if (!descriptor) return [{ id: receipt.id, auditId, area: PAGES_CARD_AREA,
       name: receipt.targetKey.slice('module:'.length), kind: 'execution', status: 'unknown',
       pageUrl: receipt.pageUrl, checkedAt: receipt.updatedAt.toISOString(), historical: true,
       limitation: SITE_ACTION_COPY.historicalCheck,

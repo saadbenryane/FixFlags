@@ -8,6 +8,7 @@ import {
 } from '@/lib/sites/application/settings-commands'
 import { categoryAreaSchema } from '@/lib/sites/domain/execution-spec'
 import { ADMIN_COPY } from '@/lib/marketing/copy/admin'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 import { AdminActionError } from './errors'
 import type { AdminAction, AdminActionRequest } from './contracts'
 import { revisionHash } from './security'
@@ -189,7 +190,7 @@ export async function resolveAdminTarget(
       },
     })
     if (!site || (site.deletedAt && action !== 'SITE_ACCOUNT_CLEANUP'))
-      throw new AdminActionError('Site not found.', 404, 'NOT_FOUND')
+      throw new AdminActionError(SITE_ERRORS.notFound, 404, 'NOT_FOUND')
     ownerId = site.userId
     targetType = 'SITE'
     label = site.name

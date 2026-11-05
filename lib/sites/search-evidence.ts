@@ -1,5 +1,5 @@
 import { SEARCH_DEFINITIONS } from '@/lib/audit/search/definitions'
-import { searchReceiptSchema, type SearchObservation, type SearchReceipt } from '@/lib/audit/search/contracts'
+import { readRecordedSearchReceipt, type RecordedSearchExecution, type SearchObservation, type SearchReceipt } from '@/lib/audit/search/contracts'
 
 /** A missing alternate source stays on its own observation. It does not erase
  * the same check once another source recorded a result. */
@@ -7,11 +7,11 @@ const ALTERNATE_SOURCE_UNAVAILABLE = new Set(['document_truncated', 'required_ev
 
 /** Recorded local responsibilities define Search completeness. Provider evidence
  * enriches this scope without becoming a prerequisite for public checks. */
-export function searchEvidence(executions: Array<{ targetKey: string; detail?: unknown }>) {
+export function searchEvidence(executions: RecordedSearchExecution[]) {
   const localDefinitions = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
   const entries = executions.filter(item => item.targetKey === 'module:search' || localDefinitions.some(definition => item.targetKey === 'module:search-' + definition.evaluator)).flatMap(item => {
-    const parsed = searchReceiptSchema.safeParse(item.detail)
-    return parsed.success ? [{ targetKey: item.targetKey, receipt: parsed.data }] : []
+    const receipt = readRecordedSearchReceipt(item)
+    return receipt ? [{ targetKey: item.targetKey, receipt }] : []
   })
   const receipts = entries.map(item => item.receipt)
   if (!receipts.length) return null

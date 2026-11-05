@@ -1,6 +1,6 @@
-import { executionWrite } from '@/lib/audit/execution-ownership'
-import { Prisma } from '@prisma/client'
-import { INITIAL_ANALYSIS_PROVIDER_PHASES, sumAnalysisProviderResponses } from '@/lib/audit/provider-usage'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
+import { CostPricingBasis, Prisma } from '@prisma/client'
+import { INITIAL_ANALYSIS_PROVIDER_PHASES, sumProviderPhases } from '@/lib/audit/provider-usage'
 import { prisma } from '@/lib/db'
 import { llmUsageSchema, type LlmUsage } from '@/lib/audit/provider-request'
 
@@ -142,164 +142,168 @@ export function computeInfraOverheadUsd(pagespeedCalls: number, durationMs: numb
   return pagespeedCalls * PAGESPEED_COST_PER_CALL + (durationMs / 1000) * BROWSER_COST_PER_SECOND
 }
 
+type Measurement = LlmUsage
+
+/** One phase's recorded provider usage together with the price of that usage. */
+type PhaseSpend = {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  model: string | null
+  costUsd: number | null
+}
+
+/** Price usage from per-model measurements. A run that used more than one
+ * model cannot be priced from a joined model string. */
+function priceMeasurements(measurements: readonly Measurement[]): number | null {
+  const costs = measurements.map(estimateLlmMeasurementCostUsd)
+  return costs.some(cost => cost === null) ? null : costs.reduce<number>((sum, cost) => sum + cost!, 0)
+}
+
+function measurementTotals(measurements: readonly Measurement[]) {
+  return {
+    inputTokens: measurements.reduce((sum, item) => sum + item.inputTokens, 0),
+    outputTokens: measurements.reduce((sum, item) => sum + item.outputTokens, 0),
+    cacheReadTokens: measurements.reduce((sum, item) => sum + (item.cacheReadTokens ?? 0), 0),
+    cacheWriteTokens: measurements.reduce((sum, item) => sum + (item.cacheWriteTokens ?? 0), 0),
+    model: [...new Set(measurements.map(item => item.model).filter(Boolean))].join(',') || null,
+  }
+}
+
+/** The price a phase recorded. A null price means the consumption of that
+ * phase is unknown, which is different from a phase that cost nothing. */
+function recordedCost(value: Prisma.Decimal | null, basis: CostPricingBasis): number | null {
+  return value == null || basis !== 'CONFIGURED_ESTIMATE' && basis !== 'UNPRICED' ? null : value.toNumber()
+}
+
+/** The usage a caller measured outside the provider response log. */
+function callerSpend(metrics: AuditRunCostMetrics): PhaseSpend {
+  const complete = metrics.llmUsageComplete !== false
+  if (metrics.llmMeasurements) {
+    return { ...measurementTotals(metrics.llmMeasurements),
+      costUsd: complete ? priceMeasurements(metrics.llmMeasurements) : null }
+  }
+  return {
+    inputTokens: metrics.llmInputTokens,
+    outputTokens: metrics.llmOutputTokens,
+    cacheReadTokens: metrics.llmCacheReadTokens ?? 0,
+    cacheWriteTokens: metrics.llmCacheWriteTokens ?? 0,
+    model: metrics.llmModel || null,
+    costUsd: complete ? estimateLlmCostUsd(metrics.llmModel, metrics.llmInputTokens, metrics.llmOutputTokens,
+      metrics.llmCacheReadTokens ?? 0, metrics.llmCacheWriteTokens ?? 0) : null,
+  }
+}
+
+/** The provider responses an audit recorded for its initial analysis. A
+ * recorded attempt without its response leaves the consumption unknown
+ * rather than zero, so the phase stays unpriced. */
+async function readLoggedInitialAnalysis(auditId: string): Promise<PhaseSpend | null> {
+  const events = await prisma.auditPipelineEvent.findMany({ where: { auditId,
+    event: { in: INITIAL_ANALYSIS_PROVIDER_PHASES.flatMap(name => [`${name}_provider_attempt`, `${name}_provider_response`]) } },
+    select: { event: true, detail: true } })
+  if (!events.length) return null
+  const usage = sumProviderPhases(events, INITIAL_ANALYSIS_PROVIDER_PHASES)
+  return { ...measurementTotals(usage.measurements), model: usage.model || null,
+    costUsd: usage.complete ? priceMeasurements(usage.measurements) : null }
+}
+
 export async function persistAuditRunCost(
   auditId: string,
   metrics: AuditRunCostMetrics,
 ): Promise<void> {
   const phase = metrics.phase ?? 'full'
-  if (phase !== 'prescription') {
-    const phases = phase === 'triage' ? INITIAL_ANALYSIS_PROVIDER_PHASES : INITIAL_ANALYSIS_PROVIDER_PHASES.filter(name => name !== 'triage')
-    const events = await prisma.auditPipelineEvent.findMany({ where: { auditId,
-      event: { in: phases.flatMap(name => [`${name}_provider_attempt`, `${name}_provider_response`]) } }, select: { event: true, detail: true } })
-    if (events.length) {
-      const usage = sumAnalysisProviderResponses(events)
-      const retained = phase === 'full' ? metrics.llmMeasurements ?? [{ model: metrics.llmModel,
-        inputTokens: metrics.llmInputTokens, outputTokens: metrics.llmOutputTokens,
-        cacheReadTokens: metrics.llmCacheReadTokens ?? 0, cacheWriteTokens: metrics.llmCacheWriteTokens ?? 0 }] : []
-      metrics = { ...metrics, llmInputTokens: usage.inputTokens, llmOutputTokens: usage.outputTokens,
-        llmModel: usage.model, llmCacheReadTokens: usage.cacheReadTokens, llmCacheWriteTokens: usage.cacheWriteTokens,
-        llmUsageComplete: usage.complete && metrics.llmUsageComplete !== false, llmMeasurements: [...retained, ...usage.measurements] }
-      if (retained.length) metrics = { ...metrics,
-        llmInputTokens: metrics.llmInputTokens + retained.reduce((sum, item) => sum + item.inputTokens, 0),
-        llmOutputTokens: metrics.llmOutputTokens + retained.reduce((sum, item) => sum + item.outputTokens, 0),
-        llmCacheReadTokens: (metrics.llmCacheReadTokens ?? 0) + retained.reduce((sum, item) => sum + (item.cacheReadTokens ?? 0), 0),
-        llmCacheWriteTokens: (metrics.llmCacheWriteTokens ?? 0) + retained.reduce((sum, item) => sum + (item.cacheWriteTokens ?? 0), 0),
-        llmModel: [...new Set([...retained.map(item => item.model).filter(Boolean), usage.model].filter(Boolean))].join(',') }
-    }
-  }
   const admission = await prisma.audit.findUniqueOrThrow({
     where: { id: auditId },
     select: { planAtAdmission: true },
   })
-  const aggregateLlmCostUsd = estimateLlmCostUsd(
-    metrics.llmModel,
-    metrics.llmInputTokens,
-    metrics.llmOutputTokens,
-    metrics.llmCacheReadTokens ?? 0,
-    metrics.llmCacheWriteTokens ?? 0,
-  )
-  const measuredCosts = metrics.llmMeasurements?.map(estimateLlmMeasurementCostUsd)
-  const llmCostUsd = metrics.llmUsageComplete === false ? null : measuredCosts
-    ? measuredCosts.some(cost => cost === null) ? null : measuredCosts.reduce<number>((sum, cost) => sum + cost!, 0)
-    : aggregateLlmCostUsd
-  const infraOverheadUsd = computeInfraOverheadUsd(metrics.pagespeedCalls, metrics.durationMs)
+  // The provider response log is the authoritative record of what an audit
+  // spent. The initial analysis owns the triage, journey planner and journey
+  // evaluator responses; the prescription phase owns the repair guidance it
+  // produced. Each phase writes only its own columns and recomputes the
+  // cumulative total from them, so a phase can never erase the spend another
+  // phase already recorded.
+  const logged = await readLoggedInitialAnalysis(auditId)
+  await executionTransaction(async tx => {
+    // The Audit lock serializes phase totals for worker and post-settlement writers.
+    await tx.$queryRaw`SELECT id FROM audits WHERE id = ${auditId} FOR UPDATE`
+    const existing = await tx.auditRunCost.findUnique({ where: { auditId } })
+    const prescription = phase === 'prescription'
+    const own = prescription
+      ? callerSpend(metrics)
+      : (logged
+          ? { ...logged, costUsd: metrics.llmUsageComplete === false ? null : logged.costUsd }
+          : callerSpend(metrics))
+    const prior = prescription
+      ? (existing
+          ? { inputTokens: existing.triageInputTokens, outputTokens: existing.triageOutputTokens,
+              model: existing.triageModel, costUsd: recordedCost(existing.triageCostUsd, existing.pricingBasis) }
+          : (logged ?? { inputTokens: 0, outputTokens: 0, model: null, costUsd: 0 }))
+      : (existing
+          ? { inputTokens: existing.prescriptionInputTokens, outputTokens: existing.prescriptionOutputTokens,
+              model: existing.prescriptionModel, costUsd: recordedCost(existing.prescriptionCostUsd, existing.pricingBasis) }
+          : { inputTokens: 0, outputTokens: 0, model: null, costUsd: 0 })
 
-  if (phase === 'triage') {
-    const estimatedCostUsd = llmCostUsd === null ? null : llmCostUsd + infraOverheadUsd
-    await executionWrite((tx) =>
-      tx.auditRunCost.upsert({
+    const totalLlmCost = prior.costUsd === null || own.costUsd === null ? null : prior.costUsd + own.costUsd
+    const durationMs = Math.max(existing?.durationMs ?? 0, metrics.durationMs)
+    const pagespeedCalls = Math.max(existing?.pagespeedCalls ?? 0, metrics.pagespeedCalls)
+    const estimatedCostUsd = totalLlmCost === null ? null : totalLlmCost + computeInfraOverheadUsd(pagespeedCalls, durationMs)
+    const cumulative = {
+      durationMs,
+      llmInputTokens: prior.inputTokens + own.inputTokens,
+      llmOutputTokens: prior.outputTokens + own.outputTokens,
+      llmModel: [prior.model, own.model].filter(Boolean).join(',') || null,
+      llmCostUsd: decimalCost(totalLlmCost),
+      pagespeedCalls,
+      estimatedCostUsd: decimalCost(estimatedCostUsd),
+      pricingBasis: (estimatedCostUsd === null ? 'UNPRICED' : 'CONFIGURED_ESTIMATE') as CostPricingBasis,
+    }
+    const phaseColumns = prescription
+      ? { prescriptionInputTokens: own.inputTokens, prescriptionOutputTokens: own.outputTokens,
+          prescriptionModel: own.model, prescriptionCostUsd: decimalCost(own.costUsd) }
+      : { triageInputTokens: own.inputTokens, triageOutputTokens: own.outputTokens,
+          triageModel: own.model, triageCostUsd: decimalCost(own.costUsd) }
+
+    if (prescription) {
+      // A prescription can be settled without a recorded triage. Its own spend
+      // is still recorded, and the initial analysis the log already holds is
+      // adopted so that no earlier spend is lost.
+      if (existing) {
+        await tx.auditRunCost.update({
+          where: { auditId },
+          data: { ...cumulative, ...phaseColumns },
+        })
+      } else {
+        await tx.auditRunCost.create({
+          data: {
+            auditId,
+            planAtRun: admission.planAtAdmission,
+            ...cumulative,
+            triageInputTokens: prior.inputTokens, triageOutputTokens: prior.outputTokens,
+            triageModel: prior.model, triageCostUsd: decimalCost(prior.costUsd),
+            ...phaseColumns,
+          },
+        })
+      }
+      return
+    }
+
+    await tx.auditRunCost.upsert({
         where: { auditId },
         create: {
           auditId,
           planAtRun: admission.planAtAdmission,
-          durationMs: metrics.durationMs,
-          llmInputTokens: metrics.llmInputTokens,
-          llmOutputTokens: metrics.llmOutputTokens,
-          llmModel: metrics.llmModel,
-          llmCostUsd: decimalCost(llmCostUsd),
-          pagespeedCalls: metrics.pagespeedCalls,
-          estimatedCostUsd: decimalCost(estimatedCostUsd),
-          pricingBasis: estimatedCostUsd === null ? 'UNPRICED' : 'CONFIGURED_ESTIMATE',
+          ...cumulative,
           ...coverageCostFields(metrics),
-          triageInputTokens: metrics.llmInputTokens,
-          triageOutputTokens: metrics.llmOutputTokens,
-          triageModel: metrics.llmModel,
-          triageCostUsd: decimalCost(llmCostUsd),
+          ...phaseColumns,
         },
         update: {
-          durationMs: metrics.durationMs,
-          llmInputTokens: metrics.llmInputTokens,
-          llmOutputTokens: metrics.llmOutputTokens,
-          llmModel: metrics.llmModel,
-          llmCostUsd: decimalCost(llmCostUsd),
-          pagespeedCalls: metrics.pagespeedCalls,
-          estimatedCostUsd: decimalCost(estimatedCostUsd),
-          pricingBasis: estimatedCostUsd === null ? 'UNPRICED' : 'CONFIGURED_ESTIMATE',
+          ...cumulative,
           ...coverageCostFields(metrics),
-          triageInputTokens: metrics.llmInputTokens,
-          triageOutputTokens: metrics.llmOutputTokens,
-          triageModel: metrics.llmModel,
-          triageCostUsd: decimalCost(llmCostUsd),
+          ...phaseColumns,
         },
-      }),
-    )
-    return
-  }
-
-  if (phase === 'prescription') {
-    const existing = await prisma.auditRunCost.findUnique({ where: { auditId } })
-    if (existing) {
-      const triageInput = existing.triageInputTokens
-      const triageOutput = existing.triageOutputTokens
-      const triageCost =
-        existing.pricingBasis === 'CONFIGURED_ESTIMATE'
-          ? (existing.triageCostUsd?.toNumber() ?? null)
-          : null
-      const totalInput = triageInput + metrics.llmInputTokens
-      const totalOutput = triageOutput + metrics.llmOutputTokens
-      const prescriptionCost = llmCostUsd
-      const totalLlmCost =
-        triageCost === null || prescriptionCost === null ? null : triageCost + prescriptionCost
-      const durationMs = Math.max(existing.durationMs, metrics.durationMs)
-      const pagespeedCalls = Math.max(existing.pagespeedCalls, metrics.pagespeedCalls)
-      const estimatedCostUsd =
-        totalLlmCost === null
-          ? null
-          : totalLlmCost + computeInfraOverheadUsd(pagespeedCalls, durationMs)
-
-      await executionWrite((tx) =>
-        tx.auditRunCost.update({
-          where: { auditId },
-          data: {
-            durationMs,
-            llmInputTokens: totalInput,
-            llmOutputTokens: totalOutput,
-            llmModel: [existing.triageModel, metrics.llmModel].filter(Boolean).join(','),
-            llmCostUsd: decimalCost(totalLlmCost),
-            pagespeedCalls,
-            estimatedCostUsd: decimalCost(estimatedCostUsd),
-            pricingBasis: estimatedCostUsd === null ? 'UNPRICED' : 'CONFIGURED_ESTIMATE',
-            prescriptionInputTokens: metrics.llmInputTokens,
-            prescriptionOutputTokens: metrics.llmOutputTokens,
-            prescriptionModel: metrics.llmModel,
-            prescriptionCostUsd: decimalCost(prescriptionCost),
-          },
-        }),
-      )
-    }
-    return
-  }
-
-  const estimatedCostUsd = llmCostUsd === null ? null : llmCostUsd + infraOverheadUsd
-  await executionWrite((tx) =>
-    tx.auditRunCost.upsert({
-      where: { auditId },
-      create: {
-        auditId,
-        planAtRun: admission.planAtAdmission,
-        durationMs: metrics.durationMs,
-        llmInputTokens: metrics.llmInputTokens,
-        llmOutputTokens: metrics.llmOutputTokens,
-        llmModel: metrics.llmModel,
-        llmCostUsd: decimalCost(llmCostUsd),
-        pagespeedCalls: metrics.pagespeedCalls,
-        estimatedCostUsd: decimalCost(estimatedCostUsd),
-        pricingBasis: estimatedCostUsd === null ? 'UNPRICED' : 'CONFIGURED_ESTIMATE',
-        ...coverageCostFields(metrics),
-      },
-      update: {
-        durationMs: metrics.durationMs,
-        llmInputTokens: metrics.llmInputTokens,
-        llmOutputTokens: metrics.llmOutputTokens,
-        llmModel: metrics.llmModel,
-        llmCostUsd: decimalCost(llmCostUsd),
-        pagespeedCalls: metrics.pagespeedCalls,
-        estimatedCostUsd: decimalCost(estimatedCostUsd),
-        pricingBasis: estimatedCostUsd === null ? 'UNPRICED' : 'CONFIGURED_ESTIMATE',
-        ...coverageCostFields(metrics),
-      },
-    }),
-  )
+      })
+  })
 }
 
 export function formatUsd(amount: number | Prisma.Decimal | null | undefined): string {

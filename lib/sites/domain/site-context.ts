@@ -1,3 +1,4 @@
+import { SiteNotFound } from './site-errors'
 import type { SiteRecord } from '../types'
 
 export type SiteContext =
@@ -5,6 +6,6 @@ export type SiteContext =
   | { role: 'provisional_session'; site: SiteRecord; userId: null }
 
 export function ownedSiteContext(site: SiteRecord, userId: string): SiteContext & { role: 'owner' } {
-  if (!site.projectId || site.userId !== userId) throw new Error('Site not found')
+  if (!site.projectId || site.userId !== userId) throw new SiteNotFound()
   return { role: 'owner', site: { ...site, projectId: site.projectId, userId }, userId }
 }

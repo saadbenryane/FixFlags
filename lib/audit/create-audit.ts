@@ -1,3 +1,4 @@
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { loadRunRequestByKey } from '@/lib/sites/application/run-request-keys'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
@@ -326,7 +327,7 @@ export async function createAndEnqueueAudit(
             throw staleScheduledClaim()
           assertScheduledClaim(ownedProject, options.scheduledClaim)
         }
-        if (!ownedProject) throw new ParentAuditError('Site not found', 404)
+        if (!ownedProject) throw new SiteNotFound()
         if (!cleanup && canonicalProductHost(url) !== (ownedProject.canonicalHost ?? canonicalProductHost(ownedProject.url)))
           throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
         projectId = ownedProject.id
@@ -345,7 +346,7 @@ export async function createAndEnqueueAudit(
           throw error
         }
       }
-      if(cleanup && !options.runRequestAdmission && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new ParentAuditError('Cleanup Site not found.',404)
+      if(cleanup && !options.runRequestAdmission && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new SiteNotFound()
       const user = await rollUserUsagePeriod(tx, userId)
       if (!user) throw new Error('User not found')
       if (options.operator && projectId) await assertAdminDomainActor(options.operator, userId, projectId, tx)

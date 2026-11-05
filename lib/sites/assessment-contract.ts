@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import { SITE_CARD_AREAS } from './card-areas'
+import { ASSESSMENT_RESULT_STATES, CUSTOMER_OUTCOME_STATES } from './domain/outcome-states'
 
-const area = z.enum(['uptime', 'site', 'security', 'search', 'performance', 'conversion', 'tracking', 'accessibility'])
+const area = z.enum(SITE_CARD_AREAS)
 export const siteAssessmentSchema = z.object({
-  result: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY', 'STALE', 'FAILED']).nullable(),
+  result: z.enum(ASSESSMENT_RESULT_STATES).nullable(),
   completeness: z.enum(['FULL', 'PARTIAL', 'PENDING']),
   requiredAreas: z.array(area),
   gaps: z.array(z.object({ area: area.nullable(), outcomeId: z.string().optional(),
@@ -18,7 +20,7 @@ export const recordedSiteAssessmentSchema = z.object({
   version: z.literal(1), specHash: z.string().regex(/^[a-f0-9]{64}$/),
   customerFlags: z.array(z.object({ group: z.enum(['newIssues', 'unchanged', 'regressed', 'inconclusive']), index: z.number().int().nonnegative() }).strict()),
   assessment: siteAssessmentSchema.extend({
-    result: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY', 'STALE']),
+    result: z.enum(CUSTOMER_OUTCOME_STATES),
     completeness: z.enum(['FULL', 'PARTIAL']), checkedAt: z.string().datetime(),
   }),
 }).strict().superRefine((recorded, context) => {

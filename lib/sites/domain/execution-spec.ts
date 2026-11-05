@@ -2,7 +2,10 @@ import { z } from 'zod'
 import { accountIntentSchema } from '../accounts/contracts'
 import { repairSourcesSchema } from './repair-source'
 
-export const categoryAreaSchema = z.enum(['search', 'performance', 'conversion', 'security', 'tracking', 'accessibility'])
+/** The areas a category check can cover. A category check inspects page
+ * content, so it never covers the Pages card or site reachability. */
+export const CATEGORY_AREAS = ['search', 'performance', 'conversion', 'security', 'tracking', 'accessibility'] as const
+export const categoryAreaSchema = z.enum(CATEGORY_AREAS)
 export type CategoryArea = z.infer<typeof categoryAreaSchema>
 
 const jsonValue: z.ZodType<unknown> = z.lazy(() => z.union([z.string(), z.number().finite(), z.boolean(), z.null(), z.array(jsonValue), z.record(z.string(), jsonValue)]))
