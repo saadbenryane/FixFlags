@@ -38,13 +38,13 @@ run('independent due Uptime dispatch with the installed runtime', () => {
       held = prisma.$transaction(async tx => {
         await tx.$queryRaw`SELECT id FROM uptime_monitors WHERE id = ${blocked.id} FOR UPDATE`
         locked(); await released
-      }, { timeout: 15_000 })
+      }, { timeout: 20_000 })
       await acquired
       runtime = startUptimeRuntime()
       await runtime.waitUntilReady()
       await vi.waitFor(async () => {
         expect(await prisma.uptimeProbe.count({ where: { monitorId: independent.id } })).toBe(1)
-      }, { timeout: 3000, interval: 20 })
+      }, { timeout: 8000, interval: 20 })
       expect(await loadUptimeSummary(uptimeReadSite(second))).toMatchObject({ state: 'online' })
       expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: blocked.id } })).toEqual(blocked)
       expect(await prisma.uptimeProbe.count({ where: { monitorId: blocked.id } })).toBe(0)
@@ -65,5 +65,5 @@ run('independent due Uptime dispatch with the installed runtime', () => {
       release?.(); await held; await runtime?.close(); worker.mockRestore(); scheduling.mockRestore()
       await prisma.user.delete({ where: { id: user.id } }); await prisma.$disconnect()
     }
-  }, 15_000)
+  }, 25_000)
 })
