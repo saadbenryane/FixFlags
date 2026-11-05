@@ -6,6 +6,7 @@ import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domai
 import { SiteRunRefusal } from './run-refusal'
 
 type RequestKey = { projectId: string; source: RunRequestSource; idempotencyKey: string }
+type KeyOwner = { projectId: string; userId: string; operator?: AdminDomainActor; cleanup: boolean }
 const replayInclude = { selections: { select: { outcomeId: true } },
   audit: { select: { projectId: true, status: true } } } satisfies Prisma.RunRequestInclude
 type RecordedRun = Prisma.RunRequestGetPayload<{ include: typeof replayInclude }> & { keyRequestedByUserId: string | null }
@@ -18,10 +19,7 @@ export async function loadRunRequestByKey(key: RequestKey, db: Pick<Prisma.Trans
   return binding ? { ...binding.runRequest, keyRequestedByUserId: binding.requestedByUserId } : null
 }
 
-/** Joining work adds only a replay key. Its request, execution, charging and
- * result retain their original owners and immutable admission snapshots. */
-export async function retainSharedRunKey(input: RequestKey & { userId: string; runRequestId: string;
-  operator?: AdminDomainActor; cleanup: boolean }, accepts: (run: RecordedRun, exactReplay: boolean) => boolean): Promise<RecordedRun> {
+async function withOwnedKeySite<T>(input: KeyOwner, operation: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   const cleanup = Boolean(input.operator && input.cleanup)
   return productTransaction(async tx => {
     if (cleanup) {
@@ -33,9 +31,30 @@ export async function retainSharedRunKey(input: RequestKey & { userId: string; r
         AND (${cleanup} OR "deletedAt" IS NULL) FOR UPDATE`
     if (!site.length) throw new SiteRunRefusal('Site not found', 404)
     if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId, tx)
+    return operation(tx)
+  })
+}
+
+/** Reading an accepted receipt does not authorize another execution. Recheck
+ * the live owner and original key actor under the same boundary as key joins. */
+export async function loadOwnedRunRequestByKey(input: RequestKey & KeyOwner): Promise<RecordedRun | null> {
+  return withOwnedKeySite(input, async tx => {
+    const existing = await loadRunRequestByKey(input, tx)
+    if (existing && existing.keyRequestedByUserId !== (input.operator?.actorId ?? input.userId))
+      throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
+    return existing
+  })
+}
+
+/** Joining work adds only a replay key. Its request, execution, charging and
+ * result retain their original owners and immutable admission snapshots. */
+export async function retainSharedRunKey(input: RequestKey & KeyOwner & { runRequestId: string },
+  accepts: (run: RecordedRun, exactReplay: boolean) => boolean): Promise<RecordedRun> {
+  return withOwnedKeySite(input, async tx => {
     const existing = await loadRunRequestByKey(input, tx)
     if (existing) {
-      if (!accepts(existing, true)) throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
+      if (existing.keyRequestedByUserId !== (input.operator?.actorId ?? input.userId) || !accepts(existing, true))
+        throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
       return existing
     }
     const run = await tx.runRequest.findFirst({ where: { id: input.runRequestId, projectId: input.projectId }, include: replayInclude })
@@ -46,7 +65,8 @@ export async function retainSharedRunKey(input: RequestKey & { userId: string; r
       runRequestId: candidate.id, requestedByUserId: candidate.keyRequestedByUserId }], skipDuplicates: true })
     if (created.count === 1) return candidate
     const winner = await loadRunRequestByKey(input, tx)
-    if (!winner || !accepts(winner, true)) throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
+    if (!winner || winner.keyRequestedByUserId !== (input.operator?.actorId ?? input.userId) || !accepts(winner, true))
+      throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
     return winner
   })
 }

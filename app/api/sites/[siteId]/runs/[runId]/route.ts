@@ -15,8 +15,8 @@ export async function GET(
     const { siteId, runId } = await context.params
     const access = await requireSiteAccess(siteId)
     if (!access.ok) return apiError(access.message, access.status)
-    if (access.decision.role !== 'owner') return apiError('Run not found', 404)
-    const run = await getOwnedRun(session.user.id, runId)
+    if (access.decision.role !== 'owner' || !access.decision.site.projectId) return apiError('Run not found', 404)
+    const run = await getOwnedRun(session.user.id, runId, access.decision.site.projectId)
     if (!run) return apiError('Run not found', 404)
     return NextResponse.json(run)
   } catch (error) {

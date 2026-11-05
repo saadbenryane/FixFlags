@@ -9,10 +9,11 @@ const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
   resolveAuditAccess: vi.fn(),
   loadTechnologyProfile: vi.fn(),
+  queryRaw: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
-  prisma: { audit: { findUnique: mocks.findUnique, findFirst: mocks.findFirst } },
+  prisma: { audit: { findUnique: mocks.findUnique, findFirst: mocks.findFirst }, $queryRaw: mocks.queryRaw },
 }))
 
 vi.mock('@/lib/auth', () => ({
@@ -52,6 +53,7 @@ function resetMocks(): void {
   mocks.resolveAuditAccess.mockResolvedValue('owner')
   mocks.loadTechnologyProfile.mockResolvedValue({})
   mocks.findFirst.mockResolvedValue(null)
+  mocks.queryRaw.mockResolvedValue([])
 }
 
 describe('stripInternalAuditFields', () => {
@@ -329,6 +331,24 @@ describe('getGatedAuditForRequest', () => {
 
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
+
+  it('reports progressive PageSpeed observations from their own task ledger without borrowing another page', async () => {
+    const url = 'https://example.com/'
+    mocks.findUnique.mockResolvedValue({ ...fullRow, url, executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE',
+      targetUrl: url, environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
+      pages: [{ url, performanceData: null }, { url: url + 'pricing', performanceData: null }] })
+    const lab = { score: 90, lcp: 1200, cls: 0.01, fcp: 800, tbt: 30 }
+    mocks.queryRaw.mockResolvedValue(['desktop', 'mobile'].map(device => ({ pageUrl: url, device, observation: { ...lab, strategy: device } })))
+    const result = await getGatedAuditForRequest('a1')
+    assert.equal(result.kind, 'ok')
+    if (result.kind === 'ok') assert.deepEqual(result.audit.pageSpeedCoverage, { status: 'partial', observedRoutes: 1, totalRoutes: 2,
+      missingRoutes: [{ url: url + 'pricing', missing: ['desktop', 'mobile'] }] })
+    assert.equal(mocks.queryRaw.mock.calls.length, 1)
+    mocks.resolveAuditAccess.mockResolvedValue('denied')
+    mocks.queryRaw.mockClear()
+    assert.equal((await getGatedAuditForRequest('a1')).kind, 'forbidden')
+    assert.equal(mocks.queryRaw.mock.calls.length, 0)
+  })
 
   it('returns not_found for unknown audits', async () => {
     mocks.findUnique.mockResolvedValue(null)

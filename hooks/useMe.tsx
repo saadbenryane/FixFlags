@@ -14,34 +14,10 @@ import { toast } from 'sonner'
 import { AUTH } from '@/lib/marketing/copy/auth'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
+import { meClaimResponseSchema, meResponseSchema, type MeUser } from '@/lib/auth/me-contract'
 
-export interface MeUser {
-  id: string
-  email: string
-  name?: string | null
-  plan: string
-  role: string
-  isAdmin: boolean
-  checks: {
-    used: number
-    pending: number
-    limit: number | null
-    isUnlimited: boolean
-    purchasedCredits?: number
-    totalAvailable?: number | null
-    remaining: number | null
-    periodStart: string
-    periodEnd: string
-  }
-  entitlements: {
-    canExportSummary: boolean
-    canAccessPaidFeatures: boolean
-    canMonitor: boolean
-    canWatchProduct: boolean
-  }
-  vibecodingLevel: string | null
-  preferredTools: string[]
-}
+export type { MeUser } from '@/lib/auth/me-contract'
 
 /**
  * Raised when a claim is refused because the plan already covers as many
@@ -147,10 +123,10 @@ export function MeProvider({
     startTransition(() => {
       setState((current) => revision === sessionRevision.current ? { ...current, isLoading: true, error: null } : current)
     })
-    requestRef.current = fetch('/api/me')
-      .then(async (response) => {
+    requestRef.current = fetchJsonWithDeadline('/api/me', force ? { cache: 'no-store' } : {})
+      .then(({ response, body }) => {
         if (!response.ok) throw new Error(AUTH.me.loadError)
-        const data = await response.json()
+        const data = meResponseSchema.parse(body)
         if (revision !== sessionRevision.current) return null
         settledRef.current = true
         startTransition(() => {
@@ -163,12 +139,11 @@ export function MeProvider({
         })
         return data
       })
-      .catch((error) => {
+      .catch(() => {
         if (revision !== sessionRevision.current) return null
-        const message = error instanceof Error ? error.message : AUTH.me.loadError
         settledRef.current = true
         startTransition(() => {
-          setState((current) => revision === sessionRevision.current ? { ...current, isLoading: false, error: message } : current)
+          setState((current) => revision === sessionRevision.current ? { ...current, isLoading: false, error: AUTH.me.loadError } : current)
         })
         return null
       })
@@ -194,17 +169,17 @@ export function MeProvider({
     setState((current) => ({ ...current, isLoading: true, error: null }))
     const pending = Promise.resolve().then(async () => {
       try {
-        const response = await fetch('/api/me/claim', { method: 'POST' })
+        const { response, body } = await fetchJsonWithDeadline('/api/me/claim', { method: 'POST' })
         if (!response.ok) {
           // A refused claim is not a transient fault, so the body is read before
           // falling back. The plan limit keeps its own signal for the UI.
-          const upgrade = claimUpgradeFrom(await parseApiErrorResponse(response), response.status)
+          const upgrade = claimUpgradeFrom(await parseApiErrorResponse(response, body), response.status)
           publishClaimUpgrade(upgrade)
           setState((current) => ({ ...current, isLoading: false, error: AUTH.me.claimError }))
           if (options?.showToast) toast.error(AUTH.me.claimFailure)
           return null
         }
-        const data = await response.json()
+        const data = meClaimResponseSchema.parse(body)
         settledRef.current = true
         publishClaimUpgrade(null)
         setState({
@@ -218,7 +193,8 @@ export function MeProvider({
           toast.success(AUTH.me.claimSuccess(data.claimedCount))
         }
         if (data.claimedCount > 0) {
-          trackEvent('audits_claimed', { claimed_count: data.claimedCount })
+          try { trackEvent('audits_claimed', { claimed_count: data.claimedCount }) }
+          catch { /* Optional analytics cannot turn an accepted claim into a failure. */ }
         }
         return data
       } catch {

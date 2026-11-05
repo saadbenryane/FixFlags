@@ -4,28 +4,40 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy-barrel'
 import { useSiteAction } from '@/hooks/useSiteAction'
-import { executeSiteAction } from '@/lib/sites/client-actions'
+import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 
-export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running, onRefresh }: {
+export type OutcomeEnabledReceipt = { enabled: boolean; verificationQueued: boolean }
+
+export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running, onRefresh, onAccepted }: {
   siteId: string
   outcomeId: string
   enabled: boolean
   running: boolean
   onRefresh?: () => Promise<unknown>
+  onAccepted?: (receipt: OutcomeEnabledReceipt) => void
 }) {
   const router = useRouter()
-  const { busy, message, error, submit } = useSiteAction()
+  const { busy, message, error, submit } = useSiteAction({ scope: JSON.stringify([siteId, outcomeId]) })
 
   async function update() {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}`, {
+    const nextEnabled = !enabled
+    await submit(async signal => {
+      const body = await executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}`, {
+        signal,
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !enabled }),
-      }, 'outcomeEnabled'), body => !body.outcome.enabled
+        body: JSON.stringify({ enabled: nextEnabled }),
+      }, 'outcomeEnabled')
+      if (body.outcome.id !== outcomeId || body.outcome.enabled !== nextEnabled) throw new SiteActionError(C.invalidResponse)
+      return body
+    }, body => {
+      onAccepted?.({ enabled: body.outcome.enabled, verificationQueued: body.verificationQueued })
+      return !body.outcome.enabled
         ? running ? C.outcome.pausedRunning : C.outcome.paused
-        : body.verificationQueued ? C.outcome.enabledVerifying : body.verificationError ?? C.outcome.enabled,
+        : body.verificationQueued ? C.outcome.enabledVerifying : body.verificationError ?? C.outcome.enabled
+    },
       onRefresh ?? (() => router.refresh()))
   }
 

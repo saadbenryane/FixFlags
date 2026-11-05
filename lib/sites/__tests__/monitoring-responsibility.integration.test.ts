@@ -7,6 +7,7 @@ import { loadRunSourceEnvironment } from '../application/run-requests'
 import { buildExecutionSpec } from '../application/execution-spec'
 import { monitoringResponsibility, monitoringBehaviorResponsibility, monitoringActionResponsibility } from '../application/monitoring-responsibility'
 import { consoleContext } from '@/lib/audit/console-evidence'
+import { serializeArtifact } from '@/lib/audit/progressive/contracts'
 
 const localDatabase = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 localDatabase('combined recorded monitoring responsibility', () => {
@@ -14,6 +15,28 @@ localDatabase('combined recorded monitoring responsibility', () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+  })
+  it.each(['CHECKING', 'FAILED'] as const)('retains committed console responsibility while unrelated source work is %s', async status => {
+    const root = 'https://example.com/', owner = 'committed-console-' + randomUUID()
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test' } })
+    try {
+      const project = await prisma.project.create({ data: { userId: owner, name: 'Independent observations', url: root, canonicalHost: 'example.com' } })
+      const source = await prisma.audit.create({ data: { projectId: project.id, userId: owner, url: root, status,
+        executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root, environment: 'production',
+          checks: { 'console-errors-some': 1 }, outcomes: [], verificationTarget: null } } })
+      const finding = { source: 'DETERMINISTIC', checkId: 'console-errors-some', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+        problem: 'Delayed console error', evidence: 'Committed delayed console observation', fix: 'Repair the error', confidence: 1,
+        pageUrl: root, evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Delayed console error',
+          context: consoleContext('desktop', root, root, 'profile', 'public', 6500) }] }
+      await prisma.auditExecutionTask.create({ data: { auditId: source.id, targetKey: 'task:committed-console', source: 'EXECUTION',
+        status: 'COMPLETED', workState: 'COMPLETED', workKind: 'check', pageUrl: root,
+        workResult: serializeArtifact('check', { flags: [finding] }) as Prisma.InputJsonValue } })
+      const before = await prisma.audit.findUniqueOrThrow({ where: { id: source.id } })
+      const admitted = await buildExecutionSpec({ projectId: project.id, targetUrl: root, environment: 'production', scope: 'SITE', outcomes: [] })
+      expect(admitted.consoleObservationScopes).toEqual([{ pageUrl: root, minimumMs: 6500 }])
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: source.id } })).toEqual(before)
+      expect(await prisma.flag.count({ where: { auditId: source.id } })).toBe(0)
+    } finally { await prisma.user.delete({ where: { id: owner } }) }
   })
   it.each(['history', 'environment', 'grouped'] as const)('retains the original console failure horizon independently of newer %s', async scenario => {
     const root = 'https://example.com/', owner = 'console-history-' + randomUUID()
@@ -27,7 +50,8 @@ localDatabase('combined recorded monitoring responsibility', () => {
         auditId, checkId: 'console-errors-some', pageUrl: root, source: 'DETERMINISTIC' as const, rubric: 'EXPERIENCE',
         severity: 'IMPORTANT' as const, problem: 'Delayed console error', evidence: 'Recorded console error after navigation',
         whyItMatters: 'The page fails later', fix: 'Repair the delayed error', confidence: 1, position: 0, createdAt,
-        evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Original console window',
+        evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'PRIVATE_CONSOLE_HISTORY',
+          text: 'Historical console display evidence '.repeat(40),
           context: consoleContext('desktop', root, root, 'profile', 'public', milliseconds) }],
       })
       const flag = await prisma.flag.create({ data: { ...finding(original.id, scenario === 'grouped' ? 2000 : 6500), status: 'FIXED',
@@ -67,6 +91,8 @@ localDatabase('combined recorded monitoring responsibility', () => {
           const rows = await read.mock.results[index].value as Array<{ target: unknown }>
           expect(rows.length).toBeLessThanOrEqual(512)
           expect(rows.every(row => Object.keys(row).join(',') === 'target')).toBe(true)
+          expect(rows.every(row => Object.keys(row.target as object).join(',') === 'context')).toBe(true)
+          expect(JSON.stringify(rows)).not.toContain('PRIVATE_CONSOLE_HISTORY')
         }
       } finally { read.mockRestore() }
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', evidenceTargets: flag.evidenceTargets })

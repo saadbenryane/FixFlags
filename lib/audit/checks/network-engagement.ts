@@ -2,6 +2,9 @@ import type { NetworkFailureRecord } from '../browser/network-monitor'
 import type { FormProbeResult } from '../browser/journey-safety'
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
+import type { CheckAssertion } from './assertion'
+import { engagementContext, engagementEvidenceSchema, ENGAGEMENT_VERIFICATION_RULE, type EngagementEvidence } from '../network-engagement-evidence'
+import { trackingRequestKey } from '../tracking/identity'
 
 const NETWORK_CHECK_DESCRIPTORS = [
   {
@@ -119,6 +122,59 @@ export function runNetworkEngagementChecks(
   }
 
   return flags
+}
+
+/** Failure and recovery consume the same bounded native requests. Disappearing
+ * requests and a different access response never supply positive proof. */
+export function networkEngagementObservations(input: {
+  pageUrl: string; failures: NetworkFailureRecord[]; probe?: FormProbeResult | null;
+  evidence?: EngagementEvidence; actionContext?: string; expected?: boolean;
+}) {
+  const flags = runNetworkEngagementChecks(input.failures, input.probe)
+  const evidence = input.evidence && engagementEvidenceSchema.parse(input.evidence)
+  const assertions: CheckAssertion[] = []
+  const groups = new Map<string, { context?: string; requests: EngagementEvidence['requests'] }>()
+  for (const request of evidence?.requests ?? []) {
+    const context = engagementContext(request, input.pageUrl, input.actionContext)
+    const key = context ?? JSON.stringify([request.requestKey, request.phase, request.captureKey])
+    const group = groups.get(key) ?? { context, requests: [] }
+    group.requests.push(request); groups.set(key, group)
+  }
+  const policies = [
+    { key: 'engagement-auth-response', checkId: 'api-engagement-unauthorized', failed: (status: number) => status === 401 || status === 403 },
+    { key: 'engagement-server-response', checkId: 'api-engagement-server-error', failed: (status: number) => status >= 500 },
+    { key: 'form-auth-response', checkId: 'form-submit-api-unauthorized', failed: (status: number) => status === 401 || status === 403, form: true },
+    { key: 'form-server-response', checkId: 'form-submit-api-server-error', failed: (status: number) => status >= 500, form: true },
+  ]
+  const probeKey = input.probe && input.probe.status > 0 ? trackingRequestKey(input.probe.url, input.probe.method) : null
+  for (const policy of policies) {
+    const selected = [...groups.values()].filter(group => !policy.form || group.requests[0].requestKey === probeKey)
+    for (const group of selected) {
+      const failed = group.requests.some(request => request.status !== null && policy.failed(request.status))
+      const passed = group.requests.every(request => request.state === 'completed' && request.status !== null && request.status >= 200 && request.status < 300)
+      assertions.push({ key: policy.key, name: 'Engagement request response',
+        expected: 'The original native request completes with a successful HTTP response under the same conditions',
+        observed: `${group.requests[0].method} ${group.requests[0].destination}: ${group.requests.map(request => request.status ?? request.state).join(', ')} during ${group.requests[0].phase}. This does not establish account or form completion.`,
+        passed: passed && Boolean(group.context), complete: Boolean(group.context) && (failed || passed), context: group.context })
+    }
+    const flag = flags.find(flag => flag.checkId === policy.checkId)
+    const failedGroups = selected.filter(group => group.requests.some(request => request.status !== null && policy.failed(request.status)))
+    const failures = policy.form ? input.probe ? [input.probe] : [] : input.failures.filter(failure =>
+      failure.sameOrigin && failure.engagementPath && policy.failed(failure.status))
+    if (flag && failedGroups.length && failedGroups.every(group => group.context) && failures.every(failure =>
+      failedGroups.some(group => group.requests[0].requestKey === trackingRequestKey(failure.url, failure.method)))) {
+      flag.verificationRule = ENGAGEMENT_VERIFICATION_RULE
+      flag.evidenceTargets = failedGroups.map(group => ({ kind: 'page', source: 'measured', device: 'desktop',
+        label: 'Observed engagement request', context: group.context! }))
+      flag.evidence = failedGroups.map(group => `${group.requests[0].method} ${group.requests[0].destination}: HTTP ${group.requests.map(request => request.status).join(', ')} during ${group.requests[0].phase}.`).join('\n')
+    }
+  }
+  if (input.expected && !assertions.length) assertions.push({ key: 'engagement-observation', name: 'Original engagement request',
+    expected: 'The original native request is observed again', observed: 'No matching request response was recorded. Absence does not establish recovery.', passed: false, complete: false })
+  const applicable = Boolean(input.expected || evidence?.requests.length || flags.length)
+  return { flags, assertions, applicable,
+    complete: Boolean(evidence && !evidence.truncated && (assertions.length ? assertions.every(assertion => assertion.complete) : !applicable)),
+    limitation: 'Bounded same-origin top-frame engagement requests from the existing public walk. Missing, unfinished, refused or changed requests remain unknown. Privileged operations require existing authorization. HTTP responses do not prove form success or authenticated behavior; unscoped historical and silent-feedback findings remain unverified.' }
 }
 
 /** Build a silent-failure Flag when API and UI disagree on form success. */

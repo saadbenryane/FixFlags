@@ -40,7 +40,7 @@ import {
   type RubricComputed,
   type ShareStatus,
 } from '@/lib/audit/rubric'
-import { derivePageSpeedCoverage } from '@/lib/audit/pagespeed-coverage'
+import { loadRecordedPageSpeedCoverage } from '@/lib/audit/recorded-performance'
 
 export const auditFullInclude = {
   rubrics: {
@@ -218,7 +218,7 @@ export function redactCompletedPrivateReportData<
 }
 
 async function resolveAccessForCookies(
-  audit: { id: string; userId: string | null; isPublic: boolean },
+  audit: { id: string; userId?: string | null; isPublic?: boolean },
   sessionUser: { id: string } | null | undefined
 ) {
   const store = await cookies()
@@ -236,18 +236,16 @@ async function resolveAccessForCookies(
  * opt into the heavier completed-report graph.
  */
 export async function getProgressiveAuditForRequest(id: string) {
-  const [session, requested] = await Promise.all([
-    resolveSessionUser(),
-    prisma.audit.findUnique({
-      where: { id },
-      select: progressiveAuditSelect,
-    }),
-  ])
+  const session = await resolveSessionUser()
+  let accessContext = await resolveAccessForCookies({ id }, session?.user)
+  if (accessContext === 'denied') {
+    const exists = await prisma.audit.findUnique({ where: { id }, select: { id: true } })
+    if (!exists) return { kind: 'not_found' as const }
+    return { kind: 'forbidden' as const }
+  }
+  const requested = await prisma.audit.findUnique({ where: { id }, select: progressiveAuditSelect })
 
   if (!requested) return { kind: 'not_found' as const }
-
-  let accessContext = await resolveAccessForCookies(requested, session?.user)
-  if (accessContext === 'denied') return { kind: 'forbidden' as const }
 
   const workId = await resolveActiveAttachedWorkId(id, { requestedAudit: requested, user: session?.user })
   const audit =
@@ -266,6 +264,7 @@ export async function getProgressiveAuditForRequest(id: string) {
   })
 
   if (audit.status === 'COMPLETED') {
+    if (await resolveAccessForCookies(audit, session?.user) !== accessContext) return { kind: 'forbidden' as const }
     return {
       kind: 'completed' as const,
       audit: {
@@ -291,6 +290,7 @@ export async function getProgressiveAuditForRequest(id: string) {
   const { performanceData, productContract, ...publicAudit } = audit
   const publicFlags = audit.flags.map(flag => ({ ...flag, attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy) }))
 
+  if (await resolveAccessForCookies(audit, session?.user) !== accessContext) return { kind: 'forbidden' as const }
   return {
     kind: 'progressive' as const,
     accessContext,
@@ -314,16 +314,18 @@ export async function getProgressiveAuditForRequest(id: string) {
 
 export async function getGatedAuditForRequest(id: string) {
   const session = await resolveSessionUser()
+  let accessContext = await resolveAccessForCookies({ id }, session?.user)
+  if (accessContext === 'denied') {
+    const exists = await prisma.audit.findUnique({ where: { id }, select: { id: true } })
+    if (!exists) return { kind: 'not_found' as const }
+    return { kind: 'forbidden' as const }
+  }
   const requested = await fetchAuditRow(id)
 
   if (!requested) {
     return { kind: 'not_found' as const }
   }
 
-  let accessContext = await resolveAccessForCookies(requested, session?.user)
-  if (accessContext === 'denied') {
-    return { kind: 'forbidden' as const }
-  }
   const workId = await resolveActiveAttachedWorkId(id, { requestedAudit: requested, user: session?.user })
   const audit = workId === id ? requested : await fetchAuditRow(workId)
   if (!audit) {
@@ -405,14 +407,7 @@ export async function getGatedAuditForRequest(id: string) {
     hasTriage || showPrescription
       ? parseLaunchReadiness(audit.launchReadiness)
       : null
-  const pageSpeedCoverage = derivePageSpeedCoverage(
-    audit.pages.length > 0
-      ? audit.pages.map((page) => ({
-          url: page.url,
-          performanceData: page.performanceData,
-        }))
-      : [{ url: audit.url, performanceData: audit.performanceData }]
-  )
+  const pageSpeedCoverage = await loadRecordedPageSpeedCoverage(audit)
   const ogImageBroken = audit.flags.some(
     (f) => f.checkId === 'og-image-broken' && f.status !== 'FIXED'
   )
@@ -523,6 +518,7 @@ export async function getGatedAuditForRequest(id: string) {
     canAccessPrivateReportData
   )
 
+  if (await resolveAccessForCookies(audit, session?.user) !== accessContext) return { kind: 'forbidden' as const }
   return {
     kind: 'ok' as const,
     accessContext,

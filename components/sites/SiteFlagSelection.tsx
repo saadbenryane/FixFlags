@@ -13,13 +13,18 @@ type Selection = { active: boolean; ids: Set<string>; toggle: (id: string, check
 const Context = createContext<Selection | null>(null)
 export const useSiteFlagSelection = () => useContext(Context)
 
-/** One explicit repair scope across priority groups, devices, and shared pages. */
-export function SiteFlagSelection({ siteId, flags, availability, area, allOpen = false, children, renderSelected }: {
+type Props = {
   siteId: string; flags: readonly Pick<SiteFlagSeed, 'id'>[]; availability: SiteActionAvailability; area?: SiteCardArea; allOpen?: boolean; children: ReactNode; renderSelected?: (ids: string[]) => ReactNode;
-}) {
+}
+
+/** One explicit repair scope across priority groups, devices, and shared pages. */
+export function SiteFlagSelection(props: Props) {
   const parent = useSiteFlagSelection()
+  return parent ? props.children : <RepairSelection key={JSON.stringify([props.siteId, props.area ?? null])} {...props} />
+}
+
+function RepairSelection({ siteId, flags, availability, area, allOpen = false, children, renderSelected }: Props) {
   const [ids, setIds] = useState<Set<string> | null>(null)
-  if (parent) return children
   const allIds = [...new Set(flags.map(flag => flag.id))].sort()
   const selectedIds = [...new Set(flags.filter(flag => ids?.has(flag.id)).map(flag => flag.id))].sort()
   // Retire recovered choices before committing children. A later recurrence

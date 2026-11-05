@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
     enqueuePendingAiReview: vi.fn(),
     runRepoScan: vi.fn(),
     runFixPr: vi.fn(),
-    createWorkerRedis: vi.fn(() => ({})),
+    createWorkerRedis: vi.fn(() => ({ status: 'ready', disconnect: vi.fn(function(this: { status: string }) { this.status = 'end' }) })),
     touchWorkerHeartbeat: vi.fn().mockResolvedValue(undefined),
     recordStalledJob: vi.fn().mockResolvedValue(undefined),
     getBrowserDiagnostics: vi.fn(() => ({

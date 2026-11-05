@@ -37,7 +37,8 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
   })
   const pagesNeedingAttention = new Set(view.flags.flatMap(flag => flag.affectedPaths.length ? flag.affectedPaths : [flag.pageUrl ?? view.site.url])).size
   const summaryItems: BoardSummaryItem[] = [
-    { value: view.presentation.flags.count, label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : B.flags(view.presentation.flags.count).replace(/^\d+ /, ''), state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
+    { id: 'flags', value: view.presentation.flags.count, interactive: view.presentation.flags.count > 0,
+      label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : B.flags(view.presentation.flags.count).replace(/^\d+ /, ''), state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
   ]
   const recordedPageCount = view.counts.recordedPages
   if (recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: SITE_DASHBOARD_COPY.pageLabel(recordedPageCount),
@@ -59,7 +60,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     title: item.afterFix ? B.history.afterFix : item.executionState === 'COMPLETED' ? B.complete : B.incomplete,
     detail: item.scope ? [item.trigger === 'SCHEDULED' ? B.history.scheduled : item.trigger === 'MANUAL' ? B.history.manual : item.trigger === 'OTHER' ? B.history.other : null,
       item.scope === 'SITE' ? B.history.site : item.scope === 'CATEGORY' ? item.targetLabel ?? B.history.unknown : item.scope === 'OUTCOMES' ? B.history.outcomes : item.scope === 'DIAGNOSTIC' ? B.history.diagnostic : B.history.unknown,
-      item.targetLabel].filter(Boolean).join(' · ') : undefined,
+      item.scope === 'CATEGORY' ? null : item.targetLabel].filter(Boolean).join(' · ') : undefined,
     resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
     time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
     dateTime: item.checkedAt,

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useFixedBottomNotice } from './useFixedBottomNotice'
+import { SYSTEM_COPY } from '@/lib/marketing/copy/errors'
 
 export function OfflineNotice() {
   const [offline, setOffline] = useState(false)
@@ -29,7 +30,7 @@ export function OfflineNotice() {
       aria-live="polite"
       className="fixed inset-x-0 bottom-[var(--bottom-notice-offset,0px)] z-navbar bg-foreground px-4 py-3 text-center text-sm text-background"
     >
-      You are offline. Existing pages remain visible, but actions will retry after reconnection.
+      {SYSTEM_COPY.offline}
     </div>
   )
 }

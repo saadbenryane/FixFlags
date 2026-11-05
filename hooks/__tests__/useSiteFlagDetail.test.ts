@@ -8,7 +8,8 @@ import { useSiteFlagDetail } from '../useSiteFlagDetail'
 const panel = { flag: { ...siteFlagFixture(), sourceAuditId: 'audit-1',
   fix: 'Private repair instructions', repairGuidance: 'ready', expectedBehavior: 'The action works.',
   evidenceMissing: false, viewport: 'mobile', supportingObservations: [], supportingEvidenceUnreadable: false,
-  performanceEvidenceSource: null, verifying: false }, capture: null }
+  performanceEvidenceSource: null, verifying: false,
+  verificationFeedback: { result: 'still_open', checkedAt: '2026-11-03T00:00:00.000Z' } }, capture: null }
 function wrapper({ children }: { children: React.ReactNode }) {
   return createElement(SWRConfig, { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
 }
@@ -23,12 +24,14 @@ it('removes retained owner detail immediately when repair permission changes', a
     await waitFor(() => expect(reads).toHaveLength(1))
     await act(async () => { reads[0](Response.json(panel)) })
     expect(result.current.data?.flag.fix).toBe('Private repair instructions')
+    expect(result.current.data?.flag.verificationFeedback?.result).toBe('still_open')
     rerender({ owner: false })
     expect(result.current.data).toBeNull()
     await waitFor(() => expect(reads).toHaveLength(2))
     await act(async () => { reads[1](Response.json(panel)) })
     expect(result.current.data?.flag.fix).toBe('')
     expect(result.current.data?.flag.repairGuidance).toBe('unavailable')
+    expect(result.current.data?.flag.verificationFeedback).toBeNull()
   } finally { unmount() }
 })
 
@@ -45,6 +48,7 @@ it('never stores late owner instructions in a read requested without repair perm
     rerender({ owner: false })
     await waitFor(() => expect(result.current.data?.flag.fix).toBe(''))
     expect(result.current.data?.flag.repairGuidance).toBe('unavailable')
+    expect(result.current.data?.flag.verificationFeedback).toBeNull()
   } finally { unmount() }
 })
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { parseMetadataFromHtml, trimMetadataForStorage } from '../metadata'
 import { runSecurityBasicsChecks, securityObservations } from '../checks/security'
 import { assertionForTarget } from '../checks/verification'
@@ -9,6 +9,10 @@ import { evaluatorHandlers } from '../progressive/evaluators'
 import { readArtifact, serializeArtifact } from '../progressive/contracts'
 import { checkArtifactSchema } from '../progressive/results'
 import type { TaskContext } from '../progressive/registry'
+import { closeParserWorker } from '../progressive/cpu'
+import { collectResourceTransportEvidence } from '../resource-transport-collection'
+
+afterAll(() => closeParserWorker())
 
 const url = 'https://example.com/page'
 function observation(html: string) {
@@ -23,6 +27,36 @@ function receipt(html: string) {
 }
 
 describe('shared resource transport evidence', () => {
+  it('assesses the collected resource declarations independently of unrelated metadata limits', async () => {
+    const body = '<html><head>' + '<script type="application/ld+json">{}</script>'.repeat(51) +
+      '</head><body><img src="http://cdn.example/image.png?token=PRIVATE_TOKEN"></body></html>'
+    expect(pageMetadataSchema.safeParse(parseMetadataFromHtml(body, url)).success).toBe(false)
+    const document = { url, finalUrl: url, status: 200, headers: { 'content-type': 'text/html' }, body, complete: true,
+      reason: null, collectedAt: new Date().toISOString(), redirects: [] }
+    const context = { audit: { id: 'audit', executionSpec: { version: 1, targetUrl: url,
+      environment: 'production', scope: 'SITE', checks: { 'security-mixed-content': 1 }, outcomes: [], verificationTarget: null } },
+      task: { id: 'independent-resource' }, input: { pageUrl: url, position: 0, role: 'primary', primary: true, module: 'security' },
+      deadline: Date.now() + 10_000, dependencies: new Map([['http', { workKind: 'http', workState: 'COMPLETED',
+        workResult: serializeArtifact('http', { document, metadata: null }) }]]) } as unknown as TaskContext
+    const artifact = await evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate(context)
+    const result = checkArtifactSchema.parse(readArtifact(artifact, 'check').data)
+    expect(result.flags).toMatchObject([{ checkId: 'security-mixed-content' }])
+    expect(result.receipt.assertions.find(assertion => assertion.key === 'resource-transport')).toMatchObject({ passed: false, complete: true })
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_TOKEN')
+  })
+  it('keeps unavailable, mismatched and restricted documents outside resource repair evidence', async () => {
+    const document = { url, finalUrl: url, status: 200, headers: { 'content-type': 'text/html' },
+      body: '<img src="https://cdn.example/image.png">', complete: true, reason: null, collectedAt: new Date().toISOString(), redirects: [] }
+    for (const gap of [{ complete: false }, { status: 503 }, { reason: 'public_access_challenge' },
+      { url: 'https://another.example/page' }, { headers: { 'content-type': 'text/plain' } }]) {
+      const resources = await collectResourceTransportEvidence(url, null, { ...document, ...gap }, Date.now() + 5000)
+      expect(resources).toBeUndefined()
+      const checked = await runAllChecks(url, null, null, null, [], undefined, null, null, undefined, true, ['security'], {
+        publicDocument: { ...document, ...gap }, resourceTransport: resources,
+      })
+      expect(checked.executions[0].assertions?.find(assertion => assertion.key === 'resource-transport')).toMatchObject({ complete: false, passed: false })
+    }
+  })
   it('finds scripts, stylesheets, images, frames and media without fetching or claiming delivery', () => {
     const { metadata, assertion } = observation(`<script src="http://cdn.example/script.js"></script>
       <link rel="stylesheet" href="http://cdn.example/style.css"><img src="http://cdn.example/image.png">

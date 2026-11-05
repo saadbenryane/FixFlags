@@ -26,7 +26,7 @@ describe('Site Agent tenant boundary', () => {
     await expect(getSiteAgentHistory({ siteId: 'site-a', userId: 'user-b' }))
       .rejects.toMatchObject<Partial<SiteAgentError>>({ message: 'Site not found', status: 404 })
     expect(projectFindFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'site-a', userId: 'user-b', deletedAt: null },
+      where: { id: 'site-a', userId: 'user-b', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     }))
     expect(threadFindFirst).not.toHaveBeenCalled()
   })

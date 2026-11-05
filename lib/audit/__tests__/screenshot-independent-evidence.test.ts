@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ upload: vi.fn(), axe: vi.fn(), screenshot: vi.fn(), close: vi.fn(), truncated: vi.fn(),
-  loading: vi.fn(), wait: vi.fn(), flow: vi.fn() }))
+  loading: vi.fn(), wait: vi.fn(), flow: vi.fn(), read: vi.fn() }))
 vi.mock('@/lib/audit/flow/run-flow-scan', () => ({ runFlowScan: mocks.flow }))
 vi.mock('@/lib/storage/screenshots', () => ({ uploadScreenshot: mocks.upload }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl: vi.fn() }))
@@ -24,7 +24,13 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
   page: { url: () => 'https://example.com/', close: mocks.close, context: () => ({ close: mocks.close }),
     screenshot: mocks.screenshot, waitForFunction: (fn: unknown, argument: unknown) => mocks.wait(fn, argument, navigationStartedAt),
     evaluate: async (fn: (...args: unknown[]) => unknown, argument: unknown) => {
+      const replacement = mocks.read(fn, argument)
+      if (replacement !== undefined) return replacement
       if (Array.isArray(argument)) return []
+      if (argument && typeof argument === 'object' && 'collectTrust' in argument) return {
+        anchors: [], publishedText: 'Content', publishedHrefs: [], jsonLd: [], markers: [], markupComplete: true,
+        anchorOverflow: false, hrefOverflow: false, textOverflow: false, jsonOverflow: false, privacyInLongAnchor: false,
+      }
       if (typeof argument === 'string' || argument === false) return { readyState: 'complete', title: 'Example', loadingVisible: mocks.loading(Date.now() - navigationStartedAt, loadingReads++), loadingLabel: 'hero-skeleton' }
       if (fn.toString().includes('outerHTML')) return { html: '<html><head><title>Example</title></head><body>Content</body></html>', truncated: false }
       if (fn.toString().includes('document.readyState ===')) return true
@@ -43,10 +49,28 @@ import { createAuditPage } from '../browser/page-session'
 
 describe('independent rendered evidence', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.truncated.mockReturnValue(false); mocks.loading.mockReturnValue(false); mocks.wait.mockResolvedValue(undefined);
+    mocks.read.mockReset()
     mocks.screenshot.mockResolvedValue(Buffer.from([1])); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable'));
     mocks.axe.mockResolvedValue({ url: 'https://example.com/', testEngine: { version: 'fixture-axe' }, violations: [], incomplete: [],
       passes: [{ id: 'button-name', nodes: [{ target: ['button'] }] }], inapplicable: [] }) })
   afterEach(() => { vi.useRealTimers() })
+  it.each(['head', 'markers', 'html', 'signals'] as const)('retains independent facts when the %s document reader is unavailable', async reader => {
+    mocks.read.mockImplementation((fn, argument) => {
+      if (reader === 'head' && typeof argument === 'number' || reader === 'markers' && Array.isArray(argument) ||
+        reader === 'html' && fn.toString().includes('document.documentElement.outerHTML')) throw new Error('Controlled independent document read failure')
+      if (reader === 'signals' && argument && typeof argument === 'object' && 'collectTrust' in argument) return {}
+    })
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined,
+      { runFlow: false, captureMedia: false, collectMobile: false })
+    expect(result.desktopHttpStatus).toBe(200)
+    expect(result.captureFailures).toEqual([])
+    expect(result.accessibilityEvidence?.rules).toContainEqual(expect.objectContaining({ id: 'button-name', state: 'passed' }))
+    expect(result.consoleCoverage?.desktop.complete).toBe(true)
+    if (reader === 'html') { expect(result.desktopHtml).toBeNull(); expect(result.renderedScope).toBeUndefined() }
+    if (reader === 'head') expect(result.runtimeHeadScope).toBeUndefined()
+    if (reader === 'markers') expect(result.technologyRuntimeMarkers).toBeUndefined()
+    if (reader === 'signals') expect(result.publicTrustSignals).toBeUndefined()
+  })
   it.each([false, true])('retains independent facts when every optional screenshot fails, mobile %s', async collectMobile => {
     mocks.screenshot.mockRejectedValue(new Error('Screenshot font deadline exceeded'))
     const result = await captureScreenshots('https://example.com/', 'audit', undefined,

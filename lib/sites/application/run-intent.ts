@@ -1,5 +1,7 @@
 import type { Prisma,RunRequestSource } from '@prisma/client'
 import type { CategoryArea } from '../domain/execution-spec'
+import { readExecutionSpec } from '../domain/execution-spec'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 
 export function safeContext(
   value: Record<string, string | number | boolean | null | undefined> | undefined,
@@ -92,4 +94,29 @@ export function sameExecutionScope(
 ): boolean {
   return sameSelection(run, selectedIds) &&
     verificationTargetIdentity(run.verificationTarget) === verificationTargetIdentity(verificationTarget)
+}
+
+/** Match the caller's command against its recorded execution. Automatically
+ * selected detectors, bindings and capture conditions belong to that receipt;
+ * changes to them cannot turn a read into a new admission. */
+export function sameRecordedRunCommand(run: { projectId: string; environment: string; requestHash?: string | null;
+  executionSpec?: unknown; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }, input: RunInput): boolean {
+  const environment = input.environment ?? 'production'
+  if (run.projectId !== input.projectId || run.environment !== environment) return false
+  const selectedIds = [...new Set(input.outcomeIds)].sort()
+  const scope = input.verificationTarget?.kind === 'DIAGNOSTIC' ? 'DIAGNOSTIC' : input.scope ?? 'OUTCOMES'
+  const spec = readExecutionSpec(run.executionSpec)
+  if (!spec) return !run.requestHash && scope === 'OUTCOMES' && !input.url &&
+    sameExecutionScope(run, selectedIds, input.verificationTarget)
+  if (spec.scope !== scope || spec.environment !== environment ||
+    verificationTargetIdentity(spec.verificationTarget) !== verificationTargetIdentity(input.verificationTarget)) return false
+  if ((scope === 'OUTCOMES' || scope === 'DIAGNOSTIC') && !sameSelection(run, selectedIds)) return false
+  if (scope === 'CATEGORY' && spec.category?.area !== input.categoryArea) return false
+  if (scope === 'FIXTURE_SETUP' && spec.fixtureSetup?.id !== input.fixtureId) return false
+  if (scope === 'ACCOUNT_CHECKS' && spec.accountChecks?.mode !== (input.accountMode ?? 'routine')) return false
+  if (input.url && scope !== 'CATEGORY' && scope !== 'FIXTURE_SETUP') {
+    const normalized = normalizeAuditNavigationUrl(input.url)
+    if (!normalized.ok || normalized.url !== spec.targetUrl) return false
+  }
+  return true
 }

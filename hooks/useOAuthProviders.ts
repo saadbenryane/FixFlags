@@ -1,6 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useRef } from 'react'
+import useSWR from 'swr'
+import { z } from 'zod'
+import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 
 export interface OAuthProviders {
   google: boolean
@@ -14,9 +17,12 @@ interface OAuthProvidersState extends OAuthProviders {
   retry: () => void
 }
 
-// Cache the result for the lifetime of the page so navigating between
-// /sign-in and /sign-up doesn't re-fetch and flash the buttons.
-let cached: OAuthProviders | null = null
+const providersSchema = z.object({ google: z.boolean(), github: z.boolean() })
+async function readProviders(url: string): Promise<OAuthProviders> {
+  const { response, body } = await fetchJsonWithDeadline(url, { cache: 'no-store' }, 15_000)
+  if (!response.ok) throw new Error('Provider discovery failed')
+  return providersSchema.parse(body)
+}
 
 /**
  * Resolves which OAuth providers are enabled by asking the server at runtime
@@ -25,51 +31,27 @@ let cached: OAuthProviders | null = null
  * production even after credentials were set as runtime env vars.
  */
 export function useOAuthProviders(): OAuthProvidersState {
-  const [providers, setProviders] = useState<OAuthProviders | null>(cached)
-  const [error, setError] = useState(false)
-  const [attempt, setAttempt] = useState(0)
-
-  useEffect(() => {
-    if (cached) {
-      setProviders(cached)
-      setError(false)
-      return
-    }
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/auth/providers')
-        if (!res.ok) throw new Error('Provider discovery failed')
-        const data = (await res.json()) as OAuthProviders
-        if (cancelled) return
-        cached = { google: !!data.google, github: !!data.github }
-        setProviders(cached)
-        setError(false)
-      } catch {
-        if (!cancelled) {
-          setProviders(null)
-          setError(true)
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [attempt])
-
+  // Sign-in pages and report gates share the same public runtime answer and
+  // in-flight read. A warm answer stays stable until an explicit retry.
+  const { data: providers, error, isLoading, isValidating, mutate } = useSWR('/api/auth/providers', readProviders, {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    shouldRetryOnError: false,
+  })
+  const retrying = useRef(false)
   const retry = useCallback(() => {
-    cached = null
-    setProviders(null)
-    setError(false)
-    setAttempt((value) => value + 1)
-  }, [])
+    if (retrying.current) return
+    retrying.current = true
+    void mutate().catch(() => undefined).finally(() => { retrying.current = false })
+  }, [mutate])
 
   return {
     google: providers?.google ?? false,
     github: providers?.github ?? false,
     anyEnabled: !!providers && (providers.google || providers.github),
-    isLoading: providers === null && !error,
-    error,
+    isLoading: !providers && (isLoading || isValidating),
+    error: Boolean(error),
     retry,
   }
 }

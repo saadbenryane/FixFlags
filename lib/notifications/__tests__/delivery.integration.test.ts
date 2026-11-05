@@ -146,6 +146,87 @@ run('summary delivery using real database claims', () => {
     await deliverWebsiteSummaries(now)
     expect(provider.send).not.toHaveBeenCalled()
   })
+  it.each(['reconciliation', 'due'] as const)('continues scheduling independent accounts after an unreadable %s preference', async phase => {
+    const accounts = [await fixture(), await fixture()].sort((a, b) => a.id.localeCompare(b.id))
+    const [blocked, following] = accounts, now = following.now
+    const before = await prisma.notificationPreference.update({ where: { userId: blocked.id }, data: {
+      cadence: phase === 'reconciliation' ? 'FOLLOW_MONITORING' : 'DAILY', timeZone: 'Invalid/Recorded-Zone',
+      nextSendAt: new Date(now.getTime() - 120_000), updatedAt: new Date('2000-01-01T00:00:00Z'),
+    } })
+    await prisma.notificationPreference.update({ where: { userId: following.id }, data: { resolvedCadence: 'DAILY' } })
+    await deliverWebsiteSummaries(now)
+    expect(provider.send).toHaveBeenCalledOnce()
+    expect(provider.send.mock.calls[0][0].to).toBe(`${following.id}@notification.test`)
+    expect(await prisma.notificationDigest.findFirstOrThrow({ where: { userId: following.id } })).toMatchObject({ status: 'SENT', attempts: 1 })
+    expect(await prisma.notificationDigest.count({ where: { userId: blocked.id } })).toBe(0)
+    expect(await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: blocked.id } }))
+      .toMatchObject({ nextSendAt: before.nextSendAt, revision: before.revision, timeZone: before.timeZone })
+  })
+  it('continues beyond a full failed scheduling batch and retries the original due slot after correction', async () => {
+    const accounts = [await fixture(), await fixture(), await fixture()].sort((a, b) => a.id.localeCompare(b.id))
+    const now = accounts[2].now
+    for (const [index, account] of accounts.entries()) await prisma.notificationPreference.update({ where: { userId: account.id }, data: {
+      resolvedCadence: 'DAILY', timeZone: index < 2 ? 'Invalid/Recorded-Zone' : 'UTC',
+      nextSendAt: new Date(now.getTime() - (3 - index) * 60_000), updatedAt: new Date('2000-01-0' + (index + 1) + 'T00:00:00Z'),
+    } })
+    const original = await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: accounts[0].id } })
+    for (let pass = 0; pass < 3; pass++) await scheduleSummaries(new Date(now.getTime() + pass * 1000), 1)
+    expect(await prisma.notificationDigest.count({ where: { userId: accounts[2].id } })).toBe(1)
+    expect(await prisma.notificationDigest.count({ where: { userId: { in: accounts.slice(0, 2).map(account => account.id) } } })).toBe(0)
+    expect(await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: accounts[0].id } }))
+      .toMatchObject({ nextSendAt: original.nextSendAt, revision: original.revision })
+    await prisma.notificationPreference.update({ where: { userId: accounts[0].id }, data: { timeZone: 'UTC' } })
+    await scheduleSummaries(new Date(now.getTime() + 3000), 20)
+    expect(await prisma.notificationDigest.findFirstOrThrow({ where: { userId: accounts[0].id } }))
+      .toMatchObject({ scheduledAt: original.nextSendAt, revision: original.revision, status: 'PENDING', attempts: 0 })
+    expect(provider.send).not.toHaveBeenCalled()
+  })
+  it('initializes later accounts after one default transaction is interrupted', async () => {
+    const [blocked, following] = [await fixture(), await fixture()].sort((a, b) => a.id.localeCompare(b.id))
+    await prisma.notificationPreference.deleteMany({ where: { userId: { in: [blocked.id, following.id] } } })
+    const transaction = prisma.$transaction.bind(prisma)
+    vi.spyOn(prisma, '$transaction').mockImplementation(operation => {
+      if (typeof operation !== 'function') return transaction(operation)
+      return transaction(async tx => {
+        const create = tx.notificationPreference.createMany.bind(tx.notificationPreference)
+        const defaults = vi.spyOn(tx.notificationPreference, 'createMany').mockImplementation(args => {
+          const data = Array.isArray(args.data) ? args.data : [args.data]
+          if (data.some(row => row.userId === blocked.id)) throw new Error('Controlled account initialization interruption')
+          return create(args)
+        })
+        try { return await operation(tx) }
+        finally { defaults.mockRestore() }
+      })
+    })
+    await scheduleSummaries(following.now, 20)
+    expect(await prisma.notificationPreference.findUnique({ where: { userId: blocked.id } })).toBeNull()
+    expect(await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: following.id } }))
+      .toMatchObject({ cadence: 'FOLLOW_MONITORING', resolvedCadence: 'DAILY', nextSendAt: expect.any(Date) })
+    expect(await prisma.notificationDigest.count({ where: { userId: { in: [blocked.id, following.id] } } })).toBe(0)
+  })
+  it('preserves a concurrent preference correction while retaining a failed scheduling intent', async () => {
+    const { id, now } = await fixture()
+    const before = await prisma.notificationPreference.update({ where: { userId: id }, data: {
+      timeZone: 'Invalid/Recorded-Zone', resolvedCadence: 'DAILY',
+    } })
+    const nextSendAt = new Date(now.getTime() + 86400_000), updatedAt = new Date(now.getTime() + 1000)
+    const update = prisma.notificationPreference.updateMany.bind(prisma.notificationPreference)
+    let corrected = false
+    vi.spyOn(prisma.notificationPreference, 'updateMany').mockImplementation(async args => {
+      if (!corrected && args.where?.userId === id && args.data.updatedAt) {
+        corrected = true
+        await prisma.notificationPreference.update({ where: { userId: id }, data: {
+          timeZone: 'UTC', hour: 18, revision: { increment: 1 }, nextSendAt, updatedAt,
+        } })
+      }
+      return update(args)
+    })
+    await scheduleSummaries(now, 20)
+    expect(corrected).toBe(true)
+    expect(await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } }))
+      .toMatchObject({ timeZone: 'UTC', hour: 18, revision: before.revision + 1, nextSendAt, updatedAt })
+    expect(await prisma.notificationDigest.count({ where: { userId: id } })).toBe(0)
+  })
   it('recalculates a followed schedule when monitoring changes from weekly to daily', async () => {
     const { id, site, now } = await fixture()
     await prisma.project.update({ where: { id: site.id }, data: { watchInterval: 'WEEKLY' } })

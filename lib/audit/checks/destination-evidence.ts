@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { CheckAssertion } from './assertion'
 import type { openCheckDestination, OpenCheckObservation } from '../open-check'
 import type { PreviewImageResponse } from './preview-image-response'
+import { readSupportingObservations } from '../flag-observations'
 
 export const DESTINATION_VERIFICATION_RULE = 'Public destination: repeat GET for every originally failed destination under the same page scope.'
 export const PUBLIC_LINK_VERIFICATION_RULE = 'Public link response v2: repeat GET for every originally failed destination under the same page scope and active-document missing-page interpretation.'
@@ -10,6 +11,10 @@ export type DestinationCheckOptions = {
   record?: (assertion: CheckAssertion) => void
   scope?: { complete?: boolean; limitation?: string; collectedAt?: string }
   collectedAt?: () => string
+  /** Targeted repair observes only original destinations still declared now. */
+  originalContexts?: readonly string[]
+  /** Normal monitoring keeps still-declared historical responsibilities first. */
+  retainedContexts?: ReadonlySet<string>
   openDestination?: (...args: Parameters<typeof openCheckDestination>) => Promise<OpenCheckObservation>
   observeImage?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<PreviewImageResponse>
   /** Tests supply a collected document. Production uses the public fetcher. */
@@ -28,6 +33,16 @@ export function destinationContext(pageUrl: string, destination: string, criteri
  * as proof that a customer repaired the destination. */
 export function publicLinkContext(pageUrl: string, destination: string) {
   return destinationContext(pageUrl, destination, 'public-link-active-document-v2')
+}
+
+type DestinationSource = { pageUrl: string | null; verificationRule: string | null; evidenceTargets: unknown; supportingObservations?: unknown }
+
+/** Grouped Flags retain the actual source page for each destination. */
+export function originalDestinationContexts(sources: DestinationSource[], pageUrl: string, rule: string): string[] {
+  return [...new Set(sources.flatMap<DestinationSource>(source => readSupportingObservations(source.supportingObservations)?.items ?? [source])
+    .filter(source => source.pageUrl === pageUrl && source.verificationRule === rule)
+    .flatMap(source => Array.isArray(source.evidenceTargets) ? source.evidenceTargets.flatMap(target =>
+      target && typeof target === 'object' && typeof target.context === 'string' && /^destination:[a-f0-9]{64}$/.test(target.context) ? [target.context] : []) : []))]
 }
 
 export function displayDestination(value: string): string {

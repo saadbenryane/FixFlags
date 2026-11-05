@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy-barrel'
 import { trackEvent } from '@/lib/analytics/events'
+import { requestAccountChange } from '@/lib/auth/client-account-request'
+import { authorizationReceipt } from '@/lib/auth/client-authorization-receipt'
 
 interface Props {
   callbackURL: string
@@ -15,7 +16,8 @@ interface Props {
   disabled?: boolean
   from?: string
   mode?: 'signup' | 'signin'
-  onMethodSelected?: (method: 'google' | 'github') => void
+  onMethodSelected?: (method: 'google' | 'github') => boolean | void
+  onRequestFinished?: () => void
   /** Hide the "or use email" divider (e.g. when the caller renders its own). */
   hideDivider?: boolean
 }
@@ -29,9 +31,22 @@ export function OAuthButtons({
   from,
   mode = 'signup',
   onMethodSelected,
+  onRequestFinished,
   hideDivider,
 }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const pending = useRef<(() => void) | null>(null)
+  const requestOwner = useRef<AbortController | null>(null)
+  useEffect(() => {
+    const owner = new AbortController()
+    requestOwner.current = owner
+    return () => {
+      owner.abort()
+      pending.current?.()
+      if (requestOwner.current === owner) requestOwner.current = null
+    }
+  }, [])
   const showGoogle = !!google
   const showGithub = !!github
 
@@ -40,24 +55,34 @@ export function OAuthButtons({
   }
 
   async function handleOAuth(provider: 'google' | 'github') {
-    onMethodSelected?.(provider)
+    const owner = requestOwner.current
+    if (!owner || owner.signal.aborted || disabled || pending.current) return
+    if (onMethodSelected?.(provider) === false) return
+    const current = () => requestOwner.current === owner && !owner.signal.aborted
+    const finish = () => {
+      if (pending.current !== finish) return
+      pending.current = null
+      onRequestFinished?.()
+    }
+    pending.current = finish
     if (mode === 'signup' && !onMethodSelected) {
       trackEvent('signup_started', { method: provider, from })
     }
     setLoading(provider)
+    setError(null)
     try {
-      const { error } = await authClient.signIn.social({ provider, callbackURL, newUserCallbackURL })
-      if (error) {
-        toast.error(error.message || AUTH.oauth.signInFailed)
-        setLoading(null)
-      }
-    } catch (err) {
-      const isPopupBlocker =
-        typeof window !== 'undefined' &&
-        (err instanceof DOMException ||
-          (err instanceof Error && /popup|blocked/i.test(err.message)))
-      toast.error(isPopupBlocker ? AUTH.oauth.popupBlocked : AUTH.oauth.signInFailed)
-      setLoading(null)
+      // This view owns navigation, including when a retired request replies late.
+      const result = await requestAccountChange(signal => authClient.signIn.social({
+        provider, callbackURL, newUserCallbackURL, disableRedirect: true, fetchOptions: { signal },
+      }), authorizationReceipt, AUTH.oauth.signInFailed, owner.signal)
+      if (!current()) return
+      if (!result.ok) { setError(result.error); return }
+      window.location.assign(result.data.url)
+    } catch {
+      if (current()) setError(AUTH.oauth.signInFailed)
+    } finally {
+      finish()
+      if (current()) setLoading(null)
     }
   }
 
@@ -116,6 +141,7 @@ export function OAuthButtons({
           </Button>
         )}
       </div>
+      {error ? <p role="alert" className="break-words rounded-control bg-muted p-3 text-sm text-foreground">{error}</p> : null}
       {!hideDivider ? (
         <div className="flex justify-center py-1">
           <span className="text-xs text-muted-foreground">{AUTH.oauth.separator}</span>

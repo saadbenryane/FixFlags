@@ -3,7 +3,7 @@ import { type WatchAlertDeliveryState } from '@/lib/audit/watch-notification'
 import { type SiteActivity } from '@/lib/sites/activity'
 import { type BoardCardView } from '@/lib/sites/board-card'
 import type { SiteCapture, SiteCaptureAvailability } from '@/lib/sites/captures'
-import { type SiteCheckResult } from '@/lib/sites/check-results'
+import { type SiteCheckResult } from '@/lib/sites/check-result-contract'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
@@ -24,6 +24,8 @@ import type { SiteViewerActions } from './viewer-actions'
 
 export type SiteHomeView = {
   schemaVersion: 2
+  /** Read ordering only. Evidence freshness retains its recorded check times. */
+  readAt?: number
   readScope?: 'overview' | 'settings'
   actions: SiteViewerActions
   counts: import('./scope-counts').SiteScopeCounts

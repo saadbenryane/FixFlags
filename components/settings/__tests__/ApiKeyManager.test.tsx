@@ -1,14 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('@/hooks/useMe', () => ({ useMe: () => ({ user: { id: 'owner' }, isLoading: false }) }))
 
 const createApiKey = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/api/api-key-client', () => ({ createApiKey }))
+vi.mock('@/lib/api/api-key-client', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/api/api-key-client')>(), createApiKey }))
 
 import { ApiKeyManager } from '@/components/settings/ApiKeyManager'
 
 function response(body: unknown) {
-  return { ok: true, json: async () => body }
+  return { ok: true, headers: new Headers({ 'x-fixflags-account-id': 'owner' }), json: async () => body }
 }
 
 describe('ApiKeyManager', () => {
@@ -28,7 +29,7 @@ describe('ApiKeyManager', () => {
   })
 
   it('defaults to read-only evidence and keeps the secret visible once', async () => {
-    render(<ApiKeyManager />)
+    render(<ApiKeyManager ownerId="owner" />)
     await screen.findByText('No active keys.')
 
     expect(screen.getByRole('combobox', { name: /Access/ })).toHaveValue('read_only')
@@ -43,7 +44,7 @@ describe('ApiKeyManager', () => {
         client: 'other',
         scopePreset: 'read_only',
         expiresInDays: 90,
-      })
+      }, expect.any(AbortSignal), 'owner')
     })
     expect(await screen.findByRole('textbox', { name: 'New API key' })).toHaveValue('ff_live_secret_once')
     expect(screen.getByText('Key created. Copy it now. FixFlags will not show it again.')).toBeInTheDocument()
@@ -52,20 +53,20 @@ describe('ApiKeyManager', () => {
   it('selects the revealed key when the browser blocks copying', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('denied'))
     Object.assign(navigator, { clipboard: { writeText } })
-    render(<ApiKeyManager />)
+    render(<ApiKeyManager ownerId="owner" />)
     await screen.findByText('No active keys.')
     fireEvent.change(screen.getByRole('textbox', { name: /Key name/ }), { target: { value: 'Release agent' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
     const key = await screen.findByRole('textbox', { name: 'New API key' })
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
-    expect(await screen.findByText('Copy was blocked by this browser. The key is selected so you can copy it manually.')).toBeInTheDocument()
+    expect(await screen.findByText('Couldn’t confirm the copy. The key is selected so you can copy it manually.')).toBeInTheDocument()
     expect(key).toHaveFocus()
     expect(key).toHaveProperty('selectionStart', 0)
     expect(key).toHaveProperty('selectionEnd', 'ff_live_secret_once'.length)
   })
 
   it('creates the chosen repair access and expiration for the selected agent', async () => {
-    render(<ApiKeyManager client="codex" />)
+    render(<ApiKeyManager ownerId="owner" client="codex" />)
     await screen.findByText('No active keys.')
 
     fireEvent.change(screen.getByRole('combobox', { name: /Expires after/ }), {
@@ -81,7 +82,7 @@ describe('ApiKeyManager', () => {
           scopePreset: 'fix_and_verify',
           client: 'codex',
           expiresInDays: 30,
-        })
+        }), expect.any(AbortSignal), 'owner'
       )
     })
   })

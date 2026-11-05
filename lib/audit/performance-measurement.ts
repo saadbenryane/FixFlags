@@ -4,19 +4,7 @@ import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 import type { PageSpeedResult } from './pagespeed'
 import type { DeterministicFlag } from './flag-types'
 import type { CheckAssertion } from './checks/assertion'
-
-const key = z.string().regex(/^[a-f0-9]{64}$/)
-const measurementScopeSchema = z.object({ requestedKey: key, finalKey: key, profileKey: key }).strict()
-
-export const performanceMeasurementSchema = z.object({
-  version: z.literal(1), source: z.literal('google-pagespeed'), strategy: z.enum(['desktop', 'mobile']),
-  receivedAt: z.string().datetime(), measuredAt: z.string().datetime().nullable(),
-  requestedAt: z.string().datetime().optional(),
-  lighthouseVersion: z.string().max(100).nullable(), formFactor: z.string().max(40).nullable(),
-  throttlingMethod: z.string().max(40).nullable(),
-  scope: measurementScopeSchema.nullable().optional(),
-}).strict()
-export type PerformanceMeasurement = z.infer<typeof performanceMeasurementSchema>
+import { performanceMeasurementSchema, type PerformanceMeasurement } from './performance-measurement-contract'
 
 const settingsSchema = z.object({
   formFactor: z.string().max(40).optional(), emulatedFormFactor: z.string().max(40).optional(),

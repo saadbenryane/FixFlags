@@ -10,6 +10,17 @@ import type { TaskContext } from '../registry'
 import { recordedPageEvidence } from '../lifecycle'
 
 describe('finding publication cost', () => {
+  it.each(['BLOCKED', 'EXHAUSTED'])('retains independent field observations in completed page evidence after %s lab collection', async workState => {
+    const pageUrl = 'https://example.com/', mobile = { strategy: 'mobile', score: null, lcp: null, cls: null, fcp: null, tbt: null,
+      inp: 900, opportunities: [], failedAccessibilityAudits: [], diagnostics: {}, raw: {}, crux: null }
+    const query = vi.fn().mockResolvedValue([]).mockResolvedValueOnce([{ id: 'speed-task', workKind: 'pagespeed', workState, status: 'FAILED',
+      workInput: { position: 0, pageUrl, primary: true, device: 'mobile' },
+      workResult: serializeArtifact('pagespeed', { desktop: null, mobile, mobileError: 'Lab collection unavailable' }) }])
+    const [page] = await recordedPageEvidence('original-audit', pageUrl, { $queryRaw: query } as unknown as Pick<Prisma.TransactionClient, '$queryRaw'>)
+    expect(page.mobile).toEqual(mobile)
+    expect(page.mobileError).toBe('Lab collection unavailable')
+    expect(page.failedModules).toContain('pagespeed')
+  })
   it('keeps an earlier control failure in page evidence while the cohort is still unfinished', async () => {
     const pageUrl = 'https://example.com/', observed = { checkId: 'flow-form-no-validation', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
       source: 'DETERMINISTIC', problem: 'No feedback', evidence: 'The original form showed no validation feedback.', fix: 'Restore validation.', confidence: 1, pageUrl }

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { executionTransaction } from './execution-ownership'
+import { executionSiteAuthoritySql, executionTransaction, lockExecutionScope } from './execution-ownership'
 import { dispatchTask } from './progressive/engine'
 import { MAX_TASKS_PER_AUDIT } from './progressive/contracts'
 import { recordProgress } from './progressive/events'
@@ -14,17 +14,20 @@ function prescriptionIdentity(index: number | null) {
 }
 
 /** The completed report is the durable handoff. Replays never repeat triage. */
-export async function enqueuePendingAiReview(auditId: string): Promise<void> {
+export async function enqueuePendingAiReview(auditId: string): Promise<number> {
   const audit = await prisma.audit.findUnique({ where: { id: auditId },
     select: { status: true, userId: true, includeAi: true, triageAt: true, completedAt: true, aiReviewAt: true } })
   if (audit && ['COMPLETED', 'JUDGING'].includes(audit.status) && audit.userId && audit.includeAi && audit.triageAt && audit.completedAt && !audit.aiReviewAt) {
-    await enqueueAiReview(auditId)
+    return enqueueAiReview(auditId)
   }
+  return 0
 }
 
-export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<void> {
+export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<number> {
   const taskIds = await executionTransaction(async tx => {
-    await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
+    // Use the worker's authority and Project-before-Audit lock order. A
+    // completed report cannot lend its former owner's Site to a new task.
+    if (!await lockExecutionScope(tx, auditId)) return []
     const audit = await tx.audit.findUnique({ where: { id: auditId },
       select: { status: true, userId: true, url: true, triageAt: true, completedAt: true, aiReviewAt: true, executionLeaseUntil: true,
         user: { select: { lifecycleStatus: true } }, project: { select: { deletedAt: true } } } })
@@ -57,19 +60,26 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<voi
   for (const taskId of taskIds) {
     await dispatchTask(taskId).catch(error => logger.warn('Prescription delivery deferred to task recovery', { auditId, taskId, message: String(error) }))
   }
+  return taskIds.length
 }
 
 /** Backfill interrupted handoffs and legacy jobs through the same admission. */
 export async function recoverPendingAiReviews(limit = 25): Promise<number> {
-  const audits = await prisma.audit.findMany({ where: { includeAi: true, aiReviewAt: null, triageAt: { not: null },
-    completedAt: { not: null }, status: { in: ['COMPLETED', 'JUDGING'] }, user: { lifecycleStatus: 'ACTIVE' },
-    AND: [{ OR: [{ projectId: null }, { project: { deletedAt: null } }] }],
-    OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: new Date() } }],
-    executionTasks: { none: { workKind: 'prescription' } } },
-    orderBy: [{ completedAt: 'asc' }, { id: 'asc' }], take: Math.max(1, Math.min(100, limit)), select: { id: true } })
+  // Retained former-owner reports are history, not recoverable execution.
+  // Filter them before the batch limit; admission rechecks under the Site lock.
+  const audits = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT a.id FROM audits a JOIN users u ON u.id = a."userId"
+    LEFT JOIN projects p ON p.id = a."projectId"
+    WHERE a."includeAi" = true AND a."aiReviewAt" IS NULL AND a."triageAt" IS NOT NULL
+      AND a."completedAt" IS NOT NULL AND a.status IN ('COMPLETED', 'JUDGING')
+      AND u."lifecycleStatus" = 'ACTIVE'
+      AND (a."projectId" IS NULL OR (p."deletedAt" IS NULL AND ${executionSiteAuthoritySql}))
+      AND (a."executionLeaseUntil" IS NULL OR a."executionLeaseUntil" <= ${new Date()})
+      AND NOT EXISTS (SELECT 1 FROM audit_execution_tasks task WHERE task."auditId" = a.id AND task."workKind" = 'prescription')
+    ORDER BY a."completedAt", a.id LIMIT ${Math.max(1, Math.min(100, limit))}`
   let admitted = 0
   for (const audit of audits) {
-    try { await enqueuePendingAiReview(audit.id); admitted++ }
+    try { if (await enqueuePendingAiReview(audit.id) > 0) admitted++ }
     catch (error) { logger.error('Prescription handoff recovery interrupted', error, { auditId: audit.id }) }
   }
   return admitted

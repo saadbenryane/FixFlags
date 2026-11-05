@@ -26,6 +26,14 @@ function observed(urls: Array<[string, number]>, captureKey = captureObservation
 }
 
 describe('runtime Tracking assessment', () => {
+  it('keeps historical native snapshots without a general analytics observation unknown', () => {
+    const recorded = runTrackingChecks(null, evidence([]), pageUrl, {})
+    expect(recorded.flags).toEqual([])
+    expect(recorded.assertions.find(assertion => assertion.key === 'analytics-markup')).toMatchObject({ passed: false, complete: false })
+    const unavailable = runTrackingChecks(null, evidence([]), pageUrl, { hasAnalytics: null })
+    expect(unavailable.flags).toEqual([])
+    expect(unavailable.assertions.find(assertion => assertion.key === 'analytics-markup')).toMatchObject({ passed: false, complete: false })
+  })
   it.each([
     ['https://example.com/pricing', 'https://example.com/pricing/'],
     ['https://example.com/?return=', 'https://example.com/?return=/'],

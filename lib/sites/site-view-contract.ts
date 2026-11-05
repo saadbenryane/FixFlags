@@ -2,7 +2,7 @@ import { uptimeSummarySchema, uptimeIncidentSchema } from '@/lib/uptime/contract
 import { accountViewSchema } from './accounts/contracts'
 import { z } from 'zod'
 import type { SiteHomeView } from './application/queries'
-import { siteCheckResultSchema } from './check-results'
+import { siteCheckResultSchema } from './check-result-contract'
 import { watchIntervalSchema } from './watch-schedule'
 import type { BoardCardFlagChip } from './board-card'
 import { sitePresentationSchema, siteCardAreaSchema as area, cardHealthSchema as health } from './presentation-contract'
@@ -27,6 +27,7 @@ const flag = z.object({
   priorityBand: z.enum(['fix_first', 'other']), priorityScore: z.number(), relatedOutcome: z.object({ id: text, name: text }).nullable(),
   verificationState: z.enum(['unverified', 'verifying', 'verified', 'still_open', 'could_not_verify', 'regressed']), latestOccurrenceAt: nullableTime,
   repairGuidance: z.enum(['ready', 'pending', 'unavailable']).optional(),
+  repairEvidenceRevision: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 })
 
 const recovery = z.object({ action: z.enum(['retry', 'access', 'connections', 'inspect', 'support']), reasons: z.array(text).max(1200) })
@@ -43,6 +44,7 @@ const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableT
 /** Full client projection contract. A malformed refresh cannot replace recorded evidence. */
 export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   schemaVersion: z.literal(2),
+  readAt: z.number().int().nonnegative().optional(),
   readScope: z.enum(['overview', 'settings']).optional(),
   actions: z.object({ ownership: z.enum(['owner', 'provisional']),
     check: z.enum(['available', 'sign_in', 'claim']), copy: z.enum(['available', 'sign_in', 'claim']),

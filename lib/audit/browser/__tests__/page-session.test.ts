@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import type { Browser, Route } from 'playwright'
 import type { JourneyRouteGuardOptions } from '../journey-safety'
@@ -35,17 +35,27 @@ import { installRequestBoundary } from '../request-boundary'
 import { DESKTOP_CAPTURE_PROFILE } from '../capture-profile'
 import { runNetworkEngagementChecks } from '../../checks/network-engagement'
 
+const contexts: Array<{ close(): Promise<void> }> = []
+function browserFor(page: object, extra = {}) {
+  const context = Object.assign(new EventEmitter(), { newPage: vi.fn(async () => page), addCookies: vi.fn(),
+    close: vi.fn(async () => { context.emit('close') }), ...extra })
+  contexts.push(context)
+  return { context, browser: Object.assign(new EventEmitter(), { newContext: vi.fn(async () => context),
+    isConnected: () => true, contexts: () => [context] }) }
+}
+afterEach(async () => { for (const context of contexts.splice(0)) await context.close() })
+
 describe('audit page session form evidence', () => {
   it('retains distinct full-message identities when clipped text collides, and records the last failure horizon', async () => {
     const callbacks = new Map<string, (event?: unknown) => void>()
     const page = { route: vi.fn(), on: (event: string, handler: (event?: unknown) => void) => callbacks.set(event, handler),
       once: (event: string, handler: () => void) => callbacks.set(event, handler),
       goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'), url: () => 'http://localhost:4100/' }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
+    const { browser } = browserFor(page)
     vi.useFakeTimers({ toFake: ['Date'] })
     try {
       vi.setSystemTime(100_000)
-      const session = await createAuditPage(Object.assign(new EventEmitter(), { newContext: vi.fn(async () => context) }) as unknown as Browser, 'http://localhost:4100/', {
+      const session = await createAuditPage(browser as unknown as Browser, 'http://localhost:4100/', {
         profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, settle: false, consoleIdentityKey: 'fixture-only-key',
       })
       callbacks.get('load')!()
@@ -67,9 +77,8 @@ describe('audit page session form evidence', () => {
       on: vi.fn(), once: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'),
       url: () => 'http://localhost:4100/',
     }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
-    const browser = Object.assign(new EventEmitter(), { newContext: vi.fn(async () => context) }) as unknown as Browser
-    const session = await createAuditPage(browser, 'http://localhost:4100/', {
+    const { browser } = browserFor(page)
+    const session = await createAuditPage(browser as unknown as Browser, 'http://localhost:4100/', {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, settle: false,
     })
     expect(session.formProbe).toBeNull()
@@ -82,11 +91,10 @@ describe('audit page session form evidence', () => {
     let socketHandler!: (socket: { close(): Promise<void> }) => Promise<void>
     const page = { route: vi.fn(),
       on: vi.fn(), once: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'), url: () => 'http://localhost:4100/' }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn(),
-      routeWebSocket: vi.fn(async (_pattern, handler) => { socketHandler = handler }) }
-    const newContext = vi.fn(async () => context)
+    const { browser } = browserFor(page, { routeWebSocket: vi.fn(async (_pattern, handler) => { socketHandler = handler }) })
+    const newContext = browser.newContext
     const onSafetyRefusal = vi.fn()
-    const session = await createAuditPage(Object.assign(new EventEmitter(), { newContext }) as unknown as Browser, 'http://localhost:4100/', {
+    const session = await createAuditPage(browser as unknown as Browser, 'http://localhost:4100/', {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, readOnlyInteractions: true, settle: false, onSafetyRefusal,
     })
     expect(newContext).toHaveBeenCalledWith(expect.objectContaining({ serviceWorkers: 'block' }))

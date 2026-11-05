@@ -1,35 +1,42 @@
 'use client'
 
-import { useState } from 'react'
 import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy-barrel'
+import { useSiteAction } from '@/hooks/useSiteAction'
+import { SiteActionError } from '@/lib/sites/client-actions'
+import { withClientDeadline } from '@/lib/api/client-request'
+import { passkeyCreatedReceipt, passkeyListReceipt } from '@/lib/auth/client-passkey-receipt'
 
 interface Props {
   onComplete: () => void
+  ownerId: string | null
 }
 
-export function PasskeyEnrollPrompt({ onComplete }: Props) {
-  const [busy, setBusy] = useState(false)
+export function PasskeyEnrollPrompt({ onComplete, ownerId }: Props) {
+  const { busy, submit } = useSiteAction({ scope: JSON.stringify(['passkey-enrollment', ownerId]) })
 
   async function handleCreate() {
-    setBusy(true)
-    try {
-      const { error } = await authClient.passkey.addPasskey()
-      if (error) {
-        toast.error(error.message || AUTH.passkeyEnroll.createError)
-        setBusy(false)
-        return
+    if (!ownerId) return
+    const completion = await submit(async signal => {
+      try {
+        // Start inside the gesture. The authenticator owns native ceremony timing.
+        const result = await authClient.passkey.addPasskey({ fetchOptions: { signal } })
+        const saved = passkeyCreatedReceipt.safeParse(result?.data)
+        if (result?.error || !saved.success) throw new SiteActionError(result?.error?.message || AUTH.passkeyEnroll.createError)
+        return saved.data
+      } catch (error) {
+        throw error instanceof SiteActionError ? error : new SiteActionError(AUTH.passkeyEnroll.createFailed)
       }
+    }, () => {
       toast.success(AUTH.passkeyEnroll.success)
       onComplete()
-    } catch {
-      toast.error(AUTH.passkeyEnroll.createFailed)
-      setBusy(false)
-    }
+      return null
+    })
+    if (completion.kind === 'refused') toast.error(completion.error.message)
   }
 
   return (
@@ -44,6 +51,7 @@ export function PasskeyEnrollPrompt({ onComplete }: Props) {
           <Button
             onClick={() => void handleCreate()}
             loading={busy}
+            disabled={!ownerId}
             loadingLabel={AUTH.passkeyEnroll.cta}
             className="min-h-11"
           >
@@ -61,19 +69,16 @@ export function PasskeyEnrollPrompt({ onComplete }: Props) {
   )
 }
 
-export async function shouldShowPasskeyEnroll(): Promise<boolean> {
+export async function shouldShowPasskeyEnroll(parent?: AbortSignal): Promise<boolean> {
   try {
-    if (
-      typeof PublicKeyCredential === 'undefined' ||
-      typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function'
-    ) {
-      return false
-    }
-    const available = await PublicKeyCredential.isConditionalMediationAvailable()
-    if (!available) return false
-    const { data } = await authClient.passkey.listUserPasskeys()
-    const passkeys = (data as { id: string }[]) ?? []
-    return passkeys.length === 0
+    return await withClientDeadline(async signal => {
+      if (typeof PublicKeyCredential === 'undefined' || typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') return false
+      const available = await PublicKeyCredential.isConditionalMediationAvailable()
+      if (!available || signal.aborted) return false
+      const result = await authClient.passkey.listUserPasskeys({ fetchOptions: { signal } })
+      const passkeys = passkeyListReceipt.safeParse(result?.data)
+      return !signal.aborted && !result?.error && passkeys.success && passkeys.data.length === 0
+    }, parent, 15_000)
   } catch {
     return false
   }

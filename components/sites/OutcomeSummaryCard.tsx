@@ -1,13 +1,14 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Check, CircleAlert, CircleHelp, Clock3, Loader2 } from 'lucide-react'
 import type { Route } from 'next'
-import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
+import { outcomeStatusLabel, staleOutcomeRecovery, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
+import { useOutcomeState } from '@/hooks/useOutcomeState'
 import { cn } from '@/lib/utils'
 import styles from './BoardCard.module.css'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
-
-type OutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
 export function OutcomeSummaryCard({
   name,
@@ -17,7 +18,8 @@ export function OutcomeSummaryCard({
   coverage,
   freshness,
   nextStep,
-  state,
+  state: recordedState,
+  validUntil,
   running = false,
   label = 'Website check',
   actions,
@@ -31,39 +33,46 @@ export function OutcomeSummaryCard({
   coverage: string
   freshness: string
   nextStep?: string
-  state: OutcomeState
+  state: CustomerOutcomeState
+  validUntil?: string | null
   running?: boolean
   label?: string
   actions?: ReactNode
   compact?: boolean
   layout?: 'card' | 'row'
 }) {
+  const state = useOutcomeState(recordedState, validUntil, running)
+  const recovery = nextStep ?? (state === 'STALE' ? staleOutcomeRecovery() : undefined)
   const result = answer && answer !== expectation ? answer : null
   const StateIcon = state === 'CLEAR' ? Check : state === 'FLAG' ? CircleAlert : state === 'STALE' ? Clock3 : CircleHelp
+  const evidenceTime = running && result ? `${SITE_ACTION_COPY.previousResults} · ${freshness}` : freshness
+  const status = <span className={cn(
+    'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
+    !running && state === 'CLEAR' && 'border-success/30 text-success',
+    !running && state === 'FLAG' && 'border-brand text-brand',
+    (running || state === 'STALE' || state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
+  )} role="status">
+    {running ? <Loader2 className="h-4 w-4 shrink-0 text-brand motion-safe:animate-spin" aria-hidden />
+      : layout !== 'row' ? <StateIcon className="h-4 w-4" aria-hidden /> : null}
+    {running ? SITE_ACTION_COPY.outcome.verifying : outcomeStatusLabel(state)}
+  </span>
   if (layout === 'row') {
     return <section className={cn(styles.boardRow, styles.outcomeRow)}>
       <div className={cn(styles.rowTitle, styles.outcomeRowTitle)}>
         <StateIcon className="h-[18px] w-[18px]" aria-hidden />
         <div>{label !== 'Website check' ? <small>{label}</small> : null}<h2>{href ? <Link href={href} className="hover:underline">{name}</Link> : name}</h2></div>
       </div>
-      {result || !running || nextStep ? <div className={styles.rowResult}>
+      {result || !running || recovery ? <div className={styles.rowResult}>
         {result ? <strong>{result}</strong> : !running ? <span>{SITE_ACTION_COPY.expected}: <span>{expectation}</span></span> : null}
-        {nextStep ? <span className={styles.rowNextStep}>{nextStep}</span> : null}
-        {!running ? <span>{freshness}</span> : result ? <span>{SITE_ACTION_COPY.previousResults} · {freshness}</span> : null}
+        {recovery ? <span className={styles.rowNextStep}>{recovery}</span> : null}
+        {!running || result ? <span>{evidenceTime}</span> : null}
       </div> : null}
-      <span className={styles.rowStatus}>
-        <span className={cn(
-          'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
-          !running && state === 'CLEAR' && 'border-success/30 text-success',
-          !running && state === 'FLAG' && 'border-brand text-brand',
-          (running || state === 'STALE' || state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
-        )} role="status">{running ? <Loader2 className="h-3.5 w-3.5 shrink-0 text-brand motion-safe:animate-spin" aria-hidden /> : null}{running ? SITE_ACTION_COPY.outcome.verifying : outcomeStatusLabel(state)}</span>
-      </span>
+      <span className={styles.rowStatus}>{status}</span>
       {actions ? <div className={styles.outcomeRowActions}>{actions}</div> : null}
     </section>
   }
   return (
-    <section className={compact ? cn(styles.card, state === 'FLAG' && styles.problem, state === 'CLEAR' && styles.good) : 'rounded-2xl border border-border/80 bg-background p-5 sm:p-6'}>
+    <section className={compact ? styles.card : 'rounded-2xl border border-border/80 bg-background p-5 sm:p-6'}>
       <div className={cn('flex flex-wrap items-start justify-between gap-4', compact && 'h-full w-full flex-col')}>
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
@@ -72,20 +81,12 @@ export function OutcomeSummaryCard({
           </h2>
           <p className={cn('mt-2 max-w-2xl text-sm', result ? 'text-foreground' : 'text-muted-foreground')}>{result ?? expectation}</p>
           {result && !compact ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{expectation}</p> : null}
-          {nextStep ? <p className="mt-2 max-w-2xl text-sm font-medium">{nextStep}</p> : null}
+          {recovery ? <p className="mt-2 max-w-2xl text-sm font-medium">{recovery}</p> : null}
           {!compact ? <p className="mt-2 text-xs text-muted-foreground">{coverage}</p> : null}
-          <p className="mt-1 text-xs text-muted-foreground">{freshness}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{evidenceTime}</p>
         </div>
         <div className={cn('flex gap-3', compact ? 'mt-auto w-full flex-wrap items-center justify-between' : 'min-w-[9rem] flex-col items-end')}>
-          <span className={cn(
-            'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
-            state === 'CLEAR' && 'border-success/30 text-success',
-            state === 'FLAG' && 'border-brand text-brand',
-            (state === 'STALE' || state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
-          )} role="status">
-            <StateIcon className={cn('h-4 w-4', running && 'motion-safe:animate-pulse')} aria-hidden />
-            {outcomeStatusLabel(state, running)}
-          </span>
+          {status}
           {actions}
         </div>
       </div>

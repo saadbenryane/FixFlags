@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { assertionForTarget, recordAssertionVerifiers, scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
 import { TRACKING_VERIFICATION_RULE } from '../tracking/identity'
+import { PRIMARY_ACTION_VERIFICATION_RULE } from '../flow/primary-action-evidence'
+import { JOURNEY_VERIFICATION_RULE } from './journey-evidence'
+import { ENGAGEMENT_VERIFICATION_RULE } from '../network-engagement-evidence'
+import { RENDERED_PAGE_VERIFICATION_RULE } from './rendered-page-evidence'
 
 const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'security-headers',
   pageUrl: 'https://example.com/', applicable: true, passed: false,
@@ -10,6 +14,46 @@ const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1
 const keyboardPrefix = `keyboard:${'a'.repeat(64)}:${'b'.repeat(64)}:`
 
 describe('exact assertion verification', () => {
+  it.each([
+    { module: 'flow', checkId: 'flow-cta-404', key: 'primary-action-response', rule: PRIMARY_ACTION_VERIFICATION_RULE,
+      context: 'flow:control:' + 'a'.repeat(64), source: 'rendered-dom' },
+    { module: 'journeys', checkId: 'journey-signup-no-form', key: 'destination-form', rule: JOURNEY_VERIFICATION_RULE,
+      context: `journey:signup:destination:${'a'.repeat(64)}:${'b'.repeat(64)}:[{"selector":"#original","label":"Sign up"}]`, source: 'rendered-dom' },
+    { module: 'network', checkId: 'api-engagement-server-error', key: 'engagement-server-response', rule: ENGAGEMENT_VERIFICATION_RULE,
+      context: `engagement:page_load:control:page:request:v1:${'a'.repeat(64)}:capture:${'b'.repeat(64)}:page:${'c'.repeat(64)}`, source: 'browser-network' },
+    { module: 'messaging-clarity', checkId: 'messaging-weak-value-prop', key: 'headline-outcome', rule: RENDERED_PAGE_VERIFICATION_RULE,
+      context: 'rendered-page:' + 'a'.repeat(64), source: 'rendered-dom' },
+    { module: 'keyboard', checkId: 'focus-visible-missing', key: 'focus-styles', rule: 'Keyboard probe: repeat navigation',
+      context: keyboardPrefix + 'page_load', source: 'keyboard' },
+  ])('retains a qualified $module failure regardless of peer ordering without borrowing invalid evidence', sample => {
+    const control = { selector: '#original', label: 'Original', context: sample.context }
+    const target = { kind: sample.module === 'keyboard' ? 'element' : 'page', source: 'measured', device: 'desktop', ...control }
+    const original = { verificationRule: sample.rule, evidenceTargets: [target] }
+    const observed = (passed: boolean) => checkReceiptSchema.parse({ ...receipt, module: sample.module, passed, complete: true,
+      assertions: [{ key: sample.key, name: 'Original condition', expected: 'The original condition works',
+        observed: passed ? 'Working observation' : 'Failure reproduced', passed, complete: true, context: sample.context,
+        ...(sample.module === 'keyboard' ? { targets: [control] } : {}) }],
+      execution: { ...receipt.execution!, taskId: passed ? 'healthy' : 'failed', source: sample.source } })
+    const healthy = observed(true), failed = observed(false)
+    for (const [current, peer] of [[healthy, failed], [failed, healthy]]) {
+      const compared = scopedAssertionForTarget({ receipt: current, receipts: [peer], checkId: sample.checkId, flag: original })
+      expect(compared?.assertion).toMatchObject({ passed: false, observed: expect.stringContaining('Failure reproduced') })
+      expect(compared?.supportingTasks).toEqual(expect.arrayContaining([expect.objectContaining({ taskId: 'failed' })]))
+    }
+    const irrelevant = [
+      { ...failed, execution: { ...failed.execution!, auditId: 'another-execution' } },
+      { ...failed, execution: { ...failed.execution!, checkVersion: 2 } },
+      { ...failed, execution: { ...failed.execution!, source: 'http' as const } },
+      { ...failed, failed: true }, { ...failed, applicable: false },
+      { ...failed, complete: false, assertions: failed.assertions.map(assertion => ({ ...assertion, complete: false })) },
+      { ...failed, assertions: failed.assertions.map(assertion => ({ ...assertion, disposition: 'observed' as const })) },
+    ]
+    for (const peer of irrelevant) expect(scopedAssertionForTarget({ receipt: healthy, receipts: [peer], checkId: sample.checkId, flag: original })?.assertion.passed).toBe(true)
+    const missing = { ...target, selector: '#missing', context: target.context.replace('a'.repeat(64), 'd'.repeat(64)) }
+    const incompleteOriginal = { ...original, evidenceTargets: [target, missing] }
+    expect(scopedAssertionForTarget({ receipt: healthy, checkId: sample.checkId, flag: incompleteOriginal })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: healthy, receipts: [failed], checkId: sample.checkId, flag: incompleteOriginal })?.assertion.passed).toBe(false)
+  })
   it('keeps historical keyboard controls without capture conditions unverified', () => {
     const target = { selector: '#action', label: 'Action' }
     const keyboard = checkReceiptSchema.parse({ ...receipt, module: 'keyboard', complete: true, passed: true,

@@ -3,7 +3,7 @@ import { assessRequiredBindings } from '@/lib/sites/application/binding-assessme
 
 // Transport and rendering are controlled below. Public admission must not
 // depend on a real DNS service while exercising those synthetic responses.
-vi.mock('node:dns/promises', () => ({ resolve4: async () => ['93.184.216.34'], resolve6: async () => [] }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: async () => ['93.184.216.34'], resolve6: async () => [] })))
 afterEach(() => vi.unstubAllGlobals())
 
 const mocks = vi.hoisted(() => ({

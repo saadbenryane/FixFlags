@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import type { SiteCheckResult } from '../check-results'
+import type { SiteCheckResult } from '../check-result-contract'
 import { groupRecordedSearchResults } from '../search-result-groups'
 it('consolidates identical facts while preserving executions, source disagreements and historical identity', () => {
   const result = { auditId: 'analysis', historical: false, search: { observed: 'Useful title', source: 'http' }, evidenceReference: { executionId: 'one' } } as SiteCheckResult

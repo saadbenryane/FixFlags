@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MeProvider } from '@/hooks/useMe'
+import { StrictMode } from 'react'
+import { MeProvider, useMe, type MeUser } from '@/hooks/useMe'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy-barrel'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy/errors'
 
 const startScanWithHandoff = vi.hoisted(() => vi.fn())
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
@@ -26,11 +28,157 @@ vi.mock('@/components/auth/AuthFlow', () => ({
 
 import { AuditInput } from '@/components/audit/AuditInput'
 
+function account(id: string): MeUser {
+  return { id, email: `${id}@example.invalid`, name: null, plan: 'FREE', role: 'user', isAdmin: false,
+    checks: { used: 0, pending: 0, limit: 3, isUnlimited: false, remaining: 3,
+      periodStart: '2026-11-01T00:00:00Z', periodEnd: '2026-12-01T00:00:00Z' },
+    entitlements: { canExportSummary: true, canAccessPaidFeatures: false, canMonitor: true, canWatchProduct: true },
+    vibecodingLevel: null, preferredTools: [] }
+}
+
+function RefreshAccount() {
+  const { refresh } = useMe()
+  return <button onClick={() => void refresh()}>Refresh account</button>
+}
+
 describe('AuditInput scan handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
     readOrCreateAnalyticsJourneyId.mockReturnValue(null)
+  })
+
+  it.each(['default', 'landing'] as const)('focuses an invalid website address after submitting the %s form', variant => {
+    render(<MeProvider initialUser={null}><AuditInput variant={variant} source="dashboard" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'ftp://example.com' } })
+    const form = input.closest('form')!
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!
+    button.focus()
+    fireEvent.submit(form)
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveFocus()
+    expect(startScanWithHandoff).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { kind: 'url', origin: 'button' },
+    { kind: 'request', origin: 'input' },
+    { kind: 'request', origin: 'button' },
+  ])('restores the appropriate control after a $kind failure from the $origin', async ({ kind, origin }) => {
+    let finish!: (result: unknown) => void
+    startScanWithHandoff.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'example.com/pricing' } })
+    const form = input.closest('form')!
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!
+    const control = origin === 'input' ? input : button
+    control.focus()
+    fireEvent.submit(form)
+    expect(input).toBeDisabled()
+    // JSDOM retains disabled focus. Emulate the browser moving it to the body.
+    document.body.setAttribute('tabindex', '-1')
+    document.body.focus()
+    document.body.removeAttribute('tabindex')
+    expect(document.activeElement).toBe(document.body)
+    await act(async () => { finish(kind === 'url'
+      ? { ok: false, status: 400, code: 'INVALID_URL', message: 'Check this website address.' }
+      : { ok: false, status: 503, message: 'Try this check again.' }) })
+    expect(screen.getByRole('alert')).toBeVisible()
+    expect(kind === 'url' ? input : control).toHaveFocus()
+    expect(input).toHaveValue('https://example.com/pricing')
+    expect(input).toHaveAttribute('aria-invalid', String(kind === 'url'))
+  })
+
+  it('preserves deliberate focus outside the form when a pending submission fails', async () => {
+    let finish!: (result: unknown) => void
+    startScanWithHandoff.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" /><button>Read saved websites</button></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    input.focus()
+    fireEvent.submit(input.closest('form')!)
+    const other = screen.getByRole('button', { name: 'Read saved websites' })
+    other.focus()
+    await act(async () => { finish({ ok: false, status: 400, code: 'INVALID_URL', message: 'Check this website address.' }) })
+    expect(screen.getByRole('alert')).toBeVisible()
+    expect(other).toHaveFocus()
+  })
+
+  it('keeps automatic startup failure from taking focus from other content', async () => {
+    startScanWithHandoff.mockResolvedValueOnce({ ok: false, message: 'Automatic check needs retry.' })
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" initialUrl="https://focus.fixture.test/" autoStart /><button>Read saved websites</button></MeProvider>)
+    const other = screen.getByRole('button', { name: 'Read saved websites' })
+    other.focus()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Automatic check needs retry.')
+    expect(other).toHaveFocus()
+    sessionStorage.removeItem('ff:autostart-url:null')
+  })
+
+  it('retires the earlier account’s pending submission and permits a fresh submission with the retained URL', async () => {
+    let finish!: (result: { ok: false; code: string; message: string }) => void
+    startScanWithHandoff.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+      .mockImplementationOnce(async options => { options.navigate('/sites/second-account'); return { ok: true, siteId: 'second-account' } })
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ user: account('owner-b') })))
+    render(<MeProvider initialUser={account('owner-a')}><AuditInput source="dashboard" /><RefreshAccount /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'example.com/pricing' } })
+    fireEvent.submit(input.closest('form')!)
+    const earlier = startScanWithHandoff.mock.calls[0][0]
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh account' }))
+    await waitFor(() => expect(earlier.signal.aborted).toBe(true))
+    expect(input).toBeEnabled()
+    expect(input).toHaveValue('https://example.com/pricing')
+    await act(async () => {
+      earlier.onStarted({ siteId: 'first-account', isLoggedIn: true })
+      earlier.navigate('/sites/first-account')
+      finish({ ok: false, code: 'AUTH_REQUIRED', message: 'Old session response' })
+    })
+    expect(router.replace).not.toHaveBeenCalled()
+    expect(trackStartedAudit).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(router.replace).toHaveBeenCalledExactlyOnceWith('/sites/second-account'))
+    expect(startScanWithHandoff).toHaveBeenCalledTimes(2)
+    expect(startScanWithHandoff.mock.calls[1][0].signal.aborted).toBe(false)
+  })
+
+  it('retires navigation and analytics callbacks when the URL form closes', async () => {
+    let finish!: (result: { ok: false; code: string; message: string }) => void
+    startScanWithHandoff.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const first = render(<MeProvider initialUser={null}><AuditInput source="dashboard" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+    const options = startScanWithHandoff.mock.calls[0][0]
+    first.unmount()
+    expect(options.signal.aborted).toBe(true)
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" /></MeProvider>)
+    await act(async () => {
+      options.onStarted({ siteId: 'retired-site', reportId: 'retired-audit' })
+      options.navigate('/sites/retired-site')
+      finish({ ok: false, code: 'AUTH_REQUIRED', message: 'Create an account' })
+    })
+    expect(router.replace).not.toHaveBeenCalled()
+    expect(trackStartedAudit).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeEnabled()
+  })
+
+  it('releases the URL form after an unexpected handoff failure and retains its URL for retry', async () => {
+    startScanWithHandoff.mockRejectedValueOnce(new Error('Unexpected handoff failure'))
+      .mockResolvedValueOnce({ ok: true, siteId: 'retry-site' })
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+    expect(await screen.findByRole('alert')).toHaveTextContent(AUDIT_ERRORS.admissionBusy)
+    expect(input).toBeEnabled()
+    expect(input).toHaveValue('https://example.com')
+    expect(input).toHaveAttribute('aria-invalid', 'false')
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(2))
   })
 
   it('owns one pending submission and permits an explicit retry after refusal', async () => {
@@ -154,7 +302,7 @@ describe('AuditInput scan handoff', () => {
     expect(screen.queryByText('Top Flags')).not.toBeInTheDocument()
   })
 
-  it('returns to the URL field after a creation error without submitting again', async () => {
+  it('keeps the URL valid after a request failure and waits for an explicit retry', async () => {
     startScanWithHandoff.mockResolvedValue({
       ok: false,
       message: 'Could not start this check.',
@@ -171,12 +319,40 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
+    expect(input).toHaveValue('https://example.com')
+    expect(input).toHaveAttribute('aria-invalid', 'false')
+    expect(input).not.toHaveAttribute('aria-describedby')
     const retryButton = screen.getByRole('button', { name: /Check website/i })
     expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
 
     fireEvent.click(retryButton)
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(2))
+  })
+
+  it.each([
+    ['default', 503, 'HTTP_503', false], ['landing', 503, 'HTTP_503', false],
+    ['default', 400, 'INVALID_URL', true], ['landing', 400, 'INVALID_URL', true],
+    ['default', 400, 'HTTP_400', false],
+  ] as const)('attributes the %s form’s %s/%s refusal to its actual source', async (variant, status, code, invalid) => {
+    const message = invalid ? 'FixFlags can only check publicly accessible URLs' : 'This request could not be completed.'
+    const submitted = invalid ? 'https://192.168.1.1/' : 'https://example.com/'
+    startScanWithHandoff.mockResolvedValue({ ok: false, status, code, message })
+    render(<MeProvider initialUser={null}><AuditInput variant={variant} source="dashboard" idSuffix="-refusal-source" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: submitted } })
+    fireEvent.submit(input.closest('form')!)
+    const feedback = await screen.findByRole('alert')
+    expect(feedback).toHaveTextContent(message)
+    expect(input).toHaveAttribute('aria-invalid', String(invalid))
+    if (invalid) expect(input).toHaveAttribute('aria-describedby', feedback.id)
+    else expect(input).not.toHaveAttribute('aria-describedby')
+    expect(input).toHaveValue(submitted)
+    expect(startScanWithHandoff).toHaveBeenCalledOnce()
+    fireEvent.change(input, { target: { value: 'https://example.com/pricing' } })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-invalid', 'false')
   })
 
   it.each([
@@ -197,6 +373,8 @@ describe('AuditInput scan handoff', () => {
     await waitFor(() => expect(input).toBeEnabled())
     fireEvent.submit(input.closest('form')!)
     expect(await screen.findByText('Enter a URL like https://yoursite.com')).toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveAttribute('aria-describedby', `audit-url-error${idSuffix}`)
 
     fireEvent.change(input, { target: { value: 'not a url' } })
     fireEvent.submit(input.closest('form')!)
@@ -247,6 +425,8 @@ describe('AuditInput scan handoff', () => {
     ['landing', 'https://example.com/?return=/checkout/', 'https://example.com/?return=/checkout/'],
     ['landing', 'https://example.com/#/pricing/', 'https://example.com/#/pricing/'],
     ['default', '  example.com/plans/  ', 'https://example.com/plans/'],
+    ['default', 'example.com:8443/plans/?return=/account/#/pricing/', 'https://example.com:8443/plans/?return=/account/#/pricing/'],
+    ['default', '//example.com:8443/plans/', 'https://example.com:8443/plans/'],
   ] as const)('preserves the supplied destination in the %s form: %s', async (variant, entered, expected) => {
     startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'exact-url-site', reportId: 'exact-url-report' })
     render(<MeProvider initialUser={null}><AuditInput variant={variant} idSuffix="-exact-destination" /></MeProvider>)
@@ -258,6 +438,17 @@ describe('AuditInput scan handoff', () => {
     expect(startScanWithHandoff).toHaveBeenCalledWith(expect.objectContaining({
       url: expected, body: expect.objectContaining({ url: expected }),
     }))
+  })
+
+  it('explains credential-bearing URLs before starting or attributing a check', async () => {
+    render(<MeProvider initialUser={null}><AuditInput source="dashboard" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    fireEvent.change(input, { target: { value: 'https://owner:secret@example.com/path' } })
+    fireEvent.submit(input.closest('form')!)
+    expect(screen.getByRole('alert')).toHaveTextContent(AUDIT_ERRORS.urlCredentials)
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(startScanWithHandoff).not.toHaveBeenCalled()
+    expect(readOrCreateAnalyticsJourneyId).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -477,6 +668,31 @@ describe('AuditInput post-signup handoff', () => {
     vi.clearAllMocks()
     sessionStorage.clear()
     startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site-1' })
+  })
+
+  it('does not let another account’s automatic handoff marker consume this account’s URL', async () => {
+    const first = render(<MeProvider initialUser={account('owner-a')}><AuditInput initialUrl="https://example.com" autoStart /></MeProvider>)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    first.unmount()
+    render(<MeProvider initialUser={account('owner-b')}><AuditInput initialUrl="https://example.com" autoStart /></MeProvider>)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(2))
+    expect(startScanWithHandoff.mock.calls[1][0].signal.aborted).toBe(false)
+  })
+
+  it('starts only the surviving automatic handoff when effects are replayed', async () => {
+    render(<StrictMode><MeProvider initialUser={null}><AuditInput initialUrl="https://example.com" autoStart /></MeProvider></StrictMode>)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff.mock.calls[0][0].signal.aborted).toBe(false)
+  })
+
+  it('does not consume the automatic handoff when its form closes before submission', async () => {
+    const first = render(<MeProvider initialUser={null}><AuditInput initialUrl="https://example.com" autoStart /></MeProvider>)
+    first.unmount()
+    await act(async () => {})
+    expect(startScanWithHandoff).not.toHaveBeenCalled()
+    render(<MeProvider initialUser={null}><AuditInput initialUrl="https://example.com" autoStart /></MeProvider>)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff.mock.calls[0][0].signal.aborted).toBe(false)
   })
 
   it.each(['https://example.com', 'https://example.com/plans/?return=/account/#/pricing/'])('resumes the handed-off URL exactly once across a remount: %s', async url => {

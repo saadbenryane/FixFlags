@@ -22,7 +22,10 @@ export async function authorizeAgentCitations(projectId: string, values: unknown
     if (citation.type === 'flag' && flagsAllowed.has(citation.id)) return [{ ...citation, href: `/sites/${projectId}/flags/${citation.id}` }]
     if (citation.type === 'attempt' && attemptsAllowed.has(citation.id)) return [{ ...citation,
       href: `/sites/${projectId}/flags/${attemptsAllowed.get(citation.id)}#attempt-${citation.id}` }]
-    if (citation.type === 'watch' && citation.id === projectId) return [{ ...citation, href: `/sites/${projectId}/settings#watch` }]
+    if (citation.type === 'watch' && citation.id === projectId) {
+      const uptime = new URL(citation.href, 'https://fixflags.invalid').searchParams.get('category') === 'uptime'
+      return [{ ...citation, href: uptime ? `/sites/${projectId}?category=uptime#category-uptime` : `/sites/${projectId}/settings#watch` }]
+    }
     return []
   }) : []
 }

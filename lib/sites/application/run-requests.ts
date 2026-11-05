@@ -9,7 +9,7 @@ import { RateLimitError } from '@/lib/security/rate-limit'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { Prisma,type RunRequestSource } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
-import { canonicalIntent,readExecutionSpec,readVerificationTarget } from '../domain/execution-spec'
+import { canonicalIntent,readExecutionSpec,readVerificationTarget,type ExecutionSpec } from '../domain/execution-spec'
 import { analysisEnvironmentValueSql,analysisEnvironmentWhere,siteAnalysisAuditWhere,siteWideAnalysisAuditWhere } from './analysis-scope'
 import { canonicalExecutionOutcomes,executionIntentHash,monitoringExecutionCovers } from './execution-spec'
 import { activeRunWhere,reclaimExpiredRuns,RUN_LEASE_MS } from './run-leases'
@@ -17,7 +17,7 @@ import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
 import { resolveRunExecution,validateRunSelection } from './run-selection'
 import { requireActiveAccount } from '@/lib/auth/account-availability'
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
-import { loadRunRequestByKey, retainSharedRunKey } from './run-request-keys'
+import { loadOwnedRunRequestByKey, loadRunRequestByKey, retainSharedRunKey } from './run-request-keys'
 export { getOwnedRun } from './run-queries'
 export { markOutcomeRunsCouldNotVerify,reconcileOutcomeRunsForAudit } from './run-reconciliation'
 
@@ -36,7 +36,7 @@ function auditSource(source: RunRequestSource) {
   return 'DASHBOARD' as const
 }
 
-import { safeContext,sameExecutionScope,sameSelection,type RunInput,type SiteRunVerificationTarget } from './run-intent'
+import { safeContext,sameExecutionScope,sameSelection,sameRecordedRunCommand,type RunInput,type SiteRunVerificationTarget } from './run-intent'
 /**
  * Which Site runs count against the plan's scan allowance.
  *
@@ -67,12 +67,35 @@ export async function requestSiteRun(input: RunInput): Promise<{
   if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId)
   const selection = validateRunSelection(input)
   const { scope, environment } = selection
-  const { selectedIds, first, fixture, auditUrl, executionSpec, requestHash, outcomeAuthorization } = await resolveRunExecution(input, selection)
-  if (input.expectedResponsibilityHash) {
-    const { admittedResponsibilityHash } = await import('./run-retry')
-    if (admittedResponsibilityHash(executionSpec) !== input.expectedResponsibilityHash)
+  const requestedKey = input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
+  const key = { projectId: input.projectId, source: input.source, idempotencyKey: requestedKey }
+  const keyOwner = { userId: input.userId, operator: input.operator,
+    cleanup: Boolean(input.operator && scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup') }
+  const responsibilityHash = input.expectedResponsibilityHash ? (await import('./run-retry')).admittedResponsibilityHash : null
+  function assertResponsibility(spec: ExecutionSpec | null) {
+    if (!responsibilityHash) return
+    if (!spec || responsibilityHash(spec) !== input.expectedResponsibilityHash)
       throw new SiteRunRefusal('This run’s admitted scope cannot be reproduced with the current configuration. Start a new check with its current scope.', 409, 'RETRY_SCOPE_CHANGED')
   }
+  function matchesRecorded(run: Parameters<typeof sameRecordedRunCommand>[0]) {
+    if (!sameRecordedRunCommand(run, input)) return false
+    assertResponsibility(readExecutionSpec(run.executionSpec))
+    return true
+  }
+  async function replayRecorded() {
+    if (!input.idempotencyKey?.trim()) return null
+    const recorded = await loadOwnedRunRequestByKey({ ...key, ...keyOwner })
+    if (!recorded) return null
+    if (!matchesRecorded(recorded))
+      throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
+    return { runId: recorded.id, auditId: recorded.auditId,
+      outcomeIds: recorded.selections.map(item => item.outcomeId).sort(), reused: true }
+  }
+  const replay = await replayRecorded()
+  if (replay) return replay
+
+  const { selectedIds, first, fixture, auditUrl, executionSpec, requestHash, outcomeAuthorization } = await resolveRunExecution(input, selection)
+  assertResponsibility(executionSpec)
   const matchesIntent = (run: { requestHash?: string | null; executionSpec?: unknown; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }) => {
     const admitted = readExecutionSpec(run.executionSpec)
     if (admitted && admitted.scope !== executionSpec.scope) return false
@@ -97,21 +120,11 @@ export async function requestSiteRun(input: RunInput): Promise<{
       canonicalIntent(canonicalExecutionOutcomes(admitted.outcomes)) === canonicalIntent(canonicalExecutionOutcomes(executionSpec.outcomes))
   }
 
-  const requestedKey =
-    input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
-  const key = { projectId: input.projectId, source: input.source, idempotencyKey: requestedKey }
   const retainShared = (run: { id: string; auditId: string | null; selections?: Array<{ outcomeId: string }> }) => input.idempotencyKey?.trim()
     ? retainSharedRunKey({ ...key, userId: input.userId, runRequestId: run.id, operator: input.operator,
       cleanup: Boolean(input.operator && scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup') },
-    (recorded, exactReplay) => recorded.environment === environment && (exactReplay ? matchesIntent(recorded) : compatibleActive(recorded)))
+    (recorded, exactReplay) => recorded.environment === environment && (exactReplay ? matchesRecorded(recorded) : compatibleActive(recorded)))
     : Promise.resolve(run)
-  const byKey = await loadRunRequestByKey(key)
-  if (byKey) {
-    if (byKey.projectId !== input.projectId || byKey.environment !== environment || !matchesIntent(byKey)) {
-      throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
-    }
-    return { runId: byKey.id, auditId: byKey.auditId, outcomeIds: replaySelection(byKey), reused: true }
-  }
 
   // Clear any run that no worker still owns before deciding whether this Site is
   // busy. Without this the abandoned row keeps failing the partial unique index
@@ -182,7 +195,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
           where: {
             id: parentAuditId,
             projectId: input.projectId,
-            status: 'COMPLETED', AND: [analysisEnvironmentWhere(environment)],
+            ...(executionSpec.verificationSources && input.verificationTarget?.kind === 'DIAGNOSTIC' ? {} : { status: 'COMPLETED' as const }),
+            AND: [analysisEnvironmentWhere(environment)],
           },
           select: { id: true },
         })
@@ -227,17 +241,19 @@ export async function requestSiteRun(input: RunInput): Promise<{
   } catch (error) {
     if (error instanceof RunAdmissionReplay)
       return { runId: error.runId, auditId: error.auditId, outcomeIds: scope === 'SITE' || scope === 'CATEGORY' ? error.outcomeIds : selectedIds, reused: true }
+    // Admission can commit before its response is lost. Recover its immutable
+    // receipt through the same authority and command checks as an ordinary retry.
+    const replay = await replayRecorded()
+    if (replay) return replay
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const recorded = await loadRunRequestByKey(key)
-      const concurrent = recorded ?? await prisma.runRequest.findFirst({
+      const concurrent = await prisma.runRequest.findFirst({
         where: { projectId: input.projectId, status: { in: ['QUEUED', 'RUNNING'] } },
         include: { selections: { select: { outcomeId: true } } },
       })
       if (concurrent) {
-        const identicalKey = Boolean(recorded)
-        if (concurrent.environment !== environment || !(identicalKey ? matchesIntent(concurrent) : compatibleActive(concurrent)))
+        if (concurrent.environment !== environment || !compatibleActive(concurrent))
           throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
-        const shared = identicalKey ? concurrent : await retainShared(concurrent)
+        const shared = await retainShared(concurrent)
         return { runId: shared.id, auditId: shared.auditId, outcomeIds: replaySelection(shared), reused: true }
       }
     }

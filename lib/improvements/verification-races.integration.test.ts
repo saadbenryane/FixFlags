@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { reconcileImprovementVerification } from './verification'
+import { materializeAttentionForAudit } from './occurrences'
+import * as execution from '@/lib/audit/execution-ownership'
+import { lockImprovementLedger } from './ledger-lock'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('verification result custody under concurrent reconciliation', () => {
@@ -73,6 +76,98 @@ run('verification result custody under concurrent reconciliation', () => {
     await paused
     return { release, result }
   }
+
+  async function targetedRecovery(idempotencyKey: string) {
+    const target = { kind: 'DIAGNOSTIC', pageUrl: url, checkId: 'viewport-missing', parentAuditId: sourceId, attemptId }
+    const executionSpec = { ...spec, scope: 'DIAGNOSTIC', verificationTarget: target }
+    await prisma.audit.update({ where: { id: freshId }, data: { executionSpec } })
+    await prisma.runRequest.create({ data: { projectId, auditId: freshId, requestedByUserId: userId, source: 'WEB',
+      idempotencyKey, status: 'COMPLETED', verificationTarget: target, executionSpec } })
+  }
+
+  async function waitForLedgerWaiter(site = false) {
+    await vi.waitFor(async () => {
+      const rows = await prisma.$queryRaw<Array<{ waiting: boolean }>>`SELECT EXISTS (
+        SELECT 1 FROM pg_locks lock JOIN pg_stat_activity activity ON activity.pid = lock.pid
+        WHERE activity.datname = current_database() AND NOT lock.granted
+          AND (${site} AND activity.query LIKE '%"projects"%' OR NOT ${site} AND lock.locktype = 'advisory')
+      ) AS waiting`
+      expect(rows[0].waiting).toBe(true)
+    }, { timeout: 3000 })
+  }
+
+  it('preserves independent recovery when an older source projection resumes', async () => {
+    await targetedRecovery('projection-recovery-race')
+    let release!: () => void, captured = false
+    const resumed = new Promise<void>(resolve => { release = resolve })
+    const read = prisma.audit.findUnique.bind(prisma.audit)
+    vi.spyOn(prisma.audit, 'findUnique').mockImplementationOnce(async args => {
+      const row = await read(args); captured = true; await resumed; return row
+    })
+    const projection = materializeAttentionForAudit(sourceId)
+    let recovered
+    try {
+      await vi.waitFor(() => expect(captured).toBe(true), { timeout: 3000 })
+      expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId }))
+        .toEqual([expect.objectContaining({ attemptId, outcome: 'IMPROVED', comparable: true })])
+      recovered = await prisma.improvement.findUniqueOrThrow({ where: { id: improvementId } })
+      expect(recovered.status).toBe('VERIFIED')
+    } finally { release(); await projection }
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvementId } })).toEqual(recovered)
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })).toMatchObject({ status: 'FIXED', resolvedInId: freshId })
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
+      .toMatchObject({ outcome: 'IMPROVED', comparable: true, verificationAuditId: freshId })
+  })
+
+  it('waits for a committing verification before projecting current source facts without a lock retry', async () => {
+    await targetedRecovery('held-projection-recovery-race')
+    let release!: () => void, entered = 0
+    const resumed = new Promise<void>(resolve => { release = resolve })
+    const transaction = execution.executionTransaction
+    vi.spyOn(execution, 'executionTransaction').mockImplementationOnce((work, options) => transaction(async tx => {
+      await lockImprovementLedger(tx, improvementId)
+      entered++
+      await resumed
+      return work(tx)
+    }, options))
+    const verification = reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId })
+    let projection: Promise<void> | undefined
+    try {
+      await vi.waitFor(() => expect(entered).toBe(1), { timeout: 3000 })
+      projection = materializeAttentionForAudit(sourceId)
+      await waitForLedgerWaiter()
+    } finally { release(); await Promise.all([verification, projection]) }
+    expect(entered).toBe(1)
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvementId } })).toMatchObject({ status: 'VERIFIED' })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })).toMatchObject({ status: 'FIXED', resolvedInId: freshId })
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
+      .toMatchObject({ outcome: 'IMPROVED', comparable: true, verificationAuditId: freshId })
+  })
+
+  it('commits independent recovery after an already active source projection without a lock retry', async () => {
+    await targetedRecovery('held-source-projection-race')
+    let release!: () => void, entered = 0
+    const resumed = new Promise<void>(resolve => { release = resolve })
+    const transaction = execution.executionTransaction
+    vi.spyOn(execution, 'executionTransaction').mockImplementationOnce((work, options) => transaction(async tx => {
+      const result = await work(tx)
+      entered++
+      await resumed
+      return result
+    }, options))
+    const projection = materializeAttentionForAudit(sourceId)
+    let verification: ReturnType<typeof reconcileImprovementVerification> | undefined
+    try {
+      await vi.waitFor(() => expect(entered).toBe(1), { timeout: 3000 })
+      verification = reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId })
+      await waitForLedgerWaiter(true)
+    } finally { release(); await Promise.all([projection, verification]) }
+    expect(entered).toBe(1)
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvementId } })).toMatchObject({ status: 'VERIFIED' })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })).toMatchObject({ status: 'FIXED', resolvedInId: freshId })
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
+      .toMatchObject({ outcome: 'IMPROVED', comparable: true, verificationAuditId: freshId })
+  })
 
   it.each([false, true])('recovers every comparable historical capture beyond the first batch while preserving gaps: %s', async withGaps => {
     const target = { kind: 'DIAGNOSTIC', pageUrl: url, checkId: 'viewport-missing', parentAuditId: sourceId, attemptId }

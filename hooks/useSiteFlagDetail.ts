@@ -22,7 +22,8 @@ export function useSiteFlagDetail(siteId: string, flagId: string | null, revisio
         if (data.flag.id !== requestedFlag && data.flag.sourceFlagId !== requestedFlag) throw new Error(C.flagUnavailable)
         // Session changes cannot put owner instructions into a visitor cache.
         // Retained evidence is reusable only within this viewer's permission.
-        const projected = { ...data, flag: { ...data.flag, ...viewerRepairGuidance(data.flag, owner) } }
+        const projected = { ...data, flag: { ...data.flag, ...viewerRepairGuidance(data.flag, owner),
+          verificationFeedback: owner ? data.flag.verificationFeedback ?? null : null } }
         return { identity: JSON.stringify([requestedSite, requestedFlag, owner]), revision: requestedRevision, data: projected }
       } finally { clearTimeout(timer) }
     }, { keepPreviousData: true, shouldRetryOnError: false })

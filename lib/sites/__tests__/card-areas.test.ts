@@ -119,7 +119,7 @@ describe('site card packaging', () => {
   })
 
   it('publishes a confirmed Flag and a scoped assertion while unrelated tasks are running', () => {
-    const facts = buildCoverageFacts({ auditStatus: 'CHECKING', completedAt: null, now: new Date(), evidenceCoverage: {},
+    const facts = buildCoverageFacts({ auditStatus: 'CHECKING', completedAt: null, now: new Date('2026-10-11T10:00:01Z'), evidenceCoverage: {},
       flags: [{ checkId: 'title-missing', rubric: 'REACH', severity: 'CRITICAL', impactTag: 'SEO' }],
       verifierExecutions: [{ targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) }] })
     expect(facts.find(fact => fact.area === 'search')).toMatchObject({ state: 'problem', openFlagCount: 1 })

@@ -4,7 +4,7 @@ import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
-import { checkAssertionsForVersion, CHECK_MODULES } from '@/lib/audit/check-registry'
+import { checkAssertionsForVersion, CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { searchEvidence } from './search-evidence'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { isResolvedFlagStatus } from '@/lib/audit/attention'
@@ -120,6 +120,32 @@ function passedAssertion(executions: Array<{ targetKey: string; status: string; 
 
 export type CoverageExecution = { targetKey: string; status: string; detail?: unknown; workKind?: string | null; pageUrl?: string | null }
 
+/** An area's assurance is no newer than its oldest recorded observation.
+ * Completion, another area or a later batch cannot renew those source facts. */
+export function coverageObservationTimes(executions: ReadonlyArray<{ targetKey: string; status?: string; detail?: unknown }>): Map<SiteCardArea, string> {
+  const times = new Map<SiteCardArea, string>()
+  const record = (area: SiteCardArea, collectedAt: string) => {
+    if (!Number.isFinite(Date.parse(collectedAt))) return
+    const prior = times.get(area)
+    if (!prior || Date.parse(collectedAt) < Date.parse(prior)) times.set(area, collectedAt)
+  }
+  const current = executions.filter(execution => !execution.status || execution.status === 'COMPLETED')
+  // Search's existing local responsibility boundary owns public assurance.
+  // Provider reporting windows remain separate enrichment.
+  for (const receipt of searchEvidence(current)?.receipts ?? []) record('search', receipt.collectedAt)
+  for (const execution of current) {
+    if (!execution.targetKey.startsWith('module:') || execution.targetKey.startsWith('module:search')) continue
+    const receipt = readCheckReceipt(execution.detail)
+    if (receipt.legacy || !('execution' in receipt) || !receipt.execution || !receipt.applicable || receipt.failed ||
+      execution.targetKey !== 'module:' + receipt.module) continue
+    const definitions = checkAssertionsForVersion(receipt.module, receipt.execution.checkVersion)
+    const areas = receipt.assertions.length ? receipt.assertions.flatMap(assertion => definitions[assertion.key]?.area ?? [])
+      : moduleAreas(receipt.module, receipt.execution.checkVersion)
+    for (const area of new Set(areas)) record(area, receipt.execution.collectedAt)
+  }
+  return times
+}
+
 function failedModuleArea(module: string): SiteCardArea | undefined {
   if (module.startsWith('search-')) return 'search'
   if (module === 'pagespeed' || module === 'slow-replay') return 'performance'
@@ -225,7 +251,7 @@ export function buildCoverageFacts(input: {
   retainLastKnownWhileChecking?: boolean
 }): CoverageFact[] {
   const inFlight = isAuditInFlight(input.auditStatus)
-  const checkedAt = input.completedAt?.toISOString() ?? null
+  const observationTimes = coverageObservationTimes(input.verifierExecutions ?? [])
   const openByArea = new Map<SiteCardArea, number>()
   const openFlags = input.flags.filter(flag => !isResolvedFlagStatus(flag.status?.toUpperCase()))
   const lastKnownByArea = new Map(
@@ -290,6 +316,7 @@ export function buildCoverageFacts(input: {
   ]
 
   return areas.map((area) => {
+    const checkedAt = observationTimes.get(area) ?? input.completedAt?.toISOString() ?? null
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
     const incompleteReason = (area === 'search' && search && !search.complete && !inFlight
@@ -309,12 +336,13 @@ export function buildCoverageFacts(input: {
     }
 
     if (area === 'search' && search) {
-      const stale = search.receipts.some(receipt => siteCoverageIsStale(receipt.collectedAt, input.now, input.coverageMaxAgeMs))
+      const searchCheckedAt = observationTimes.get(area) ?? search.checkedAt
+      const stale = siteCoverageIsStale(searchCheckedAt, input.now, input.coverageMaxAgeMs)
       const complete = search.complete && !search.excluded && !incompleteReason && !stale
       return { area, state: complete ? 'healthy' : 'unknown',
         label: stale ? SITE_BOARD_COPY.checkOutOfDate : search.excluded ? SEARCH_COPY.summary.excluded : search.complete ? SEARCH_COPY.summary.recorded : SEARCH_COPY.summary.partial,
         detail: stale ? SITE_BOARD_COPY.checkOutOfDateDetail : search.excluded ? SEARCH_COPY.summary.restriction : search.complete ? SEARCH_COPY.summary.scope(search.receipts.length) : SEARCH_COPY.partial,
-        checkedAt: search.checkedAt, openFlagCount: 0, evidenced: search.evidenced, stale, incompleteReason }
+        checkedAt: searchCheckedAt, openFlagCount: 0, evidenced: search.evidenced, stale, incompleteReason }
     }
 
     // A loaded library or attempted request cannot prove delivery or consent.
@@ -325,13 +353,11 @@ export function buildCoverageFacts(input: {
 
     if (inFlight && evidenced.has(area) && ['security', 'tracking', 'accessibility'].includes(area)) {
       const copy = healthyEvidenceCopy(area, evidence)
-      const collected = (input.verifierExecutions ?? []).flatMap(execution => {
-        if (CHECK_MODULES[execution.targetKey.replace(/^module:/, '')]?.area !== area) return []
-        const receipt = readCheckReceipt(execution.detail)
-        return !receipt.legacy && 'execution' in receipt && receipt.execution ? [receipt.execution.collectedAt] : []
-      }).sort().at(-1) ?? null
+      if (siteCoverageIsStale(checkedAt, input.now, input.coverageMaxAgeMs)) return { area, state: 'unknown',
+        label: SITE_BOARD_COPY.checkOutOfDate, detail: SITE_BOARD_COPY.checkOutOfDateDetail,
+        checkedAt, openFlagCount: 0, evidenced: true, stale: true }
       return { area, state: 'healthy' as const, label: copy.answer, detail: copy.detail,
-        checkedAt: collected, openFlagCount: 0, evidenced: true }
+        checkedAt, openFlagCount: 0, evidenced: true }
     }
 
     if ((inFlight || input.auditStatus === 'FAILED') && input.retainLastKnownWhileChecking && prior) {
@@ -399,7 +425,7 @@ export function buildCoverageFacts(input: {
       }
     }
 
-    if (siteCoverageIsStale(input.completedAt, input.now, input.coverageMaxAgeMs)) {
+    if (siteCoverageIsStale(checkedAt, input.now, input.coverageMaxAgeMs)) {
       return {
         area,
         state: 'unknown' as const,

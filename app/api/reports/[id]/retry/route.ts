@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { canManageAudit, canRetryAnonymousAudit } from '@/lib/audit/access'
+import { auditAccessSourceSelect, canManageAudit, canRetryAnonymousAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { retryAudit } from '@/lib/audit/retry-audit'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
@@ -22,7 +22,7 @@ export async function POST(
     await enforceRateLimit({ scope: 'audit-retry', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: { userId: true, projectId: true, isPublic: true, status: true, triageAt: true, failureCode: true },
+      select: { ...auditAccessSourceSelect, triageAt: true, failureCode: true },
     })
     if (!audit) return apiError('Report not found', 404)
     if (

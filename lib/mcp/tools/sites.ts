@@ -20,7 +20,9 @@ import { uptimeCursorSchema, uptimeWindowSchema } from '@/lib/uptime/contracts'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import { buildSiteRepairBrief } from '@/lib/sites/repair-brief'
 import { getAppUrl } from '@/lib/get-app-url'
-import { repairBriefSchema, repairContextHashSchema, repairObservationOffsetSchema } from '@/lib/sites/repair-brief-contract'
+import { repairBriefSchema, repairBriefDeliverySchema, repairContextHashSchema, repairObservationOffsetSchema, repairDocumentOffsetSchema } from '@/lib/sites/repair-brief-contract'
+import { deliverSiteRepairBrief } from '@/lib/sites/repair-delivery'
+import { MAX_REPAIR_BRIEF_BYTES } from '@/lib/sites/repair-budgets'
 import { loadSiteRepairEvidence } from '@/lib/sites/application/repair-evidence'
 
 async function ownedSite(userId: string, siteId: string) {
@@ -216,44 +218,54 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
       inputSchema: z.object({ siteId: z.string().min(1), flagId: z.string().min(1),
         expectedContextHash: repairContextHashSchema.optional().describe('Context revision from a copied repair brief. Refuse changed evidence instead of silently switching tasks.'),
         observationOffset: repairObservationOffsetSchema.optional().describe('Continue supporting observations using observationPage.nextOffset and the same expectedContextHash.'),
+        documentOffset: repairDocumentOffsetSchema.optional().describe('Continue an oversized brief using the returned retrieval.next request.'),
+        expectedDocumentHash: repairContextHashSchema.optional().describe('Exact document revision returned with documentOffset.'),
         includeEvidence: z.boolean().optional().describe('Read recorded performance conditions and the exact source capture, when available. Images are bounded and returned as native image content.'),
       }).refine(input => !input.observationOffset || Boolean(input.expectedContextHash), {
         message: 'Continuing observations requires expectedContextHash', path: ['expectedContextHash'],
+      }).refine(input => !input.documentOffset || Boolean(input.expectedContextHash && input.expectedDocumentHash), {
+        message: 'Continuing a document requires both revisions', path: ['expectedDocumentHash'],
       }),
-      outputSchema: z.object({ siteId: z.string(), repairBrief: repairBriefSchema, flag: z.object({}).passthrough() }).strict(),
+      outputSchema: z.object({ siteId: z.string(), repairBrief: repairBriefDeliverySchema, flag: z.object({}).passthrough().nullable() }).strict(),
       annotations: toolAnnotations(MCP_TOOLS.getFlag),
     },
-    async ({ siteId, flagId, expectedContextHash, observationOffset, includeEvidence }) => {
+    async ({ siteId, flagId, expectedContextHash, observationOffset, includeEvidence, documentOffset, expectedDocumentHash }) => {
       try {
         const site = await ownedSite(user.id, siteId)
         const flag = await loadSiteFlagDetail(site, flagId)
         if (!flag) throw new Error('Flag not found')
         const repairBrief = buildSiteRepairBrief(site.siteId, flag, getAppUrl(), flagId, observationOffset, expectedContextHash)
         const attached = includeEvidence ? await loadSiteRepairEvidence(site, flag, `${repairBrief.links.json}&view=capture`) : null
-        const result = mcpStructuredResult({
+        const complete = attached ? repairBriefSchema.parse({ ...repairBrief, evidence: attached.evidence }) : repairBrief
+        const wrapperBytes = Buffer.byteLength(JSON.stringify({ siteId: site.siteId, repairBrief: null, flag: null })) - 4
+        const payload = {
           siteId: site.siteId,
-          repairBrief: attached ? repairBriefSchema.parse({ ...repairBrief, evidence: attached.evidence }) : repairBrief,
+          repairBrief: deliverSiteRepairBrief(complete, { documentOffset, expectedDocumentHash }, MAX_REPAIR_BRIEF_BYTES - wrapperBytes),
           flag: {
-            flagId: flag.id,
-            sourceFlagId: flag.sourceFlagId,
-            checkId: flag.checkId,
-            status: flag.status,
-            verificationState: flag.verificationState,
-            outcomeId: flag.outcomeId,
-            problem: flag.problem,
-            evidence: flag.evidence,
-            whyItMatters: flag.whyItMatters,
-            fix: flag.fix,
-            expectedBehavior: flag.expectedBehavior,
-            sourceAuditId: flag.sourceAuditId,
-            pageUrl: flag.pageUrl,
-            affectedPaths: flag.affectedPaths,
-            verificationRule: flag.verificationRule,
+            flagId: repairBrief.flag.flagId,
+            sourceFlagId: repairBrief.flag.sourceFlagId,
+            checkId: repairBrief.flag.checkId,
+            status: repairBrief.flag.status,
+            verificationState: repairBrief.flag.verificationState,
+            outcomeId: repairBrief.flag.outcomeId,
+            problem: repairBrief.flag.problem,
+            evidence: repairBrief.flag.evidence,
+            whyItMatters: repairBrief.flag.whyItMatters,
+            fix: repairBrief.repair.guidance,
+            expectedBehavior: repairBrief.verification.expectedBehavior,
+            sourceAuditId: repairBrief.flag.sourceAuditId,
+            pageUrl: repairBrief.flag.pageUrl,
+            affectedPaths: repairBrief.flag.affectedPaths,
+            verificationRule: repairBrief.verification.rule,
             attempts: flag.attempts,
             verifying: flag.verifying,
           },
-        })
-        return attached?.image && attached.evidence.capture.state === 'available' && attached.evidence.capture.nativeImage ? { ...result, content: [...result.content,
+        }
+        // Compatibility alias only. The canonical brief owns evidence and its
+        // continuation; an unbounded duplicate must not bypass that budget.
+        const result = mcpStructuredResult(Buffer.byteLength(JSON.stringify(payload)) <= MAX_REPAIR_BRIEF_BYTES
+          ? payload : { ...payload, flag: null })
+        return !documentOffset && attached?.image && attached.evidence.capture.state === 'available' && attached.evidence.capture.nativeImage ? { ...result, content: [...result.content,
           { type: 'image' as const, mimeType: 'image/png' as const, data: attached.image.toString('base64') }] } : result
       } catch (error) {
         return mcpCoreError(error)

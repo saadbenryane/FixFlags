@@ -7,11 +7,11 @@ import type { DeterministicFlag } from '../flag-types'
 
 export const LOADING_VERIFICATION_RULE = 'Loading UI observation v1'
 export const LOADING_CHECKS = ['loading-indicator-stuck', 'loading-state-slow', 'mobile-load-delay-content'] as const
-const observationSchema = z.object({ version: z.literal(1), device: z.enum(['desktop', 'mobile']), scope: captureObservationScopeSchema,
+export const loadingObservationSchema = z.object({ version: z.literal(1), device: z.enum(['desktop', 'mobile']), scope: captureObservationScopeSchema,
   contentVisible: z.boolean(), ready: z.boolean(), restricted: z.boolean() }).strict()
 
 export function loadingContext(value: LoadingObservation | undefined): string | undefined {
-  const observation = observationSchema.safeParse(value)
+  const observation = loadingObservationSchema.safeParse(value)
   if (!observation.success || observation.data.restricted) return undefined
   const key = captureObservationKey(observation.data.scope)
   return key === 'unknown' ? undefined : 'loading:' + observation.data.device + ':' + key

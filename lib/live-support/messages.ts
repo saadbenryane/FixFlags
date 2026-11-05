@@ -102,21 +102,24 @@ export async function sendAgentMessage(sessionId: string, senderId: string, body
   })
 }
 
-export async function markReadByVisitor(sessionId: string) {
-  await prisma.supportSession.update({
-    where: { id: sessionId },
-    data: { unreadByVisitor: 0 },
-  })
+export function markReadByVisitor(sessionId: string, through: bigint) {
+  return markRead(sessionId, through, 'visitor')
 }
 
-export async function markReadByAgent(sessionId: string, through: bigint) {
+export function markReadByAgent(sessionId: string, through: bigint) {
+  return markRead(sessionId, through, 'agent')
+}
+
+async function markRead(sessionId: string, through: bigint, reader: 'visitor' | 'agent') {
   await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT "id" FROM "support_sessions" WHERE "id" = ${sessionId} FOR UPDATE`
-    const session = await tx.supportSession.findUniqueOrThrow({ where: { id: sessionId }, select: { agentReadThrough: true, nextMessageSequence: true } })
+    const session = await tx.supportSession.findUniqueOrThrow({ where: { id: sessionId }, select: { agentReadThrough: true, visitorReadThrough: true, nextMessageSequence: true } })
     if (through > session.nextMessageSequence || through < BigInt(0)) throw new SupportError('Invalid read cursor', 'INVALID_CURSOR', 400)
-    if (through <= session.agentReadThrough) return
-    const unread = await tx.supportMessage.count({ where: { sessionId, role: 'VISITOR', sequence: { gt: through } } })
-    await tx.supportSession.update({ where: { id: sessionId }, data: { agentReadThrough: through, unreadByAgent: unread } })
+    if (through <= (reader === 'visitor' ? session.visitorReadThrough : session.agentReadThrough)) return
+    const unread = await tx.supportMessage.count({ where: { sessionId, role: reader === 'visitor' ? 'AGENT' : 'VISITOR', sequence: { gt: through } } })
+    await tx.supportSession.update({ where: { id: sessionId }, data: reader === 'visitor'
+      ? { visitorReadThrough: through, unreadByVisitor: unread }
+      : { agentReadThrough: through, unreadByAgent: unread } })
   })
 }
 

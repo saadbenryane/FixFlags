@@ -1,11 +1,10 @@
-import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import { openCheckDestination, hasSuccessfulPublicGet, type OpenCheckObservation } from '../open-check'
 import type { CheckAssertion } from './assertion'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
-import { resolvedPageLinks } from './public-links'
+import { resolvedPageLinks, type PageLinkInventory } from './public-links'
 
-const MAX_LINK_CHECKS = 8
+export const MAX_ACTION_DESTINATIONS = 8
 const FETCH_TIMEOUT_MS = 4000
 
 /** Login / sign-up / register entry points. */
@@ -37,21 +36,10 @@ function classifyLink(link: { href: string; text: string }): LinkKind | null {
   return null
 }
 
-/**
- * Auth & checkout smoke scan (EXPERIENCE): the conversion and revenue paths must
- * actually resolve. Complements `broken-internal-links` by covering cross-origin
- * payment links and framing dead auth/checkout paths by their business impact.
- */
-export async function runAuthCheckoutChecks(
-  pageUrl: string,
-  meta: PageMetadata,
-  options: DestinationCheckOptions = {},
-): Promise<DeterministicFlag[]> {
-  const seen = new Set<string>()
-  const candidates: Array<{ url: string; kind: LinkKind }> = []
-  const deadAuth: string[] = [], deadCheckout: string[] = []
-  const targets = { auth: [] as NonNullable<DeterministicFlag['evidenceTargets']>, checkout: [] as NonNullable<DeterministicFlag['evidenceTargets']> }
-  for (const link of resolvedPageLinks(pageUrl, meta)) {
+/** Classification and collection planning consume the same active inventory. */
+export function actionDestinations(pageUrl: string, inventory: PageLinkInventory) {
+  const seen = new Set<string>(), candidates: Array<{ url: string; kind: LinkKind }> = []
+  for (const link of resolvedPageLinks(pageUrl, inventory)) {
     if (!link.href || /^(?:#|mailto:|tel:)/i.test(link.href)) continue
     const kind = classifyLink(link)
     if (!kind) continue
@@ -63,9 +51,33 @@ export async function runAuthCheckoutChecks(
     seen.add(url.toString())
     candidates.push({ url: url.toString(), kind })
   }
+  return candidates
+}
+
+/**
+ * Auth & checkout smoke scan (EXPERIENCE): the conversion and revenue paths must
+ * actually resolve. Complements `broken-internal-links` by covering cross-origin
+ * payment links and framing dead auth/checkout paths by their business impact.
+ */
+export async function runAuthCheckoutChecks(
+  pageUrl: string,
+  meta: PageLinkInventory | null,
+  options: DestinationCheckOptions = {},
+): Promise<DeterministicFlag[]> {
+  if (!meta) {
+    destinationScope(options, false, 'The action link inventory was not collected. Sign-in, checkout and payment destinations remain unknown.')
+    return []
+  }
+  const original = options.originalContexts ? new Set(options.originalContexts) : null
+  const candidates = actionDestinations(pageUrl, meta).filter(candidate => !original || original.has(destinationContext(pageUrl, candidate.url)))
+  const retained = options.retainedContexts
+  if (!original && retained?.size) candidates.sort((left, right) =>
+    Number(retained.has(destinationContext(pageUrl, right.url))) - Number(retained.has(destinationContext(pageUrl, left.url))))
+  const deadAuth: string[] = [], deadCheckout: string[] = []
+  const targets = { auth: [] as NonNullable<DeterministicFlag['evidenceTargets']>, checkout: [] as NonNullable<DeterministicFlag['evidenceTargets']> }
   const deadline = Math.min(options.deadline ?? Infinity, Date.now() + 8_000)
-  let complete = candidates.length <= MAX_LINK_CHECKS
-  const responses = await Promise.all(candidates.slice(0, MAX_LINK_CHECKS).map(async ({ url, kind }) => {
+  let complete = meta.complete !== false && candidates.length <= MAX_ACTION_DESTINATIONS && (!original || original.size === candidates.length)
+  const responses = await Promise.all(candidates.slice(0, MAX_ACTION_DESTINATIONS).map(async ({ url, kind }) => {
     const result = await (options.openDestination ?? openCheckDestination)(url, { timeoutMs: FETCH_TIMEOUT_MS, deadline, httpErrorsOnly: true })
     return { url, kind, result }
   }))
@@ -78,7 +90,7 @@ export async function runAuthCheckoutChecks(
       targets[kind].push({ kind: 'page', source: 'measured', device: 'desktop', label: 'Public destination response', context: assertion.context! })
     }
   }
-  destinationScope(options, complete, 'GET responses cover up to eight distinct public action destinations. Network errors, scanner refusals, access restrictions and untested destinations remain unknown. No login, checkout or payment is submitted.')
+  destinationScope(options, complete, 'GET responses cover up to eight distinct public action destinations. Network errors, scanner refusals, access restrictions, untested destinations and original destinations no longer observed remain unknown. No login, checkout or payment is submitted.')
 
   const findings: DeterministicFlag[] = []
 

@@ -55,4 +55,21 @@ run('atomic Flag occurrence projection', () => {
     expect(await prisma.improvementOccurrence.count({ where: { auditId } })).toBe(3)
     expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId } } })).toBe(3)
   })
+
+  it('does not retain a provisional identity when the captured attention was dismissed before projection', async () => {
+    let release!: () => void, captured = false
+    const resumed = new Promise<void>(resolve => { release = resolve })
+    const read = prisma.audit.findUnique.bind(prisma.audit)
+    vi.spyOn(prisma.audit, 'findUnique').mockImplementationOnce(async args => {
+      const row = await read(args); captured = true; await resumed; return row
+    })
+    const projection = materializeAttentionForAudit(auditId)
+    try {
+      await vi.waitFor(() => expect(captured).toBe(true), { timeout: 3000 })
+      await prisma.flag.updateMany({ where: { auditId }, data: { status: 'IGNORED' } })
+    } finally { release(); await projection }
+    expect(await prisma.improvement.count({ where: { projectId } })).toBe(0)
+    expect(await prisma.improvementOccurrence.count({ where: { auditId } })).toBe(0)
+    expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId } } })).toBe(0)
+  })
 })

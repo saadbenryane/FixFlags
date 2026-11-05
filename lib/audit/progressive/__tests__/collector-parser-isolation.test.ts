@@ -106,6 +106,34 @@ describe('browser technology checkpoint publication', () => {
 })
 
 describe('metadata parsing failure boundary', () => {
+  it('keeps a positively observed desktop page in evaluation when metadata parsing is unavailable', async () => {
+    boundary.parse.mockRejectedValue(new TaskFailure('PARSER_CRASH', true, undefined, true))
+    const capture = await boundary.capture()
+    boundary.capture.mockResolvedValue({ ...capture, desktopHttpStatus: 200,
+      desktopLoadExperience: { observation: { version: 1, device: 'desktop', scope, ready: true, restricted: false, contentVisible: true } } })
+    const handler = collectionHandlers.find(handler => handler.kind === 'browser')!, ctx = context()
+    const artifact = await handler.evaluate(ctx)
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), auditPage: { update: vi.fn() }, audit: { update: vi.fn() } }
+    ctx.input.primary = false
+    await handler.commit!(ctx, artifact, tx as never)
+    expect(tx.auditPage.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'CHECKING' }) }))
+    expect(artifact.data).toMatchObject({ metadata: null, metadataFailure: { code: 'PARSER_CRASH' } })
+  })
+
+  it('admits independently scoped Accessibility evidence without a whole HTML document', async () => {
+    const capture = await boundary.capture()
+    boundary.capture.mockResolvedValue({ ...capture, desktopHtml: null, renderedScope: undefined })
+    const ctx = context(), handler = collectionHandlers.find(handler => handler.kind === 'browser')!
+    const artifact = await handler.evaluate(ctx)
+    expect(artifact.data).toMatchObject({ metadata: null, snapshot: { desktopHtml: null,
+      accessibilityEvidence: { rules: [{ id: 'button-name', state: 'failed' }] } } })
+    expect(boundary.parse).not.toHaveBeenCalled()
+    ctx.input.module = 'accessibility'
+    ctx.dependencies.set('browser', { workKind: 'browser', workState: 'COMPLETED', workResult: artifact } as never)
+    const checked = checkArtifactSchema.parse(readArtifact(await evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate(ctx), 'check').data)
+    expect(checked.flags.map(flag => flag.checkId)).toContain('buttons-no-text')
+  })
+
   it.each(['http', 'browser'] as const)('retries a transient parser crash without repeating the %s observation', async kind => {
     boundary.parse.mockRejectedValueOnce(new TaskFailure('PARSER_CRASH', true, undefined, true)).mockResolvedValueOnce(healthyMeta())
     const handler = collectionHandlers.find(handler => handler.kind === kind)!

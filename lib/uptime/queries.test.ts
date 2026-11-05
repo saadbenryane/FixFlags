@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => ({ authorize: vi.fn(), monitor: vi.fn(), project: vi.fn(), probes: vi.fn(), incidents: vi.fn(), incidentCount: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { uptimeMonitor: { findUnique: db.monitor }, project: { findUnique: db.project, findFirst: db.authorize },
   uptimeProbe: { findMany: db.probes }, uptimeIncident: { findMany: db.incidents, count: db.incidentCount } } }))
-import { loadUptimeEvents, loadUptimeHistory, loadUptimeSummary } from './queries'
+import { loadUptimeEvents, loadUptimeHistory, loadUptimeSummary, loadUptimeStatus } from './queries'
 import { uptimeSummarySchema } from './contracts'
 const project = { id: 'owned-project', userId: 'owner', url: 'https://example.com/', deletedAt: null, watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-20T12:00:00Z'),
   user: { id: 'owner', role: 'admin', plan: 'FREE', subscriptionStatus: null, lifecycleStatus: 'ACTIVE' } }
@@ -42,6 +42,17 @@ describe('Uptime before the first recorded observation', () => {
 })
 
 describe('Uptime summary reads', () => {
+  it('reads the same current status without loading probe history, timeline samples or incident counts', async () => {
+    const now = new Date('2026-10-13T12:00:00Z')
+    const monitor = { version: 1, targetUrl: project.url, enabled: true, state: 'offline', lastCheckedAt: now,
+      nextProbeAt: now, confirmationDueAt: null, incidents: [{ version: 1, targetUrl: project.url, confirmedAt: now }] }
+    db.project.mockResolvedValue({ ...project, uptimeMonitor: monitor })
+    expect(await loadUptimeStatus(uptimeReadSite(project), now)).toMatchObject({ enabled: true, state: 'offline', incidentOpen: true })
+    expect(db.monitor).not.toHaveBeenCalled()
+    expect(db.probes).not.toHaveBeenCalled()
+    expect(db.incidents).not.toHaveBeenCalled()
+    expect(db.incidentCount).not.toHaveBeenCalled()
+  })
   it('withholds earlier observations from a suspended owner', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
     db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url,
@@ -63,6 +74,7 @@ describe('Uptime summary reads', () => {
     expect(db.incidents).not.toHaveBeenCalled()
     const history = await loadUptimeHistory(uptimeReadSite(project), '24h', null, now)
     expect(summary).toEqual(uptimeSummarySchema.parse(history))
+    expect(history!.historyScope).toEqual({ key: 'monitor_1:1', from: '2026-10-12T12:00:00.000Z', through: now.toISOString() })
     expect(history!.probes).toHaveLength(1)
     expect(db.incidents).toHaveBeenCalledOnce()
   })
@@ -87,5 +99,6 @@ it('does not expand provisional possession into project uptime evidence', async 
   expect(await loadUptimeHistory(site)).toBeNull()
   expect(await loadUptimeSummary(site)).toBeNull()
   expect(await loadUptimeEvents(site)).toEqual([])
+  expect(await loadUptimeStatus(site)).toBeNull()
   expect(db.monitor).not.toHaveBeenCalled()
 })

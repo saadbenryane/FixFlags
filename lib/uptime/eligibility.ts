@@ -8,7 +8,7 @@ export type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watc
 /** Basic reachability is included separately on every plan. Analysis cadence,
  * allowances and grants cannot revoke an active Site's uptime monitoring. */
 export const uptimeProjectInclude = {
-  user: { select: { id: true, email: true, lifecycleStatus: true } },
+  user: { select: { id: true, email: true, emailVerified: true, lifecycleStatus: true } },
 } as const
 
 /** Scheduling and operational gaps describe the same currently watched Sites. */

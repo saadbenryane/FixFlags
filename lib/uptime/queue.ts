@@ -1,6 +1,6 @@
-import { Queue, Worker } from 'bullmq'
+import type { Queue } from 'bullmq'
 import { z } from 'zod'
-import { createQueueRedis, createWorkerRedis } from '@/lib/queue/redis'
+import { createOwnedQueue, createOwnedWorker } from '@/lib/queue/bullmq-ownership'
 import { logger } from '@/lib/logger'
 
 export const uptimeJobSchema = z.object({
@@ -12,11 +12,9 @@ export const uptimeJobSchema = z.object({
 export type UptimeJob = z.infer<typeof uptimeJobSchema>
 
 let queue: Queue | undefined
-let producerRedis: ReturnType<typeof createQueueRedis> | undefined
 function getQueue() {
   if (!queue) {
-    producerRedis = createQueueRedis()
-    queue = new Queue('uptime-probes', { connection: producerRedis,
+    queue = createOwnedQueue('uptime-probes', {
       defaultJobOptions: { attempts: 2, backoff: { type: 'fixed', delay: 5000 },
         removeOnComplete: { age: 86400, count: 20_000 }, removeOnFail: { age: 7 * 86400, count: 20_000 } } })
     queue.on('error', error => logger.error('Uptime queue unavailable', error))
@@ -41,20 +39,18 @@ export async function enqueueUptimeProbe(input: UptimeJob, dueAt: Date) {
 }
 
 export function startUptimeWorker(processProbe: (job: UptimeJob) => Promise<void>) {
-  const connection = createWorkerRedis()
-  const worker = new Worker('uptime-probes', job => processProbe(uptimeJobSchema.parse(job.data)), {
-    connection, concurrency: 4, lockDuration: 30_000, maxStalledCount: 1,
+  const worker = createOwnedWorker('uptime-probes', job => processProbe(uptimeJobSchema.parse(job.data)), {
+    concurrency: 4, lockDuration: 30_000, maxStalledCount: 1,
   })
   worker.on('error', error => logger.error('Uptime worker unavailable', error))
   worker.on('failed', (job, error) => logger.error('Uptime probe job failed', { jobId: job?.id, error: error.message }))
+  let closing: Promise<void> | undefined
   return {
-    close: async (pendingMaintenance: Promise<unknown> = Promise.resolve()) => {
+    close: (pendingMaintenance: Promise<unknown> = Promise.resolve()) => closing ??= (async () => {
       // Stop intake now, but keep the producer usable until admitted dispatches finish.
       await Promise.all([worker.close(), pendingMaintenance])
-      await connection.quit()
       await queue?.close()
-      await producerRedis?.quit()
-      queue = undefined; producerRedis = undefined
-    },
+      queue = undefined
+    })(),
   }
 }

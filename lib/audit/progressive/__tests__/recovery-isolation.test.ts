@@ -24,7 +24,9 @@ beforeEach(() => {
 describe('independent progressive recovery phases', () => {
   it('continues other pending admissions and existing graph recovery after one admission fails', async () => {
     expect(await recoverProgressiveAudits(5)).toBe(3)
-    expect(mocks.read.mock.calls).toEqual([[{ where: { id: 'failed-admission' } }], [{ where: { id: 'other-admission' } }]])
+    expect(mocks.read.mock.calls).toEqual(['failed-admission', 'other-admission'].map(id => [{
+      where: { id }, select: { status: true, executionSpec: true },
+    }]))
     expect(mocks.recover).toHaveBeenCalledWith(5)
     expect(mocks.rotate.mock.calls.map(([input]) => input.where)).toEqual([
       expect.objectContaining({ id: 'failed-admission', dispatchNextAt: new Date(0) }),

@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client'
 import type { SiteOutcomeView, OutcomeViewSource } from './outcome-view'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
-import { bindingEvidenceIsComparable, type CurrentBindingRevision } from '../domain/assessment-comparability'
+import { bindingEvidenceIsComparable, recordedBindingVersion, type CurrentBindingRevision } from '../domain/assessment-comparability'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, currentOutcomeState,
   customerBindingResult, outcomeStatusLabel, staleOutcomeRecovery } from '../outcome-state'
@@ -56,7 +56,7 @@ export function projectOutcomeDetail({ row, view, revisions, executions, lastSuc
   const latestByKey = new Map<string, (typeof executions)[number]>()
   for (const execution of executions) {
     const current = revisions.find(binding => binding.key === execution.bindingKey)
-    if (!current || execution.bindingVersion != null && execution.bindingVersion !== current.version ||
+    if (!current || recordedBindingVersion(execution) !== current.version ||
       execution.mechanism && execution.mechanism !== current.mechanism) continue
     if (current.required && row.assessments[0] && execution.auditId !== row.assessments[0].auditId) continue
     const spec = readExecutionSpec(execution.audit?.executionSpec)

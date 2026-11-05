@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), task: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  runRequest: { findFirst: mocks.findFirst }, auditVerifierExecution: { findFirst: mocks.task } } }))
+const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), task: vi.fn(), project: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },
+  project: { findFirst: mocks.project }, runRequest: { findFirst: mocks.findFirst }, auditVerifierExecution: { findFirst: mocks.task } } }))
 import { getOwnedRun } from '../run-queries'
 import type { FlagDiffSummary } from '@/lib/audit/flag-comparison'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
@@ -21,11 +22,11 @@ function comparison(newIssues: FlagDiffSummary['newIssues'] = []) {
   } }
 }
 function run(overrides: Record<string, unknown> = {}) {
-  return { id: 'run-1', source: 'WEB', status: 'COMPLETED', requestedAt: now, completedAt: now,
+  return { id: 'run-1', projectId: 'site-1', source: 'WEB', status: 'COMPLETED', requestedAt: now, completedAt: now,
     verificationTarget: null, auditId: 'audit-1', errorMessage: null, selections: [], assessments: [],
     executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://acme.fixture.test/',
       environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null },
-    audit: { id: 'audit-1', parentId: null, progress: 100, status: 'COMPLETED', completedAt: now, reportCompleteness: 'FULL',
+    audit: { id: 'audit-1', projectId: 'site-1', parentId: null, progress: 100, status: 'COMPLETED', completedAt: now, reportCompleteness: 'FULL',
       evidenceCoverage: { metadata: true, desktopPageSpeed: true, flowScan: true }, failedModules: [], failureCode: null,
       verifierExecutions: [observed('security', ['https', 'image-transport']), comparison()], flags: [], pages: [{ url: 'https://acme.fixture.test/', status: 'COMPLETED' }] },
     ...overrides }
@@ -108,7 +109,8 @@ describe('owned run assessment', () => {
     source.audit.pages = [{ url: 'https://acme.fixture.test/other', status: 'COMPLETED' }] as never
     expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ result: 'COULD_NOT_VERIFY', coverage: { completeness: 'PARTIAL' } })
   })
-  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); mocks.findFirst.mockReset(); mocks.task.mockReset() })
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); mocks.findFirst.mockReset(); mocks.task.mockReset()
+    mocks.project.mockReset().mockResolvedValue({ id: 'site-1' }) })
   afterEach(() => { vi.useRealTimers() })
   it('returns a settled full-site assessment with scope, completeness and freshness', async () => {
     mocks.findFirst.mockResolvedValue(run())
@@ -117,7 +119,9 @@ describe('owned run assessment', () => {
       outcomeId: null, coverage: { result: 'CLEAR', requiredAreas: ['security'], completeness: 'FULL', gaps: [] } })
     expect(result?.summary).toBeTruthy()
     expect(result?.validUntil).toBe('2026-10-20T12:00:00.000Z')
-    expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: 'run-1', project: { userId: 'owner', deletedAt: null } })
+    expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: 'run-1', project: {
+      userId: 'owner', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' },
+    } })
   })
   it('retains admitted and discovered pages that have no observation row', async () => {
     const source = run(), peer = source.executionSpec.targetUrl + 'pricing'

@@ -40,7 +40,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 import { readArtifact } from '@/lib/audit/progressive/contracts'
 import { speedArtifactSchema } from '@/lib/audit/progressive/snapshots'
 import { checkArtifactSchema } from '@/lib/audit/progressive/results'
-import { performanceMeasurementSchema } from '@/lib/audit/performance-measurement'
+import { performanceMeasurementSchema } from '@/lib/audit/performance-measurement-contract'
 
 const authProof = process.env.COMPILED_AUTH_REQUIRED === 'true'
 const pageSpeedProof = process.env.COMPILED_PAGESPEED_REQUIRED === 'true'
@@ -206,9 +206,9 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
         const original = globalThis.fetch;
         if (${uptimeProof}) {
           const dns = require('node:dns/promises');
-          const resolve4 = dns.resolve4.bind(dns), resolve6 = dns.resolve6.bind(dns);
-          dns.resolve4 = (host, ...args) => host === 'example.com' ? Promise.resolve(['203.0.114.1']) : resolve4(host, ...args);
-          dns.resolve6 = (host, ...args) => host === 'example.com' ? Promise.resolve([]) : resolve6(host, ...args);
+          const resolve4 = dns.Resolver.prototype.resolve4, resolve6 = dns.Resolver.prototype.resolve6;
+          dns.Resolver.prototype.resolve4 = function(host, ...args) { return host === 'example.com' ? Promise.resolve(['203.0.114.1']) : resolve4.call(this, host, ...args); };
+          dns.Resolver.prototype.resolve6 = function(host, ...args) { return host === 'example.com' ? Promise.resolve([]) : resolve6.call(this, host, ...args); };
         }
         const publicEntryAllowed = (target, method = 'GET') => ${publicEntryProof} &&
           target.href === 'https://example.com/' && ['GET', 'HEAD'].includes(method.toUpperCase());
@@ -395,10 +395,10 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     const source = await requestSiteRun(admission)
     await vi.waitFor(async () => {
       expect(interruptionRequests).toBeGreaterThan(0)
-      expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: source.auditId!, workKind: 'browser', pageUrl: interruptedUrl } }))
+      expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: source.auditId!, targetKey: 'task:p0:browser', workKind: 'browser', pageUrl: interruptedUrl } }))
         .toMatchObject({ workState: 'RUNNING', workAttempts: 1, workGeneration: 1, workToken: expect.any(String) })
     }, { timeout: 15_000, interval: 50 })
-    const interrupted = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'browser', pageUrl: interruptedUrl } })
+    const interrupted = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, targetKey: 'task:p0:browser', workKind: 'browser', pageUrl: interruptedUrl } })
     const deadPid = Number(readFileSync(workerPidFile, 'utf8'))
     expect(Number.isSafeInteger(deadPid) && deadPid > 1).toBe(true)
     const processes = localProcesses(), owned = new Set([worker!.pid!])
@@ -520,7 +520,8 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(1)
     expect((await prisma.uptimeNotification.findMany({ where: { incidentId: incident.id } })).map(row => row.kind).sort())
       .toEqual(['DOWN', 'RECOVERED'])
-    expect(await loadUptimeSummary(site.id)).toMatchObject({ enabled: true, state: 'online', openIncidentCount: 0 })
+    expect(await loadUptimeSummary({ kind: 'project', projectId: site.id, userId }))
+      .toMatchObject({ enabled: true, state: 'online', openIncidentCount: 0 })
     expect(await prisma.audit.count({ where: { projectId: site.id } })).toBe(0)
     expect(uptimeRequests.map(request => request.status)).toEqual([503, 503, 200])
     expect(uptimeRequests.every(request => request.method === 'GET')).toBe(true)
@@ -563,7 +564,8 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     expect(current.watchNextRunAt!.getTime()).toBe(schedule.data.nextRunAt)
     expect(current.watchNextRunAt!.getTime()).toBeGreaterThan(Date.now())
     expect(await prisma.audit.count({ where: { projectId: site.id } })).toBe(1)
-    const collected = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: request.auditId!, workKind: 'browser', workState: 'COMPLETED' } })
+    const collected = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: request.auditId!,
+      targetKey: 'task:p0:browser', workKind: 'browser', workState: 'COMPLETED' } })
     expect(collected.workResult).toMatchObject({ kind: 'browser', data: { metadata: { title: 'Compiled worker fixture' } } })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: request.auditId!, checkId: 'buttons-no-text' } })
     const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
@@ -591,7 +593,7 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     const key = await http('/api/api-keys', { name: 'Local CLI repair proof', client: 'other', scopePreset: 'fix_and_verify', expiresInDays: 30 })
     const commands: Array<{ command: string; exitCode: number | null }> = []
     const cli = async (...args: string[]) => {
-      const env: NodeJS.ProcessEnv = Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'LANG'].flatMap(name => process.env[name] ? [[name, process.env[name]]] : []))
+      const env: NodeJS.ProcessEnv = { ...Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'LANG'].flatMap(name => process.env[name] ? [[name, process.env[name]]] : [])), NODE_ENV: 'production' }
       Object.assign(env, { FIXFLAGS_API_KEY: key.key, FIXFLAGS_API_URL: webOrigin, NO_COLOR: '1' })
       const child = spawn(process.execPath, [cliPath, ...args, '--json'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
       let stdout = '', stderr = ''
@@ -916,7 +918,7 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       : await requestSiteRun({ projectId, userId, scope: 'CATEGORY', categoryArea: 'accessibility',
         source: 'WEB', outcomeIds: [], idempotencyKey: 'compiled-source' })
     await complete(source.auditId!)
-    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'browser' } }))
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, targetKey: 'task:p0:browser', workKind: 'browser' } }))
       .toMatchObject({ workState: 'COMPLETED', workResult: { kind: 'browser', data: { metadata: { title: 'Compiled worker fixture' } } } })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId!, checkId: 'buttons-no-text' } })
     expect(flag.evidenceTargets).toEqual(expect.arrayContaining([expect.objectContaining({ context: expect.stringContaining('accessibility:axe:desktop:') })]))
@@ -1111,7 +1113,7 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       await vi.waitFor(async () => {
         expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ status: 'COMPLETED' })
       }, { timeout: 120_000, interval: 250 })
-      const collected = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, workKind: 'browser', workState: 'COMPLETED' },
+      const collected = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, targetKey: 'task:p0:browser', workKind: 'browser', workState: 'COMPLETED' },
         select: { id: true, workResult: true } })
       expect(collected.workResult).toMatchObject({ kind: 'browser', data: { metadata: { title: 'Example Domain' } } })
       const beforeClaim = await read()

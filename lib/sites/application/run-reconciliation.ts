@@ -11,6 +11,7 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { validateBindingForOutcome } from './binding-config'
 import { logger } from '@/lib/logger'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { recordedBindingVersion } from '../domain/assessment-comparability'
 
 export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<void> {
   const requests = await prisma.runRequest.findMany({
@@ -18,12 +19,14 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
     include: {
       selections: { include: { outcome: { include: { bindings: { where: { enabled: true } } } } } },
       audit: {
-        include: {
+        // Settlement needs references, not retained reports, plans or page bodies.
+        select: {
+          completedAt: true,
           journeyReviews: {
             where: { journeyType: 'checkout' },
             orderBy: { createdAt: 'desc' },
             take: 1,
-            include: { steps: { orderBy: { stepNumber: 'asc' } } },
+            select: { id: true, steps: { orderBy: { stepNumber: 'asc' }, select: { screenshotAfterUrl: true } } },
           },
         },
       },
@@ -62,8 +65,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             key: execution.bindingKey,
             disposition: execution.disposition,
             reason: execution.reason,
-            version: execution.bindingVersion ?? (execution.detail && typeof execution.detail === 'object' && !Array.isArray(execution.detail)
-              && typeof execution.detail.bindingVersion === 'number' ? execution.detail.bindingVersion : undefined),
+            version: recordedBindingVersion(execution),
           })),
         )
         const checkoutBinding = requiredBindings.find((binding) => binding.mechanism === 'BROWSER_JOURNEY' && outcome.kind === 'CHECKOUT')

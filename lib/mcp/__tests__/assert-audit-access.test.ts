@@ -1,62 +1,31 @@
 import assert from 'node:assert/strict'
-import { describe, it, vi } from 'vitest'
+import { beforeEach, describe, it, vi } from 'vitest'
 
-const mockUserFindUnique = vi.fn()
-vi.mock('@/lib/db', () => ({
-  prisma: {
-    user: {
-      findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
-    },
-  },
-}))
-
+const boundary = vi.hoisted(() => ({ source: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { audit: { findUnique: boundary.source } } }))
 const { assertAuditAccess } = await import('@/lib/mcp/tools')
+const original = { id: 'audit', userId: 'owner-1', isPublic: false, projectId: null, user: { lifecycleStatus: 'ACTIVE' } }
+beforeEach(() => { vi.resetAllMocks(); boundary.source.mockResolvedValue(original) })
 
 describe('assertAuditAccess', () => {
-  it('always allows the owner, without a DB lookup', async () => {
-    await assertAuditAccess({ userId: 'owner-1', isPublic: false }, 'owner-1')
-    assert.equal(mockUserFindUnique.mock.calls.length, 0)
+  it('checks current recorded authority before granting owner access', async () => {
+    await assertAuditAccess(original, 'owner-1')
+    assert.equal(boundary.source.mock.calls.length, 1)
   })
-
-  it('denies private unclaimed audits without signed creator proof, without a DB lookup', async () => {
-    await assert.rejects(() => assertAuditAccess({ userId: null, isPublic: false }, 'someone-else'), /Unauthorized/)
-    assert.equal(mockUserFindUnique.mock.calls.length, 0)
+  it('denies private unclaimed reports without signed creator proof', async () => {
+    boundary.source.mockResolvedValue({ ...original, userId: null, user: null })
+    await assert.rejects(() => assertAuditAccess(original, 'someone-else'), /Unauthorized/)
   })
-
-  it('denies a non-owner on a private audit', async () => {
-    await assert.rejects(
-      () => assertAuditAccess({ userId: 'owner-1', isPublic: false }, 'someone-else'),
-      /Unauthorized/
-    )
+  it('denies a non-owner on a private report', async () => {
+    await assert.rejects(() => assertAuditAccess(original, 'someone-else'), /Unauthorized/)
   })
-
-  it('allows a non-owner on a public audit whose owner currently has sharing entitlement', async () => {
-    mockUserFindUnique.mockResolvedValueOnce({
-      id: 'owner-1',
-      role: 'user',
-      plan: 'TEAM',
-      subscriptionStatus: 'ACTIVE',
-    })
-    await assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else')
+  it.each(['TEAM', 'PAST_DUE', 'BUILDER'])('retains explicit public sharing independently of the former billing condition %s', async condition => {
+    boundary.source.mockResolvedValue({ ...original, isPublic: true, user: { lifecycleStatus: 'ACTIVE', condition } })
+    await assertAuditAccess(original, 'someone-else')
   })
-
-  it('keeps an explicitly public audit available after subscription lapse', async () => {
-    mockUserFindUnique.mockResolvedValueOnce({
-      id: 'owner-1',
-      role: 'user',
-      plan: 'TEAM',
-      subscriptionStatus: 'PAST_DUE',
-    })
-    await assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else')
-  })
-
-  it('keeps public sharing available after a plan change', async () => {
-    mockUserFindUnique.mockResolvedValueOnce({
-      id: 'owner-1',
-      role: 'user',
-      plan: 'BUILDER',
-      subscriptionStatus: 'ACTIVE',
-    })
-    await assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else')
+  it('refuses a former creator and grants the current Site owner', async () => {
+    boundary.source.mockResolvedValue({ ...original, projectId: 'site', project: { userId: 'current-owner', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } })
+    await assert.rejects(() => assertAuditAccess(original, 'owner-1'), /Unauthorized/)
+    await assertAuditAccess(original, 'current-owner')
   })
 })

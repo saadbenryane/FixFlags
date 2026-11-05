@@ -1,8 +1,61 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { FlagEvidenceDetails } from '../FlagEvidenceDetails'
+import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 
 describe('shared Flag evidence presentation', () => {
+  it('opens each measured hash route at its exact recorded address with a distinct accessible name', () => {
+    const pricing = 'https://example.com/#/pricing'
+    const checkout = 'https://example.com/#/checkout'
+    render(<FlagEvidenceDetails observed={`${pricing}: LCP: 4s ${checkout}: LCP: 5s`} expected="LCP is under 2.5s" />)
+    for (const url of [pricing, checkout]) {
+      const link = screen.getByRole('link', { name: C.open(url) })
+      expect(link).toHaveAttribute('href', url)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    }
+    expect(screen.getByText('/#/pricing')).toBeVisible()
+    expect(screen.getByText('/#/checkout')).toBeVisible()
+  })
+
+  it('retains a credential-bearing historical observation as text without making it navigable', () => {
+    render(<FlagEvidenceDetails observed="https://owner:secret@example.com/#/private: LCP: 4s https://example.com/#/public: LCP: 5s" expected="LCP is under 2.5s" />)
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByText('/#/private')).toBeVisible()
+    expect(screen.getByText('4s')).toBeVisible()
+    expect(screen.getByRole('link', { name: C.open('https://example.com/#/public') })).toHaveAttribute('href', 'https://example.com/#/public')
+  })
+
+  it('makes a single recorded target and observation time available without expanding the initial view', () => {
+    render(<FlagEvidenceDetails observed="The purchase action has no accessible name" expected="The purchase action has an accessible name"
+      supportingObservations={[
+        { source: 'DETERMINISTIC', checkId: 'buttons-no-text', checkVersion: 1, pageUrl: 'https://example.com/pricing',
+          evidence: 'The purchase action has no accessible name', recordedAt: '2026-11-03T10:00:00Z', references: [{ label: 'Purchase', selector: '#purchase', device: 'mobile' }] },
+      ]} />)
+    const disclosure = screen.getByText('Supporting observations')
+    const details = disclosure.closest('details')!
+    expect(details).not.toHaveAttribute('open')
+    expect(screen.getByText(/#purchase/)).not.toBeVisible()
+    fireEvent.click(disclosure)
+    expect(screen.getByText(/#purchase/)).toBeVisible()
+    expect(details.querySelector('time')).toHaveAttribute('dateTime', '2026-11-03T10:00:00Z')
+  })
+
+  it('does not add a disclosure for an identical observation without additional context', () => {
+    render(<FlagEvidenceDetails observed="The action has no name" expected="The action has a name" supportingObservations={[
+      { source: 'DETERMINISTIC', checkId: 'buttons-no-text', checkVersion: 1, pageUrl: null, evidence: 'The action has no name', recordedAt: null, references: [] },
+    ]} />)
+    expect(screen.queryByText('Supporting observations')).not.toBeInTheDocument()
+  })
+
+  it('scales page measurement bars to the recorded values without inflating the smaller value', () => {
+    render(<FlagEvidenceDetails observed="https://example.com/a: LCP: 1s https://example.com/b: LCP: 100s" expected="LCP is under 2.5s" />)
+    const smaller = screen.getByRole('link', { name: C.open('https://example.com/a') }).closest('li')!
+    const larger = screen.getByRole('link', { name: C.open('https://example.com/b') }).closest('li')!
+    expect(smaller.querySelector('[style]')).toHaveStyle({ width: '1%' })
+    expect(larger.querySelector('[style]')).toHaveStyle({ width: '100%' })
+  })
+
   it('retains native repair alternatives as technical detail beside the recorded diagnosis', () => {
     const diagnostic = '#menu\nFix any of the following:\nElement does not have text that is visible to screen readers\n<button id="menu"></button>'
     render(<FlagEvidenceDetails observed={diagnostic} diagnosis="Buttons must have discernible text (1 element)" expected="The menu has an accessible name" />)

@@ -7,7 +7,7 @@
 .preview { grid-column: 1; grid-row: 1 / 3; display: grid; place-items: center; width: 64px; height: 56px; overflow: hidden; border: 0; border-radius: var(--radius-control); background: hsl(var(--muted) / .5); box-shadow: var(--shadow-board); color: hsl(var(--muted-foreground)); }
 .preview img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .identity { grid-column: 2; grid-row: 1; min-width: 0; }
-.identity strong { display: block; overflow: hidden; text-overflow: ellipsis; font-size: 15px; font-weight: 600; letter-spacing: -.015em; white-space: nowrap; }
+.identity strong { display: block; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5; font-weight: 600; letter-spacing: -.015em; }
 .context { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
 .facts { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; margin: 0; }
 .facts div { min-width: 0; }

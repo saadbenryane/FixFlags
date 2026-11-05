@@ -1,10 +1,12 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { loadSiteRecord } from '../ensure-site'
 import { loadSiteFlagDetail, loadSiteFindings, loadSiteResolvedFlags } from '../flags'
 import { buildSiteRepairBrief } from '../repair-brief'
+import { deliverSiteRepairBrief } from '../repair-delivery'
+import { MAX_REPAIR_BRIEF_BYTES } from '../repair-budgets'
 import { loadSiteFlagCopyTask } from '../application/flag-copy-task'
 import { loadSiteFixBundle } from '../application/fix-bundle'
 import { ensureOwnedFlagIdentities, ownedFlagIdentityInclude } from '@/lib/improvements/owned-flag-identity'
@@ -14,13 +16,26 @@ import { pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixture
 import { recordSiteFlagFix } from '../application/flag-verification'
 import { buildExecutionSpec } from '../application/execution-spec'
 import { verificationSourceAuditId } from '../domain/verification-source'
+import { readRepairSources } from '../domain/repair-source'
+import { prepareSiteRepairFile } from '../application/repair-file'
+import { repairFileSchema, type RepairFileRequest } from '../repair-file-contract'
 import * as screenshots from '@/lib/storage/screenshots'
+import { executeSiteCommand } from '../application/commands'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('persisted repair context scope', () => {
   const owner = 'repair-context-' + randomUUID()
   let siteId: string, incidentId: string
   const captures: Array<{ id: string; auditId: string }> = []
+  async function readFile(scope: RepairFileRequest) {
+    const site = (await loadSiteRecord(siteId))!
+    const chunks = []
+    for await (const chunk of await prepareSiteRepairFile(site, scope, new AbortController().signal)) chunks.push(chunk)
+    const json = Buffer.concat(chunks).toString('utf8')
+    const file = repairFileSchema.parse(JSON.parse(json))
+    expect(file.completion.taskArraySha256).toBe(createHash('sha256').update(JSON.stringify(file.tasks)).digest('hex'))
+    return { file, json }
+  }
   beforeAll(async () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
@@ -175,6 +190,11 @@ run('persisted repair context scope', () => {
     const bundle = await loadSiteFixBundle(site, undefined, [incidentId])
     expect(bundle.tasks).toEqual([{ referenceFlagId: incidentId, sourceFlagId: task.sourceFlagId, promptHash: task.promptHash }])
     expect(bundle.prompt).toContain(task.bundlePrompt)
+    const { file, json } = await readFile({ kind: 'bundle', flagIds: [incidentId], manifestHash: bundle.manifest.hash })
+    expect(file.tasks).toHaveLength(1)
+    expect(file.tasks[0].flag.supportingObservations).toEqual(observations)
+    expect(file.tasks[0].contextHash).toBe(task.revision.contextHash)
+    expect(json).not.toContain('private comparison input')
   })
   it('retains every selected incident capture when admitting independent repair verification', async () => {
     const site = (await loadSiteRecord(siteId))!
@@ -190,7 +210,8 @@ run('persisted repair context scope', () => {
       expect(await verificationSourceAuditId(prisma, { parentId: fixed.sourceAuditId, projectId: siteId, executionSpec: spec }, original.pageUrl!))
         .toBe(capture.auditId)
     }
-    expect(await verificationSourceAuditId(prisma, { parentId: fixed.sourceAuditId, projectId: 'another-site', executionSpec: spec }, incident.pageUrl!)).toBeNull()
+    await expect(verificationSourceAuditId(prisma, { parentId: fixed.sourceAuditId, projectId: 'another-site', executionSpec: spec }, incident.pageUrl!))
+      .rejects.toThrow('The recorded repair source is no longer available')
   })
   it('keeps an exact historical Flag repair separate from the grouped attempt', async () => {
     const site = (await loadSiteRecord(siteId))!
@@ -202,7 +223,8 @@ run('persisted repair context scope', () => {
       scope: 'DIAGNOSTIC', outcomes: [], verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: original.pageUrl!,
         checkId: original.checkId!, attemptId: fixed.attemptId, parentAuditId: fixed.sourceAuditId } })
     expect(spec.verificationScopes?.map(scope => scope.pageUrl)).toEqual(original.affectedPaths)
-    expect(spec.verificationSourceFlagIds).toBeUndefined()
+    expect(spec.verificationSourceFlagIds).toEqual([captures[1].id])
+    expect(spec.verificationSources?.flags.map(flag => flag.id)).toEqual([captures[1].id])
   })
   it('refuses to substitute one environment for another selected original capture', async () => {
     const site = (await loadSiteRecord(siteId))!
@@ -221,12 +243,48 @@ run('persisted repair context scope', () => {
       await prisma.audit.update({ where: { id: original.id }, data: { executionSpec: original.executionSpec ?? Prisma.DbNull } })
     }
   })
-  it('refuses malformed historical support and changed evidence without replacing the prepared task', async () => {
+  it('replaces unsafe saved instructions with an attributable recovery task when evidence is missing', async () => {
+    const source = await prisma.flag.create({ data: { auditId: captures[0].auditId, source: 'DETERMINISTIC', checkId: 'unoptimized-images',
+      fingerprint: 'missing-evidence-image', rubric: 'EXPERIENCE', severity: 'IMPORTANT', pageUrl: 'https://repair-context.test/missing',
+      problem: 'An image is not optimized', evidence: 'The recorded image can save 2MB', whyItMatters: 'The image can delay the page',
+      fix: 'Replace the hero image with a smaller asset', confidence: 1, position: 99 } })
+    const site = (await loadSiteRecord(siteId))!
+    const prepared = await loadSiteFlagCopyTask(site, source.id)
+    // Model unavailable saved evidence. This is a controlled database fixture,
+    // not an observation that a customer website changed or recovered.
+    await prisma.flag.update({ where: { id: source.id }, data: { evidence: '' } })
+    const original = await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })
+    const detail = (await loadSiteFlagDetail(site, source.id))!
+    expect(detail).toMatchObject({ evidenceMissing: true, repairDefinition: { kind: 'evidence-recovery' } })
+    expect(detail.fix).not.toContain(source.fix)
+    await expect(loadSiteFlagCopyTask(site, source.id, prepared.promptHash)).rejects.toMatchObject({ status: 409, code: 'REPAIR_TASK_CHANGED' })
+    const recovery = await loadSiteFlagCopyTask(site, source.id)
+    expect(recovery.prompt).toContain('Do not change the website based on this record')
+    expect(recovery.prompt).not.toContain(source.fix)
+    expect(recovery.revision.kind).toBe('evidence-recovery')
+    const bundle = await loadSiteFixBundle(site, undefined, [source.id])
+    expect(bundle.prompt).toContain(recovery.bundlePrompt)
+    await executeSiteCommand({ type: 'RECORD_FIX_HANDOFF', flagId: source.id, userId: owner, builder: 'copy',
+      client: 'website-clipboard-v2', preparedHandoff: { siteId, referenceFlagId: source.id,
+        promptHash: recovery.promptHash, context: recovery.revision } })
+    const receipt = await prisma.improvementCycleEvent.findFirstOrThrow({ where: { cycle: { projectId: siteId },
+      type: 'HANDOFF_COPIED', idempotencyKey: { contains: recovery.promptHash } } })
+    expect(receipt.contextCorrection).toMatchObject({ sourceFlagId: source.id, promptHash: recovery.promptHash,
+      context: { kind: 'evidence-recovery', contextHash: recovery.revision.contextHash } })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).toEqual(original)
+  })
+  it('retains only evidence recovery for malformed historical support and refuses a changed prepared task', async () => {
     const site = (await loadSiteRecord(siteId))!
     const prepared = await loadSiteFlagCopyTask(site, incidentId)
     const source = await prisma.flag.findUniqueOrThrow({ where: { id: captures[0].id } })
     await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: { version: 9, items: [] } } })
-    await expect(loadSiteFlagCopyTask(site, incidentId)).rejects.toMatchObject({ status: 422 })
+    const unreadable = (await loadSiteFlagDetail(site, incidentId))!
+    expect(unreadable.repairDefinition?.kind).toBe('evidence-recovery')
+    expect(unreadable.fix).toContain('Do not change the website based on this record')
+    const recovery = await loadSiteFlagCopyTask(site, incidentId)
+    expect(recovery.revision.kind).toBe('evidence-recovery')
+    expect(recovery.prompt).toContain('Do not change the website based on this record')
+    await expect(loadSiteFlagCopyTask(site, incidentId, prepared.promptHash)).rejects.toMatchObject({ status: 409 })
     await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: source.supportingObservations!, evidence: 'Changed recorded observation' } })
     // The original source may be a peer of the displayed representative.
     await prisma.flag.updateMany({ where: { id: { in: captures.map(flag => flag.id) } }, data: { fix: 'Different bounded repair guidance' } })
@@ -265,5 +323,71 @@ run('persisted repair context scope', () => {
     expect((await loadSiteRepairEvidence(site, flag, 'https://fixflags.test/private-capture')).evidence.performanceMeasurements).toEqual([measurement])
     await expect(loadSiteRepairEvidence({ ...site, projectId: 'another-site' }, flag, 'https://fixflags.test/private-capture')).rejects.toMatchObject({ status: 404 })
     expect((await loadSiteRepairEvidence(site, { ...flag, pageUrl: 'https://repair-context.test/unrecorded' }, 'https://fixflags.test/private-capture')).evidence.performanceMeasurements).toEqual([])
+  })
+  it('retains a large recorded observation through authorized retrieval, copied custody and revision-checked repair declaration', async () => {
+    const site = (await loadSiteRecord(siteId))!
+    const pageUrl = 'https://repair-context.test/large-record'
+    const audit = await prisma.audit.create({ data: { userId: owner, projectId: siteId, url: pageUrl,
+      status: 'COMPLETED', completedAt: new Date(), includeAi: false } })
+    const evidence = 'Observed unnamed 🧭 control with retained diagnostics.\n'.repeat(12_000)
+    const source = await prisma.flag.create({ data: { auditId: audit.id, source: 'DETERMINISTIC', checkId: 'buttons-no-text',
+      fingerprint: 'large-repair-record', rubric: 'EXPERIENCE', severity: 'IMPORTANT', confidence: 1, position: 0,
+      problem: 'An unnamed control cannot be understood', evidence, whyItMatters: 'Visitors need its purpose',
+      fix: 'Name the existing control', pageUrl, affectedPaths: [pageUrl], verificationRule: 'Control has an accessible name',
+      supportingObservations: { version: 1, items: [{ source: 'DETERMINISTIC', checkId: 'buttons-no-text', checkVersion: 1,
+        pageUrl, evidence, verificationRule: 'Control has an accessible name',
+        evidenceTargets: [{ kind: 'element', source: 'measured', device: 'mobile', label: 'Control', selector: '#large',
+          context: 'PRIVATE_COMPARISON_CONTEXT' }],
+        provenance: { auditId: audit.id, taskId: 'large-native-source', collectedAt: new Date().toISOString() },
+      }] } } })
+    const copied = await loadSiteFlagCopyTask(site, source.id)
+    expect(copied.prompt).toContain('complete repair JSON before any website change')
+    expect(copied.revision).toMatchObject({ includedObservationCheckVersions: [1], sourceFlagIds: [source.id] })
+    const full = buildSiteRepairBrief(siteId, (await loadSiteFlagDetail(site, source.id))!, 'https://fixflags.test', source.id)
+    let delivery = deliverSiteRepairBrief(full)
+    let json = ''
+    let pages = 0
+    for (;;) {
+      if (delivery.schemaVersion !== 'fixflags.repair-brief-fragment.v1') throw new Error('Expected large document')
+      expect(Buffer.byteLength(JSON.stringify(delivery))).toBeLessThanOrEqual(MAX_REPAIR_BRIEF_BYTES)
+      json += delivery.document.text
+      pages++
+      if (delivery.document.nextOffset === null) {
+        expect(createHash('sha256').update(json).digest('hex')).toBe(delivery.document.sha256)
+        break
+      }
+      const args = delivery.retrieval.next!.arguments
+      const current = (await loadSiteFlagDetail(site, args.flagId))!
+      delivery = deliverSiteRepairBrief(buildSiteRepairBrief(siteId, current, 'https://fixflags.test', args.flagId,
+        args.observationOffset, args.expectedContextHash), args)
+    }
+    expect(pages).toBeGreaterThan(1)
+    expect(JSON.parse(json)).toEqual(full)
+    expect(json).not.toContain('PRIVATE_COMPARISON_CONTEXT')
+    const attemptsBefore = await prisma.improvementAttempt.count({ where: { improvement: { projectId: siteId } } })
+    const eventsBefore = await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: siteId } } })
+    const downloaded = await readFile({ kind: 'flag', flagId: source.id, expectedPromptHash: copied.promptHash })
+    expect(downloaded.file.tasks[0].flag.supportingObservations?.[0].evidence).toBe(evidence)
+    expect(downloaded.file.tasks[0].contextHash).toBe(copied.revision.contextHash)
+    expect(downloaded.json).not.toContain('PRIVATE_COMPARISON_CONTEXT')
+    expect(await prisma.improvementAttempt.count({ where: { improvement: { projectId: siteId } } })).toBe(attemptsBefore)
+    expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: siteId } } })).toBe(eventsBefore)
+    await executeSiteCommand({ type: 'RECORD_FIX_HANDOFF', flagId: source.id, userId: owner, builder: 'copy',
+      client: 'website-clipboard-v2', preparedHandoff: { siteId, referenceFlagId: source.id,
+        promptHash: copied.promptHash, context: copied.revision } })
+    const input = { siteId, flagId: source.id, userId: owner, idempotencyKey: 'large-repair-' + randomUUID(),
+      changeSummary: 'Named the original control', expectedContextHash: copied.revision.contextHash }
+    const declared = await recordSiteFlagFix(input)
+    const attempt = await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: declared.attemptId } })
+    expect(attempt).toMatchObject({ sourceAuditId: audit.id, handoffReference: `flag:${source.id}` })
+    const frozen = readRepairSources(attempt.sourceObservations)!
+    expect(frozen.flags.map(flag => flag.id)).toEqual([source.id])
+    expect(frozen.flags[0]).toMatchObject({ auditId: audit.id, supportingObservations: source.supportingObservations })
+    expect(attempt.outcome).toBeNull()
+    expect(await recordSiteFlagFix(input)).toMatchObject({ attemptId: declared.attemptId })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).toMatchObject({ evidence, status: 'OPEN' })
+    await prisma.flag.update({ where: { id: source.id }, data: { evidence: evidence + 'Changed source evidence' } })
+    await expect(recordSiteFlagFix({ ...input, idempotencyKey: 'changed-large-' + randomUUID() }))
+      .rejects.toMatchObject({ status: 409, code: 'REPAIR_CONTEXT_CHANGED' })
   })
 })

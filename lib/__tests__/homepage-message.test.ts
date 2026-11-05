@@ -12,10 +12,10 @@ describe('shared product story contracts', () => {
     expect(CARE_HOME.workflow.steps.map(step => step.id)).toEqual(expected)
     expect(PUBLIC_SITE_COPY.howItWorks.steps.map(step => step.id)).toEqual(expected)
     expect(CARE_HOME.workflow.steps[2].body).toContain('Check now')
-    expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your site to start scheduled monitoring/i)
+    expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your website to keep getting scheduled checks/i)
     expect(SEO.home.description).toBe(PRODUCT_STORY.description)
     expect(SEO.home.description).toMatch(/email alerts/i)
-    expect(SEO.home.description).toMatch(/clear steps to fix/i)
+    expect(SEO.home.description).toMatch(/fix instructions you can copy and paste/i)
   })
   it('keeps the hero and social artwork on the same product promise', () => {
     expect(CARE_HOME.hero.headline.join(' ')).toBe(BRAND.tagline)
@@ -23,6 +23,6 @@ describe('shared product story contracts', () => {
   })
   it('keeps the first analysis and public evidence destinations reachable before signup', () => {
     expect(REVIEW_ENTRY.href).toBe('/new')
-    expect(PUBLIC_SITE_COPY.sample).toBe('Explore the product sample')
+    expect(PUBLIC_SITE_COPY.sample).toBe('Try the sample')
   })
 })

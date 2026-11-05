@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import sharp from 'sharp'
 import { publicResponseRestriction } from '../browser/page-capture'
+import { PublicResponseBodyError } from '../http-evidence'
 
 export const PREVIEW_IMAGE_MAX_BYTES = 5_000_000
 const MAX_PIXELS = 16_000_000
@@ -70,4 +71,14 @@ export async function previewImageResponse(document: { statusCode: number; heade
   return { statusCode: document.statusCode, contentType,
     hasContent: document.body.length > 0, complete: document.complete,
     restriction, decoding }
+}
+
+/** A failed body cannot erase a received error status or establish valid pixels.
+ * Successful interrupted responses retain the ordinary unavailable path. */
+export async function collectPreviewImageResponse(collect: () => Promise<Parameters<typeof previewImageResponse>[0]>, deadline?: number): Promise<PreviewImageResponse> {
+  try { return await previewImageResponse(await collect(), deadline) }
+  catch (error) {
+    if (!(error instanceof PublicResponseBodyError) || error.response.statusCode < 400) throw error
+    return previewImageResponse({ ...error.response, body: error.response.body ?? '' }, deadline)
+  }
 }

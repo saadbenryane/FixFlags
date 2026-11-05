@@ -7,6 +7,8 @@
 .content { padding: 12px; }
 .heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
 .heading strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 550; }
+.heading a { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 44px; }
+.heading a svg { flex-shrink: 0; }
 .pageState { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .flag { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; color: hsl(var(--destructive)); font-size: 11px; }
 .status { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; color: hsl(var(--muted-foreground)); font-size: 11px; }
@@ -14,8 +16,8 @@
 .finding > :is(button, a) { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; width: 100%; min-height: 44px; padding: 6px 0; color: hsl(var(--foreground)); text-align: left; font-size: 12px; line-height: 1.5; }
 .content small { font-size: 10px; color: hsl(var(--muted-foreground)); }
 .content small[data-priority='fix_first'] { color: hsl(var(--foreground)); font-weight: 600; }
-.finding > :is(button, a):hover { text-decoration: underline; text-underline-offset: 3px; }
-.finding > :is(button, a):focus-visible, .other > summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
+.heading a:hover, .finding > :is(button, a):hover { text-decoration: underline; text-underline-offset: 3px; }
+.heading a:focus-visible, .finding > :is(button, a):focus-visible, .other > summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
 .other > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding-block: 8px; color: hsl(var(--muted-foreground)); cursor: pointer; list-style: none; font-size: 12px; }
 .other > summary::-webkit-details-marker { display: none; }
 .other[open] > summary > svg { transform: rotate(180deg); }
@@ -26,3 +28,12 @@
 .finding { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .finding > :is(button, a) { min-width: 0; flex: 1; }
 .flagActions { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 8px; }
+
+.results[data-density='comfortable'] .content { padding: 16px; }
+.results[data-density='comfortable'] .heading { flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.results[data-density='comfortable'] .heading strong { min-width: 0; font-size: 14px; line-height: 1.5; }
+.results[data-density='comfortable'] .pageState { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.results[data-density='comfortable'] :is(.flag, .status) { font-size: 12px; line-height: 1.5; }
+.results[data-density='comfortable'] .finding > :is(button, a) { padding-block: 8px; font-size: 16px; overflow-wrap: anywhere; }
+.results[data-density='comfortable'] .content small { font-size: 12px; line-height: 1.5; }
+.results[data-density='comfortable'] .other > summary { font-size: 14px; }

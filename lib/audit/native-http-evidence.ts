@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { openCheckDestination, OPEN_CHECK_OUTCOMES } from './open-check'
 import { safeFetchResource } from './url'
 import type { DestinationCheckOptions } from './checks/destination-evidence'
-import { previewImageResponse, previewImageResponseSchema } from './checks/preview-image-response'
+import { collectPreviewImageResponse, previewImageResponseSchema } from './checks/preview-image-response'
 
 const destinationSchema = z.object({ outcome: z.enum(OPEN_CHECK_OUTCOMES), status: z.number().int().nullable(), shouldFlagDead: z.boolean() }).strict()
 const requestSchema = z.discriminatedUnion('kind', [
@@ -48,8 +48,7 @@ export function nativeHttpCollection(recorded?: NativeHttpEvidence) {
     }
     let result: z.infer<typeof previewImageResponseSchema> | null = null
     try {
-      const document = await safeFetchResource(url, options)
-      result = await previewImageResponse(document, options.deadline)
+      result = await collectPreviewImageResponse(() => safeFetchResource(url, options), options.deadline)
       return result
     } finally { requests.push({ kind: 'document', key, result }) }
   }

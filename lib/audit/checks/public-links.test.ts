@@ -1,17 +1,60 @@
-import { describe, expect, it } from 'vitest'
-import { capturedPageLinks, publicLinkObservations, publicLinkUrls } from './public-links'
+import { describe, expect, it, vi } from 'vitest'
+import { capturedPageLinks, checkPublicLinks, originalPublicLinkContexts, publicLinkObservations, publicLinkUrls } from './public-links'
 import { parseMetadataFromHtml } from '../metadata'
 import type { OpenCheckResult } from '../open-check'
 import { classifyPublicGet } from '../open-check'
 import { destinationContext, publicLinkContext, DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
+import { mergeSupportingObservations, observationsForFlag } from '../flag-observations'
 
 const page = 'https://example.com/'
 function response(url: string, overrides: Partial<OpenCheckResult> = {}): OpenCheckResult {
   return { url, canonicalUrl: url, status: 200, finalUrl: url, outcome: 'reachable', evidence: 'Observed GET', shouldFlagDead: false, ...overrides }
 }
 describe('public link observations', () => {
+  it('shares href inventory while requiring complete labels only for action classification', () => {
+    const metadata = parseMetadataFromHtml('<a href="/offer">' + 'x'.repeat(300) + ' Subscribe</a>', page)
+    const links = { html: '<a href="/offer">' + 'x'.repeat(256) + '</a>', complete: true, labelsComplete: false, observed: 1, limit: 2000, reason: null }
+    const capture = { renderedSearchSnapshot: { finalUrl: page, documentBaseUrl: page, sections: { links } } }
+    expect(capturedPageLinks(capture, null)).toMatchObject({ complete: true })
+    expect(capturedPageLinks(capture, null, { requireLabels: true })).toMatchObject({ complete: false })
+    expect(capturedPageLinks(capture, metadata, { requireLabels: true })).toMatchObject({ complete: true, links: metadata.links })
+    const historical = { ...capture, renderedSearchSnapshot: { ...capture.renderedSearchSnapshot, sections: { links: { ...links, labelsComplete: undefined } } } }
+    expect(capturedPageLinks(historical, null, { requireLabels: true })).toMatchObject({ complete: false })
+    expect(capturedPageLinks({ ...capture, collectionRestrictions: ['read_only_refusal'] }, metadata, { requireLabels: true })).toBeNull()
+  })
+  it('retains original destinations under each grouped source page and excludes historical detector rules', () => {
+    const peer = page + 'peer', url = page + 'original'
+    const failed = response(url, { status: 404, outcome: 'not_found', shouldFlagDead: true })
+    const first = publicLinkObservations(page, [url], [failed]).flags[0], second = publicLinkObservations(peer, [url], [failed]).flags[0]
+    const grouped = { ...first, evidenceTargets: [...first.evidenceTargets!, ...second.evidenceTargets!],
+      supportingObservations: mergeSupportingObservations([observationsForFlag(first), observationsForFlag(second)]) }
+    expect(originalPublicLinkContexts([grouped], page)).toEqual([publicLinkContext(page, url)])
+    expect(originalPublicLinkContexts([grouped], peer)).toEqual([publicLinkContext(peer, url)])
+    expect(originalPublicLinkContexts([{ ...first, verificationRule: DESTINATION_VERIFICATION_RULE }], page)).toEqual([])
+  })
+  it('verifies an original destination beyond the general inventory budget without fetching unrelated links', async () => {
+    const original = page + 'original?scope=original'
+    const metadata = parseMetadataFromHtml(Array.from({ length: 130 }, (_, index) => '<a href="/unrelated/' + index + '">Details</a>').join('') +
+      '<a href="' + original + '">Original details</a>', page)
+    const open = vi.fn(async (url: string) => response(url))
+    const checked = await checkPublicLinks(page, { ...metadata, complete: true }, Date.now() + 10_000, open, [publicLinkContext(page, original)])
+    expect(open.mock.calls.map(([url]) => url)).toEqual([original])
+    expect(checked).toMatchObject({ complete: true, flags: [], assertions: [{ context: publicLinkContext(page, original), complete: true, passed: true }] })
+  })
+  it('keeps removed and changed original destinations explicitly unknown while collecting independent original peers', async () => {
+    const original = page + 'original?scope=original', missing = page + 'missing'
+    const metadata = parseMetadataFromHtml('<a href="' + original + '">Original details</a><a href="/original?scope=changed">Changed details</a>', page)
+    const open = vi.fn(async (url: string) => response(url))
+    const checked = await checkPublicLinks(page, { ...metadata, complete: true }, Date.now() + 10_000, open,
+      [publicLinkContext(page, original), publicLinkContext(page, missing)])
+    expect(open.mock.calls.map(([url]) => url)).toEqual([original])
+    expect(checked).toMatchObject({ complete: false, flags: [], assertions: [
+      { context: publicLinkContext(page, original), complete: true, passed: true },
+      { context: publicLinkContext(page, missing), complete: false, passed: false },
+    ] })
+  })
   it('retains independent successful responses while untested links remain unknown', () => {
     const result = publicLinkObservations(page, [page + 'ready', page + 'missing'], [response(page + 'ready')])
     expect(result.complete).toBe(false)

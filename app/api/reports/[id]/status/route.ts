@@ -44,18 +44,9 @@ export async function GET(
       windowSeconds: 60,
     })
 
-    const audit = await prisma.audit.findUnique({
-      where: { id },
-      select: progressiveAuditSelect,
-    })
-
-    if (!audit) {
-      return apiError('Report not found', 404)
-    }
-
     const store = await cookies()
     const access = await resolveAuditAccess(
-      audit,
+      { id },
       session?.user,
       store.get(SHARE_GRANT_COOKIE)?.value,
       readAnonAuditIdsFromStore(store)
@@ -63,6 +54,9 @@ export async function GET(
     if (access === 'denied') {
       return apiError('Report not found', 404)
     }
+
+    const audit = await prisma.audit.findUnique({ where: { id }, select: progressiveAuditSelect })
+    if (!audit) return apiError('Report not found', 404)
 
     const refreshed = NON_TERMINAL.has(audit.status)
       ? await prisma.audit.findUnique({
@@ -152,6 +146,8 @@ export async function GET(
       projectId: audit.projectId,
     })
 
+    if (await resolveAuditAccess(audit, session?.user, store.get(SHARE_GRANT_COOKIE)?.value, readAnonAuditIdsFromStore(store)) !== access)
+      return apiError('Report not found', 404)
     return NextResponse.json(
       {
         ...rest,

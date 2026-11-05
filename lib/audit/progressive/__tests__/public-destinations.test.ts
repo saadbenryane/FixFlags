@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Worker as ParserWorker } from 'node:worker_threads'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
-vi.mock('node:dns/promises', () => dns)
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 import { collectionHandlers } from '../collectors'
 import { evaluatorHandlers } from '../evaluators'
 import { httpArtifactSchema } from '../snapshots'
@@ -17,6 +18,7 @@ import { publicHttpCapacity } from '../capacity'
 import { openCheckDestination } from '../../open-check'
 import { collectDocument, missingDocument } from '../../search/collect'
 import { parseMetadataFromHtml, type PageMetadata } from '../../metadata'
+import { closeParserWorker } from '../cpu'
 
 const pageUrl = 'https://example.com/pricing'
 const fetchMock = vi.fn()
@@ -60,6 +62,66 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('guarded public destination evidence', () => {
+  it('leaves time to publish the collected HTTP response when metadata parsing cannot finish', async () => {
+    const post = ParserWorker.prototype.postMessage
+    const stalled = vi.spyOn(ParserWorker.prototype, 'postMessage').mockImplementation(function(this: ParserWorker, ...args: Parameters<ParserWorker['postMessage']>) {
+      if (args[0]?.operation !== 'metadata') post.apply(this, args)
+    })
+    fetchMock.mockImplementation(async () => new Response('<title>Observed page</title>', { headers: { 'content-type': 'text/html' } }))
+    const ctx = context('security-headers'); ctx.deadline = Date.now() + 500
+    try {
+      const artifact = await collectionHandlers.find(handler => handler.kind === 'http')!.evaluate(ctx)
+      expect(Date.now()).toBeLessThan(ctx.deadline)
+      expect(httpArtifactSchema.parse(readArtifact(artifact, 'http').data))
+        .toMatchObject({ metadata: null, document: { status: 200, complete: true, body: '<title>Observed page</title>' },
+          metadataFailure: { code: 'PARSER_DEADLINE', attempts: 1 } })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally { stalled.mockRestore(); await closeParserWorker() }
+  })
+  it('checks native action destinations without whole-page metadata and preserves exact repair targets', async () => {
+    function nativeAction(href: string | null, labelsComplete = true, restrictions: string[] = []) {
+      const ctx = context('auth-checkout'), task = ctx.dependencies.get('browser')!
+      const data = readArtifact(task.workResult, 'browser').data
+      const empty = { html: '', complete: true, reason: null, observed: 0, limit: 2000 }
+      task.workResult = serializeArtifact('browser', { ...data, metadata: null, snapshot: { ...data.snapshot as object,
+        desktopHtmlTruncated: true, collectionRestrictions: restrictions,
+        renderedSearchSnapshot: { version: 1, contract: 'rendered-search-v1', finalUrl: pageUrl, documentBaseUrl: 'https://payments.example.com/catalog/',
+          collectedAt: new Date().toISOString(), language: 'en', sections: {
+            metadata: empty, indexing: empty, canonical: empty, structured: empty, text: empty,
+            links: { ...empty, html: href ? '<a href="' + href + '">Subscribe</a>' : '', observed: href ? 1 : 0, labelsComplete },
+          } },
+      } })
+      return ctx
+    }
+    fetchMock.mockImplementation(async () => new Response('Missing', { status: 404 }))
+    const before = await checked(nativeAction('offer?plan=paid'))
+    expect(before.flags[0]).toMatchObject({ checkId: 'checkout-link-dead', evidenceTargets: [{
+      context: destinationContext(pageUrl, 'https://payments.example.com/catalog/offer?plan=paid'),
+    }] })
+    fetchMock.mockImplementation(async () => new Response('Ready', { status: 200 }))
+    const after = await checked(nativeAction('offer?plan=paid'))
+    expect(after.receipt).toMatchObject({ complete: true, passed: true })
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'checkout-link-dead', flag: before.flags[0] })?.assertion.passed).toBe(true)
+    const clipped = await checked(nativeAction('offer?plan=paid', false))
+    expect(clipped.receipt).toMatchObject({ complete: false, passed: false, assertions: [{ complete: true, passed: true }] })
+    for (const ctx of [nativeAction(null), nativeAction('offer?plan=changed')]) {
+      const changed = await checked(ctx)
+      expect(scopedAssertionForTarget({ receipt: changed.receipt, checkId: 'checkout-link-dead', flag: before.flags[0] })).toBeUndefined()
+    }
+    fetchMock.mockClear()
+    expect((await checked(nativeAction('offer', true, ['read_only_refusal']))).receipt).toMatchObject({ complete: false, passed: false })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect((await checked(nativeAction('offer', true, ['protected_action_requires_fixture']))).receipt).toMatchObject({ complete: true, passed: true })
+  })
+  it('never renews an old page declaration with a newly fetched destination response', async () => {
+    const ctx = context('auth-checkout', actionMeta()), browser = ctx.dependencies.get('browser')!
+    const original = '2026-10-01T12:00:00.000Z'
+    browser.workResult = { ...browser.workResult as object, collectedAt: original }
+    fetchMock.mockImplementation(async () => new Response('<h1>Checkout</h1>', { headers: { 'content-type': 'text/html' } }))
+    const result = await checked(ctx)
+    expect(fetchMock).toHaveBeenCalled()
+    expect(result.receipt).toMatchObject({ passed: true, complete: true, execution: { source: 'http', collectedAt: original } })
+  })
   it('verifies observed native links without whole-page metadata and keeps out-of-window targets unknown', async () => {
     function nativeContext(href: string | null, complete = true) {
       const ctx = context('seo'), task = ctx.dependencies.get('browser')!

@@ -9,7 +9,7 @@ import { runMetadataChecks, runOgImageUrlCheck } from './metadata-checks'
 import { runPerformanceChecks } from './performance'
 import type { AxeViolation } from './accessibility'
 import { runSeoChecks } from './seo'
-import { runTrustChecks } from './trust'
+import { publicTrustObservations, runTrustChecks } from './trust'
 import { consoleObservations, runConsoleChecks } from './console'
 import type { ConsoleCoverage } from '../console-evidence'
 import type { AccessibilityEvidence } from '../browser/accessibility-evidence'
@@ -39,36 +39,33 @@ import { assessPageResponse } from './page-response'
 import { RENDERED_COPY_MODULES, RENDERED_COPY_LIMITATION, type RenderedCopy } from '../browser/rendered-copy'
 import type { HeadMetadataObservation } from './head-metadata'
 import type { DestinationCheckOptions } from './destination-evidence'
+import type { SectionLinkInventory } from './section-links'
+import type { PageLinkInventory } from './public-links'
 
 export type PageCheckContext = {
   url: string; metadata: PageMetadata | null; desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
   consoleErrors: Array<{ type: string; text: string }>; metrics?: CaptureMetrics | null;
   consoleCoverage?: ConsoleCoverage;
   head?: HeadMetadataObservation;
+  sectionLinks?: SectionLinkInventory | null;
+  pageLinks?: PageLinkInventory | null;
+  sectionScope?: CaptureObservationScope;
+  publicTrustSignals?: import('../browser/public-page-signals').PublicPageSignals | null;
+  publicTrustCopy?: RenderedCopy | null;
   renderedCopy?: RenderedCopy | null; accessibilityEvidence?: AccessibilityEvidence; renderedScope?: CaptureObservationScope;
   renderedCopyScope?: CaptureObservationScope | null;
   mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
   publicDocument?: PublicDocument;
+  resourceTransport?: import('../resource-transport').ResourceTransport;
   deadline?: number;
-  destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'>;
+  destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt' | 'originalContexts' | 'retainedContexts'>;
   scope: { complete?: boolean; limitation?: string; collectedAt?: string };
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
 type Evaluator = { id: string; evaluate(input: PageCheckContext): DeterministicFlag[] | Promise<DeterministicFlag[]> }
 const PAGE_METADATA_LIMITATION = 'Page metadata was not collected. These observations remain unknown.'
-/** Only registrations that consume whole-document fields require parsed metadata. */
-function withMetadata(evaluate: (input: PageCheckContext & { metadata: PageMetadata }) => ReturnType<Evaluator['evaluate']>): Evaluator['evaluate'] {
-  return input => {
-    if (!input.metadata) {
-      input.scope.complete = false
-      input.scope.limitation = PAGE_METADATA_LIMITATION
-      return []
-    }
-    return evaluate({ ...input, metadata: input.metadata })
-  }
-}
 export function registerPageEvaluators(evaluators: Evaluator[], definitions = PAGE_CHECK_DEFINITIONS) {
   const registered = new Map<string, Evaluator & { definition: PageCheckDefinition }>()
   for (const evaluator of evaluators) {
@@ -136,18 +133,26 @@ export const PAGE_CHECKS = registerPageEvaluators([
     return checked.flags
   } },
   { id: 'keyboard', evaluate: c => c.keyboard ? runKeyboardChecks(c.keyboard).flags : [] },
-  { id: 'seo', evaluate: withMetadata(c => runSeoChecks(c.url, c.metadata, { renderedScope: c.renderedScope, record: c.record, scope: c.scope })) },
-  { id: 'trust', evaluate: withMetadata(c => runTrustChecks(c.url, c.metadata)) },
+  { id: 'seo', evaluate: c => runSeoChecks(c.url, c.metadata, { sectionLinks: c.sectionLinks, renderedScope: c.sectionScope ?? c.renderedScope, record: c.record, scope: c.scope }) },
+  { id: 'trust', evaluate: c => {
+    const observations = Object.values(publicTrustObservations(c.metadata, c.publicTrustSignals, c.publicTrustCopy))
+    observations.forEach(c.record)
+    c.scope.complete = observations.every(observation => observation.complete === true)
+    if (!c.metadata) c.scope.collectedAt = c.publicTrustSignals?.collectedAt
+    return runTrustChecks(c.url, c.metadata, c.publicTrustSignals, c.publicTrustCopy)
+  } },
   { id: 'console', evaluate: c => { Object.assign(c.scope, { complete: consoleObservations(c.consoleCoverage).every(assertion => assertion.complete === true),
       limitation: 'Console inspection covers the recorded desktop and mobile page-load windows, not later actions or all execution states.' });
     return runConsoleChecks(c.consoleErrors, c.consoleCoverage) } },
   { id: 'content', evaluate: c => runContentChecks(c.metadata, c.purpose, c.record, c.renderedCopy) },
   { id: 'slop', evaluate: c => runSlopChecks(c.metadata, c.record, c.renderedCopy, c.head?.metadata.title) },
-  { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
-    checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
-  { id: 'auth-checkout', evaluate: withMetadata(c => runAuthCheckoutChecks(c.url, c.metadata, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline })) },
+  { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url, c.publicTrustSignals);
+    checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation });
+    if (!c.metadata) c.scope.collectedAt = c.publicTrustSignals?.collectedAt
+    return checked.flags } },
+  { id: 'auth-checkout', evaluate: c => runAuthCheckoutChecks(c.url, c.pageLinks === undefined ? c.metadata : c.pageLinks, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline }) },
   { id: 'security', evaluate: c => {
-    const checked = assessSecurityTransport(c.url, c.metadata, c.publicDocument)
+    const checked = assessSecurityTransport(c.url, c.metadata, c.publicDocument, c.resourceTransport)
     checked.assertions.forEach(c.record)
     Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation, collectedAt: checked.collectedAt })
     return checked.flags

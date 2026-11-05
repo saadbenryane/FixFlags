@@ -6,7 +6,7 @@ import { JOURNEY_VERIFICATION_RULE, readJourneyContext } from './journey-evidenc
 import { readSlowActionTargets, sameSlowActionIdentity, slowActionContextSchema, SLOW_REPLAY_CONTEXT, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
 import type { Prisma } from '@prisma/client'
 import { baseCheckId } from '../flag-identity'
-import { verifierScopeKey, verifierTargetKey } from '@/lib/improvements/verifier-provenance'
+import { verifierScopeKey, verifierTargetKey } from '@/lib/improvements/verifier-scope'
 import { checkAssertionSchema, checkReceiptSchema, recordedCheckVersion } from './receipt'
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
 import { DESTINATION_VERIFICATION_RULE, PUBLIC_LINK_VERIFICATION_RULE } from './destination-evidence'
@@ -32,6 +32,7 @@ import { RESOURCE_REPAIR_RULE, resourceCheckPolicy, resourcePageKey } from '../p
 import { PAGESPEED_LAB_RULE, performanceLabKey, performancePageKey, readPerformanceContext } from '../performance-measurement'
 import { TRACKING_VERIFICATION_RULE, TRACKING_REQUEST_CONTEXT } from '../tracking/identity'
 import { verificationEvidence } from './verification-evidence'
+import { ENGAGEMENT_CONTEXT, ENGAGEMENT_VERIFICATION_RULE } from '../network-engagement-evidence'
 
 export const checkVerifierSchema = z.object({
   kind: z.literal('check-verifier'), version: z.literal(1),
@@ -48,6 +49,18 @@ export function assertionForTarget(receipt: z.infer<typeof checkReceiptSchema>, 
 
 type Assertion = z.infer<typeof checkAssertionSchema>
 type Receipt = z.infer<typeof checkReceiptSchema>
+
+/** A passing peer cannot hide a qualified failure of the same original
+ * condition. Qualification still owns method, scope and completeness. */
+function matchingObservation<T>(candidates: readonly T[], qualifies: (candidate: T) => boolean | undefined, read: (candidate: T) => Assertion): T | undefined {
+  let passing: T | undefined
+  for (const candidate of candidates) {
+    if (!qualifies(candidate)) continue
+    if (!read(candidate).passed) return candidate
+    passing ??= candidate
+  }
+  return passing
+}
 
 /** Callers first establish comparability and completeness for each original
  * scope. One known failure disproves repair; success needs every original scope. */
@@ -76,6 +89,20 @@ export function scopedAssertionForTarget(input: {
   receipts?: Array<z.infer<typeof checkReceiptSchema>>;
 }) {
   const { receipt, checkId, flag, receipts } = input
+  if (receipt.module === 'network') {
+    if (receipt.execution?.source !== 'browser-network' || flag.verificationRule !== ENGAGEMENT_VERIFICATION_RULE) return undefined
+    const targets = z.array(z.object({ kind: z.literal('page'), source: z.literal('measured'), device: z.literal('desktop'),
+      context: z.string().regex(ENGAGEMENT_CONTEXT) }).passthrough()).min(1).safeParse(flag.evidenceTargets)
+    if (!targets.success) return undefined
+    const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'network' && source.applicable && !source.failed &&
+      source.execution?.auditId === receipt.execution!.auditId && source.execution.source === 'browser-network' &&
+      source.execution.checkVersion === receipt.execution!.checkVersion)
+    const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
+      MODULE_CHECK_DEFINITIONS.network.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
+    const matched = targets.data.map(target => matchingObservation(candidates, candidate => candidate.item.context === target.context, candidate => candidate.item))
+    const combined = combineScopedAssertions(matched, candidate => candidate.item)
+    return combined ? { assertion: combined.assertion, supportingTasks: supportingTaskReferences(combined.matched) } : undefined
+  }
   const lab = performanceLabKey(checkId)
   if (lab) {
     const device = checkId.startsWith('mobile-') ? 'mobile' : 'desktop'
@@ -141,9 +168,10 @@ export function scopedAssertionForTarget(input: {
     const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'corridor' && source.applicable && !source.failed &&
       source.execution?.auditId === receipt.execution!.auditId && source.execution.source === 'rendered-dom' &&
       source.execution.checkVersion === receipt.execution!.checkVersion)
-    const matched = targets.data.map(target => sources.flatMap(source => source.assertions.map(assertion => ({ assertion, source })))
-      .find(({ assertion }) => assertion.context === target.context && assertion.complete === true && assertion.disposition !== 'observed' &&
-        MODULE_CHECK_DEFINITIONS.corridor.assertions[assertion.key]?.verifies.includes(checkId)))
+    const candidates = sources.flatMap(source => source.assertions.map(assertion => ({ assertion, source })))
+    const matched = targets.data.map(target => matchingObservation(candidates,
+      ({ assertion }) => assertion.context === target.context && assertion.complete === true && assertion.disposition !== 'observed' &&
+        MODULE_CHECK_DEFINITIONS.corridor.assertions[assertion.key]?.verifies.includes(checkId), candidate => candidate.assertion))
     const combined = combineScopedAssertions(matched, candidate => candidate.assertion)
     return combined ? { assertion: combined.assertion, supportingTasks: supportingTaskReferences(combined.matched) } : undefined
   }
@@ -155,11 +183,11 @@ export function scopedAssertionForTarget(input: {
       const sources = [receipt, ...receipts ?? []].filter(source => source.applicable && !source.failed && source.module === receipt.module &&
         source.execution?.auditId === receipt.execution!.auditId && source.execution.source === receipt.execution!.source &&
         source.execution.checkVersion === receipt.execution!.checkVersion)
-      const matched = targets.data.map(target => sources.flatMap(source => source.assertions.map(assertion => ({ assertion, source })))
-        .find(({ assertion }) => (checkId === 'mobile-input-zoom'
+      const candidates = sources.flatMap(source => source.assertions.map(assertion => ({ assertion, source })))
+      const matched = targets.data.map(target => matchingObservation(candidates, ({ assertion }) => (checkId === 'mobile-input-zoom'
           ? assertion.targets?.some(control => control.context === target.context && control.selector === target.selector)
           : assertion.context === target.context) && assertion.complete === true && assertion.disposition !== 'observed' &&
-          MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId)))
+          MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId), candidate => candidate.assertion))
       if (checkId === 'mobile-input-zoom') {
         // This assertion describes a whole control cohort, so retain its full
         // membership proof before using either verdict.
@@ -205,10 +233,11 @@ export function scopedAssertionForTarget(input: {
       if (targets.some(target => !target)) return undefined
       const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'mobile-navigation' && source.applicable && !source.failed &&
         source.execution?.source === 'rendered-dom' && source.execution.auditId === receipt.execution?.auditId && source.execution.checkVersion === receipt.execution?.checkVersion)
-      const matched = targets.map(target => sources.flatMap(source => source.assertions.map(item => ({ source, item })))
-        .find(({ item }) => item.key === 'mobile-navigation' && item.context === target!.context && item.complete === true && item.disposition !== 'observed' &&
+      const candidates = sources.flatMap(source => source.assertions.map(item => ({ source, item })))
+      const matched = targets.map(target => matchingObservation(candidates,
+        ({ item }) => item.key === 'mobile-navigation' && item.context === target!.context && item.complete === true && item.disposition !== 'observed' &&
           target!.members.every(member => item.targets?.some(control => control.context?.startsWith('mobile-nav-link:' + member + ':'))) &&
-          (!item.passed || target!.members.every(member => item.targets?.some(control => control.context === 'mobile-nav-link:' + member + ':reachable')))))
+          (!item.passed || target!.members.every(member => item.targets?.some(control => control.context === 'mobile-nav-link:' + member + ':reachable'))), candidate => candidate.item))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       assertion = combined.assertion
@@ -219,9 +248,10 @@ export function scopedAssertionForTarget(input: {
       if (flag.verificationRule !== JOURNEY_VERIFICATION_RULE || !targets.success || targets.data.some(target => !readJourneyContext(target.context))) return undefined
       const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'journeys' && source.applicable && !source.failed &&
         source.execution?.source === 'rendered-dom' && source.execution.auditId === receipt.execution?.auditId && source.execution.checkVersion === receipt.execution?.checkVersion)
-      const matched = targets.data.map(target => sources.flatMap(source => source.assertions.map(item => ({ source, item }))).find(({ item }) =>
+      const candidates = sources.flatMap(source => source.assertions.map(item => ({ source, item })))
+      const matched = targets.data.map(target => matchingObservation(candidates, ({ item }) =>
         item.context === target.context && item.complete === true && item.disposition !== 'observed' &&
-        MODULE_CHECK_DEFINITIONS.journeys.assertions[item.key]?.verifies.includes(checkId)))
+        MODULE_CHECK_DEFINITIONS.journeys.assertions[item.key]?.verifies.includes(checkId), candidate => candidate.item))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       assertion = combined.assertion
@@ -236,9 +266,10 @@ export function scopedAssertionForTarget(input: {
         flag.verificationRule === INITIAL_OVERLAY_VERIFICATION_RULE && target.context.split(':')[3] !== 'page_load')) return undefined
       const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'overlays' && source.execution?.source === 'rendered-dom' && !source.failed && source.applicable &&
         source.execution.auditId === receipt.execution!.auditId && source.execution.checkVersion === receipt.execution!.checkVersion)
-      const matched = targets.data.map(target => sources.flatMap(source => source.assertions.map(item => ({ item, source }))).find(({ item }) => item.key === 'overlay-' + kind &&
+      const candidates = sources.flatMap(source => source.assertions.map(item => ({ item, source })))
+      const matched = targets.data.map(target => matchingObservation(candidates, ({ item }) => item.key === 'overlay-' + kind &&
         item.context === target.context && item.complete === true && item.disposition !== 'observed' &&
-        item.targets?.some(member => member.selector === target.selector && member.label === target.label)))
+        item.targets?.some(member => member.selector === target.selector && member.label === target.label), candidate => candidate.item))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       assertion = combined.assertion
@@ -292,14 +323,14 @@ export function scopedAssertionForTarget(input: {
         if (!targets.length || !Array.isArray(flag.evidenceTargets) || targets.length !== flag.evidenceTargets.length) return undefined
         const scoped = targets.map(target => ({ target, identity: slowActionContextSchema.parse(JSON.parse(target.context)) }))
         if (scoped.some(({ identity }) => !identity.captureKey)) return undefined
-        matched = scoped.map(({ target, identity }) => candidates.find(({ item }) => item.key === 'primary-action-visibility' &&
+        matched = scoped.map(({ target, identity }) => matchingObservation(candidates, ({ item }) => item.key === 'primary-action-visibility' &&
           item.context === 'slow-replay:v2:' + identity.captureKey && item.targets?.some(observed =>
-            observed.context && sameSlowActionIdentity({ ...observed, context: observed.context }, target))))
+            observed.context && sameSlowActionIdentity({ ...observed, context: observed.context }, target)), candidate => candidate.item))
       } else {
         const targets = z.array(z.object({ kind: z.literal('page'), source: z.literal('measured'), device: z.literal('mobile'),
           context: z.string().regex(SLOW_REPLAY_CONTEXT) }).passthrough()).min(1).safeParse(flag.evidenceTargets)
         if (!targets.success) return undefined
-        matched = targets.data.map(target => candidates.find(({ item }) => item.key === 'meaningful-text' && item.context === target.context))
+        matched = targets.data.map(target => matchingObservation(candidates, ({ item }) => item.key === 'meaningful-text' && item.context === target.context, candidate => candidate.item))
       }
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
@@ -336,9 +367,9 @@ export function scopedAssertionForTarget(input: {
         source.execution?.source === 'keyboard' && source.execution.auditId === receipt.execution?.auditId &&
         source.execution.checkVersion === receipt.execution?.checkVersion).flatMap(source => source.assertions.filter(item => item.complete !== false && item.disposition !== 'observed' &&
         MODULE_CHECK_DEFINITIONS.keyboard?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
-      const matched = priorTargets.map(prior => candidates.find(({ item, source }) =>
+      const matched = priorTargets.map(prior => matchingObservation(candidates, ({ item, source }) =>
         (!item.passed || item.complete === true || source.complete === true) && item.targets?.some(target =>
-          target.selector === prior.selector && target.label === prior.label && target.context === prior.context)))
+          target.selector === prior.selector && target.label === prior.label && target.context === prior.context), candidate => candidate.item))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       supportingTasks = supportingTaskReferences(combined.matched)
@@ -369,7 +400,7 @@ export function scopedAssertionForTarget(input: {
         (!headers || currentSecurityHeaderObservation(item)) &&
         (!form || currentFormFeedbackObservation(item)) &&
         MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
-      const matched = contexts.data.map(prior => candidates.find(candidate => candidate.item.context === prior.context))
+      const matched = contexts.data.map(prior => matchingObservation(candidates, candidate => candidate.item.context === prior.context, candidate => candidate.item))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       supportingTasks = supportingTaskReferences(combined.matched)
@@ -416,7 +447,7 @@ export async function recordAssertionVerifiers(input: {
     // Unscoped historical page findings may only use the primary page adapter.
     const tracking = receipt.module === 'measurement' && checkId.startsWith('tracking-')
     const resource = Boolean(resourceCheckPolicy(checkId))
-    const contextual = resource || flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || receipt.module === 'slow-replay' || receipt.module === 'corridor' || receipt.module === 'mobile-navigation' || receipt.module === 'journeys' || receipt.module === 'keyboard' || receipt.module === 'automatic-accounts' || tracking || receipt.module === 'overlays' || receipt.module === 'flow' || receipt.module === 'accessibility' || receipt.module === 'console' || receipt.module === 'auth-checkout' || receipt.module === 'og-image' || receipt.module === 'form-validation' || receipt.module === 'seo' && ['broken-internal-links', 'broken-page-anchors'].includes(checkId)
+    const contextual = resource || flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || receipt.module === 'network' || receipt.module === 'slow-replay' || receipt.module === 'corridor' || receipt.module === 'mobile-navigation' || receipt.module === 'journeys' || receipt.module === 'keyboard' || receipt.module === 'automatic-accounts' || tracking || receipt.module === 'overlays' || receipt.module === 'flow' || receipt.module === 'accessibility' || receipt.module === 'console' || receipt.module === 'auth-checkout' || receipt.module === 'og-image' || receipt.module === 'form-validation' || receipt.module === 'seo' && ['broken-internal-links', 'broken-page-anchors'].includes(checkId)
     if (!contextual && (flag.pageUrl ? verifierScopeKey(flag.pageUrl) !== verifierScopeKey(receipt.pageUrl) : !input.primary)) continue
     if (contextual && !resource && !contextualReceipts) {
       const checks = new Set(flags.flatMap(flag => {

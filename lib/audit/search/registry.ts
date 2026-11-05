@@ -55,8 +55,9 @@ function html(document: PublicDocument, section: SearchSection = 'metadata') {
   const body = searchSectionBody(document, section)
   return body == null ? null : parseActiveHtmlDocument(body).document
 }
-function primary(evidence: SearchPageEvidence, section: SearchSection = 'metadata'): [PublicDocument, 'original-html' | 'rendered-dom'] {
-  return html(evidence.rendered, section) ? [evidence.rendered, 'rendered-dom'] : [evidence.original, 'original-html']
+function primary(evidence: SearchPageEvidence, section: SearchSection = 'metadata'): [PublicDocument, 'original-html' | 'rendered-dom', ReturnType<typeof html>] {
+  const rendered = html(evidence.rendered, section)
+  return rendered ? [evidence.rendered, 'rendered-dom', rendered] : [evidence.original, 'original-html', html(evidence.original, section)]
 }
 function urlIdentity(value: string): string { try { const url = new URL(value); url.hash = ''; return url.toString() } catch { return value } }
 function unknown(evidence: SearchPageEvidence, checkId: string, responsibility: SearchObservation['responsibility'], rule: Rule, source: SearchObservation['source']) {
@@ -70,7 +71,7 @@ function unknown(evidence: SearchPageEvidence, checkId: string, responsibility: 
 }
 
 function presentation({ evidence }: EvaluatorInput): SearchObservation[] {
-  const [document, source] = primary(evidence), $ = html(document)
+  const [document, source, $] = primary(evidence)
   // An unread document is incomplete for every presentation check. It is not a missing heading.
   if (!$) return [
     unknown(evidence, 'title-missing', 'presentation', 'title', source),
@@ -279,7 +280,7 @@ function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
 }
 
 function discoveryWithLinks(input: EvaluatorInput): SearchObservation[] {
-  const { evidence } = input, [document, source] = primary(evidence, 'links'), $ = html(document, 'links')
+  const { evidence } = input, [document, source, $] = primary(evidence, 'links')
   if (!$) return [...discovery(input), unknown(evidence, 'search-discovery-links', 'discovery', 'sitemap', source)]
   const links: string[] = []
   $('a[href]').each((_, node) => {
@@ -302,11 +303,7 @@ function discoveryWithLinks(input: EvaluatorInput): SearchObservation[] {
 
 async function structured({ evidence }: EvaluatorInput): Promise<SearchObservation[]> {
   const observations: SearchObservation[] = []
-  const [document, source] = primary(evidence, 'structured')
-  const $ = html(document, 'structured')
-  const contextBody = document.searchSnapshot && ['metadata', 'text', 'links'].every(key => document.searchSnapshot!.sections[key as SearchSection].complete)
-    ? `<html><head>${document.searchSnapshot.sections.metadata.html}</head><body>${document.searchSnapshot.sections.text.html}${document.searchSnapshot.sections.links.html}</body></html>` : null
-  const context = contextBody ? parseActiveHtmlDocument(contextBody).document : document.searchSnapshot ? null : $
+  const [document, source, $] = primary(evidence, 'structured')
   // Unreadable markup does not establish syntax, feature rules, or the absence of markup.
   if (!$) return [
     unknown(evidence, 'no-structured-data', 'structured-data', 'markup', source),
@@ -315,11 +312,18 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
     unknown(evidence, 'search-structured-feature', 'structured-data', 'feature', source),
     unknown(evidence, 'search-structured-coverage', 'structured-data', 'markup', source),
   ]
+  const fullContext = !document.searchSnapshot || !document.searchSnapshot.sections.structured.complete ? $
+    : document.complete && document.body !== null ? parseActiveHtmlDocument(document.body).document : null
+  const contextBody = !fullContext && document.searchSnapshot && ['metadata', 'text', 'links'].every(key => document.searchSnapshot!.sections[key as SearchSection].complete)
+    ? `<html><head>${document.searchSnapshot.sections.metadata.html}</head><body>${document.searchSnapshot.sections.text.html}${document.searchSnapshot.sections.links.html}</body></html>` : null
+  const context = fullContext ?? (contextBody ? parseActiveHtmlDocument(contextBody).document : null)
   // Content matching enriches markup inspection. Missing or bounded page prose
   // cannot discard independently collected syntax and entity observations.
   const visible = context?.root().clone()
   visible?.find('script, style, template, noscript, [hidden], [aria-hidden="true"]').remove()
-  const visibleText = visible?.text()
+  // Complete section extraction is still only a selected document projection.
+  // Its missing prose cannot establish a content-correspondence concern.
+  const visibleText = fullContext ? visible?.text() : undefined
   for (const [snapshot, snapshotSource] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     if (!html(snapshot, 'structured')) { observations.push(unknown(evidence, 'search-structured-invalid', 'structured-data', 'markup', snapshotSource)); continue }
     const inspection = await inspectStructuredData(snapshot)
@@ -372,7 +376,7 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
         }
       }
     }
-    if (!context && snapshotSource === source && inspection.entities.some(entity => entity.types.length))
+    if (!fullContext && snapshotSource === source && inspection.entities.some(entity => entity.types.length))
       observations.push(observation(evidence, { checkId: 'search-structured-content', rule: 'feature', responsibility: 'structured-data', source, document,
         disposition: 'unknown', reason: 'content_context_incomplete',
         observed: 'Structured markup was inspected, but complete page context was unavailable for content matching.',

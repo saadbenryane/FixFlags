@@ -23,7 +23,7 @@ export async function recordFlagFeedback(input: RecordFlagFeedbackInput) {
     where: { id: input.flagId },
     select: {
       id: true,
-      audit: { select: { userId: true, projectId: true } },
+      audit: { select: { userId: true, projectId: true, project: { select: { userId: true, deletedAt: true } } } },
     },
   })
   if (!flag) return null
@@ -61,7 +61,10 @@ export async function recordFlagFeedback(input: RecordFlagFeedbackInput) {
     },
   })
 
-  if (input.userId && flag.audit.userId === input.userId) {
+  const isOwner = Boolean(input.userId && (flag.audit.projectId
+    ? flag.audit.project?.userId === input.userId && !flag.audit.project.deletedAt
+    : flag.audit.userId === input.userId))
+  if (isOwner) {
     await recordSiteLifecycleEvent({ name: 'flag_feedback_recorded',
       idempotencyKey: `flag-feedback:${feedback.id}:${input.vote}:${rejectionReason ?? 'none'}`,
       userId: input.userId, projectId: flag.audit.projectId,
@@ -73,7 +76,7 @@ export async function recordFlagFeedback(input: RecordFlagFeedbackInput) {
     input.dismiss &&
     input.reason &&
     input.userId &&
-    flag.audit.userId === input.userId
+    isOwner
   ) {
     await recordOwnerFlagFeedbackDecision({
       flagId: input.flagId,

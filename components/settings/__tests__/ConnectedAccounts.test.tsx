@@ -29,7 +29,7 @@ describe('ConnectedAccounts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authClient.passkey.listUserPasskeys.mockResolvedValue({ data: [], error: null })
-    authClient.passkey.addPasskey.mockResolvedValue({ error: null })
+    authClient.passkey.addPasskey.mockResolvedValue({ data: { id: 'new-key' }, error: null })
   })
 
   it('merges passkeys and two-factor into sign-in methods without a passkey name field', async () => {
@@ -97,7 +97,7 @@ describe('ConnectedAccounts', () => {
     await waitFor(() => expect(enable).toBeEnabled())
     fireEvent.click(enable)
     expect(await screen.findByText('fixture-backup-code')).toBeVisible()
-    expect(authClient.twoFactor.enable).toHaveBeenCalledWith({ password: undefined, method: 'totp' })
+    expect(authClient.twoFactor.enable).toHaveBeenCalledWith({ password: undefined, method: 'totp', fetchOptions: { signal: expect.any(AbortSignal) } })
     expect(screen.getByText(AUTH.security.enabledBadge)).toBeVisible()
   })
 })

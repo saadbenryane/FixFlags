@@ -1490,6 +1490,7 @@ model ImprovementOccurrence {
 
 model ImprovementAttempt {
   sourceFlagIds        String[]                @default([])
+  sourceObservations   Json?
   frozen              Boolean                 @default(false)
   idempotencyKey       String?
   requestHash          String?

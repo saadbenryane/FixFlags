@@ -1,13 +1,12 @@
 import { comparableOutcomeCoverage, completeOutcomeEvidence } from '@/lib/sites/domain/outcome-proof'
 import type { Prisma, ReportCompleteness } from '@prisma/client'
-import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
+import { verifierScopeKey, verifierTargetKey, normalizeVerifierUrl as normalizeUrl } from './verifier-scope'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 import { createRecordedRecoveryReader, recordedObservationGap, type RecoveryFlag, type RecordedRecoveryReader } from '@/lib/audit/recovery-evidence'
 import { baseCheckId } from '@/lib/audit/flag-identity'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { VERIFICATION_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
-import { normalizeVerifierUrl as normalizeUrl } from './verifier-scope'
 
 type EvidenceCoverage = {
   desktopScreenshot?: boolean

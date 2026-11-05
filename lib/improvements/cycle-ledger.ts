@@ -5,6 +5,8 @@ import type {
   VerificationOutcome,
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { createHash } from 'node:crypto'
+import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 
 type DbClient = typeof prisma | Prisma.TransactionClient
 
@@ -28,7 +30,18 @@ export type CycleEventInput = {
   occurredAt?: Date
 }
 
-/** Appends a durable cycle event. Repeating the same semantic action is idempotent. */
+type EventAssertion = { type: string; transport: string; client?: string | null; actor?: string | null;
+  attemptId?: string | null; verificationAuditId?: string | null; outcome?: string | null; rejectionReason?: string | null;
+  rejectionNote?: string | null; revisitAt?: Date | null; contextCorrection?: unknown }
+function eventAssertion(input: EventAssertion) {
+  return canonicalIntent({ type: input.type, transport: input.transport, client: input.client ?? null, actor: input.actor ?? null,
+    attemptId: input.attemptId ?? null, verificationAuditId: input.verificationAuditId ?? null, outcome: input.outcome ?? null,
+    rejectionReason: input.rejectionReason ?? null, rejectionNote: input.rejectionNote ?? null,
+    revisitAt: input.revisitAt?.toISOString() ?? null, contextCorrection: input.contextCorrection ?? null })
+}
+
+/** Repeating an assertion retains its original receipt and time. Changed
+ * assertions append a stable revision instead of rewriting earlier evidence. */
 export async function appendImprovementCycleEvent(
   input: CycleEventInput,
   db: DbClient = prisma,
@@ -49,39 +62,24 @@ export async function appendImprovementCycleEvent(
     update: input.occurrenceId ? { occurrenceId: input.occurrenceId } : {},
     select: { id: true },
   })
-  return db.improvementCycleEvent.upsert({
+  const create = {
+    cycleId: cycle.id, type: input.type, transport: input.transport, client: input.client, actor: input.actor,
+    attemptId: input.attemptId, verificationAuditId: input.verificationAuditId, outcome: input.outcome,
+    rejectionReason: input.rejectionReason, rejectionNote: input.rejectionNote, revisitAt: input.revisitAt,
+    contextCorrection: input.contextCorrection, occurredAt: input.occurredAt,
+  }
+  const record = (idempotencyKey: string) => db.improvementCycleEvent.upsert({
     where: {
-      cycleId_idempotencyKey: { cycleId: cycle.id, idempotencyKey: input.idempotencyKey },
+      cycleId_idempotencyKey: { cycleId: cycle.id, idempotencyKey },
     },
-    create: {
-      cycleId: cycle.id,
-      idempotencyKey: input.idempotencyKey,
-      type: input.type,
-      transport: input.transport,
-      client: input.client,
-      actor: input.actor,
-      attemptId: input.attemptId,
-      verificationAuditId: input.verificationAuditId,
-      outcome: input.outcome,
-      rejectionReason: input.rejectionReason,
-      rejectionNote: input.rejectionNote,
-      revisitAt: input.revisitAt,
-      contextCorrection: input.contextCorrection,
-      occurredAt: input.occurredAt,
-    },
-    update: {
-      transport: input.transport,
-      client: input.client,
-      actor: input.actor,
-      attemptId: input.attemptId,
-      verificationAuditId: input.verificationAuditId,
-      outcome: input.outcome,
-      rejectionReason: input.rejectionReason,
-      rejectionNote: input.rejectionNote,
-      revisitAt: input.revisitAt,
-      contextCorrection: input.contextCorrection,
-    },
+    create: { ...create, idempotencyKey },
+    // Keep PostgreSQL's atomic upsert without changing any recorded assertion.
+    update: { idempotencyKey },
   })
+  const original = await record(input.idempotencyKey)
+  const assertion = eventAssertion(input)
+  if (eventAssertion(original) === assertion) return original
+  return record(input.idempotencyKey + ':v1:' + createHash('sha256').update(assertion).digest('hex'))
 }
 
 /** Publish observed generation in bounded batches without recording a customer action. */

@@ -13,7 +13,9 @@ vi.mock('@/lib/auth-client', () => ({ authClient: { signIn: { passkey: calls.pas
 afterAll(() => vi.unstubAllGlobals())
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
-  vi.clearAllMocks(); calls.passkey.mockResolvedValue({}); calls.backup.mockResolvedValue({}) })
+  vi.clearAllMocks()
+  calls.passkey.mockResolvedValue({ data: { session: { id: 'session', token: 'session-token', userId: 'user' }, user: { id: 'user' } }, error: null })
+  calls.backup.mockResolvedValue({ data: { token: 'session-token', user: { id: 'user' } }, error: null }) })
 describe('second-factor interaction readiness', () => {
   it('renders a loading status before handlers can accept authentication input', () => {
     const html = renderToString(<TwoFactorPage />)
@@ -43,7 +45,7 @@ describe('second-factor interaction readiness', () => {
     const input = screen.getByLabelText(AUTH.twoFactor.backupPlaceholder)
     fireEvent.change(input, { target: { value: ' local-backup-code ' } })
     fireEvent.submit(input.closest('form')!)
-    await waitFor(() => expect(calls.backup).toHaveBeenCalledExactlyOnceWith({ code: 'local-backup-code', trustDevice: false }))
+    await waitFor(() => expect(calls.backup).toHaveBeenCalledExactlyOnceWith({ code: 'local-backup-code', trustDevice: false, fetchOptions: { signal: expect.any(AbortSignal) } }))
     expect(calls.replace).toHaveBeenCalledWith('/sites')
   })
 })

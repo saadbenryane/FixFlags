@@ -30,11 +30,11 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-it('copies a finding directly beside View Flag, keeping its incident scope and leaving the detail closed', async () => {
+it('copies a finding beside its named open target, keeping its incident scope and leaving the detail closed', async () => {
   const open = vi.fn()
   render(<SiteCardFindings siteId="site" flags={[first]} recommendations={[]} onOpenFlag={open} />)
   const row = screen.getByRole('heading', { name: first.problem }).closest('li')!
-  expect(within(row).getByRole('button', { name: C.viewFlag })).toBeVisible()
+  expect(within(row).getByRole('link', { name: first.problem })).toBeVisible()
   fireEvent.click(within(row).getByRole('button', { name: B.promptActionFor(B.copyPrompt, first.problem) }))
   await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled())
   expect(open).not.toHaveBeenCalled()
@@ -69,7 +69,7 @@ it('offers both copy actions to a signed-out visitor without requesting private 
   render(<SiteCardFindings siteId="site" flags={[{ ...first, fix: '', repairGuidance: 'unavailable' }]} recommendations={[]} copyAvailability="sign_in" />)
   expect(screen.getByRole('link', { name: C.fixAll })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite')
   expect(screen.getByRole('link', { name: B.copyPrompt })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite%2Fflags%2Fincident-one')
-  expect(screen.getByRole('link', { name: C.viewFlag })).toBeVisible()
+  expect(screen.getByRole('link', { name: first.problem })).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -78,7 +78,7 @@ it('gives each page a direct copy action for its actual finding', async () => {
   view.flags = [first, other]
   const open = vi.fn()
   render(<SitePages siteId="site" view={view} onOpenFlag={open} />)
-  const row = screen.getByRole('button', { name: C.open(first.problem) }).closest('li')!
+  const row = screen.getByRole('link', { name: C.open(first.problem) }).closest('li')!
   fireEvent.click(within(row).getByRole('button', { name: B.promptActionFor(B.copyPrompt, first.problem) }))
   await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled())
   expect(open).not.toHaveBeenCalled()
@@ -93,8 +93,8 @@ it('shows one category copy-all before the findings and keeps it scoped to Perfo
   render(<SiteCategoryDetails selected={selected} selectedFlags={view.flags} selectedRecommendations={[]} confirmedOutcomes={[]}
     findingPages={2} siteId="site" view={view} busy={false} checkAction={() => null} verifyOutcome={vi.fn()}
     onClose={vi.fn()} restoreFocus={vi.fn()} />)
+  const all = await screen.findByRole('button', { name: C.fixAll })
   expect(screen.getAllByRole('button', { name: C.fixAll })).toHaveLength(1)
-  const all = screen.getByRole('button', { name: C.fixAll })
   const title = screen.getByRole('heading', { name: first.problem })
   expect(all.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   fireEvent.click(all)

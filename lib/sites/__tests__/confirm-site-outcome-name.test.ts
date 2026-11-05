@@ -17,6 +17,7 @@ const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get
   $queryRaw: mocks.lockOutcome,
   siteOutcome: {
     findFirst: mocks.txFindFirst,
+    update: mocks.update,
     updateMany: mocks.txUpdateMany,
     findUniqueOrThrow: mocks.txFindUniqueOrThrow,
   },
@@ -185,6 +186,8 @@ describe('confirmSiteOutcome semantic identity', () => {
 describe('renameSiteOutcome', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx))
+    mocks.lockOutcome.mockResolvedValue([{ id: 'outcome-1' }])
     mocks.findFirst.mockResolvedValue({ id: 'outcome-1' })
     mocks.update.mockResolvedValue(row({
       name: 'A customer can check out',
@@ -211,6 +214,6 @@ describe('renameSiteOutcome', () => {
       kind: 'CHECKOUT',
       bindings: [{ key: 'checkout-browser-v1' }],
     })
-    expect(mocks.transaction).not.toHaveBeenCalled()
+    expect(mocks.transaction).toHaveBeenCalledOnce()
   })
 })

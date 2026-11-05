@@ -13,14 +13,57 @@ import { UPTIME_INTERVAL_MS } from './domain'
 import { loadUptimeSummary } from './queries'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { probeUptime } from './probe'
+import { safeFetchDocument } from '@/lib/audit/url'
 
-vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
+const dns = vi.hoisted(() => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 vi.mock('@/lib/billing/beta-policy', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(), OPEN_BETA_ACCESS: false, hasOpenBetaAccess: () => false,
 }))
 const run = process.env.UPTIME_TEST_DATABASE_URL && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
 
 run('native public HTTP probe under execution contention', () => {
+  it.each(['online', 'offline'] as const)('keeps connection DNS uncertainty from changing %s incident history through the installed worker', async state => {
+    const database = new URL(process.env.DATABASE_URL ?? '')
+    if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_uptime_test_[a-f0-9]{32}$/.test(database.pathname))
+      throw new Error('Use the disposable uptime execution verifier')
+    const identity = randomUUID(), targetUrl = 'http://connection-dns.example.com/'
+    const user = await prisma.user.create({ data: { email: `connection-dns-${identity}@uptime-test.example` } })
+    const connection = createQueueRedis(), queue = new Queue('uptime-probes', { connection })
+    // Shorten only the response window. Resolution, sockets, failure
+    // classification and the installed queue consumer remain real.
+    const worker = startUptimeWorker(job => executeUptimeProbe(job, target => probeUptime(target,
+      (url, options) => safeFetchDocument(url, { ...options, timeoutMs: 80 }))))
+    try {
+      const project = await prisma.project.create({ data: { userId: user.id, name: 'Connection DNS uncertainty', url: targetUrl,
+        canonicalHost: 'connection-dns.example.com', watchInterval: 'WEEKLY', watchNextRunAt: new Date() } })
+      const monitor = await prisma.uptimeMonitor.create({ data: { projectId: project.id, targetUrl, state, nextProbeAt: new Date(0) } })
+      const incident = state === 'offline' ? await prisma.uptimeIncident.create({ data: { monitorId: monitor.id, version: monitor.version,
+        targetUrl, reason: 'response_error', startedAt: new Date(Date.now() - 60_000), confirmedAt: new Date(Date.now() - 30_000) } }) : null
+      if (incident) await prisma.uptimeNotification.create({ data: { incidentId: incident.id, kind: 'DOWN' } })
+      dns.resolve4.mockResolvedValueOnce(['93.184.216.34']).mockImplementation(() => new Promise(() => {}))
+      const now = new Date(), scheduledAt = new Date(Math.floor(now.getTime() / UPTIME_INTERVAL_MS) * UPTIME_INTERVAL_MS)
+      const job = { monitorId: monitor.id, version: monitor.version, scheduledAt: scheduledAt.toISOString(), attempt: 1 as const }
+      await enqueueUptimeProbe(job, now)
+      await vi.waitFor(async () => {
+        expect(await (await queue.getJob(uptimeJobId(job)))?.getState()).toBe('completed')
+      }, { timeout: 5000, interval: 25 })
+      expect(await prisma.uptimeProbe.findFirstOrThrow({ where: { monitorId: monitor.id } }))
+        .toMatchObject({ result: 'UNKNOWN', confirmed: false, statusCode: null })
+      expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } }))
+        .toMatchObject({ state: 'unknown', pendingFailureAt: null, confirmationDueAt: null, leaseToken: null, leaseUntil: null })
+      expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(incident ? 1 : 0)
+      if (incident) expect(await prisma.uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toEqual(incident)
+      expect(await prisma.uptimeNotification.findMany({ where: { incident: { monitorId: monitor.id } }, select: { kind: true } }))
+        .toEqual(incident ? [{ kind: 'DOWN' }] : [])
+      expect(publicHttpCapacity.running).toBe(0)
+    } finally {
+      await worker.close(); await queue.close(); await connection.quit()
+      dns.resolve4.mockReset().mockResolvedValue(['93.184.216.34']); dns.resolve6.mockReset().mockResolvedValue([])
+      await prisma.user.delete({ where: { id: user.id } })
+    }
+  })
   it('completes an installed probe once when its Site is physically removed during the HTTP request', async () => {
     const database = new URL(process.env.DATABASE_URL ?? '')
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_uptime_test_[a-f0-9]{32}$/.test(database.pathname))

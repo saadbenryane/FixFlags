@@ -33,6 +33,7 @@ import { siteCheckNotice,siteSummaryNotice } from '@/lib/sites/check-notice'
 import { executeSiteAction } from '@/lib/sites/client-actions'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { outcomeCoverageLabel,UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
+import { siteDetailContextHref } from '@/lib/sites/workspace-location'
 import { helpHrefForFailureCode } from '@/lib/help/contextual'
 import { recoveryReplacesRecheck } from '@/lib/sites/execution-recovery'
 import { runBanner } from '@/lib/sites/presentation'
@@ -43,13 +44,23 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRef } from 'react'
 import { useSiteWorkspaceNavigation } from '@/hooks/useSiteWorkspaceNavigation'
+import { SiteCategoryDetails } from './SiteCategoryDetails'
+import { SiteFlagPanel } from './SiteFlagPanel'
+import { SiteWorkspaceLocationProvider } from './SiteWorkspaceLocation'
 import type { SiteBoardView } from '@/lib/sites/workspace-location'
 
-const SiteCategoryDetails = dynamic(() => import('./SiteCategoryDetails').then(module => module.SiteCategoryDetails))
-const SiteFlagPanel = dynamic(() => import('./SiteFlagPanel').then(module => module.SiteFlagPanel))
-const SiteIntegrationsControls = dynamic(() => import('./SiteIntegrationsControls').then(module => module.SiteIntegrationsControls))
+const SiteIntegrationsControls = dynamic(() => import('./SiteIntegrationsControls').then(module => module.SiteIntegrationsControls), {
+  loading: () => <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.loading}</p>,
+})
 
 export type { SiteBoardView } from '@/lib/sites/workspace-location'
+
+function restoreWorkspaceFocus(...targets: Array<HTMLElement | null | undefined>) {
+  const target = targets.find(element => element?.isConnected)
+    ?? document.querySelector<HTMLElement>('[data-site-content] main h1')
+    ?? document.querySelector<HTMLElement>('[data-site-content] main')
+  target?.focus({ preventScroll: true })
+}
 
 export function SiteBoard(props: Parameters<typeof SiteBoardContent>[0]) {
   return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteBoardContent {...props} /></SiteResourceBoundary>
@@ -58,8 +69,9 @@ export function SiteBoard(props: Parameters<typeof SiteBoardContent>[0]) {
 function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialCategory = null, initialFlag = null }: { siteId: string; initial: SiteHomeView; viewMode?: SiteBoardView; initialCategory?: SiteCardArea | null; initialFlag?: string | null }) {
   const { user } = useMe()
   const signedIn = Boolean(user)
-  const { view, refresh, disconnected: updatesDisconnected } = useSharedSiteResource(siteId)
+  const { view, refresh, disconnected: updatesDisconnected, readUnavailable } = useSharedSiteResource(siteId)
   const disconnected = updatesDisconnected || Boolean(view.recoveryUnavailable)
+  const currentReadUnavailable = readUnavailable || Boolean(view.recoveryUnavailable)
   const ownsSite = view.actions.ownership === 'owner'
   const navigation = useSiteWorkspaceNavigation(siteId, {
     viewMode: initialViewMode, selectedCard: initialViewMode === 'home' ? initialCategory : null, selectedFlag: initialFlag,
@@ -67,7 +79,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   const { viewMode, selectedCard, selectedFlag, openWorkspace, selectCategory, closeFlag } = navigation
   const flagOpener = useRef<HTMLElement | null>(null)
   const opener = useRef<HTMLElement | null>(null)
-  const { busy, message: toast, error: actionError, submit: submitAction, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
+  const { busy, message: toast, error: actionError, submit: submitAction, requestKey, completeIntent } = useSiteAction({ namespace: `site:${siteId}` })
   function openFlag(id: string, trigger?: HTMLElement) {
     flagOpener.current = trigger ?? document.activeElement as HTMLElement
     navigation.openFlag(id)
@@ -83,7 +95,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       if (recovery.action === 'inspect' && area) return null
       return <Button asChild variant="outline" size="sm"><Link href={href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button>
     }
-    if (ownsSite) return <Button variant={iconOnly ? 'ghost' : 'outline'} size={iconOnly ? 'icon' : 'sm'} className="min-h-11" data-site-return-focus="check" data-site-compact-recheck={iconOnly || undefined} title={iconOnly && name ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-busy={busy || Boolean(categoryChecking) || undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
+    if (ownsSite) return <Button variant={iconOnly ? 'ghost' : 'outline'} size={iconOnly ? 'icon' : 'sm'} className="min-h-11" data-site-return-focus="check" data-site-compact-recheck={iconOnly || undefined} title={iconOnly && name ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-busy={busy || Boolean(categoryChecking) || undefined} disabled={busy || checking || Boolean(categoryChecking) || currentReadUnavailable} onClick={() => void refreshSiteEvidence(area)}>
       <RefreshCw className={`h-4 w-4${busy || categoryChecking ? ' motion-safe:animate-spin' : ''}`} aria-hidden /><span className={iconOnly ? 'sr-only' : undefined}>{busy ? SITE_BOARD_COPY.starting : checking || categoryChecking ? SITE_BOARD_COPY.checking : name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain}</span>
     </Button>
     if (!ownsSite && !checking && view.audit.id) return <SiteActionContinuation
@@ -104,11 +116,12 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   const summaryNote = siteSummaryNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
   async function retryCheck() {
     if (!view.audit.id) return
-    await submit(() => executeSiteAction(`/api/reports/${view.audit.id}/retry`, { method: 'POST' }, 'retry'))
+    await submit(signal => executeSiteAction(`/api/reports/${view.audit.id}/retry`, { signal, method: 'POST' }, 'retry'))
   }
 
   async function verifyOutcome(outcomeId: string) {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
+        signal,
         method: 'POST', headers: { 'Idempotency-Key': requestKey(`outcome:${outcomeId}`) },
       }, 'run'), `outcome:${outcomeId}`)
   }
@@ -116,7 +129,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   async function refreshSiteEvidence(area?: SiteCardArea) {
     const category = area && !['site', 'uptime'].includes(area) ? area : null
     const intent = category ? `category:${siteId}:${category}` : `site:${siteId}`
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/runs`, {
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/runs`, {
+        signal,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +140,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       }, 'run'), intent)
   }
 
-  async function submit(mutation: () => Promise<unknown>, intent?: string) {
+  async function submit(mutation: (signal: AbortSignal) => Promise<unknown>, intent?: string) {
     await submitAction(mutation, () => { if (intent) completeIntent(intent); return SITE_BOARD_COPY.checkStarted }, refresh)
   }
 
@@ -143,8 +157,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
 
   return (
-    <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
-      analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
+    <SiteWorkspaceLocationProvider value={{ siteId, viewMode, selectedCard }}><SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
+      analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} readUnavailable={readUnavailable} onRetry={refresh} />}
       headerAction={viewMode === 'home' ? undefined : viewMode === 'pages' ? !checking ? checkAction() : null : siteActions}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
@@ -164,7 +178,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       <section className="rounded-card bg-background p-5 shadow-board" role="status">
           <h2 className="text-sm font-semibold">{alertNotice.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at))}
+            {WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at), watch.covered)}
           </p>
           <Button asChild size="sm" variant="outline" className="mt-3">
             <Link href={alertNotice.actionHref as Route}>{alertNotice.actionLabel}</Link>
@@ -181,11 +195,11 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
             const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')
             target?.focus({ preventScroll: true }); target?.scrollIntoView({ behavior: 'instant', block: 'start' })
           }} />}
-          trend={hasFlagTrend(monitoringPoints) ? <SiteMonitoringHistory variant="overview" points={monitoringPoints} events={timelineEvents} emptyMessage={B.noHistory} /> : null} uptime={ownsSite ? <div id="category-uptime" tabIndex={-1}><UptimeCard siteId={siteId} summary={view.uptime ?? null}
+          trend={hasFlagTrend(monitoringPoints) ? <SiteMonitoringHistory variant="overview" points={monitoringPoints} events={timelineEvents} emptyMessage={B.noHistory} /> : null} uptime={ownsSite ? <div id="category-uptime" tabIndex={-1} className="rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><UptimeCard siteId={siteId} summary={view.uptime ?? null} summaryReadAt={view.readAt}
           verification={confirmedOutcomes.filter(outcome => outcome.kind === 'AVAILABILITY' && outcome.inferenceSource !== 'user' && outcome.name === 'This page loads').map(outcome => <OutcomeSummaryCard key={outcome.id}
-            compact layout="row" name={SITE_ACTION_COPY.outcome.availability} expectation={outcome.expectation ?? outcome.summary} coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)} href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
+            compact layout="row" name={SITE_ACTION_COPY.outcome.availability} expectation={outcome.expectation ?? outcome.summary} coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)} href={siteDetailContextHref(`/sites/${siteId}/outcomes/${encodeURIComponent(outcome.id)}`, { siteId, viewMode, selectedCard }) as Route}
             answer={outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined} freshness={outcomeCardFreshness(outcome)}
-            state={outcome.state} running={outcome.running} />)} /></div> : null}
+            state={outcome.state} validUntil={outcome.validUntil} running={outcome.running} />)} /></div> : null}
             items={visibleCategories.map((category) => {
               const card = cardsById.get(category.id)!
               const execution = checking ? cardExecution(card.id, view.executionProgress) : null
@@ -204,7 +218,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
               return { id: card.id, flagCount: category.flagCount,
                 render: (layout: 'card' | 'row') => {
                 const Frame = layout === 'row' ? 'div' : 'article'
-                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true, layout === 'row') : null} renderFlagCopy={flag => !ownsSite || flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null} onOpen={trigger => {
+                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} className="rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true, layout === 'row') : null} renderFlagCopy={flag => !ownsSite || flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null} onOpen={trigger => {
                 opener.current = trigger
                 selectCategory(card.id)
               }} /></Frame> } }
@@ -213,7 +227,9 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'pages' ? <SitePages siteId={siteId} view={view} onOpenFlag={openFlag} /> : null}
       {viewMode === 'timeline' ? <section id="timeline" aria-labelledby="timeline-heading"><h2 id="timeline-heading" className="sr-only">Timeline</h2>
-        <SiteMonitoringHistory points={monitoringPoints} events={timelineEvents.map(event => ({ ...event, flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => openFlag(flag.id, trigger),
+        <SiteMonitoringHistory points={monitoringPoints} events={timelineEvents.map(event => ({ ...event,
+          onOpenEvidence: 'evidenceHref' in event && event.evidenceHref === `/sites/${siteId}#category-uptime` ? () => openWorkspace('home', 'category-uptime') : undefined,
+          flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => openFlag(flag.id, trigger),
           copyAction: view.flags.some(current => (current.id === flag.id || current.sourceFlagId === flag.id) && (view.actions.copy !== 'available' || current.fix.trim()))
             ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null })) : undefined }))} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} />
       </section> : null}
@@ -223,12 +239,10 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       <SiteSignupPrompt key={view.audit.id ?? siteId} siteId={siteId} auditId={view.audit.id} checking={view.presentation.run.state === 'running'} paused={Boolean(selectedCard || selectedFlag) || viewMode !== 'home'} />
       {selected ? <SiteCategoryDetails selected={selected} selectedFlags={selectedFlags} selectedRecommendations={selectedRecommendations}
         confirmedOutcomes={confirmedOutcomes} findingPages={findingPages} siteId={siteId} view={view} busy={busy}
-        checkAction={checkAction} verifyOutcome={verifyOutcome} onOpenFlag={openFlag} onClose={() => selectCategory(null)} restoreFocus={() => (opener.current ?? document.getElementById(`category-${selected.id}`))?.focus()} /> : null}
+        checkAction={checkAction} verifyOutcome={verifyOutcome} onOpenFlag={openFlag} onClose={() => selectCategory(null)} restoreFocus={() => restoreWorkspaceFocus(opener.current, document.getElementById(`category-${selected.id}`))} /> : null}
       {selectedFlag ? <SiteFlagPanel siteId={siteId} flagId={selectedFlag} view={view} returnLabel={viewMode === 'home' && selected ? selected.name : SITE_ROUTES.find(([route]) => route === viewMode)?.[1]} onClose={closeFlag} restoreFocus={() => {
-        const target = flagOpener.current
-        if (target?.isConnected) target.focus({ preventScroll: true })
-        else document.querySelector<HTMLElement>('[data-site-content] main')?.focus({ preventScroll: true })
+        restoreWorkspaceFocus(flagOpener.current, document.querySelector<HTMLElement>('[data-site-return-context="category"][data-state="open"] [data-dialog-title]'))
       }} /> : null}
-    </SiteShell>
+    </SiteShell></SiteWorkspaceLocationProvider>
   )
 }

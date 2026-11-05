@@ -12,7 +12,7 @@ const read = (query = '', device = 'desktop') => GET(new NextRequest(`http://loc
 describe('private screenshot delivery', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    mocks.audit.mockResolvedValue({ id: 'private-audit', userId: 'owner', isPublic: false })
+    mocks.audit.mockResolvedValue({ id: 'private-audit', userId: 'owner', projectId: null, user: { lifecycleStatus: 'ACTIVE' }, isPublic: false })
     mocks.session.mockResolvedValue({ user: { id: 'owner' } })
     mocks.claimIds.mockReturnValue([])
     mocks.read.mockResolvedValue(Buffer.from('captured-image-bytes'))
@@ -42,7 +42,7 @@ describe('private screenshot delivery', () => {
     expect(mocks.read).not.toHaveBeenCalled()
   })
   it('keeps initial captures private before signup while their creator can inspect them', async () => {
-    mocks.audit.mockResolvedValue({ id: 'private-audit', userId: null, isPublic: false })
+    mocks.audit.mockResolvedValue({ id: 'private-audit', userId: null, projectId: null, user: null, isPublic: false })
     for (const session of [null, { user: { id: 'stranger' } }]) {
       mocks.session.mockResolvedValue(session)
       expect((await read()).status).toBe(404)

@@ -1,32 +1,26 @@
+import { canManageAudit, type AuditOwnership } from './access-ownership'
 import { flagHasFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
 import { severityRank } from '@/lib/utils'
 
-type AiAccessAudit = {
+type AiAccessAudit = AuditOwnership & {
   userId: string | null
   aiReviewAt: Date | null
   isPublic?: boolean
 }
 
 export function canViewPrescriptionContent(
-  audit: {
-    userId: string | null
-    aiReviewAt: Date | null
-    isPublic?: boolean
-  },
+  audit: AiAccessAudit,
   viewer: { id: string } | null | undefined
 ): boolean {
   if (!audit.aiReviewAt) return false
-  if (!viewer?.id) return false
-  if (audit.userId === viewer.id) return true
-  return false
+  return canManageAudit(audit, viewer)
 }
 
 export function canViewDeterministicFixes(
-  audit: { userId: string | null; aiReviewAt: Date | null; isPublic?: boolean },
+  audit: AiAccessAudit,
   viewer: { id: string } | null | undefined
 ): boolean {
-  if (!viewer?.id) return false
-  return audit.userId === viewer.id
+  return canManageAudit(audit, viewer)
 }
 
 export async function canViewPrescriptionContentForAudit(

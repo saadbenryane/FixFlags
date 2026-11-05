@@ -2,43 +2,53 @@ import { isConsentControl } from '../consent-controls'
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
+import type { PublicPageSignals } from '../browser/public-page-signals'
+import type { RenderedCopy } from '../browser/rendered-copy'
 
 /** These observations establish captured public signals, never policy quality,
  * reachable contact destinations, consent enforcement or legal compliance. */
-export function publicTrustObservations(meta: PageMetadata): Record<'privacy-link' | 'contact-information' | 'cookie-consent-signals', CheckAssertion> {
-  const consentControls = meta.renderedCopy?.consentControls
-  const hasConsent = consentControls ? consentControls.some(isConsentControl) : meta.hasCookieConsent
-  const consentComplete = hasConsent || meta.renderedCopy?.consentControlsComplete !== false
+export function publicTrustObservations(meta: PageMetadata | null, native?: PublicPageSignals | null, copy?: RenderedCopy | null): Record<'privacy-link' | 'contact-information' | 'cookie-consent-signals', CheckAssertion> {
+  const rendered = copy === undefined ? meta?.renderedCopy : copy
+  const consentControls = rendered?.consentControls
+  const hasConsent = consentControls ? consentControls.some(isConsentControl) : meta?.hasCookieConsent ?? null
+  const consentComplete = hasConsent === true || (consentControls ? rendered?.consentControlsComplete !== false : typeof meta?.hasCookieConsent === 'boolean')
   // An unread laid-out page does not prove a link is absent. A parsed page without rendered copy still does.
-  const captureIncomplete = meta.renderedCopy?.complete === false
-  const privacyKnown = !captureIncomplete || meta.hasPrivacyPolicy
-  const contactKnown = !captureIncomplete || meta.hasContactInfo
+  const captureIncomplete = meta?.renderedCopy?.complete === false
+  const privacy = meta?.hasPrivacyPolicy ?? native?.hasPrivacyPolicy ?? null
+  const contact = meta?.hasContactInfo ?? native?.hasContactInfo ?? null
+  const analytics = meta?.hasCookieBasedAnalytics ?? native?.hasCookieBasedAnalytics ?? null
+  const privacyKnown = privacy !== null && (!meta || !captureIncomplete || privacy)
+  const contactKnown = contact !== null && (!meta || !captureIncomplete || contact)
   return {
     'privacy-link': { key: 'privacy-link', name: 'Privacy policy link', expected: 'A privacy policy link is present in the captured page',
-      observed: privacyKnown ? meta.hasPrivacyPolicy ? 'Privacy policy link detected in captured page links' : 'No privacy policy link detected in captured page links'
+      observed: privacyKnown ? privacy ? 'Privacy policy link detected in captured page links' : 'No privacy policy link detected in captured page links'
         : 'The laid-out page was not captured, so a privacy policy link was not established',
-      passed: privacyKnown && meta.hasPrivacyPolicy, complete: privacyKnown },
+      passed: privacyKnown && privacy === true, complete: privacyKnown },
     'contact-information': { key: 'contact-information', name: 'Contact information', expected: 'Contact information is present in the captured page',
-      observed: contactKnown ? meta.hasContactInfo ? 'Contact information detected in captured content or structured data' : 'No contact information detected in captured content or structured data'
+      observed: contactKnown ? contact ? 'Contact information detected in captured content or structured data' : 'No contact information detected in captured content or structured data'
         : 'The laid-out page was not captured, so contact information was not established',
-      passed: contactKnown && meta.hasContactInfo, complete: contactKnown },
+      passed: contactKnown && contact === true, complete: contactKnown },
     'cookie-consent-signals': { key: 'cookie-consent-signals', name: 'Cookie-consent signals',
       expected: 'Detected cookie-based analytics is accompanied by consent signals in the captured page',
-      observed: !meta.hasCookieBasedAnalytics ? 'No known cookie-based analytics detected in captured markup; consent obligations were not evaluated'
+      observed: analytics === null ? hasConsent ? 'Consent signals detected; analytics markup and consent enforcement were not fully evaluated'
+        : 'Cookie-based analytics markup was not completely inspected; consent scope remains unknown'
+        : !analytics ? 'No known cookie-based analytics detected in captured markup; consent obligations were not evaluated'
         : !consentComplete ? 'Consent control collection was incomplete; consent presence was not established'
         : hasConsent ? 'Cookie-based analytics and consent signals detected; consent enforcement was not evaluated'
           : 'Cookie-based analytics detected without consent signals in the captured page',
-      passed: !meta.hasCookieBasedAnalytics || hasConsent, complete: !meta.hasCookieBasedAnalytics || consentComplete,
-      ...(!meta.hasCookieBasedAnalytics && !hasConsent ? { disposition: 'observed' as const } : {}) },
+      passed: hasConsent === true || analytics === false, complete: hasConsent === true || analytics !== null && (!analytics || consentComplete),
+      ...(analytics === false && !hasConsent ? { disposition: 'observed' as const } : {}) },
   }
 }
 
 export function runTrustChecks(
   _url: string,
-  meta: PageMetadata,
+  meta: PageMetadata | null,
+  native?: PublicPageSignals | null,
+  copy?: RenderedCopy | null,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const observations = publicTrustObservations(meta)
+  const observations = publicTrustObservations(meta, native, copy)
 
   if (observations['privacy-link'].complete !== false && !observations['privacy-link'].passed) {
     findings.push({

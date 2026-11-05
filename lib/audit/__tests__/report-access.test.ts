@@ -14,13 +14,14 @@ import {
   findHighestSeverityFlagWithFix,
 } from '@/lib/audit/report-access'
 
+const standaloneOwnership = { projectId: null, user: { lifecycleStatus: 'ACTIVE' } }
 const aiReviewAt = new Date('2026-01-01')
 
 describe('report-access', () => {
   it('grants prescription content to the signed-in owner', () => {
     assert.equal(
       canViewPrescriptionContent(
-        { userId: 'owner-1', aiReviewAt, isPublic: false },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt, isPublic: false },
         { id: 'owner-1' }
       ),
       true
@@ -30,14 +31,14 @@ describe('report-access', () => {
   it('denies prescription content to anonymous viewers on owned audits', () => {
     assert.equal(
       canViewPrescriptionContent(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt, isPublic: true },
         null
       ),
       false
     )
     assert.equal(
       canViewPrescriptionContent(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt, isPublic: true },
         undefined
       ),
       false
@@ -47,7 +48,7 @@ describe('report-access', () => {
   it('denies prescription content to non-owners', () => {
     assert.equal(
       canViewPrescriptionContent(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt, isPublic: true },
         { id: 'other-user' }
       ),
       false
@@ -57,14 +58,14 @@ describe('report-access', () => {
   it('grants deterministic fixes to signed-in owner without AI prescription', () => {
     assert.equal(
       canViewDeterministicFixes(
-        { userId: 'owner-1', aiReviewAt: null, isPublic: false },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt: null, isPublic: false },
         { id: 'owner-1' }
       ),
       true
     )
     assert.equal(
       canViewDeterministicFixes(
-        { userId: 'owner-1', aiReviewAt: null, isPublic: true },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt: null, isPublic: true },
         null
       ),
       false
@@ -221,12 +222,13 @@ describe('report-access', () => {
 })
 
 describe('report-access async resolution', () => {
-  const aiReviewAt = new Date('2026-01-01')
+  const standaloneOwnership = { projectId: null, user: { lifecycleStatus: 'ACTIVE' } }
+const aiReviewAt = new Date('2026-01-01')
 
   it('denies prescription content on unclaimed public reports', async () => {
     assert.equal(
       await canViewPrescriptionContentForAudit(
-        { userId: null, aiReviewAt, isPublic: true },
+        { ...standaloneOwnership, userId: null, aiReviewAt, isPublic: true },
         null
       ),
       false
@@ -236,7 +238,7 @@ describe('report-access async resolution', () => {
   it('allows the signed-in owner without a database lookup', async () => {
     assert.equal(
       await canViewPrescriptionContentForAudit(
-        { userId: 'owner-1', aiReviewAt, isPublic: false },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt, isPublic: false },
         { id: 'owner-1' }
       ),
       true
@@ -246,14 +248,14 @@ describe('report-access async resolution', () => {
   it('denies AI content when the audit is not public or has no AI review', async () => {
     assert.equal(
       await canViewPrescriptionContentForAudit(
-        { userId: 'owner-1', aiReviewAt, isPublic: false },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt, isPublic: false },
         { id: 'stranger' }
       ),
       false
     )
     assert.equal(
       await canViewPrescriptionContentForAudit(
-        { userId: 'owner-1', aiReviewAt: null, isPublic: true },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt: null, isPublic: true },
         { id: 'stranger' }
       ),
       false
@@ -263,21 +265,21 @@ describe('report-access async resolution', () => {
   it('resolves deterministic fix access for owners only', async () => {
     assert.equal(
       await canViewDeterministicFixesForAudit(
-        { userId: null, aiReviewAt, isPublic: true },
+        { ...standaloneOwnership, userId: null, aiReviewAt, isPublic: true },
         null
       ),
       false
     )
     assert.equal(
       await canViewDeterministicFixesForAudit(
-        { userId: 'owner-1', aiReviewAt: null, isPublic: false },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt: null, isPublic: false },
         { id: 'owner-1' }
       ),
       true
     )
     assert.equal(
       await canViewDeterministicFixesForAudit(
-        { userId: 'owner-1', aiReviewAt: null, isPublic: true },
+        { ...standaloneOwnership, userId: 'owner-1', aiReviewAt: null, isPublic: true },
         null
       ),
       false

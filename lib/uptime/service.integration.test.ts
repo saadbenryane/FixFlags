@@ -9,6 +9,8 @@ import { registerSiteOutcomeTools } from '@/lib/mcp/tools/sites'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import { uptimeHistorySchema } from './contracts'
+import { probeUptime } from './probe'
+import { PublicResponseBodyError } from '@/lib/audit/http-evidence'
 
 const fixture = vi.hoisted(() => ({ db: null as PrismaClient | null, enqueue: vi.fn() }))
 const databaseUrl = process.env.UPTIME_TEST_DATABASE_URL
@@ -415,6 +417,56 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     await expectCurrentHealth('flags')
     expect(await db().audit.count()).toBe(0)
     expect((await db().user.findUniqueOrThrow({ where: { id: user.id } })).auditsUsed).toBe(3)
+  })
+
+  it('preserves incident continuity when HTTP response content is interrupted', async () => {
+    const { job, monitor } = await monitorFixture()
+    const interrupted = () => probeUptime(online.finalUrl!, async () => {
+      throw new PublicResponseBodyError({ statusCode: 200, finalUrl: online.finalUrl!, body: '<main>Partial',
+        headers: {}, redirects: [] }, new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } }))
+    })
+    const interruptedFailure = () => probeUptime(online.finalUrl!, async () => {
+      throw new PublicResponseBodyError({ statusCode: 503, finalUrl: online.finalUrl!, body: '<main>Service unavailable',
+        headers: { 'content-type': 'text/html' }, redirects: [] }, new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } }))
+    })
+    await executeUptimeProbe(job, interrupted)
+    vi.setSystemTime(new Date(originTime.getTime() + 5 * 60_000))
+    await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, interrupted)
+    expect(await db().uptimeIncident.count()).toBe(0)
+    expect(await db().uptimeNotification.count()).toBe(0)
+    expect(await db().uptimeProbe.findMany({ where: { monitorId: monitor.id } })).toEqual([
+      expect.objectContaining({ result: 'UNKNOWN', statusCode: 200, finalUrl: online.finalUrl }),
+      expect.objectContaining({ result: 'UNKNOWN', statusCode: 200, finalUrl: online.finalUrl }),
+    ])
+    vi.setSystemTime(new Date(originTime.getTime() + 10 * 60_000))
+    const failedJob = { ...job, scheduledAt: new Date().toISOString() }
+    await executeUptimeProbe(failedJob, interruptedFailure)
+    vi.setSystemTime(new Date(Date.now() + 30_000))
+    await executeUptimeProbe({ ...failedJob, attempt: 2 }, interruptedFailure)
+    const incident = await db().uptimeIncident.findFirstOrThrow()
+    expect(await db().uptimeNotification.count()).toBe(1)
+    vi.setSystemTime(new Date(originTime.getTime() + 15 * 60_000))
+    await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, interrupted)
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toEqual(incident)
+    expect(await db().uptimeNotification.count()).toBe(1)
+    vi.setSystemTime(new Date(originTime.getTime() + 20 * 60_000))
+    await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, async () => online)
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } }))
+      .toMatchObject({ recoveredAt: new Date() })
+    expect(await db().uptimeIncident.count()).toBe(1)
+    expect(await db().uptimeNotification.count({ where: { kind: 'RECOVERED' } })).toBe(1)
+    const recoveredAt = new Date()
+    vi.setSystemTime(new Date(originTime.getTime() + 25 * 60_000))
+    const recurringJob = { ...job, scheduledAt: new Date().toISOString() }
+    await executeUptimeProbe(recurringJob, interruptedFailure)
+    vi.setSystemTime(new Date(Date.now() + 30_000))
+    await executeUptimeProbe({ ...recurringJob, attempt: 2 }, interruptedFailure)
+    const recurring = await db().uptimeIncident.findFirstOrThrow({ where: { monitorId: monitor.id, recoveredAt: null } })
+    expect(recurring.id).not.toBe(incident.id)
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt })
+    expect(await db().uptimeProbe.count({ where: { monitorId: monitor.id, result: 'FAILED', statusCode: 503, reason: 'response_error' } })).toBe(4)
+    expect(await db().uptimeNotification.count({ where: { kind: 'DOWN' } })).toBe(2)
+    expect(await db().uptimeNotification.count({ where: { kind: 'RECOVERED' } })).toBe(1)
   })
 
   it('retains an incident across inconclusive observations', async () => {

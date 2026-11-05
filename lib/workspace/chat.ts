@@ -10,6 +10,8 @@ import {
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
 import { rubricLabel } from '@/lib/utils'
+import { compareFlagPriority, type FlagVerificationState } from '@/lib/sites/presentation'
+import type { UptimeStatus, uptimeAssessment } from '@/lib/uptime/status'
 
 type OpenAIClient = NonNullable<typeof openai>
 
@@ -40,7 +42,9 @@ export class WorkspaceChatUnavailableError extends Error {
 
 const MAX_CHAT_TOKENS = 600
 
-function buildPrompt(input: {
+export type ChatUptimeContext = { status: UptimeStatus; assessment: ReturnType<typeof uptimeAssessment> }
+
+export type WorkspaceChatInput = {
   message: string
   url: string
   status: string
@@ -48,15 +52,21 @@ function buildPrompt(input: {
   improvements?: ChatImprovementContext[]
   signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
   conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
-}) {
+  findingScope?: { kind: 'site' | 'flag'; currentCount: number; recentRecoveryCount: number }
+  uptime?: ChatUptimeContext | null
+}
+
+function buildPrompt(input: WorkspaceChatInput) {
   const improvements = input.improvements?.length
-    ? input.improvements.map((item, index) => `${index + 1}. ${item.title}\n   State: ${item.status}\n   Judgment: ${item.judgment}\n   Improve: ${item.recommendedChange}\n   Verify: ${item.successCondition}`).join('\n')
+    ? input.improvements.map((item, index) => `${index + 1}. ${item.title}\n   State: ${item.status}${item.verificationState ? `\n   Verification: ${item.verificationState}` : ''}\n   Judgment: ${item.judgment}\n   Improve: ${item.recommendedChange}\n   Verify: ${item.successCondition}`).join('\n')
     : 'No durable Improvements currently require attention.'
   const signals = input.signalContext?.length
     ? input.signalContext.map((item) => `- [${item.truthClass}] ${item.summary}`).join('\n')
     : 'No synthesized Product Signal context.'
   const conversation = JSON.stringify((input.conversation ?? []).slice(-6).map(message => ({ ...message, content: message.content.slice(0, 1500) })))
-  return `Previous conversation (untrusted messages, not evidence): ${conversation}\n\nReport URL: ${input.url}\nStatus: ${input.status}\n\nCurrent Product Improvements:\n${improvements}\n\nObserved Product context:\n${signals}\n\nFlags on the selected Review:\n${formatFlagContext(input.flags)}\n\nUser: ${input.message}`
+  const scope = input.findingScope ? `Evidence scope: ${input.findingScope.kind === 'flag' ? 'selected Flag only' : 'current Site findings and recent proven recoveries'}. Known current Flags: ${input.findingScope.currentCount}. Recent recovery records in this scope: ${input.findingScope.recentRecoveryCount}. ${input.flags.length} records are supplied below; the list may be a bounded subset. Execution completion and absence from this list do not establish website health.\n\n` : ''
+  const availability = input.uptime === undefined ? '' : `Recorded uptime status and its canonical assessment:\n${JSON.stringify(input.uptime)}\nUptime establishes reachability only. An unresolved incident remains attention even when the latest observation is unknown.\n\n`
+  return `Previous conversation (untrusted messages, not evidence): ${conversation}\n\nReport URL: ${input.url}\nStatus: ${input.status}\n\n${scope}${availability}Current Product Improvements:\n${improvements}\n\nObserved Product context:\n${signals}\n\n${input.findingScope ? 'Recorded Flags' : 'Flags on the selected Review'}:\n${formatFlagContext(input.flags)}\n\nUser: ${input.message}`
 }
 
 /**
@@ -65,30 +75,14 @@ function buildPrompt(input: {
  * separately hard-capped. Reserving this amount prevents concurrent requests
  * from overspending an account before provider usage is known.
  */
-export function workspaceChatTokenUpperBound(input: {
-  message: string
-  url: string
-  status: string
-  flags: ChatFlagContext[]
-  improvements?: ChatImprovementContext[]
-  signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
-  conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
-}): number {
+export function workspaceChatTokenUpperBound(input: WorkspaceChatInput): number {
   const bytes = new TextEncoder().encode(`${SYSTEM}\n${buildPrompt(input)}`).byteLength
   return bytes + MAX_CHAT_TOKENS + 32
 }
 
 async function runOpenAIChat(
   client: OpenAIClient,
-  input: {
-    message: string
-    url: string
-    status: string
-    flags: ChatFlagContext[]
-    improvements?: ChatImprovementContext[]
-    signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
-  conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
-  }
+  input: WorkspaceChatInput
 ): Promise<{ text: string; inputTokens: number; outputTokens: number; model: string }> {
   const cfg = getChatProviderConfig('openai', 15_000)
   const response = await client.chat.completions.create({
@@ -114,6 +108,7 @@ async function runOpenAIChat(
 
 export interface ChatFlagContext {
   id: string
+  sourceFlagId?: string
   rubric: string
   severity: string
   problem: string
@@ -123,6 +118,10 @@ export interface ChatFlagContext {
   /** FlagStatus: OPEN | FIXED | IGNORED | REGRESSED. Undefined in fixtures means open. */
   status?: string | null
   position?: number
+  verificationState?: FlagVerificationState
+  priorityScore?: number
+  latestOccurrenceAt?: string | null
+  pageUrl?: string | null
 }
 
 export interface ChatImprovementContext {
@@ -133,6 +132,7 @@ export interface ChatImprovementContext {
   successCondition: string
   status: string
   latestOutcome?: string | null
+  verificationState?: FlagVerificationState
 }
 
 const SYSTEM = `You are the FixFlags Product Agent. Help the builder understand what deserves attention, why it matters, what to improve, and how FixFlags will verify it.
@@ -146,7 +146,7 @@ function formatFlagContext(flags: ChatFlagContext[]): string {
   return flags
     .map(
       (flag, index) =>
-        `${index + 1}. [${flag.rubric}] ${flag.problem.slice(0, 400)}\n   Severity: ${flag.severity}\n   Evidence: ${flag.evidence.slice(0, 400)}\n   Fix: ${flag.fix.slice(0, 400)}`
+        `${index + 1}. [${flag.rubric}] ${flag.problem.slice(0, 400)}\n   Severity: ${flag.severity}\n   State: ${flag.status ?? 'OPEN'}${flag.verificationState ? `\n   Verification: ${flag.verificationState}` : ''}${flag.pageUrl ? `\n   Page: ${flag.pageUrl}` : ''}${flag.latestOccurrenceAt ? `\n   Recorded at: ${flag.latestOccurrenceAt}` : ''}\n   Evidence: ${flag.evidence.slice(0, 400)}\n   Fix: ${flag.fix.slice(0, 400)}`
     )
     .join('\n')
 }
@@ -154,15 +154,16 @@ function formatFlagContext(flags: ChatFlagContext[]): string {
 /* ------------------------------------------------------------------ */
 /* Product-grounded deterministic answers                              */
 /*                                                                    */
-/* The four product-level question types are answered deterministically
+/* Product-level evidence questions are answered deterministically
  * from real persisted data (observation flags, re-check diff summary,
  * verified learnings) so the workspace chat never invents product facts.
  * The LLM path (runWorkspaceChat) stays for open-ended questions only. */
 /* ------------------------------------------------------------------ */
 
-export type ProductQuestionKind = 'changed' | 'verified' | 'unresolved' | 'fix-first'
+export type ProductQuestionKind = 'changed' | 'verified' | 'unresolved' | 'fix-first' | 'availability'
 
 export interface ChatDiffItem {
+  id?: string
   problem: string
   rubric: string
   severity: string
@@ -194,6 +195,7 @@ export interface ChatProductQuestionInput {
   /** Human hostname of the product, for example example.com. */
   productName?: string
   improvements?: ChatImprovementContext[]
+  uptime?: ChatUptimeContext | null
 }
 
 function normalizeMessage(message: string): string {
@@ -205,6 +207,8 @@ function normalizeMessage(message: string): string {
 }
 
 const FIX_FIRST_PHRASES = [
+  'what should i do next',
+  'what do i do next',
   'fix first',
   'what to fix',
   'what do i fix',
@@ -255,6 +259,7 @@ const CHANGED_PHRASES = [
 ]
 
 const UNRESOLVED_PHRASES = [
+  'what needs attention',
   'unresolved',
   'still open',
   'what is left',
@@ -274,6 +279,14 @@ const UNRESOLVED_PHRASES = [
   'whats still failing',
   'what still fails',
   'whats outstanding',
+]
+
+const AVAILABILITY_PHRASES = [
+  'is my site online', 'is my website online', 'is the site online', 'is the website online',
+  'is my site down', 'is my website down', 'is the site down', 'is the website down',
+  'is my site back online', 'is my website back online', 'is the site back online', 'is the website back online',
+  'is my site back up', 'is my website back up', 'is it back online', 'is it back up',
+  'uptime status', 'availability status',
 ]
 
 const VERIFIED_LEAD_RE = /^(?:is|are|has|have|was|were|did)\b/
@@ -388,6 +401,7 @@ function rubricOrderIndex(rubric: string): number {
  */
 export function rankObservationFlags(flags: ChatFlagContext[]): ChatFlagContext[] {
   return [...flags].sort((a, b) => {
+    if (typeof a.priorityScore === 'number' && typeof b.priorityScore === 'number') return compareFlagPriority(a, b)
     const priorityDiff = compareFlagsByPriority(a as RankableFlag, b as RankableFlag)
     if (priorityDiff !== 0) return priorityDiff
     const rubricDiff = rubricOrderIndex(a.rubric) - rubricOrderIndex(b.rubric)
@@ -438,27 +452,47 @@ function buildChangedReply(input: ChatProductQuestionInput): string {
   return parts.join('\n\n')
 }
 
-function buildVerifiedReply(input: ChatProductQuestionInput): string {
+type ProductAnswer = { reply: string; flagIds: string[]; uptime?: boolean }
+const sourcedAnswer = (reply: string, flags: readonly Pick<ChatFlagContext, 'id'>[] = []): ProductAnswer =>
+  ({ reply, flagIds: [...new Set(flags.map(flag => flag.id))] })
+
+function buildAvailabilityReply(uptime: ChatUptimeContext | null): ProductAnswer {
+  let reply: string
+  if (!uptime) reply = 'Current uptime evidence is unavailable. Reachability has not been verified.'
+  else if (!uptime.status.enabled) reply = 'Uptime monitoring is paused. Resume monitoring to receive automatic availability checks.'
+  else if (uptime.assessment?.state === 'FLAG') {
+    reply = uptime.assessment.observedState === 'offline'
+      ? 'Your website was offline in the latest uptime check. Restore website reachability first. FixFlags will verify recovery with a fresh uptime check.'
+      : 'There is an unresolved uptime incident. Current evidence has not established recovery.'
+  } else if (uptime.assessment?.state === 'CLEAR') reply = 'The latest uptime check found your website online.'
+  else if (uptime.status.state === 'checking') reply = 'FixFlags is confirming a possible availability problem. An outage has not been confirmed.'
+  else reply = 'Website availability is currently unknown. A fresh uptime check is needed to confirm reachability.'
+  return { reply, flagIds: [], uptime: true }
+}
+
+function buildVerifiedReply(input: ChatProductQuestionInput): ProductAnswer {
   const subject = extractVerifiedSubject(input.message)
   const flag = subject ? findFlagForSubject(subject, input.flags) : null
   const learning = subject ? findLearningForSubject(subject, input.learnings) : null
 
   if (flag) {
     const status = flag.status ?? 'OPEN'
+    if (flag.verificationState === 'verifying') return sourcedAnswer(`FixFlags is checking "${flag.problem}". Recovery has not been verified yet.`, [flag])
+    if (flag.verificationState === 'could_not_verify') return sourcedAnswer(`FixFlags could not verify "${flag.problem}". The available evidence does not establish recovery.`, [flag])
     if (status === 'FIXED') {
       const clearedSinceLast =
         input.diff.hasParent &&
-        input.diff.fixed.some((item) => item.problem === flag.problem)
+        input.diff.fixed.some((item) => Boolean(item.id && (item.id === flag.sourceFlagId || item.id === flag.id)))
       const lines = [`Yes. "${flag.problem}" is verified fixed in this review.`]
       if (clearedSinceLast) lines.push('It cleared since the last review.')
       if (learning) lines.push('This fix is also recorded in your verified learnings.')
-      return lines.join('\n')
+      return sourcedAnswer(lines.join('\n'), [flag])
     }
     if (status === 'REGRESSED') {
-      return `No. "${flag.problem}" regressed in this review and is failing again at ${plainSeverity(flag.severity)}.`
+      return sourcedAnswer(`No. "${flag.problem}" regressed in this review and is failing again at ${plainSeverity(flag.severity)}.`, [flag])
     }
     if (status === 'IGNORED') {
-      return `"${flag.problem}" was ignored, so it has not been verified fixed.`
+      return sourcedAnswer(`"${flag.problem}" was ignored, so it has not been verified fixed.`, [flag])
     }
     const lines = [
       `Not yet. "${flag.problem}" is still open (${plainSeverity(flag.severity)}, ${rubricLabel(flag.rubric)}).`,
@@ -467,25 +501,25 @@ function buildVerifiedReply(input: ChatProductQuestionInput): string {
       lines.push('It was verified fixed in an earlier update review, but it is open again in this review.')
     }
     if (flag.fix) lines.push(`Fix: ${flag.fix}`)
-    return lines.join('\n')
+    return sourcedAnswer(lines.join('\n'), [flag])
   }
 
   if (learning) {
     const when = learning.at ? ` (recorded ${shortDate(learning.at)})` : ''
-    return `Yes. This was verified fixed in an earlier update review${when}:\n${learning.summary}`
+    return sourcedAnswer(`Yes. This was verified fixed in an earlier update review${when}:\n${learning.summary}`)
   }
 
   if (!subject) {
     const fixed = input.flags.filter((flag) => flag.status === 'FIXED')
     if (fixed.length === 0) {
-      return 'No flags are verified fixed on this review yet.'
+      return sourcedAnswer('No flags are verified fixed on this review yet.')
     }
-    return `Verified fixed on this review:\n${fixed
+    return sourcedAnswer(`Verified fixed on this review:\n${fixed
       .map((flag) => `- ${flag.problem}`)
-      .join('\n')}`
+      .join('\n')}`, fixed)
   }
 
-  return `I could not find "${subject}" in this review. Ask about a flag from the fix list, or ask "What's unresolved?"`
+  return sourcedAnswer(`I could not find "${subject}" in this review. Ask about a flag from the fix list, or ask "What's unresolved?"`)
 }
 
 function countBySeverity(flags: ChatFlagContext[]): {
@@ -523,12 +557,12 @@ function plural(count: number, word: string): string {
   return count === 1 ? word : `${word}s`
 }
 
-function buildUnresolvedReply(input: ChatProductQuestionInput): string {
+function buildUnresolvedReply(input: ChatProductQuestionInput): ProductAnswer {
   const unresolved = input.flags.filter(
     (flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'
   )
   if (unresolved.length === 0) {
-    return 'No unresolved flags on this review.'
+    return sourcedAnswer('No unresolved flags on this review.')
   }
   const ranked = rankObservationFlags(unresolved)
   const counts = formatSeverityCounts(countBySeverity(ranked))
@@ -537,30 +571,31 @@ function buildUnresolvedReply(input: ChatProductQuestionInput): string {
     const fixLine = flag.fix ? `   Fix: ${flag.fix}` : ''
     return `${index + 1}. [${rubricLabel(flag.rubric)}, ${plainSeverity(flag.severity)}] ${flag.problem}${fixLine ? `\n${fixLine}` : ''}`
   })
-  return [summary, ...items].join('\n')
+  return sourcedAnswer([summary, ...items].join('\n'), ranked.slice(0, MAX_LIST_ITEMS))
 }
 
-function buildFixFirstReply(input: ChatProductQuestionInput): string {
+function buildFixFirstReply(input: ChatProductQuestionInput): ProductAnswer {
+  const unresolved = input.flags.filter(
+    (flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'
+  )
+  const ranked = rankObservationFlags(unresolved)
+  const canonicalTop = typeof ranked[0]?.priorityScore === 'number' ? ranked[0] : null
   const improvement = input.improvements?.find(
-    (item) => !['VERIFIED', 'REJECTED', 'SUPERSEDED'].includes(item.status)
+    (item) => !['VERIFIED', 'REJECTED', 'SUPERSEDED'].includes(item.status) && (!canonicalTop || item.id === canonicalTop.id)
   )
   if (improvement) {
-    return [
+    return sourcedAnswer([
       'Start with this Improvement:',
       improvement.title,
       `Why: ${improvement.judgment}`,
       `Improve: ${improvement.recommendedChange}`,
       `Verify: ${improvement.successCondition}`,
       `State: ${improvement.status.replaceAll('_', ' ').toLowerCase()}`,
-    ].join('\n')
+    ].join('\n'), [improvement])
   }
-  const unresolved = input.flags.filter(
-    (flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'
-  )
   if (unresolved.length === 0) {
-    return 'No unresolved flags on this review, so there is nothing to fix right now.'
+    return sourcedAnswer('No unresolved flags on this review, so there is nothing to fix right now.')
   }
-  const ranked = rankObservationFlags(unresolved)
   const top = ranked[0]!
   const lines = [
     'Start with this flag:',
@@ -579,11 +614,11 @@ function buildFixFirstReply(input: ChatProductQuestionInput): string {
     )
     lines.push('', 'Then, in order:', ...next)
   }
-  return lines.join('\n')
+  return sourcedAnswer(lines.join('\n'), ranked.slice(0, 3))
 }
 
 /**
- * Classify a message as one of the four product-level question types.
+ * Classify a question that can be answered from recorded product evidence.
  * Order matters: fix-first and changed phrases are checked before verified
  * so shared words like "fix" do not misroute.
  */
@@ -592,6 +627,7 @@ export function classifyProductQuestion(message: string): ProductQuestionKind | 
   if (FIX_FIRST_PHRASES.some((phrase) => normalized.includes(phrase))) return 'fix-first'
   if (CHANGED_PHRASES.some((phrase) => normalized.includes(phrase))) return 'changed'
   if (UNRESOLVED_PHRASES.some((phrase) => normalized.includes(phrase))) return 'unresolved'
+  if (AVAILABILITY_PHRASES.some((phrase) => normalized.includes(phrase))) return 'availability'
   if (isVerifiedQuestion(normalized)) return 'verified'
   return null
 }
@@ -602,29 +638,30 @@ export function classifyProductQuestion(message: string): ProductQuestionKind | 
  */
 export function answerProductQuestion(
   input: ChatProductQuestionInput
-): { kind: ProductQuestionKind; reply: string } | null {
+): { kind: ProductQuestionKind } & ProductAnswer | null {
   const kind = classifyProductQuestion(input.message)
   if (!kind) return null
-  const reply =
+  if (kind === 'availability') return input.uptime === undefined ? null : { kind, ...buildAvailabilityReply(input.uptime) }
+  let answer =
     kind === 'changed'
-      ? buildChangedReply(input)
+      ? sourcedAnswer(buildChangedReply(input),
+        [...input.diff.fixed, ...input.diff.regressed, ...input.diff.newIssues].flatMap(item => item.id ? [{ id: item.id }] : []))
       : kind === 'verified'
         ? buildVerifiedReply(input)
         : kind === 'unresolved'
           ? buildUnresolvedReply(input)
           : buildFixFirstReply(input)
-  return { kind, reply }
+  if (input.uptime !== undefined && ['unresolved', 'fix-first'].includes(kind)) {
+    const availability = buildAvailabilityReply(input.uptime)
+    if (!input.flags.some(flag => flag.status !== 'FIXED' && flag.status !== 'IGNORED')) answer = input.uptime?.assessment?.state === 'CLEAR'
+      ? { ...availability, reply: `No unresolved audit Flags are recorded. ${availability.reply}` } : availability
+    else if (input.uptime?.assessment?.state !== 'CLEAR') answer = { ...answer, uptime: true, reply: input.uptime?.assessment?.state === 'FLAG'
+      ? `${availability.reply}\n\n${answer.reply}` : `${answer.reply}\n\n${availability.reply}` }
+  }
+  return { kind, ...answer }
 }
 
-export async function runWorkspaceChat(input: {
-  message: string
-  url: string
-  status: string
-  flags: ChatFlagContext[]
-  improvements?: ChatImprovementContext[]
-  signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
-  conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
-}): Promise<{
+export async function runWorkspaceChat(input: WorkspaceChatInput): Promise<{
   reply: string
   mode: 'llm'
   usage: { inputTokens: number; outputTokens: number; model?: string }

@@ -11,14 +11,15 @@ import { SiteActionFeedback } from './SiteActionFeedback'
 export function SiteIntegrationsControls({ siteId, initial, onRefresh }: {
   siteId: string; initial: SiteHomeView['settings']; onRefresh: () => Promise<unknown>
 }) {
-  const { busy, message, error, submit } = useSiteAction()
+  const { busy, message, error, submit } = useSiteAction({ scope: siteId })
   async function disconnectShopify() {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/connections/shopify`, { method: 'DELETE' }, 'acknowledgement'),
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/connections/shopify`, { method: 'DELETE', signal }, 'acknowledgement'),
       () => C.settings.shopifyDisconnected, onRefresh)
   }
 
   async function disconnectGoogle(provider: GoogleProvider) {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/connections/google`, {
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/connections/google`, {
+      signal,
       method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }),
     }, 'acknowledgement'), () => C.settings.googleDisconnected(provider), onRefresh)
   }

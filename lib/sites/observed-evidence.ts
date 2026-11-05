@@ -18,12 +18,12 @@ export type ObservedEvidence =
 
 const PAGE_URL = /https?:\/\/[^\s]+(?=:\s)/g
 const TRAILING_COUNT = /\s+(Observed on \d+ pages?\.)\s*$/
-const METRIC = /^(.*?)(\d+(?:\.\d+)?)(s|ms)$/
+const METRIC = /^(.*?[: \t])?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)(ms|s)$/
 
 function pageLabel(url: string): string {
   try {
     const parsed = new URL(url)
-    const path = `${parsed.pathname}${parsed.search}`
+    const path = `${parsed.pathname}${parsed.search}${parsed.hash}`
     return path === '/' ? parsed.host : path
   } catch {
     return url
@@ -33,7 +33,9 @@ function pageLabel(url: string): string {
 /** Turn a repeated "url: measurement" record into one finding and a page list. */
 export function presentObservedEvidence(text: string): ObservedEvidence {
   const matches = [...text.matchAll(PAGE_URL)]
-  if (matches.length < 2) return { kind: 'text', text }
+  // Only a page list owns the whole presentation. Leading context must not be
+  // replaced by a summary of measurements embedded later in a diagnostic.
+  if (matches.length < 2 || text.slice(0, matches[0].index ?? 0).trim()) return { kind: 'text', text }
 
   const pages = matches.map((match, index) => {
     const url = match[0]
@@ -52,7 +54,12 @@ export function presentObservedEvidence(text: string): ObservedEvidence {
 
   const metrics = pages.map(page => {
     const metric = page.note.match(METRIC)
-    return metric ? { label: metric[1].trim(), raw: metric[2], value: Number(metric[2]), unit: metric[3] } : null
+    if (!metric) return null
+    const label = (metric[1] ?? '').trim()
+    const value = Number(metric[2].replace(/,/g, ''))
+    // A separated numeric prefix may belong to the value, not its label.
+    if (!Number.isFinite(value) || /(?:^|[\s:])[\d.,]+$/.test(label) || /[+\-−]$/.test(label)) return null
+    return { label, raw: metric[2], value, unit: metric[3] }
   })
   const shared = metrics.every(metric => metric && metric.label === metrics[0]?.label && metric.unit === metrics[0]?.unit)
     ? metrics[0]

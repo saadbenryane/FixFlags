@@ -3,11 +3,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { EmailPreferences } from '../EmailPreferences'
 import { DEFAULT_NOTIFICATION_PREFERENCES as defaults } from '@/lib/notifications/preferences'
 import { clearSettingsDrafts } from '@/lib/settings/drafts'
+import { NOTIFICATIONS_COPY as C } from '@/lib/marketing/copy/notifications'
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => navigation }))
 
-afterEach(() => { cleanup(); clearSettingsDrafts(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); clearSettingsDrafts(); vi.useRealTimers(); vi.unstubAllGlobals() })
 const props = { ownerId: 'email-owner', initial: defaults, nextSendAt: null, email: 'owner@example.com', emailVerified: true, hasMonitoredSites: true }
 it('saves the chosen schedule and renders the confirmed server values', async () => {
   const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true,
@@ -71,6 +72,14 @@ it('shows real delivery facts without claiming an email was read', () => {
   expect(screen.getByRole('alert')).toHaveTextContent('paused after a delivery problem')
   expect(screen.getByText(/does not confirm that you read it/)).toBeInTheDocument()
 })
+it('keeps unconfirmed acceptance distinct from a provider-reported delivery failure', () => {
+  render(<EmailPreferences {...props} history={[
+    { id: 'uncertain', channel: 'summary', state: 'unconfirmed', at: '2026-10-29T09:00:00Z' },
+    { id: 'rejected', channel: 'summary', state: 'failed', at: '2026-10-28T09:00:00Z' },
+  ]} />)
+  expect(screen.getByText('Delivery could not be confirmed, open your websites for updates')).toBeInTheDocument()
+  expect(screen.getByText('Could not deliver')).toBeInTheDocument()
+})
 it('protects an edited schedule when leaving Settings', async () => {
   render(<EmailPreferences {...props} />)
   fireEvent.change(screen.getByLabelText('Website summary'), { target: { value: 'WEEKLY' } })
@@ -78,4 +87,72 @@ it('protects an edited schedule when leaving Settings', async () => {
   expect(await screen.findByRole('dialog')).toHaveTextContent('Unsaved changes')
   fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
   await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/dashboard'))
+})
+
+it.each(['headers', 'body'] as const)('releases a save stalled at %s without losing the draft or accepting a late receipt', async phase => {
+  vi.useFakeTimers()
+  const saved = { ok: true, notifications: { ...defaults, cadence: 'WEEKLY', nextSendAt: '2026-11-09T09:00:00.000Z' } }
+  let finish!: () => void, retry!: (response: Response) => void
+  const fetcher = vi.fn().mockImplementationOnce(() => phase === 'headers'
+    ? new Promise<Response>(resolve => { finish = () => resolve(Response.json(saved)) })
+    : Promise.resolve({ ok: true, json: () => new Promise(resolve => { finish = () => resolve(saved) }) }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { retry = resolve }))
+  vi.stubGlobal('fetch', fetcher)
+  render(<EmailPreferences {...props} />)
+  const cadence = screen.getByLabelText(C.frequency)
+  fireEvent.change(cadence, { target: { value: 'WEEKLY' } })
+  const form = cadence.closest('form')!
+  await act(async () => { fireEvent.submit(form); fireEvent.submit(form) })
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  const signal = fetcher.mock.calls[0][1].signal as AbortSignal
+  await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+  expect(signal.aborted).toBe(true)
+  expect(screen.getByRole('alert')).toHaveTextContent(C.error)
+  expect(cadence).toHaveValue('WEEKLY')
+  expect(screen.getByRole('button', { name: C.save })).toBeEnabled()
+  fireEvent.submit(form)
+  expect(fetcher).toHaveBeenCalledTimes(2)
+  await act(async () => { finish() })
+  expect(screen.getByRole('status')).not.toHaveTextContent(C.saved)
+  expect(cadence).toBeDisabled()
+  await act(async () => { retry(Response.json(saved)) })
+  expect(screen.getByRole('status')).toHaveTextContent(C.saved)
+  expect(cadence).toBeEnabled()
+  expect(screen.getByText(/Next summary:/)).toHaveTextContent('Nov 9, 2026')
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('updates next-send metadata when the server advances the same schedule', () => {
+  const view = render(<EmailPreferences {...props} nextSendAt="2026-11-02T09:00:00.000Z" />)
+  expect(screen.getByText(/Next summary:/)).toHaveTextContent('Nov 2, 2026')
+  view.rerender(<EmailPreferences {...props} nextSendAt="2026-11-03T09:00:00.000Z" />)
+  expect(screen.getByText(/Next summary:/)).toHaveTextContent('Nov 3, 2026')
+})
+
+it('retires mutation-owned next-send metadata when a refreshed schedule arrives', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ ok: true,
+    notifications: { ...defaults, cadence: 'WEEKLY', nextSendAt: '2026-11-09T09:00:00.000Z' } })))
+  const view = render(<EmailPreferences {...props} />)
+  fireEvent.change(screen.getByLabelText(C.frequency), { target: { value: 'WEEKLY' } })
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  expect(await screen.findByText(/Next summary:/)).toHaveTextContent('Nov 9, 2026')
+  view.rerender(<EmailPreferences {...props} initial={{ ...defaults, cadence: 'WEEKLY' }} nextSendAt="2026-11-16T09:00:00.000Z" />)
+  await waitFor(() => expect(screen.getByText(/Next summary:/)).toHaveTextContent('Nov 16, 2026'))
+  expect(screen.getByLabelText(C.frequency)).toHaveValue('WEEKLY')
+})
+
+it('does not pair a newer server delivery time with a different schedule from an older in-flight save', async () => {
+  let finish!: (response: Response) => void
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { finish = resolve })))
+  const view = render(<EmailPreferences {...props} nextSendAt="2026-11-02T09:00:00.000Z" />)
+  fireEvent.change(screen.getByLabelText(C.frequency), { target: { value: 'WEEKLY' } })
+  fireEvent.click(screen.getByRole('button', { name: C.save }))
+  view.rerender(<EmailPreferences {...props} nextSendAt="2026-11-03T09:00:00.000Z" />)
+  await act(async () => { finish(Response.json({ ok: true,
+    notifications: { ...defaults, cadence: 'WEEKLY', nextSendAt: '2026-11-09T09:00:00.000Z' } })) })
+  expect(screen.getByLabelText(C.frequency)).toHaveValue('WEEKLY')
+  expect(screen.queryByText(/Next summary:/)).not.toBeInTheDocument()
+  expect(screen.queryByText(C.schedulePending)).not.toBeInTheDocument()
+  view.rerender(<EmailPreferences {...props} initial={{ ...defaults, cadence: 'WEEKLY' }} nextSendAt="2026-11-09T09:00:00.000Z" />)
+  expect(await screen.findByText(/Next summary:/)).toHaveTextContent('Nov 9, 2026')
 })

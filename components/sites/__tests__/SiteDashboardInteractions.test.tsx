@@ -53,8 +53,10 @@ describe('dashboard reading and handoff', () => {
     render(<SitePages siteId="site" view={view()} onOpenFlag={open} />)
     expect(screen.getAllByText('1 Flag')).toHaveLength(2)
     expect(screen.getAllByText('No screenshot recorded')).toHaveLength(2)
-    fireEvent.click(screen.getAllByRole('button', { name: `Open ${flag.problem}` })[1])
-    expect(open).toHaveBeenCalledWith('flag-1', expect.any(HTMLButtonElement))
+    const target = screen.getAllByRole('link', { name: `Open ${flag.problem}` })[1]
+    expect(target).toHaveAttribute('href', '/sites/site/flags/flag-1')
+    fireEvent.click(target)
+    expect(open).toHaveBeenCalledWith('flag-1', target)
   })
   it('loads evidence for an authorized visitor and gates only fix actions', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(detail)))

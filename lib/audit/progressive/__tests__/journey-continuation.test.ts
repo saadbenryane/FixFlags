@@ -66,8 +66,8 @@ describe('journey observation continuation', () => {
 
   it('records each observation before publishing its findings and never replaces a prior receipt', async () => {
     const current = context(), result = await handler.evaluate(current)
-    const upsert = vi.fn(async input => ({ id: 'cohort', detail: input.create.detail })), findMany = vi.fn(async () => [])
-    const tx = { auditVerificationReceipt: { upsert }, journeyFinding: { findMany } }
+    const upsert = vi.fn(async input => ({ id: 'cohort', ...input.create })), findMany = vi.fn(async () => [])
+    const tx = { auditVerificationReceipt: { upsert, findUnique: vi.fn(async () => null) }, journeyFinding: { findMany } }
     await handler.commit!(current, result, tx as never)
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({
       targetKey: OBSERVATION_COHORT_TARGET, taskId: current.task.id,

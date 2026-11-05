@@ -8,6 +8,16 @@ import { adoptLegacyOutcomeIdentity } from '@/lib/sites/application/outcome-iden
 import type { ImprovementOccurrenceKind } from '@prisma/client'
 
 import type { ImprovementFlag } from './service-types'
+import { lockImprovementLedger } from './ledger-lock'
+
+function proposalData(flag: ImprovementFlag, priority: number) {
+  return {
+    title: flag.problem, judgment: flag.whyItMatters || flag.problem,
+    expectedBenefit: flag.whyItMatters || 'Remove the observed product friction.',
+    recommendedChange: flag.fix, protectedScope: flag.pageUrl,
+    successCondition: flag.verificationRule || 'Recovery criteria have not been established.', priority,
+  }
+}
 
 export function improvementFingerprint(input: {
   checkId: string | null
@@ -73,36 +83,33 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
     const priority = isCustomerFlag(flag) ? uniquePriority++ : recommendationPriorities.get(fingerprint)!
     await executionTransaction(async tx => {
       await adoptLegacyOutcomeIdentity(tx, { projectId, fingerprint, executionSpec: audit.executionSpec })
-      const improvement = await tx.improvement.upsert({
+      // Initialize identity without changing an existing row before its ledger
+      // lock. An upsert here would take its row lock ahead of verification.
+      const initialized = await tx.improvement.createMany({ data: { projectId, fingerprint, ...proposalData(flag, priority) }, skipDuplicates: true })
+      const identity = await tx.improvement.findUniqueOrThrow({
         where: { projectId_fingerprint: { projectId, fingerprint } },
-        create: {
-          projectId,
-          fingerprint,
-          title: flag.problem,
-          judgment: flag.whyItMatters || flag.problem,
-          expectedBenefit: flag.whyItMatters || 'Remove the observed product friction.',
-          recommendedChange: flag.fix,
-          protectedScope: flag.pageUrl,
-          successCondition:
-            flag.verificationRule || 'Recovery criteria have not been established.',
-          priority,
-        },
-        update: {
-          title: flag.problem,
-          judgment: flag.whyItMatters || flag.problem,
-          expectedBenefit: flag.whyItMatters || 'Remove the observed product friction.',
-          recommendedChange: flag.fix,
-          protectedScope: flag.pageUrl,
-          successCondition:
-            flag.verificationRule || 'Recovery criteria have not been established.',
-          priority,
-        },
+        select: { id: true },
       })
+      await lockImprovementLedger(tx, identity.id)
+      const observations = (await tx.flag.findMany({ where: { auditId,
+        id: { in: observationsByFingerprint.get(fingerprint)!.map(observation => observation.id) },
+        audit: { projectId, userId: audit.userId } } }))
+        .filter(observation => improvementFingerprint(observation) === fingerprint)
+      const customer = rankFlagsByPriority(observations.filter(isCustomerFlag), [], observations.length)[0]?.flag
+      const current = customer ?? (recommendationPriorities.has(fingerprint)
+        ? observations.find(observation => !isResolvedFlagStatus(observation.status) && !isCustomerFlag(observation)) : undefined)
+      if (!current) {
+        // A new provisional identity is still private to this transaction and
+        // has no references. Do not retain it when its observation disappeared.
+        if (initialized.count) await tx.improvement.delete({ where: { id: identity.id } })
+        return
+      }
+      const improvement = await tx.improvement.update({ where: { id: identity.id }, data: proposalData(current, priority) })
       if (improvement.status === 'VERIFIED') await tx.improvement.update({
         where: { id: improvement.id },
         data: { status: 'PROPOSED' },
       })
-      for (const observedFlag of observationsByFingerprint.get(fingerprint)!) {
+      for (const observedFlag of observations) {
         const occurrence = await tx.improvementOccurrence.upsert({
           where: { flagId: observedFlag.id },
           create: {

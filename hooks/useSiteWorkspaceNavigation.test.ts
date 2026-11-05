@@ -53,3 +53,23 @@ it('focuses the restored view without resetting its reading position', () => {
   expect(focus).toHaveBeenCalledWith({ preventScroll: true })
   expect(window.scrollTo).not.toHaveBeenCalled()
 })
+
+it('focuses an explicit destination after opening its workspace and keeps its native hash', () => {
+  const target = document.createElement('section')
+  target.id = 'category-uptime'; target.tabIndex = -1; target.scrollIntoView = vi.fn()
+  document.querySelector('main')!.append(target)
+  window.history.replaceState(null, '', '/sites/site-a?view=timeline#timeline')
+  const { result } = renderHook(() => useSiteWorkspaceNavigation('site-a', { viewMode: 'timeline', selectedCard: null, selectedFlag: null }))
+  act(() => result.current.openWorkspace('home', 'category-uptime'))
+  expect(document.activeElement).toBe(target)
+  expect(target.scrollIntoView).toHaveBeenCalledWith({ behavior: 'instant', block: 'start' })
+  expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/site-a#category-uptime')
+  expect(window.scrollTo).not.toHaveBeenCalled()
+  act(() => {
+    window.history.replaceState(null, '', '/sites/site-a?view=timeline#timeline')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
+  expect(result.current.viewMode).toBe('timeline')
+  expect(target.scrollIntoView).toHaveBeenCalledOnce()
+  expect(window.scrollTo).not.toHaveBeenCalled()
+})

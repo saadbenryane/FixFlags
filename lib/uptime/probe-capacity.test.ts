@@ -3,7 +3,7 @@ import { publicHttpCapacity } from '@/lib/audit/progressive/capacity'
 import { probeUptime } from './probe'
 import { safeFetchDocument } from '@/lib/audit/url'
 
-vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) })))
 
 describe('public uptime response timing under worker load', () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })

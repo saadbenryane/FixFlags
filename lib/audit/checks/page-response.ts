@@ -16,10 +16,10 @@ export function assessPageResponse(pageUrl: string, document?: PublicDocument | 
   const redirectLoop = Boolean(matched && document.reason === 'redirect_loop' && !document.complete && document.body === null &&
     document.status !== null && !document.headers['set-cookie'] && !document.headers['cf-mitigated'] &&
     hasRepeatedRedirect({ ...document, statusCode: document.status }))
-  const inspected = matched && document.complete && document.status !== null && document.reason !== 'public_access_challenge'
+  const inspected = matched && document.status !== null && document.reason !== 'public_access_challenge'
     ? classifyPublicGet({ requestedUrl: pageUrl, finalUrl: document.finalUrl, status: document.status,
       html: document.body, wwwAuthenticate: document.headers['www-authenticate'] ?? null,
-      cfMitigated: document.headers['cf-mitigated'] ?? null, httpErrorsOnly: true }) : null
+      cfMitigated: document.headers['cf-mitigated'] ?? null, httpErrorsOnly: true, bodyUnavailable: !document.complete }) : null
   const passed = hasSuccessfulPublicGet(inspected && { ...inspected, status }, { allowAuthEntry: true })
   const failed = redirectLoop || inspected?.shouldFlagDead === true
   const complete = passed || failed

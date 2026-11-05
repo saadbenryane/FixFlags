@@ -28,6 +28,11 @@ function run(command, args, env = process.env, stream = false) {
 }
 
 try {
+  if (process.argv.some(argument => argument.endsWith('compiled-runtime.integration.test.ts'))) {
+    run(process.execPath, [fileURLToPath(new URL('../node_modules/typescript/lib/tsc.js', import.meta.url)),
+      '--noEmit', '--project', fileURLToPath(new URL('../tsconfig.compiled-runtime.json', import.meta.url))], process.env, true)
+    console.log('Compiled runtime fixture matches current application contracts.')
+  }
   await admin.$executeRawUnsafe(`CREATE DATABASE "${databaseName}"`)
   created = true
   const env = { ...process.env, DATABASE_URL: disposable.toString() }

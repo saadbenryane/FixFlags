@@ -1,5 +1,6 @@
 import { expect, it, vi, afterEach } from 'vitest'
-import { performanceConditionContext, performanceMeasurement, performanceMeasurementSchema, readPerformanceContext, scopePerformanceAssertions } from '../performance-measurement'
+import { performanceConditionContext, performanceMeasurement, readPerformanceContext, scopePerformanceAssertions } from '../performance-measurement'
+import { performanceMeasurementSchema } from '../performance-measurement-contract'
 import { healthyDesktopPs } from './check-fixtures'
 afterEach(() => vi.useRealTimers())
 it('retains only actual bounded provider measurement conditions', () => {

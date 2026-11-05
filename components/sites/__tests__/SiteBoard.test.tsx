@@ -1,11 +1,12 @@
 import { siteScopeCounts } from '@/lib/sites/scope-counts'
 import { siteViewerActions } from '@/lib/sites/viewer-actions'
-import { fireEvent, render as renderView, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render as renderView, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SWRConfig } from 'swr'
 import { SiteBoard } from '../SiteBoard'
 import { SiteSettingsView } from '../SiteSettingsView'
+import { SiteShell } from '../SiteShell'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
@@ -19,6 +20,53 @@ import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const SITE_PATH = '/sites/p_example'
 beforeEach(() => { window.history.replaceState(null, '', '/sites/p_example') })
+
+it('keeps Site checking usable after a stream interruption while showing the disconnected status', async () => {
+  const listeners = new Map<string, () => void>()
+  vi.stubGlobal('EventSource', class {
+    addEventListener(name: string, listener: () => void) { listeners.set(name, listener) }
+    close() {}
+  })
+  const initial = boardView()
+  const fetch = vi.fn(async (_url: string, options?: RequestInit) => Response.json(options?.method === 'POST'
+    ? { runId: 'run', auditId: 'next-audit', outcomeIds: [], reused: false } : initial))
+  vi.stubGlobal('fetch', fetch)
+  const rendered = render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+    act(() => listeners.get('error')?.())
+    expect(screen.getByText('Updates disconnected', { exact: true })).toBeVisible()
+    const check = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })
+    expect(check).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Retry updates' })).not.toBeInTheDocument()
+    fireEvent.click(check)
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/p_example/runs', expect.objectContaining({ method: 'POST' })))
+    expect(await screen.findByText(SITE_BOARD_COPY.checkStarted)).toBeVisible()
+  } finally { rendered.unmount(); vi.unstubAllGlobals() }
+})
+
+it('recovers unavailable Site reads without reloading or starting a check', async () => {
+  vi.stubGlobal('EventSource', undefined)
+  const initial = boardView()
+  let recover!: (response: Response) => void
+  const fetch = vi.fn().mockResolvedValueOnce(Response.json({}, { status: 503 }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { recover = resolve }))
+  vi.stubGlobal('fetch', fetch)
+  const rendered = render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+  try {
+    const retry = await screen.findByRole('button', { name: 'Retry updates' })
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeDisabled()
+    retry.focus()
+    fireEvent.click(retry); fireEvent.click(retry)
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(retry).toBeDisabled()
+    await act(async () => { recover(Response.json(initial)) })
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Retry updates' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+    expect(fetch.mock.calls.every(([, options]) => options?.method !== 'POST')).toBe(true)
+  } finally { rendered.unmount(); vi.unstubAllGlobals() }
+})
 
 it('keeps one Site stream when an owner opens Flag actions inside the dashboard', async () => {
   const streams: Array<{ closed: boolean }> = []
@@ -43,6 +91,31 @@ it('keeps one Site stream when an owner opens Flag actions inside the dashboard'
   expect(streams[0].closed).toBe(true)
 })
 
+it('returns Timeline uptime evidence to the loaded overview and focuses its card without another Site read', async () => {
+  const initial = boardView({ uptimeEvents: [{ id: 'incident', targetUrl: 'https://example.com/',
+    startedAt: '2026-11-03T12:00:00Z', confirmedAt: '2026-11-03T12:01:00Z', recoveredAt: null, supersededAt: null, reason: 'response_error' }] })
+  vi.stubGlobal('EventSource', undefined)
+  const fetch = vi.fn(async () => Response.json(initial)); vi.stubGlobal('fetch', fetch)
+  window.history.replaceState(null, '', SITE_PATH + '?view=timeline#timeline')
+  const previousScroll = HTMLElement.prototype.scrollIntoView
+  HTMLElement.prototype.scrollIntoView = vi.fn()
+  const rendered = render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} viewMode="timeline" /></MeProvider>)
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+    const link = screen.getByRole('link', { name: 'Uptime details' })
+    expect(link).toHaveAttribute('href', SITE_PATH + '#category-uptime')
+    link.focus(); fireEvent.click(link)
+    expect(document.getElementById('category-uptime')).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Uptime details' })).toBeVisible()
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe(SITE_PATH + '#category-uptime')
+    expect(fetch).toHaveBeenCalledOnce()
+    window.history.back()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Timeline', level: 1 })).toBeVisible())
+    expect(screen.getByRole('heading', { name: 'Timeline', level: 1 })).toHaveFocus()
+    expect(fetch).toHaveBeenCalledOnce()
+  } finally { rendered.unmount(); HTMLElement.prototype.scrollIntoView = previousScroll; vi.unstubAllGlobals() }
+})
+
 function render(ui: ReactNode) {
   // Each fixture owns the cache and in-flight request deduplication together.
   const provider = () => new Map()
@@ -51,7 +124,7 @@ function render(ui: ReactNode) {
 
 async function openCategoryCheckDetails() {
   const dialog = screen.getByRole('dialog')
-  fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
+  fireEvent.click(await within(dialog).findByText('Check details', { selector: 'summary' }))
   await waitFor(() => expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible())
 }
 
@@ -275,9 +348,14 @@ describe('SiteBoard chrome', () => {
     initial.presentation.categories[0].freshness = SITE_PRESENTATION_COPY.freshness.minutes(2)
     initial.presentation.freshness.checkedAt = '2026-10-19T12:00:00Z'
     initial.presentation.freshness.label = SITE_PRESENTATION_COPY.freshness.minutes(2)
-    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
-    expect(screen.getByText(`${SITE_BOARD_COPY.lastChecked} ${SITE_PRESENTATION_COPY.freshness.minutes(2)}`)).toBeVisible()
-    expect(within(screen.getByRole('article', { name: 'Search' })).queryByText(SITE_PRESENTATION_COPY.freshness.minutes(2))).not.toBeInTheDocument()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-19T12:02:00Z'))
+    const page = render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+    try {
+      const time = screen.getByText(SITE_PRESENTATION_COPY.freshness.minutes(2), { selector: 'time' })
+      expect(time).toHaveAttribute('datetime', '2026-10-19T12:00:00Z')
+      expect(time.closest('p')).toHaveTextContent(`${SITE_BOARD_COPY.lastChecked} ${SITE_PRESENTATION_COPY.freshness.minutes(2)}`)
+      expect(within(screen.getByRole('article', { name: 'Search' })).queryByText(SITE_PRESENTATION_COPY.freshness.minutes(2))).not.toBeInTheDocument()
+    } finally { page.unmount(); clock.mockRestore() }
   })
 
   it('offers one site-wide Check again action for an incomplete analysis', async () => {
@@ -499,7 +577,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('heading', { name: 'Checkout' })).toBeVisible()
     expect(screen.getByText(summary)).toBeVisible()
     expect(screen.queryByText('The selected product appears in the cart and checkout opens.')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Checkout', exact: true })).toHaveAttribute('href', '/sites/p_example/outcomes/out-1')
+    expect(screen.getByRole('link', { name: 'Checkout', exact: true })).toHaveAttribute('href', '/sites/p_example/outcomes/out-1?view=home&category=conversion')
     expect(screen.getByText('Couldn’t verify')).toBeVisible()
   })
 
@@ -545,7 +623,7 @@ describe('SiteBoard chrome', () => {
     fireEvent.click(screen.getByText('Rendered-page verification'))
     const outcome = screen.getByRole('heading', { name: 'Page availability' }).closest('section')!
     expect(within(outcome).getByRole('status')).toHaveTextContent('Checking…')
-    expect(within(outcome).getByRole('link', { name: 'Page availability' })).toHaveAttribute('href', '/sites/p_example/outcomes/out-1')
+    expect(within(outcome).getByRole('link', { name: 'Page availability' })).toHaveAttribute('href', '/sites/p_example/outcomes/out-1?view=home')
     expect(screen.queryByText(expectation)).not.toBeInTheDocument()
     expect(screen.queryByText('Website check')).not.toBeInTheDocument()
     expect(screen.queryByText('No completed verification yet')).not.toBeInTheDocument()
@@ -605,6 +683,7 @@ describe('SiteBoard chrome', () => {
 
   it('keeps a current Clear free of the stale next step', async () => {
     const summary = 'FixFlags completed every required check for this Outcome.'
+    const verifiedAt = new Date()
     render(
       <MeProvider initialUser={signedInUser}>
         <SiteBoard
@@ -616,6 +695,8 @@ describe('SiteBoard chrome', () => {
               state: 'CLEAR',
               summary,
               staleAfterMinutes: 11520,
+              lastVerifiedAt: verifiedAt.toISOString(),
+              validUntil: new Date(verifiedAt.getTime() + 11520 * 60_000).toISOString(),
             })],
           })}
         />
@@ -798,6 +879,7 @@ describe('SiteBoard chrome', () => {
 
   it('switches Overview, Timeline, and Integrations without a server navigation', async () => {
     renderBoard(signedInUser)
+    expect(document.title).toBe('example.com · FixFlags')
     const rail = screen.getByRole('navigation', { name: 'Site' })
     const timeline = within(rail).getByRole('link', { name: 'Timeline' })
     const integrations = within(rail).getByRole('link', { name: 'Integrations' })
@@ -816,6 +898,7 @@ describe('SiteBoard chrome', () => {
     fireEvent.click(timeline)
     expect(screen.getByRole('heading', { name: 'Timeline', level: 2 })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Timeline', level: 1 })).toHaveFocus()
+    expect(document.title).toBe('Timeline · example.com · FixFlags')
     expect(screen.queryByRole('button', { name: 'Open Pages' })).not.toBeInTheDocument()
     expect(timeline).toHaveAttribute('aria-current', 'page')
     expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/p_example?view=timeline#timeline')
@@ -824,13 +907,16 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Integrations', level: 1 })).toHaveFocus()
     expect(window.location.hash).toBe('#integrations')
+    expect(document.title).toBe('Integrations · example.com · FixFlags')
     fireEvent.click(screen.getByRole('link', { name: 'example.com' }))
     expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
     expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/p_example')
+    expect(document.title).toBe('example.com · FixFlags')
     within(rail).getByRole('link', { name: 'Overview' }).focus()
     window.history.back()
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible())
     expect(screen.getByRole('heading', { name: 'Integrations', level: 1 })).toHaveFocus()
+    expect(document.title).toBe('Integrations · example.com · FixFlags')
   })
 
   it('opens the shared schedule editor for the owner and saves an allowed cadence', async () => {
@@ -889,6 +975,31 @@ describe('SiteBoard chrome', () => {
     expect(window.location.search).toBe('?view=pages')
   })
 
+  it('keeps a zero-Flag summary static while recorded Pages stay actionable', () => {
+    const initial = boardView({ cards: [card({ id: 'security', name: 'Security', state: 'healthy', openFlagCount: 0 })],
+      checkedPages: [{ url: 'https://example.com/', title: 'Home', status: 'COMPLETED', checkedAt: '2026-10-12T12:00:00Z' }] })
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+    const summary = within(screen.getByRole('group', { name: 'Website status summary' }))
+    expect(summary.getByText('0')).toBeVisible()
+    expect(summary.getByText('Flags')).toBeVisible()
+    expect(summary.queryByRole('button', { name: '0 Flags' })).not.toBeInTheDocument()
+    fireEvent.click(summary.getByRole('button', { name: '1 Page' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Pages' })).toHaveFocus()
+  })
+
+  it('keeps the Flag summary actionable when there is a current finding to inspect', () => {
+    const initial = boardView({ flags: [openFlag({ area: 'search' })],
+      cards: [card({ id: 'search', name: 'Search', state: 'problem', openFlagCount: 1 })] })
+    initial.presentation.flags = { count: 1, label: '1 Flag', fixFirstCount: 0 }
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+    const target = document.getElementById('category-search')!
+    target.scrollIntoView = vi.fn()
+    const summary = within(screen.getByRole('group', { name: 'Website status summary' }))
+    fireEvent.click(summary.getByRole('button', { name: '1 Flag' }))
+    expect(target).toHaveFocus()
+    expect(target.scrollIntoView).toHaveBeenCalledWith({ behavior: 'instant', block: 'start' })
+  })
+
   it('shows available Timeline data to an authorized signed-out scan visitor', () => {
     const initial = boardView({ actions: siteViewerActions(false), monitoringHistory: [
       { id: 'current', checkedAt: '2026-10-23T09:00:00Z', flagCount: 1, scope: 'SITE', status: 'COMPLETED', executionState: 'COMPLETED', evidenceAt: '2026-10-23T09:00:00Z' },
@@ -925,7 +1036,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('heading', { name: 'Timeline', level: 2 })).toBeVisible()
     expect(screen.getByText('Flags over time')).toBeVisible()
     expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Pricing page is unavailable' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Pricing page is unavailable' })).toHaveAttribute('href', '/sites/p_example/flags/flag-1?view=timeline')
     expect(screen.queryByRole('button', { name: 'Edit schedule' })).not.toBeInTheDocument()
   })
 
@@ -1084,6 +1195,9 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
     expect(screen.getByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Automatic account checks' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Advanced settings').closest('summary')!)
+    await screen.findByRole('heading', { name: 'Automatic account checks' })
     // Core controls come first. Removal follows all website settings.
     expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 3).map((heading) => heading.textContent)).toEqual([
       'Monitoring',
@@ -1437,6 +1551,21 @@ describe('an undelivered Watch alert', () => {
     expect(screen.getByText(/Sep 20, 2026/)).toBeInTheDocument()
   })
 
+  it.each(['off', 'paused', 'delayed', 'quota'] as const)('retains the delivery warning without claiming coverage when monitoring is %s', state => {
+    const view = boardView({ watch: { ...undelivered, state, covered: false }, watching: false })
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    expect(screen.getByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).toBeInTheDocument()
+    expect(screen.queryByText(/keeps checking/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: WATCH_ALERT_DELIVERY.undeliveredAction })).toHaveAttribute('href', '/settings')
+  })
+
+  it.each(['off', 'paused', 'delayed', 'quota'] as const)('keeps the Settings delivery warning separate from %s coverage', state => {
+    const view = boardView({ watch: { ...undelivered, state, covered: false }, watching: false })
+    render(<MeProvider initialUser={signedInUser}><SiteSettingsView siteId="p_example" view={view} /></MeProvider>)
+    expect(screen.getByText(WATCH_ALERT_DELIVERY.undeliveredTitle)).toBeInTheDocument()
+    expect(screen.queryByText(/keeps checking/i)).not.toBeInTheDocument()
+  })
+
   it('leads to the email FixFlags sends to', async () => {
     render(
       <MeProvider initialUser={signedInUser}>
@@ -1512,6 +1641,15 @@ describe('an undelivered Watch alert', () => {
 })
 
 
+it('names the current detail and Site in the browser tab', () => {
+  const view = boardView()
+  render(<MeProvider initialUser={signedInUser}><SiteShell siteId="p_example" activeRoute="home" title="Checkout unavailable"
+    description="" actions={view.actions} presentation={view.presentation} watch={view.watch}>
+    <p>Recorded evidence</p>
+  </SiteShell></MeProvider>)
+  expect(document.title).toBe('Checkout unavailable · example.com · FixFlags')
+})
+
 it('keeps the dashboard and category behind a Flag and restores them on close', async () => {
   const flag = openFlag({ area: 'conversion', affectedPaths: ['https://example.com/pricing'], repairGuidance: 'ready' })
   const initial = boardView({ flags: [flag], actions: siteViewerActions(false) })
@@ -1525,10 +1663,12 @@ it('keeps the dashboard and category behind a Flag and restores them on close', 
     render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     const category = await screen.findByRole('dialog')
-    const opener = within(category).getByRole('button', { name: 'View Flag' })
+    const opener = within(category).getByRole('link', { name: flag.problem! })
+    expect(opener).toHaveAttribute('href', '/sites/p_example/flags/flag-1?view=home&category=conversion')
     fireEvent.click(opener)
     const observation = await screen.findByText(flag.evidence)
     const panel = observation.closest('[role="dialog"]')!
+    expect(within(panel).getByRole('link', { name: 'Full details and history' })).toHaveAttribute('href', '/sites/p_example/flags/flag-1?view=home&category=conversion')
     expect(window.location.pathname).toBe(SITE_PATH)
     expect(new URLSearchParams(window.location.search).get('flag')).toBe('flag-1')
     expect(new URLSearchParams(window.location.search).get('category')).toBe('conversion')
@@ -1537,4 +1677,42 @@ it('keeps the dashboard and category behind a Flag and restores them on close', 
     expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Conversion' })).toBeVisible()
     await waitFor(() => expect(opener).toHaveFocus())
   } finally { vi.unstubAllGlobals() }
+})
+
+it.each(['category', 'flag'] as const)('returns from a $0 dialog after live recovery removes its opener', async depth => {
+  const flag = openFlag({ area: 'conversion', repairGuidance: 'ready' })
+  const initial = boardView({ flags: [flag], actions: siteViewerActions(false) })
+  const recovered = boardView({
+    flags: [], resolvedFlags: [{ ...flag, status: 'VERIFIED' }], actions: initial.actions,
+    cards: initial.cards.map(card => card.id === 'conversion' ? { ...card, openFlagCount: 0, state: 'healthy', answer: 'No current Flags' } : card),
+  })
+  let finishRead!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => String(url).includes('/flags/') ? Response.json({ flag: {
+    ...flag, sourceAuditId: 'audit-1', expectedBehavior: 'The page opens.', evidenceMissing: false,
+    viewport: 'mobile', supportingObservations: [], supportingEvidenceUnreadable: false,
+    performanceEvidenceSource: null, verifying: false,
+  }, capture: null }) : new Promise<Response>(resolve => { finishRead = resolve })))
+  const rendered = render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+  try {
+    const categoryOpener = screen.getByRole('button', { name: 'Open Conversion' })
+    fireEvent.click(categoryOpener)
+    const category = await screen.findByRole('dialog')
+    const flagOpener = await within(category).findByRole('link', { name: flag.problem! })
+    if (depth === 'flag') {
+      fireEvent.click(flagOpener)
+      await screen.findByText(flag.evidence)
+    }
+    await waitFor(() => expect(finishRead).toBeDefined())
+    await act(async () => { finishRead(Response.json(recovered)) })
+    await waitFor(() => expect(categoryOpener.isConnected).toBe(false))
+    expect(flagOpener.isConnected).toBe(false)
+    const dialog = screen.getByRole('dialog')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    if (depth === 'flag') {
+      await waitFor(() => expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Conversion' })).toHaveFocus())
+    } else {
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(document.getElementById('category-conversion')).toHaveFocus()
+    }
+  } finally { rendered.unmount(); vi.unstubAllGlobals() }
 })

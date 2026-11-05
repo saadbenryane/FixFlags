@@ -16,6 +16,9 @@ vi.mock('@/lib/audit/fetch-audit', () => ({
   getGatedAuditForRequest,
   resolveActiveAttachedWorkId,
 }))
+vi.mock('@/lib/audit/access', async original => ({ ...await original<typeof import('@/lib/audit/access')>(),
+  resolveAuditAccess: vi.fn().mockResolvedValue('owner'),
+}))
 vi.mock('@/lib/db', () => ({
   prisma: {
     user: { findUnique: vi.fn() },
@@ -154,7 +157,7 @@ describe('loadReportRouteState progressive handoff', () => {
       expect.objectContaining({
         where: {
           projectId: 'product-1',
-          userId: 'user-1',
+          project: { userId: 'user-1', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
           status: 'COMPLETED',
         },
       }),

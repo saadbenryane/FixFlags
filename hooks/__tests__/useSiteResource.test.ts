@@ -213,6 +213,78 @@ it('keeps a stalled initial read from blocking recovery to a completed result', 
   } finally { vi.useRealTimers() }
 })
 
+it.each(['headers', 'body'] as const)('bounds a refresh through stalled %s and ignores its late result after retry', async stage => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
+  vi.stubGlobal('EventSource', undefined)
+  const initial = siteViewFixture(); initial.outcomes = []
+  const recovered = { ...initial, inventoryPageCount: 12 }
+  let signal!: AbortSignal
+  let finish!: (view: typeof initial) => void
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json(initial)).mockImplementationOnce((_url, options) => {
+    signal = options.signal
+    if (stage === 'headers') return new Promise<Response>(resolve => { finish = view => resolve(Response.json(view)) })
+    return Promise.resolve({ ok: true, json: () => new Promise(resolve => { finish = resolve }) } as Response)
+  }).mockImplementation(async () => Response.json(recovered))
+  vi.stubGlobal('fetch', fetcher)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0, shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource(initial.site.siteId, initial), { wrapper })
+  try {
+    await act(async () => { await vi.advanceTimersByTimeAsync(20) })
+    const recorded = result.current.view
+    let settled = false
+    const refresh = result.current.refresh().then(() => { settled = true; return false }, () => { settled = true; return true })
+    await act(async () => { await vi.advanceTimersByTimeAsync(14_999) })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(settled).toBe(false)
+    await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+    expect(settled).toBe(true)
+    expect(await refresh).toBe(true)
+    expect(signal.aborted).toBe(true)
+    expect(result.current.disconnected).toBe(true)
+    expect(result.current.view).toEqual(recorded)
+    await act(async () => { await result.current.refresh() })
+    expect(result.current.view.inventoryPageCount).toBe(12)
+    expect(result.current.disconnected).toBe(false)
+    await act(async () => { finish({ ...initial, inventoryPageCount: 99 }); await vi.advanceTimersByTimeAsync(0) })
+    expect(result.current.view.inventoryPageCount).toBe(12)
+    expect(result.current.disconnected).toBe(false)
+    expect(fetcher).toHaveBeenCalledTimes(3)
+  } finally { unmount(); vi.useRealTimers() }
+})
+
+it('does not extend an earlier refresh deadline by waiting for a newer stalled read', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
+  vi.stubGlobal('EventSource', undefined)
+  const initial = siteViewFixture(); initial.outcomes = []
+  const reads: Array<(response: Response) => void> = []
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json(initial))
+    .mockImplementation(() => new Promise<Response>(resolve => { reads.push(resolve) }))
+  vi.stubGlobal('fetch', fetcher)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0, shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource(initial.site.siteId, initial), { wrapper })
+  try {
+    await act(async () => { await vi.advanceTimersByTimeAsync(20) })
+    let olderSettled = false
+    const older = result.current.refresh().then(() => { olderSettled = true; return false }, () => { olderSettled = true; return true })
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    let newerSettled = false
+    const newer = result.current.refresh().then(() => { newerSettled = true; return true }, () => { newerSettled = true; return false })
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    expect(reads).toHaveLength(2)
+    expect(olderSettled).toBe(true)
+    expect(await older).toBe(true)
+    expect(newerSettled).toBe(false)
+    await act(async () => { reads[1](Response.json({ ...initial, inventoryPageCount: 12 })); expect(await newer).toBe(true) })
+    expect(result.current.view.inventoryPageCount).toBe(12)
+    expect(result.current.disconnected).toBe(false)
+    await act(async () => { reads[0](Response.json({ ...initial, inventoryPageCount: 99 })); await vi.advanceTimersByTimeAsync(0) })
+    expect(result.current.view.inventoryPageCount).toBe(12)
+    expect(result.current.disconnected).toBe(false)
+  } finally { unmount(); vi.useRealTimers() }
+})
+
 it('ignores event callbacks from a previous Site after its stream closes', async () => {
   const initial = siteViewFixture(); initial.outcomes = []
   const next = structuredClone(initial)

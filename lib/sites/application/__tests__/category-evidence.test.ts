@@ -65,7 +65,10 @@ describe('category evidence projection', () => {
         completedAt: condition === 'completed' ? now : null,
         verifierExecutions: condition === 'new-gap' ? [{ ...observation, detail: { kind: 'site-module-check', version: 1,
           module: 'security', pageUrl: 'https://example.com/', passed: false, applicable: true, complete: false, assertions: [] } }]
-          : condition === 'new-observation' ? [observation] : [] }
+          : condition === 'new-observation' ? [{ ...observation, detail: { kind: 'site-module-check', version: 1,
+            module: 'security', pageUrl: 'https://example.com/', passed: true, applicable: true, complete: true,
+            assertions: ['https', 'resource-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })),
+            execution: { auditId: 'new-full', taskId: 'current-security', checkVersion: 1, source: 'http', collectedAt: now.toISOString() } } }] : [] }
       if (condition === 'incomplete-category') recent.verifierExecutions = recent.verifierExecutions.filter(row => row.targetKey !== 'task:p0:http')
       if (condition === 'new-observation') recent.status = 'FAILED'
       const current = projectCurrentSiteEvidence({ audit, prior, categories: [recent],

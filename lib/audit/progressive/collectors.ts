@@ -11,8 +11,9 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema, screenshotSnapshotSchema } from './snapshots'
 import type { MetadataFailure } from './snapshots'
 import { MAX_TASKS_PER_AUDIT, serializeArtifact, readArtifact, TaskFailure } from './contracts'
-import type { TaskHandler } from './registry'
-import { parseMetadataIsolated } from './cpu'
+import type { TaskContext, TaskHandler } from './registry'
+import { parseMetadataIsolated, parseHttpNavigationIsolated } from './cpu'
+import { ExecutionOwnershipLost } from '../execution-ownership'
 import { getAuditBrowser } from '../screenshot'
 import { createAuditPage, PAGE_TIMEOUT_MS } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '../browser/capture-profile'
@@ -26,13 +27,17 @@ import { observeCapturedTechnologies } from '../technology-capture'
 import { persistTechnologyObservations } from '../technology-profile'
 import { capturedPagePreview } from '../checks/page-preview'
 import { capturedHeadMetadata } from '../checks/head-metadata'
-import { browserCollectionRequirements } from './browser-requirements'
+import { browserCollectionRequirements, httpCollectionRequirements } from './collection-requirements'
 import { PAGE_COLLECTION_UNAVAILABLE } from '@/lib/marketing/copy/page-evidence'
 import { dedupeConsoleErrors } from '../console-evidence'
+import { hasRecordedDesktopCollection } from './browser-evidence'
 
 /** Parsing enriches an already collected document. A bounded local retry can
- * replace a crashed parser without repeating its HTTP or browser observation. */
-async function collectMetadata(html: string, url: string, deadline: number, mode: MetadataMode = 'crawler') {
+ * replace a crashed parser without repeating its HTTP or browser observation.
+ * Its phase must finish before the collector loses publication authority. */
+const METADATA_PUBLICATION_RESERVE_MS = 2_000
+async function collectMetadata(html: string, url: string, publicationDeadline: number, mode: MetadataMode = 'crawler') {
+  const deadline = publicationDeadline - METADATA_PUBLICATION_RESERVE_MS
   for (let attempts = 1; ; attempts++) {
     try { return { metadata: await parseMetadataIsolated(html, url, deadline, mode) } }
     catch (error) {
@@ -59,6 +64,15 @@ async function openAuditPage(auditId: string, pageUrl: string, position: number,
 
 function requestedConsoleWindow(spec: ReturnType<typeof readExecutionSpec>, pageUrl: string) {
   return spec?.consoleObservationScopes?.find(scope => new URL(scope.pageUrl).href === pageUrl)?.minimumMs ?? spec?.consoleObservationMs ?? 0
+}
+
+async function collectionConsumers(context: TaskContext) {
+  const consumers = context.task.targetKey?.startsWith('task:')
+    ? await prisma.auditExecutionTask.findMany({ where: { auditId: context.audit.id,
+      workDependencies: { has: context.task.targetKey.slice(5) } },
+      select: { workKind: true, workInput: true }, take: MAX_TASKS_PER_AUDIT + 1 }) : []
+  if (consumers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('TASK_GRAPH_LIMIT', false)
+  return consumers
 }
 
 export const collectionHandlers: TaskHandler[] = [
@@ -117,9 +131,22 @@ export const collectionHandlers: TaskHandler[] = [
       // A document that never arrives is still the observation. Dependent checks
       // record that gap. Retrying the task would hide it until recovery ends.
       const document = await collectDocument(context.input.pageUrl, context.deadline)
-      const metadata = document.status !== null && document.status >= 200 && document.status < 300 && document.complete && document.body && /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')
-        ? await collectMetadata(document.body, document.finalUrl, context.deadline) : { metadata: null }
-      return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata }))
+      let metadata: Awaited<ReturnType<typeof collectMetadata>> = { metadata: null }
+      let navigation: Awaited<ReturnType<typeof parseHttpNavigationIsolated>> | undefined
+      if (document.status !== null && document.status >= 200 && document.status < 300 && document.complete && document.body &&
+        /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')) {
+        const consumers = await collectionConsumers(context)
+        if (httpCollectionRequirements(consumers).collectMetadata)
+          metadata = await collectMetadata(document.body, document.finalUrl, context.deadline)
+        if (!metadata.metadata && consumers.some(consumer => consumer.workKind === 'discovery')) {
+          try { navigation = await parseHttpNavigationIsolated(document.body, document.finalUrl, context.deadline - METADATA_PUBLICATION_RESERVE_MS) }
+          catch (error) {
+            if (error instanceof ExecutionOwnershipLost) throw error
+            // Unavailable navigation remains unknown, without repeating the GET.
+          }
+        }
+      }
+      return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata, ...(navigation ? { navigation } : {}) }))
     },
   },
   { kind: 'browser', replay: 'read_only', timeoutMs: (audit, input) => Math.max(90_000,
@@ -131,11 +158,7 @@ export const collectionHandlers: TaskHandler[] = [
       const access = await resolveAuditScanAccess(context.audit.id)
       const spec = readExecutionSpec(context.audit.executionSpec)
       const consoleObservationMs = requestedConsoleWindow(spec, pageUrl)
-      const consumers = context.task.targetKey?.startsWith('task:')
-        ? await prisma.auditExecutionTask.findMany({ where: { auditId: context.audit.id,
-          workDependencies: { has: context.task.targetKey.slice(5) } },
-          select: { workKind: true, workInput: true }, take: MAX_TASKS_PER_AUDIT + 1 }) : []
-      if (consumers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('TASK_GRAPH_LIMIT', false)
+      const consumers = await collectionConsumers(context)
       const requirements = browserCollectionRequirements(consumers, spec?.checks)
       const mobile = context.input.device === 'mobile'
       // DOM and semantics have no private-storage dependency. Media has its own
@@ -148,7 +171,12 @@ export const collectionHandlers: TaskHandler[] = [
       const parsed = htmlWithinBudget ? await collectMetadata(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline, 'rendered') : { metadata: null }
       const head = capturedHeadMetadata(captured)
       const metadata = parsed.metadata ? mergeRuntimeHeadMetadata(parsed.metadata, head?.metadata, captured.renderedCopy) : null
-      if ((!mobile && !metadata && !captured.desktopHtml && !captured.desktopHtmlTruncated ||
+      // Each native observation owns its evidence. Failure to serialize whole
+      // HTML cannot discard a completed head, copy, console or Accessibility read.
+      const desktopObserved = captured.desktopHtml || captured.desktopHtmlTruncated || captured.runtimeHeadScope ||
+        captured.renderedSearchSnapshot || captured.renderedCopyScope || captured.publicTrustSignals?.scope ||
+        captured.accessibilityEvidence?.scope || captured.consoleCoverage?.desktop.complete || hasRecordedDesktopCollection(captured, pageUrl)
+      if ((!mobile && !metadata && !desktopObserved ||
         mobile && captured.captureFailures?.some(failure => failure.device === 'mobile')) &&
         !captured.captureFailures?.some(failure => (!context.input.device || failure.device === context.input.device) &&
           ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))
@@ -177,10 +205,11 @@ export const collectionHandlers: TaskHandler[] = [
       const consoleErrors = dedupeConsoleErrors([...snapshot.consoleErrors,
         ...peers.flatMap(peer => screenshotSnapshotSchema.shape.consoleErrors.parse(peer.errors))]).slice(0, 500)
       const desktop = context.input.device !== 'mobile'
+      const collected = Boolean(metadata) || hasRecordedDesktopCollection(snapshot, context.input.pageUrl)
       await tx.auditPage.update({ where: { id: pageId }, data: {
         consoleErrors: consoleErrors as Prisma.InputJsonValue,
-        ...(desktop ? { status: metadata ? 'CHECKING' : 'FAILED', title: metadata?.title,
-          ...(metadata ? { htmlMetadata: trimMetadataForStorage(metadata) as never, failureCode: null, failureMessage: null }
+        ...(desktop ? { status: collected ? 'CHECKING' : 'FAILED', title: metadata?.title,
+          ...(collected ? { ...(metadata ? { htmlMetadata: trimMetadataForStorage(metadata) as never } : {}), failureCode: null, failureMessage: null }
             : { failureCode: 'BROWSER_SCOPE_UNAVAILABLE', failureMessage: PAGE_COLLECTION_UNAVAILABLE }) } : {}),
       } })
       if (context.input.primary) await tx.audit.update({ where: { id: context.audit.id }, data: {

@@ -25,6 +25,17 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    runRequestKey: { findUnique: async (args: unknown) => {
+      const runRequest = await mocks.runFindUnique(args)
+      return runRequest ? { runRequest, requestedByUserId: runRequest.requestedByUserId ?? null } : null
+    } },
+    $transaction: (work: (tx: object) => Promise<unknown>) => work({
+      $queryRaw: async () => [{ id: 'user-1' }], runRequest: { findFirst: mocks.runFindFirst },
+      runRequestKey: { findUnique: async (args: unknown) => {
+        const runRequest = await mocks.runFindUnique(args)
+        return runRequest ? { runRequest, requestedByUserId: runRequest.requestedByUserId ?? null } : null
+      }, createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    }),
     user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
@@ -125,6 +136,7 @@ describe('trigger equivalence', () => {
     mocks.runFindUnique.mockResolvedValue({
       id: 'run-existing',
       projectId: 'project-1',
+      requestedByUserId: 'user-1',
       environment: 'production',
       auditId: 'audit-existing',
       selections: [{ outcomeId: 'outcome-1' }],
@@ -144,6 +156,7 @@ describe('trigger equivalence', () => {
     mocks.runFindUnique.mockResolvedValue({
       id: 'run-existing',
       projectId: 'project-1',
+      requestedByUserId: 'user-1',
       environment: 'production',
       selections: [{ outcomeId: 'outcome-2' }],
     })

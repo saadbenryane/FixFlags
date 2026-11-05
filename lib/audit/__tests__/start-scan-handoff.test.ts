@@ -44,6 +44,47 @@ describe('startScanWithHandoff', () => {
     })
   })
 
+  it.each(['headers', 'body'] as const)('retires an abandoned %s read without publishing a late handoff', async phase => {
+    const owner = new AbortController(), onStarted = vi.fn()
+    let finish!: (value: Response | { siteId: string; reportId: string }) => void
+    const delayed = new Promise<Response | { siteId: string; reportId: string }>(resolve => { finish = resolve })
+    const fetcher = vi.fn().mockImplementation(() => phase === 'headers' ? delayed : Promise.resolve({ ok: true, json: () => delayed }))
+    vi.stubGlobal('fetch', fetcher)
+    const pending = startScanWithHandoff({ url: 'https://example.com', body: {}, signal: owner.signal, navigate, onStarted })
+    await Promise.resolve(); await Promise.resolve()
+    owner.abort()
+    expect(await pending).toMatchObject({ ok: false })
+    expect(fetcher.mock.calls[0][1].signal.aborted).toBe(true)
+    finish(phase === 'headers' ? Response.json({ siteId: 'retired', reportId: 'retired-audit' }) : { siteId: 'retired', reportId: 'retired-audit' })
+    await Promise.resolve(); await Promise.resolve()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(onStarted).not.toHaveBeenCalled()
+    expect(localStorage.getItem('ff:active-check')).toBeNull()
+  })
+
+  it('does not begin a request whose control is already retired', async () => {
+    const owner = new AbortController(), fetcher = vi.fn()
+    owner.abort()
+    vi.stubGlobal('fetch', fetcher)
+    expect(await startScanWithHandoff({ url: 'https://example.com', body: {}, signal: owner.signal, navigate })).toMatchObject({ ok: false })
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('does not overwrite a newer active Site after navigation retires the initiating view', async () => {
+    const owner = new AbortController()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ siteId: 'first', reportId: 'first-audit' })))
+    const result = await startScanWithHandoff({ url: 'https://example.com', body: {}, signal: owner.signal,
+      navigate: href => {
+        navigate(href)
+        owner.abort()
+        localStorage.setItem('ff:active-check', JSON.stringify({ siteId: 'newer', auditId: 'newer-audit' }))
+      } })
+    expect(result).toMatchObject({ ok: true, siteId: 'first' })
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('/sites/first')
+    expect(JSON.parse(localStorage.getItem('ff:active-check')!)).toEqual({ siteId: 'newer', auditId: 'newer-audit' })
+  })
+
   it('navigates to the Site board from an update-review response with siteId', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,

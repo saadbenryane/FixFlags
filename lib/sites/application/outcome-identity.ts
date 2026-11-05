@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { outcomeFlagOwner } from '@/lib/audit/flag-identity'
+import { lockImprovementLedger } from '@/lib/improvements/ledger-lock'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { admittedOutcomeCoverage, comparableOutcomeCoverage } from '../domain/outcome-proof'
 
@@ -26,5 +27,6 @@ export async function adoptLegacyOutcomeIdentity(tx: Prisma.TransactionClient, i
     sourceSpec.outcomes.some(item => item.id === owner.outcomeId && item.kind === outcome.kind) : source?.runRequest.selections.length === 1
   if (!source || !unambiguous || !comparableOutcomeCoverage(source.coverage, admittedOutcomeCoverage(spec, outcome)) ||
     !source.audit.bindingExecutions.some(execution => execution.bindingVersion === binding.version)) return
+  await lockImprovementLedger(tx, candidates[0].id)
   await tx.improvement.update({ where: { id: candidates[0].id }, data: { fingerprint: input.fingerprint } })
 }

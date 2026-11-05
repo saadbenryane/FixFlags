@@ -18,8 +18,9 @@ const routeRefresh = vi.fn()
 it('reveals advanced settings when a recovery link changes the current page hash', () => {
   const previous = window.location.href
   const rendered = render(<SiteAdvancedSettings><div id="scan-access">Access settings</div></SiteAdvancedSettings>)
-  const disclosure = screen.getByText('Access settings').closest('details')!
+  const disclosure = rendered.container.querySelector('details')!
   expect(disclosure).not.toHaveAttribute('open')
+  expect(screen.queryByText('Access settings')).not.toBeInTheDocument()
   window.history.replaceState(null, '', '#scan-access')
   fireEvent(window, new HashChangeEvent('hashchange'))
   expect(disclosure).toHaveAttribute('open')

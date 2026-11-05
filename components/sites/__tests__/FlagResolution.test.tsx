@@ -33,6 +33,14 @@ function panel(status: string, proof: { id: string; status: string; completedAt:
 }
 
 describe('Flag resolution panel', () => {
+  it('retains accepted legacy recovery without presenting report creation as verification time', () => {
+    const view = panel('VERIFIED', { id: 'audit-proof', status: 'COMPLETED', completedAt: null, createdAt: PROOF_AT })
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.flagRecovered })).toBeVisible()
+    expect(screen.getByText(SITE_BOARD_COPY.flagProofObserved)).toBeVisible()
+    expect(view.container.querySelector('time')).toBeNull()
+    expect(screen.queryByText(SITE_BOARD_COPY.flagProofLead, { exact: false })).not.toBeInTheDocument()
+  })
+
   it('shows Recovered for the improvement status the detail page loads', () => {
     for (const improvementStatus of ['PROPOSED', 'VERIFIED']) {
       const view = panel(siteFlagDetailStatus(improvementStatus, 'FIXED'), {

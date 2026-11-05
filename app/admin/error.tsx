@@ -1,19 +1,18 @@
 'use client'
 
-import { RouteErrorPage } from '@/components/ui/route-error-page'
+import { RouteErrorPage, type RouteErrorBoundaryProps } from '@/components/ui/route-error-page'
 import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 export default function AdminPageError({
   error,
   reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+  retry,
+}: RouteErrorBoundaryProps) {
   return (
     <RouteErrorPage
       error={error}
       reset={reset}
+      retry={retry}
       event="ui.admin.error"
       title={SYSTEM_COPY.errors.admin.title}
       description={SYSTEM_COPY.errors.admin.body}

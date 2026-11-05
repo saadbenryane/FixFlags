@@ -1,6 +1,7 @@
 import { requireRepairReader } from '@/lib/sites/repair-reader-access'
 import { NextResponse } from 'next/server'
-import { repairBriefSchema, repairContextHashSchema, repairObservationOffsetSchema } from '@/lib/sites/repair-brief-contract'
+import { repairBriefSchema, repairContextHashSchema, repairObservationOffsetSchema, repairDocumentOffsetSchema } from '@/lib/sites/repair-brief-contract'
+import { deliverSiteRepairBrief } from '@/lib/sites/repair-delivery'
 import { loadSiteRepairEvidence } from '@/lib/sites/application/repair-evidence'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
@@ -29,12 +30,18 @@ async function readBrief(request: Request, context: { params: Promise<{ siteId: 
   const query = new URL(request.url).searchParams
   const expected = query.get('contextHash')
   const observationOffset = Number(query.get('observationOffset') ?? 0)
+  const documentOffset = Number(query.get('documentOffset') ?? 0)
+  const expectedDocumentHash = query.get('documentHash')
   if (expected !== null && !repairContextHashSchema.safeParse(expected).success) return apiError('Invalid context revision.', 400)
   if (!repairObservationOffsetSchema.safeParse(observationOffset).success || observationOffset > 0 && !expected)
     return apiError('Continuing observations requires a valid page and context revision.', 400)
+  if (!repairDocumentOffsetSchema.safeParse(documentOffset).success ||
+    expectedDocumentHash !== null && !repairContextHashSchema.safeParse(expectedDocumentHash).success ||
+    documentOffset > 0 && (!expected || !expectedDocumentHash))
+    return apiError('Continuing a repair document requires a valid offset and both revisions.', 400)
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) return apiError('Flag not found', 404)
-  const brief = buildSiteRepairBrief(site.siteId, flag, getAppUrl(), flagId, observationOffset, expected ?? undefined)
+  let brief = buildSiteRepairBrief(site.siteId, flag, getAppUrl(), flagId, observationOffset, expected ?? undefined)
   const view = query.get('view')
   if (view !== null && view !== 'capture') return apiError('Invalid repair evidence view.', 400)
   if (view === 'capture' && !expected) return apiError('Reading a capture requires its repair context revision.', 400)
@@ -46,7 +53,7 @@ async function readBrief(request: Request, context: { params: Promise<{ siteId: 
       return new NextResponse(new Uint8Array(attached.image), { headers: { 'Content-Type': 'image/png',
         'X-Content-Type-Options': 'nosniff', 'ETag': `"${attached.evidence.capture.sha256}"` } })
     }
-    return NextResponse.json(repairBriefSchema.parse({ ...brief, evidence: attached.evidence }))
+    brief = repairBriefSchema.parse({ ...brief, evidence: attached.evidence })
   }
-  return NextResponse.json(brief)
+  return NextResponse.json(deliverSiteRepairBrief(brief, { documentOffset, expectedDocumentHash: expectedDocumentHash ?? undefined }))
 }

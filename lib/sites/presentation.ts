@@ -98,6 +98,8 @@ export type SitePresentation = {
   result: {
     state: SiteResultState
     label: string
+    /** Current uptime can determine attention independently of analysis Flags. */
+    source?: 'uptime'
   }
   monitoring: {
     state: MonitoringState
@@ -172,7 +174,7 @@ export function resultPresentation(input: {
   assessmentResult?: import('./assessment').SiteAssessment['result']
   uptime?: ReturnType<typeof uptimeAssessment>
 }): SitePresentation['result'] {
-  if (input.uptime?.state === 'FLAG') return { state: 'flags', label:
+  if (input.uptime?.state === 'FLAG') return { state: 'flags', source: 'uptime', label:
     input.uptime.observedState === 'offline' ? UPTIME_COPY.states.offline : SITE_BOARD_COPY.needsAttention }
   const inFlight = Boolean(input.auditStatus && !['COMPLETED', 'FAILED'].includes(input.auditStatus))
   let state: SiteResultState
@@ -213,6 +215,7 @@ export function compareFlagPriority(
 }
 
 export function siteSortRank(site: SitePresentation): number {
+  if (site.result.source === 'uptime') return -1
   if (site.result.state === 'failed' || site.run.state === 'failed' || site.run.state === 'interrupted' || site.result.state === 'checking') return 0
   if (site.flags.fixFirstCount > 0 || site.result.state === 'flags' && site.flags.count === 0) return 1
   if (site.result.state === 'stale' || site.result.state === 'could_not_verify' ||
@@ -254,6 +257,7 @@ export function runPresentation(input: {
  * evidence is current and clear. Every other result keeps its own label.
  */
 export function customerAttention(site: Pick<SitePresentation, 'result' | 'flags'>): CustomerAttention {
+  if (site.result.source === 'uptime') return { text: site.result.label, tone: 'attention' }
   if (site.flags.count > 0) return { text: site.flags.label, tone: 'attention' }
   if (site.result.state === 'flags') return { text: site.result.label, tone: 'attention' }
   if (site.result.state === 'clear') return { text: site.flags.label, tone: 'clear' }
@@ -323,14 +327,15 @@ export function verificationResult(input: {
   verificationAuditId?: string | null
 }): VerificationResultLabel {
   if (!input.outcome) return input.verifying ? 'verifying' : input.verificationAuditId ? 'could_not_verify' : 'unverified'
-  if (input.outcome === 'IMPROVED') return 'verified'
-  if (input.outcome === 'UNCHANGED') return 'still_open'
-  if (input.outcome === 'REGRESSED') return 'regressed'
   if (input.comparable === false) {
     const reason = (input.reason ?? '').toLowerCase()
     if (MISSING_EVIDENCE_REASONS.some((needle) => reason.includes(needle))) return 'missing_evidence'
     return 'incomparable_scope'
   }
+  if (input.comparable !== true) return 'could_not_verify'
+  if (input.outcome === 'IMPROVED') return 'verified'
+  if (input.outcome === 'UNCHANGED') return 'still_open'
+  if (input.outcome === 'REGRESSED') return 'regressed'
   return 'could_not_verify'
 }
 

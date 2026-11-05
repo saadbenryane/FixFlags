@@ -1,17 +1,27 @@
-import type { Audit, AuditExecutionTask } from '@prisma/client'
+import type { AuditExecutionTask } from '@prisma/client'
 import type { TaskArtifact, TaskInput, TaskKind } from './contracts'
 import type { Prisma } from '@prisma/client'
 import type { NativeHttpEvidence } from '../native-http-evidence'
 
+/** Shared execution metadata, not a copy of the Audit's growing evidence.
+ * Handlers read their admitted observations from dependencies or scoped reads. */
+export const taskAuditSelect = {
+  id: true, url: true, status: true, parentId: true, userId: true, projectId: true, isPublic: true,
+  createdAt: true, startedAt: true, recoveryUntil: true, executionSpec: true, includeAi: true,
+  productContract: true, reviewDepth: true, scanAccessEncrypted: true,
+} satisfies Prisma.AuditSelect
+export type TaskAudit = Prisma.AuditGetPayload<{ select: typeof taskAuditSelect }>
+export type TaskDependency = Pick<AuditExecutionTask, 'id' | 'auditId' | 'targetKey' | 'workKind' | 'workState' | 'workInput' | 'workResult'>
+
 export type TaskContext = {
-  audit: Audit; task: AuditExecutionTask; input: TaskInput; deadline: number;
-  dependencies: Map<string, AuditExecutionTask>;
+  audit: TaskAudit; task: AuditExecutionTask; input: TaskInput; deadline: number;
+  dependencies: Map<string, TaskDependency>;
   signal?: AbortSignal;
   replayHttpEvidence?: NativeHttpEvidence;
 }
 export type TaskHandler = {
   kind: TaskKind; replay: 'read_only' | 'idempotent' | 'protected';
-  timeoutMs: number | ((audit: Audit, input: TaskInput) => number); evaluate(context: TaskContext): Promise<TaskArtifact>;
+  timeoutMs: number | ((audit: TaskAudit, input: TaskInput) => number); evaluate(context: TaskContext): Promise<TaskArtifact>;
   continuation?: boolean;
   validateResult(artifact: TaskArtifact): void;
   commit?(context: TaskContext, artifact: TaskArtifact, tx: Prisma.TransactionClient): Promise<void | TaskArtifact>;

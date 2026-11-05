@@ -3,7 +3,7 @@ import { applyCardEvidence } from '../card-evidence'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import type { SiteCheckResult } from '@/lib/sites/check-results'
+import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 
 const pageUrl = 'https://example.com/'

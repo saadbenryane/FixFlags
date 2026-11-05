@@ -28,5 +28,5 @@ export const MCP_SETUP_COPY = {
   guide: 'Read the MCP guide',
   copy: 'Copy',
   copied: 'Copied',
-  manualCopy: 'Copy was blocked. The text is selected so you can copy it manually.',
+  manualCopy: 'Copying could not be confirmed. The text is selected so you can copy it manually.',
 } as const

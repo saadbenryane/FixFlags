@@ -77,3 +77,30 @@ it('takes live activity from the Site analysis rather than a retained page statu
   expect(screen.queryByText(C.pageWaiting)).not.toBeInTheDocument()
   expect(screen.getByText(C.checkIncomplete)).toBeVisible()
 })
+
+it('opens the exact recorded page independently of its capture and repair destination', () => {
+  const url = 'https://example.com/plans/?locale=fr#annual'
+  const flag = { id: 'flag', title: 'The purchase control failed', href: '/sites/site/flags/flag' }
+  render(<SitePageResults linkPages pages={[{ ...page('/plans', 'PARTIAL', [flag]), url }]} />)
+  const visit = screen.getByRole('link', { name: C.open(url) })
+  expect(visit).toHaveAttribute('href', url)
+  expect(visit).toHaveAttribute('target', '_blank')
+  expect(visit).toHaveAttribute('rel', 'noopener noreferrer')
+  expect(visit).toHaveAttribute('title', url)
+  expect(screen.getByRole('link', { name: C.open(flag.title) })).toHaveAttribute('href', flag.href)
+  expect(within(card('/plans')).getByText(C.checkIncomplete)).toBeVisible()
+})
+
+it.each(['javascript:alert(1)', 'data:text/html,example', 'https://user:secret@example.com/', '#section'])('keeps an unsafe or incomplete recorded address as text: %s', url => {
+  render(<SitePageResults linkPages pages={[{ ...page('/recorded', 'UNKNOWN'), url }]} />)
+  expect(screen.getByText('/recorded')).toBeVisible()
+  expect(screen.queryByRole('link')).not.toBeInTheDocument()
+})
+
+it('offers recorded page navigation from the application Pages workspace even when no capture exists', () => {
+  const view = siteViewFixture()
+  view.checkedPages = [{ url: 'https://example.com/plans?locale=fr', title: 'Plans', status: 'COMPLETED', checkedAt: '2026-11-03T00:00:00Z' }]
+  render(<SitePages siteId="fixture-site" view={view} onOpenFlag={() => {}} />)
+  fireEvent.click(screen.getByText(C.otherPages(1), { selector: 'summary' }))
+  expect(screen.getByRole('link', { name: C.open(view.checkedPages[0].url) })).toHaveAttribute('href', view.checkedPages[0].url)
+})

@@ -30,7 +30,7 @@ run('Watch retry backlog through the installed scheduler', () => {
 
   async function cohort(count: number) {
     const now = new Date(), userId = randomUUID()
-    await prisma.user.create({ data: { id: userId, email: userId + '@notification.test', role: 'admin' } })
+    await prisma.user.create({ data: { id: userId, email: userId + '@notification.test', emailVerified: true, role: 'admin' } })
     users.push(userId)
     const ids = Array.from({ length: count }, () => randomUUID())
     await prisma.project.createMany({ data: ids.map(id => ({ id: 'site-' + id, userId, name: 'Notification fixture',
@@ -45,6 +45,24 @@ run('Watch retry backlog through the installed scheduler', () => {
       problem: 'Content policy is missing', evidence: 'Controlled missing header', whyItMatters: 'Policy is absent', fix: 'Add the policy' })) })
     return { ids, now }
   }
+
+  it('selects verified owners before limiting retries and retains an unverified backlog for later', async () => {
+    const earlier = await cohort(3), later = await cohort(1)
+    const pending = await prisma.audit.findUniqueOrThrow({ where: { id: earlier.ids[0] } })
+    await prisma.user.update({ where: { id: pending.userId! }, data: { emailVerified: false } })
+    provider.send.mockReset().mockImplementation(async () => ({ data: { id: randomUUID() }, error: null }))
+    expect(await retryPendingWatchNotifications(1)).toBe(1)
+    expect(provider.send).toHaveBeenCalledOnce()
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: later.ids[0] } }))
+      .toMatchObject({ watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 })
+    expect(await prisma.audit.count({ where: { id: { in: earlier.ids },
+      watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0 } })).toBe(3)
+    await prisma.user.update({ where: { id: pending.userId! }, data: { emailVerified: true } })
+    expect(await retryPendingWatchNotifications(3)).toBe(3)
+    expect(provider.send).toHaveBeenCalledTimes(4)
+    expect(await prisma.audit.count({ where: { id: { in: earlier.ids },
+      watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 } })).toBe(3)
+  })
 
   it.each(['already-paused', 'changed-during-classification'] as const)('suppresses Watch alerts when monitoring is %s without erasing the findings', async phase => {
     const { ids: [id] } = await cohort(1)

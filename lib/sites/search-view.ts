@@ -3,7 +3,8 @@ import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import type { BoardCardView } from './board-card'
 import { siteCoverageIsStale } from './evidence-freshness'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
-import { checkResultSourceLabel } from './check-results'
+import { checkResultSourceLabel } from './check-result-presentation'
+import { coverageObservationTimes } from './coverage'
 
 /** One customer projection of persisted Search facts, shared by HTTP and MCP. */
 export function applySearchCardEvidence(card: BoardCardView, executions: Array<{ targetKey: string; detail: unknown }>, inFlight: boolean, now = new Date(), coverageMaxAgeMs?: number) {
@@ -22,8 +23,8 @@ export function applySearchCardEvidence(card: BoardCardView, executions: Array<{
   // A confirmed problem stays visible even when other Search work is missing.
   if (card.openFlagCount > 0) return
   card.evidenced = evidence.evidenced
-  card.checkedAt = evidence.checkedAt
-  const stale = receipts.some(receipt => siteCoverageIsStale(receipt.collectedAt, now, coverageMaxAgeMs))
+  card.checkedAt = coverageObservationTimes(executions).get('search') ?? evidence.checkedAt
+  const stale = siteCoverageIsStale(card.checkedAt, now, coverageMaxAgeMs)
   const clear = !inFlight && card.state === 'healthy' && complete && !excluded && !card.incompleteReason && !stale
   if (stale) {
     card.state = 'unknown'

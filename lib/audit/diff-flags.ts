@@ -21,8 +21,15 @@ import { analysisEnvironmentWhere, siteAnalysisAuditWhere } from '@/lib/sites/ap
 import { FLAG_COMPARISON_TARGET, flagComparisonSchema, readFlagComparison, type FlagDiffSummary } from './flag-comparison'
 import { preparePublishedSiteAssessment } from '@/lib/sites/application/recorded-assessment'
 import { hasUnreadableStoredSupportingObservations } from './flag-observations'
+import { loadAcceptedFlagRecoveries } from '@/lib/sites/application/accepted-flag-recoveries'
+import { loadIncidentRecoveryProofs } from '@/lib/sites/application/incident-proofs'
 
 export type { FlagDiffSummaryItem } from './flag-types'
+
+function summaryItem(flag: Flag): FlagDiffSummaryItem {
+  return { id: flag.id, checkId: flag.checkId, problem: flag.problem, rubric: flag.rubric, severity: flag.severity,
+    status: flag.status, confidence: flag.confidence, impactTag: flag.impactTag, attentionPolicy: flag.attentionPolicy, pageUrl: flag.pageUrl }
+}
 
 type FlagRow = {
   id: string
@@ -152,7 +159,7 @@ function pageAbsenceCheck(input: Omit<Parameters<typeof isPageComparableAbsence>
   }
 }
 
-async function loadAuditCoverage(auditId: string | null): Promise<{
+async function loadAuditCoverage(auditId: string | null, database: Prisma.TransactionClient = prisma): Promise<{
   status: string | undefined
   reportCompleteness: ReportCompleteness | null | undefined
   pages: ChildPageCoverage[]
@@ -165,7 +172,7 @@ async function loadAuditCoverage(auditId: string | null): Promise<{
   comparison?: FlagDiffSummary
 }> {
   if (!auditId) return { status: undefined, reportCompleteness: null, pages: [] }
-  const audit = await prisma.audit.findUnique({
+  const audit = await database.audit.findUnique({
     where: { id: auditId },
     select: {
       status: true,
@@ -194,7 +201,7 @@ async function loadAuditCoverage(auditId: string | null): Promise<{
 async function diagnosticBaseline(input: {
   auditId: string; parentId: string | null; child: Awaited<ReturnType<typeof loadAuditCoverage>>;
   parentFlags: Flag[]; currentFlags: Flag[];
-}): Promise<Flag[]> {
+}, database: Prisma.TransactionClient = prisma): Promise<Flag[]> {
   const spec = readExecutionSpec(input.child.executionSpec)
   if (!spec || !['SITE', 'CATEGORY'].includes(spec.scope) || !input.child.projectId || !input.child.createdAt || input.child.parentId !== input.parentId) return input.parentFlags
   // An incident belongs to its Site, including discoveries from a targeted or
@@ -205,7 +212,7 @@ async function diagnosticBaseline(input: {
     createdAt: { lt: input.child.createdAt }, AND: [siteAnalysisAuditWhere, analysisEnvironmentWhere(spec.environment)],
   } satisfies Prisma.AuditWhereInput
   const admitted = (flag: Flag) => categoryAdmitsFlag(spec, flag)
-  const history = await prisma.improvement.findMany({
+  const history = await database.improvement.findMany({
     where: { projectId: input.child.projectId, outcomeId: null },
     select: { occurrences: {
       where: { audit: historyAudit },
@@ -216,7 +223,7 @@ async function diagnosticBaseline(input: {
   const parentFlags = input.parentFlags.filter(admitted)
   const keys = parentMatchKeySet(parentFlags), currentKeys = parentMatchKeySet(input.currentFlags)
   const baseline = [...parentFlags]
-  const sourceFlags = spec.category && spec.category.sourceAuditId !== input.parentId ? await prisma.flag.findMany({
+  const sourceFlags = spec.category && spec.category.sourceAuditId !== input.parentId ? await database.flag.findMany({
     where: { auditId: spec.category.sourceAuditId, audit: { projectId: input.child.projectId, AND: [analysisEnvironmentWhere(spec.environment)] } },
   }) : []
   for (const previous of [...sourceFlags, ...history.flatMap(improvement => improvement.occurrences[0]?.flag ?? [])]) {
@@ -232,7 +239,7 @@ async function diagnosticBaseline(input: {
   // newer occurrence cannot stand in for an older page, device or interaction,
   // including an older repair's source. Read those Flags once, independently
   // of how many attempts or sibling findings their source Audits contain.
-  const unresolved = await prisma.flag.findMany({ where: { status: { in: ['OPEN', 'REGRESSED'] },
+  const unresolved = await database.flag.findMany({ where: { status: { in: ['OPEN', 'REGRESSED'] },
     improvementOccurrence: { improvement: { projectId: input.child.projectId, outcomeId: null } },
     audit: historyAudit } })
   for (const previous of unresolved) {
@@ -241,6 +248,32 @@ async function diagnosticBaseline(input: {
     baseline.push(previous); ids.add(previous.id)
   }
   return baseline
+}
+
+/** A comparison describes the captured failure at its own admission, while a
+ * later accepted recovery still owns the live source's lifecycle projection. */
+async function comparisonSources(parentRows: Flag[], currentRows: Flag[], child: Awaited<ReturnType<typeof loadAuditCoverage>>,
+  auditId: string, database: Prisma.TransactionClient = prisma) {
+  const retainedSourceIds = new Set([...parentRows, ...currentRows].filter(flag => flag.status === 'IGNORED').map(flag => flag.id))
+  if (!child.projectId || !child.createdAt) return { parentFlags: parentRows, monitoringFlags: currentRows, retainedSourceIds }
+  const flags = [...new Map([...parentRows, ...currentRows].map(flag => [flag.id, flag])).values()]
+  const native = (await loadIncidentRecoveryProofs([{ projectId: child.projectId, flags }], database)).get(child.projectId)
+  const legacy = await loadAcceptedFlagRecoveries(child.projectId, flags.filter(flag => flag.status === 'OPEN'), { database })
+  for (const flag of flags) if (native?.hasFlag(flag) || legacy.has(flag.id)) retainedSourceIds.add(flag.id)
+  const prior = new Map([...legacy].filter(([, proof]) => proof.completedAt && proof.completedAt <= child.createdAt!))
+  const older = parentRows.filter(flag => legacy.has(flag.id) && !prior.has(flag.id))
+  if (older.length) for (const [id, proof] of await loadAcceptedFlagRecoveries(child.projectId, older, { database, before: child.createdAt })) prior.set(id, proof)
+  const parentFlags = parentRows.map(flag => {
+    const proof = prior.get(flag.id)
+    if (proof) return { ...flag, status: 'FIXED' as const, resolvedInId: proof.auditId }
+    if (flag.status !== 'FIXED') return flag
+    const recoveredAt = flag.resolvedInId && native?.hasFlag(flag) ? native.get(flag.resolvedInId) : undefined
+    return recoveredAt && (flag.resolvedInId === auditId || recoveredAt <= child.createdAt!) ? flag : { ...flag, status: 'OPEN' as const }
+  })
+  // A Flag is a captured failure. A repair completed later cannot turn that
+  // observation into a passing result in an unfinished historical report.
+  const monitoringFlags = currentRows.map(flag => ['FIXED', 'REGRESSED'].includes(flag.status) ? { ...flag, status: 'OPEN' as const } : flag)
+  return { parentFlags, monitoringFlags, retainedSourceIds }
 }
 
 /** A category receipt describes only the immutable page and responsibility
@@ -280,82 +313,88 @@ export async function diffFlagsAgainstParent(
   monitoringAuditId: string,
   parentAuditId: string | null
 ): Promise<void> {
-  const [parentRows, monitoringRows, child] = await Promise.all([
-    parentAuditId ? prisma.flag.findMany({
-      where: { auditId: parentAuditId },
-    }) : Promise.resolve([]),
-    prisma.flag.findMany({
-      where: { auditId: monitoringAuditId },
-    }),
-    loadAuditCoverage(monitoringAuditId),
-  ])
-  // Committed Outcome assessments own bound incidents. A broad report diff
-  // cannot reopen or resolve those same Flags through a second state machine.
-  const monitoringFlags = monitoringRows.filter(flag => !outcomeFlagOwner(flag.fingerprint))
-  const spec = readExecutionSpec(child.executionSpec)
-  const parentFlags = await diagnosticBaseline({ auditId: monitoringAuditId, parentId: parentAuditId, child,
-    parentFlags: parentRows.filter(flag => !outcomeFlagOwner(flag.fingerprint) && (!spec?.category || Object.hasOwn(spec.checks, baseCheckId(flag.checkId) ?? ''))), currentFlags: monitoringFlags })
+  await executionTransaction(async database => {
+    const [parentRows, monitoringRows, child] = await Promise.all([
+      parentAuditId ? database.flag.findMany({
+        where: { auditId: parentAuditId },
+      }) : Promise.resolve([]),
+      database.flag.findMany({
+        where: { auditId: monitoringAuditId },
+      }),
+      loadAuditCoverage(monitoringAuditId, database),
+    ])
+    if (child.comparison && child.parentId === parentAuditId) return
+    // Committed Outcome assessments own bound incidents. A broad report diff
+    // cannot reopen or resolve those same Flags through a second state machine.
+    const currentFlags = monitoringRows.filter(flag => !outcomeFlagOwner(flag.fingerprint))
+    const spec = readExecutionSpec(child.executionSpec)
+    const baseline = await diagnosticBaseline({ auditId: monitoringAuditId, parentId: parentAuditId, child,
+      parentFlags: parentRows.filter(flag => !outcomeFlagOwner(flag.fingerprint) && (!spec?.category || Object.hasOwn(spec.checks, baseCheckId(flag.checkId) ?? ''))), currentFlags }, database)
+    const { parentFlags, monitoringFlags, retainedSourceIds } = await comparisonSources(baseline, currentFlags, child, monitoringAuditId, database)
 
-  const monitoringByKey = indexByMatchKeys(monitoringFlags)
-  const recovery = spec?.engine === 'progressive-v1' ? (await loadRecoveryExecutions([{ auditId: monitoringAuditId,
-    flags: parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))) }])).get(monitoringAuditId) ?? [] : []
-  const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
-    reportCompleteness: child.reportCompleteness, childPages: child.pages,
-    auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery })
-  const updates: Array<{
-    id: string
-    data: { status: FlagStatus; resolvedInId?: string | null }
-  }> = []
-  const monitoringUpdates = new Map<string, typeof updates[number]>()
+    const monitoringByKey = indexByMatchKeys(monitoringFlags)
+    const recovery = spec?.engine === 'progressive-v1' ? (await loadRecoveryExecutions([{ auditId: monitoringAuditId,
+      flags: parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))) }], database)).get(monitoringAuditId) ?? [] : []
+    const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
+      reportCompleteness: child.reportCompleteness, childPages: child.pages,
+      auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery })
+    const updates: Array<{
+      id: string
+      data: { status: FlagStatus; resolvedInId?: string | null }
+    }> = []
+    const sources = new Map([...baseline, ...currentFlags].map(flag => [flag.id, flag]))
+    const monitoringUpdates = new Map<string, typeof updates[number]>()
 
-  for (const parentFlag of parentFlags) {
-    const monitoringFlag = observationMatchKeys(parentFlag)
-      .map((key) => monitoringByKey.get(key))
-      .find(Boolean)
+    for (const parentFlag of parentFlags) {
+      const monitoringFlag = observationMatchKeys(parentFlag)
+        .map((key) => monitoringByKey.get(key))
+        .find(Boolean)
 
-    if (!monitoringFlag) {
-      if (comparableAbsence(parentFlag)) {
-        updates.push({
-          id: parentFlag.id,
-          data: { status: 'FIXED', resolvedInId: monitoringAuditId },
-        })
+      if (!monitoringFlag) {
+        if (parentFlag.status !== 'FIXED' && comparableAbsence(parentFlag)) {
+          updates.push({
+            id: parentFlag.id,
+            data: { status: 'FIXED', resolvedInId: monitoringAuditId },
+          })
+        }
+        continue
       }
-      continue
+
+      const status = resolveMonitoringFlagStatus({
+        parentStatus: parentFlag.status,
+        parentSeverity: parentFlag.severity,
+        monitoringSeverity: monitoringFlag.severity,
+        stillFails: true,
+      })
+
+      // Several original conditions can share one current Flag. A later
+      // recurrence or severity increase must survive any earlier OPEN match.
+      const pending = monitoringUpdates.get(monitoringFlag.id)
+      if (!pending) {
+        const update = {
+          id: monitoringFlag.id,
+          data: { status, ...(sources.get(monitoringFlag.id)?.status === 'FIXED' ? { resolvedInId: null } : {}) },
+        }
+        monitoringUpdates.set(monitoringFlag.id, update)
+        updates.push(update)
+      } else if (status === 'REGRESSED') pending.data.status = status
+      // The new observation owns its recurrence or severity increase. Its
+      // still-failing ancestor keeps its captured lifecycle until recovery.
     }
 
-    const status = resolveMonitoringFlagStatus({
-      parentStatus: parentFlag.status,
-      parentSeverity: parentFlag.severity,
-      monitoringSeverity: monitoringFlag.severity,
-      stillFails: true,
-    })
-
-    // Several original conditions can share one current Flag. A later
-    // recurrence or severity increase must survive any earlier OPEN match.
-    const pending = monitoringUpdates.get(monitoringFlag.id)
-    if (!pending) {
-      const update = {
-        id: monitoringFlag.id,
-        data: { status },
-      }
-      monitoringUpdates.set(monitoringFlag.id, update)
-      updates.push(update)
-    } else if (status === 'REGRESSED') pending.data.status = status
-    if (parentFlag.status === 'FIXED') continue
-    updates.push({
-      id: parentFlag.id,
-      data: {
-        status,
-        resolvedInId: status === 'FIXED' ? monitoringAuditId : null,
-      },
-    })
-  }
-
-  if (updates.length > 0) {
-    await executionTransaction(async tx => Promise.all(updates.map((update) =>
-        tx.flag.update({ where: { id: update.id }, data: update.data })
-      )))
-  }
+    // Independent runs acquire shared source rows in the same order. Preserve
+    // already-correct projections without unnecessary writes or row contention.
+    for (const update of updates.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+      if (retainedSourceIds.has(update.id)) continue
+      const source = sources.get(update.id)
+      // Older writers also projected later regressions onto their ancestors.
+      // Reconstruct the historical comparison without revoking that attention.
+      if (source?.status === 'REGRESSED' && update.data.status === 'OPEN') continue
+      if (source?.status === update.data.status &&
+        (update.data.resolvedInId === undefined || source.resolvedInId === update.data.resolvedInId)) continue
+      await database.flag.update({ where: { id: update.id }, data: update.data })
+    }
+  }, { isolationLevel: 'RepeatableRead' })
 }
 
 export type FlagDiffSummaryBucket = 'fixed' | 'unchanged' | 'regressed'
@@ -448,10 +487,13 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
   const diagnostic = (flag: typeof parentRows[number]) => !outcomeFlagOwner(flag.fingerprint) && !assessedFlagIds.has(flag.id) &&
     categoryAdmitsFlag(spec, flag)
   const monitoringFlags = monitoringRows.filter(diagnostic)
-  const parentFlags = await diagnosticBaseline({ auditId: monitoringAuditId, parentId: parentAuditId, child,
+  const baseline = await diagnosticBaseline({ auditId: monitoringAuditId, parentId: parentAuditId, child,
     parentFlags: parentRows.filter(diagnostic), currentFlags: monitoringFlags })
+  const projected = await comparisonSources(baseline, monitoringFlags, child, monitoringAuditId)
+  const parentFlags = projected.parentFlags
+  const observedFlags = projected.monitoringFlags
 
-  const monitoringByKey = indexByMatchKeys(monitoringFlags)
+  const monitoringByKey = indexByMatchKeys(observedFlags)
   const recovery = spec?.engine === 'progressive-v1' ? (await loadRecoveryExecutions([{ auditId: monitoringAuditId,
     flags: parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))) }])).get(monitoringAuditId) ?? [] : []
   const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
@@ -482,28 +524,18 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
     const monitoringFlag = observationMatchKeys(parentFlag)
       .map((matchKey) => monitoringByKey.get(matchKey))
       .find(Boolean)
-    const item: FlagDiffSummaryItem = {
-      id: parentFlag.id,
-      checkId: parentFlag.checkId,
-      problem: parentFlag.problem,
-      rubric: parentFlag.rubric,
-      severity: parentFlag.severity,
-      status: parentFlag.status,
-      confidence: parentFlag.confidence,
-      impactTag: parentFlag.impactTag,
-      attentionPolicy: parentFlag.attentionPolicy,
-      pageUrl: parentFlag.pageUrl,
-    }
+    const item = summaryItem(parentFlag)
 
     if (!monitoringFlag) {
-      const unverified = parentGroups.get(key)!.filter(original => !comparableAbsence(original))
+      const unresolved = parentGroups.get(key)!.filter(original => original.status !== 'IGNORED' &&
+        (original.status !== 'FIXED' || original.resolvedInId === monitoringAuditId))
+      if (!unresolved.length) continue
+      const unverified = unresolved.filter(original => !comparableAbsence(original))
       if (unverified.length === 0) {
-        fixed.push(item)
+        fixed.push(summaryItem(unresolved[0]))
       } else {
         const original = unverified.find(flag => ['OPEN', 'REGRESSED'].includes(flag.status)) ?? unverified[0]
-        inconclusive.push({ ...item, id: original.id, checkId: original.checkId, problem: original.problem,
-          severity: original.severity, status: original.status, rubric: original.rubric,
-          confidence: original.confidence, impactTag: original.impactTag, attentionPolicy: original.attentionPolicy, pageUrl: original.pageUrl })
+        inconclusive.push(summaryItem(original))
       }
       continue
     }
@@ -552,7 +584,7 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
     flags: parentFlags,
   })
 
-  for (const monitoringFlag of monitoringFlags) {
+  for (const monitoringFlag of observedFlags) {
     if (observationMatchKeys(monitoringFlag).some((key) => parentKeys.has(key))) continue
     // The matching side is also keyed by base check, so a per-page variant of
     // a parent check can never appear here as a brand-new issue.

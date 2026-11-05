@@ -31,7 +31,8 @@ export function assessRequiredBindings(
   const required = bindings.filter((binding) => binding.required).map((binding) => binding.key)
   const byKey = new Map(observations.map((observation) => {
     const binding = bindings.find(item => item.key === observation.key)
-    if (binding?.version !== undefined && binding.version !== (observation.version ?? 1)) {
+    // Missing correspondence is unknown, including the first binding revision.
+    if (binding?.version !== undefined && binding.version !== observation.version) {
       return [observation.key, { ...observation, disposition: 'BLOCKED' as const, reason: 'binding_changed' }] as const
     }
     return [observation.key, observation] as const

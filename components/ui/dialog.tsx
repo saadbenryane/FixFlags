@@ -58,7 +58,7 @@ const DialogContent = React.forwardRef<
   DialogContentProps
 >(({ className, children, header, bodyClassName, initialFocus = 'automatic', onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
   const headerRef = React.useRef<HTMLDivElement>(null)
-  const openerRef = React.useRef<HTMLElement | null>(null)
+  const openerRef = React.useRef<{ element: HTMLElement | null; context: HTMLElement | null; href: string } | null>(null)
   const [heading, setHeading] = React.useState<HTMLDivElement | null>(null)
   const [headingScrollable, setHeadingScrollable] = React.useState(false)
   const [headingLabel, setHeadingLabel] = React.useState<string>()
@@ -87,7 +87,8 @@ const DialogContent = React.forwardRef<
         className
       )}
       onOpenAutoFocus={event => {
-        openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        const element = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        openerRef.current = { element, context: element?.closest<HTMLElement>('[role="dialog"], main') ?? null, href: window.location.href }
         onOpenAutoFocus?.(event)
         if (!event.defaultPrevented && initialFocus === 'title') {
           const title = headerRef.current?.querySelector<HTMLElement>('[data-dialog-title]')
@@ -96,10 +97,22 @@ const DialogContent = React.forwardRef<
       }}
       onCloseAutoFocus={event => {
         onCloseAutoFocus?.(event)
-        const opener = openerRef.current
-        if (!event.defaultPrevented && opener?.isConnected && opener !== document.body && !opener.matches(':disabled,[aria-disabled="true"]')) {
+        if (event.defaultPrevented) return
+        const origin = openerRef.current
+        const opener = origin?.element
+        if (opener?.isConnected && opener !== document.body && !opener.matches(':disabled,[aria-disabled="true"]')) {
           event.preventDefault()
           opener.focus()
+          return
+        }
+        const context = origin?.context
+        if (origin?.href !== window.location.href || !context?.isConnected) return
+        const target = context.matches('[role="dialog"]')
+          ? context.querySelector<HTMLElement>('[data-dialog-title]') ?? context
+          : context.querySelector<HTMLElement>('h1[tabindex]') ?? context
+        if (target.hasAttribute('tabindex')) {
+          event.preventDefault()
+          target.focus()
         }
       }}
       {...props}

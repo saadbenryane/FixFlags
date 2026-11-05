@@ -39,12 +39,13 @@ const sheetVariants = {
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   side?: keyof typeof sheetVariants.side
+  header?: React.ReactNode
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, children, header, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
@@ -52,13 +53,17 @@ const SheetContent = React.forwardRef<
       className={cn(
         "fixed z-modal gap-4 glass-surface-elevated p-6 shadow-card transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-300",
         sheetVariants.side[side],
+        header != null && "flex flex-col gap-0 overflow-hidden p-0",
         className
       )}
       {...props}
     >
-      {children}
+      {header != null ? <>
+        <div className="max-h-[50dvh] shrink-0 overflow-y-auto overscroll-contain px-5 pb-4 pr-16 pt-5">{header}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5">{children}</div>
+      </> : children}
       <SheetClose className="absolute right-2 top-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none">
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden />
         <span className="sr-only">Close</span>
       </SheetClose>
     </DialogPrimitive.Content>

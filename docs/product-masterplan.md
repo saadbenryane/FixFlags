@@ -1,553 +1,288 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-11-03
-supersedes: []
+reviewed_at: 2026-11-04
+supersedes: [docs/product-masterplan-history-2026-11-03.md]
 ---
 
 # FixFlags completion plan
 
-FixFlags must carry an owner from an ordinary website URL to a useful finding, an attributable repair, independent recovery and dependable monitoring. The remaining work is to integrate and prove that whole relationship, finish the information hierarchy and close operational gaps. Preserve the substantial execution, evidence, security and interface foundation already built.
+FixFlags must carry an ordinary website URL through useful discovery, meaningful Flags, actionable repair, independent verification and automatic continuing monitoring. The customer should understand what is watched, what needs attention, what to do next and whether a repair worked. Complexity belongs in the implementation and progressively disclosed evidence.
 
-This file owns the current delivery order and acceptance requirements. [PRODUCT.md](../PRODUCT.md) describes implementation, [evidence rules](../knowledge/evidence-rules.md) govern conclusions, and [DESIGN.md](../DESIGN.md) governs reusable presentation. The [preceding plan](product-masterplan-history-2026-10-29.md) preserves every earlier checkpoint, failed candidate and historical delivery sequence. Those records do not certify this candidate or define another active backlog.
+The immediate work is to finish and integrate the existing foundation, prove the actual advertised capabilities, complete the customer experience and establish dependable unattended operation. Preserve the sound execution, Search, Signup, Accessibility, Tracking, evidence, authorization and recovery work. All delivery packages below are required for this objective. Their order expresses dependencies, not permission to defer necessary functionality.
+
+This is the execution home. Product purpose, evidence semantics and visual rules remain in their existing canonical sources. The [November 3 plan](product-masterplan-history-2026-11-03.md) and [October 29 history](product-masterplan-history-2026-10-29.md) preserve previous findings and receipts. They are historical evidence, not a second backlog. Marketing presentation remains a separate workstream; its actual coverage catalog remains a product requirement.
 
 ## Current scope and completion standard
 
-Complete the website app with one-website open-beta access, eight coverage areas, persistent Site identity, category and page evidence, useful Flag repair, comparable verification, monitoring, HTTP uptime, safe automatic-account lifecycle and acknowledged Site removal. Keep whole-site visibility, individual Flag actions, category depth, Pages and explicit multi-Flag selection. Prioritization must preserve the owner's agency.
+The supported website product includes URL entry, persistent Site claiming, all eight coverage areas, individual and grouped Flag repair, category and page depth, comparable verification, recurrence, automatic HTTP uptime, scheduled analysis, notifications, authorized account checks, account settings and acknowledged Site removal. Preserve existing commercial policy, subscriptions, credits, saved connections and historical reports. Do not open paid enrollment, public machine-client discovery or another gated integration merely to complete a demonstration.
 
-Customer-facing MCP/CLI discovery, repository execution, paid enrollment and unvalidated integrations retain their independent release gates. Existing compatibility and saved-connection cleanup remain supported. Completing their local shared contracts is part of integration; opening those products is a separate decision. Necessary website quality belongs in this milestone.
+Completion requires the full customer loop, trustworthy shared facts, meaningful evidence for every locally testable advertised item, coherent implementation, a minimal usable interface and representative integrated application/database/queue/worker behavior. A test total, registered evaluator, completed Audit, copied task or healthy endpoint cannot establish that standard alone.
 
-Completion means the supported customer journey works from the ordinary entry point, its conclusions are justified, its actions remain safe through failure and restart, its interface is understandable, and the exact deployed web/worker candidate continues operating without an agent present. A working demo, completed job, copied prompt or high test count establishes only its own boundary.
+## Current evidence and remaining uncertainty
 
-## Reassessment, November 3
+On November 4 the working checkout HEAD is `5080f4b2972ed4e3768722c946f9397364ea1c58`, with substantial additional tracked and untracked work. HEAD alone does not identify the intended combined candidate. Public health and operational GETs both returned HTTP 200 and an OK result around 13:00 UTC. Health reported production commit `7c227242f28c264d64bc6c7033aded1681b34211`. Those observations do not establish that this working source is deployed or that unattended monitoring remains healthy over time. The November 3 `audit_overdue` observation remains historical; it is not a confirmed current outage or proof of a known resolution.
 
-The latest owner direction requires useful guidance without temporary repairs,
-plain-language findings, individual copying beside View Flag, category-wide
-copying, complete fix context in emails, and authorized agents able to retrieve
-the underlying details. These are requirements of the existing product, not a
-second report or agent product.
+The current customer catalog contains **108 distinct items**: Uptime 8, Pages 10, Conversion 30, Security 13, Performance 10, Search 16, Tracking 6 and Accessibility 15. The authority is `lib/marketing/copy/check-coverage.ts`; `lib/audit/advertised-coverage.ts` maps responsibilities and limitations. Counts and mappings are inventory, not functional proof.
 
-The current workspace contains the direct copy actions, shared selection,
-source-linked repair briefs, private JSON/MCP readers, email prompts and text
-attachments, and human-facing finding labels. Preserve those improvements.
-Their presence does not establish a complete repair journey. In particular,
-instructions synthesized in a read projection do not yet have the same
-acceptance contract as the stored finding used by the handoff writer.
+The current source and focused evidence support these foundations:
 
-This reassessment inspected the working source, its contracts and focused tests,
-the existing completion and refactoring records, and the primary sources below.
-It did not audit every application line or re-certify the previously completed
-foundations. The [review receipt](../test-results/runtime/completion-review-20261103/receipt.json)
-records the inspected-file fingerprints, synthetic probes and evidence limits.
-It is an ignored local artifact, not a release receipt.
-
-### Current observations and proof limits
-
-- The checkout HEAD is `a7ab7ab8844718015ce763d692c66d87f935b1f7`, with substantial
-  uncommitted implementation and a separate active browser-profile workstream.
-  Source is still moving; no integrated immutable candidate was accepted here.
-- Public production reads on November 3, around 01:43 UTC, returned HTTP 200 from
-  `/api/health` and `/api/health/ready`, with readiness profile `free-launch`.
-  Health reported commit `35061bfda2fbb443b8cee9357443f738b01851cb`.
-  `/api/health/operational` returned HTTP 503 and `audit_overdue`. This proves a
-  reported overdue execution at that observation, not its cause, duration, impact
-  on every customer, or whether an operator was alerted. Deployment readiness
-  cannot stand in for ongoing delivery of monitoring obligations.
-- Fresh local checks passed 62 server tests across eight focused files, 24
-  component tests across four files, and TypeScript. Existing passing tests do
-  not close the gaps below. No browser/E2E run, database write, customer email,
-  paid provider call, deployment or protected restore was performed.
-- In-memory probes reproduced a generic plan classified as ready while the raw
-  stored-guidance policy rejected the same source, and a plain-language mobile
-  loading title reverting to its technical diagnosis after Flag-panel schema
-  parsing. These are fixture observations and source-level contract evidence,
-  not a production customer-loop test.
-
-### Confirmed gaps and required owners
-
-All rows belong to the existing eight delivery packages. A package is not closed
-until these refinements and its existing acceptance requirements are met.
-
-| ID | Priority and observed boundary | Required permanent result | Delivery package |
-| --- | --- | --- | --- |
-| R01 | P0 operational observation. Production operational health reported `audit_overdue`, while readiness passed. `lib/health/operational.ts` derives that condition from unfinished Audits beyond their depth deadline. | Identify the exact overdue work and its admitted obligations through authorized diagnostics. Reconcile it through the existing recovery owner, preserve the failure evidence and demonstrate timely subsequent work plus operator alert/recovery. Do not mark an unfinished check complete, delete it, pause monitoring or relax the deadline merely to make health green. | 2, then 8 |
-| R02 | P0 source-confirmed repair-policy mismatch. `lib/sites/flags.ts` projects `prepareEvidenceRepairGuidance()` into a ready task. `lib/improvements/attempts.ts:recordFlagImprovementAttempt()` checks `repairGuidanceText()` on the stored row. A source with no stored instructions can pass preparation but fail handoff recording after the clipboard write. The full route consequence still needs an integration regression. | Preparation, preview, copy validation and receipt writing consume the same authorized, revision-bound repair definition. Retain source Flag, grouped membership, check/recipe version and context hash. Validate again at the effect boundary without silently reverting to another guidance policy or inventing AI success. | 3, 7 |
-| R03 | P1 guidance-quality gap. Any unknown check with text evidence can receive `G.investigate`; any nonempty usable text can then mean ready. Current deterministic speed instructions can also prescribe techniques before a cause is established. | A typed guidance result distinguishes a supported repair, investigation and evidence-recovery action. Known checks own evidence-bound recipes and acceptance conditions. Unknown causes receive a specific investigation goal and required observations, not a fabricated concrete fix. Never fill missing text merely to satisfy readiness or provider-quality gates. | 3, 4 |
-| R04 | P1 reproduced presentation-contract defect. `siteFlagPanelSchema` and the detail route omit `checkId`, while `SiteFlagPanel` uses that identity to make the title readable. The label can regress after loading. Regexes also recover timings and scope from historical prose. | Carry stable identity and structured measured values through the allowlisted DTO, or deliver one authoritative presentation object. The initial row, asynchronous detail, full page, email and agent payload agree while preserving the raw diagnosis separately. Use explicit versioned adapters for historical records, not new dependencies on English wording. | 4, 6, 7 |
-| R05 | P1 confirmed dual-builder drift risk. `site-notification.ts` separately composes a prompt, whereas web/JSON/MCP use `buildSiteRepairHandoff`. Email's initial machine URL is not revision-bound. | One shared repair projection produces all channels; only formatting differs. Freeze exact source and guidance revisions in the email snapshot. Match grouped observations, affected pages, acceptance and limitation semantics. A later read either retrieves that revision or explicitly refuses changed context. Never expose an old private context after access is revoked. | 3, 5, 7 |
-| R06 | P1 confirmed size and completeness limits. Bundles reject more than 100 tasks and repeatedly prepare every task. Briefs page observations by count, but strings and total serialized bytes are unbounded. Emails switch individual prompts to attachments at 5,000 escaped bytes and show at most eight updates; their attachment contract has no aggregate byte ceiling. | Keep bounded requests and the existing selection safety limit. Design category/all export around an exact frozen manifest with bounded continuation, rather than silently dropping findings or increasing limits. Bound query rows, memory, encoded bytes and total message size. Every emailed finding has complete actionable context; disclose any remainder and provide a defined authorized continuation. | 3, 5, 7 |
-| R07 | P1 source-confirmed effect-state coupling. `copyRepairPrompt()` writes the clipboard and then can throw on receipt failure. The button enters its copied state only after both succeed. Native WebKit user-gesture behavior has not been established by mocked clipboard tests. | Model physical copy, history recording and verification as separate outcomes. A successful copy stays successful when recording fails, with a precise secondary notice. Validate native clipboard behavior after preparation latency. Keep selectable text as an intentional browser-permission path, without counting it as automated-copy proof. | 3, 6 |
-| R08 | P1 availability/proof boundary. Human and machine URLs exist, but the repair reader requires owner authorization and `MCP_IS_DISCOVERABLE` is false. A link alone cannot give an unconnected editor access to a private report. | Routine copied instructions remain useful without forcing a second app visit. Additional retrieval uses an existing authorized client, complete continuations and source revisions. Explain unavailable access honestly. Prove real supported-editor operation before opening discovery or claiming universal agent self-service. Never add bearer credentials to prompts, publicize private evidence or accept tokens for another audience. | 3, 8 and the separate MCP gate |
-| R09 | P1 experience acceptance gap. Direct controls exist across board, category, Pages and active findings, but current component checks do not prove mobile layout, browser clipboard permission, focus restoration or usefulness to an ordinary owner. | Use one shared issue/action composition and a stable scope toolbar. Keep View Flag and Copy fix prompt as sibling actions and Copy all fix prompts visible at category entry. Preserve selection across page/device groups, exact incident scope, readable evidence and complete error states. Prove the whole composition and task, not just the presence of buttons. | 6, 7, 8 |
-| R10 | P0/P1 integration and external proof gaps remain. The reviewed dirty checkout, deployed revision, historical local receipts and provider acceptance are different facts. Prior plans still contain open customer-entry, provider, restore, operations and usefulness gates. | Retain V1 through V7, the current state matrix and the eight delivery packages. Produce one attributable candidate and close each gate with the evidence it actually requires. Do not use old test totals, catalog counts, configured credentials or an agent's declaration as substitute acceptance. | 1 through 8 |
-
-The appropriate product guarantee is that every displayed problem has a useful,
-evidence-supported next action. That can be a concrete repair, a bounded
-investigation or a new measurement when evidence cannot establish a safe change.
-It must never imply a known fix, measured customer harm or successful repair
-that the evidence does not establish. Access, guidance readiness, inference,
-priority, lifecycle and monitoring status remain separate dimensions.
-
-### Implementation checkpoint, November 3
-
-The repair-delivery workstream now implements these contracts in the workspace:
-
-- R02/R03: one typed repair definition is selected for preparation and stored-row
-  receipt validation. Recipes extend the existing check registry. Repair,
-  investigation and evidence recovery are distinct actions, with preconditions,
-  acceptance and recipe versions. Saved provider guidance retains its recorded
-  source; authored recipes never count as successful AI prescriptions.
-- R02/R05: the receipt writer revalidates the prepared revision under the owning
-  Site lock. Receipts retain exact source membership and context. Materializing
-  the history identity does not invalidate an exact source task. Notification
-  hydration consumes that same canonical task and refuses source changes during
-  preparation, rather than building a second email prescription.
-- R04/R09: the detail DTO retains `checkId`, preserving readable titles after
-  asynchronous loading. Headline wording no longer reconstructs measurements or
-  origin scope from English diagnosis text. The original evidence remains the
-  measurement authority. Existing direct row actions and category selection are
-  retained; Pages can export all open findings without an explicit-ID overflow.
-- R06: category/all scopes have a revision-bound continuation contract with a
-  maximum 5,000-task manifest, 25 prepared tasks per page and unchanged 100-ID
-  explicit selection safety. Observation pages and bundle pages also respect
-  encoded byte budgets. Oversized individual records are explicitly refused,
-  not cut off. Notification snapshots cap encoded attachments and the aggregate
-  provider request. Remaining email references are retained in bounded text
-  attachments and explicitly describe the first authorized source read.
-- R07/R08: native promised clipboard writes begin within the click gesture,
-  before network preparation resolves. Physical copy and history recording have
-  separate outcomes. A recording failure retains the copied state and shows a
-  secondary notice. Private repair and scope readers share one authorization
-  boundary; URLs remain references, and MCP discovery remains gated.
-
-Focused verification passed 290 server/component tests across 19 files. TypeScript
-and both isolated worker entry-point builds passed. Four PostgreSQL tests cover
-a source with no saved fix, its canonical recipe, idempotent receipt retries,
-and changed-evidence refusal at the write boundary. They also retain
-transfer/removal and concurrent transfer coverage. Full migrations applied to a disposable local database with
-no schema drift. Local component checks cover the loaded-title regression,
-direct controls, clipboard sequencing and secondary recording feedback. These
-are local fixtures, not physical-browser, provider or production acceptance.
-The [workstream receipt](../test-results/runtime/repair-delivery-20261103/receipt.json)
-records exact source hashes, checks and remaining limits.
-
-R01 remains open. Authorized production reads identified a Watch request still
-running beyond its original depth deadline. Its ledger contained ready/waiting
-tasks with no active task leases, while all observed broker queues, including
-prioritized work, were empty and workers remained registered. Both deployed
-services reported source `35061bfda2fbb443b8cee9357443f738b01851cb`.
-Later bounded history also retained a prior check that settled after one hour
-with `AUDIT_PIPELINE_FAILED` and 615 exhausted tasks. A terminal `COMPLETED`
-status is therefore not evidence of successful collection. These observations
-narrow the recovery investigation but do not prove its cause or successful
-recovery. They concern dated observations and later history, not a captured
-identity from the initial public health response. No production work was changed
-or declared complete.
-The progressive execution directory remains owned by the separate active
-browser-profile workstream, so overlapping implementation requires integration
-with that owner.
-
-The eight delivery packages remain open at their actual acceptance boundaries.
-In particular, upstream historical finding reads still need measured query and
-memory budgets at scale, and a single oversized observation has no fragment
-continuation. Those limits must not be described as solved by transport paging.
-Physical WebKit/device operation, real editor retrieval, recipient delivery,
-protected restore, production recovery and natural monitoring cycles still
-require their own evidence. No E2E run, paid call, customer email, deployment,
-protected restore or fabricated human acceptance was performed here.
-
-## Recorded local checkpoint, November 2
-
-The November 2 desktop compiled customer-loop source fingerprint is
-`2b109a9383375a230e7f5ff66ba66678c85d673245046f7abd4537d55886167c`.
-It includes the intended dirty checkout, independently of HEAD. Fresh web,
-worker and parser builds and the representative compiled customer loop passed
-against that exact source. The update to this document followed those checks;
-it does not relabel their source or establish deployment. The
-[checkpoint receipt](../test-results/runtime/current-checkpoint-2026-11-02/2b109a938337/receipt.json)
-links the observations and their limits. Runtime artifacts are ignored,
-checkout-local evidence, rather than a portable acceptance certificate.
-
-The [recorded Linux receipt](../test-results/runtime/linux-current-2026-11-02/afffa9671d00/receipt.json)
-uses source `afffa9671d00a6170a7ae1da013bed5f5b7e3ddc74950afc4ed069b1ab8bcfec`,
-which differs from the desktop customer-loop source only in this plan's earlier
-evidence update. Its isolated image uses an explicit loopback validation build
-URL, matched at runtime. It is not a production-origin deployment artifact.
-
-The original six completion criteria remain the standard. Current evidence
-supports the following scoped conclusions, rather than completion of the goal.
-
-Later goal work on November 2 bounded the shared Site-summary Audit and preview
-reads, corrected summary scheduling and its account lock order, fenced stale
-verification-result commits, and bound interrupted delivery recovery to its
-exact generation. Those changes are outside the source fingerprints above.
-The separately approved restoration of the homepage email preview's previous
-copy helper also removed the application typecheck failure without changing
-the homepage component or its authored wording.
-
-Typechecking, the isolated production web build, worker/parser builds, focused
-homepage checks and architecture guards passed after these code changes. The
-[compiled API/worker receipt](../test-results/runtime/goal-compiled-api-worker-20261102.log)
-records native collection of a failure, API repair admission, independent
-verification and replay against disposable services. The
-[web build](../test-results/runtime/goal-web-build-20261102.log) retains its
-separate `.next-goal-20261102` artifact. Current catalog tests exercise all 108
-registered responsibilities' evaluator scenarios; collector, provider, browser
-and deployed acceptance remain separate. An attempted additional compiled
-notification run was stopped before its browser UI stage and supplies no
-acceptance result. Its disposable services were removed. These observations do
-not replace the provider, inbox, protected restore or deployed requirements.
-
-After explicit authorization, a later [two-case compiled browser run](../test-results/runtime/goal-focused-e2e-20261102.log)
-passed. Its [customer-loop observations](../test-results/browser/site-plan-compiled-worker-91d636c0-bf59-4449-ad4c-cec9e549ce69/observations.json)
-retain same-evidence claiming, default monitoring, native clipboard readback,
-independent recovery, durable recurrence and a second recovery. It starts with
-explicit local API admission and a seeded verified account; ordinary public URL
-entry and actual signup email are not established by that fixture. The 48
-automated accessibility scans found no failures in the recorded states, without
-establishing full WCAG conformance or human acceptance.
-Its [notification observations](../test-results/runtime/compiled-notifications-compiled-worker-91d636c0-bf59-4449-ad4c-cec9e549ce69/observations.json)
-retain the native SDK's identical retry, early signed delivery reconciliation,
-visible delivered/bounced states and suppression. The mail endpoint is local,
-the due schedule is seeded and retry eligibility is advanced in the fixture.
-The worker timers are real; calendar-slot delivery and a real inbox remain
-unverified. The earlier aborted notification receipt remains separate.
-
-| Requirement | Local evidence now available | What remains unproven |
+| Foundation | Preserve | Boundary still requiring acceptance |
 | --- | --- | --- |
-| URL, claim, monitoring, Flag, repair, verification and recurrence | The current compiled browser journey preserves the claimed evidence, reads back the native clipboard, independently verifies repair, recognizes recurrence and verifies a second recovery. Earlier public-entry, automatic-first-Watch and natural-uptime receipts prove their separate boundaries. | The current browser fixture admits an explicit loopback target through the API and seeds a verified owner. Actual signup inbox delivery, an external published repair and sustained daily/weekly operation are separate requirements. |
-| Every advertised responsibility has meaningful evidence | The existing inventory has 108 responsibilities. Current catalog checks call their evaluators for required local scenarios; collection and worker receipts retain their own scope. Actual PageSpeed collection also passed through compiled admission and the worker on a healthy public target. | Evaluator evidence does not certify every collector or provider. Actual failing-resource PageSpeed repair and quota acceptance, authorized Google reports and real reversible account/Signup lifecycle still need their respective targets and authorization. |
-| Facts agree across customer and machine consumers | Scoped database, API, native CLI/MCP and notification receipts cover shared Site identity, source-specific repair, retained evidence and delivery facts. The latest Google cases preserve token rotation and prevent a delayed older-token refusal from invalidating a renewed credential. | Actual provider events and reports, intended inbox clients and external editor sessions retain independent acceptance requirements. |
-| Cohesive, bounded architecture | Existing request/task/evidence owners remain shared. Native interruption, physical browser cleanup, bounded finding reads, notification recovery and grant fencing have attributable local receipts. Current module-boundary and product-contract guards pass. | These observations do not prove the absence of all structural defects. The last full dependency security gate still rejects legacy tooling minimatch; no new exception or incompatible global override was added. |
-| Minimal, usable customer experience | The current compiled journey exercises the actual application and its responsive/theme states. Separate Settings history evidence covers Back/Forward, multiple forms, save failure and save completion after unmount. | Automated browser and accessibility observations are not human, physical-device or assistive-technology acceptance. The approved brand contrast exception remains disclosed; full WCAG AA is not established. |
-| Integrated application, database, queue and worker | The current compiled customer loop passes on disposable migrated PostgreSQL and isolated Redis. Current source-specific Google database/worker cases and web/worker/parser builds pass. The current Linux image separately proves native repair, recurrence and synthetic backup restoration, including exact preservation of the new authorization identity generated by its native Prisma client. | The Linux receipt retains its own source and validation configuration. Protected production restore, deployed web/worker/image agreement, continuous operator alerting and extended unattended observation are unverified here. |
+| Execution | One progressive coordinator, durable tasks separate from receipts, scoped admission, leases, resource ownership and recovery. | The integrated packaged candidate, realistic contention and unattended operation. |
+| Site and access | Retained claim identity, current Site ownership, effect-time authorization and private evidence custody. | The ordinary public entry and actual identity-provider journey on the intended runtime. |
+| Monitoring | Automatic uptime setup, independent HTTP probes, durable incidents, confirmation, unknown results, recovery and recurrence. | Natural cadence, actual alert delivery and operations over a sustained interval. |
+| Findings and recovery | Shared native comparison inputs, source-specific proof, frozen repair selections and historical comparison ordering. Grouped accepted proof now follows exact membership across source Audits. | Candidate-wide acceptance and production observation. |
+| Repair | One typed repair definition, revision-bound preparation and receipt writing, bounded export manifests, lossless HTTP/MCP continuation and complete owned repair files in the existing preview. Download, copy and recording remain separate outcomes. | Native browser download/clipboard, real editor operation and useful independent repair. |
+| Experience | Shared tokens, controls, overview composition, readable finding identity, direct repair actions and account-scoped drafts. | Current responsive interaction, assistive technology, native clipboard and complete task acceptance. |
 
-This updates the local status of the findings below. In particular, C02 has
-implementation and native-history proof, C06 has an implementation-only inventory
-and explicit availability boundaries, and C01 has a current compiled local
-checkpoint. Their provider, experience, recovery and deployed acceptance aspects
-are not waived. Earlier source-specific receipts remain evidence of the source
-they actually exercised.
+Earlier planning checks passed 111 focused server tests and TypeScript. The grouped-recovery implementation subsequently passed 53 disposable PostgreSQL checks, three installed-worker cases, 111 focused unit checks, TypeScript, worker build and module boundaries. Those cases cover legacy compatibility, exact frozen multi-Audit membership, omitted lifecycle projections, later peers, foreign lineage and native source growth. Earlier observations remain evidence for their exercised sources. This does not certify the whole dirty checkout or its rendered experience.
 
-The existing Railway `public-validation` environment and its controlled HTTPS
-[target](https://validation-target-public-validation.up.railway.app/health)
-are identified. Read-only checks on November 2 found target health HTTP 200,
-validation web revision `70d4182afa3ebb2cc0fbe46075ec23e5788bd59a`, and readiness
-HTTP 503 reporting missing worker, browser and uptime readiness. GET of the
-delivery webhook route returned 404; GET of the receiving route returned 405.
-These observations do not prove current candidate source agreement or actual
-signed-event handling.
+The large-record continuation subsequently passed 66 focused checks and 15 disposable PostgreSQL cases, including installed MCP SDK calls, exact JSON reconstruction, private-field exclusion, revoked access, copied custody and revision-checked repair declaration. TypeScript, source lint, worker build and module/MCP guards passed for that slice. The latest planning refresh passed 22 focused server checks and 50 component checks around the catalog, repair delivery, Overview composition and repair actions. Component checks establish their exercised state contracts, not native clipboard, rendered geometry, assistive-technology usability or a complete customer journey.
 
-The account test mailbox, mail API key and
-`RESEND_RECEIVING_WEBHOOK_SECRET` are present locally. The earlier inbound-secret
-absence finding checked an unused variable name and was incorrect. Automatic
-accounts and lifecycle verification remain disabled, and no validation origin is
-configured locally. Private-bucket credentials, Google OAuth client configuration
-and `RESEND_DELIVERY_WEBHOOK_SECRET` remain absent. Configuration presence cannot
-establish actual provider behavior.
+Complete owned repair files subsequently passed 108 focused server checks, 49 component checks, two hook checks and 15 disposable PostgreSQL cases. The isolated production web build and standalone packaging, worker bundle, application/compiled-runtime TypeScript, focused lint and route/module/design guards passed. The checks cover full 5,000-observation groups, 103-task categories, offline file contents, privacy, revision and authority changes, stalled-response expiry, cancellation and preview download wiring. Shared scope selection replaces the copied-bundle-specific implementation; public performance schemas are separated from server calculations. These results establish that slice locally, not the complete catalog or the combined candidate's production acceptance.
 
-The requested fresh send authorization remains pending; the historical send
-allowance is closed by default. The
-[corrected provider prerequisites](../test-results/runtime/validation-prerequisites-2026-11-02/next-checks.json)
-record the existing environment, readiness gaps and preserved message limit.
-The [earlier provider observation](../test-results/runtime/notification-provider-readiness-2026-11-02/receipt.json)
-retains its original scope. No deployment, production database write, provider
-configuration change or real email send was performed for these checks.
+## Confirmed unfinished work and required investigations
 
-## Historical baseline and evidence on October 31
-
-| Boundary | Current observation | Consequence |
+| Priority | Current boundary | Required result |
 | --- | --- | --- |
-| Source identity | HEAD is `a7ab7ab8844718015ce763d692c66d87f935b1f7`, with substantial tracked and untracked changes in repair, notifications, browser/runtime and settings. | HEAD alone cannot identify the candidate. Integrate and fingerprint the complete intended source before release acceptance. |
-| Repair and runtime foundation | Current source has revision-bound shared repair briefs, source-specific private evidence, paginated supporting observations, native context ownership, separate render-probe timestamps and supervised child readiness. | Retain these contracts. Their October 29 isolated snapshot and browser/image results are scoped historical evidence, not acceptance of the combined checkout. |
-| Notifications | Preferences, scheduling, summaries, delivery events, suppression and unsubscribe are implemented locally with a new migration. The [notification record](notification-completion-plan.md) reports disposable database and isolated build checks. | Integration, actual provider delivery, intended inbox rendering and a natural summary remain required. The October 29 missing-webhook observation must be rechecked, not assumed current. |
-| Fresh checks | TypeScript; 53 server tests across repair, evidence, captures, preferences and worker recovery; 37 component tests across cards, capture preview, email preferences and MCP setup; completeness, product, module-boundary, UI and brand guards pass. | These are focused local results. No fresh whole-app build, migration rehearsal, browser/E2E, provider send or deployment is established by this review. |
-| Release custody | `test-results/release/website-beta-current.json` still selects `8f46c4f5`, updated October 20. | Retain that rejected/stopped candidate. Create a new candidate record through the existing release tooling when a real candidate exists. Never relabel old receipts. |
-| Operational observation | The October 28 browser-resource anomaly has local instrumentation and lifetime fixes, but no current production attribution in this review. Public readiness could not be retrieved through the research tool. | Production state remains unverified here. Inspect the actual deployed diagnostics through the approved operator path. A failed research fetch is not evidence of a service outage. |
+| P0 | The combined working source, local receipts and production revision are different identities. | One reviewable candidate with exact source/artifact identities and attributable checks. No deployment is authorized by this plan. |
+| P0 | Registration and evaluator fixtures do not establish complete behavior for the 108 advertised responsibilities. | Reconcile actual collector, applicability, conclusion, fixability, comparison and recurrence evidence item by item. Correct producers where evidence fails. |
+| P1 acceptance | Complete owner-exported repair files are implemented locally for single, grouped, selected and category scopes. Local checks cover complete textual observations, revisions, privacy, cancellation and the preview action. | Demonstrate the native browser download and actual recipient/editor use. Files intentionally omit screenshots and additional provider data. Retain explicit unavailable evidence and current authorization. Local file parsing and component clicks do not establish external tool acceptance. |
+| P1 | Large email continuations explicitly provide source IDs for an authorized first read, rather than frozen self-contained instructions for every remaining finding. | Prove the intended email-to-repair experience, including recipients without an already connected editor. Keep the distinction explicit and ensure complete authorized continuation. Do not call current source retrieval an immutable email snapshot. |
+| P1 | Historical read, payload and transaction improvements exist, but candidate-scale interaction and memory budgets remain incomplete. Document continuation serializes and hashes its whole brief page on each request; context construction also visits all supporting observations. | Measure the complete continuation journey, including input hydration, query transfer, repeated hashing and peak memory. Fix measured amplification at the evidence owner. A bounded first response does not establish efficient access to the whole group. |
+| P1 | Old navigation and mobile-composition findings no longer describe all current code: drafts now survive same-account route unmounts, and attention rows precede summary. | Validate the current complete experience instead of rebuilding those features or treating old screenshots as current defects. |
+| P0/P1 | Provider, protected lifecycle, restore, usability and sustained operation have separate outstanding acceptance boundaries. | Prepare their access, targets and evidence requirements now. Complete all local work while preserving explicit external gates. |
 
-### Findings identified on October 31
+These are a mixture of demonstrated defects, incomplete integration and proof obligations. Investigate suspected additional weaknesses before calling them defects. Reprioritize after each coherent implementation by customer impact, architectural reach and strength of evidence.
 
-| ID | Classification and evidence | Required closure |
+## Next implementation decisions
+
+Complete repair handoff without an already connected reader is now implemented locally. The next local priorities are candidate identification, capability evidence reconciliation and measured full-path costs. Native browser and external recipient acceptance remain separate. Investigate the weakest high-impact supported capability and correct any demonstrated failure before another broad review.
+
+| Work | Implementation owners | Concrete next result and completion evidence |
 | --- | --- | --- |
-| C01 | Integration and acceptance gap. Repair and notifications were verified in separate snapshots; the old release pointer selects another source. | One integrated candidate, fresh and upgraded schema proof, compatible runtime packages and its own acceptance receipts. |
-| C02 | Source-confirmed navigation coverage gap. `hooks/useUnsavedChanges.tsx` registers captured anchor clicks and `beforeunload`; it has no browser-history or programmatic navigation handling. The focused email test covers a link click only. | Define draft survival and explicit discard across browser Back/Forward, app navigation, multiple dirty forms, save failure and unmount. Exercise those paths before claiming general unsaved-edit protection. This review does not claim observed browser data loss. |
-| C03 | Retained visual observation. The October 29 320px incomplete Overview places header actions, status, an unavailable preview and counts before actionable categories. `SiteOverviewWorkspace` still renders summary before checks. | Review and implement the complete small-screen hierarchy with attention and useful evidence leading. Preserve full results and bulk actions. A full-page screenshot does not prove focus obstruction. |
-| C04 | Operational proof gap, historical F01/F02/F12. Local ownership/probe/readiness corrections exist. | Account for live contexts, physical release and all execution lanes; demonstrate actionable continuous operational alerting and recovery. |
-| C05 | Ordinary customer-loop gap. Prior compiled fixtures use explicit loopback admission and local identities. | Public URL entry, actual signup/claim continuity, published external repair, comparable verification, recurrence and unattended monitoring on the intended runtime. |
-| C06 | Precision and capability-truth gap, historical F07/F09. Registry status still uses `live`; consumers include the internal operating-plan page and verifier provenance. | Separate implementation from runtime eligibility, consent, release availability and actual execution evidence. Preserve verifier identity while correcting ambiguous internal availability labels. |
-| C07 | Provider and lifecycle proof gap. Email, private storage, PageSpeed and protected account execution have distinct external boundaries. | Current authorized provider receipts and exact scope, plus honest product limitations where evidence is unavailable. Configuration cannot close them. |
-| C08 | Recovery and release gap, historical F08. Disposable fixture restore exists; actual production-data restore and protected rollback remain separate. | Prepare immutable artifacts, rehearse the actual upgrade and demonstrate authorized protected backup restoration before relying on recovery. |
-| C09 | Experience and value gap, historical F06/F11. Retained renders and local timings do not establish representative interactions or customer usefulness. | Complete task observations, responsive and accessibility acceptance, representative performance and repair usefulness evidence. |
-| C10 | Documentation drift. The old roadmap calls merged foundations uncommitted; `SECURITY.md` has a stale `better-auth 1.6` dependency bullet despite its 1.7.14 invariant. Operator/pricing documents contain older public offers. | Reconcile current facts at their owners, retain dated records and trace public consumers. Do not infer a customer-visible defect solely from an old internal paragraph. |
+| Accept ordinary repair delivery | Shared brief preparation, `application/repair-selection.ts`, `application/repair-file.ts`, existing prompt preview and copy owners | Complete files are implemented with the same selected task definitions, public observations, lineage and verification criteria. Local checks retain complete groups and reject stale, foreign, cancelled and partial delivery. Complete native browser and actual recipient acceptance without FixFlags credentials. |
+| Identify the integrated candidate | Existing release receipt/build scripts, Prisma migrations and web/worker packaging | Inventory intended changes without staging unrelated work. Bind source contents and built helpers to one candidate. Replay fresh and retained-schema upgrades in disposable databases, including source snapshots and historical repair attention. Keep rollback and data preservation evidence attributable to the same candidate. |
+| Reconcile capability evidence and fix the first consequential failure | Existing coverage catalog/registry, native task collectors, evaluators and focused fixture suites | Account for each catalog identity using the evidence procedure below. Start with the weakest high-impact supported responsibility, not a fixed area order. Correct a failing producer or comparator before adding another acceptance claim. |
+| Measure full evidence and history access | `lib/sites/flags.ts`, current/resolved source readers, `repair-brief.ts`, `repair-delivery.ts`, notification projection | Measure a full supported traversal, not just the first page. Establish explicit accepted budgets from the measured baseline. Preserve all history and conditions while removing repeated unused hydration, serialization or transaction work. |
+| Complete the ordinary interaction loop | Existing Site shell, repair preview, Flag actions, account/notification settings and exact copy modules | Exercise the state/action matrix on the actual composition. Correct observed navigation, review, focus, draft, error and action-state failures through shared owners. Preserve the existing visual hierarchy and disclosure model. |
+| Prepare external acceptance immediately | Existing provider adapters, notification delivery, account lifecycle and operational/release evidence owners | Prepare exact targets, expected receipts, cleanup, observation windows and access needs now. Run permitted local paths independently. Real sends, protected effects, deployment and external account mutations retain their existing authorization boundaries. |
 
-The earlier [foundation review](foundation-completion-review.md) remains dated evidence. F03 through F05 have local corrections for visible incomplete states, capture disposition and accessibility evidence. F01/F02 have local instrumentation and runtime corrections. Do not rebuild them as untouched features. F06 through F12 retain the outstanding acceptance and operational obligations mapped above.
+Each result closes its own requirement, not the whole objective. Reassess priority after each coherent change. A discovered shared defect takes precedence over the next item in this table.
+
+## Architecture to retain and simplify
+
+Use one product data flow: authorized Site and intent, admitted responsibility, collection, recorded evidence, evaluation, durable incident, repair definition, independent comparison and continuing monitoring. Keep physical mechanisms specialized where their workloads differ. Fast HTTP uptime should remain independent of expensive whole-site/browser analysis while sharing identity, ownership, evidence and notification policy.
+
+| Boundary | Required ownership and cleanup |
+| --- | --- |
+| Identity and authority | Site ownership governs current actions; historical actors remain provenance. Claim, transfer, suspension, removal and revoked access must fence effects and subsequent private reads. |
+| Execution | PostgreSQL owns admitted work and recovery obligations; BullMQ transports deliveries. Reconcile missing delivery from the ledger. Reuse existing retry and ownership mechanisms. Do not add a second recovery engine. |
+| Evidence | Collection facts retain original page, final URL, device, access, version, timing and completeness. Reuse compatible evidence; do not borrow private or unrelated observations to make a public conclusion pass. |
+| Incidents and proof | One source-membership contract governs active checks and accepted repair. Repair workflow cannot revoke independent source recovery. A later run cannot rewrite an earlier comparison or hide a new failure. |
+| Customer facts | Overview, category, Pages, detail, history, notifications, API and authorized MCP readers agree on incident scope, evidence state and recovery. Revalidate revisions across multi-query hydration or use an appropriately bounded consistent read. |
+| Repair | One repair definition owns instructions, prerequisites and acceptance. Preview, copied text, recorded handoff, external edit and verified recovery remain separate effects. Rendering and transport do not invent another repair policy. |
+| Runtime resources | Each browser context, HTTP request, parser, queue client and external effect has an owner, bound and physical close. Independent checks keep progressing when an optional dependency is unavailable. |
+| UI and copy | Existing semantic tokens, shared controls, finding presentation and exact copy modules own repeated roles. Extract shared behavior where semantics repeat. Preserve intentional surface differences. |
+| Compatibility | Trace real historical consumers before removal. Replace duplicated current logic with the shared contract, migrate callers and remove superseded mechanisms. Keep necessary legacy adapters explicit and tested. |
+
+The accepted-recovery helper has already been renamed and its consumers migrated. Preserve that single owner. Repair projection now remains independent of bounded delivery, and the historical MCP Flag alias derives its evidence and guidance from that projection. Keep the alias only for compatibility; do not build new consumers against a duplicate graph.
+
+Split the large native fixture module by actual responsibility and share controlled transport/lifetime setup without weakening scenarios. Consolidate repeated pipeline prose into current mechanics and linked evidence history. File length alone is not a reason to refactor; duplicated authority, unclear ownership, measured waste and regression risk are.
+
+Before a structural change, identify the current owner, its consumers, the observed defect or measured cost, the replacement contract, the migration and the code being removed. Migrate all current consumers in the same coherent change. Preserve necessary historical adapters with explicit scope. Do not add another orchestration layer, recovery engine, findings store or snapshot cache to avoid correcting the existing owner.
 
 ## Information architecture and experience
 
-The main customer questions are: what needs attention, what proves it, what can I do, did it work, and what remains watched? Give each answer one primary home. Keep scope and freshness near the conclusion they qualify.
-
-| Surface | Primary responsibility | Required composition and actions |
+| Place | Primary customer question | Required experience |
 | --- | --- | --- |
-| Website entry and progress | Start with a real URL and understand what is happening. | One clear URL action, attributable progress, useful results as they arrive and an explicit recoverable refusal. Avoid internal queue vocabulary and fabricated progress. |
-| Websites | Find the Site that needs attention. | One identity, one result and one monitoring summary per Site. Do not repeat counts or dates in headings and captions. |
-| Site Overview | Understand attention and coverage across the whole Site. | Relevant findings first on narrow screens; quiet healthy categories; incomplete scope visible without color. Keep page depth, individual Flags and multi-Flag repair reachable. Reserve large media for useful recorded evidence. |
-| Category and Pages depth | Explore all relevant results and exact affected locations. | One visible Copy all fix prompts action at category entry. Every active finding has sibling detail and copy actions. Stable selection, filtering and back behavior. Keep successful checks, limitations and recommendations available without adding a competing inbox. |
-| Flag detail | Understand the observed problem and recovery condition. | Concise problem and impact, original observed facts, expected behavior, scope/freshness, useful repair preview, independent Check now, then technical evidence and history. Preserve exact source links and limitations. |
-| Repair preview | Review the work being handed to an agent. | Complete selected scope, readable guidance and evidence references. Review changed instructions before copying. Preview, successful clipboard write, recorded handoff, external edit and verified repair remain separate effects. |
-| Timeline | Explain meaningful change. | Detection, attempted repair, fresh comparison, recovery, recurrence and monitoring interruptions, with original provenance. Routine quiet success need not become visual noise. |
-| Integrations | Manage authorized context and saved connections. | Available connections have a clear purpose, permission and disconnect path. Keep unavailable catalog items collapsed. Preserve cleanup for retained connections. |
-| Site Settings | Control this Site's execution and obligations. | Monitoring, alert triggers, authorized access/accounts and removal. A manual recheck does not silently change the schedule. Destructive actions explain actual retained or unresolved external state. |
-| Account Settings | Control identity, security and account-wide email. | Profile, passkeys/recovery, email cadence, product-tip choice and delivery history. Distinguish summary scheduling from per-Site alerts and protect unsaved edits consistently. |
-| Help and public surfaces | Set expectations and help the owner recover. | Homepage, sample, pricing, onboarding, Docs, Help, errors, email, privacy and metadata describe the same available behavior. One setup destination per supported connection. |
+| Entry and progress | What is FixFlags checking? | One URL action, automatic applicable scope, meaningful progress and useful results as they arrive. A recoverable refusal explains the next action. |
+| Websites | Which Site needs me? | One identity, current result and monitoring summary per Site. |
+| Site Overview | What needs attention? | Important findings lead. Healthy states stay quiet. Incomplete coverage is visible without relying on color. Counts, identity and times each have one primary home. |
+| Category and Pages | Where does this apply? | Complete results, actual page captures, stable filters and selection, individual actions and clearly scoped bulk repair. |
+| Flag detail | What happened and what should change? | Plain problem, original observations, expected behavior, useful next action and independent verification. Technical evidence and history remain accessible in depth. |
+| Repair preview | What will I give my developer or AI? | Exact selected sources, complete task, appropriate investigation or evidence-recovery instructions and clear acceptance. Changed context is reviewed rather than silently substituted. |
+| Timeline | What changed? | Meaningful detection, attempts, comparison, recovery, recurrence and monitoring interruptions with attributable evidence. |
+| Integrations and Settings | What needs my permission? | Essential monitoring works automatically. Privileged effects have a clear authorization and cleanup path. Drafts and confirmed actions survive normal navigation. |
 
-Use whitespace, typography and surface tone. Preserve the folded-F mark, Inter/Inter Tight, authored themes, shared tokens, borderless card conventions and 44px shared controls. Do not add separators, redundant status badges, a new dashboard or a checklist to compensate for missing functionality.
+Preserve the folded-F identity, Inter/Inter Tight, authored themes, semantic tokens, whitespace grouping, calm motion and 44px shared controls. Do not add separators, dashboards, technical badges or configuration to compensate for missing functionality. Keep full-site visibility and owner selection. Use the existing visual hierarchy rather than redesigning marketing or branding.
+
+Primary copy names the observation and next action. Explain missing evidence, access refusal, provider failure, stale evidence and failed repair differently. Keep raw technical diagnosis available without putting schema IDs or inferred business harm in the main headline. Existing exact customer wording remains unchanged unless a specific correction is authorized.
 
 ## Required delivery order
 
-All eight packages belong to completion. Package 1 establishes integration; packages 2 through 7 close defects and proof at their owners; package 8 converges on deployed acceptance. Prepare provider access, protected restore resources, realistic test targets and performance instrumentation early. Start natural-time observations as soon as the authorized candidate is safe, rather than discovering those prerequisites at the end.
-
 ### 1. Integrate the existing work and establish current truth
 
-**Owners:** Site application contracts, notification schema, web/worker packaging, `PRODUCT.md`, this plan and the existing release tooling. **Closes:** C01 and C10.
+Inventory intended changes and ownership without discarding unrelated work. Grouped-recovery membership, compatibility checks and documentation are complete locally. Reconcile the remaining implementation and proof status at their canonical homes, with older findings archived.
 
-- Inventory the intended tracked and untracked changes. Preserve unrelated work and identify which files, migrations and generated clients belong in the candidate. Record source identity independently of HEAD until committed.
-- Integrate repair, notifications, browser lifetime and worker health together. Confirm the packaged helper, routes, copy modules and Prisma client match that source.
-- Replay fresh migrations and upgrade the prior production schema in disposable databases. Check actual drift and previous-runtime reads/writes, preserving task/receipt IDs, Site identity, subscriptions, purchased credits and historical evidence. An incompatible migration requires a coordinated writer boundary.
-- Reconcile implementation facts in `PRODUCT.md` and operator/environment facts in their owners. Keep historical records dated. Audit the actual callers before removing optional projection fields or compatibility readers.
-- Use existing candidate receipts and release profiles. A new acceptance namespace begins with the actual candidate, not copied passing results.
-- Classify the November 3 review findings against the actual combined source. Preserve the active browser-profile workstream and all other writers' changes. Do not promote the current production revision or a historical compiled receipt as proof of the newly integrated code.
+Record a content manifest for the intended candidate, generated client and packaged web/worker helpers. Exercise fresh migrations and upgrade from the retained prior schema in disposable databases. Preserve Site identity, task/receipt IDs, subscriptions, credits, decisions and evidence. Review schema compatibility before any eventual production action.
 
-**Done when:** the intended combined source passes its applicable static, component, persistence and packaging gates, upgrade behavior is known, and every later observation can identify the source and environment it exercised. Existing isolated proof remains attributable to its original snapshot.
+**Acceptance:** one attributable candidate, no unexplained source drift, applicable focused checks and builds pass, and fresh/upgrade behavior is demonstrated. A clean branch alone is insufficient.
 
 ### 2. Complete execution reliability and security at the real boundaries
 
-**Owners:** `lib/audit/browser/`, `lib/audit/progressive/`, `lib/queue/`, `lib/sites/application/`, auth/access and private evidence. **Closes:** C04 and security aspects of C07/C08.
+Exercise actual queue loss, duplicate delivery, process restart, expired ownership, cancellation, target change, revoked credentials, account suspension and Site removal. A committed observation must survive interrupted publication; an unfinished effect must retain its original identity and reconciliation obligation. Confirm shutdown drains work and releases physical resources.
 
-- Investigate deployed context ownership across audit, inspection, probe, admin and closing work. Retain ownership and capacity until physical removal. Never clear a healthy sibling browser to hide a leak.
-- Triage R01 immediately through authorized read-only diagnostics: identify the overdue Audit and originating request, task states, execution generation, deadline, queue ownership and recovery decision. Reconcile the original work through its existing owner. Record any legitimate terminal failure and retry separately. Demonstrate that subsequent admitted work settles within its policy and that an accountable operator receives failure and recovery alerts. A new deployment or a green readiness response alone cannot close R01.
-- Exercise worker restart, duplicate queue delivery, expired ownership, cancelled or removed Sites, revoked credentials, interrupted provider calls and bootstrap/drain. A retry must reconcile the original effect and identity, with bounded attempts and truthful terminal states.
-- Keep connection health, actual render probes, active work, historical stalled events and readiness separate. A successful offline probe cannot prove a customer's website is reachable.
-- Test ownership and active-account authority at effect and commit time, including same-host different tenants, transfer, cancellation and permission changes during work. Verify public/private report compatibility and private evidence access independently.
-- Exercise untrusted website text, metadata, source attachments and tool output against the actual security objectives: unauthorized requests, changed scope, fabricated provenance, secret disclosure and false recovery. Preserve permissions outside model output. A refusal sentence or valid JSON is insufficient evidence that no action occurred.
-- Review bounded memory, payloads, retention and cancellation. Production private storage must not fall back to worker-local files, public evidence or another capture. Missing evidence remains explicit.
+Retain independent progress through browser, parser, storage, AI and provider failures. Bound CPU work, payload transfer, memory, contexts and request concurrency. Review transaction footprints under simultaneous collection, repair and publication. Retry fresh evidence, never an outdated precomputed lifecycle update.
 
-**Done when:** every execution settles or has a bounded recoverable obligation, retries preserve authority and effect identity, resources release physically, private artifacts stay private and operational alerts identify an actionable failure.
+Check authorization before privileged requests and again at commit or private delivery. Untrusted website content cannot change allowed origins, scope, credentials, acceptance or tools. Keep public signals distinct from private capture evidence. Test real denied effects, not only refusal text.
 
-### 3. Prove ordinary entry, useful repair and return
+**Acceptance:** representative integrated failures recover or settle honestly within policy, with no duplicate side effects, lost observations, false recovery, cross-tenant access or leaked capacity. Operations can identify the remaining obligation and its owner.
 
-**Owners:** URL admission, authentication/claim, Site resources, repair preparation, clipboard/attempt custody and comparable verification. **Closes:** C05.
+### 3. Prove ordinary entry useful repair and return
 
-- Enter an allowed public HTTPS URL through the normal UI. Inspect progress, partial results and useful evidence before and after signup. Preserve the same Site, run and original observations through claim, refresh, return and authentication recovery.
-- Inspect three consequential Flags and their actual handoffs, including individual and meaningful multi-Flag scope. Review the full task, exact source evidence and limitations. Physical copy success must precede the handoff receipt. Permission, source or guidance changes refuse stale preparation.
-- Close R02/R03 at the repair producer and writer together. Extend the existing check/evidence definitions with versioned recipe requirements and a discriminated guidance result for repair, investigation or evidence recovery. Retain the evidence references, preconditions, safe change constraints and comparable success condition. AI can enrich a valid task; its failure cannot erase an independently supported recipe. Unsupported or unreadable evidence must not acquire a fabricated repair through a generic string.
-- Make `loadSiteFlagCopyTask`, `buildSiteRepairBrief`, the copy route and `recordFlagImprovementAttempt` consume the same revision-bound task eligibility. A receipt validates the task actually copied, under current ownership and exact source membership. Keep raw historical observations and provider failures unchanged. Add a database-backed regression through actual prepare, copy acknowledgement and receipt writing for a source whose stored `fix` is empty, including changed evidence and revoked ownership.
-- Make the proposed guidance type an explicit migration at all consumers. Update DTO schemas, JSON/MCP contracts, client actions, serializers, copy states and focused tests together. Keep existing historical readiness strings behind an explicit adapter until their readers migrate. Do not silently broaden `ready` or weaken the existing AI quality contract to accept the new type.
-- Close R06 with a complete category/all manifest and bounded continuation using the existing source/evidence infrastructure. The manifest freezes selection, membership, source revisions and ordering before an agent works. Preserve the 100-ID explicit-request bound; a larger complete scope is traversed through bounded pages. Every continuation rechecks permission and revision. Missing pages or changed scope are explicit and cannot masquerade as all findings being read. New storage is justified only by stable snapshot custody and measured cost, not by creating another execution system.
-- Close R07 with separate results for native clipboard success and handoff-receipt persistence. Preserve the success of an already completed clipboard write if telemetry or recording fails. Refused clipboard access offers selected readable text without writing a false copied receipt. Test slow preparation, revoked access, changed prompts, failed acknowledgement and exact plaintext readback.
-- For R08, include the relevant report and Flag references plus the existing machine-readable retrieval contract. Test an authorized external editor reading every observation page, retrieving source-specific evidence and continuing verification after restart. An unconnected tool can use complete inline guidance; it cannot borrow the user's browser session or read a private URL by possession alone. Keep MCP discovery closed until its separate evidence gate is met.
-- Apply an authorized repair to the actual external source and publish it through its normal deployment path. Return through the supplied Site/Flag link and request independent verification against comparable page, device, detector and access conditions.
-- Exercise an ineffective repair, successful repair, missing or blocked evidence, incomparable scope, recurrence and second recovery. Recording a fix cannot change the verdict. Category or targeted verification cannot overwrite whole-Site coverage.
-- Verify that a disconnect, reload or agent restart resumes the same durable attempt/run. Keep results discoverable through ordinary navigation, with restored selection, focus and reading position.
+Exercise ordinary URL entry, discovery, applicable checks, partial results, sign-up and same-Site claim. Preserve source identity and history through sign-out, return, owner changes and saved report links. Confirm default uptime and scheduled analysis initialize without check/schedule configuration, with pause/resume and existing entitlement policy preserved.
 
-**Done when:** the complete ordinary customer loop is attributable and useful on the candidate, with no fixture-only admission, seeded identity, mocked provider or agent-certified result substituting for a required step.
+Complete individual, selected and grouped repair through the same source contract. Verify frozen membership across several source Audits, later-added peers, growing source scope and retained installations missing lifecycle projections. Current detail and history must name the actual proof; recurrence must preserve incident identity.
+
+Complete the handoff itself. The owner must be able to obtain a full repair file from the existing prompt preview when inline text requires continuation. Build it from the same public brief and scope manifest. Include readable task instructions and machine-readable evidence with original source IDs, context revisions and acceptance. Do not introduce a separate stored task or repair policy. Keep display/MCP response limits separate from streamed file delivery, with bounded memory, cancellation and effect-time authorization. A changed scope must require review before a different file is delivered. File preparation, download/copy acknowledgment, a declared repair and independent recovery remain separate facts.
+
+Acceptance includes an ordinary owner and recipient without a connected editor or developer key. The recipient can read every selected source and implement the intended repair without borrowing the owner's credentials. Existing connected-reader continuation remains available and release-gated transports remain gated. Lost access, unreadable evidence and changed revisions must settle honestly; a link by itself is insufficient proof of complete delivery.
+
+**Acceptance:** a representative real application/worker journey detects a problem, retains it through an ineffective repair, independently proves recovery, observes recurrence and proves a second recovery. Local controlled targets and ordinary external entry retain separate evidence labels.
 
 ### 4. Prove capability precision and truthful coverage
 
-**Owners:** existing check inventory, advertised coverage, evidence producers, assessment/comparability and Site projections. **Closes:** C06 and relevant C07.
+Extend the existing acceptance evidence around the current catalog; do not create a competing registry or a second evaluator system. Each item needs applicability, native collector, observed failure, incomplete evidence, accepted conclusion, useful next action and its actual recovery/recurrence contract. Retain source and detector versions when semantics change.
 
-- Reuse the existing responsibility inventory. For each advertised responsibility, retain the implementation, eligibility/consent, release gate, execution binding, evidence scope and acceptance result. Avoid a second capability registry.
-- Cover working, failing, blocked/incomplete, stale, repaired and recurring behavior where the responsibility supports those semantics. Advisory and provenance-only signals must not receive invented repair verdicts.
-- Complete the existing fifteen-public-analysis precision requirement: three full analyses each of FixFlags, saadbenryane.com, 1health.ae, GitHub and MDN, with identical recorded settings and desktop/mobile evidence. Replay native evaluators on identical saved facts without new collection. Review false positives, false negatives, duplicates, missed pages and guidance usefulness, with source cases and denominators. A registered check count is not a precision measure.
-- Specifically review pages and fragments, native conversion behavior, security scope, automated accessibility limits, PageSpeed lab versus field data, tracking observation versus events delivered, uptime versus rendered availability, and consent-bound account behavior.
-- Use structured measurement facts for R04: the metric, value, unit, device, URL/origin scope, collection conditions and time. Plain language must preserve those distinctions. Estimated image-byte savings cannot by themselves prove a measured image-loading delay, and a lab score cannot prove that every visitor waits. Preserve approved wording where its evidence applies, and obtain explicit copy review for a different evidence class. Do not change the diagnosis or detector policy to fit a simpler headline.
-- Extend the existing check registry and presentation owner rather than adding a parallel completeness catalog. A supported public check has a producer, attention policy, human explanation, appropriate next-action contract and verification policy. Probe missing identities, historical versions and unavailable dependencies as real limitations, not as passing coverage.
-- Keep no Flags, Clear, Couldn't verify and Stale distinct. Historical completed modules cannot create individual passing assertions. A missing current result can retain dated prior evidence without claiming a fresh pass.
-- Trace `capability-matrix.ts` through the internal operating-plan page and verifier provenance before changing `live` labels. Preserve historical detector identity and comparison behavior.
+| Area | Items | Required functional evidence |
+| --- | --- | --- |
+| Uptime | 8 | Actual HTTP/native console observations; default scheduling, confirmation, continuity through unknown results, recovery, history and recurrence. |
+| Pages | 10 | Discovery, real responses, internal destinations, exact section targets, primary navigation and reached-document facts with bounded incomplete scope. |
+| Conversion | 30 | Original actions, validation and feedback, mobile navigation, overlays, motion, content advisories, authorized signup and supported account lifecycle. Observation of a form is not successful submission. |
+| Security | 13 | Connection and mixed transport, effective header policies, public trust/consent signals and honest access restrictions. Policy presence is not penetration testing or legal compliance. |
+| Performance | 10 | Native loading observations plus comparable lab/resource measurements. Missing metrics stay unknown. Rolling field INP cannot establish an immediate repair. |
+| Search | 16 | Public response/DOM distinctions, directives, discovery resources, canonical targets, structured data and previews. Authorized Google reporting retains its own window and availability gate. |
+| Tracking | 6 | Declared markup, bounded real library/event attempts and authorized reporting context. Audit traffic remains suppressed. A detected tag is not proof of provider recording. |
+| Accessibility | 15 | Actual native rule and keyboard observations, original controls and capture conditions, incomplete results and comparable repair. Automated checks cannot certify complete accessibility. |
 
-**Done when:** every public responsibility has current bounded evidence or a precise visible limitation, accuracy failures are corrected at their producer and no unsupported scope inherits a healthy conclusion.
+Use positive, failing, incomplete, repaired and recurring cases where those semantics apply. Advisory checks require justified reassessment rather than manufactured repair certification. Reuse compatible recorded observations and targeted native cases. Do not rerun exhaustive campaigns without an affected contract or unresolved concern.
 
-### 5. Finish real provider, email and account lifecycle acceptance
+Reconcile the catalog against existing evidence before adding tests:
 
-**Owners:** `lib/notifications/`, `lib/email/`, webhook routes, capture storage, account execution and Site removal. **Closes:** C07 and C02.
+1. Enumerate all current IDs and unchanged labels directly from the catalog. Join their existing evaluator, applicability, required observations and recovery obligations from `ADVERTISED_COVERAGE`. This is the inventory, not a second registry.
+2. For each ID, identify the actual admission and collector, recorded evidence/version, evaluator and customer conclusion, repair definition, comparison and recurrence owner. Name genuine provider or privileged prerequisites separately from public checks.
+3. Locate representative current functional evidence and record candidate identity, environment, scenario, observation and retained artifact. A test name or source fixture without an execution receipt is a lead, not a completed acceptance row.
+4. Classify each obligation as verified locally, observed failure, incomplete evaluation, unavailable external evidence or not applicable to the selected target with a reason. One field must not flatten all scenarios into a passing capability.
+5. Fix observed high-impact failures at their producer or shared foundation. Extend the smallest relevant native case to establish corrected behavior and preserve detection semantics. Reuse a common captured response only when scope, timing, access and detector conditions are compatible.
+6. Close V3 only when every locally testable obligation has attributable evidence and every remaining external dependency has its own exact requirement. Advisory, field-window and authorized-lifecycle outcomes keep their distinct recovery semantics.
 
-- Integrate the notification migration and matching worker/web behavior. Verify summary preference revisions, timezone and DST handling, competing senders, paused/removed/transferred Sites, retry windows and old receipt compatibility.
-- Recheck actual outbound webhook configuration and its dedicated secret. Preserve the separate inbound receiving boundary. Prove original-byte signature verification, duplicate/early/out-of-order events, suppression, opt-out and receipt recovery.
-- Within explicit send authorization and the preserved allowance, match a real provider message ID, signed delivery event, Settings history and a usable link to the correct finding. Review HTML and plain text in intended inbox clients. Observe a naturally scheduled summary with recorded facts and timezone. Delivery to a mail server never proves inbox placement or human reading.
-- Close R05 by rendering web, email, plain text, JSON and MCP from the same allowlisted repair projection. Keep HTML/layout functions as formatters. An email's source references and task revision are frozen with its provider body, including attachments. Refused stale context must not be rewritten as if evidence never existed; say what changed and how to obtain the current task. Do not recompose an uncertain earlier send during retry.
-- Replace the per-prompt attachment threshold as the only size control with an aggregate encoded-message budget, attachment budgets and measured memory limits. Resend's documented message limit is 40MB including encoded attachments; the product budget should be lower and explicit. Keep every displayed Flag's task intact. Exercise 8/9-finding boundaries, long non-ASCII text, escaping, many observations, oversized exports and late source changes. Declare scope and continuation honestly; never cut evidence mid-instruction or silently omit an alerted finding's fix.
-- Prepare and review real HTML/plain-text examples for a single failure, mixed failures/recoveries, missing evidence, a large grouped task and a signed-out report link. Validate intended phone/email clients and attachment opening separately from DOM parsing. No script-only copy button or inaccessible private link can substitute for text the recipient can actually use.
-- Prove actual private-bucket upload, source-specific owner retrieval, denied anonymous/cross-tenant retrieval, expiry and deletion. Exercise PageSpeed's actual provider and disclose missing field data rather than substituting a local measurement.
-- Complete the controlled HTTPS automatic-account lifecycle through normal admission and actual receiving events: signup once, verify, login, inspect safely, reconcile interruption, delete the disposable identity and enforce cleanup/revocation. Keep production lifecycle enablement gated on that evidence.
-- Finish C02 at the form/navigation owner. Define save/discard and draft ownership across all departure paths, multiple dirty forms and save races. Use the supported framework lifecycle; avoid history tricks, blanket router patching and silent loss of edited values.
-- Prove Site removal fences future work and reads, reconciles active effects and states unresolved external deletion accurately. Preserve required historical and billing records. Do not remove existing Sites to prepare a clean demo.
+Retain this reconciliation with the existing candidate acceptance records. Do not build a dashboard or a second testing framework to manage it.
 
-**Done when:** actual provider evidence agrees with customer-visible states, email control is comprehensible, account effects reconcile safely and removal reports real cleanup outcomes. Live Google/Shopify activation remains outside website-beta acceptance under the retained release scope.
+**Acceptance:** every locally testable advertised responsibility has meaningful current evidence for its complete supported path. Each external or unsupported boundary is identified precisely. Registration, mapping and replaying the same synthetic failure do not prove native collection or monitored recurrence.
+
+### 5. Finish real provider email and account lifecycle acceptance
+
+Prove immutable notification selection, current recipient/preferences/authority, retry identity, provider acceptance, delivery events and inbox usability. Test mixed failure/recovery, 8/9-finding transitions, complete large tasks, aggregate encoded budgets, changed source, inaccessible editor context and signed-out links. Preserve the truthful distinction between inline frozen tasks and authorized first-read continuation.
+
+Use the same complete owned repair delivery for the email-to-app path. Keep the email concise and open the exact attributable source after authentication. An attachment containing source IDs is a retrieval instruction, not a frozen task for those sources. Establish what was frozen at send time and what was authorized at first read. Preserve suppression, preferences, current recipient authority and bounded replay while making the promised next action usable.
+
+Demonstrate private storage upload, authorized retrieval, denied cross-tenant/anonymous access, expiry and removal. Exercise the actual PageSpeed boundary and distinguish field evidence. Complete authorized account signup, receiving, verification, login and deletion, including interruption, revocation and unresolved cleanup. Keep privileged release gates until their real evidence exists.
+
+**Acceptance:** actual supported provider facts agree with app and email states. An owner can complete the promised next action without an invisible dependency. No credentials enter copied prompts, and cleanup remains available independently of routine checks.
 
 ### 6. Finish the full interface and copy as one experience
 
-**Owners:** Site shell/board, shared Overview/sample composition, Flag depth, settings, shared controls and canonical copy. **Closes:** C03 and experience aspects of C09/C10.
+Review the complete current composition, not isolated controls or historical screenshots. Cover entry, waiting, first results, healthy, flagged, partial, unknown, stale, verification, recovery, recurrence, pause/resume, long content, failed requests, expired evidence and removal. Validate Overview, category, Pages, Flag, Timeline, Integrations and Settings together.
 
-- Compose the mobile attention state before adjusting individual cards. Start with the Site and concise current conclusion, then actionable findings and useful evidence. Reduce the prominence of unavailable preview space and global actions when they displace the result. Keep bulk repair, Pages and every category available.
-- Make individual Flags predictable targets and categories entry points. Preserve explicit selection across categories/pages. Essential actions must work with touch and keyboard, without hover or a guessed icon.
-- Close R04/R09 at the DTO and shared action composition: preserve stable check identity and structured display facts from the first row through detail refresh. Keep the raw technical diagnosis in evidence depth. Use the same action eligibility and reference Flag on Overview rows/cards, category lists, Pages, active Outcome findings and relevant Timeline entries. Resolved historical findings lead to their proof rather than inviting an unrelated repair.
-- At category entry, show Copy all fix prompts before the findings, with optional explicit selection beside it. At each finding, keep Copy fix prompt beside View Flag without requiring the detail or an expanded prompt card. A selected repair set remains distinct from all findings. Keep previews available without making preview expansion a prerequisite for copying. Avoid repeating the same copy-all action in both workspace chrome and its scope toolbar.
-- Preserve approved action labels while simplifying explanations for people who have never built a website. Access requirements, missing evidence and a provider failure need different next actions. Do not describe hidden private guidance as unavailable. Remove technical acronyms from primary headlines where a precise human description exists, without inventing measured effects. Match public, signup, app, email and Help wording to actual release availability.
-- Complete the state matrix below, including long content, many Flags and unavailable captures. Keep observation separate from technical remediation. Never shorten stored evidence to make the layout easier.
-- Audit all exact copy in `lib/marketing/copy/`, including entry, waiting, partial result, repair, verification, monitoring, settings, emails, removal and errors. Prefer concrete effect and next action; remove duplicated reassurance, raw schema/revision text from primary UI and contradictory offer language. Keep technical IDs and machine instructions available in appropriate depth.
-- Review public sample and live workspace together using their shared components. Label sample evidence honestly. Check Docs, Help, pricing, metadata, privacy and support against released behavior and retained commercial policy.
-- Validate both themes at 320/375/768/1280px, native 200/400% browser zoom and reflow, reduced motion, safe areas, slow hydration and failed requests. Check forward/reverse keyboard navigation, real focus visibility, modal containment, Escape, opener restoration, live announcements and stable touch targets. Include the intended physical-device and assistive-technology paths separately.
-- Include long translated-length titles, many controls, overlays, signed-out continuation and old returned links in that composition review. Retain 44px shared controls as the product target; distinguish that design choice from WCAG's 24px minimum and spacing exceptions. Confirm focus is not obscured and copy/status announcements do not move the reader unexpectedly. Validate WebKit's secure-context/user-gesture clipboard requirements using the real interaction; mocked `writeText` success cannot close that gate.
-- Preserve the owner's approved white-on-orange 3.13:1 exception. It remains an accessibility exception; do not claim full WCAG AA or change the approved brand treatment to manufacture a pass. Fix other accessibility defects independently.
+Check both themes at 320/375/768/1280px, 200/400% zoom, reduced motion, safe areas, touch, keyboard order, focus visibility/containment/restoration and status announcements. Include actual back/forward, refresh, multiple drafts, save-after-unmount and account switching. Demonstrate native clipboard behavior after asynchronous preparation and retain successful copy when history recording fails.
 
-**Done when:** a reader can find the important result, inspect its evidence, review and hand off the selected task, interpret verification and control monitoring without explanatory workarounds. Record observed task confusion and correct consequential failures before sign-off.
+Conduct task-based agent usability review now; fix observed confusion at its cause. Human, physical-device, assistive-technology and supported-editor observations keep their own acceptance labels. Do not claim studies that did not occur. Preserve the approved orange/white contrast exception and disclose it separately; it prevents a blanket WCAG AA claim.
+
+Assess four questions at every surface: what is watched, what needs attention, what to do next and whether the fix worked. Put each fact in one primary place. Confirm the first useful action remains understandable with long names, many findings, no capture, partial coverage, lost connectivity and a reopened incident. Evidence, history and technical limits belong in the existing disclosures. Do not add a panel, status badge or explanatory paragraph merely because the backend now exposes another field.
+
+Review exact copy by state: still checking, unavailable evidence, observed failure, investigation, evidence recovery, repair ready, copy succeeded/recording failed, repair declared, verification running, still open, could not verify, verified and recurring. Those states must have different actions where their underlying facts differ. Preserve approved wording when the meaning is already correct. New or corrected rendered strings belong in the existing copy owner, with all repeated consumers migrated together.
+
+**Acceptance:** the owner can find a problem, understand its evidence, hand off the intended task, verify a repair and understand ongoing monitoring without technical guidance or unnecessary decisions.
 
 ### 7. Streamline code and measure performance while completing the journeys
 
-**Owners:** existing command, query, projection, resource, delivery and rendering boundaries. **Closes:** C09 and residual C01/C10.
+Consolidate source membership, recovery proof, customer finding presentation and repair projection at their existing owners. Migrate UI, history, notifications and authorized machine consumers together. Remove obsolete current logic after parity is proven. Preserve historical adapters that still have real consumers.
 
-| Boundary | Required discipline and remaining assessment |
-| --- | --- |
-| Routes and commands | Thin authenticated transport delegates to the existing application owner. Shared command admission and effect-time checks govern UI, scheduled and machine callers. |
-| Evidence and projections | One producer owns verdict, scope, freshness, guidance eligibility and provenance. Reuse a revision-bound repair projection across board, email, JSON, MCP and receipt writers. Keep transport presentation separate. |
-| Account summaries | `loadAccountSiteSummaryFacts` shares truth correctly, but also reads preview images, incident occurrences and per-attempt context. Measure large-account/history costs before selecting narrower reads for summaries. Constant query count does not establish bounded rows, memory or latency. |
-| Site/Flag reads | Preserve the recent direct repair loader. Measure the bundle's repeated preparation/revalidation queries, rows, bytes, serialization and peak memory at 1, 25 and 100 findings and at the largest supported observation groups. Batch shared reads and validate frozen revisions without reloading whole graphs twice per task. Keep complete evidence accessible through explicit continuation. |
-| Client state | One viewer-scoped resource owns refresh/events and cancellation. Draft, selection and action scope have explicit lifetimes. No stale callback may write another Site's state. |
-| Notifications | Preferences, scheduling, projection, immutable send snapshot and provider events keep separate owners. Share effect identity and replay rules rather than creating a sender per trigger. |
-| Shared UI and copy | Existing semantic tokens, controls, Overview/sample composition and exact copy modules own repeated roles. Consolidate repeated issue-action eligibility and human finding presentation. Keep versioned legacy adapters separate from current structured facts. Extract a component when behavior or semantics are shared, not merely because two divs look alike. |
-| Compatibility | Identify real historical/report/key consumers before removal. Keep necessary adapters explicit and versioned; delete dead helpers, parallel verdict logic and unused paths with caller evidence. |
+Measure large-history overview, Flag detail, category export, evidence continuation, email rendering and finalization at realistic supported scope. Record query rows, transfer/encoded bytes, peak memory, transaction time, cold/warm latency and cancelled-work release. Complete bounded access to oversized supported observations without silently omitting them.
 
-Measure the production build on representative devices/networks and realistic evidence/history sizes. Include entry, Overview, Flag opening, selection, preview/copy, verification, Settings save and navigation. Separate server/query latency, client transfer, render work, hydration and provider time. Improve the measured cause and retain behavior-oriented regressions.
+Large-record continuation is implemented locally. Remaining measurement must include every page of a 5,000-observation group, a single large observation, encoded Unicode/escaping, 100 selected tasks, the supported full manifest and long history. Trace input reads as well as output bytes. If repeated whole-source hydration or hashing dominates, move bounded retrieval and revision work to the existing evidence owner and migrate its consumers. Do not substitute smaller scope, silent omission or a parallel cache. Record complete traversal cost and verify that independent Site work still progresses under contention.
 
-For the repair path, record the cold and warm prepare/clipboard timings, query
-count and rows, response and attachment bytes, memory high-water mark,
-continuation completeness and cancelled-work release. Establish budgets from
-the supported device/network and scope cases before claiming improvement. Do
-not substitute fewer findings, shorter retained evidence or a mocked empty
-history for a faster implementation. Retire the generic readiness synthesis,
-duplicate email task builder and raw-prose parsing for current results only
-after their callers use the shared contracts and historical adapters are tested.
+Measure production-build interaction and rendering separately from queue/provider time. Cover opening Flags, selection, preview/copy, verification, saves and navigation on representative devices/networks. Use LCP 2.5s, INP 200ms and CLS 0.1 as targets; field percentiles remain separate from local lab timing.
 
-Use LCP ≤ 2.5s, INP ≤ 200ms and CLS ≤ 0.1, with field assessment at the 75th percentile by device category when data exists. Preserve the existing 48 recorded application lab samples and their required conditions. Localhost LCP and automated interaction timing cannot replace field INP. Record absent field evidence as unavailable.
+**Acceptance:** responsibilities and data flow are clear, obsolete mechanisms are removed, supported evidence remains complete and measured hot paths meet explicit budgets. No speculative framework, parallel truth source or reduced feature scope substitutes for improvement.
 
-**Done when:** ownership is clear, obsolete paths are removed without losing history, measured hot paths meet their stated budgets and no second engine, fallback truth, speculative facade or broad rewrite has been introduced.
+### 8. Accept one recoverable candidate and its continued value
 
-### 8. Accept one recoverable deployed candidate and its continued value
+Prepare provider targets, protected restore destinations, monitoring responsibility and natural-time observation requirements while local implementation proceeds. Package and exercise the same candidate through application, database, queue and worker paths. Rehearse upgrade, rollback and restore with protected data handling and measured recovery objectives.
 
-**Owners:** existing release runner, immutable web/worker packaging, database recovery, operational diagnostics and value reports. **Closes:** C08 and final acceptance across C01 through C10.
+Verify independent operational observation and accountable failure/recovery alerts for lost readiness, overdue obligations, queue delivery loss, exhausted resources and failed notifications. Keep deployment readiness separate from continuous operations. Observe naturally scheduled uptime and full analysis without an agent or customer session driving them.
 
-- Freeze the actual integrated candidate after required corrections. Run the applicable website foundation, dependency/security checks, fresh/upgrade migrations, production web/worker builds and packaged runtime against that exact source.
-- Prepare artifacts and protected backup/restore destinations before any maintenance boundary. Rehearse previous-runtime compatibility or the explicitly coordinated cutover, and actual backup restoration with protected customer data. Record restore duration, integrity and the agreed recovery objectives. Do not infer production recovery from the disposable fixture dump.
-- Inventory continuous monitoring first. Verify external observation and accountable operator notification for lost web/worker readiness, overdue monitoring obligations, exhausted capacity and failed delivery. Observe an induced failure and recovery in the authorized environment. Railway deployment healthchecks alone do not provide continuous monitoring.
-- Complete all required authorized customer, tenant, category, uptime, account, notification, removal, privacy and rendered journeys and every required `free-launch` stage on the candidate, without skipping a required journey. Prove normal one-day non-remembered app-session expiry and the controlled target's actual session expiry without clock changes, backdating or a shortened replacement lifetime. Preserve failures, assertions and measurement limits. Changed source earns fresh affected proof.
-- Promote the exact accepted immutable candidate and verify web/worker source and image agreement, migrations, gates, private evidence and normal customer actions. Observe a naturally scheduled full production check and notification behavior without an agent driving the scheduler.
-- Use existing first-value and cohort reports to distinguish useful finding, claim, guidance, physical handoff, published repair, independently verified improvement and later scheduled observation. Report denominators, missing links and immature windows.
-- Conduct independent agent task assessment as previously directed when representative people are unavailable. Do not invent human sessions or convert agent observations into human usability evidence. Record field/device/human gaps separately from demonstrated product behavior.
-- Demonstrate value with tasks rather than presentation approval: an ordinary owner can identify the problem and its page, copy one fix or all fixes without drilling into each Flag, paste a coherent task, understand any remaining evidence gap, publish an authorized repair, see independent recovery and know what remains watched. Record errors, unnecessary navigation, misunderstood terms and incomplete handoffs. Resolve consequential failures before accepting the supported promise.
+Define operational acceptance using customer obligations: eligible Sites receive their next observation, committed findings become readable, selected repairs reach a settled comparison, notifications reach an accountable delivery outcome and revoked work stops. Measure missed obligations and detection/recovery delay. Use existing operational projections and external observation, rather than another customer metrics surface. Missing periods remain unknown. The observation window must contain real cadence transitions and any explicitly required longer commercial Watch gate; advancing a fixture clock cannot satisfy a natural-time requirement.
 
-**Done when:** current candidate receipts establish the supported journey, safety, recovery and unattended operation; consequential task failures are resolved; and the release report states remaining evidence limits without overstating readiness or customer value.
+Actual production changes, paid calls, external account mutations and protected restore actions retain their authorization boundaries. This plan authorizes none of them. Complete local and reviewable preparation first; production verification is a remaining requirement, not a reason to stall independent work.
+
+**Acceptance:** the supported journey, every required capability boundary, safety, recovery and continuing operation are backed by evidence for the same candidate. The product's value is demonstrated by useful repair and subsequent independent observation, not activity totals.
 
 ## State and action acceptance matrix
 
-Use these states at the existing producers and relevant surfaces. Check meaningful combinations, rather than taking every screenshot of every possible cross-product.
-
-| State | Required customer truth and action |
+| State or transition | Required truth and customer action |
 | --- | --- |
-| First visit, queued, running | Real progress, partial evidence and a recoverable return path. JavaScript controls wait for handlers; native links and forms retain native behavior. |
-| Completed with no Flags | Clear only for supported fresh evaluated scope. Unevaluated areas stay visible as such. |
-| Partial, blocked or cancelled | Useful retained findings plus the exact limitation and appropriate retry/reconnect action. No automatic success from absent evidence. |
-| One Flag, many Flags, long evidence | Individual inspection, category/page navigation and explicit scope selection remain usable. |
-| Guidance, investigation or evidence recovery | Offer the evidence-supported next action with its true kind and limits. Preparation, copy and receipt writers agree on the exact task. Missing evidence never becomes a fabricated generic repair. |
-| Sign-in or claim required | Use the normal copy/detail actions with the correct in-place access continuation. Do not imply that private guidance is missing. |
-| Clipboard copied, recording failed | Preserve copied success and the exact task text; explain only the separate recording failure. Neither fact resolves the Flag. |
-| Capture pending, missing, failed, expired or historical | Producer-derived disposition and date. Do not substitute another device or newer Site image for source evidence. |
-| Changed source or permission | Refuse stale preparation/effects with a concrete next step, preserving original history. |
-| Verification queued, ineffective, incomparable or blocked | Same durable attempt/run and a conclusion justified by fresh comparison. |
-| Recovered and recurring | Independent recovery and reopened durable incident with new occurrence evidence. |
-| Paused, delayed, stale or disconnected | Separate saved schedule, monitoring obligation, evidence freshness and transport state. |
-| Edited Settings, failed save, Back/Forward or departure | Deliberate save/discard and correct owner-scoped draft lifecycle, with confirmed server values on success. |
-| Email accepted, delivered, delayed, bounced or complained | Actual provider state, suppression and relevant owner action. No read claim. |
-| Removal with unresolved external effects | New work fenced and unresolved cleanup precisely acknowledged. No fabricated external deletion. |
+| Analysis starting or waiting | Actual admitted scope and progress; no invented completion percentage or healthy conclusion. |
+| Results arriving with missing modules | Show observed failures immediately and qualify incomplete coverage separately. Offer retry for the missing work. |
+| Sign-up or claim in progress | Retain the same Site, findings, evidence, return location and reading context without transferring another owner's authority. |
+| Healthy and current | A calm conclusion for the demonstrated scope, with monitoring continuing automatically. |
+| Important failure | One understandable problem, evidence and useful next action; full-site and individual access remain available. |
+| Unsupported cause or incomplete evidence | A specific investigation or evidence-recovery action; no invented diagnosis or certified fix. |
+| Prompt prepared or copied | Exact reviewed selection; successful copy and handoff recording are distinct. Neither means the website changed. |
+| Verification queued or running | Original incident remains attributable and unresolved until comparison establishes recovery. |
+| Repair ineffective or incomparable | Preserve the problem or unknown comparison with its actual reason and a useful next action. |
+| Recovery proven | Link the exact independent proof and preserve its original date; keep monitoring and other unresolved sources intact. |
+| Failure recurs | The same incident continuity, a fresh observation and preserved earlier recovery history. |
+| Evidence stale or expired | Retain dated historical evidence, qualify current assurance and offer an appropriate new observation. |
+| Monitoring paused and resumed | Honest pause state; no claimed current observation during the gap. Resume existing identity and obligations safely. |
+| Provider or resource unavailable | Independent checks continue; missing dependency stays explicit without fabricated success or a dead-end interface. |
+| Navigation or save interrupted | Preserve the correct account's draft and selection, confirm actual effects and reject stale responses. |
+| Site removed or access revoked | Fence new work and private reads; acknowledge retained history and unresolved external cleanup accurately. |
 
 ## Public website validation completion ledger
 
-This is the current acceptance contract. Every item is open for the integrated candidate until a current receipt closes it. Historical passes and failures remain in the [preserved plan](product-masterplan-history-2026-10-29.md#public-website-validation-completion-ledger) and [evidence history](release/website-beta-evidence-history.md). `test-results/release/website-beta-current.json` selects a machine record; its present October 20 selection must not be mistaken for current acceptance.
+Keep one acceptance record keyed to candidate identity and each explicit requirement. Record source, environment, observation time, artifact and any limitation. Preserve these existing gate identifiers and links.
 
-| Gate | Required current evidence |
+| Gate | Required completion evidence |
 | --- | --- |
-| V1 Integrated source | Intended source identity, applicable checks, migration/upgrade compatibility, production web/worker/image and private artifact custody. |
-| V2 Ordinary customer loop | Public URL → real signup and same-Site claim → useful Flag and reviewed handoff → published repair → independent verification → recurrence and second recovery. |
-| V3 Capability truth | Existing public precision/replay requirement, category/page/Outcome scope and honest blocked/stale/unknown semantics. |
-| V4 Provider and protected effects | Real private storage lifecycle, PageSpeed boundary, bounded receiving/account lifecycle, notification acceptance/delivery and safe removal. |
-| V5 Experience | The state matrix, complete responsive composition, keyboard/focus/reflow and representative performance; agent, device, field and human evidence identified accurately. |
-| V6 Operations and recovery | Actual protected restore and compatible rollback, continuous actionable alerts, exact deployed revisions and a naturally scheduled full check/summary. |
-| V7 Usefulness | Attributable useful repair and subsequent observation, with existing funnel/cohort denominators and limitations. |
+| V1 Integrated source | Exact intended source and packaged runtimes, focused/static/component checks, dependency/security checks and fresh/upgrade schema compatibility. |
+| V2 Ordinary customer loop | URL, ordinary sign-up/claim, useful Flag, reviewed task, external repair, independent verification, recurrence and second recovery. |
+| V3 Capability truth | All 108 current items accounted for by applicability, collection, conclusion, meaningful functional scenarios and explicit external boundaries. |
+| V4 Provider and protected effects | Actual storage, PageSpeed, receiving/account lifecycle, notification acceptance/delivery, revocation and acknowledged removal. |
+| V5 Experience | Complete state/task matrix, responsive reflow, keyboard/focus, clipboard, copy consistency and representative performance with each proof type identified. |
+| V6 Operations and recovery | Actual authorized protected restore/rollback, continuous actionable operational alerts, natural cadence and unattended obligation recovery. |
+| V7 Usefulness | An attributable useful repair and continuing independent observation; no invented human, retention, revenue or business-impact claim. |
 
-Acceptance preserves the existing assertions, thresholds, scope membership and failed receipts. Do not change severity, exclusions, provider retry budgets, measurement clocks or fixture expectations to obtain a passing result. A legitimate evaluator or test correction needs the original failure, independent source evidence, a reviewed explanation and fresh affected acceptance.
-
-Retain these accepted operating constraints:
-
-- Website beta remains `free-launch`; paid opening is a separate profile. Preserve stored subscriptions, credits and legacy access. Do not activate checkout by changing an environment variable alone.
-- GitHub account authorization is available; repository scanning and automatic PRs are parked. Google, Shopify and other unvalidated customer integrations remain Coming soon with saved-connection cleanup preserved. Their live activation cannot block website beta or be claimed complete from compatibility tests.
-- Protect the Resend allowance. Routine fixtures do not send customer alerts or create email-verified test identities. The historical five-verification-send allocation is closed by default, not a renewed budget. Reconcile prior use and obtain actual sending authorization before any provider send. Keep the designated combined-alert proof bounded.
-- Signup uses one branded verification email without an automatic separate welcome message. Combined finding messages retain the correct app-origin links and requested recoveries. Requested summaries and product tips retain their independent choices.
-- Automatic-account production enablement requires actual lifecycle evidence. An isolated controlled-target allowance cannot authorize arbitrary production account creation.
-- GitHub Actions CI and Railway Wait for CI remain disabled until separately authorized. Record actual local validation and deployment attestation without manufacturing CI status.
-- This research-and-plan assignment does not explicitly request browser/E2E execution. Follow `AGENTS.md` for a later explicit request, including indirect browser stages. Deployment, sends, protected restore and external effects retain their actual authorization boundaries.
+The objective remains incomplete while any explicit requirement lacks adequate evidence. An externally dependent boundary remains explicit even after all reasonable local work is complete.
 
 ## Separate release gates and broader direction
 
-MCP, local CLI and hosted clients reuse the current Site command, evidence and repair contracts. Before discovery opens, test actual documented clients through scoped/expired/revoked credentials, audience and tenant refusal, full repair/verify, disconnect/reconnect and durable continuation. Local protocol tests or generated configuration are insufficient. Public setup, Docs and discovery must open coherently from the one Settings connection flow. These gates do not replace website acceptance.
-
-Paid opening additionally requires the existing production reliability/COGS window and Stripe evidence. Preserve the current 14-day/100-scheduled-execution contract and its collecting/unavailable states. Do not enable billing because free-beta journeys pass.
-
-Login, Password reset, additional integrations, general HTTP/API Outcomes, arbitrary agent evaluation and richer collaboration retain their own product and safety admission. Broader direction lives in the [vision](../knowledge/vision.md), [product architecture](product-architecture.md) and [roadmap](../ROADMAP.md). Do not expand the current customer promise by relabeling inferred actions as verified Outcomes.
+Retain website open-beta policy and current commercial behavior. Public MCP/CLI discovery, repository execution, paid enrollment and unvalidated connections keep their separate decisions. Existing authorized transports and saved-connection cleanup still participate in shared-contract correctness. Expanding discovery or product scope is not a shortcut to website acceptance.
 
 ## Research applied to the plan
 
-The November 3 reassessment rechecked the primary sources in the first table.
-Their application to FixFlags is engineering and design judgment, not evidence
-that the application passes their requirements. The MCP security reference is
-versioned; client acceptance must record the actual negotiated protocol and
-client versions rather than treating a draft change as an automatic migration.
+Operational alerts should reflect meaningful symptoms and support diagnosis, with external observations distinguished from internal health. This supports the existing separation between uptime, functional checks and service readiness. [Google SRE](https://sre.google/sre-book/monitoring-distributed-systems/).
 
-| Primary source checked November 3 | Applied requirement |
-| --- | --- |
-| [GOV.UK writing for user interfaces](https://www.gov.uk/service-manual/design/writing-for-user-interfaces) and [make the service simple to use](https://www.gov.uk/service-manual/service-standard/point-4-make-the-service-simple-to-use) | Make the primary action and scope understandable without a tutorial. Use concise, distinct labels and assess complete tasks. Copy simplification must preserve facts and approved terminology. |
-| [W3C target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum) and [reflow](https://www.w3.org/WAI/WCAG21/Understanding/reflow) | Keep the product's 44px shared controls, test the actual spacing and reflow, and distinguish that product target from the standard's 24px minimum and its exceptions. Test text enlargement and narrow layouts without losing actions. |
-| [WebKit Async Clipboard API](https://webkit.org/blog/10855/async-clipboard-api/) | Native copying requires the supported secure context and user gesture. Review the asynchronous preparation/write sequence against actual Safari behavior. A mocked write promise cannot certify the phone interaction. |
-| [MCP security best practices, 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices) | A URL is a reference, not authorization. Preserve scoped owner access, token audience checks, revocation and refusal of token passthrough. Treat captured page text and instructions as untrusted data outside the authorization boundary. |
-| [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys), [event types](https://resend.com/docs/webhooks/event-types) and [attachments](https://resend.com/docs/dashboard/emails/attachments) | Preserve immutable retry bodies inside the provider's 24-hour deduplication window. Delivery to the recipient server is not proof of inbox placement or reading. Enforce the documented 40MB total limit including encoded attachments and a smaller application budget. Attachment delivery uses the supported single-send path. |
-| [Web Vitals](https://web.dev/articles/vitals) | Keep lab measurements, field observations, scope and device distinct. Use LCP 2.5s, INP 200ms and CLS 0.1 as the good-experience thresholds, with field evaluation at the 75th percentile by device. Faster fixtures and byte savings cannot certify a visitor experience. |
+Retries need stable operation identity and intent; a timeout alone cannot prove that a remote effect did not happen. Keep the durable effect and reconciliation owners already built. [AWS Builders Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/).
 
-The following October 31 research remains dated context for the existing
-packages. It was not all fetched again during this reassessment.
+Queue locks can be lost when workers stop renewing them. Preserve explicit ledger recovery and resource bounds rather than equating a broker job state with completed product work. [BullMQ stalled jobs](https://docs.bullmq.io/guide/jobs/stalled).
 
-| Primary source | Implication for completion |
-| --- | --- |
-| [BullMQ idempotent jobs](https://docs.bullmq.io/patterns/idempotent-jobs) and [stalled jobs](https://docs.bullmq.io/guide/jobs/stalled) | Retry safety belongs in effect identity and durable reconciliation. A stalled event is not a current queue state. Apply in package 2 without weakening the existing execution ledger. |
-| [Resend idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys), [webhook retries](https://resend.com/docs/webhooks/retries-and-replays) and [signature verification](https://resend.com/docs/webhooks/verify-webhooks-requests) | Provider send deduplication has a 24-hour window; webhooks can replay and a failing endpoint can be disabled. Keep bounded replay, durable event identity, original-byte verification and operational detection. |
-| [Resend delivered event](https://resend.com/docs/webhooks/emails/delivered) | Delivered means the recipient mail server accepted the message. Keep inbox rendering, placement and reading as separate observations. |
-| [W3C focus not obscured](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html) and [status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html) | Test actual focused components against sticky navigation/chat/consent surfaces. Announce meaningful progress and results without unnecessarily moving focus. |
-| [Web Vitals](https://web.dev/articles/vitals) | Measure loading, interactions and layout stability separately; assess field percentiles by device. A fast local render does not establish representative performance. |
-| [Railway healthchecks](https://docs.railway.com/deployments/healthchecks) | Deployment healthchecks stop after activation. Continuous operational observation and accountable alerts require their own evidence. |
-| [OWASP prompt-injection prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html) | Enforce least privilege and parameter authorization outside model text. Grade actual unauthorized effects and disclosure, retaining inconclusive cases separately. |
+Important status changes must be programmatically available without forcing focus, and detected input errors need identifying text. Apply these requirements to real action states and forms, not just static rendering. [W3C status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html), [W3C error identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification).
 
-## Dated implementation records
+Focused controls must remain at least partially visible through authored sticky content and overlays. Test the actual viewport and keyboard position, rather than inferring a failure from a tall page image. Preserve the stronger existing focus treatment where available. [W3C focus not obscured](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html).
 
-These links preserve existing incoming anchors. They are historical observations, not extra active delivery plans.
+The performance targets above follow Google's current LCP, INP and CLS guidance. Field acceptance uses the 75th percentile with mobile and desktop considered separately. A fast local interaction or a Lighthouse result cannot establish that field result. [Google Web Vitals](https://web.dev/articles/vitals).
 
-### Implementation checkpoint 2026-10-29
+Resend deduplicates supported idempotent sends within a 24-hour window and requires the original request body for webhook verification. Preserve durable delivery identity and bounded reconciliation beyond the provider's retry window; distinguish provider acceptance, delivery and human reading. [Resend idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys), [Resend webhook verification](https://resend.com/docs/webhooks/verify-webhooks-requests).
 
-[Repair, evidence, MCP, browser-health and isolated runtime proof](product-masterplan-history-2026-10-29.md#implementation-checkpoint-2026-10-29). [Notification implementation and its separate live gates](notification-completion-plan.md).
+Operational alert acceptance should consider significance, precision, detection and reset time. Apply that reasoning to FixFlags' existing missed-obligation signals, without copying a large request-rate alerting framework into a low-volume product. [Google SRE alerting guidance](https://sre.google/workbook/alerting-on-slos/).
 
-### Integration checkpoint 2026-10-28
+## Implementation checkpoint November 3
 
-[Integration and coordinated migration record](product-masterplan-history-2026-10-29.md#integration-checkpoint-2026-10-28).
+The shared repair-definition, transport-budget, copied-versus-recorded and readable-detail corrections are retained as implemented workspace foundations. Their original checks and unresolved boundaries are in the [archived checkpoint](product-masterplan-history-2026-11-03.md#implementation-checkpoint-november-3). They are not fresh acceptance of this candidate.
 
-### Implementation checkpoint, 2026-10-27
+## Implementation checkpoint 2026 10 27
 
-[Claim, repair, resource and packaged-runtime record](product-masterplan-history-2026-10-29.md#implementation-checkpoint-2026-10-27).
-
-### Current completion plan, 2026-10-26
-
-[The October 26 assessment](product-masterplan-history-2026-10-29.md#current-completion-plan-2026-10-26) is retained as dated evidence. Use Required delivery order above for current work.
+Earlier migration, runtime and interface observations remain in the [archived implementation records](product-masterplan-history-2026-11-03.md#implementation-checkpoint-2026-10-27). Current mechanics remain in [the audit pipeline](audit-pipeline.md); current acceptance is governed by the ledger above.

@@ -36,20 +36,38 @@ export async function recordEmailAcceptance(input: {
   await reconcileEmailEvents(input.providerId)
 }
 
+type EmailAcceptanceSource = Pick<Parameters<typeof recordEmailAcceptance>[0], 'channel' | 'sourceId' | 'providerId'>
+
+async function updateEmailAcceptanceSource(source: EmailAcceptanceSource,
+  data: { deliveryProjectedAt: Date } | { nextAttemptAt: Date }) {
+  const where = { id: source.sourceId, providerId: source.providerId, status: 'SENT' as const, deliveryProjectedAt: null }
+  if (source.channel === 'summary') return prisma.notificationDigest.updateMany({ where, data })
+  if (source.channel === 'uptime') return prisma.uptimeNotification.updateMany({ where, data })
+  if (source.channel === 'onboarding') return prisma.emailLog.updateMany({ where, data })
+  return prisma.audit.updateMany({ where: { id: source.sourceId, watchNotificationProviderId: source.providerId,
+    watchNotificationStatus: 'SENT', watchDeliveryProjectedAt: null }, data: 'deliveryProjectedAt' in data
+      ? { watchDeliveryProjectedAt: data.deliveryProjectedAt } : { watchNotificationNextAttemptAt: data.nextAttemptAt } })
+}
+
+/** SENT receipts no longer enter the provider queue. Their existing retry clock
+ * can defer history recovery without spending a provider attempt or changing
+ * acceptance, recipient or payload facts. Completed projections cannot defer. */
+export async function deferEmailAcceptanceProjection(source: EmailAcceptanceSource, nextAttemptAt: Date) {
+  await updateEmailAcceptanceSource(source, { nextAttemptAt })
+}
+
 /** Acceptance already belongs to its durable source receipt. A projection
  * failure must not rewrite that fact into a failed send; maintenance repairs it. */
-export async function projectEmailAcceptance(input: Parameters<typeof recordEmailAcceptance>[0]) {
+export async function projectEmailAcceptance(input: Parameters<typeof recordEmailAcceptance>[0]): Promise<boolean> {
   try {
     await recordEmailAcceptance(input)
-    const where = { id: input.sourceId, providerId: input.providerId, status: 'SENT' as const }
-    const data = { deliveryProjectedAt: new Date() }
-    if (input.channel === 'summary') await prisma.notificationDigest.updateMany({ where, data })
-    else if (input.channel === 'uptime') await prisma.uptimeNotification.updateMany({ where, data })
-    else if (input.channel === 'onboarding') await prisma.emailLog.updateMany({ where, data })
-    else await prisma.audit.updateMany({ where: { id: input.sourceId, watchNotificationProviderId: input.providerId,
-      watchNotificationStatus: 'SENT' }, data: { watchDeliveryProjectedAt: new Date() } })
+    await updateEmailAcceptanceSource(input, { deliveryProjectedAt: new Date() })
+    return true
   }
-  catch { logger.error('Email delivery projection needs reconciliation', { channel: input.channel, sourceId: input.sourceId }) }
+  catch {
+    logger.error('Email delivery projection needs reconciliation', { channel: input.channel, sourceId: input.sourceId })
+    return false
+  }
 }
 
 export async function acceptEmailProviderEvent(id: string, payload: string, now = new Date()) {
@@ -95,16 +113,19 @@ export async function reconcileEmailEvents(providerId: string, now = new Date())
 }
 
 export async function loadEmailDeliveryHistory(userId: string): Promise<EmailDeliveryView[]> {
-  const since = new Date(Date.now() - retentionMs)
+  const now = new Date(), since = new Date(now.getTime() - retentionMs)
   const [receipts, summaries] = await Promise.all([
     prisma.emailDelivery.findMany({ where: { userId, acceptedAt: { gte: since } }, orderBy: { acceptedAt: 'desc' }, take: 5 }),
     prisma.notificationDigest.findMany({ where: { userId, createdAt: { gte: since }, status: { in: ['PENDING', 'SENDING', 'FAILED'] } },
-      orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, status: true, attempts: true, createdAt: true } }),
+      orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, status: true, attempts: true, leaseUntil: true, createdAt: true } }),
   ])
   const history: EmailDeliveryView[] = receipts.map(receipt => ({ id: receipt.providerId, channel: receipt.channel,
     state: emailDeliveryState(receipt), at: receipt.acceptedAt.toISOString() })).map(receipt => ({ ...receipt,
       channel: z.enum(['summary', 'watch', 'uptime', 'onboarding']).parse(receipt.channel) }))
   history.push(...summaries.map(receipt => ({ id: receipt.id, channel: 'summary' as const,
-    state: receipt.attempts >= 5 ? 'not_sent' as const : 'sending' as const, at: receipt.createdAt.toISOString() })))
+    // A live final request is still sending. Exhaustion without acceptance is
+    // uncertain, since a provider may accept before its response is lost.
+    state: receipt.attempts >= 5 && !(receipt.status === 'SENDING' && receipt.leaseUntil && receipt.leaseUntil > now)
+      ? 'unconfirmed' as const : 'sending' as const, at: receipt.createdAt.toISOString() })))
   return history.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5)
 }

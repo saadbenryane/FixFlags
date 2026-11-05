@@ -34,7 +34,7 @@ run('unresolved claimed findings with migrated PostgreSQL', () => {
       pageUrl: owned.url, position: 0, fingerprint: 'retained-loading' }
     const flag = await prisma.flag.create({ data: { ...flagData, auditId: source.id } })
     await prisma.flag.create({ data: { ...flagData, auditId: other.id, fingerprint: 'foreign-loading' } })
-    site = { kind: 'project', projectId: owned.id, primaryAuditId: later.id } as SiteRecord
+    site = { kind: 'project', projectId: owned.id, userId: owned.userId, primaryAuditId: later.id } as SiteRecord
     sourceFlagId = flag.id; laterAuditId = later.id; foreignAuditId = other.id
   })
   afterEach(async () => { await prisma.user.deleteMany({ where: { id: { in: users } } }) })

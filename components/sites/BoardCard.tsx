@@ -2,6 +2,7 @@
 
 import { useId } from 'react'
 import { InteractiveButton } from '@/components/ui/interactive-controls'
+import { SiteFlagTarget } from './SiteFlagTarget'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -88,7 +89,7 @@ export function BoardSummaryStrip({ items, label = 'Website status summary', onS
     <dl className={styles.summaryStrip}>
       {items.map(item => <div key={item.id ?? item.label} className={`${styles.summaryItem} ${styles[`summary-${item.state}`]} ${item.id === 'monitoring' ? styles.summaryMonitoring : item.id === 'pages' ? styles.summaryPages : ''}`}>
         <dt>{item.label}</dt>
-        <dd>{item.value}{onSelect && <InteractiveButton type="button" className={styles.summaryAction} aria-label={`${item.value} ${item.label}${item.detail ? `. ${item.accessibleDetail ?? item.detail}` : ''}`} onClick={() => onSelect(item)} />}</dd>
+        <dd>{item.value}{onSelect && item.interactive !== false && <InteractiveButton type="button" className={styles.summaryAction} aria-label={`${item.value} ${item.label}${item.detail ? `. ${item.accessibleDetail ?? item.detail}` : ''}`} onClick={() => onSelect(item)} />}</dd>
         {item.detail ? <dd className={styles.summaryDetail}>{item.detail}</dd> : null}
       </div>)}
     </dl>
@@ -212,8 +213,7 @@ export function BoardCard({
             const guidance = flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance] : null
             const content = <><span className={styles.rowFlagTitle}><strong>{flag.title}</strong>{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</span><ArrowRight size={16} aria-hidden /></>
             return <li key={flag.id}>
-            {onOpenFlag || flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagName} aria-label={`Open ${flag.title}`} onClick={event => { if (onOpenFlag) onOpenFlag(flag.id, event.currentTarget); else flag.onOpen?.() }}>{content}</InteractiveButton>
-              : <Link className={styles.rowFlagName} href={flag.href as Route} aria-label={`Open ${flag.title}`}>{content}</Link>}
+            <SiteFlagTarget className={styles.rowFlagName} href={flag.href} aria-label={`Open ${flag.title}`} onOpen={onOpenFlag || flag.onOpen ? trigger => { if (onOpenFlag) onOpenFlag(flag.id, trigger); else flag.onOpen?.() } : undefined}>{content}</SiteFlagTarget>
             {flag.copyAction ? <span className={styles.rowFlagActions}><span className={styles.rowCopyAction}>{flag.copyAction}</span></span> : null}
           </li> })}
           {bounded && hiddenPreviewCount > 0 ? <li>{onOpen
@@ -269,9 +269,7 @@ export function BoardCard({
         <ul className={styles.flagPreviewList}>
           {visiblePreviewFlags.map(flag => {
             const content = <><span>{flag.title}{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}</span><ArrowRight size={14} aria-hidden /></>
-            return <li key={flag.id}>{onOpenFlag || flag.onOpen
-              ? <InteractiveButton type="button" className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} onClick={event => { if (onOpenFlag) onOpenFlag(flag.id, event.currentTarget); else flag.onOpen?.() }}>{content}</InteractiveButton>
-              : <Link className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} href={flag.href as Route}>{content}</Link>}{flag.copyAction ? <div className={styles.previewCopyAction}>{flag.copyAction}</div> : null}</li>
+            return <li key={flag.id}><SiteFlagTarget className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} href={flag.href} onOpen={onOpenFlag || flag.onOpen ? trigger => { if (onOpenFlag) onOpenFlag(flag.id, trigger); else flag.onOpen?.() } : undefined}>{content}</SiteFlagTarget>{flag.copyAction ? <div className={styles.previewCopyAction}>{flag.copyAction}</div> : null}</li>
           })}
           {hiddenPreviewCount > 0 ? <li className={styles.flagPreviewMore}>+{hiddenPreviewCount} more</li> : null}
         </ul>

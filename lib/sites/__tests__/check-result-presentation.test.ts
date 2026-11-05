@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { presentCheckResult } from '../check-result-presentation'
-import type { SiteCheckResult } from '../check-results'
+import type { SiteCheckResult } from '../check-result-contract'
 
 const result = { area: 'tracking', source: 'browser-network', status: 'unknown', name: 'Event initiation not established',
   reason: 'tracking_no_event', assertionKey: 'tracking-initiation', observation: 'No recognized event collection request was observed.' } as SiteCheckResult

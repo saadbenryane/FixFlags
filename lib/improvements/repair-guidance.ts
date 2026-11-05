@@ -46,6 +46,8 @@ export function hasRepairGuidance(fix: string | null | undefined): boolean {
 export type RepairGuidanceInput = Partial<AgentPrompts> & {
   fix?: string | null; checkId?: string | null; attentionPolicy?: unknown
   supportingObservations?: unknown; supportingEvidenceUnreadable?: boolean
+  evidenceMissing?: boolean
+  repairDefinition?: RepairDefinition | null
   problem?: string | null; evidence?: string | null; verificationRule?: string | null
 }
 
@@ -59,7 +61,10 @@ export type RepairDefinition = {
 
 /** One task selection for individual report actions and composed editor handoffs. */
 export function effectiveRepairGuidance(input: RepairGuidanceInput): string | null {
-  if (hasUnavailableFlagEvidence(input)) return null
+  // Historical text-only adapters may omit evidence. Explicitly empty or
+  // unavailable observations cannot authorize the saved change instructions.
+  if (hasUnavailableFlagEvidence(input) || input.evidenceMissing === true ||
+    input.evidence !== undefined && !input.evidence?.trim()) return null
   if (searchAttentionDecision(input)?.reason === 'historical_intent_not_established') return SEARCH_COPY.rules.indexing.guidance
   const contextual = requiresContextualReview(input.checkId)
   const editors = [input.agentPrompt, input.cursorPrompt, input.claudePrompt, input.windsurfPrompt, input.lovablePrompt, input.boltPrompt]
@@ -80,7 +85,8 @@ export function resolveRepairDefinition(input: RepairGuidanceInput): RepairDefin
   const unreadable = hasUnavailableFlagEvidence(input)
   const recorded = effectiveRepairGuidance(input)
   if (!recorded && !input.problem?.trim()) return null
-  const recovery = unreadable || (!recorded && !input.evidence?.trim())
+  const recovery = unreadable || input.evidenceMissing === true || (!recorded && !input.evidence?.trim())
+  if (!recovery && input.repairDefinition) return input.repairDefinition
   const kind = recovery ? 'evidence-recovery' : recipe?.kind ?? 'investigation'
   const plan = recipe ? G[recipe.recipe as keyof typeof G] : G.investigate
   const guidance = recovery ? G.recoverEvidence : recorded ?? [G.reproduce,

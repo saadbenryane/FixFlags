@@ -33,10 +33,11 @@ export interface PickPlanInput {
   onPrivateBeta?: () => void
   /** Callback to navigate programmatically (e.g. window.location.replace for checkout). */
   onCheckoutRedirect?: (url: string) => void
+  signal?: AbortSignal
 }
 
 export interface PickPlanResult {
-  kind: 'free_dashboard' | 'free_report' | 'checkout_redirect' | 'waitlist' | 'demo' | 'unavailable' | 'error'
+  kind: 'free_dashboard' | 'free_report' | 'checkout_redirect' | 'waitlist' | 'demo' | 'unavailable' | 'error' | 'cancelled'
   url?: string
   message?: string
 }
@@ -71,7 +72,10 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     respectActiveReport = true,
     onPrivateBeta,
     onCheckoutRedirect,
+    signal,
   } = input
+
+  if (signal?.aborted) return { kind: 'cancelled' }
 
   if (plan === 'FREE') {
     if (respectActiveReport) {
@@ -103,7 +107,8 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     return { kind: 'waitlist', url: waitlistPathForPlan(checkoutPlan) }
   }
 
-  const outcome: CheckoutOutcome = await requestPlanCheckout(checkoutPlan)
+  const outcome: CheckoutOutcome = await requestPlanCheckout(checkoutPlan, signal)
+  if (signal?.aborted) return { kind: 'cancelled' }
 
   if (outcome.kind === 'redirect') {
     if (outcome.existingSubscription) {

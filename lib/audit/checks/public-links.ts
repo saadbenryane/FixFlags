@@ -2,7 +2,7 @@ import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { openCheckDestinations, deadDestinationFlags, hasSuccessfulPublicGet, type OpenCheckObservation } from '../open-check'
 import { collectEligibleDestinations } from '../url-identity'
-import { destinationContext, publicLinkContext, displayDestination } from './destination-evidence'
+import { destinationContext, publicLinkContext, displayDestination, originalDestinationContexts, PUBLIC_LINK_VERIFICATION_RULE } from './destination-evidence'
 import type { PageMetadata } from '../metadata'
 import { load } from 'cheerio'
 import type { RenderedSearchSnapshot } from '../search/rendered-snapshot'
@@ -11,23 +11,31 @@ import { documentEvidenceWithheld } from '../browser/document-evidence'
 
 export type PageLinkInventory = Pick<PageMetadata, 'links' | 'linkBaseUrl' | 'documentUrl'> & { complete?: boolean }
 type LinkCapture = {
-  renderedSearchSnapshot?: { finalUrl?: string; documentBaseUrl?: string | null; sections: Pick<RenderedSearchSnapshot['sections'], 'links'> } | null
+  renderedSearchSnapshot?: { finalUrl?: string | null; documentBaseUrl?: string | null; sections: Pick<RenderedSearchSnapshot['sections'], 'links'> } | null
   collectionRestrictions?: readonly string[] | null
 }
 
 /** Reuse the bounded native link section, independently of whole-page parsing.
  * Complete parsed metadata from the same capture can cover an exhausted section.
  * Historical sections without an observed base cannot resolve relative links. */
-export function capturedPageLinks(capture: LinkCapture | null | undefined, metadata: PageMetadata | null): PageLinkInventory | null {
+export function capturedPageLinks(capture: LinkCapture | null | undefined, metadata: PageMetadata | null,
+  options: { requireLabels?: boolean } = {}): PageLinkInventory | null {
   const snapshot = capture?.renderedSearchSnapshot
   const restricted = documentEvidenceWithheld(capture?.collectionRestrictions)
-  if (snapshot?.documentBaseUrl && (snapshot.sections.links.complete || !metadata)) {
+  // Action classification consumes labels as well as hrefs. A restricted
+  // document cannot authorize new destination probes from its link list.
+  if (options.requireLabels && restricted) return null
+  if (snapshot?.documentBaseUrl && (snapshot.sections.links.complete && (!options.requireLabels || snapshot.sections.links.labelsComplete === true) || !metadata)) {
     const section = snapshot.sections.links, $ = load(section.html)
     const anchors = $('a[href]').toArray()
     return { linkBaseUrl: snapshot.documentBaseUrl,
       documentUrl: snapshot.finalUrl ?? metadata?.documentUrl,
-      links: anchors.slice(0, 2000).map(anchor => ({ href: $(anchor).attr('href') ?? '', text: $(anchor).text().trim(), rel: null })),
-      complete: section.complete && !restricted && anchors.length <= 2000 && anchors.length === section.observed }
+      links: anchors.slice(0, 2000).map(anchor => ({ href: $(anchor).attr('href') ?? '',
+        // A clipped word can look like a complete action label. Other anchors
+        // and href-based classification remain independently usable.
+        text: options.requireLabels && (section.labelsComplete === undefined || $(anchor).is('[data-label-truncated]')) ? '' : $(anchor).text().trim(), rel: null })),
+      complete: section.complete && !restricted && anchors.length <= 2000 && anchors.length === section.observed &&
+        (!options.requireLabels || section.labelsComplete === true) }
   }
   return metadata ? { links: metadata.links, documentUrl: snapshot?.finalUrl ?? metadata.documentUrl,
     linkBaseUrl: snapshot?.documentBaseUrl ?? metadata.linkBaseUrl, complete: !restricted } : null
@@ -67,11 +75,30 @@ export function publicLinkObservations(sourceUrl: string, urls: string[], result
     : 'The captured link inventory is incomplete. ' + PUBLIC_LINK_LIMITATION }
 }
 
-/** Targeted repair uses the same bounded public collector as Site discovery. */
-export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInventory, deadline: number, openDestination?: DestinationCheckOptions['openDestination']) {
-  const urls = publicLinkUrls(sourceUrl, inventory)
+type PublicLinkSource = { pageUrl: string | null; verificationRule: string | null; evidenceTargets: unknown; supportingObservations?: unknown }
+
+/** Use each original page's observations, rather than a grouped display Flag's
+ * representative page, to select comparable response work. */
+export function originalPublicLinkContexts(sources: PublicLinkSource[], pageUrl: string): string[] {
+  return originalDestinationContexts(sources, pageUrl, PUBLIC_LINK_VERIFICATION_RULE)
+}
+
+/** Targeted repair shares discovery's collector, but unrelated new links cannot
+ * consume the budget needed to observe the immutable original repair scope. */
+export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInventory, deadline: number,
+  openDestination?: DestinationCheckOptions['openDestination'], originalContexts?: readonly string[]) {
+  const expected = originalContexts ? new Set(originalContexts) : null
+  const urls = publicLinkUrls(sourceUrl, inventory).filter(url => !expected || expected.has(publicLinkContext(sourceUrl, url)))
   const opened = await openCheckDestinations(urls, { origin: sourceUrl, ceiling: 120, deadline: Math.min(deadline, Date.now() + 8000), openDestination })
-  return publicLinkObservations(sourceUrl, urls, opened.results, inventory.complete !== false)
+  const checked = publicLinkObservations(sourceUrl, urls, opened.results, inventory.complete !== false)
+  const present = new Set(urls.map(url => publicLinkContext(sourceUrl, url)))
+  const missing = [...(expected ?? [])].filter(context => !present.has(context))
+  if (!missing.length) return checked
+  const limitation = 'An originally failed public destination was not observed in the current captured link inventory. Removed or changed links cannot establish recovery.'
+  return { ...checked, complete: false, limitation, assertions: [...checked.assertions, ...missing.map(context => ({
+    key: 'public-destination', name: 'Public link response', expected: PUBLIC_DESTINATION_EXPECTED,
+    observed: limitation, passed: false, complete: false, context,
+  }))] }
 }
 
 export function resolvedPageLinks(sourceUrl: string, metadata: PageLinkInventory) {

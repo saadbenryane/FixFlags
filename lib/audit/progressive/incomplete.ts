@@ -9,7 +9,8 @@ import { MAX_TASKS_PER_AUDIT, prescriptionResultSchema, taskArtifactSchema, task
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
 import { settleRecordedPages } from './page-settlement'
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY } from '../check-registry'
+import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 
 const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
 

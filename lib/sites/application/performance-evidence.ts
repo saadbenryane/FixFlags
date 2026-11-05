@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { taskArtifactSchema } from '@/lib/audit/progressive/contracts'
-import { performanceMeasurementSchema, type PerformanceMeasurement } from '@/lib/audit/performance-measurement'
+import { performanceMeasurementSchema, type PerformanceMeasurement } from '@/lib/audit/performance-measurement-contract'
 import type { SiteRecord } from '../types'
 
 /** Only a recorded collector on this exact Audit and page supplies conditions. */

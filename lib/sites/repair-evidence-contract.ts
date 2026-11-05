@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { performanceMeasurementSchema } from '@/lib/audit/performance-measurement'
+import { performanceMeasurementSchema } from '@/lib/audit/performance-measurement-contract'
 
 export const MAX_REPAIR_CAPTURE_BYTES = 5 * 1024 * 1024
 export const MAX_MCP_CAPTURE_BYTES = 256 * 1024

@@ -23,6 +23,7 @@ export const AUTH = {
     savingBody: 'Your account is ready. We’re saving your website and preparing its fix prompts.',
   },
   reportContext: {
+    regionLabel: 'Site being saved',
     title: (hostname: string) => `Save ${hostname}`,
     loadingTitle: 'Save this Site',
     body: 'Save your results, get fix prompts, and keep your website checked on a schedule.',
@@ -92,6 +93,7 @@ export const AUTH = {
     backupCodesBody:
       'Store these somewhere safe. Each code works once if you lose access to your passkeys.',
     backupCodesCopied: 'Backup codes copied',
+    backupCodesCopyError: 'Couldn’t confirm the copy. Select and copy the codes below.',
     copyBackupCodes: 'Copy codes',
     regenerateBackupCodes: 'Generate new backup codes',
     loadError: 'Could not load passkeys',
@@ -116,6 +118,7 @@ export const AUTH = {
     backupCodesError: 'Could not generate backup codes',
     errorTitle: 'Security update failed',
     loadingPasskeys: 'Loading passkeys\u2026',
+    retryPasskeys: 'Try again',
     synced: 'Synced',
     device: 'Device',
   },
@@ -171,6 +174,10 @@ export const AUTH = {
   },
   signOut: {
     cta: 'Sign out',
+    menuCta: 'Log out',
+    working: 'Signing out…',
+    error: 'Couldn’t confirm sign-out. Try again.',
+    retry: 'Try again',
   },
   settings: {
     pageTitle: 'Account',
@@ -275,6 +282,8 @@ export const AUTH = {
   },
   connectedAccounts: {
     title: 'Security',
+    linkError: 'Could not connect this sign-in method. Try again.',
+    connectProvider: (provider: string) => `Connect ${provider}`,
     description: 'Manage connected sign-in accounts, passkeys, and two-factor authentication.',
     google: 'Google',
     github: 'GitHub',
@@ -299,6 +308,7 @@ export const AUTH = {
     emailPlaceholder: 'you@example.com',
   },
   resetPassword: {
+    completedTitle: 'Password updated',
     title: 'Choose a new password',
     subtitle: 'Must be at least 8 characters',
     cta: 'Update password',

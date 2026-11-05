@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { accountIntentSchema } from '../accounts/contracts'
+import { repairSourcesSchema } from './repair-source'
 
 export const categoryAreaSchema = z.enum(['search', 'performance', 'conversion', 'security', 'tracking', 'accessibility'])
 export type CategoryArea = z.infer<typeof categoryAreaSchema>
@@ -36,6 +37,7 @@ export const executionSpecSchema = z.object({
     actionContexts: z.array(actionContextSchema).max(5000).optional(),
     overlayPhases: z.array(z.string().regex(/^(page_load|primary_action(?:_after)?|pricing_navigation(?:_after)?|(?:flow_)?form_validation(?:_after)?|journey_[a-z0-9_-]+)$/).max(160)).max(100).optional() }).strict()).max(100).optional(),
   verificationSourceFlagIds: z.array(z.string().min(1)).min(1).max(5000).optional(),
+  verificationSources: repairSourcesSchema.optional(),
   accountChecks: accountIntentSchema.optional(),
   fixtureSetup: z.object({ id: z.string().min(1), version: z.number().int().positive() }).strict().optional(),
   checks: z.record(z.string(), z.number().int().positive()),
@@ -43,6 +45,10 @@ export const executionSpecSchema = z.object({
     bindingPolicy: z.string(), bindings: z.array(executionBindingSchema) }).strict()),
   verificationTarget: verificationTargetSchema.nullable(),
 }).strict().superRefine((spec, context) => {
+  if (spec.verificationSources && (spec.scope !== 'DIAGNOSTIC' || spec.verificationTarget?.kind !== 'DIAGNOSTIC' ||
+    !spec.verificationSourceFlagIds || spec.verificationSources.flags.length !== spec.verificationSourceFlagIds.length ||
+    spec.verificationSources.flags.some(flag => !spec.verificationSourceFlagIds!.includes(flag.id))))
+    context.addIssue({ code: 'custom', message: 'Invalid repair comparison facts' })
   if (spec.verificationSourceFlagIds && (spec.scope !== 'DIAGNOSTIC' || spec.verificationTarget?.kind !== 'DIAGNOSTIC' ||
     new Set(spec.verificationSourceFlagIds).size !== spec.verificationSourceFlagIds.length))
     context.addIssue({ code: 'custom', message: 'Invalid verification source scope' })

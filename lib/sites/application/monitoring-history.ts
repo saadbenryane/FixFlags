@@ -121,6 +121,9 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
     metadata.result = assessment.result === 'FLAG' ? 'FLAG' : assessment.result === 'CLEAR' ? 'CLEAR' : 'COULD_NOT_VERIFY'
     completionState = audit.status === 'FAILED' ? 'FAILED' : assessment.completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL'
   }
+  // A declaration of Clear cannot certify missing coverage in the recorded
+  // scope. Confirmed Flags remain useful even when other checks are incomplete.
+  if (metadata.result === 'CLEAR' && completionState !== 'COMPLETED') metadata.result = 'COULD_NOT_VERIFY'
   return {
     executionState: audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt || analysisDidNotFinish(audit) ? 'PARTIAL' : 'COMPLETED',
     completionState,

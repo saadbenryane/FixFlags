@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { siteViewFixture } from './site-view-fixture'
+import { sitePresentationSchema } from '../presentation-contract'
 import {
   categoryPresentation,
   categoryReadsCurrentClear,
@@ -17,6 +19,22 @@ import {
 } from '../presentation'
 
 describe('Site presentation', () => {
+  it.each(['offline', 'unknown'] as const)('keeps %s uptime attention ahead of ordinary work at every recorded Flag count', observedState => {
+    for (const count of [0, 1, 8]) {
+      const site = siteViewFixture().presentation
+      site.result = resultPresentation({ auditStatus: 'CHECKING', healthState: 'problem', flagCount: count,
+        stale: false, hasCurrentEvidence: true, uptime: { state: 'FLAG', observedState, validUntil: null } })
+      site.flags = { count, label: `${count} Flags`, fixFirstCount: 0 }
+      const parsed = sitePresentationSchema.parse(site)
+      expect(parsed.result.source).toBe('uptime')
+      expect(customerAttention(parsed)).toEqual({ text: observedState === 'offline' ? 'Offline' : 'Needs attention', tone: 'attention' })
+      for (const state of ['checking', 'failed', 'flags'] as const) {
+        const other = { ...site, result: { state, label: 'Another result' }, flags: { count: 20, label: '20 Flags', fixFirstCount: 2 } }
+        expect(siteSortRank(parsed)).toBeLessThan(siteSortRank(other))
+      }
+    }
+  })
+
   it('keeps result, monitoring, coverage, and freshness independent', () => {
     expect(resultPresentation({ auditStatus: 'COMPLETED', healthState: 'problem', flagCount: 4, stale: false, hasCurrentEvidence: true })).toEqual({ state: 'flags', label: 'Flags found' })
     expect(monitoringPresentation('off', null)).toEqual({ state: 'not_monitored', label: 'Not monitored' })
@@ -169,6 +187,12 @@ describe('Site presentation', () => {
     expect(verificationResult({ outcome: 'INCONCLUSIVE', comparable: false, reason: 'The update Review did not capture comparable evidence.' })).toBe('missing_evidence')
     expect(verificationResult({ outcome: 'INCONCLUSIVE', comparable: false, reason: 'The update Review did not complete the affected page.' })).toBe('incomparable_scope')
     expect(verificationResult({ outcome: 'INCONCLUSIVE', comparable: true, reason: 'The check finished without a decision.' })).toBe('could_not_verify')
+  })
+
+  it.each(['IMPROVED', 'UNCHANGED', 'REGRESSED'])('requires comparable evidence before claiming a conclusive %s result', outcome => {
+    expect(verificationResult({ outcome, comparable: null, reason: null })).toBe('could_not_verify')
+    expect(verificationResult({ outcome, comparable: false, reason: 'Different execution scope' })).toBe('incomparable_scope')
+    expect(verificationResult({ outcome, comparable: false, reason: 'No positive execution was recorded' })).toBe('missing_evidence')
   })
 
   it('uses impact, confidence, scope, and Outcome relevance for customer priority', () => {

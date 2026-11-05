@@ -109,6 +109,8 @@ function dependencyCycles(sources) {
 
 export function moduleBoundaryFailures({ sources, existingFiles = new Set() }) {
   const failures = []
+  if (Object.hasOwn(sources, 'lib/audit/pipeline/run-page.ts'))
+    failures.push('lib/audit/pipeline/run-page.ts restores the retired sequential audit orchestrator')
 
   for (const [file, source] of Object.entries(sources)) {
     const imports = runtimeImports(source)
@@ -116,13 +118,6 @@ export function moduleBoundaryFailures({ sources, existingFiles = new Set() }) {
       for (const specifier of imports) {
         if (DATABASE_IMPORT.test(specifier)) {
           failures.push(`${file} is a client module importing server database code (${specifier})`)
-        }
-      }
-    }
-    if (!/(?:__tests__|\.test\.|\.spec\.)/.test(file)) {
-      for (const specifier of imports) {
-        if (resolveLocalImport(file, specifier, sources) === 'lib/audit/pipeline/run-page.ts') {
-          failures.push(`${file} imports the retired sequential audit orchestrator`)
         }
       }
     }

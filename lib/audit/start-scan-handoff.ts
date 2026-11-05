@@ -3,6 +3,7 @@
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
 import { fetchJsonWithDeadline } from '@/lib/api/client-request'
+import { setActiveAudit } from '@/lib/audit/active-audit'
 
 type CreateCheckBody = Record<string, unknown>
 
@@ -11,6 +12,7 @@ export type StartScanOptions = {
   body: CreateCheckBody
   /** POST path. Defaults to /api/checks. */
   endpoint?: string
+  signal?: AbortSignal
   /** Analytics after success. */
   onStarted?: (data: Record<string, unknown>) => void
   errorFallback?: string
@@ -44,6 +46,7 @@ export async function startScanWithHandoff(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options.body),
+      signal: options.signal,
     })
 
     if (!res.ok) {
@@ -74,10 +77,10 @@ export async function startScanWithHandoff(
       }
     }
 
+    if (options.signal?.aborted) throw new Error('Scan handoff retired')
     try { options.onStarted?.(data) } catch { /* Optional analytics cannot prevent the Site handoff. */ }
-    options.navigate(`/sites/${encodeURIComponent(siteId)}`)
+    if (options.signal?.aborted) throw new Error('Scan handoff retired')
     try {
-      const { setActiveAudit } = await import('@/lib/audit/active-audit')
       setActiveAudit({
         auditId: reportId || siteId,
         siteId,
@@ -85,6 +88,8 @@ export async function startScanWithHandoff(
     } catch {
       // Storage may be unavailable; navigation still opens the board.
     }
+    if (options.signal?.aborted) throw new Error('Scan handoff retired')
+    options.navigate(`/sites/${encodeURIComponent(siteId)}`)
     return { ok: true, siteId, reportId: reportId || undefined }
   } catch {
     return {

@@ -76,7 +76,8 @@ describe('PlanPickerDialog', () => {
     expect(
       screen.getByText('One website. All features. No usage limits during open beta.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Current plan' })).toBeInTheDocument()
+    expect(screen.getByText('Current plan')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start free' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Join Pro waitlist' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join Studio waitlist' })).toBeInTheDocument()
     await waitFor(() =>

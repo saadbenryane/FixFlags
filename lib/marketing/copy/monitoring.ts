@@ -76,7 +76,7 @@ export const MONITORING_SCHEDULE_COPY = {
   every: 'Every', unit: 'Time unit', hours: 'Hours', days: 'Days', weeks: 'Weeks',
   loading: 'Loading available schedules…',
   retry: 'Try again',
-  invalid: 'Choose a whole number between 1 and 365.',
+  invalid: (maximum = 365) => `Choose a whole number between 1 and ${maximum.toLocaleString('en-US')}.`,
   unavailable: 'This schedule is not available on your plan.',
   paused: 'Scheduled checks are paused.',
   cancel: 'Cancel', saving: 'Saving…', updateSample: 'Update sample schedule', save: 'Save schedule', edit: 'Edit schedule',

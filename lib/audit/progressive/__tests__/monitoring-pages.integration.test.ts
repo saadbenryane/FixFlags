@@ -128,6 +128,20 @@ run('Observed Site page monitoring continuity', () => {
       throw new Error('Monitoring projection did not settle: ' + JSON.stringify({ audit, tasks }), { cause: error })
     }
   }
+  async function interruptPageCollectors(auditId: string, pageUrl: string, states: Array<'WAITING' | 'READY'>) {
+    const cohort = await prisma.auditExecutionTask.findMany({ where: { auditId, pageUrl,
+      workKind: { in: ['browser', 'captures'] }, workState: { in: states } }, select: { id: true, workKind: true, workInput: true } })
+    expect(cohort.filter(task => task.workKind === 'browser').map(task => (task.workInput as { device: string }).device).sort())
+      .toEqual(['desktop', 'mobile'])
+    expect(cohort.some(task => task.workKind === 'captures')).toBe(true)
+    const ids = cohort.map(task => task.id)
+    const interrupted = await prisma.auditExecutionTask.updateMany({ where: { id: { in: ids }, auditId, workState: { in: states } },
+      data: { workRecoveryUntil: new Date(0) } })
+    expect(interrupted.count).toBe(ids.length)
+    await dispatchReadyTasks(await reconcileTasks(auditId))
+    expect(await prisma.auditExecutionTask.count({ where: { id: { in: ids }, auditId, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(ids.length)
+    return ids
+  }
   it('discovers a page, keeps checking after its link disappears, independently recovers and preserves recurrence', async () => {
     oversizedEntry = true
     const first = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'pages-initial' })
@@ -168,7 +182,7 @@ run('Observed Site page monitoring continuity', () => {
     oversizedEntry = false
   }, 360_000)
 
-  it('retains a newly discovered page after both collectors stop before creating its first row', async () => {
+  it('retains a newly discovered page after all collectors stop before creating its first row', async () => {
     const owner = userId + '-discovered-gap', siteId = projectId + '-discovered-gap'
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
     await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Discovered page continuity fixture', canonicalHost: 'example.com', url: origin + '/',
@@ -179,12 +193,7 @@ run('Observed Site page monitoring continuity', () => {
       const first = await prisma.runRequest.findFirstOrThrow({ where: { projectId: siteId, source: 'WATCH' } })
       await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: first.auditId!, pageUrl: peer,
         workKind: 'browser', workState: 'READY' } })).not.toBeNull(), { timeout: 30_000, interval: 100 })
-      const interrupted = await prisma.auditExecutionTask.updateMany({ where: { auditId: first.auditId!, pageUrl: peer,
-        workKind: { in: ['browser', 'captures'] }, workState: 'READY' }, data: { workRecoveryUntil: new Date(0) } })
-      expect(interrupted.count).toBe(2)
-      await dispatchReadyTasks(await reconcileTasks(first.auditId!))
-      expect(await prisma.auditExecutionTask.count({ where: { auditId: first.auditId!, pageUrl: peer,
-        workKind: { in: ['browser', 'captures'] }, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(2)
+      const interrupted = await interruptPageCollectors(first.auditId!, peer, ['READY'])
       pauseDiscoveredCollection = false; await getAuditTaskQueue('browser').resume()
       await complete(first.auditId!)
       expect(readExecutionSpec((await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! } })).executionSpec)?.monitoringPages).toBeUndefined()
@@ -218,8 +227,8 @@ run('Observed Site page monitoring continuity', () => {
         .toMatchObject({ status: 'COMPLETED', reportCompleteness: 'PARTIAL' })
       await vi.waitFor(async () => expect(await prisma.project.findUniqueOrThrow({ where: { id: siteId } }))
         .toMatchObject({ watchConsecutiveFailures: 0, watchLastError: null }), { timeout: 10_000 })
-      expect(await prisma.auditExecutionTask.count({ where: { auditId: first.auditId!, pageUrl: peer,
-        workKind: { in: ['browser', 'captures'] }, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(2)
+      expect(await prisma.auditExecutionTask.count({ where: { id: { in: interrupted }, auditId: first.auditId!, pageUrl: peer,
+        workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(interrupted.length)
     } finally { vi.useRealTimers(); pauseDiscoveredCollection = false; await getAuditQueue().resume(); await getAuditTaskQueue('browser').resume(); linked = true; repaired = false }
   }, 180_000)
 
@@ -240,13 +249,7 @@ run('Observed Site page monitoring continuity', () => {
         .toMatchObject({ monitoringPages: [origin + '/', peer] })
       await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findFirst({ where: { auditId: gap.auditId!, pageUrl: peer,
         workKind: 'browser', workState: { in: ['WAITING', 'READY'] } } })).not.toBeNull(), { timeout: 10_000, interval: 100 })
-      const interrupted = await prisma.auditExecutionTask.updateMany({ where: { auditId: gap.auditId!, pageUrl: peer,
-        workKind: { in: ['browser', 'captures'] }, workState: { in: ['WAITING', 'READY'] } },
-        data: { workRecoveryUntil: new Date(0) } })
-      expect(interrupted.count).toBe(2)
-      await dispatchReadyTasks(await reconcileTasks(gap.auditId!))
-      expect(await prisma.auditExecutionTask.count({ where: { auditId: gap.auditId!, pageUrl: peer,
-        workKind: { in: ['browser', 'captures'] }, workState: 'EXHAUSTED', status: 'FAILED' } })).toBe(2)
+      await interruptPageCollectors(gap.auditId!, peer, ['WAITING', 'READY'])
       await getAuditTaskQueue('browser').resume()
       await complete(gap.auditId!)
       expect(await prisma.auditPage.findFirst({ where: { auditId: gap.auditId!, url: peer } })).toBeNull()

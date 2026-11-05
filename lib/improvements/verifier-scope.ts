@@ -1,4 +1,13 @@
-/** Pure URL identity shared by evidence collection and durable verification. */
+import { baseCheckId } from '@/lib/audit/check-identity'
+
+/** Pure target and URL identity shared by collection and durable verification. */
+export function verifierTargetKey(input: { source: string; checkId: string | null; fingerprint?: string | null }): string | null {
+  const checkId = baseCheckId(input.checkId)
+  if (checkId) return `check:${checkId}`
+  if (input.source === 'AI' && input.fingerprint?.trim()) return `ai:${input.fingerprint.trim()}`
+  return null
+}
+
 export function normalizeVerifierUrl(value: string): string {
   try {
     const url = new URL(value)

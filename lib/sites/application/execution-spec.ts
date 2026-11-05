@@ -19,6 +19,7 @@ import { monitoringResponsibility, monitoringBehaviorResponsibility, monitoringA
 import { readSupportingObservations } from '@/lib/audit/flag-observations'
 import { originalPageActionContexts } from '@/lib/audit/flow/verification-context'
 import { recordedPageUrls } from '../page-coverage'
+import { readRepairSources } from '../domain/repair-source'
 
 type SpecOutcome = { id: string; kind: string; expectation?: string | null; bindingPolicy?: string;
   bindings: Array<{ key: string; version: number; mechanism: string; required: boolean; config: Prisma.JsonValue; scope?: Prisma.JsonValue | null }> }
@@ -79,34 +80,51 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   }
   let verificationScopes: ExecutionSpec['verificationScopes']
   let verificationSourceFlagIds: ExecutionSpec['verificationSourceFlagIds']
+  let verificationSources: ExecutionSpec['verificationSources']
   let consoleObservationMs: number | undefined
   let consoleObservationScopes: ExecutionSpec['consoleObservationScopes']
   const diagnosticModule = input.verificationTarget?.kind === 'DIAGNOSTIC' ? CHECK_REGISTRY[input.verificationTarget.checkId.split('::page:')[0]]?.module : null
   if (input.verificationTarget?.kind === 'DIAGNOSTIC') {
-    const attempt = await prisma.improvementAttempt.findFirst({ where: { id: input.verificationTarget.attemptId,
-      sourceAuditId: input.verificationTarget.parentAuditId, improvement: { projectId: input.projectId } },
-      select: { improvementId: true, sourceFlagIds: true } })
-    if (attempt?.sourceFlagIds?.length) verificationSourceFlagIds = attempt.sourceFlagIds
-    const flags = await prisma.flag.findMany({ where: { audit: { projectId: input.projectId,
+    const target = input.verificationTarget
+    const attempt = await prisma.improvementAttempt.findFirst({ where: { id: target.attemptId,
+      sourceAuditId: target.parentAuditId, improvement: { projectId: input.projectId } },
+      select: { improvementId: true, sourceFlagIds: true, sourceObservations: true, createdAt: true,
+        sourceAudit: { select: { completedAt: true } } } })
+    if (attempt && attempt.sourceObservations == null && attempt.sourceAudit?.completedAt &&
+      attempt.createdAt < attempt.sourceAudit.completedAt)
+      throw new SiteRunRefusal('This historical repair did not retain its original observations. Record a fresh repair from the current findings.', 409, 'REPAIR_SCOPE_UNAVAILABLE')
+    if (attempt?.sourceObservations != null) {
+      verificationSources = readRepairSources(attempt.sourceObservations) ?? undefined
+      if (!verificationSources) throw new SiteRunRefusal('The original repair comparison is unreadable.', 409, 'REPAIR_SCOPE_UNAVAILABLE')
+    }
+    if (verificationSources) verificationSourceFlagIds = verificationSources.flags.map(flag => flag.id)
+    else if (attempt?.sourceFlagIds?.length) verificationSourceFlagIds = attempt.sourceFlagIds
+    if (verificationSources && !verificationSources.flags.some(flag => flag.auditId === target.parentAuditId &&
+      flag.pageUrl === target.pageUrl &&
+      flag.checkId === target.checkId))
+      throw new SiteRunRefusal('The verification target differs from the recorded repair.', 409, 'REPAIR_SCOPE_UNAVAILABLE')
+    const liveFlags = await prisma.flag.findMany({ where: { audit: { projectId: input.projectId,
       ...(verificationSourceFlagIds ? { AND: [analysisEnvironmentWhere(input.environment)] } : {}) },
       ...(verificationSourceFlagIds ? { id: { in: verificationSourceFlagIds }, improvementOccurrence: { improvementId: attempt!.improvementId } }
-        : { auditId: input.verificationTarget.parentAuditId, pageUrl: input.verificationTarget.pageUrl, checkId: input.verificationTarget.checkId }) },
+        : { auditId: target.parentAuditId, pageUrl: target.pageUrl, checkId: target.checkId }) },
       take: verificationSourceFlagIds ? 5000 : 100, select: { pageUrl: true, verificationRule: true, evidenceTargets: true, affectedPaths: true, supportingObservations: true } })
-    if (verificationSourceFlagIds && flags.length !== verificationSourceFlagIds.length)
+    if (verificationSourceFlagIds && liveFlags.length !== verificationSourceFlagIds.length)
       throw new SiteRunRefusal('The original repair scope is no longer available.', 409, 'REPAIR_SCOPE_UNAVAILABLE')
+    const flags = verificationSources?.flags ?? liveFlags
     const observations = flags.flatMap(flag => readSupportingObservations(flag.supportingObservations)?.items ?? [])
     const evidenceTargets = [...flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets : []),
       ...observations.flatMap(item => item.evidenceTargets)]
     if (diagnosticModule === 'console') consoleObservationMs = Math.max(2000, ...flags.map(flag => consoleObservationMinimum(flag.evidenceTargets)))
     const contexts = evidenceTargets.flatMap(value => {
       const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
-      return typeof context === 'string' && context.startsWith('tracking:') && context.length <= 4200 ? [context] : []
+      return typeof context === 'string' && (context.startsWith('tracking:') || context.startsWith('engagement:')) && context.length <= 4200 ? [context] : []
     })
-    const pages = [...new Set([input.verificationTarget.pageUrl, ...flags.flatMap(flag => flag.pageUrl ? [flag.pageUrl] : []), ...observations.flatMap(item => item.pageUrl ? [item.pageUrl] : []),
+    const pages = [...new Set([target.pageUrl, ...flags.flatMap(flag => flag.pageUrl ? [flag.pageUrl] : []), ...observations.flatMap(item => item.pageUrl ? [item.pageUrl] : []),
       ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])])]
-    verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
-      contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
-    if (diagnosticModule === 'flow' || diagnosticModule === 'form-validation')
+    verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' && diagnosticModule !== 'network' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
+      contexts.some(context => context.startsWith((diagnosticModule === 'network' ? 'engagement:' : 'tracking:') + phase + ':') &&
+        context.endsWith(':page:' + (diagnosticModule === 'network' ? capturePageKey(pageUrl) : trackingPageKey(pageUrl))))) }))
+    if (diagnosticModule === 'flow' || diagnosticModule === 'form-validation' || diagnosticModule === 'network')
       verificationScopes = verificationScopes.map(scope => ({ ...scope, actionContexts: originalPageActionContexts(flags, scope.pageUrl) }))
     if (diagnosticModule === 'overlays') {
       const contexts = evidenceTargets.flatMap(value => {
@@ -133,6 +151,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       .map(([id, definition]) => [id, definition.version])),
     ...(accountChecks ? { accountChecks } : {}), outcomes, verificationTarget: input.verificationTarget ?? null, ...(verificationScopes ? { verificationScopes } : {}),
     ...(verificationSourceFlagIds ? { verificationSourceFlagIds } : {}),
+    ...(verificationSources ? { verificationSources } : {}),
     ...(monitoringPages ? { monitoringPages } : {}), ...(monitoringBehaviors ? { monitoringBehaviors } : {}),
     ...(consoleObservationMs !== undefined ? { consoleObservationMs } : {}), ...(consoleObservationScopes ? { consoleObservationScopes } : {}) })
   if (spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') return spec
@@ -181,5 +200,5 @@ export function executionIntentHash(spec: ExecutionSpec) {
   return createHash('sha256').update(canonicalIntent({ ...spec, outcomes: spec.scope === 'SITE' || spec.scope === 'CATEGORY' ? [] : canonicalExecutionOutcomes(spec.outcomes),
     targetUrl: spec.category ? undefined : spec.targetUrl,
     category: spec.category ? { area: spec.category.area } : undefined,
-    browserCollection: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
+    browserCollection: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, verificationSources: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
 }

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeVerifierUrl, verifierScopeKey } from './verifier-scope'
+import { normalizeVerifierUrl, verifierScopeKey, verifierTargetKey } from './verifier-scope'
 
 describe('verification URL identity', () => {
+  it('requires stable target identity and keeps page scope separate', () => {
+    expect(verifierTargetKey({ source: 'AI', checkId: null, fingerprint: null })).toBeNull()
+    expect(verifierTargetKey({ source: 'AI', checkId: null, fingerprint: 'evidence-1' })).toBe('ai:evidence-1')
+    expect(verifierTargetKey({ source: 'DETERMINISTIC', checkId: 'cta-dead-link::page:2' })).toBe('check:cta-dead-link')
+  })
   it.each([
     ['https://example.com/pricing', 'https://example.com/pricing/'],
     ['https://example.com/pricing/', 'https://example.com/pricing//'],

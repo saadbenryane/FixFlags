@@ -6,6 +6,7 @@ import { PRICING_NAVIGATION_RULE, pricingNavigationTargetSchema } from './pricin
 import { POST_CLICK_VERIFICATION_RULE, postClickActionContext } from '../checks/flow-post-click'
 import { DESTINATION_TRUST_VERIFICATION_RULE, destinationTrustActionContext } from '../checks/flow-destination-trust'
 import { DESTINATION_CONTENT_VERIFICATION_RULE, destinationContentActionContext } from '../checks/flow-destination-content'
+import { ENGAGEMENT_VERIFICATION_RULE, engagementActionContext } from '../network-engagement-evidence'
 
 type Source = { pageUrl: string | null; verificationRule: string | null; evidenceTargets: unknown; supportingObservations?: unknown }
 
@@ -20,6 +21,7 @@ export function originalPageActionTargets(sources: Source[], pageUrl: string) {
 
 export function originalPageActionContexts(sources: Source[], pageUrl: string): string[] {
   const contexts = originalPageActionTargets(sources, pageUrl).flatMap(({ verificationRule, target }) => {
+    if (verificationRule === ENGAGEMENT_VERIFICATION_RULE) return engagementActionContext(target) ?? []
     if (verificationRule === POST_CLICK_VERIFICATION_RULE) return postClickActionContext(target) ?? []
     if (verificationRule === DESTINATION_TRUST_VERIFICATION_RULE) return destinationTrustActionContext(target) ?? []
     if (verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE) return destinationContentActionContext(target) ?? []

@@ -10,6 +10,7 @@ vi.mock('@/lib/auth/permissions', () => ({ getCheckUsage, isAdminUser, isDevUnli
 vi.mock('@/lib/billing/usage-period', () => ({ refreshUserUsagePeriod }))
 
 import { serializeMeUser } from '@/lib/auth/me-user'
+import { meClaimResponseSchema, meResponseSchema } from '@/lib/auth/me-contract'
 
 const baseUser = {
   id: 'user-1',
@@ -37,6 +38,8 @@ describe('serializeMeUser', () => {
     isAdminUser.mockReturnValue(false)
 
     const me = await serializeMeUser(baseUser)
+    expect(meResponseSchema.parse(JSON.parse(JSON.stringify({ user: me })))).toEqual({ user: me })
+    expect(meClaimResponseSchema.parse(JSON.parse(JSON.stringify({ user: me, claimedCount: 2 })))).toEqual({ user: me, claimedCount: 2 })
     expect(me.id).toBe('user-1')
     expect(me.email).toBe('owner@example.com')
     expect(me.plan).toBe('BUILDER')

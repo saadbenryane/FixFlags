@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { projectEmailAcceptance, reconcileEmailEvents } from './delivery-events'
+import { deferEmailAcceptanceProjection, projectEmailAcceptance, reconcileEmailEvents } from './delivery-events'
 import { sendNurtureEmail } from './send'
 import { NURTURE_EMAILS, type NurtureEmailType } from './templates'
 import { logger } from '@/lib/logger'
@@ -16,22 +16,29 @@ export async function recoverEmailDeliveryHistory(now = new Date(), limit = 50) 
     SELECT source.* FROM (
       SELECT "providerId", "userId", payload->>'to' AS email, 'summary' AS channel, id AS "sourceId", "sentAt" AS "acceptedAt", payload->>'firstAttemptAt' AS "firstAttemptAt"
         FROM notification_digests WHERE status='SENT' AND "deliveryProjectedAt" IS NULL AND "sentAt">=${since} AND "providerId" IS NOT NULL AND payload->>'to' IS NOT NULL
+          AND "nextAttemptAt"<=${now}
       UNION ALL
       SELECT "watchNotificationProviderId", "userId", "watchNotificationPayload"->>'to', 'watch', id, "watchNotifiedAt", "watchNotificationPayload"->>'firstAttemptAt'
         FROM audits WHERE "watchNotificationStatus"='SENT' AND "watchDeliveryProjectedAt" IS NULL AND "watchNotifiedAt">=${since} AND "watchNotificationProviderId" IS NOT NULL
           AND "userId" IS NOT NULL AND "watchNotificationPayload"->>'to' IS NOT NULL
+          AND ("watchNotificationNextAttemptAt" IS NULL OR "watchNotificationNextAttemptAt"<=${now})
       UNION ALL
       SELECT n."providerId", u.id, n."deliveryPayload"->>'to', 'uptime', n.id, n."sentAt", n."deliveryPayload"->>'firstAttemptAt'
         FROM uptime_notifications n JOIN users u ON u.id=n."deliveryPayload"->>'ownerId'
         WHERE n.status='SENT' AND n."deliveryProjectedAt" IS NULL AND n."sentAt">=${since} AND n."providerId" IS NOT NULL AND n."deliveryPayload"->>'to' IS NOT NULL
+          AND n."nextAttemptAt"<=${now}
       UNION ALL
       SELECT "providerId", "userId", payload->>'to', 'onboarding', id, "sentAt", payload->>'firstAttemptAt'
         FROM email_logs WHERE status='SENT' AND "deliveryProjectedAt" IS NULL AND "sentAt">=${since} AND "providerId" IS NOT NULL AND payload->>'to' IS NOT NULL
-    ) source ORDER BY source."acceptedAt" ASC LIMIT ${limit}`)
+          AND ("nextAttemptAt" IS NULL OR "nextAttemptAt"<=${now})
+    ) source ORDER BY source."acceptedAt" ASC, source.channel ASC, source."sourceId" ASC LIMIT ${limit}`)
   for (const source of sources) {
     const firstAttemptAt = source.firstAttemptAt ? new Date(source.firstAttemptAt) : source.acceptedAt
-    if (!Number.isFinite(firstAttemptAt.getTime())) continue
-    await projectEmailAcceptance({ ...source, firstAttemptAt })
+    if (Number.isFinite(firstAttemptAt.getTime()) && await projectEmailAcceptance({ ...source, firstAttemptAt })) continue
+    if (!Number.isFinite(firstAttemptAt.getTime())) logger.error('Email delivery projection has an unreadable attempt date',
+      { channel: source.channel, sourceId: source.sourceId })
+    try { await deferEmailAcceptanceProjection(source, new Date(now.getTime() + 5 * 60_000)) }
+    catch { logger.error('Email delivery projection retry could not be scheduled', { channel: source.channel, sourceId: source.sourceId }) }
   }
 }
 

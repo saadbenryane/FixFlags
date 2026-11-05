@@ -7,17 +7,17 @@ import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask, priorityForTask } from './queues'
 import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettledPrescriptionCost, settleFailedFinalization, settlePrescriptionAudit } from './incomplete'
-import { executionTransaction, lockExecutionSite, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
+import { executionTransaction, lockExecutionScope, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
   retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind, type TaskArtifact } from './contracts'
-import type { TaskHandler, TaskContext } from './registry'
+import { taskAuditSelect, type TaskHandler, type TaskContext, type TaskDependency } from './registry'
 import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
 import { PageCaptureError } from '../browser/page-capture'
 import { claimTaskDelivery, DELIVERY_RECHECK_MS, retireObsoleteTaskDeliveries } from './delivery-window'
-import { isBrowserEvidenceKey } from './browser-requirements'
+import { isBrowserEvidenceKey } from './collection-requirements'
 
 /** A cooperative deadline also has an enforced boundary. Late continuations
  * lose write authority, while the engine retains authority to record failure. */
@@ -164,6 +164,13 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
     else if (!existingJob) await queue.add('audit-task', { auditId: task.auditId, taskId, generation: task.workGeneration + 1 },
       { jobId, attempts: 1, removeOnComplete: 100, removeOnFail: 500,
         priority: priorityForTask(task.workKind as TaskKind, input, task.workAttempts, task.workGeneration > task.workAttempts) })
+    else if (['waiting', 'prioritized', 'paused'].includes(existingState ?? '') && existingJob.priority > 1 &&
+      Date.now() - existingJob.timestamp >= 2 * DELIVERY_RECHECK_MS) {
+      // Primary work gets an initial lead, not permanent precedence over an
+      // older observation. Promote once using the existing delivery recheck;
+      // repeated checks must retain its FIFO place within that priority.
+      await existingJob.changePriority({ priority: 1 })
+    }
     // A delivered job can wait in a busy queue without occupying every recovery
     // batch. Recheck later so a lost Redis delivery still gets reconstructed.
     await prisma.auditExecutionTask.updateMany({ where: dispatchOwner,
@@ -302,7 +309,7 @@ async function commitTaskObservation(context: TaskContext, handler: TaskHandler,
 export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>) {
   const job = taskJobSchema.parse(rawJob)
   const original = await prisma.auditExecutionTask.findFirst({
-    where: { id: job.taskId, auditId: job.auditId }, include: { audit: true },
+    where: { id: job.taskId, auditId: job.auditId }, include: { audit: { select: taskAuditSelect } },
     // Claim admission needs metadata, not a second copy of the prior artifact.
     omit: { workResult: true, detail: true, evidenceReference: true },
   })
@@ -313,8 +320,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const token = randomUUID(), now = new Date()
   const input = taskInputSchema.parse(original.workInput)
   const claimed = await executionTransaction(async tx => {
-    if (!await lockExecutionSite(tx, job.auditId)) return { count: 0 }
-    await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${job.auditId} FOR UPDATE`
+    if (!await lockExecutionScope(tx, job.auditId)) return { count: 0 }
     await tx.$queryRaw`SELECT "id" FROM "audit_execution_tasks" WHERE "id" = ${original.id} FOR UPDATE`
     if (original.workKind === 'prescription') {
       const audit = await tx.audit.findUniqueOrThrow({ where: { id: job.auditId },
@@ -363,8 +369,17 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
     })
       const requiredKeys = ['finalize', 'discovery', 'cross-page', 'bindings'].includes(handler.kind) ? []
         : handler.kind === 'judge' ? task.workDependencies.filter(key => isBrowserEvidenceKey(key) || key.endsWith(':captures')) : task.workDependencies
-      const tasks = requiredKeys.length ? await prisma.auditExecutionTask.findMany({ where: { auditId: job.auditId,
-        targetKey: { in: requiredKeys.map(key => 'task:' + key) } }, take: requiredKeys.length }) : []
+      // Dependencies supply immutable observations, not the task's mutable
+      // delivery state or legacy detail. Only Search reads retained markup.
+      // Leave malformed shapes intact for the existing artifact validation.
+      const tasks = requiredKeys.length ? await prisma.$queryRaw<TaskDependency[]>`
+        SELECT "id", "auditId", "targetKey", "workKind", "workState", "workInput",
+          CASE WHEN ${handler.kind !== 'search'} AND "workKind" IN ('browser', 'captures')
+            AND jsonb_typeof("workResult"->'data'->'snapshot'->'desktopHtml') = 'string'
+            THEN jsonb_set("workResult", '{data,snapshot,desktopHtml}', 'null'::jsonb, false)
+            ELSE "workResult" END AS "workResult"
+        FROM audit_execution_tasks WHERE "auditId" = ${job.auditId}
+          AND "targetKey" IN (${Prisma.join(requiredKeys.map(key => 'task:' + key))}) LIMIT ${requiredKeys.length}` : []
       const byKey = new Map(tasks.map(item => [item.targetKey.slice(5), item]))
       const input = taskInputSchema.parse(task.workInput)
       const timeoutMs = typeof handler.timeoutMs === 'function' ? handler.timeoutMs(original.audit, input) : handler.timeoutMs

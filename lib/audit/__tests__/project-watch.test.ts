@@ -84,11 +84,12 @@ const project = {
   user: { lifecycleStatus:'ACTIVE',entitlementGrants:[],licensedSiteQuantity:0,auditsLimit:3,deepReviewsLimit:1,id: 'user-1', plan: 'TEAM', role: 'user', subscriptionStatus: 'ACTIVE' },
 }
 
-function completedWatch<T extends { project?: Record<string, unknown> } & Record<string, unknown>>(row: T) {
+function completedWatch<T extends { project?: Record<string, unknown>; user?: Record<string, unknown> } & Record<string, unknown>>(row: T) {
   return {
     userId: 'user-1', status: 'COMPLETED' as const,
     completedAt: new Date('2026-07-22T12:00:00Z'), improvementProjectedAt: new Date('2026-07-22T12:00:01Z'),
     ...row,
+    user: row.user ? { emailVerified: true, ...row.user } : undefined,
     project: { userId: 'user-1', deletedAt: null, ...row.project },
   }
 }
@@ -530,14 +531,14 @@ describe('Product Watch', () => {
     mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', userId: 'user-1', projectId: 'project-1', url: 'https://example.com/',
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1, watchRecoveryCount: 0,
       watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0, watchNotificationAttemptCeiling: 5,
-      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' },
+      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com', emailVerified: true },
       project: { userId: 'user-1', deletedAt: null, notificationLevel: 'FLAGS', notifyOnRecovery: true } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], regressed: [], newIssues: [{ id: 'new' }] })
     mocks.auditUpdateMany.mockResolvedValue({ count: 0 })
     await notifyWatchRegression(null, 'child-1')
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
       status: 'COMPLETED', completedAt: expect.any(Date), improvementProjectedAt: { not: null },
-      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' },
+      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com', emailVerified: true },
       project: { userId: 'user-1', deletedAt: null, watchPausedAt: null, user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: 'FLAGS', notifyOnRecovery: true },
     }), data: expect.objectContaining({ watchNotificationStatus: 'SENDING' }) }))
     expect(mocks.sendEmail).not.toHaveBeenCalled()

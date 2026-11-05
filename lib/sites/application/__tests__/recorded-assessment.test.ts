@@ -32,6 +32,25 @@ beforeEach(() => vi.clearAllMocks())
 afterEach(() => vi.restoreAllMocks())
 
 describe('recorded Site conclusion boundaries', () => {
+  it.each([false, true])('caps current assurance without changing historical publication or finding membership (flagged: %s)', async flagged => {
+    const { audit, detail } = await publication(flagged)
+    Object.assign(audit.verifierExecutions[0].detail, { execution: { auditId: audit.id, taskId: 'security', checkVersion: 1,
+      source: 'http', collectedAt: '2026-10-11T12:00:00.000Z' } })
+    const before = structuredClone(detail)
+    vi.spyOn(attention, 'isCustomerFlag').mockImplementation(() => { throw new Error('Expiry cannot reinterpret original membership') })
+    expect(projectRecordedSiteResult({ audit, assessments: [], now }).assessment).toMatchObject({ result: flagged ? 'FLAG' : 'STALE', completeness: 'FULL',
+      checkedAt: now.toISOString(), validUntil: '2026-10-19T12:00:00.000Z', gaps: [{ area: 'security', reason: 'stale' }] })
+    expect(detail).toEqual(before)
+  })
+  it('publishes expiry from the observation even when finalization occurs later', async () => {
+    const audit = fixture()
+    Object.assign(audit.verifierExecutions[0].detail, { execution: { auditId: audit.id, taskId: 'security', checkVersion: 1,
+      source: 'http', collectedAt: '2026-10-11T12:00:00.000Z' } })
+    vi.mocked(prisma.audit.findUniqueOrThrow).mockResolvedValue(audit as never)
+    const saved = await preparePublishedSiteAssessment(audit.id, { kind: 'flag-comparison', version: 1, auditId: audit.id, parentAuditId: null,
+      summary: { fixed: [], inconclusive: [], unchanged: [], regressed: [], newIssues: [] } })
+    expect(saved.assessment).toMatchObject({ result: 'STALE', completeness: 'FULL', validUntil: '2026-10-19T12:00:00.000Z' })
+  })
   it('does not consult a later attention policy to reinterpret published Flag membership', async () => {
     const { audit } = await publication(true)
     vi.spyOn(attention, 'isCustomerFlag').mockImplementation(() => { throw new Error('A future policy cannot reinterpret this publication') })

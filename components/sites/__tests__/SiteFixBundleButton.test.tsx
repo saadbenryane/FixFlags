@@ -51,3 +51,15 @@ it('offers manual copying without recording a handoff when clipboard permission 
   expect(fetch).toHaveBeenCalledTimes(1)
   expect(screen.queryByRole('button', { name: C.bundleCopied })).not.toBeInTheDocument()
 })
+
+it('retires an earlier manual-copy recovery when the bundle selection changes', async () => {
+  vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Denied'))
+  const view = render(<SiteFixBundleButton siteId="site" flagIds={['first']} availability="available" />)
+  fireEvent.click(screen.getByRole('button', { name: C.fixSelected(1) }))
+  expect(await screen.findByRole('textbox')).toHaveValue('Repair first.')
+  view.rerender(<SiteFixBundleButton siteId="site" flagIds={['second']} availability="available" />)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: C.fixSelected(1) }))
+  expect(await screen.findByRole('textbox')).toHaveValue('Repair second.')
+  expect(fetch).toHaveBeenCalledTimes(2)
+})

@@ -58,6 +58,8 @@ export interface AuditPageSession {
   technologyResources: TechnologyResourceRecord[]
   technologyResourcesTruncated: () => boolean
   tracking: NetworkMonitor['tracking']
+  engagement: NetworkMonitor['engagement']
+  settleEngagement: NetworkMonitor['settleEngagement']
   setTrackingPhase: NetworkMonitor['setTrackingPhase']
   /** Optional form probe result when journeySafe engagement POST was observed. */
   formProbe: FormProbeResult | null
@@ -420,6 +422,8 @@ export async function createAuditPage(
     technologyResources: network.resources,
     technologyResourcesTruncated: network.resourcesTruncated,
     tracking: network.tracking,
+    engagement: network.engagement,
+    settleEngagement: network.settleEngagement,
     setTrackingPhase: network.setTrackingPhase,
     // The interaction happens after navigation; expose the current probe,
     // rather than freezing its initial null value in the returned session.

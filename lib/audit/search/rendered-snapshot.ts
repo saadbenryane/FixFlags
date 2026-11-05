@@ -8,8 +8,12 @@ export const renderedSearchSnapshotSchema = z.object({
   version: z.literal(1), contract: z.literal('rendered-search-v1'), finalUrl: z.string().url(),
   documentBaseUrl: z.string().url().optional(),
   collectedAt: z.string().datetime(), language: z.string().max(128),
+  sectionLinks: z.object({ complete: z.boolean(),
+    links: z.array(z.object({ href: z.string().max(8192), text: z.string().max(256) }).strict()).max(2000),
+    elementIds: z.array(z.string().max(8192)).max(300), anchorNames: z.array(z.string().max(8192)).max(300),
+  }).strict().optional(),
   sections: z.object({ metadata: sectionSchema, indexing: sectionSchema, canonical: sectionSchema,
-    structured: sectionSchema, links: sectionSchema, text: sectionSchema }).strict(),
+    structured: sectionSchema, links: sectionSchema.extend({ labelsComplete: z.boolean().optional() }), text: sectionSchema }).strict(),
 }).strict()
 export type RenderedSearchSnapshot = z.infer<typeof renderedSearchSnapshotSchema>
 export type SearchSection = keyof RenderedSearchSnapshot['sections']
@@ -17,7 +21,7 @@ export type SearchSection = keyof RenderedSearchSnapshot['sections']
 /** Each section has its own resource budget. Hydration scripts are never collected. */
 export async function collectRenderedSearchSnapshot(page: Page): Promise<RenderedSearchSnapshot> {
   return renderedSearchSnapshotSchema.parse(await page.evaluate(() => {
-    const sections = {} as Record<string, { html: string; complete: boolean; reason: string | null; observed: number; limit: number }>
+    const sections = {} as Record<string, { html: string; complete: boolean; reason: string | null; observed: number; limit: number; labelsComplete?: boolean }>
     const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const collect = (key: string, selector: string, limit: number, bytes: number, serialize: (node: Element) => string | { html: string; complete: boolean }) => {
       const nodes = Array.from(document.querySelectorAll(selector)).filter(node => !node.closest('template,noscript'))
@@ -31,6 +35,7 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
         html += fragment; used += size
       }
       sections[key] = { html, complete, reason: complete ? null : 'section_limit', observed: nodes.length, limit }
+      return nodes
     }
     collect('metadata', 'head title, head meta', 256, 32_000, node => node.outerHTML)
     collect('indexing', 'meta[name="robots" i], meta[name="googlebot" i]', 64, 16_000, node => node.outerHTML)
@@ -42,7 +47,40 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
       clone.querySelectorAll('script:not([type="application/ld+json" i]), style, template, noscript').forEach(item => item.remove())
       return clone.outerHTML
     })
-    collect('links', 'a[href]', 2000, 128_000, node => `<a href="${escape(node.getAttribute('href') ?? '')}">${escape((node.textContent ?? '').slice(0, 256))}</a>`)
+    let linkLabelsComplete = true
+    const activeLinks = collect('links', 'a[href]', 2000, 128_000, node => {
+      const text = node.textContent ?? ''
+      if (text.length > 256) linkLabelsComplete = false
+      return `<a href="${escape(node.getAttribute('href') ?? '')}"${text.length > 256 ? ' data-label-truncated=""' : ''}>${escape(text.slice(0, 256))}</a>`
+    })
+    sections.links.labelsComplete = linkLabelsComplete
+    const sectionLinks = { complete: activeLinks.length <= 2000, links: [] as Array<{ href: string; text: string }>, elementIds: [] as string[], anchorNames: [] as string[] }
+    const fragments = new Set<string>(), ids = new Set<string>(), names = new Set<string>()
+    const documentUrl = new URL(location.href); documentUrl.hash = ''
+    let sectionBytes = 0
+    for (let index = 0; index < Math.min(activeLinks.length, 2000); index++) {
+      const node = activeLinks[index], href = node.getAttribute('href') ?? ''
+      let destination: URL
+      try { destination = new URL(href, document.baseURI) } catch { continue }
+      if (!destination.hash) continue
+      const fragment = destination.hash.slice(1); destination.hash = ''
+      if (destination.href !== documentUrl.href) continue
+      if (href.length > 8192 || !fragments.has(fragment) && fragments.size >= 300) { sectionLinks.complete = false; continue }
+      const text = (node.textContent ?? '').slice(0, 256)
+      const bytes = new TextEncoder().encode(href + text).byteLength
+      if (sectionBytes + bytes > 128_000) { sectionLinks.complete = false; break }
+      sectionBytes += bytes; sectionLinks.links.push({ href, text })
+      if (fragments.has(fragment)) continue
+      fragments.add(fragment)
+      let target: string
+      try { target = decodeURIComponent(fragment) } catch { target = fragment }
+      const first = document.getElementById(target)
+      // A dormant duplicate cannot hide a later active target with the same id.
+      if (first && (!first.closest('template,noscript') || Array.from(document.querySelectorAll('[id]')).some(item =>
+        item.id === target && !item.closest('template,noscript')))) ids.add(target)
+      for (const item of document.getElementsByName(target)) if (item.tagName === 'A' && !item.closest('template,noscript')) { names.add(target); break }
+    }
+    sectionLinks.elementIds = [...ids]; sectionLinks.anchorNames = [...names]
     collect('text', 'h1, article h2, button, footer, [aria-label*="breadcrumb" i]', 256, 64_000, node => {
       const clone = node.cloneNode(true) as Element
       clone.querySelectorAll('script, style, template, noscript, [hidden], [aria-hidden="true"]').forEach(item => item.remove())
@@ -53,7 +91,7 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
       return { html, complete: text.length <= 8000 && node.querySelectorAll('a[href]').length <= 100 }
     })
     return { version: 1, contract: 'rendered-search-v1', finalUrl: location.href, documentBaseUrl: document.baseURI, collectedAt: new Date().toISOString(),
-      language: (document.documentElement.lang ?? '').slice(0, 128), sections }
+      language: (document.documentElement.lang ?? '').slice(0, 128), sections, sectionLinks }
   }))
 }
 
@@ -62,7 +100,9 @@ export function searchSectionBody(document: PublicDocument, section: SearchSecti
   if (document.status == null || document.status < 200 || document.status >= 300) return null
   if (!document.searchSnapshot) return document.complete ? document.body : null
   const snapshot = document.searchSnapshot, selected = snapshot.sections[section]
-  if (!selected.complete) return null
+  // A section limit does not erase a complete document already collected in
+  // this same observation. Partial document bytes still cannot cover the gap.
+  if (!selected.complete) return document.complete ? document.body : null
   // Historical isolated canonical sections did not retain the base required for relative declarations.
   if (section === 'canonical' && !snapshot.documentBaseUrl) return document.complete ? document.body : null
   const language = snapshot.language.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')

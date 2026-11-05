@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type SetStateAction } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Info, MessageCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SupportChatPanel } from '@/components/live-support/SupportChatPanel'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportSession } from '@/components/live-support/useSupportPolling'
-import { useSiteAgentConversation } from '@/hooks/useSiteAgentConversation'
+import { siteAgentConversationKey, useSiteAgentConversation } from '@/hooks/useSiteAgentConversation'
 import { SiteAgent } from '@/components/sites/SiteAgent'
 import { SITE_AGENT_COPY as C } from '@/lib/marketing/copy/site-agent'
 import { SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
@@ -19,15 +19,21 @@ const supportDraftKey = 'fixflags:support:draft'
 
 type ConversationWidgetProps = {
   flagId?: string; flagTitle?: string; initiallyOpen?: boolean
-} & ({ supportOnly: true; siteId?: never; host?: never; ownsSite?: never }
-  | { supportOnly?: false; siteId: string; host: string; ownsSite: boolean })
+} & ({ supportOnly: true; siteId?: never; host?: never; ownsSite?: never; ownerId?: never }
+  | { supportOnly?: false; siteId: string; host: string; ownsSite: boolean; ownerId: string | null })
 
 /** One conversation window. The site agent is the front door, and human support opens in that same window. */
 export function ConversationWidget(props: ConversationWidgetProps) {
+  const context = props.supportOnly ? 'support' : siteAgentConversationKey(props.ownsSite ? props.ownerId : null, props.siteId, props.flagId)
+  return <ConversationWindow key={context} {...props} />
+}
+
+function ConversationWindow(props: ConversationWidgetProps) {
   const { flagId, flagTitle, initiallyOpen = false } = props
   const siteId = props.supportOnly ? null : props.siteId
   const host = props.supportOnly ? null : props.host
-  const ownsSite = props.supportOnly ? false : props.ownsSite
+  const ownerId = !props.supportOnly && props.ownsSite ? props.ownerId : null
+  const ownsSite = Boolean(ownerId)
   const title = props.supportOnly ? SUPPORT_CHAT.title : C.chatTitle
   const openLabel = props.supportOnly ? SUPPORT_CHAT.ariaOpen : C.openChat
   const closeLabel = props.supportOnly ? SUPPORT_CHAT.ariaClose : C.closeChat
@@ -38,6 +44,8 @@ export function ConversationWidget(props: ConversationWidgetProps) {
   const [mobile, setMobile] = useState(false)
   const [viewport, setViewport] = useState<CSSProperties>({})
   const [supportDraft, setSupportDraft] = useState('')
+  const currentSupportDraft = useRef('')
+  const supportDraftActive = useRef(false)
   const [supportSending, setSupportSending] = useState(false)
   const [supportError, setSupportError] = useState<string | null>(null)
   const supportPending = useRef(false)
@@ -45,7 +53,7 @@ export function ConversationWidget(props: ConversationWidgetProps) {
   useFocusYield(launcher)
   const open = questionsOpen || support.panelOpen
   const showSupport = support.panelOpen || !ownsSite
-  const conversation = useSiteAgentConversation(siteId, flagId, open && ownsSite && !showSupport)
+  const conversation = useSiteAgentConversation(siteId, flagId, open && ownsSite && !showSupport, ownerId)
   const { data, mutate } = useSupportSession(true, support.panelOpen)
   const onRead = useCallback(() => { void mutate() }, [mutate])
   const { sessionId, setSessionId } = support
@@ -73,13 +81,21 @@ export function ConversationWidget(props: ConversationWidgetProps) {
     }
   }, [])
 
+  // A send may settle after closing. Retired windows cannot alter a newer draft.
+  useLayoutEffect(() => {
+    supportDraftActive.current = true
+    return () => { supportDraftActive.current = false }
+  }, [])
+  const changeSupportDraft = useCallback((value: SetStateAction<string>) => {
+    if (!supportDraftActive.current) return
+    const next = typeof value === 'function' ? value(currentSupportDraft.current) : value
+    currentSupportDraft.current = next
+    setSupportDraft(next)
+    try { sessionStorage.setItem(supportDraftKey, next) } catch { /* Draft stays in memory. */ }
+  }, [])
   useEffect(() => {
-    try { setSupportDraft(sessionStorage.getItem(supportDraftKey) ?? '') } catch { /* Draft stays in memory. */ }
-  }, [])
-  const changeSupportDraft = useCallback((value: string) => {
-    setSupportDraft(value)
-    try { sessionStorage.setItem(supportDraftKey, value) } catch { /* Draft stays in memory. */ }
-  }, [])
+    try { changeSupportDraft(sessionStorage.getItem(supportDraftKey) ?? '') } catch { /* Draft stays in memory. */ }
+  }, [changeSupportDraft])
   const beginSupportSend = useCallback(() => {
     if (supportPending.current) return false
     supportPending.current = true

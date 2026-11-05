@@ -39,14 +39,13 @@ export function SiteSettingsControls({
   const router = useRouter()
   const level: NotificationLevel | null = initial.notificationLevel
   const recovery = initial.notifyOnRecovery
-  const { busy, message, error, submit, requestKey, completeIntent } = useSiteAction(`site:${siteId}:settings`)
+  const { busy, message, error, submit, clearFeedback, requestKey, completeIntent } = useSiteAction({ namespace: `site:${siteId}:settings` })
   const [removalOpen, setRemovalOpen] = useState(false)
   const removalOpener = useRef<HTMLElement | null>(null)
   const paused = watch.state === 'paused'
   useEffect(() => {
     const hash = window.location.hash
     if (hash === '#connections' || hash.startsWith('#connection-')) router.replace(`/sites/${siteId}?view=integrations${hash}`)
-    if (hash === '#signup-setup') document.getElementById('account-checks')?.scrollIntoView()
   }, [router, siteId])
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const alertNotice = watch.alert ? siteWatchAlertNotice(watch.alert) : null
@@ -57,32 +56,34 @@ export function SiteSettingsControls({
       ...(nextRecovery !== recovery ? { notifyOnRecovery: nextRecovery } : {}),
     }
     if (!Object.keys(changes).length) return
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/settings`, {
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/settings`, {
+      signal,
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
     }, 'settings'), () => C.settings.notificationsSaved, onRefresh)
   }
 
   async function setMonitoringPaused(value: boolean) {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/watch`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/watch`, { signal, method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: value ? 'pause' : 'resume' }) }, 'acknowledgement'),
       () => value ? C.settings.monitoringPaused : C.settings.monitoringResumed, onRefresh)
   }
 
   async function cleanupAccounts() {
-    await submit(() => executeSiteAction(`/api/sites/${siteId}/account-checks`, {
+    await submit(signal => executeSiteAction(`/api/sites/${siteId}/account-checks`, {
+      signal,
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey('cleanup') },
       body: JSON.stringify({ action: 'cleanup' }),
     }, 'run'), () => { completeIntent('cleanup'); return A.requested }, onRefresh)
   }
   async function removeSite(remaining: AccountChecksView['accounts']) {
-    const result = await submit(() => executeSiteAction(`/api/sites/${siteId}`, {
+    const result = await submit(signal => executeSiteAction(`/api/sites/${siteId}`, {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      signal,
       body: JSON.stringify(remaining.length ? { acknowledgeRemainingAccounts: true,
         remainingAccounts: remaining.map(({ email, state }) => ({ email, state })) } : {}),
     }, 'acknowledgement'), () => { router.push('/dashboard'); return null })
     if (result.kind === 'refused') {
-      setRemovalOpen(false)
       // The Site resource exposes refresh failure while retaining its dated view.
       await onRefresh().catch(() => undefined)
     }
@@ -95,7 +96,7 @@ export function SiteSettingsControls({
         lastCheck={watch.lastRunAt ? formatEvidenceTimestamp(watch.lastRunAt) : null}
         lastError={watch.lastError} busy={busy} onEdit={() => setScheduleOpen(true)} onPause={value => void setMonitoringPaused(value)}
         notice={alertNotice ? <div className="mt-3"><Callout variant="warning">
-          <p className="font-medium">{alertNotice.title}</p><p className="mt-1">{WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at))}</p>
+          <p className="font-medium">{alertNotice.title}</p><p className="mt-1">{WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at), watch.covered)}</p>
           <Button asChild size="sm" variant="outline" className="mt-2"><Link href={alertNotice.actionHref as Route}>{alertNotice.actionLabel}</Link></Button>
         </Callout></div> : null}
         editor={scheduleOpen ? <SiteMonitoringSchedule siteId={siteId} interval={watch.interval} everyMinutes={watch.everyMinutes} onClose={() => setScheduleOpen(false)} onRefresh={onRefresh} /> : null}
@@ -103,11 +104,12 @@ export function SiteSettingsControls({
       <SiteNotificationSettingsPanel level={level} recovery={recovery} busy={busy} onChange={(nextLevel, nextRecovery) => void saveNotifications(nextLevel, nextRecovery)} />
 
       {busy ? <p role="status" className="text-sm">{C.settings.saving}</p> : null}
-      <SiteActionFeedback message={message} error={error} siteId={siteId} />
+      {!removalOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
       <SiteAdvancedSettings><SiteAccountChecksControls siteId={siteId} initial={initial.accountChecks} onRefresh={onRefresh} />
       {children}</SiteAdvancedSettings>
-      <SiteRemovalSettingsPanel busy={busy} onRemove={() => { removalOpener.current = document.activeElement as HTMLElement; setRemovalOpen(true) }} />
+      <SiteRemovalSettingsPanel busy={busy} onRemove={() => { clearFeedback(); removalOpener.current = document.activeElement as HTMLElement; setRemovalOpen(true) }} />
       <SiteRemovalDialog open={removalOpen} onOpenChange={setRemovalOpen} accounts={initial.accountChecks} busy={busy}
+        feedback={<SiteActionFeedback message={message} error={error} siteId={siteId} />}
         onCleanup={() => void cleanupAccounts()} onRemove={remaining => void removeSite(remaining)}
         onCloseAutoFocus={event => { event.preventDefault(); removalOpener.current?.focus() }} />
     </div>

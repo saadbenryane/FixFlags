@@ -38,14 +38,14 @@ test('guards website run, verification, monitoring and account adapters', () => 
 })
 
 
-test('retains isolated sequential regression evidence without restoring runtime dispatch', () => {
+test('keeps sequential page orchestration removed even when only a test imports it', () => {
   const legacy = 'lib/audit/pipeline/run-page.ts'
   assert.ok(moduleBoundaryFailures({ sources: {
     [legacy]: 'export function runPage() {}',
     'lib/audit/runner.ts': "import { runPage } from './pipeline/run-page'",
   } }).some(failure => failure.includes('retired sequential')))
-  assert.deepEqual(moduleBoundaryFailures({ sources: {
+  assert.ok(moduleBoundaryFailures({ sources: {
     [legacy]: 'export function runPage() {}',
     'lib/audit/__tests__/run-page.test.ts': "import { runPage } from '../pipeline/run-page'",
-  } }), [])
+  } }).some(failure => failure.includes('retired sequential')))
 })

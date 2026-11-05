@@ -1,8 +1,79 @@
 import { describe, expect, it } from 'vitest'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { flagRecoveryProofId, flagResolutionView, selectResolvedFlags, siteFlagDetailStatus, type FlagResolutionInput } from '@/lib/sites/flag-resolution'
+import { flagRecoveryProofId, flagResolutionView, selectResolvedFlags, siteFlagDetailStatus, flagVerificationFeedback, type FlagResolutionInput } from '@/lib/sites/flag-resolution'
 
 const PROOF_AT = '2026-09-20T17:58:10.414Z'
+
+describe('current verification feedback', () => {
+  type FeedbackInput = Parameters<typeof flagVerificationFeedback>[0]
+  function check(overrides: Partial<FeedbackInput['attempts'][number]> = {}): FeedbackInput['attempts'][number] {
+    return { outcome: 'UNCHANGED', comparable: true, verificationReason: null, sourceAuditId: 'source',
+      sourceFlagIds: ['flag'], handoffReference: 'flag:flag', verificationAuditId: 'check',
+      verificationAudit: { id: 'check', projectId: 'project', parentId: 'source', status: 'COMPLETED', completedAt: new Date(PROOF_AT) }, ...overrides }
+  }
+  function feedback(attempts = [check()], overrides: Partial<FeedbackInput> = {}) {
+    return flagVerificationFeedback({ projectId: 'project', sourceAuditId: 'source', sourceFlagId: 'flag',
+      observedAt: new Date('2026-09-20T16:00:00Z'), attempts, ...overrides })
+  }
+
+  it('uses the actual completed check, including when a newer task was only copied', () => {
+    expect(feedback([check({ outcome: null, verificationAuditId: null, verificationAudit: null }), check()]))
+      .toEqual({ result: 'still_open', checkedAt: PROOF_AT })
+    expect(feedback([])).toBeNull()
+    expect(feedback([check({ outcome: null, verificationAuditId: null, verificationAudit: null })])).toBeNull()
+  })
+
+  it.each(['QUEUED', 'CHECKING', 'FINALIZING', 'COMPLETED'])('hides the previous result while the latest %s check is pending', status => {
+    const pending = check({ outcome: null })
+    pending.verificationAudit = { ...pending.verificationAudit!, status, verifierExecutions: [{ workKind: 'finalize', workState: 'RUNNING' }] }
+    expect(feedback([pending, check()])).toBeNull()
+  })
+
+  it('follows check admission order when an older copied task is checked later', () => {
+    const earlier = check()
+    earlier.verificationAudit!.createdAt = new Date('2026-09-20T16:30:00Z')
+    const later = check({ outcome: null })
+    later.verificationAudit = { ...later.verificationAudit!, createdAt: new Date('2026-09-20T17:00:00Z'), status: 'QUEUED' }
+    expect(feedback([earlier, later])).toBeNull()
+    later.outcome = 'INCONCLUSIVE'
+    later.comparable = false
+    later.verificationAudit!.status = 'COMPLETED'
+    expect(feedback([earlier, later])?.result).toBe('incomparable_scope')
+  })
+
+  it.each(['project', 'parent', 'identity', 'membership', 'legacy-source', 'legacy-reference'] as const)('rejects checks with a different %s', condition => {
+    const invalid = check()
+    if (condition === 'project') invalid.verificationAudit!.projectId = 'foreign'
+    if (condition === 'parent') invalid.verificationAudit!.parentId = 'foreign'
+    if (condition === 'identity') invalid.verificationAudit!.id = 'foreign'
+    if (condition === 'membership') invalid.sourceFlagIds = ['peer']
+    if (condition === 'legacy-source') { invalid.sourceFlagIds = []; invalid.sourceAuditId = 'foreign'; invalid.verificationAudit!.parentId = 'foreign' }
+    if (condition === 'legacy-reference') { invalid.sourceFlagIds = []; invalid.handoffReference = 'flag:peer' }
+    expect(feedback([invalid])).toBeNull()
+  })
+
+  it('allows frozen grouped membership across source Audits without enrolling later peers', () => {
+    const grouped = check({ sourceAuditId: 'other-source', sourceFlagIds: ['flag', 'peer'], handoffReference: 'improvement:group' })
+    grouped.verificationAudit!.parentId = 'other-source'
+    expect(feedback([grouped])?.result).toBe('still_open')
+    expect(feedback([grouped], { sourceFlagId: 'later-peer' })).toBeNull()
+  })
+
+  it('never lets a failed check claim a conclusive result or raw attempt certify recovery', () => {
+    const failed = check()
+    failed.verificationAudit!.status = 'FAILED'
+    expect(feedback([failed])?.result).toBe('could_not_verify')
+    expect(feedback([check({ outcome: 'IMPROVED' })])).toBeNull()
+    expect(feedback([check({ comparable: false, verificationReason: 'Evidence did not capture comparable evidence' })])?.result).toBe('missing_evidence')
+  })
+
+  it('retires an old check when the condition recurs and does not invent a completion time', () => {
+    expect(feedback([check()], { observedAt: new Date('2026-09-21T00:00:00Z') })).toBeNull()
+    const unknown = check()
+    unknown.verificationAudit!.completedAt = null
+    expect(feedback([unknown])).toEqual({ result: 'still_open', checkedAt: null })
+  })
+})
 
 function input(overrides: Partial<FlagResolutionInput> = {}): FlagResolutionInput {
   return {
@@ -189,7 +260,7 @@ describe('flagResolutionView', () => {
     expect(view.proof.showAuditId).toBe(false)
   })
 
-  it('uses the created time when the completed check has no completion timestamp', () => {
+  it('retains accepted recovery while keeping its unrecorded completion time unknown', () => {
     const view = flagResolutionView(input({
       status: 'FIXED',
       resolvedInId: 'audit-proof',
@@ -197,7 +268,7 @@ describe('flagResolutionView', () => {
     }))
     expect(view.kind).toBe('proven')
     if (view.kind !== 'proven') return
-    expect(view.proof.observedAt).toBe('2026-09-21T08:00:00.000Z')
+    expect(view.proof.observedAt).toBeNull()
   })
 
   it('does not call a fixed Flag recovered when the proof check is missing, unfinished, or someone else', () => {

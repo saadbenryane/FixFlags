@@ -1,15 +1,118 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Page } from 'playwright'
 import { collectRenderedSearchSnapshot } from '../rendered-snapshot'
 import { evaluateSearch } from '../registry'
 import { assessSearchRecovery } from '../recovery'
 import { document as recordedDocument, evidence, PAGE } from './fixtures'
+import { capturedSectionLinks, capturedSectionScope } from '../../checks/section-links'
+import { runAllChecks } from '../../checks'
+import { scopedAssertionForTarget } from '../../checks/verification'
+import { capturedPageLinks } from '../../checks/public-links'
+import { runAuthCheckoutChecks } from '../../checks/auth-checkout'
 
 const page = { evaluate: async (fn: () => unknown) => fn() } as unknown as Page
 beforeEach(() => { document.documentElement.innerHTML = '<head></head><body></body>' })
 
 describe('bounded rendered Search sections', () => {
+  it('evaluates an exhausted native section from the complete same-capture document while preserving partial-body uncertainty', async () => {
+    document.head.innerHTML = '<meta name="fixture" content="bounded">'.repeat(257) + '<title>Actual page title</title><meta name="description" content="Actual page description">'
+    document.body.innerHTML = '<h1>Actual page title</h1>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.sections.metadata.complete).toBe(false)
+    const body = document.documentElement.outerHTML
+    const complete = await evaluateSearch(evidence('', { original: recordedDocument(null), collectorVersion: 2,
+      rendered: recordedDocument(body, { searchSnapshot: snapshot }) }), undefined, ['presentation'])
+    expect(complete.find(item => item.checkId === 'title-missing'))
+      .toMatchObject({ disposition: 'passed', source: 'rendered-dom', observed: 'Actual page title' })
+    expect(complete.find(item => item.checkId === 'description-missing'))
+      .toMatchObject({ disposition: 'passed', source: 'rendered-dom', observed: 'Actual page description' })
+    const partial = await evaluateSearch(evidence('', { original: recordedDocument(null), collectorVersion: 2,
+      rendered: recordedDocument(body, { searchSnapshot: snapshot, complete: false }) }), undefined, ['presentation'])
+    expect(partial.find(item => item.checkId === 'title-missing')).toMatchObject({ disposition: 'unknown' })
+  })
+  it('uses complete page prose for structured content matching instead of treating selected sections as the whole page', async () => {
+    document.head.innerHTML = '<title>Product details</title><script type="application/ld+json">' +
+      JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: 'The useful service', offers: { '@type': 'Offer', price: '12' } }) + '</script>'
+    document.body.innerHTML = '<h1>Product details</h1><p>The useful service</p>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.sections.text.html).not.toContain('The useful service')
+    const complete = await evaluateSearch(evidence('', { original: recordedDocument(null), collectorVersion: 2,
+      rendered: recordedDocument(document.documentElement.outerHTML, { searchSnapshot: snapshot }) }), undefined, ['structured-data'])
+    expect(complete.filter(item => item.checkId === 'search-structured-content')).toEqual([])
+    const partial = await evaluateSearch(evidence('', { original: recordedDocument(null), collectorVersion: 2,
+      rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false }) }), undefined, ['structured-data'])
+    expect(partial.filter(item => item.checkId === 'search-structured-content'))
+      .toMatchObject([{ disposition: 'unknown', reason: 'content_context_incomplete' }])
+    expect(partial.some(item => item.checkId === 'search-structured-feature' && item.source === 'rendered-dom')).toBe(true)
+    document.querySelector('p')!.remove()
+    const mismatch = await evaluateSearch(evidence('', { original: recordedDocument(null), collectorVersion: 2,
+      rendered: recordedDocument(document.documentElement.outerHTML, { searchSnapshot: snapshot }) }), undefined, ['structured-data'])
+    expect(mismatch.filter(item => item.checkId === 'search-structured-content'))
+      .toMatchObject([{ disposition: 'observed', reason: 'content_correspondence_unconfirmed' }])
+  })
+  it('never invents an action label by cutting a longer word at its classification boundary', async () => {
+    document.body.innerHTML = '<a href="/offer">' + ' '.repeat(247) + 'Subscribers</a><a href="/other-offer">Subscribe</a>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    const inventory = capturedPageLinks({ renderedSearchSnapshot: snapshot }, null, { requireLabels: true })
+    const openDestination = vi.fn(async (url: string) => ({ url, status: 404, outcome: 'not_found' as const, shouldFlagDead: true }))
+    const flags = await runAuthCheckoutChecks(location.href, inventory, { openDestination })
+    expect(openDestination.mock.calls.map(([url]) => url)).toEqual([new URL('/other-offer', location.href).href])
+    expect(flags).toMatchObject([{ checkId: 'checkout-link-dead', evidenceTargets: [{ context: expect.any(String) }] }])
+  })
+  it('retains href coverage while disclosing clipped action labels', async () => {
+    document.body.innerHTML = '<a href="/offer">' + 'x'.repeat(300) + ' Subscribe</a><template><a href="/checkout">Buy now</a></template>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.sections.links).toMatchObject({ complete: true, labelsComplete: false, observed: 1 })
+    expect(snapshot.sections.links.html).not.toContain('Subscribe')
+    document.body.innerHTML = '<a href="/offer">Subscribe</a>'
+    expect((await collectRenderedSearchSnapshot(page)).sections.links).toMatchObject({ complete: true, labelsComplete: true })
+  })
+  it('collects exact active fragment targets independently of oversized page HTML', async () => {
+    document.body.innerHTML = '<a href="#Pricing">Pricing</a><a href="#caf%C3%A9">Details</a><a href="#missing">Missing</a>' +
+      '<section id="Pricing"></section><a name="café">Details</a><template><section id="missing"></section></template>' +
+      '<div hidden>' + 'x'.repeat(1_100_000) + '</div>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.sectionLinks).toMatchObject({ complete: true, elementIds: ['Pricing'], anchorNames: ['café'], links: [
+      { href: '#Pricing' }, { href: '#caf%C3%A9' }, { href: '#missing' },
+    ] })
+    expect(JSON.stringify(snapshot.sectionLinks).length).toBeLessThan(2000)
+  })
+  it('detects and independently verifies sections without full metadata while heading evidence remains unknown', async () => {
+    document.body.innerHTML = '<a href="#Pricing">Pricing</a><a href="#caf%C3%A9">Details</a><a name="café">Details</a>'
+    const scope = { pageUrl: location.href, finalUrl: location.href, profile: 'desktop-fixture', access: 'public' }
+    async function checked(auditId: string) {
+      const snapshot = await collectRenderedSearchSnapshot(page)
+      const captured = { renderedSearchSnapshot: snapshot, runtimeHeadScope: scope }
+      const sectionScope = capturedSectionScope(captured)
+      expect(sectionScope).toEqual(scope)
+      const inventory = capturedSectionLinks(captured, null, sectionScope)
+      const result = await runAllChecks(scope.pageUrl, null, null, null, [], undefined, null, null, undefined, true, ['seo'],
+        { sectionLinks: inventory, sectionScope })
+      return { result, receipt: { kind: 'site-module-check' as const, version: 1 as const, module: 'seo', pageUrl: scope.pageUrl,
+        ...result.executions[0], execution: { auditId, taskId: 'native-sections-' + auditId, checkVersion: 1, source: 'rendered-dom' as const, collectedAt: snapshot.collectedAt } } }
+    }
+    const before = await checked('before')
+    expect(before.result.flags).toMatchObject([{ checkId: 'broken-page-anchors' }])
+    expect(before.receipt).toMatchObject({ complete: false, assertions: [
+      { passed: false, complete: true }, { passed: true, complete: true },
+    ] })
+    document.body.insertAdjacentHTML('beforeend', '<section id="Pricing"></section>')
+    const after = await checked('after')
+    expect(after.result.flags).toEqual([])
+    expect(after.receipt.complete).toBe(false)
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'broken-page-anchors', flag: before.result.flags[0] })?.assertion)
+      .toMatchObject({ complete: true, passed: true })
+  })
+  it('retains bounded exact observations while refusing completion beyond the native target budget', async () => {
+    document.body.innerHTML = Array.from({ length: 301 }, (_, index) => '<a href="#section-' + index + '">Details</a>').join('')
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.sectionLinks).toMatchObject({ complete: false, elementIds: [], anchorNames: [] })
+    expect(snapshot.sectionLinks?.links).toHaveLength(300)
+    expect(capturedSectionLinks({ renderedSearchSnapshot: snapshot, collectionRestrictions: ['read_only_refusal'] }, null)).toBeNull()
+    expect(capturedSectionLinks({ renderedSearchSnapshot: snapshot }, null, { pageUrl: location.href, finalUrl: 'https://other.example/', profile: 'desktop', access: 'public' })).toBeNull()
+    expect(capturedSectionScope({ renderedSearchSnapshot: snapshot, runtimeHeadScope: { pageUrl: location.href, finalUrl: 'https://other.example/', profile: 'desktop', access: 'public' } })).toBeUndefined()
+  })
   it('excludes dormant descendants before charging a section budget', async () => {
     document.head.innerHTML = '<title>Useful title</title><template><meta name="robots" content="noindex"></template>'
     const dormant = document.createElement('noscript')

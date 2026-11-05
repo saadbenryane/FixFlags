@@ -5,11 +5,22 @@ import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tes
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
-const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn(), assessments: vi.fn(), receipts: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) }, improvement: { findMany: db.improvements }, flag: { findMany: db.flags },
+const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn(), assessments: vi.fn(), receipts: vi.fn(), current: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: async () => ({ id: 'owned' }) },
+  improvement: { findMany: async (query: unknown) => (await db.improvements(query)).map((row: object) => ({ ...row, projectId: 'site-1' })) },
+  flag: { findMany: async (query: { select?: { improvementOccurrence?: { select?: { createdAt?: boolean } } }; where?: { id?: { in: string[] } } }) => {
+    const unbound = await db.flags(query)
+    const incidents = await db.improvements.mock.results.at(-1)?.value ?? []
+    const bound = incidents.flatMap((incident: { id: string; occurrences?: Array<{ createdAt?: Date; flag: ReturnType<typeof captured> }> }) =>
+      (incident.occurrences ?? []).map(row => ({ ...row.flag, audit: { projectId: 'site-1' },
+        improvementOccurrence: { improvementId: incident.id, createdAt: row.createdAt ?? row.flag.createdAt } })))
+    if (query.select?.improvementOccurrence?.select?.createdAt) return [...bound, ...unbound.filter((flag: { id: string }) => !bound.some((row: { id: string }) => row.id === flag.id))
+      .map((flag: object) => ({ ...flag, audit: { projectId: 'site-1' }, improvementOccurrence: null }))]
+    return query.where?.id?.in ? [...bound, ...unbound].filter((flag: { id: string }) => query.where!.id!.in.includes(flag.id)) : unbound
+  } },
   outcomeAssessment: { findMany: db.assessments }, audit: { findFirst: db.audit, findMany: db.proofs },
-  auditVerificationReceipt: { findMany: db.receipts } } }))
-import { loadSiteFlags, loadSiteResolvedFlags } from '../flags'
+  auditVerificationReceipt: { findMany: db.receipts }, $queryRaw: db.current } }))
+import { loadSiteFlags } from '../flags'
 import { loadIncidentRecoveryProofs } from '../application/incident-proofs'
 
 const site = { kind: 'project', projectId: 'site-1', userId: 'owner' } as SiteRecord
@@ -36,6 +47,7 @@ beforeEach(() => {
   vi.resetAllMocks(); db.flags.mockResolvedValue([]); db.assessments.mockResolvedValue([]); db.audit.mockResolvedValue({ id: 'latest' })
   db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'PROPOSED', occurrences: [{ flag: captured() }], attempts: [] }])
   db.proofs.mockResolvedValue([recovery()])
+  db.current.mockResolvedValue([])
   db.receipts.mockImplementation(async query => {
     const audits = await db.proofs.mock.results.at(-1)?.value ?? []
     return audits.flatMap((audit: ReturnType<typeof recovery>) => query.where.OR.some((source: { auditId: string }) => source.auditId === audit.id)
@@ -43,6 +55,16 @@ beforeEach(() => {
   })
 })
 describe('current incident projection', () => {
+  it('does not let a newer copied repair hide the already admitted verification of the current Flag', async () => {
+    const flag = captured({ status: 'OPEN', resolvedInId: null })
+    const checking = { outcome: null, sourceAuditId: flag.auditId, sourceFlagIds: [flag.id], verificationAuditId: 'checking',
+      verificationAudit: { id: 'checking', projectId: site.projectId, parentId: flag.auditId, status: 'CHECKING' } }
+    db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'READY_TO_VERIFY', occurrences: [{ flag }],
+      attempts: [{ outcome: null, sourceAuditId: flag.auditId, verificationAuditId: null, verificationAudit: null }, checking] }])
+    db.current.mockResolvedValue([{ flagId: flag.id, ...checking, comparable: null, verificationReason: null, handoffReference: null,
+      projectId: site.projectId, parentId: flag.auditId, status: 'CHECKING', createdAt: flag.createdAt, completedAt: null, finalizeState: null }])
+    expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: flag.id, verificationState: 'verifying' }])
+  })
   it('removes a proven recovered incident without rewriting its unacted repair workflow', async () => {
     expect(await loadSiteFlags(site)).toEqual([])
     expect(db.proofs).toHaveBeenCalledWith({ where: { id: { in: ['recovery'] }, projectId: { in: ['site-1'] }, status: 'COMPLETED', completedAt: { not: null } },
@@ -86,11 +108,15 @@ describe('current incident projection', () => {
     const attempt = { outcome: 'IMPROVED', comparable: true, sourceAuditId: older.auditId, handoffReference: 'flag:' + older.id,
       verificationAuditId: 'repair', createdAt: recoveredAt,
       verificationAudit: { id: 'repair', projectId: site.projectId, parentId: older.auditId, status: 'COMPLETED' } }
-    db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'VERIFIED', occurrences: [
+    db.current.mockImplementation(async (parts: TemplateStringsArray) => parts.join('').includes('recovery.*') ? [{
+      flagId: older.id, sourceAuditId: older.auditId, handoffReference: attempt.handoffReference, verificationAuditId: 'repair',
+      outcome: 'IMPROVED', comparable: true,
+      projectId: site.projectId, parentId: older.auditId, status: 'COMPLETED', completedAt: recoveredAt,
+    }] : [])
+    db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'VERIFIED', outcome: { id: 'outcome-1', name: 'Page loads' }, occurrences: [
       { flagId: later.id, flag: later }, { flagId: older.id, flag: older },
     ], attempts: [attempt] }])
     expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: later.id, status: 'OPEN', verificationState: 'still_open', affectedPaths: [later.pageUrl] }])
-    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ sourceFlagId: older.id, status: 'VERIFIED', affectedPaths: [older.pageUrl] }])
     // The latest broad report can still contain the repaired legacy OPEN row.
     db.flags.mockResolvedValue([older])
     expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: later.id, affectedPaths: [later.pageUrl] }])
@@ -98,15 +124,6 @@ describe('current incident projection', () => {
       { flagId: older.id, flag: older },
     ], attempts: [attempt] }])
     expect(await loadSiteFlags(site)).toEqual([])
-  })
-  it('uses the actual recovery date and durable identity in the recovered list', async () => {
-    db.improvements.mockResolvedValue([])
-    db.flags.mockResolvedValue([captured({ improvementOccurrence: { improvementId: 'incident' } }),
-      captured({ id: 'flag-2', improvementOccurrence: { improvementId: 'incident' } })])
-    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ id: 'incident', verificationState: 'verified', latestOccurrenceAt: recoveredAt.toISOString() }])
-    expect(await loadSiteResolvedFlags(site)).toHaveLength(1)
-    db.proofs.mockResolvedValue([])
-    expect(await loadSiteResolvedFlags(site)).toEqual([])
   })
   it('never lets a batched proof from one owned Site close another owned Site', async () => {
     db.proofs.mockResolvedValue([recovery({ projectId: 'site-2' })])
@@ -128,10 +145,8 @@ describe('current incident projection', () => {
       outcomeAssessments: [receipt] })])
     db.flags.mockResolvedValue([checkout])
     expect(await loadSiteFlags(site)).toEqual([])
-    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ sourceFlagId: 'checkout-flag', status: 'FIXED', verificationState: 'verified' }])
     receipt.evidence.incident.transition = 'clear'
     expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: 'checkout-flag', status: 'UNVERIFIED' }])
-    expect(await loadSiteResolvedFlags(site)).toEqual([])
     receipt.evidence.incident.transition = 'recovery'
     receipt.evidence = { ...receipt.evidence, supersededByAssessmentId: 'later' }
     expect(await loadSiteFlags(site)).toMatchObject([{ status: 'UNVERIFIED' }])

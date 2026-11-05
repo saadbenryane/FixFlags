@@ -4,6 +4,7 @@ import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { TRACKING_PROVIDERS, type TrackingEvidence, type TrackingRequest } from '../tracking/contracts'
 import { runMeasurementChecks } from './measurement'
+import type { PublicPageSignals } from '../browser/public-page-signals'
 
 export function trackingContext(request: TrackingRequest, pageUrl: string, captureKey?: string): string {
   const identity = request.requestKey && captureKey ? `:request:v2:${request.requestKey}:capture:${captureKey}` : ''
@@ -12,11 +13,13 @@ export function trackingContext(request: TrackingRequest, pageUrl: string, captu
 
 /** HTTP observations establish resource transfer or endpoint responses. They
  * never establish provider ingestion, property routing, or visitor consent. */
-export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingEvidence | undefined, pageUrl: string) {
-  const flags: DeterministicFlag[] = !meta || evidence?.phase === 'public_action' || evidence?.requests.length ? [] : runMeasurementChecks(meta)
+export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingEvidence | undefined, pageUrl: string,
+  native?: Pick<PublicPageSignals, 'hasAnalytics'> | null) {
+  const markup = meta?.hasAnalytics ?? native?.hasAnalytics ?? null
+  const flags: DeterministicFlag[] = markup === null || evidence?.phase === 'public_action' || evidence?.requests.length ? [] : runMeasurementChecks({ hasAnalytics: markup })
   const assertions: CheckAssertion[] = [{ key: 'analytics-markup', name: 'Analytics configuration in HTML',
-    expected: 'An analytics snippet is present in captured HTML', observed: !meta ? 'Captured HTML markup is unavailable. Snippet presence and absence remain unknown.' : meta.hasAnalytics ? 'Analytics markup detected; execution and delivery are separate observations.' : 'No snippet detected; runtime, consent-delayed, or proxied analytics may not appear here.',
-    passed: meta?.hasAnalytics === true, complete: Boolean(meta), ...(meta && !meta.hasAnalytics && evidence?.requests.length ? { disposition: 'observed' as const } : {}) }]
+    expected: 'An analytics snippet is present in captured HTML', observed: markup === null ? 'Captured HTML markup is unavailable. Snippet presence and absence remain unknown.' : markup ? 'Analytics markup detected; execution and delivery are separate observations.' : 'No snippet detected; runtime, consent-delayed, or proxied analytics may not appear here.',
+    passed: markup === true, complete: markup !== null, ...(markup === false && evidence?.requests.length ? { disposition: 'observed' as const } : {}) }]
   const limitation = 'Tracking observations cover recognized endpoints in this browser window. Event requests are suppressed by FixFlags to avoid adding audit traffic. FixFlags does not grant consent to test tracking; an existing action walk may dismiss consent UI. Consent state is not independently established. Service workers are blocked, and embedded-frame traffic is outside the assessed scope. Proxies, other providers, later interactions and provider-recorded events remain unverified.'
   if (!evidence) {
     assertions.push({ key: 'tracking-initiation', name: 'Runtime tracking evidence unavailable', expected: 'Browser request evidence is available',
@@ -82,6 +85,6 @@ export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingE
     else { prior.evidence += '\n' + flag.evidence; prior.evidenceTargets = [...(prior.evidenceTargets ?? []), ...(flag.evidenceTargets ?? [])] }
   }
   return { flags: [...grouped.values()], assertions,
-    complete: (evidence.phase === 'public_action' || Boolean(meta)) && !evidence.truncated && !evidence.requests.some(request => request.state === 'pending' || request.role === 'library' && request.state === 'response'),
+    complete: (evidence.phase === 'public_action' || markup !== null) && !evidence.truncated && !evidence.requests.some(request => request.state === 'pending' || request.role === 'library' && request.state === 'response'),
     limitation: `${evidence.durationMs}ms browser observation. ${evidence.truncated ? 'The request limit was reached. ' : ''}${limitation}` }
 }

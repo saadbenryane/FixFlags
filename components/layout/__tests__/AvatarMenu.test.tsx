@@ -1,29 +1,28 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AvatarMenu } from '@/components/layout/AvatarMenu'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SidebarNav } from '@/components/layout/sidebar'
+import { AUTH } from '@/lib/marketing/copy/auth'
 
-const push = vi.fn()
-const refresh = vi.fn()
 const signOut = vi.fn()
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
-  useRouter: () => ({ push, refresh, replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
 }))
 
-vi.mock('@/lib/auth-client', () => ({
-  authClient: {
-    signOut: (...args: unknown[]) => signOut(...args),
-  },
+vi.mock('@/lib/auth/client-sign-out', () => ({
+  signOutClient: (...args: unknown[]) => signOut(...args),
 }))
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
 }))
+
+afterEach(() => { vi.resetAllMocks() })
 
 const user: MeUser = {
   id: 'user-1',
@@ -79,9 +78,22 @@ describe('AvatarMenu', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Log out' }))
     await waitFor(() => {
       expect(signOut).toHaveBeenCalled()
-      expect(push).toHaveBeenCalledWith('/')
-      expect(refresh).toHaveBeenCalled()
     })
+  })
+
+  it('keeps progress visible in the open menu and prevents another sign-out until completion', async () => {
+    let finish!: () => void
+    signOut.mockImplementation(() => new Promise<void>(resolve => { finish = resolve }))
+    render(<MeProvider initialUser={user}><AvatarMenu user={user} /></MeProvider>)
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Account menu' }), { button: 0, ctrlKey: false })
+    fireEvent.click(await screen.findByRole('menuitem', { name: AUTH.signOut.menuCta }))
+    const working = screen.getByRole('menuitem', { name: AUTH.signOut.working })
+    expect(working).toHaveAttribute('aria-disabled', 'true')
+    expect(working).toHaveAttribute('aria-busy', 'true')
+    fireEvent.click(working)
+    expect(signOut).toHaveBeenCalledOnce()
+    await act(async () => { finish() })
+    expect(screen.getByRole('menuitem', { name: AUTH.signOut.menuCta })).not.toHaveAttribute('aria-disabled', 'true')
   })
 })
 

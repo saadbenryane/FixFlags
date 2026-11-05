@@ -1,4 +1,4 @@
-export type EmailDeliveryState = 'sending' | 'not_sent' | 'accepted' | 'delayed' | 'delivered' | 'failed' | 'bounced' | 'complained'
+export type EmailDeliveryState = 'sending' | 'unconfirmed' | 'accepted' | 'delayed' | 'delivered' | 'failed' | 'bounced' | 'complained'
 export type EmailDeliveryFacts = {
   acceptedAt: Date; delayedAt: Date | null; deliveredAt: Date | null;
   failedAt: Date | null; bouncedAt: Date | null; complainedAt: Date | null;

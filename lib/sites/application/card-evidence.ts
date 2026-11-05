@@ -1,11 +1,12 @@
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { applySearchCardEvidence } from '@/lib/sites/search-view'
-import { keyboardScopeComplete } from '@/lib/sites/coverage'
+import { coverageObservationTimes, keyboardScopeComplete } from '@/lib/sites/coverage'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 import { siteCoverageIsStale } from '@/lib/sites/evidence-freshness'
-import { recordedCheckSources, type SiteCheckResult } from '@/lib/sites/check-results'
+import { recordedCheckSources } from '@/lib/sites/check-result-presentation'
+import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import type { Prisma } from '@prisma/client'
 import { siteEvidenceAuditSelect } from './site-execution'
 import type { connectionCardNotes } from '@/lib/sites/connections/read'
@@ -15,6 +16,7 @@ export function applyCardEvidence({ cards, audit, summaryResults, inFlight, page
   cards: BoardCardView[]; audit: EvidenceAudit | null; summaryResults: SiteCheckResult[]; inFlight: boolean; pageCount: number;
   connectionNotes: ReturnType<typeof connectionCardNotes>; now: Date; coverageMaxAgeMs?: number
 }) {
+  const observationTimes = coverageObservationTimes(audit?.verifierExecutions ?? [])
   for (const card of cards) {
     card.sources = recordedCheckSources(summaryResults, card.id)
     if (card.id === 'site' && card.captureUrl && !card.sources.includes(SITE_BOARD_COPY.browserSource))
@@ -26,6 +28,14 @@ export function applyCardEvidence({ cards, audit, summaryResults, inFlight, page
         card.detail = observation.observation ?? null
         card.checkedAt = observation.checkedAt
       }
+    }
+    const observedAt = observationTimes.get(card.id)
+    if (observedAt) card.checkedAt = observedAt
+    if (observedAt && card.state === 'healthy' && card.openFlagCount === 0 && siteCoverageIsStale(observedAt, now, coverageMaxAgeMs)) {
+      card.state = 'unknown'
+      card.answer = SITE_BOARD_COPY.checkOutOfDate
+      card.status = SITE_BOARD_COPY.checkOutOfDate
+      card.detail = SITE_BOARD_COPY.checkOutOfDateDetail
     }
     // Category activity needs an actual method receipt, not a blanket run flag.
     const moduleKey = ({ security: 'module:security', tracking: 'module:measurement', accessibility: 'module:accessibility' } as Record<string, string>)[card.id]

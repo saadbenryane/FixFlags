@@ -12,7 +12,7 @@ const readClaimedAnonymousIds = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser }))
-vi.mock('@/lib/audit/access', () => ({ canManageAudit, canRetryAnonymousAudit }))
+vi.mock('@/lib/audit/access', async original => ({ ...await original<typeof import('@/lib/audit/access')>(), canManageAudit, canRetryAnonymousAudit }))
 vi.mock('@/lib/audit/retry-audit', () => ({ retryAudit }))
 vi.mock('@/lib/sites/visitor-identity', () => ({ peekVisitorKey: async () => 'visitor-own' }))
 vi.mock('@/lib/audit/usage', () => ({

@@ -1,38 +1,18 @@
-import { loadSiteFindings } from '@/lib/sites/flags'
 import type { SiteRecord } from '@/lib/sites/types'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { getAppUrl } from '@/lib/get-app-url'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { loadSiteFlagCopyTask } from './flag-copy-task'
 import { SiteRunRefusal } from './run-refusal'
-import { MAX_REPAIR_TASKS, MAX_REPAIR_MANIFEST_TASKS, REPAIR_TASKS_PER_PAGE } from '../repair-scope'
-import { createHash } from 'node:crypto'
-import { canonicalIntent } from '../domain/execution-spec'
+import { REPAIR_TASKS_PER_PAGE } from '../repair-scope'
+import { loadRepairSelection } from './repair-selection'
 import { MAX_REPAIR_BUNDLE_BYTES } from '../repair-budgets'
 import { AGENT_HANDOFF_COPY } from '@/lib/marketing/copy/agent-handoff'
 
 /** Same canonical tasks as individual copying. A URL is a reference, never an access grant. */
 export async function loadSiteFixBundle(site: SiteRecord, area?: SiteCardArea, flagIds?: string[], page: { offset?: number; manifestHash?: string } = {}) {
   const selected = flagIds ? new Set(flagIds) : null
-  const select = async () => (await loadSiteFindings(site)).flags.filter(flag => (!area || flag.area === area) &&
-    (!selected || selected.has(flag.id) || selected.has(flag.sourceFlagId ?? flag.id)))
-    .sort((a, b) => b.priorityScore - a.priorityScore || a.id.localeCompare(b.id))
-  const flags = await select()
-  if (selected && flags.length !== selected.size) throw new SiteRunRefusal(C.bundleSelectionChanged, 409)
-  if (!flags.length) throw new SiteRunRefusal(C.bundleEmpty, 422)
-  if (selected && selected.size > MAX_REPAIR_TASKS) throw new SiteRunRefusal(C.bundleTooLarge(MAX_REPAIR_TASKS), 422)
-  if (flags.length > MAX_REPAIR_MANIFEST_TASKS) throw new SiteRunRefusal(AGENT_HANDOFF_COPY.manifestTooLarge, 422)
-  const revision = (rows: typeof flags) => {
-    const digest = createHash('sha256').update('fixflags.repair-manifest.v1')
-    for (const flag of rows) digest.update(createHash('sha256').update(canonicalIntent({
-      id: flag.id, sourceFlagId: flag.sourceFlagId ?? flag.id, checkId: flag.checkId,
-      repairEvidenceRevision: flag.repairEvidenceRevision, definition: flag.repairDefinition,
-      problem: flag.problem, evidence: flag.evidence, whyItMatters: flag.whyItMatters, fix: flag.fix,
-      pageUrl: flag.pageUrl, affectedPaths: flag.affectedPaths, relatedOutcome: flag.relatedOutcome,
-    })).digest())
-    return digest.digest('hex')
-  }
-  const manifestHash = revision(flags)
+  const { flags, manifestHash } = await loadRepairSelection(site, area, flagIds)
   const offset = page.offset ?? 0
   if (!Number.isInteger(offset) || offset < 0 || offset >= flags.length || offset > 0 && !page.manifestHash)
     throw new SiteRunRefusal(AGENT_HANDOFF_COPY.invalidContinuation, 400)
@@ -47,8 +27,8 @@ export async function loadSiteFixBundle(site: SiteRecord, area?: SiteCardArea, f
       throw error
     }
   }
-  const current = await select()
-  if (revision(current) !== manifestHash)
+  const current = await loadRepairSelection(site, area, flagIds)
+  if (current.manifestHash !== manifestHash)
     throw new SiteRunRefusal(C.bundleChanged, 409)
   for (let offset = 0; offset < tasks.length; offset += 4) {
     await Promise.all(tasks.slice(offset, offset + 4).map(task => loadSiteFlagCopyTask(site, task.referenceFlagId, task.promptHash)))

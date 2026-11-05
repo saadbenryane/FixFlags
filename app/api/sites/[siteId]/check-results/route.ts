@@ -5,7 +5,7 @@ import { resolveLatestAudit } from '@/lib/sites/application/site-execution'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { z } from 'zod'
 import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
-import { RESULT_SELECTION_CHANGED } from '@/lib/sites/check-results'
+import { RESULT_SELECTION_CHANGED } from '@/lib/sites/check-result-contract'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 const querySchema = z.object({ area: z.enum(SITE_CARD_AREAS).optional(), pageUrl: z.string().max(4096).url()

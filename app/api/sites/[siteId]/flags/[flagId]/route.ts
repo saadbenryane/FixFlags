@@ -10,7 +10,7 @@ export async function GET(_request: Request, context: { params: Promise<{ siteId
     const { siteId, flagId } = await context.params
     const access = await requireSiteAccess(siteId)
     if (!access.ok) return apiError(access.message, access.status)
-    const detail = await loadSiteBoardFlag(access.decision.site.siteId, flagId)
+    const detail = await loadSiteBoardFlag(access.decision.site.siteId, flagId, access.decision.site)
     if (!detail) return apiError('Flag not found', 404)
     const { flag, capture } = detail
     const owner = access.decision.role === 'owner'
@@ -23,6 +23,7 @@ export async function GET(_request: Request, context: { params: Promise<{ siteId
       supportingObservations: flag.supportingObservations ?? [], supportingEvidenceUnreadable: flag.supportingEvidenceUnreadable ?? false,
       performanceEvidenceSource: flag.performanceEvidenceSource ?? null,
       verifying: flag.verifying, status: flag.status,
+      verificationFeedback: owner ? flag.verificationFeedback ?? null : null,
     }, capture })
     return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) { return handleRouteError(error, 'Could not load Flag') }

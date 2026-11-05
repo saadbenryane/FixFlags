@@ -6,6 +6,16 @@ const recordedCoverage = z.object({ environment: z.string(), requiredBindings: z
 export type CurrentBindingRevision = { key: string; version: number; required: boolean; mechanism: string;
   fixture?: { id: string; version: number; authorized: boolean } }
 
+/** Read observed correspondence only. Admission and assessment coverage cannot
+ * supply a version that the binding execution never recorded. */
+export function recordedBindingVersion(execution: { bindingVersion?: number | null; detail?: unknown }): number | undefined {
+  const detail = execution.detail
+  const legacy = detail && typeof detail === 'object' && !Array.isArray(detail) && 'bindingVersion' in detail
+    ? detail.bindingVersion : undefined
+  const version = execution.bindingVersion ?? legacy
+  return typeof version === 'number' && Number.isInteger(version) && version > 0 ? version : undefined
+}
+
 function bindingMatches(before: z.infer<typeof recordedCoverage>['bindings'][number], current: CurrentBindingRevision) {
   if (before.key !== current.key || before.version !== current.version || before.mechanism !== current.mechanism) return false
   return current.mechanism !== 'SAFE_FORM' || Boolean(current.fixture?.authorized && before.fixture &&

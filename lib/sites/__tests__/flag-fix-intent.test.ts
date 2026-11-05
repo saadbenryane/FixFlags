@@ -18,10 +18,11 @@ describe('Site fix intent identity', () => {
       deploymentReference: 'stored-deployment', changeSummary: 'Declared repair', verificationAuditId: 'completed-review', outcome: 'IMPROVED' })
   })
   it('replays the original occurrence after the durable Improvement advances', async () => {
-    const result = await recordSiteFlagFix(input)
+    const result = await recordSiteFlagFix({ ...input, expectedContextHash: 'earlier-context-revision' })
     expect(mocks.attempt).toHaveBeenCalledWith({ where: { improvementId: 'improvement', idempotencyKey: 'repair-key',
       improvement: { projectId: 'site', project: { userId: 'owner' } } } })
-    expect(mocks.record).toHaveBeenCalledWith(expect.objectContaining({ flagId: 'original-flag', userId: 'owner', idempotencyKey: 'repair-key' }))
+    expect(mocks.record).toHaveBeenCalledWith(expect.objectContaining({ flagId: 'original-flag', userId: 'owner', idempotencyKey: 'repair-key' }),
+      { validateRepair: undefined })
     expect(result).toMatchObject({ idempotencyKey: 'repair-key', sourceAuditId: 'original-review', commitReference: 'stored-commit',
       deploymentReference: 'stored-deployment', changeSummary: 'Declared repair', verificationAuditId: 'completed-review', outcome: 'IMPROVED' })
   })

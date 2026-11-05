@@ -1,7 +1,7 @@
 import { PAGE_CHECKS } from '../checks/catalog'
 import { describe, it, afterEach, vi, expect } from 'vitest'
 
-vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) })))
 import assert from 'node:assert/strict'
 
 function keyboardInteractionFinding(overrides: Partial<KeyboardInteraction>) {

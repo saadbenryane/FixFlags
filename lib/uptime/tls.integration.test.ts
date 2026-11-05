@@ -15,6 +15,10 @@ import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import { createTestTlsCertificates } from '@/lib/audit/__tests__/tls-certificates'
 import { readMonitoringHealth } from '@/lib/health/monitoring'
 
+vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture({
+  resolve4: async () => ['93.184.216.34'], resolve6: async () => [],
+}))
+
 const run = process.env.UPTIME_TEST_DATABASE_URL && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
 run('certificate failures through real TLS and the installed uptime worker', () => {
   const identity = randomUUID(), target = 'https://example.com/'

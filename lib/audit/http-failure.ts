@@ -8,7 +8,9 @@ import { PublicRedirectError } from './redirect-evidence'
 export function classifyPublicRequestFailure(error: unknown): { result: 'FAILED' | 'UNKNOWN'; reason: string } {
   if (error instanceof PublicRedirectError) return error.reason === 'redirect_loop'
     ? { result: 'FAILED', reason: 'redirect_loop' } : { result: 'UNKNOWN', reason: 'redirect_unresolved' }
-  if (error instanceof PublicResponseBodyError) return classifyPublicRequestFailure(error.cause)
+  // A received response with interrupted content cannot establish reachability
+  // failure, even when its cause shares a pre-response transport error code.
+  if (error instanceof PublicResponseBodyError) return { result: 'UNKNOWN', reason: 'probe_unavailable' }
   if (error instanceof AuditUrlError) {
     return error.code === 'DNS_NOT_FOUND' ? { result: 'FAILED', reason: 'dns_failure' }
       : { result: 'UNKNOWN', reason: 'public_target_unverified' }

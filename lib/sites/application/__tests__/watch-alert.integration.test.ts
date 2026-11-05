@@ -454,14 +454,23 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
       completedAt: new Date('2026-09-02T12:00:00Z'), updatedAt: new Date('2026-10-09T12:00:00Z'),
       watchNotificationStatus: 'FAILED', watchNotificationAttempts: 5, watchNotificationAttemptCeiling: 5 } })
     expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'undelivered', status: 'FAILED', attempts: 5,
-      at: latest.updatedAt.toISOString() })
+      at: latest.completedAt!.toISOString() })
     await prisma.audit.update({ where: { id: older.id }, data: { watchNotificationAttempts: 3 } })
-    expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'undelivered', status: 'FAILED', attempts: 5 })
+    await prisma.audit.update({ where: { id: latest.id }, data: { watchNotificationAttempts: 6 } })
+    expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'undelivered', status: 'FAILED', attempts: 6,
+      at: latest.completedAt!.toISOString() })
     await prisma.audit.update({ where: { id: latest.id }, data: { watchNotificationStatus: 'SENT' } })
     expect(await readMonitoringHealth()).toMatchObject({ ok: true, undeliveredWatchAlerts: 0 })
     const accepted = await loadSiteHome(projectId)
     expect(accepted?.watch.alert.state).toBe('accepted')
     expect(siteWatchAlertNotice(accepted!.watch.alert)).toBeNull()
+  })
+
+  it('leaves the finding date unknown when the alert has no completed check timestamp', async () => {
+    await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH',
+      completedAt: null, updatedAt: new Date('2026-10-10T12:00:00Z'),
+      watchNotificationStatus: 'FAILED', watchNotificationAttempts: 5, watchNotificationAttemptCeiling: 5 } })
+    expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'undelivered', at: null })
   })
 
   it('uses the projected saved attempt ceiling in the customer notice', async () => {

@@ -39,12 +39,13 @@ export async function POST(req: NextRequest) {
     const parsed = createSchema.safeParse(body)
 
     if (!parsed.success) {
-      return apiError(parsed.error.issues[0]?.message ?? 'Invalid URL', 400)
+      const issue = parsed.error.issues[0]
+      return apiError(issue?.message ?? 'Invalid URL', 400, issue?.path[0] === 'url' ? { code: 'INVALID_URL' } : undefined)
     }
 
     const urlResult = normalizeAuditNavigationUrl(parsed.data.url)
     if (!urlResult.ok) {
-      return apiError(urlResult.error, 400)
+      return apiError(urlResult.error, 400, { code: 'INVALID_URL' })
     }
     const { url } = urlResult
 

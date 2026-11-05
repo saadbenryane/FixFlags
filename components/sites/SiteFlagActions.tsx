@@ -19,16 +19,17 @@ import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 import styles from './SiteFlagActions.module.css'
+import { readVerificationIntent, startVerificationIntent, completeVerificationIntent } from '@/lib/sites/client-verification-intent'
 
 type SiteFlagActionsProps = { compact?: boolean; siteId: string; flagId: string; referenceFlagId?: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string }
-
 export function SiteFlagActions(props: SiteFlagActionsProps) {
-  return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteFlagActionsContent {...props} /></SiteResourceBoundary>
+  const selection = JSON.stringify([props.initial.site.userId, props.siteId, props.flagId, props.referenceFlagId ?? props.flagId, props.sourceAuditId ?? null])
+  return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteFlagActionsContent key={selection} {...props} selection={selection} /></SiteResourceBoundary>
 }
 
-function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlagId = flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId }: SiteFlagActionsProps) {
+function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlagId = flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId, selection }: SiteFlagActionsProps & { selection: string }) {
   const router = useRouter()
-  const { busy, message, error, submit, clearFeedback, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
+  const { busy, message, error, submit, clearFeedback } = useSiteAction({ scope: selection })
   const { view, refresh, disconnected } = useSharedSiteResource(siteId, refreshHistoricalGuidance)
   const currentFlag = [...view.flags, ...view.recommendations, ...view.resolvedFlags]
     .find(flag => (flag.sourceFlagId ?? flag.id) === flagId)
@@ -36,9 +37,11 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
   const guidance = currentFlag?.fix ?? initialFix
   const [verificationAuditId, setVerificationAuditId] = useState(initialVerificationAuditId)
   const [verificationRunning, setVerificationRunning] = useState(verifying)
-  const [changeSummary, setChangeSummary] = useState('')
+  const verificationPending = verificationRunning || currentFlag?.verificationState === 'verifying'
+  const [restoredIntent] = useState(() => readVerificationIntent(selection, referenceFlagId))
+  const intent = useRef(restoredIntent)
+  const [changeSummary, setChangeSummary] = useState(intent.current?.changeSummary ?? '')
   const [verifyOpen, setVerifyOpen] = useState(false)
-  const intent = useRef<{ flagId: string; key: string } | null>(null)
   const guidanceActions = useRef<HTMLDivElement | null>(null)
   const guidanceRefreshRequested = useRef(false)
   const lastGuidancePublication = useRef<string | null>(null)
@@ -83,25 +86,31 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
   }, [verificationAuditId, view.monitoringHistory, router])
 
   async function verify() {
-    if (intent.current?.flagId !== referenceFlagId) intent.current = { flagId: referenceFlagId, key: requestKey(`flag:${referenceFlagId}`) }
-    const result = await submit(async () => {
+    if (verificationPending) return
+    if (intent.current?.flagId !== referenceFlagId) intent.current = startVerificationIntent(selection, referenceFlagId, changeSummary)
+    // Keep the original declaration with its retry key while its result is
+    // uncertain, including a selection change within this action surface.
+    const submitted = intent.current
+    setChangeSummary(submitted.changeSummary)
+    await submit(async signal => {
       const body = await executeSiteAction(`/api/sites/${siteId}/flags/${referenceFlagId}/verify`, {
         method: 'POST',
+        signal,
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': intent.current!.key,
+          'Idempotency-Key': submitted.key,
         },
-        body: JSON.stringify({ changeSummary: changeSummary.trim() }),
+        body: JSON.stringify({ changeSummary: submitted.changeSummary }),
       }, 'flagVerify')
       if (body.siteId !== siteId || body.flagId !== referenceFlagId) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse)
       return body
     }, body => {
+      completeVerificationIntent(selection, submitted); intent.current = null
       setVerificationAuditId(body.verificationAuditId)
       setVerificationRunning(true)
       setVerifyOpen(false)
       return SITE_BOARD_COPY.verificationStarted
-    }, async () => { await refresh(); router.refresh() })
-    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') { completeIntent(`flag:${referenceFlagId}`); intent.current = null }
+    }, async signal => { await refresh(); if (!signal.aborted) router.refresh() })
   }
 
   return (
@@ -114,7 +123,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
               : <Button variant="outline" asChild><Link href={`/sites/${siteId}`}>{SITE_ACTION_COPY.repairGuidance.overview}</Link></Button>}
           </div>}
         </div>
-        <Button variant="outline" disabled={busy || verificationRunning} aria-busy={busy || verificationRunning || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+        <Button variant="outline" disabled={busy || verificationPending} aria-busy={busy || verificationPending || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
         {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
       </div> : <ol className={styles.steps}>
         <li>
@@ -141,9 +150,9 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
           <div className={styles.step}>
             <h3>{SITE_BOARD_COPY.verifyStep}</h3>
             <p className={styles.description}>{SITE_BOARD_COPY.verifyStepBody}</p>
-            <Button className="w-full" variant="outline" disabled={busy || verificationRunning} aria-busy={busy || verificationRunning || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
+            <Button className="w-full" variant="outline" disabled={busy || verificationPending} aria-busy={busy || verificationPending || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
               <ShieldCheck aria-hidden="true" />
-              {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
+              {verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
             </Button>
             {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
           </div>
@@ -156,12 +165,12 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
           <div className="space-y-1">
             <label htmlFor="flag-change-summary" className="text-sm font-medium">{SITE_BOARD_COPY.changeLabel}</label>
             <p id="flag-change-summary-hint" className="text-xs text-muted-foreground">{SITE_BOARD_COPY.changeHint}</p>
-            <Textarea id="flag-change-summary" aria-describedby="flag-change-summary-hint" value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} rows={3} placeholder={SITE_BOARD_COPY.changePlaceholder} />
+            <Textarea id="flag-change-summary" className="max-sm:text-base" aria-describedby="flag-change-summary-hint" value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} readOnly={Boolean(intent.current)} maxLength={2000} rows={3} placeholder={SITE_BOARD_COPY.changePlaceholder} />
           </div>
           <SiteActionFeedback message={message} error={error} siteId={siteId} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>{SITE_ACTION_COPY.cancel}</Button>
-            <Button type="button" variant="default" loading={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+            <Button type="button" variant="default" loading={busy} disabled={verificationPending} aria-busy={busy || verificationPending || undefined} onClick={() => void verify()}>{busy || verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

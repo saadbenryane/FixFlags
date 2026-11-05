@@ -113,6 +113,7 @@ import {
   reconcileImprovementVerification,
 } from './service'
 import { attemptIntentHash } from './attempt-intent'
+import { repairSourceSelect } from '@/lib/sites/domain/repair-source'
 
 const flag = {
   id: 'flag-1',
@@ -134,6 +135,8 @@ const flag = {
   pageUrl: 'https://example.com',
   confidence: 1,
   source: 'DETERMINISTIC',
+  auditId: 'review-1', fingerprint: null, affectedPaths: null, attentionPolicy: null,
+  evidenceTargets: null, supportingObservations: null,
   status: 'OPEN',
 }
 
@@ -142,7 +145,7 @@ beforeEach(() => {
   mocks.transaction.mockImplementation(async (input: unknown) => {
     if (typeof input === 'function') {
       return input({
-        flag: { findFirst: mocks.flagFindFirst, findMany: mocks.flagFindMany, updateMany: mocks.flagUpdateMany },
+        flag: { findFirst: mocks.flagFindFirst, findMany: mocks.flagFindMany, update: mocks.flagUpdate, updateMany: mocks.flagUpdateMany },
         improvementAttempt: {
           create: mocks.attemptCreate,
           findUnique: mocks.attemptFindUnique,
@@ -170,6 +173,7 @@ beforeEach(() => {
     return Promise.all(input as Promise<unknown>[])
   })
   mocks.improvementUpdate.mockResolvedValue({})
+  mocks.improvementFindUniqueOrThrow.mockResolvedValue({ id: 'improvement-1', status: 'PROPOSED' })
   mocks.executeRaw.mockResolvedValue(1)
   mocks.queryRaw.mockResolvedValue([{ id: 'product-1' }])
   mocks.improvementUpdateMany.mockResolvedValue({ count: 1 })
@@ -181,7 +185,7 @@ beforeEach(() => {
   mocks.improvementFindMany.mockResolvedValue([])
   mocks.occurrenceUpsert.mockResolvedValue({ id: 'occurrence-1' })
   mocks.cycleUpsert.mockResolvedValue({ id: 'cycle-1' })
-  mocks.cycleEventUpsert.mockResolvedValue({ id: 'event-1' })
+  mocks.cycleEventUpsert.mockImplementation(async input => ({ id: 'event-1', ...input.create }))
   mocks.cycleCreateMany.mockResolvedValue({ count: 1 })
   mocks.cycleFindMany.mockResolvedValue([{ id: 'cycle-1', improvementId: 'improvement-1', sourceAuditId: 'review-1' }])
   mocks.cycleEventCreateMany.mockResolvedValue({ count: 1 })
@@ -193,6 +197,8 @@ beforeEach(() => {
     mutation(null)
   )
   mocks.flagUpdate.mockResolvedValue({})
+  mocks.flagFindMany.mockImplementation(async query => query?.select === repairSourceSelect
+    ? [Object.fromEntries(Object.keys(repairSourceSelect).map(key => [key, flag[key as keyof typeof flag]]))] : [])
   mocks.flagUpdateMany.mockResolvedValue({ count: 1 })
   mocks.auditUpdate.mockResolvedValue({})
   mocks.ensureProductProject.mockResolvedValue({ id: 'product-1' })
@@ -221,6 +227,12 @@ describe('improvementFingerprint', () => {
 })
 
 describe('materializeAttentionForAudit', () => {
+  beforeEach(() => {
+    mocks.improvementCreateMany.mockResolvedValue({ count: 0 })
+    mocks.improvementFindUniqueOrThrow.mockResolvedValue({ id: 'improvement-1' })
+    mocks.improvementUpdate.mockResolvedValue({ id: 'improvement-1', status: 'PROPOSED' })
+    mocks.flagFindMany.mockImplementation(async () => (await mocks.auditFindUnique.mock.results.at(-1)?.value)?.flags ?? [])
+  })
   it('projects equivalent page observations once while retaining every source Flag and cycle event', async () => {
     const flags = [
       { ...flag, id: 'page-one', pageUrl: 'https://example.com/one' },
@@ -228,10 +240,10 @@ describe('materializeAttentionForAudit', () => {
       { ...flag, id: 'fixed-observation', status: 'FIXED', pageUrl: 'https://example.com/three' },
     ]
     mocks.auditFindUnique.mockResolvedValue({ id: 'review-1', userId: 'user-1', projectId: 'product-1', flags, rubrics: [] })
-    mocks.improvementUpsert.mockResolvedValue({ id: 'improvement-1', status: 'VERIFIED' })
+    mocks.improvementUpdate.mockResolvedValueOnce({ id: 'improvement-1', status: 'VERIFIED' })
     await materializeAttentionForAudit('review-1')
-    expect(mocks.improvementUpsert).toHaveBeenCalledOnce()
-    expect(mocks.improvementUpdate).toHaveBeenCalledOnce()
+    expect(mocks.improvementCreateMany).toHaveBeenCalledOnce()
+    expect(mocks.improvementUpdate).toHaveBeenCalledTimes(2)
     expect(mocks.occurrenceUpsert).toHaveBeenCalledTimes(3)
     expect(mocks.occurrenceUpsert.mock.calls.map(([input]) => input.create.flagId)).toEqual(expect.arrayContaining(flags.map(item => item.id)))
     expect(mocks.cycleEventUpsert).toHaveBeenCalledTimes(3)
@@ -242,18 +254,19 @@ describe('materializeAttentionForAudit', () => {
     const recommendation = { ...flag, id: 'recommendation', checkId: 'no-privacy-policy', severity: 'POLISH', status: 'REGRESSED' }
     mocks.auditFindUnique.mockResolvedValue({ id: 'review-2', userId: 'user-1', projectId: 'product-1', flags: [recommendation], rubrics: [] })
     mocks.improvementFindMany.mockResolvedValue([{ fingerprint: 'check:no-privacy-policy', priority: 50 }])
-    mocks.improvementUpsert.mockResolvedValue({ id: 'existing-improvement', status })
+    mocks.improvementFindUniqueOrThrow.mockResolvedValue({ id: 'existing-improvement' })
+    mocks.improvementUpdate.mockResolvedValueOnce({ id: 'existing-improvement', status })
     await materializeAttentionForAudit('review-2')
     expect(mocks.improvementFindMany).toHaveBeenCalledWith({ where: { projectId: 'product-1', fingerprint: { in: ['check:no-privacy-policy'] } },
       select: { fingerprint: true, priority: true } })
-    expect(mocks.improvementUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { projectId_fingerprint: { projectId: 'product-1', fingerprint: 'check:no-privacy-policy' } }, update: expect.objectContaining({ priority: 50 }),
+    expect(mocks.improvementUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'existing-improvement' }, data: expect.objectContaining({ priority: 50 }),
     }))
     expect(mocks.occurrenceUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({
       improvementId: 'existing-improvement', auditId: 'review-2', flagId: 'recommendation', kind: 'REGRESSED',
     }) }))
     if (status === 'VERIFIED') expect(mocks.improvementUpdate).toHaveBeenCalledWith({ where: { id: 'existing-improvement' }, data: { status: 'PROPOSED' } })
-    else expect(mocks.improvementUpdate).not.toHaveBeenCalled()
+    else expect(mocks.improvementUpdate).toHaveBeenCalledOnce()
   })
   it('keeps unengaged recommendations and resolved observations outside automatic Improvement creation', async () => {
     mocks.auditFindUnique.mockResolvedValue({ id: 'review-2', userId: 'user-1', projectId: 'product-1', flags: [
@@ -304,18 +317,12 @@ describe('materializeAttentionForAudit', () => {
         ],
       },
     })
-    mocks.improvementUpsert.mockResolvedValue({ id: 'improvement-1' })
-
     await materializeAttentionForAudit('review-1')
 
-    expect(mocks.improvementUpsert).toHaveBeenCalledWith(
+    expect(mocks.improvementCreateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          projectId_fingerprint: {
-            projectId: 'product-1',
-            fingerprint: 'check:cta-dead-link',
-          },
-        },
+        data: expect.objectContaining({ projectId: 'product-1', fingerprint: 'check:cta-dead-link' }),
+        skipDuplicates: true,
       })
     )
     expect(mocks.occurrenceUpsert).toHaveBeenCalledWith(
@@ -345,14 +352,9 @@ describe('materializeAttentionForAudit', () => {
       flags,
       rubrics: [],
     })
-    mocks.improvementUpsert.mockImplementation(async ({ create }) => ({
-      id: `improvement-${create.fingerprint}`,
-      status: 'PROPOSED',
-    }))
-
     await materializeAttentionForAudit('review-1')
 
-    expect(mocks.improvementUpsert).toHaveBeenCalledTimes(4)
+    expect(mocks.improvementCreateMany).toHaveBeenCalledTimes(4)
     expect(mocks.occurrenceUpsert).toHaveBeenCalledTimes(4)
   })
 })
@@ -360,7 +362,7 @@ describe('materializeAttentionForAudit', () => {
 describe('createImprovementAttempt', () => {
   it('refuses a changed owner or removed Site at the persistence boundary', async () => {
     mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
-    mocks.queryRaw.mockResolvedValue([])
+    mocks.queryRaw.mockResolvedValueOnce([{ id: 'user-1' }]).mockResolvedValue([])
     await expect(createImprovementAttempt({ improvementId: 'improvement-1', projectId: 'product-1', userId: 'user-1',
       sourceAuditId: 'review-1', builder: 'site' })).rejects.toThrow('Improvement not found')
     expect(mocks.attemptCreate).not.toHaveBeenCalled()
@@ -546,7 +548,7 @@ describe('recordFlagImprovementAttempt', () => {
       cycleId: 'cycle-1', type: 'GENERATED', idempotencyKey: 'generated:flag-1',
     })], skipDuplicates: true })
     expect(mocks.flagFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: {
-      id: 'flag-1', audit: { userId: 'user-1', projectId: 'product-1', project: { userId: 'user-1', deletedAt: null } },
+      id: 'flag-1', audit: { projectId: 'product-1', project: { userId: 'user-1', deletedAt: null } },
     } }))
   })
 
@@ -701,10 +703,7 @@ describe('recordOwnerFlagFeedbackDecision', () => {
     expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ type: 'ATTEMPTED' }),
     }))
-    expect(mocks.flagUpdate).toHaveBeenCalledWith({
-      where: { id: 'flag-1' },
-      data: { status: 'IGNORED' },
-    })
+    expect(mocks.flagUpdate).not.toHaveBeenCalled()
   })
 
   it('routes a duplicate dismissal through the append-only rejection ledger', async () => {
@@ -838,7 +837,7 @@ describe('reconcileImprovementVerification', () => {
           assertion: { key: 'checkout-destination', name: 'Checkout destination', expected: 'Successful GET', observed: 'GET response', passed: verdict === 'passed', complete: true },
         } }],
     })
-    mocks.flagFindMany.mockResolvedValue([])
+    mocks.flagFindMany.mockImplementation(async query => query?.select === repairSourceSelect ? [targetedFlag] : [])
     mocks.occurrenceFindMany.mockResolvedValue([{ id: 'occurrence-1', auditId: 'review-1', improvementId: 'improvement-1', flagId: 'flag-1', flag: targetedFlag,
       improvement: { successCondition: 'The same destination responds', attempts: [{ id: 'attempt-1', sourceAuditId: 'review-1' }] } }])
     mocks.attemptFindFirst.mockResolvedValue({ id: 'newer-attempt' })
@@ -854,7 +853,7 @@ describe('reconcileImprovementVerification', () => {
     }) }))
     expect(mocks.improvementUpdate).not.toHaveBeenCalled()
     if (verdict === 'passed') expect(mocks.flagUpdateMany).toHaveBeenCalledWith({
-      where: { id: 'flag-1', auditId: 'review-1', audit: { projectId: 'product-1' }, status: { in: ['OPEN', 'REGRESSED'] } },
+      where: { id: { in: ['flag-1'] }, audit: { projectId: 'product-1' }, status: { in: ['OPEN', 'REGRESSED'] } },
       data: { status: 'FIXED', resolvedInId: 'review-2' },
     })
     else expect(mocks.flagUpdateMany).not.toHaveBeenCalled()

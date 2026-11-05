@@ -2,7 +2,6 @@ import { ACCOUNT_CHECK_DEFINITIONS } from '../sites/accounts/check-definitions'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { canonicalHistoricalCheckId } from './check-compatibility'
 import { SEARCH_CHECK_REGISTRY, type SearchCheckIdentity } from './search/definitions'
-import { MODULE_CHECK_DEFINITIONS, type PageCheckDefinition } from './checks/definitions'
 import { AXE_POLICY_CHECK_IDS } from './checks/accessibility-rules'
 
 export type CheckDefinition = { version: number; area: SiteCardArea; module: string; capabilities: readonly string[] }
@@ -245,25 +244,6 @@ const axeDefinitions = Object.fromEntries(AXE_GENERATED_CHECK_IDS.map(id => [id,
 export const CHECK_DEFINITIONS = { ...LEGACY_CHECK_DEFINITIONS, ...searchDefinitions, ...axeDefinitions, ...ACCOUNT_CHECK_DEFINITIONS }
 
 export const CHECK_REGISTRY: Record<string, CheckDefinition> = CHECK_DEFINITIONS
-
-/** Historical consumers use projections of the same explicit module contracts. */
-export const CHECK_MODULES: Readonly<Record<string, Pick<PageCheckDefinition, 'version' | 'area' | 'name' | 'source' | 'input'>>> = { ...MODULE_CHECK_DEFINITIONS,
-  'automatic-accounts': { version: 1, area: 'conversion', name: 'Automatic account checks', source: 'DETERMINISTIC', input: 'browser' },
-  search: { version: 1, area: 'search' as const, name: 'Public Search evidence', source: 'DETERMINISTIC' as const, input: 'metadata' as const } }
-export const CHECK_ASSERTIONS = Object.fromEntries(Object.entries(MODULE_CHECK_DEFINITIONS).map(([id, definition]) => [id, definition.assertions]))
-
-/** Historical module receipts retain the category responsibilities they recorded. */
-export function checkAssertionsForVersion(module: string, version?: number) {
-  const assertions = CHECK_ASSERTIONS[module] ?? {}
-  if (module !== 'mobile-ux-quality' || version !== 1) return assertions
-  return {
-    ...assertions,
-    'mobile-input-fonts': { ...assertions['mobile-input-fonts'], area: 'accessibility' as const },
-    'mobile-cta-position': { ...assertions['mobile-cta-position'], area: 'conversion' as const },
-    'mobile-cta-label': { ...assertions['mobile-cta-label'], area: 'conversion' as const },
-    'mobile-loading-delay': { ...assertions['mobile-loading-delay'], area: 'conversion' as const },
-  }
-}
 
 export function registeredCheck(id: string | null | undefined) {
   return CHECK_REGISTRY[canonicalHistoricalCheckId(id)]

@@ -2,6 +2,7 @@ import { captureScreenshot } from './browser/capture-screenshot'
 import { collectRenderedHtml } from './browser/rendered-html'
 import { observeRenderedCopy, type RenderedCopy } from './browser/rendered-copy'
 import { collectRenderedSearchSnapshot, type RenderedSearchSnapshot } from './search/rendered-snapshot'
+import { readPublicPageSignals, type PublicPageSignals } from './browser/public-page-signals'
 import { type Browser, type Page } from 'playwright'
 import { AxeBuilder } from '@axe-core/playwright'
 import fs from 'fs'
@@ -133,6 +134,7 @@ export function getBrowserDiagnostics(): {
 }
 
 export interface ScreenshotResult {
+  publicTrustSignals?: PublicPageSignals | null
   renderedCopy?: RenderedCopy | null
   renderedSearchSnapshot?: RenderedSearchSnapshot
   originalDocument?: import('./search/contracts').PublicDocument
@@ -174,6 +176,7 @@ export interface ScreenshotResult {
 }
 
 interface ViewportCapture {
+  publicTrustSignals?: PublicPageSignals | null
   renderedCopy?: RenderedCopy | null
   renderedSearchSnapshot?: RenderedSearchSnapshot
   motionWindow?: MotionWindow
@@ -368,6 +371,7 @@ export type ScreenshotCaptureOptions = {
   deferMotionComparison?: boolean
   collectMobile?: boolean
   collectAccessibility?: boolean
+  collectPublicSignals?: import('./browser/public-page-signals').PublicSignalCollection | false
 }
 type ProfileCaptureOptions = ScreenshotCaptureOptions & { consoleIdentityKey: string }
 
@@ -463,18 +467,28 @@ async function captureDesktopWithFlow(
     result.technologyResources = [...session.technologyResources]
     result.technologyResourcesTruncated = session.technologyResourcesTruncated()
     if (!mediaOnly) {
-      const head = await readRuntimeHeadMetadata(page)
-      result.runtimeHeadMetadata = head.metadata
-      result.runtimeHeadScope = { pageUrl: targetUrl, finalUrl: head.finalUrl,
-        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
-      result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
+      try {
+        const head = await readRuntimeHeadMetadata(page)
+        result.runtimeHeadMetadata = head.metadata
+        result.runtimeHeadScope = { pageUrl: targetUrl, finalUrl: head.finalUrl,
+          profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
+      } catch (error) { logger.warn('Rendered head metadata could not be collected', error) }
+      try { result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page) }
+      catch (error) { logger.warn('Runtime technology markers could not be collected', error) }
       try { result.renderedSearchSnapshot = await collectRenderedSearchSnapshot(page) }
       catch (error) { logger.warn('Rendered Search sections could not be collected', error) }
-      const rendered = await collectRenderedHtml(page)
-      result.html = rendered.html
-      result.htmlTruncated = rendered.truncated
-      result.htmlCompacted = rendered.compacted
-      result.finalUrl = rendered.finalUrl ?? page.url()
+      try {
+        const rendered = await collectRenderedHtml(page)
+        result.html = rendered.html
+        result.htmlTruncated = rendered.truncated
+        result.htmlCompacted = rendered.compacted
+        result.finalUrl = rendered.finalUrl ?? page.url()
+        if (!rendered.truncated) result.renderedScope = { pageUrl: targetUrl, finalUrl: result.finalUrl,
+          profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
+      } catch (error) { logger.warn('Rendered HTML could not be collected', error) }
+      if (options.collectPublicSignals !== false) try {
+        result.publicTrustSignals = await readPublicPageSignals(page, options.collectPublicSignals ?? 'all')
+      } catch (error) { logger.warn('Published page signals could not be collected', error) }
       result.renderedCopyScope = null
       try {
         const copy = await observeRenderedCopy(page)
@@ -485,9 +499,6 @@ async function captureDesktopWithFlow(
         result.renderedCopy = null
         logger.warn('Rendered copy could not be observed', error)
       }
-      if (!rendered.truncated) result.renderedScope = { pageUrl: targetUrl, finalUrl: result.finalUrl,
-        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
-
     // Run axe-core on the top document + same-origin frames only.
     // Legacy mode disables cross-origin frame injection (YouTube/Calendly/etc.),
     // which otherwise flags third-party player DOM as the site's own a11y debt.
@@ -795,6 +806,7 @@ export async function captureScreenshots(
     desktopBase64: desktop.base64,
     mobileBase64: mobile.base64,
     renderedSearchSnapshot: desktop.renderedSearchSnapshot,
+    publicTrustSignals: desktop.publicTrustSignals,
     desktopHtml: desktop.html,
     desktopHtmlTruncated: desktop.htmlTruncated,
     desktopHtmlCompacted: desktop.htmlCompacted,
@@ -836,7 +848,7 @@ export async function captureScreenshots(
     tracking: desktop.tracking,
     technologyResources: desktop.technologyResources ?? [],
     technologyResourcesTruncated: desktop.technologyResourcesTruncated ?? false,
-    technologyRuntimeMarkers: desktop.technologyRuntimeMarkers ?? [],
+    technologyRuntimeMarkers: desktop.technologyRuntimeMarkers,
     actionTimeline: desktop.actionTimeline ?? [],
     formProbe: desktop.formProbe ?? null,
     axeViolations: desktop.axeViolations,

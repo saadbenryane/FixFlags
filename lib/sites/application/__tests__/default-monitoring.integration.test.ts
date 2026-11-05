@@ -13,8 +13,8 @@ import * as runRequests from '../run-requests'
 
 // Admission uses a controlled public DNS answer. These cases do not execute a
 // website request or claim external DNS or provider acceptance.
-vi.mock('node:dns/promises', async original => ({ ...await original<typeof import('node:dns/promises')>(),
-  resolve4: async () => ['203.0.114.1'], resolve6: async () => [] }))
+vi.mock('node:dns/promises', async original => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ ...await original<typeof import('node:dns/promises')>(),
+  resolve4: async () => ['203.0.114.1'], resolve6: async () => [] })))
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 

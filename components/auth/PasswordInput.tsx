@@ -16,6 +16,7 @@ interface PasswordInputProps {
   showRequirements?: boolean
   error?: string
   autoComplete?: string
+  disabled?: boolean
 }
 
 export function PasswordInput({
@@ -27,6 +28,7 @@ export function PasswordInput({
   showRequirements = false,
   error,
   autoComplete = 'current-password',
+  disabled = false,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false)
   const hasMinLength = value.length >= minLength
@@ -38,6 +40,7 @@ export function PasswordInput({
         label={label}
         icon={<Lock className="h-4 w-4" />}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         minLength={minLength}
@@ -48,6 +51,7 @@ export function PasswordInput({
             type="button"
             variant="ghost"
             size="icon"
+            disabled={disabled}
             onClick={() => setVisible((value) => !value)}
             className="text-muted-foreground hover:text-foreground"
             aria-label={visible ? AUTH.password.hideLabel : AUTH.password.showLabel}

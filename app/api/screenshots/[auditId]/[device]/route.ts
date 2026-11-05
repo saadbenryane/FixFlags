@@ -52,6 +52,8 @@ export async function GET(
     if (!buffer) {
       return apiError('Screenshot not found', 404)
     }
+    if (await resolveAuditAccess(audit, session?.user, store.get(SHARE_GRANT_COOKIE)?.value, readAnonAuditIdsFromStore(store)) !== access)
+      return apiError('Audit not found', 404)
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'image/png',

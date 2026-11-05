@@ -32,6 +32,10 @@ import { groundedReportVerdict, groundedRubricSummary } from './verdict'
 import { parseProductContract } from './product-contract'
 import { observationsForFlag, mergeSupportingObservations, readSupportingObservations } from './flag-observations'
 import { admitAiObservation, newAiObservationFingerprint } from './ai-observation-identity'
+import { createRecordedRecoveryReader, type RecordedRecoveryReader } from './recovery-evidence'
+import { repairSourceSelect } from '@/lib/sites/domain/repair-source'
+import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
+import { lockImprovementLedger } from '@/lib/improvements/ledger-lock'
 
 export type { DeterministicFlagRow, AiFlagRow } from './flag-types'
 
@@ -156,8 +160,8 @@ async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, ro
   await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
   const previous = await tx.flag.findMany({ where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] },
     ...(authoritativePaths ? { OR: rows.map(row => ({ source: row.source, fingerprint: row.fingerprint })) } : {}) },
-    select: { id: true, fingerprint: true, source: true, position: true,
-      affectedPaths: !authoritativePaths, supportingObservations: !authoritativePaths } })
+    select: { ...repairSourceSelect, position: true, status: true, resolvedInId: true } })
+  const recoveries = new Map<string, RecordedRecoveryReader | null>()
   let nextPosition = preservePositions ? ((await tx.flag.aggregate({ where: { auditId }, _max: { position: true } }))._max.position ?? -1) + 1 : 0
   const existing = new Map(previous.map(row => [row.source + ':' + row.fingerprint, row]))
   const created: Prisma.FlagCreateManyInput[] = []
@@ -172,8 +176,36 @@ async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, ro
     const newObservations = readSupportingObservations(row.supportingObservations)
     const supportingObservations = !authoritativePaths && oldObservations && newObservations
       ? mergeSupportingObservations([oldObservations, newObservations]) as Prisma.InputJsonValue : row.supportingObservations
-    await tx.flag.update({ where: { id: prior.id }, data: { ...row,
-      ...(preservePositions ? { position: prior.position } : {}), supportingObservations, affectedPaths: paths.length ? paths : undefined }, select: { id: true } })
+    const data = { ...row, ...(preservePositions ? { position: prior.position } : {}),
+      supportingObservations, affectedPaths: paths.length ? paths : undefined }
+    const next = { ...prior, ...Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) }
+    const comparison = (value: typeof prior) => canonicalIntent(Object.fromEntries(Object.keys(repairSourceSelect).map(key => [key, value[key as keyof typeof prior]])))
+    let reopen = false
+    if (prior.status === 'FIXED' && comparison(prior) !== comparison(next)) {
+      if (prior.resolvedInId && !recoveries.has(prior.resolvedInId)) {
+        const proof = await tx.audit.findUnique({ where: { id: prior.resolvedInId }, select: {
+          id: true, status: true, executionSpec: true, verificationReceipts: {
+            where: { OR: ['check:', 'module:', 'ai:'].map(prefix => ({ targetKey: { startsWith: prefix } })) },
+            select: { targetKey: true, status: true, detail: true },
+          },
+        } })
+        recoveries.set(prior.resolvedInId, proof?.status === 'COMPLETED' ? createRecordedRecoveryReader({
+          auditId: proof.id, executionSpec: proof.executionSpec, executions: proof.verificationReceipts,
+        }) : null)
+      }
+      // A late projection of an already repaired condition retains recovery.
+      // New, uncovered conditions cannot inherit that earlier proof.
+      reopen = !prior.resolvedInId || !recoveries.get(prior.resolvedInId)?.hasRecovery(next)
+    }
+    await tx.flag.update({ where: { id: prior.id }, data: { ...data,
+      ...(reopen ? { status: 'OPEN', resolvedInId: null } : {}) }, select: { id: true } })
+    if (reopen) {
+      const occurrence = await tx.improvementOccurrence.findUnique({ where: { flagId: prior.id }, select: { improvementId: true } })
+      if (occurrence) {
+        await lockImprovementLedger(tx, occurrence.improvementId)
+        await tx.improvement.updateMany({ where: { id: occurrence.improvementId, status: 'VERIFIED' }, data: { status: 'PROPOSED' } })
+      }
+    }
   }
   if (created.length) await tx.flag.createMany({ data: created })
 }

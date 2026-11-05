@@ -1,14 +1,15 @@
 'use client'
 
 import { InteractiveTextarea } from '@/components/ui/interactive-controls'
-import { useLayoutEffect, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 /** Shared compact composer, including IME-safe keyboard submission. */
-export function ChatComposer({ value, onChange, label, placeholder, maxLength, disabled }: {
+export const ChatComposer = forwardRef<HTMLTextAreaElement, {
   value: string; onChange: (value: string) => void; label: string; placeholder: string; maxLength?: number; disabled?: boolean
-}) {
+}>(function ChatComposer({ value, onChange, label, placeholder, maxLength, disabled }, ref) {
   const textarea = useRef<HTMLTextAreaElement>(null)
+  useImperativeHandle(ref, () => textarea.current!, [])
   const composing = useRef(false)
   useLayoutEffect(() => {
     if (!textarea.current) return
@@ -26,4 +27,4 @@ export function ChatComposer({ value, onChange, label, placeholder, maxLength, d
     }}
     className={cn('min-h-11 min-w-0 flex-1 resize-none rounded-control border border-border bg-background px-3 py-2.5 text-sm leading-relaxed',
       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70')} />
-}
+})

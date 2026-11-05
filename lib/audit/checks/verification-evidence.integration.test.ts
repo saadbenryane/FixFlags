@@ -8,6 +8,9 @@ import { capturePageKey } from '../browser/observation-scope'
 import { recordAssertionVerifiers, scopedAssertionForTarget } from './verification'
 import { verificationEvidence } from './verification-evidence'
 import { CONSOLE_VERIFICATION_RULE } from '../console-evidence'
+import { commitCheckReceipt } from '../progressive/results'
+import type { TaskContext } from '../progressive/registry'
+import { recordedVerificationVerdict } from '../recovery-evidence'
 
 const database = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 const root = 'https://example.com/'
@@ -19,6 +22,49 @@ database('complete bounded repair evidence in PostgreSQL', () => {
     const url = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(url.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(url.pathname))
       throw new Error('Use the disposable execution verifier')
+  })
+  it('does not issue a passing repair summary when a healthy receipt precedes a matching recorded failure', async () => {
+    const owner = await prisma.user.create({ data: { email: randomUUID() + '@example.test' } })
+    try {
+      const project = await prisma.project.create({ data: { userId: owner.id, name: 'Conflicting repair evidence', url: root, canonicalHost: 'example.com' } })
+      const before = await prisma.audit.create({ data: { projectId: project.id, userId: owner.id, url: root, status: 'COMPLETED' } })
+      const after = await prisma.audit.create({ data: { projectId: project.id, userId: owner.id, parentId: before.id, url: root, status: 'CHECKING',
+        executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root, environment: 'production',
+          checks: { 'journey-signup-no-form': 1 }, outcomes: [], verificationTarget: null } } })
+      const tasks = await Promise.all(['healthy', 'failed', 'last'].map(key => prisma.auditExecutionTask.create({ data: {
+        auditId: after.id, targetKey: 'task:' + key, source: 'EXECUTION', status: 'RUNNING', workKind: 'journeys' } })))
+      const observed = (taskId: string, index: number, passed: boolean) => checkReceiptSchema.parse({
+        kind: 'site-module-check', version: 1, module: 'journeys', pageUrl: root, applicable: true, complete: true, passed,
+        assertions: [{ key: 'destination-form', name: 'Signup fields', expected: 'The original route reaches signup fields',
+          observed: passed ? 'Fields observed' : 'Fields still missing', passed, complete: true, context: context(index) }],
+        execution: { auditId: after.id, taskId, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+      })
+      const sources = [observed(tasks[0].id, 1, true), observed(tasks[1].id, 1, false)]
+      await prisma.auditVerificationReceipt.createMany({ data: sources.map((detail, index) => ({
+        id: 'ordered-' + index + '-' + after.id, auditId: after.id, taskId: tasks[index].id,
+        targetKey: 'module:journeys', scopeKey: 'route:' + index, source: 'DETERMINISTIC', status: 'COMPLETED', detail,
+      })) })
+      const flag = await prisma.flag.create({ data: { auditId: before.id, checkId: 'journey-signup-no-form', pageUrl: root,
+        source: 'DETERMINISTIC', rubric: 'EXPERIENCE', severity: 'IMPORTANT', position: 0, confidence: 1,
+        problem: 'Original signup fields are missing', evidence: 'Both original routes lack fields', fix: 'Restore both forms',
+        whyItMatters: 'Signup is unavailable', verificationRule: JOURNEY_VERIFICATION_RULE, evidenceTargets: [target(0), target(1)] } })
+      await prisma.improvement.create({ data: { projectId: project.id, fingerprint: 'conflicting-signup', title: flag.problem,
+        judgment: flag.evidence, expectedBenefit: 'Signup works', recommendedChange: flag.fix, successCondition: 'Both routes have fields',
+        occurrences: { create: { auditId: before.id, flagId: flag.id, kind: 'OBSERVED' } },
+        attempts: { create: { sourceAuditId: before.id, builder: 'fixture' } } } })
+      const current = observed(tasks[2].id, 0, true)
+      await prisma.$transaction(tx => commitCheckReceipt({ audit: after, task: tasks[2],
+        input: { pageUrl: root, position: 0, primary: true, role: 'primary' }, dependencies: new Map(), deadline: Date.now() + 1000,
+      } as TaskContext, current, tx, ':last'))
+      const certificate = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: after.id, targetKey: 'check:journey-signup-no-form' } })
+      expect(certificate.detail).toMatchObject({ verdict: 'failed', assertion: { passed: false, observed: expect.stringContaining('Fields still missing') } })
+      expect(certificate.evidenceReference).toMatchObject({ supportingTasks: expect.arrayContaining([
+        expect.objectContaining({ taskId: tasks[1].id }),
+      ]) })
+      const executions = await prisma.auditVerificationReceipt.findMany({ where: { auditId: after.id } })
+      expect(recordedVerificationVerdict({ auditId: after.id, executionSpec: after.executionSpec, flag, executions })).toBe('failed')
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
+    } finally { await prisma.user.delete({ where: { id: owner.id } }) }
   })
   it('reaches later observations and keeps all original conditions without transferring unrelated assertions', async () => {
     const owner = await prisma.user.create({ data: { email: randomUUID() + '@example.test' } })

@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import type { SiteCheckResult } from '@/lib/sites/check-results'
+import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { groupRecordedSearchResults } from '@/lib/sites/search-result-groups'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { Button } from '@/components/ui/button'
+import { useContinuationFocus } from '@/hooks/useContinuationFocus'
+import { RecordedPageLink } from './RecordedPageLink'
 
 export function SearchResults({ results }: { results: SiteCheckResult[] }) {
   const [limits, setLimits] = useState<Record<string, number>>({})
@@ -13,7 +15,8 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
   const current = facts.filter(fact => !fact.result.historical)
   const previous = facts.filter(fact => fact.result.historical)
   const partial = current.some(fact => fact.result.search?.disposition === 'unknown')
-  return <section className="space-y-4" aria-label={C.recorded}>
+  const continuation = useContinuationFocus(JSON.stringify([...new Set(results.map(result => result.auditId))]))
+  return <section ref={continuation.root} tabIndex={-1} className="space-y-4 rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label={C.recorded}>
     <h3 className="text-sm font-semibold">{C.recorded}</h3>
     <p className="text-sm text-muted-foreground">{C.introduction}</p>
     {partial ? <p role="status" className="text-sm text-muted-foreground">{C.partial}</p> : null}
@@ -29,14 +32,14 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
             <h4 className="text-sm font-medium">{label}</h4>
             <ul className="space-y-3">{items.slice(0, limit).map(({ result, executions }) => {
               const item = result.search!
-              return <li key={result.id} className="rounded-control border border-border p-3 text-sm">
+              return <li key={result.id} data-continuation-item tabIndex={-1} className="rounded-control border border-border p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="font-medium">{item.name}</span>
                   <span className="text-xs text-muted-foreground">{C.statuses[item.disposition]}</span>
                 </div>
                 <p className="mt-2 break-words">{item.observed}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{C.sources[item.source]} · <time dateTime={item.collectedAt}>{formatEvidenceTimestamp(item.collectedAt)}</time></p>
-                <p className="mt-1 break-all text-xs text-muted-foreground">{item.pageUrl}</p>
+                <p className="mt-1 break-all text-xs text-muted-foreground"><RecordedPageLink url={item.pageUrl} className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></p>
                 <details className="mt-2">
                   <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{C.evidence}</summary>
                   <p className="mt-2">{C.expected}: {item.expected}</p>
@@ -49,7 +52,7 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
                   <dl className="mt-3 space-y-2 text-xs">
                     {item.evidence.map((evidence, index) => <div key={index}>
                       <dt className="font-medium">{C.sources[evidence.source]} · {evidence.locator}</dt>
-                      <dd className="mt-1 break-all">{evidence.url}</dd>
+                      <dd className="mt-1 break-all"><RecordedPageLink url={evidence.url} className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></dd>
                       <dd className="mt-1 whitespace-pre-wrap break-words">{evidence.excerpt}</dd>
                     </div>)}
                     <div><dt>{C.execution}</dt><dd className="space-y-1 break-all">{executions.map(id => <p key={id}>{id}</p>)}</dd></div>
@@ -66,7 +69,7 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
                 </details>
               </li>
             })}</ul>
-            {items.length > limit ? <Button variant="outline" onClick={() => setLimits(previous => ({ ...previous, [limitKey]: limit + 10 }))}>{C.more}</Button> : null}
+            {items.length > limit ? <Button data-continuation-control variant="outline" onClick={event => { continuation.begin(event.currentTarget); setLimits(previous => ({ ...previous, [limitKey]: limit + 10 })) }}>{C.more}</Button> : null}
           </section>
         })}
       </section>

@@ -173,7 +173,7 @@ describe('SiteOutcomeRow correction', () => {
     // "Looks right / Edit corrects inferred intent" is a correction, not a new
     // agreement. Confirming the same Outcome again is harmless but sending no
     // kind would be refused outright.
-    const fetchMock = vi.fn().mockResolvedValue(respond({ ok: true }))
+    const fetchMock = vi.fn().mockResolvedValue(respond({ ok: true, outcome: { id: 'out-1', name: 'A customer can check out', kind: 'CHECKOUT', environment: 'production' } }))
     vi.stubGlobal('fetch', fetchMock)
 
     render(
@@ -200,7 +200,7 @@ describe('SiteOutcomeRow correction', () => {
       outcomeId: 'out-1',
       name: 'A customer can check out',
     })
-    expect(refresh).toHaveBeenCalled()
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
     vi.unstubAllGlobals()
   })
 

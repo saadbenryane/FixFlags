@@ -9,6 +9,40 @@ const lcp = [
 ].join(' ')
 
 describe('presentObservedEvidence', () => {
+  it('distinguishes hash-routed pages without dropping their query or recorded address', () => {
+    const pricing = 'https://example.com/app/?lang=en#/pricing'
+    const checkout = 'https://example.com/app/?lang=en#/checkout'
+    const presented = presentObservedEvidence(`${pricing}: LCP: 4s ${checkout}: LCP: 5s`)
+    expect(presented).toMatchObject({ kind: 'pages', pages: [
+      { url: checkout, label: '/app/?lang=en#/checkout', valueLabel: '5s', share: 1 },
+      { url: pricing, label: '/app/?lang=en#/pricing', valueLabel: '4s', share: 0.8 },
+    ] })
+  })
+
+  it('keeps the full recorded context when page measurements follow an introduction', () => {
+    const text = `Comparison conditions could not be confirmed. ${lcp}`
+    expect(presentObservedEvidence(text)).toEqual({ kind: 'text', text })
+  })
+
+  it('interprets grouped digits as complete values while retaining their recorded formatting', () => {
+    const presented = presentObservedEvidence('https://example.com/a: First Contentful Paint: 1,200ms https://example.com/b: First Contentful Paint: 1,500ms')
+    expect(presented).toMatchObject({ kind: 'pages', summary: 'First Contentful Paint: 1,200ms to 1,500ms.' })
+    if (presented.kind !== 'pages') return
+    expect(presented.pages.map(page => [page.label, page.valueLabel, page.share])).toEqual([
+      ['/b', '1,500ms', 1], ['/a', '1,200ms', 0.8],
+    ])
+  })
+
+  it.each([
+    ['-1', '-2'], ['−1', '−2'], ['- 1', '- 2'], ['1,20', '1,50'], ['1 200', '1 500'], ['1\u202f200', '1\u202f500'], ['9'.repeat(320), '2'],
+  ])('does not turn ambiguous or invalid measurements into ranked positive values: %j', (first, second) => {
+    const presented = presentObservedEvidence(`https://example.com/a: LCP: ${first}s https://example.com/b: LCP: ${second}s`)
+    expect(presented.kind).toBe('pages')
+    if (presented.kind !== 'pages') return
+    expect(presented.pages.map(page => [page.valueLabel, page.share])).toEqual([[null, null], [null, null]])
+    expect(presented.pages.map(page => page.note)).toEqual([`LCP: ${first}s`, `LCP: ${second}s`])
+  })
+
   it('leaves a sentence untouched', () => {
     expect(presentObservedEvidence('Controls have no accessible name')).toEqual({
       kind: 'text', text: 'Controls have no accessible name',

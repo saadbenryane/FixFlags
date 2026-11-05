@@ -26,7 +26,7 @@ export function SiteScanAccessSettings({ siteId }: { siteId: string }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState(''), [note, setNote] = useState('')
   const [headers, setHeaders] = useState(''), [cookies, setCookies] = useState('')
   const [validation, setValidation] = useState<{ field: AccessField; message: string } | null>(null)
-  const { busy, message, error, submit, clearFeedback } = useSiteAction(`site:${siteId}:access`)
+  const { busy, message, error, submit, clearFeedback } = useSiteAction({ namespace: `site:${siteId}:access` })
   const endpoint = `/api/sites/${siteId}/scan-access`
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true); setLoadFailed(false); setUnreadable(false)
@@ -74,13 +74,13 @@ export function SiteScanAccessSettings({ siteId }: { siteId: string }) {
     }
     const config = parseScanAccessInput(parsed.data)
     if (!config) return invalid(headers.trim() ? 'headers' : cookies.trim() ? 'cookies' : 'username', C.credentialsRequired)
-    await submit(() => executeSiteAction(endpoint, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    await submit(signal => executeSiteAction(endpoint, { signal, method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scanAccess: config }) }, 'scanAccess'),
       value => { setSaved(value); setLoadFailed(false); setUnreadable(false); setUsername(''); setPassword(''); setHeaders(''); setCookies(''); setNote(''); return C.saved }, () => router.refresh())
   }
   async function remove() {
     setValidation(null)
-    await submit(() => executeSiteAction(endpoint, { method: 'DELETE' }, 'scanAccess'), value => { setSaved(value); setLoadFailed(false); setUnreadable(false); return C.removed }, () => router.refresh())
+    await submit(signal => executeSiteAction(endpoint, { signal, method: 'DELETE' }, 'scanAccess'), value => { setSaved(value); setLoadFailed(false); setUnreadable(false); return C.removed }, () => router.refresh())
   }
   return <SiteSettingsSection id="scan-access" tabIndex={-1}>
     <div className={styles.heading}><span className={styles.icon}><KeyRound size={17} aria-hidden /></span><div><h2>{C.title}</h2><p>{C.body}</p></div></div>

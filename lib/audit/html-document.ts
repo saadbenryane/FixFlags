@@ -49,3 +49,25 @@ export function htmlDocumentBase($: CheerioAPI, pageUrl: string): string {
   try { return declared ? new URL(declared, pageUrl).href : pageUrl }
   catch { return pageUrl }
 }
+
+/** Preserve the existing crawler and rendered metadata interpretations. */
+export function metadataHtmlDocument(html: string, mode: 'crawler' | 'rendered', document = load(html)): CheerioAPI {
+  const $ = mode === 'rendered' ? document : load(html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_, inner: string) => inner))
+  if (mode === 'rendered') $('noscript,template').empty()
+  return $
+}
+
+/** Metadata and independent navigation use the same anchor interpretation. */
+export function htmlDocumentLinks($: CheerioAPI, limit = Infinity) {
+  const anchors = $('a[href]').toArray()
+  return { links: anchors.slice(0, limit).map(element => ({ href: $(element).attr('href') || '',
+    text: $(element).text().trim(), rel: $(element).attr('rel') || null })), complete: anchors.length <= limit }
+}
+
+/** Navigation has its own bounded inventory, without interpreting JSON-LD or
+ * unrelated metadata. The source remains the same complete public response. */
+export function parseHttpNavigation(html: string, url: string) {
+  const document = load(html)
+  return { documentUrl: url, linkBaseUrl: htmlDocumentBase(document, url),
+    ...htmlDocumentLinks(metadataHtmlDocument(html, 'crawler', document), 10_000) }
+}

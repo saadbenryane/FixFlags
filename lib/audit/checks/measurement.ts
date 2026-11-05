@@ -1,7 +1,7 @@
 import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 
-export function runMeasurementChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runMeasurementChecks(meta: Pick<PageMetadata, 'hasAnalytics'>): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
 
   if (!meta.hasAnalytics) {

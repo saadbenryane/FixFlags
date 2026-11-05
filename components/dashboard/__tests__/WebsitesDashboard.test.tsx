@@ -39,6 +39,32 @@ it('updates results without resetting the URL the customer is typing', async () 
   expect(fetch).toHaveBeenCalledExactlyOnceWith('/api/sites', expect.objectContaining({ cache: 'no-store' }))
 })
 
+it('keeps retained websites and the draft visible while one retry recovers an interrupted refresh', async () => {
+  let finish!: (response: Response) => void
+  const fetch = vi.fn().mockResolvedValueOnce(Response.json({}, { status: 503 }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+  vi.stubGlobal('fetch', fetch)
+  render(<WebsitesDashboard initialSites={[site()]} ownerId="owner-a" readAt={Date.now()} resumedUrl={null} />, { wrapper })
+  const input = screen.getByRole('textbox', { name: 'Website URL' })
+  fireEvent.change(input, { target: { value: 'keep-this.example/pricing' } })
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  const retry = screen.getByRole('button', { name: SITE_ACTION_COPY.retryResults })
+  retry.focus()
+  await act(async () => { fireEvent.click(retry); fireEvent.click(retry); await vi.advanceTimersByTimeAsync(0) })
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(retry).toBeDisabled()
+  expect(retry).toHaveAttribute('aria-busy', 'true')
+  expect(input).toHaveValue('keep-this.example/pricing')
+  expect(screen.getByText('example.com')).toBeVisible()
+  await act(async () => { finish(Response.json([site(false)], { headers: {
+    [SITE_SUMMARY_OWNER_HEADER]: 'owner-a', [SITE_SUMMARY_READ_AT_HEADER]: String(Date.now()),
+  } })) })
+  expect(screen.queryByRole('button', { name: SITE_ACTION_COPY.retryResults })).not.toBeInTheDocument()
+  expect(screen.getByText('3 Flags')).toBeVisible()
+  expect(input).toHaveValue('keep-this.example/pricing')
+  expect(screen.getByRole('heading', { name: WEBSITES_COPY.count(1) })).toHaveFocus()
+})
+
 it('updates the first-website introduction when a Site arrives, while preserving the draft', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json([site(false)], { headers: { [SITE_SUMMARY_OWNER_HEADER]: 'owner-a', [SITE_SUMMARY_READ_AT_HEADER]: String(Date.now()) } })))
   render(<WebsitesDashboard initialSites={[]} ownerId="owner-a" readAt={Date.now()} resumedUrl={null} />, { wrapper })
@@ -49,6 +75,54 @@ it('updates the first-website introduction when a Site arrives, while preserving
   expect(screen.getByRole('heading', { name: WEBSITES_COPY.analyzeTitle })).toBeVisible()
   expect(screen.queryByRole('heading', { name: WEBSITES_COPY.firstTitle })).not.toBeInTheDocument()
   expect(input).toHaveValue('my-next.example')
+})
+
+it.each(['empty', 'outside'] as const)('handles %s focus when a dashboard retry settles', async mode => {
+  let finish!: (response: Response) => void
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({}, { status: 503 }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve })))
+  render(<WebsitesDashboard initialSites={[site()]} ownerId="owner-a" readAt={Date.now()} resumedUrl={null} />, { wrapper })
+  const input = screen.getByRole('textbox', { name: 'Website URL' })
+  fireEvent.change(input, { target: { value: 'retained.example/pricing' } })
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  const retry = screen.getByRole('button', { name: SITE_ACTION_COPY.retryResults })
+  retry.focus()
+  await act(async () => { fireEvent.click(retry); await vi.advanceTimersByTimeAsync(0) })
+  if (mode === 'outside') input.focus()
+  await act(async () => { finish(Response.json(mode === 'empty' ? [] : [site(false)], { headers: {
+    [SITE_SUMMARY_OWNER_HEADER]: 'owner-a', [SITE_SUMMARY_READ_AT_HEADER]: String(Date.now()),
+  } })) })
+  expect(input).toHaveValue('retained.example/pricing')
+  if (mode === 'outside') expect(input).toHaveFocus()
+  else expect(screen.getByRole('heading', { name: WEBSITES_COPY.firstTitle })).toHaveFocus()
+})
+
+it('retires pending retry focus when another account opens the dashboard', async () => {
+  let finish!: (response: Response) => void
+  const second = site(false); second.id = 'second-site'; second.hostname = 'second.example.com'
+  second.presentation.identity = { ...second.presentation.identity, siteId: second.id }
+  const fetch = vi.fn().mockResolvedValueOnce(Response.json({}, { status: 503 }))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+    .mockImplementation(async () => Response.json([second], { headers: {
+      [SITE_SUMMARY_OWNER_HEADER]: 'owner-b', [SITE_SUMMARY_READ_AT_HEADER]: String(Date.now()),
+    } }))
+  vi.stubGlobal('fetch', fetch)
+  const props = { initialSites: [site()], ownerId: 'owner-a', readAt: Date.now(), resumedUrl: null }
+  const rendered = render(<WebsitesDashboard {...props} />, { wrapper })
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  const retry = screen.getByRole('button', { name: SITE_ACTION_COPY.retryResults })
+  retry.focus()
+  await act(async () => { fireEvent.click(retry); await vi.advanceTimersByTimeAsync(0) })
+  me.user = { id: 'owner-b' }
+  await act(async () => { rendered.rerender(<WebsitesDashboard {...props} />); await vi.advanceTimersByTimeAsync(0) })
+  expect(screen.getByText('second.example.com')).toBeVisible()
+  const focused = document.activeElement
+  if (focused instanceof HTMLElement) focused.blur()
+  await act(async () => { finish(Response.json([site(false)], { headers: {
+    [SITE_SUMMARY_OWNER_HEADER]: 'owner-a', [SITE_SUMMARY_READ_AT_HEADER]: String(Date.now()),
+  } })) })
+  expect(document.body).toHaveFocus()
+  expect(screen.getByText('second.example.com')).toBeVisible()
 })
 
 it('withholds private rows and the entry form when the session expires', async () => {

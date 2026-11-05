@@ -3,20 +3,47 @@ import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
+import { documentEvidenceWithheld } from '../browser/document-evidence'
+import type { RenderedSearchSnapshot } from '../search/rendered-snapshot'
 
 export const SECTION_LINK_VERIFICATION_RULE = 'Section link: independently inspect every originally missing fragment under the same rendered page, viewport and access conditions.'
 export const SECTION_LINK_LIMITATION = 'Section links cover up to 300 distinct declared targets in the active captured document. Inactive template and noscript content cannot establish a live link or target. Additional targets, custom routing, text fragments, later content and click or scroll behavior remain outside this observation.'
 const MAX_SECTION_TARGETS = 300
+export type SectionLinkInventory = Pick<PageMetadata, 'documentLinks' | 'elementIds' | 'anchorNames' | 'linkBaseUrl'> & {
+  links: Array<{ href: string; text: string }>; complete?: boolean;
+}
+type SectionLinkCapture = { renderedSearchSnapshot?: RenderedSearchSnapshot; collectionRestrictions?: readonly string[] | null;
+  renderedScope?: CaptureObservationScope; runtimeHeadScope?: CaptureObservationScope }
+
+/** The native section and head share one desktop capture window. An unchanged
+ * final URL retains its observed profile without certifying full HTML collection. */
+export function capturedSectionScope(capture: SectionLinkCapture | null | undefined): CaptureObservationScope | undefined {
+  if (documentEvidenceWithheld(capture?.collectionRestrictions)) return undefined
+  if (capture?.renderedScope) return capture.renderedScope
+  const snapshot = capture?.renderedSearchSnapshot, native = capture?.runtimeHeadScope
+  return snapshot?.sectionLinks && snapshot.finalUrl === native?.finalUrl ? native : undefined
+}
+
+/** Native fragment observations survive unavailable full HTML. A complete
+ * same-capture document can cover a bounded native inventory's missing scope. */
+export function capturedSectionLinks(capture: SectionLinkCapture | null | undefined,
+  metadata: PageMetadata | null, scope?: CaptureObservationScope): SectionLinkInventory | null {
+  if (documentEvidenceWithheld(capture?.collectionRestrictions)) return null
+  const snapshot = capture?.renderedSearchSnapshot, sections = snapshot?.sectionLinks
+  if (sections && snapshot.documentBaseUrl && (!scope || snapshot.finalUrl === scope.finalUrl) && (sections.complete || !metadata))
+    return { ...sections, documentLinks: sections.links, linkBaseUrl: snapshot.documentBaseUrl }
+  return metadata
+}
 
 function decodedFragment(fragment: string) {
   try { return decodeURIComponent(fragment) } catch { return fragment }
 }
 
 /** Native document targets retain their exact spelling and support named anchors. */
-export function sectionTargetSet(metadata: PageMetadata) {
+export function sectionTargetSet(metadata: SectionLinkInventory) {
   return new Set([...metadata.elementIds, ...metadata.anchorNames ?? []])
 }
-export function sectionTargetExists(metadata: PageMetadata, fragment: string, targets = sectionTargetSet(metadata)) {
+export function sectionTargetExists(metadata: SectionLinkInventory, fragment: string, targets = sectionTargetSet(metadata)) {
   const target = decodedFragment(fragment)
   return targets.has(target) || target.toLowerCase() === 'top'
 }
@@ -29,7 +56,7 @@ function sameDocument(left: URL, right: URL) {
 
 /** Detection and repair share exact document and fragment scope. Removed links
  * cannot produce an assertion for the originally failed target. */
-export function sectionLinkObservations(pageUrl: string, metadata: PageMetadata, scope?: CaptureObservationScope) {
+export function sectionLinkObservations(pageUrl: string, metadata: SectionLinkInventory, scope?: CaptureObservationScope) {
   // Fragment targets belong to the active document, even after navigation or
   // History API changes. The requested URL still owns the recorded finding.
   const documentUrl = scope?.finalUrl ?? pageUrl
@@ -70,5 +97,5 @@ export function sectionLinkObservations(pageUrl: string, metadata: PageMetadata,
       evidenceTargets: missing.map(link => ({ kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const,
         label: 'Section link', context: link.context })) } : {}),
   }] : []
-  return { flags, assertions, complete: comparable && links.size <= MAX_SECTION_TARGETS && assertions.every(assertion => assertion.complete === true), limitation: SECTION_LINK_LIMITATION }
+  return { flags, assertions, complete: metadata.complete !== false && comparable && links.size <= MAX_SECTION_TARGETS && assertions.every(assertion => assertion.complete === true), limitation: SECTION_LINK_LIMITATION }
 }

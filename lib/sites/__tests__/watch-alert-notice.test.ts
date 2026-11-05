@@ -127,7 +127,7 @@ describe('Site notice for an undelivered alert', () => {
   it('does not leak the provider error into customer copy', () => {
     // watchNotificationLastError holds provider internals. Surfacing it raw
     // would tell the customer about our email vendor rather than their problem.
-    const body = WATCH_ALERT_DELIVERY.undeliveredBody('Sep 20, 2026')
+    const body = WATCH_ALERT_DELIVERY.undeliveredBody('Sep 20, 2026', true)
     expect(body).not.toMatch(/resend|api key|provider|smtp|422|500|forbidden/i)
     expect(body).toMatch(/could not confirm.*reached your inbox/i)
   })
@@ -148,7 +148,8 @@ describe('Site notice for an undelivered alert', () => {
   it('avoids the banned voice patterns', () => {
     const samples = [
       WATCH_ALERT_DELIVERY.undeliveredTitle,
-      WATCH_ALERT_DELIVERY.undeliveredBody(null),
+      WATCH_ALERT_DELIVERY.undeliveredBody(null, true),
+      WATCH_ALERT_DELIVERY.undeliveredBody(null, false),
       WATCH_ALERT_DELIVERY.undeliveredAction,
       WATCH_ALERT_DELIVERY.sidebarUndelivered,
       WATCH_ALERT_DELIVERY.sidebarDelivering,

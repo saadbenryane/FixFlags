@@ -5,6 +5,7 @@ export type BoardSummaryItem = {
   value: number | string
   detail?: string
   accessibleDetail?: string
+  interactive?: boolean
   state: 'attention' | 'healthy' | 'unknown'
 }
 

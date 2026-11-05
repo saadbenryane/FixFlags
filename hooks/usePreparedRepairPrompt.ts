@@ -54,7 +54,7 @@ export function usePreparedRepairPrompt(scope: RepairPromptScope, enabled: boole
     if (!enabled || !prefetch) return
     void prepare().catch(error => { if (!(error instanceof DiscardedPromptRead) && active.current === key) setState({ key, error: error instanceof Error ? error.message : C.bundleNotReady }) })
   }, [enabled, prefetch, prepare, key])
-  async function forCopy() {
+  async function forDelivery() {
     const value = await read()
     const previous = prepared.current?.key === key ? prepared.current.value : null
     publish(value)
@@ -64,7 +64,7 @@ export function usePreparedRepairPrompt(scope: RepairPromptScope, enabled: boole
     }
     return value
   }
-  return { prepare, forCopy, preview: enabled && state?.key === key ? state.value?.prompt ?? null : null,
+  return { prepare, forDelivery, preview: enabled && state?.key === key ? state.value?.prompt ?? null : null,
     unavailable: state?.key === key ? state.error ?? null : null,
     review: review?.key === key ? review.prompt : null, closeReview: () => setReview(null) }
 }

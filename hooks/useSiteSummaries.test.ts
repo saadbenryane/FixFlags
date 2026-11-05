@@ -147,3 +147,45 @@ it('does not overlap slow account reads and cancels its request when the view cl
   view.unmount()
   expect(signal.aborted).toBe(true)
 })
+
+it('joins repeated retries to the current read while publishing its validated result', async () => {
+  let finish!: (response: Response) => void
+  const fetch = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
+  vi.stubGlobal('fetch', fetch)
+  const initial = snapshot(), complete = snapshot('owner-a', false)
+  const view = renderHook(() => useSiteSummaries('owner-a', initial), { wrapper })
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  let first!: ReturnType<typeof view.result.current.refresh>, second!: ReturnType<typeof view.result.current.refresh>
+  await act(async () => {
+    first = view.result.current.refresh(); second = view.result.current.refresh()
+    await vi.advanceTimersByTimeAsync(0)
+  })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(view.result.current.refreshing).toBe(true)
+  await act(async () => { finish(reply(complete)); await Promise.all([first, second]) })
+  expect(view.result.current.refreshing).toBe(false)
+  expect(view.result.current.sites?.[0].presentation.run.state).toBe('idle')
+})
+
+it('releases a timed-out shared read so a later retry can recover', async () => {
+  let signal!: AbortSignal
+  const initial = snapshot(), complete = snapshot('owner-a', false)
+  const fetch = vi.fn().mockImplementationOnce((_url, options) => {
+    signal = options.signal
+    return new Promise<Response>(() => {})
+  }).mockImplementation(async () => reply(complete))
+  vi.stubGlobal('fetch', fetch)
+  const view = renderHook(() => useSiteSummaries('owner-a', initial), { wrapper })
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  let retry!: ReturnType<typeof view.result.current.refresh>
+  await act(async () => { retry = view.result.current.refresh(); await vi.advanceTimersByTimeAsync(15_000); await retry })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(signal.aborted).toBe(true)
+  expect(view.result.current.failed).toBe(true)
+  expect(view.result.current.refreshing).toBe(false)
+  await act(async () => { await view.result.current.refresh() })
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(view.result.current.failed).toBe(false)
+  expect(view.result.current.sites?.[0].presentation.run.state).toBe('idle')
+})

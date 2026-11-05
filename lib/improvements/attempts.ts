@@ -4,7 +4,7 @@ import {
 ensureProductProject,
 mutateProjectIntelligence,
 } from '@/lib/audit/ensure-product-project'
-import { executionTransaction,executionWrite } from '@/lib/audit/execution-ownership'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import {
 appendIntentionalNote,
@@ -25,7 +25,10 @@ Prisma
 import { assertAttemptReplay,attemptIntentHash,normalizedAttemptValue,ImprovementAttemptConflict } from './attempt-intent'
 
 import { ensureOwnedFlagIdentity, ownedFlagIdentityInclude } from './owned-flag-identity'
+import { lockImprovementLedger } from './ledger-lock'
+import { repairSourceSelect, repairSourcesSchema, type RepairSources } from '@/lib/sites/domain/repair-source'
 import type { ImprovementServiceDependencies } from './service-types'
+import { reactivateRepairSources } from './repair-attention'
 
 export async function createImprovementAttempt(input: {
   improvementId: string
@@ -73,16 +76,12 @@ export async function createImprovementAttempt(input: {
       if (sourceFlagIds.length > 5000 || input.handoffReference?.startsWith('flag:') &&
         !sourceFlagIds.includes(input.handoffReference.slice(5))) throw new ImprovementAttemptConflict()
       const sources = await tx.improvementOccurrence.findMany({ where: { improvementId: improvement.id,
-        flagId: { in: sourceFlagIds }, audit: { projectId: input.projectId, userId: input.userId } }, select: { flagId: true } })
+        flagId: { in: sourceFlagIds }, audit: { projectId: input.projectId } }, select: { flagId: true } })
       if (sources.length !== sourceFlagIds.length) throw new ImprovementAttemptConflict()
     }
     // Attempt creation and result projection share one lock across source
     // reviews, so an older run cannot overwrite a newer recorded repair.
-    await tx.$executeRaw`
-      SELECT pg_advisory_xact_lock(
-        hashtextextended(${`fixflags:improvement-attempt:${improvement.id}`}, 0)
-      )
-    `
+    await lockImprovementLedger(tx, improvement.id)
     if (idempotencyKey) {
       const recorded = await tx.improvementAttempt.findUnique({ where: { improvementId_idempotencyKey: { improvementId: improvement.id, idempotencyKey } } })
       if (recorded) {
@@ -90,7 +89,8 @@ export async function createImprovementAttempt(input: {
         return recorded
       }
     }
-    let existing = idempotencyKey ? null : await tx.improvementAttempt.findFirst({
+    const currentImprovement = await tx.improvement.findUniqueOrThrow({ where: { id: improvement.id }, select: { status: true } })
+    let existing = idempotencyKey || ['REJECTED', 'SUPERSEDED'].includes(currentImprovement.status) ? null : await tx.improvementAttempt.findFirst({
       where: {
         improvementId: improvement.id,
         sourceAuditId: input.sourceAuditId,
@@ -106,11 +106,31 @@ export async function createImprovementAttempt(input: {
       if (!changed) return existing
       existing = null
     }
+    // The retrieved task must still describe the facts being captured. Both
+    // reads run while the Site and improvement ledger exclude other writers.
+    await dependencies.validateRepair?.()
     const accepted = await tx.improvement.updateMany({
       where: { id: improvement.id, acceptedAt: null },
       data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
     })
+    const handoffReference = input.handoffReference ?? existing?.handoffReference
+    const referenceFlagId = handoffReference?.startsWith('flag:') ? handoffReference.slice(5) : null
+    const selectedSources = sourceFlagIds.length ? sourceFlagIds : referenceFlagId ? [referenceFlagId] : []
+    let sourceObservations: RepairSources | undefined = existing?.sourceObservations != null
+      ? repairSourcesSchema.parse(existing.sourceObservations) : undefined
+    if (!sourceObservations && selectedSources.length) {
+      const flags = await tx.flag.findMany({ where: { id: { in: selectedSources }, audit: { projectId: input.projectId },
+        improvementOccurrence: { improvementId: improvement.id } }, orderBy: { id: 'asc' }, select: repairSourceSelect })
+      if (flags.length !== selectedSources.length) throw new ImprovementAttemptConflict()
+      sourceObservations = repairSourcesSchema.parse({ version: 1, flags })
+    }
+    if (sourceObservations) {
+      if (sourceObservations.flags.length !== selectedSources.length || referenceFlagId &&
+        !sourceObservations.flags.some(flag => flag.id === referenceFlagId && flag.auditId === input.sourceAuditId))
+        throw new ImprovementAttemptConflict()
+    }
     const data = {
+      ...(sourceObservations ? { sourceObservations } : {}),
       ...(sourceFlagIds.length ? { sourceFlagIds } : {}),
       builder: input.builder,
       handoffReference: normalizedAttemptValue(input.handoffReference) ?? undefined,
@@ -141,6 +161,7 @@ export async function createImprovementAttempt(input: {
             requestHash,
           },
         })
+    await reactivateRepairSources(tx, { projectId: input.projectId, improvementId: improvement.id, flagIds: selectedSources })
     await tx.improvement.update({
       where: { id: improvement.id },
       data: { status: 'READY_TO_VERIFY' },
@@ -170,10 +191,10 @@ export async function createImprovementAttempt(input: {
       attemptId: attempt.id,
     }, tx)
     return attempt
-  })
+  }, { activeUserId: input.userId })
 }
 
-export async function recordFlagImprovementAttempt(input: {
+type FlagImprovementAction = {
   flagId: string
   sourceFlagIds?: string[]
   userId: string
@@ -191,10 +212,17 @@ export async function recordFlagImprovementAttempt(input: {
   rejectionRevisitAt?: Date
   contextCorrection?: Prisma.InputJsonValue
   rejectionStatus?: 'REJECTED' | 'SUPERSEDED'
-}, dependencies: ImprovementServiceDependencies = {}) {
+}
+
+export async function recordFlagImprovementAttempt(input: FlagImprovementAction, dependencies: ImprovementServiceDependencies = {}) {
+  return recordFlagAction(input, dependencies)
+}
+
+async function recordFlagAction(input: FlagImprovementAction, dependencies: ImprovementServiceDependencies,
+  ownerFeedback?: { reason: string; note?: string }) {
   const clock = dependencies.clock ?? systemClock
   const flag = await prisma.flag.findFirst({
-    where: { id: input.flagId, audit: { userId: input.userId } },
+    where: { id: input.flagId, audit: { project: { userId: input.userId, deletedAt: null } } },
     include: ownedFlagIdentityInclude,
   })
   if (!flag?.audit.projectId) throw new Error('Flag is not attached to an owned Product')
@@ -235,6 +263,19 @@ export async function recordFlagImprovementAttempt(input: {
         revisitAt: input.rejectionRevisitAt,
         contextCorrection: input.contextCorrection,
       }, tx)
+      if (ownerFeedback) {
+        await tx.flag.update({ where: { id: flag.id }, data: { status: 'IGNORED' } })
+        if (ownerFeedback.reason === 'intentional' || ownerFeedback.reason === 'low_priority') {
+          const contract = parseProductContract(flag.audit.productContract)
+          const fallback = contract ? mergeContractIntoProductIntelligence(null, contract) : productIntelligenceFromContract({
+            purpose: 'Help visitors get value from this product', firstValueJourney: 'Complete the primary journey',
+            criticalOutcomes: ['Primary outcomes work'], inferredAt: clock.now().toISOString(), source: 'heuristic',
+          })
+          const decisionNote = ownerFeedback.note ? `${flag.problem} - ${ownerFeedback.note}` : flag.problem
+          await mutateProjectIntelligence(flag.audit.projectId!, current => ownerFeedback.reason === 'low_priority'
+            ? appendKnownRisk(current ?? fallback, decisionNote) : appendIntentionalNote(current ?? fallback, decisionNote), tx)
+        }
+      }
     } else if (input.action === 'HANDOFF_COPIED') {
       await appendImprovementCycleEvent({
         ...event,
@@ -257,7 +298,7 @@ export async function recordFlagImprovementAttempt(input: {
       }, tx)
     }
     return linked
-  })
+  }, { activeUserId: input.userId })
   const improvementId = linked.improvementId
 
   if (input.action !== 'READY_TO_VERIFY') return {
@@ -285,7 +326,7 @@ export async function recordFlagImprovementAttempt(input: {
     commitReference: input.commitReference,
     idempotencyKey: input.idempotencyKey,
     changeSummary: input.changeSummary,
-  }, { clock })
+  }, { clock, validateRepair: dependencies.validateRepair })
   return {
     flagId: flag.id,
     action: input.action,
@@ -313,34 +354,32 @@ export async function recordOwnerFlagFeedbackDecision(input: {
 }, dependencies: ImprovementServiceDependencies = {}) {
   const clock = dependencies.clock ?? systemClock
   const flag = await prisma.flag.findFirst({
-    where: { id: input.flagId, audit: { userId: input.userId } },
+    where: { id: input.flagId, audit: { OR: [
+      { project: { userId: input.userId, deletedAt: null } },
+      { userId: input.userId, projectId: null },
+    ] } },
     select: {
       id: true,
-      problem: true,
       audit: {
         select: {
           id: true,
           url: true,
           projectId: true,
-          productContract: true,
         },
       },
     },
   })
   if (!flag) throw new Error('Flag is not attached to an owned Product')
 
-  let projectId = flag.audit.projectId
-  if (!projectId) {
-    const project = await ensureProductProject(input.userId, flag.audit.url)
-    projectId = project.id
-    await executionWrite(tx => tx.audit.update({
-      where: { id: flag.audit.id },
-      data: { projectId },
-    }))
+  if (!flag.audit.projectId) {
+    await executionTransaction(async tx => {
+      const project = await ensureProductProject(input.userId, flag.audit.url, tx)
+      await tx.audit.update({ where: { id: flag.audit.id, userId: input.userId, projectId: null }, data: { projectId: project.id } })
+    }, { activeUserId: input.userId })
   }
 
   const note = input.note?.trim()
-  const result = input.reason === 'already_fixed'
+  return input.reason === 'already_fixed'
     ? await recordFlagImprovementAttempt({
         flagId: input.flagId,
         userId: input.userId,
@@ -349,7 +388,7 @@ export async function recordOwnerFlagFeedbackDecision(input: {
         action: 'READY_TO_VERIFY',
         changeSummary: note || 'The owner reports this change is ready to verify.',
       }, { clock })
-    : await recordFlagImprovementAttempt({
+    : await recordFlagAction({
         flagId: input.flagId,
         userId: input.userId,
         builder: 'user-decision',
@@ -359,34 +398,7 @@ export async function recordOwnerFlagFeedbackDecision(input: {
           normalizeImprovementRejectionReason(input.reason) ?? 'WEAK_RECOMMENDATION',
         rejectionNote: note,
         rejectionStatus: input.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED',
-      }, { clock })
-
-  await executionWrite(tx => tx.flag.update({
-    where: { id: input.flagId },
-    data: { status: 'IGNORED' },
-  }))
-
-  if (input.reason === 'intentional' || input.reason === 'low_priority') {
-    const contract = parseProductContract(flag.audit.productContract)
-    const fallback = contract
-      ? mergeContractIntoProductIntelligence(null, contract)
-      : productIntelligenceFromContract({
-          purpose: 'Help visitors get value from this product',
-          firstValueJourney: 'Complete the primary journey',
-          criticalOutcomes: ['Primary outcomes work'],
-          inferredAt: clock.now().toISOString(),
-          source: 'heuristic',
-        })
-    const decisionNote = note ? `${flag.problem} - ${note}` : flag.problem
-    await mutateProjectIntelligence(projectId, (current) => {
-      const intelligence = current ?? fallback
-      return input.reason === 'low_priority'
-        ? appendKnownRisk(intelligence, decisionNote)
-        : appendIntentionalNote(intelligence, decisionNote)
-    })
-  }
-
-  return result
+      }, { clock }, { reason: input.reason, note })
 }
 
 /** Records the exact top recommendations delivered in an owned Product workspace. */

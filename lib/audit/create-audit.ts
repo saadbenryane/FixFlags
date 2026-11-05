@@ -49,6 +49,7 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { assertScheduledClaim, staleScheduledClaim, type ScheduledClaimProject } from '@/lib/sites/application/scheduled-admission'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
+import { readRepairSources } from '@/lib/sites/domain/repair-source'
 
 type AuditCreateContext = {
   url: string
@@ -132,16 +133,19 @@ async function assertParentAuditAllowed(
   parentId: string,
   userId: string | null | undefined,
   retryParent = false,
+  recordedRepair = false,
+  siteProjectId?: string,
 ): Promise<{ id: string; userId: string | null; projectId: string | null; status: AuditStatus; reviewDepth: number; isPublic: boolean }> {
   const parent = await prisma.audit.findUnique({
-    where: { id: parentId },
+    where: { id: parentId, ...(siteProjectId !== undefined ? { projectId: siteProjectId,
+      project: { userId: userId ?? '', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } } : {}) },
     select: { id: true, userId: true, projectId: true, status: true, reviewDepth: true, isPublic: true },
   })
 
   if (!parent) {
     throw new ParentAuditError('Parent report not found', 404)
   }
-  if (parent.status !== 'COMPLETED' && !(retryParent && parent.status === 'FAILED')) {
+  if (parent.status !== 'COMPLETED' && !(retryParent && parent.status === 'FAILED') && !recordedRepair) {
     throw new ParentAuditError('You can only continue from a completed report', 400)
   }
   if (!userId) {
@@ -150,7 +154,8 @@ async function assertParentAuditAllowed(
     }
     return parent
   }
-  if (parent.userId !== userId) {
+  const ownedSiteSource = siteProjectId !== undefined && parent.projectId === siteProjectId
+  if (parent.userId !== userId && !ownedSiteSource) {
     throw new ParentAuditError('You can only continue from your own reports', 403)
   }
   return parent
@@ -201,7 +206,11 @@ export async function createAndEnqueueAudit(
   // check gets its own board instead of the claimed one.
   let visitorKey = options.visitorKey ?? (isAnonTeaser ? await resolveVisitorKey() : '')
 
-  const parentAudit = options.parentId ? await assertParentAuditAllowed(options.parentId, userId, options.retryParent) : null
+  const recordedRepair = input.admission?.kind === 'site-run' && input.admission.executionSpec.scope === 'DIAGNOSTIC' &&
+    input.admission.executionSpec.verificationTarget?.kind === 'DIAGNOSTIC' &&
+    Boolean(readRepairSources(input.admission.executionSpec.verificationSources))
+  const parentAudit = options.parentId ? await assertParentAuditAllowed(options.parentId, userId, options.retryParent, recordedRepair,
+    options.runRequestAdmission?.projectId) : null
 
   if (userId) {
     await refreshUserUsagePeriod(userId)
@@ -360,15 +369,21 @@ export async function createAndEnqueueAudit(
           select: {
             id: true,
             sourceFlagIds: true,
+            sourceObservations: true,
             verificationAudit: {
               select: { id: true, status: true, parentId: true },
             },
           },
         })
         if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
-        if (executionSpec.scope === 'DIAGNOSTIC' &&
-          canonicalIntent((attempt.sourceFlagIds ?? []).toSorted()) !== canonicalIntent((executionSpec.verificationSourceFlagIds ?? []).toSorted()))
-          throw new ParentAuditError('Verification must retain every original repair capture.', 409)
+        if (executionSpec.scope === 'DIAGNOSTIC') {
+          const original = readRepairSources(attempt.sourceObservations)
+          const sourceIds = original?.flags.map(flag => flag.id) ?? attempt.sourceFlagIds ?? []
+          if (canonicalIntent(sourceIds.toSorted()) !== canonicalIntent((executionSpec.verificationSourceFlagIds ?? []).toSorted()) ||
+            (attempt.sourceObservations != null || executionSpec.verificationSources) &&
+              (!original || canonicalIntent(original) !== canonicalIntent(executionSpec.verificationSources)))
+            throw new ParentAuditError('Verification must retain every original repair capture.', 409)
+        }
         if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
           return packageAudit(tx, { ...attempt.verificationAudit, reused: true })
         }
@@ -404,12 +419,14 @@ export async function createAndEnqueueAudit(
       // A Product has one foreground/manual Review at a time. This lives
       // in the serializable creation boundary so repeated clicks and
       // concurrent transports resume the same Review without spending a
-      // second credit or enqueueing duplicate work. Watch runs use their
-      // own lease and are intentionally excluded.
+      // second credit or enqueueing duplicate work. A recorded repair may
+      // independently recheck its source while that source finishes collecting.
+      // Other manual work and Watch leases retain their admission boundaries.
       const activeManualReview = projectId && !isWatchReview
         ? await tx.audit.findFirst({
             where: {
               projectId,
+              ...(recordedRepair ? { id: { not: options.parentId } } : {}),
               status: { notIn: ['COMPLETED', 'FAILED'] },
               OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
             },

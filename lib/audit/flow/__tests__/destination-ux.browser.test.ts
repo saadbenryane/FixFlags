@@ -75,7 +75,7 @@ run('native destination observations', () => {
       expect(requests).not.toHaveBeenCalled()
     } finally { await context.close() }
   })
-  it('uses the rendered headline, enabled controls and loaded metadata without another HTTP request', async () => {
+  it('uses the rendered headline, enabled controls and native trust signals without another HTTP request', async () => {
     const context = await (await getAuditBrowser()).newContext()
     try {
       const page = await context.newPage()

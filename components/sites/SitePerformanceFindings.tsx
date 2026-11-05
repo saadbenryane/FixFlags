@@ -9,7 +9,7 @@ export function SitePerformanceFindings({ siteId, flags, availability, onOpenFla
   if (!flags.length) return null
   return <SiteFlagSelection siteId={siteId} flags={flags} availability={availability} area="performance"><section className="space-y-6">
     <p className="text-sm text-muted-foreground">{C.performanceGrouping}</p>
-    {groupPerformanceFindings(flags).map((group, index) => <section key={index} className="space-y-3">
+    {groupPerformanceFindings(flags).map(group => <section key={JSON.stringify([group.pageUrl, group.device])} className="space-y-3">
       <h3 className="text-sm font-medium">{group.device ? C.execution.devices[group.device] : C.performanceEvidence}</h3>
       {group.pageUrl ? <p className="break-all text-xs text-muted-foreground">{group.pageUrl}</p> : null}
       <SiteCardFindings siteId={siteId} flags={group.flags} recommendations={[]} copyAvailability={availability} showPage={false} onOpenFlag={onOpenFlag} />

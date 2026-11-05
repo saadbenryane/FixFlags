@@ -17,7 +17,7 @@ export async function monitoringConsoleResponsibility(input: {
   if (!input.pages.length) return []
   const windows = new Map<string, number>()
   for await (const targets of recordedTargetBatches({ projectId: input.projectId, environment: input.environment,
-    checkIds: ['console-errors-critical', 'console-errors-some'] }, db)) {
+    checkIds: ['console-errors-critical', 'console-errors-some'] }, db, { projection: 'context' })) {
     for (const pageUrl of input.pages) {
       const minimum = consoleObservationMinimum(targets, pageUrl)
       if (minimum) windows.set(pageUrl, Math.max(2000, minimum, windows.get(pageUrl) ?? 0))
