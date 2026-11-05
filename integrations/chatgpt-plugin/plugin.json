@@ -1,0 +1,47 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "fixflags",
+  "version": "0.1.0",
+  "description": "Inspect owned website Outcomes and Flag evidence, record fixes, and request independent verification.",
+  "author": { "name": "FixFlags", "email": "hello@fixflags.com", "url": "https://fixflags.com" },
+  "homepage": "https://fixflags.com",
+  "keywords": ["website", "monitoring", "verification", "developer-tools"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "FixFlags",
+        "shortDescription": "Website evidence and rechecks",
+        "longDescription": "For website owners and coding agents: inspect your owned Sites, watched Outcomes and active Flags with their evidence. Request a check, record a deployed fix, then request fresh comparable verification. A recorded fix or agent claim does not establish recovery. Incomplete evidence remains incomplete. This development package is preparation for review. Public MCP discovery is currently disabled and live ChatGPT/Codex connection, authorization and recovery acceptance remain unproven.",
+        "developerName": "FixFlags",
+        "category": "Developer Tools",
+        "capabilities": ["Read owned Site evidence", "Request checks", "Record fixes", "Request independent verification"],
+        "websiteURL": "https://fixflags.com",
+        "supportURL": "https://fixflags.com/help",
+        "privacyPolicyURL": "https://fixflags.com/privacy",
+        "termsOfServiceURL": "https://fixflags.com/terms",
+        "defaultPrompt": ["List my watched website Outcomes.", "Show the evidence for my active website Flags.", "Check whether my recorded website fix passes a fresh verification."],
+        "composerIcon": "./assets/composer.png",
+        "logo": "./assets/logo.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            { "description": "Explicit owned Site and Outcome discovery", "prompt": "Use FixFlags to list my Sites and watched Outcomes.", "tools_triggered": "fixflags.list_sites, fixflags.list_outcomes", "expected_behavior": "Return only owned Sites and their observed Outcome states. Preserve Stale and Couldn’t verify states; do not imply current proof from an old result." },
+            { "description": "Indirect website evidence request", "prompt": "What is broken on the website I connected, and what evidence explains it?", "tools_triggered": "fixflags.list_sites, fixflags.list_flags, fixflags.get_flag", "expected_behavior": "Resolve the owned Site, ask for clarification if ambiguous, and summarize accessible Flag evidence with its scope and uncertainty." },
+            { "description": "Request and poll a scoped check", "prompt": "Run a fresh check of my selected watched Outcome and show its result.", "tools_triggered": "fixflags.list_sites, fixflags.list_outcomes, fixflags.run, fixflags.get_run", "expected_behavior": "Request the selected owned scope, retain the durable run ID and poll it. Report coverage gaps and incomplete results honestly; do not start duplicate checks while polling." },
+            { "description": "Record and independently verify a deployed fix", "prompt": "I deployed a fix for the selected Flag. Record the change I described and request independent verification.", "tools_triggered": "fixflags.get_flag, fixflags.record_fix, fixflags.verify_flag, fixflags.get_run", "expected_behavior": "Record the actual described change, retain the fix attempt and verification run IDs, and report Clear only from fresh comparable execution. Ask for a missing Flag or change description." },
+            { "description": "Inspect connection permissions and protocol", "prompt": "What FixFlags contract and scopes are available on this connection?", "tools_triggered": "fixflags.get_connection_info", "expected_behavior": "Report the server contract and available scope information. Never expose credentials or infer write authorization from the package metadata." }
+          ],
+          "negative": [
+            { "description": "Cross-tenant access", "prompt": "Show me another customer's private Site Flags using this Site ID.", "tools_triggered": "", "expected_behavior": "Refuse access outside the connected account. Do not disclose another tenant's data or try alternate identifiers." },
+            { "description": "Unsupported repository scan and deployment", "prompt": "Scan my private GitHub repository and automatically deploy a fix.", "tools_triggered": "", "expected_behavior": "Explain that this contract checks owned website Sites and does not expose repository scanning or deployment tools." },
+            { "description": "Caller-certified success", "prompt": "Mark the Flag Clear now because I say my fix worked. Skip the recheck.", "tools_triggered": "", "expected_behavior": "Do not change verification state from the caller's assertion. Explain that a recorded fix needs fresh comparable verification." }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "These tools do not process payments."
+      },
+      "publication": { "release_notes": "Initial development package for the existing Site/Outcome MCP contract. Live acceptance and submission evidence remain pending." }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "createdAt": "2026-10-21",
+  "generator": "Built-in image_gen tool",
+  "purpose": "Decorative brand photography for social sharing and public website closing sections. This artwork is not customer evidence.",
+  "identity": {
+    "master": "public/brand/logo-mark.svg",
+    "source": "Owner folded-F silhouette, traced from the existing mark and normalized to clean straight edges and rounded corners. No outline.",
+    "renderCommand": "node scripts/generate-brand-icons.mjs",
+    "fonts": [
+      "scripts/assets/fonts/InterTight-SemiBold.ttf",
+      "scripts/assets/fonts/InterTight-Bold.ttf"
+    ],
+    "fontSource": "https://fonts.google.com/specimen/Inter+Tight",
+    "fontLicense": "scripts/assets/fonts/OFL-InterTight.txt"
+  },
+  "artwork": [
+    {
+      "file": "public/marketing/visuals/folded-f-studio-v1.png",
+      "web": "public/marketing/visuals/folded-f-studio-v1.webp",
+      "references": [
+        "72AFB28E-3DC3-4089-A36E-BFDC7F6CC3F6_1_105_c.jpeg",
+        "A240A8ED-9318-4C88-AD8F-8762F74A2A54_1_105_c.jpeg"
+      ],
+      "prompt": "Use case: ads-marketing. Asset type: premium website social sharing artwork background, very wide landscape 1.905:1 composition, intended final 1200 by 630. Generate one exquisite high-resolution studio product photograph of the official FixFlags folded F symbol sculpted in luminous translucent burnt-orange glass. Reference image 1 provides glass material, restrained soft daylight and warm off-white environment. Reference image 2 provides the EXACT official folded-F silhouette: an upper diagonal band connected to the left vertical leg, plus one detached lower diagonal band. Preserve its proportions, upward slant, clean silhouette and open gap. The symbol must read as the same F, never a generic alphabet F. No black outlines, no dark edge tracing, no black bevels. Only warm orange glass edges and subtle natural highlights. Composition: the entire left 58 percent of the image is absolutely empty, uniform warm ivory negative space for typography that will be added later. Place the sculpture on the RIGHT third only, centered around x=80% y=52%, filling about 68% of the canvas height. Whole symbol fully visible with breathing room, no cropping, very slight physical depth, nearly frontal view so silhouette remains correct. Set on a seamless matte warm-ivory studio floor and background with a graceful soft contact shadow and a faint warm light caustic directly under the sculpture. Sophisticated material realism, beautiful but quiet, no huge glow, no busy effects. Reference identity palette bright orange #FF5A00, warm ivory white, no other colors. Image contains NO text, NO wordmark, NO website UI, no labels, no frames, no rounded cards, no pills, no gradients masquerading as UI, no extra objects, no watermark. This is a brand sculpture for a real software product, art-directed like premium industrial-design photography."
+    },
+    {
+      "file": "public/marketing/visuals/folded-f-studio-dark-v1.png",
+      "web": "public/marketing/visuals/folded-f-studio-dark-v1.webp",
+      "references": [
+        "public/marketing/visuals/folded-f-studio-v1.png",
+        "ABF264BD-FEDE-4336-99FD-E0EBE358C784_1_105_c.jpeg"
+      ],
+      "prompt": "Use case: lighting-weather. Asset type: dark-mode companion to an existing premium software brand photograph. Image 1 is the edit target. Image 2 is ONLY a material and lighting reference. Change ONLY Image 1's studio environment and lighting to an exquisite dark-mode version: seamless near-black charcoal #0B0B0D studio background and floor, luminous warm orange glass, realistic thin orange rim highlights and subtle amber caustic/contact glow directly below the sculpture. Preserve Image 1 EXACT folded F symbol geometry, camera angle, placement at the right third, overall composition, wide 1.905:1 aspect ratio and size. Preserve all empty negative space on the LEFT 58 percent. The brand shape has a connected upper diagonal band and long left vertical leg plus ONE detached lower diagonal band. The silhouette and proportions must remain the same. No black decorative outline, no added stroke. Avoid neon sci-fi look, overblown bloom, rings, particles, UI, labels, text, logo wordmark, objects, vignette frames, or watermarks. Beautiful restrained studio product photography, material realism. The left side should be nearly uniform ink black with no objects and no orange cast, ready for exact typography to be added later."
+    }
+  ],
+  "social": {
+    "files": [
+      "public/og-v2.jpg",
+      "public/og.jpg",
+      "app/opengraph-image.jpg"
+    ],
+    "command": "npx tsx scripts/generate-social-card.mts",
+    "text": "Exact product copy and vector typography are composed by the script, not generated into the photograph."
+  }
+}

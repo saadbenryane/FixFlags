@@ -1,0 +1,32 @@
+.page { padding-block: 2rem 5rem; }
+.grid { display: grid; gap: 1.25rem; }
+.card { padding: clamp(1.5rem, 3vw, 2.5rem); border-radius: var(--radius-card); background: hsl(var(--muted) / .55); min-width: 0; }
+.card h2 { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.2; text-wrap: balance; }
+.card p { margin-top: 1rem; color: hsl(var(--muted-foreground)); line-height: 1.75; }
+.card a { display: inline-flex; align-items: center; min-height: 44px; }
+.card a:hover, .link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.card a:focus-visible, .link:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 5px; border-radius: var(--radius-control); }
+.header { max-width: 52rem; margin: 2.5rem 0 3rem; }
+.title { font-family: var(--font-display); font-size: clamp(2.4rem, 5vw, 4.5rem); font-weight: 600; line-height: 1.06; letter-spacing: -.035em; text-wrap: balance; }
+.description { margin-top: 1.5rem; max-width: 44rem; font-size: 1.2rem; line-height: 1.7; color: hsl(var(--muted-foreground)); text-wrap: pretty; }
+.date { margin-top: 1.5rem; font-size: .875rem; color: hsl(var(--muted-foreground)); }
+.decision { margin-top: 2rem; padding: 1.5rem; border-radius: var(--radius-card); background: hsl(var(--muted)); line-height: 1.75; text-wrap: pretty; }
+.layout { display: grid; gap: 3rem; align-items: start; }
+.contents { padding: 1.5rem; background: hsl(var(--muted) / .55); border-radius: var(--radius-card); }
+.contents p { font-weight: 600; margin-bottom: .75rem; }
+.contents ul, .related ul, .sources ul { list-style: none; margin: 0; padding: 0; }
+.link { display: inline-flex; align-items: center; min-height: 44px; color: hsl(var(--link)); overflow-wrap: anywhere; }
+.article { max-width: 46rem; min-width: 0; }
+.section { margin-bottom: 3rem; scroll-margin-top: 6rem; }
+.section h2, .example h2, .sources h2, .related h2, .cta h2 { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 600; line-height: 1.25; text-wrap: balance; }
+.section p, .example p, .sources p, .cta p { margin-top: 1.1rem; line-height: 1.85; text-wrap: pretty; }
+.sourceLinks { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin-top: 1rem; font-size: .875rem; }
+.example { padding: clamp(1.25rem, 3vw, 2rem); margin-bottom: 3rem; background: hsl(var(--muted)); border-radius: var(--radius-card); }
+.label { margin-top: 0 !important; margin-bottom: .75rem; color: hsl(var(--muted-foreground)); font-size: .875rem; }
+.sources, .related, .cta { margin-top: 3rem; }
+.sources li { margin-top: 1.5rem; }
+.sources li p { margin-top: .25rem; color: hsl(var(--muted-foreground)); font-size: .9rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+.offer { color: hsl(var(--muted-foreground)); font-size: .9rem; }
+@media (min-width: 768px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .layout { grid-template-columns: 15rem minmax(0, 1fr); gap: 4rem; } .contents { position: sticky; top: 6rem; } }
