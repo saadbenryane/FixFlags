@@ -69,7 +69,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   const { scope, environment } = selection
   const requestedKey = input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
   const key = { projectId: input.projectId, source: input.source, idempotencyKey: requestedKey }
-  const keyOwner = { userId: input.userId, operator: input.operator,
+  const keyOwner = { userId: input.userId, operator: input.operator, scheduled: Boolean(input.scheduledClaim),
     cleanup: Boolean(input.operator && scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup') }
   const responsibilityHash = input.expectedResponsibilityHash ? (await import('./run-retry')).admittedResponsibilityHash : null
   function assertResponsibility(spec: ExecutionSpec | null) {
@@ -121,7 +121,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   }
 
   const retainShared = (run: { id: string; auditId: string | null; selections?: Array<{ outcomeId: string }> }) => input.idempotencyKey?.trim()
-    ? retainSharedRunKey({ ...key, userId: input.userId, runRequestId: run.id, operator: input.operator,
+    ? retainSharedRunKey({ ...key, userId: input.userId, runRequestId: run.id, operator: input.operator, scheduled: Boolean(input.scheduledClaim),
       cleanup: Boolean(input.operator && scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup') },
     (recorded, exactReplay) => recorded.environment === environment && (exactReplay ? matchesRecorded(recorded) : compatibleActive(recorded)))
     : Promise.resolve(run)

@@ -8,7 +8,8 @@ import { requestSiteRun } from '../run-requests'
 
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => ({ add: async () => ({ id: 'controlled-outcome-admission' }) }) }))
 vi.mock('@/lib/audit/ai-report-entitlement', () => ({ resolveIncludeAiForNewAudit: async () => false }))
-vi.mock('node:dns/promises', () => ({ resolve4: async () => ['203.0.114.1'], resolve6: async () => [] }))
+vi.mock('node:dns/promises', async original => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture({ ...await original<typeof import('node:dns/promises')>(),
+  resolve4: async () => ['203.0.114.1'], resolve6: async () => [] }))
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('recorded Outcome projection under canonical Site identity', () => {

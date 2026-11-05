@@ -1,3 +1,4 @@
+import { staleScheduledClaim } from './scheduled-admission'
 import { Prisma, type RunRequestSource } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { productTransaction } from '@/lib/billing/product-transaction'
@@ -6,7 +7,7 @@ import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domai
 import { SiteRunRefusal } from './run-refusal'
 
 type RequestKey = { projectId: string; source: RunRequestSource; idempotencyKey: string }
-type KeyOwner = { projectId: string; userId: string; operator?: AdminDomainActor; cleanup: boolean }
+type KeyOwner = { projectId: string; userId: string; operator?: AdminDomainActor; cleanup: boolean; scheduled?: boolean }
 const replayInclude = { selections: { select: { outcomeId: true } },
   audit: { select: { projectId: true, status: true } } } satisfies Prisma.RunRequestInclude
 type RecordedRun = Prisma.RunRequestGetPayload<{ include: typeof replayInclude }> & { keyRequestedByUserId: string | null }
@@ -29,7 +30,7 @@ async function withOwnedKeySite<T>(input: KeyOwner, operation: (tx: Prisma.Trans
     const site = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM projects WHERE id = ${input.projectId} AND "userId" = ${input.userId}
         AND (${cleanup} OR "deletedAt" IS NULL) FOR UPDATE`
-    if (!site.length) throw new SiteRunRefusal('Site not found', 404)
+    if (!site.length) throw input.scheduled ? staleScheduledClaim() : new SiteRunRefusal('Site not found', 404)
     if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId, tx)
     return operation(tx)
   })
