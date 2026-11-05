@@ -42,6 +42,15 @@ describe('bounded provider failures', () => {
     expect(error).toMatchObject({ retryable: false })
   })
 
+  it('settles a provider whose temporary interruption is followed by a definitive funding limit', async () => {
+    const attemptFn = vi.fn().mockRejectedValueOnce(transient()).mockRejectedValueOnce(quota())
+    const error = await runLlmWithRetry({ label: 'Updated provider failure', input: {}, attemptFn }).catch(error => error)
+    expect(attemptFn).toHaveBeenCalledTimes(2)
+    expect(error).toBeInstanceOf(JudgeProviderError)
+    expect(error).toMatchObject({ retryable: false })
+    expect(classifyJudgeProviderFailure(error)).toBe('quota_exhausted')
+  })
+
   it('retains established contract-error identity after its bounded retries', async () => {
     const cause = new JudgeContractError('Controlled invalid provider output')
     const attemptFn = vi.fn(async () => { throw cause })

@@ -724,6 +724,9 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     await executeTask({ auditId: audit.id, taskId: independent.id, generation: 1 }, handlers)
     const observed = (await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: independent.id } })).workResult
     expect(observed).toMatchObject({ kind: 'http', data: { observed: true } })
+    if (kind === 'prescription') await prisma.audit.update({ where: { id: audit.id }, data: {
+      status: 'COMPLETED', completedAt: new Date(), triageAt: new Date(), includeAi: true,
+    } })
     const task = tasks.find(task => task.workKind === kind)!
     const attempts = vi.fn(async () => {
       throw new JudgeProviderError(Object.assign(new Error('Provider credit exhausted'), {
@@ -751,6 +754,9 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: observed })
       expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workState: 'BLOCKED', workAttempts: 1, workResult: null })
+      if (kind === 'prescription') expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
+        .toMatchObject({ status: 'COMPLETED', aiReviewAt: null, failureCode: 'AI_REVIEW_FAILED',
+          failureMetadata: { phase: 'prescription', reason: 'AI_PROVIDER_QUOTA_EXHAUSTED' } })
     } finally { await worker.close() }
   })
 

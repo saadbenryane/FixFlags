@@ -69,6 +69,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
   let recoveryAvailable = false
 
   for (const provider of chain) {
+    let providerRecoveryAvailable = false
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       if (signal?.aborted) throw new ExecutionOwnershipLost()
       if (deadline !== undefined && Date.now() >= deadline) {
@@ -85,7 +86,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
         attemptErrors.push(`${provider}#${attempt}: ${lastError.message}`)
         logger.warn(`${label} attempt failed`, { provider, attempt, err: lastError.message })
         const retryable = isRetryable(err)
-        recoveryAvailable ||= retryable
+        providerRecoveryAvailable = retryable
         if (!retryable) break
         if (attempt < MAX_RETRIES) {
           const delay = Math.min(RETRY_DELAY_MS * attempt, deadline === undefined ? Infinity : Math.max(0, deadline - Date.now()))
@@ -94,6 +95,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
         }
       }
     }
+    recoveryAvailable ||= providerRecoveryAvailable
   }
 
   const detail = attemptErrors.length > 0 ? attemptErrors.join('; ') : 'no attempts recorded'
