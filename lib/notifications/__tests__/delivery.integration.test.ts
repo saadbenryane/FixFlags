@@ -108,7 +108,7 @@ run('summary delivery using real database claims', () => {
     expect(provider.send).toHaveBeenCalledOnce()
     expect(await prisma.notificationDigest.findFirst({ where: { userId: id } })).toMatchObject({ status: 'SKIPPED' })
   })
-  it('labels incomplete evidence and respects urgent-only selection', async () => {
+  it('reports confirmed urgent findings without a generic coverage warning', async () => {
     const { id, site, now } = await fixture()
     await prisma.project.update({ where: { id: site.id }, data: { notificationLevel: 'CRITICAL_ONLY' } })
     const audit = await prisma.audit.create({ data: { userId: id, projectId: site.id, url: site.url,
@@ -119,7 +119,7 @@ run('summary delivery using real database claims', () => {
       problem: 'Controlled problem', evidence: 'Fixture', whyItMatters: 'Fixture', fix: 'Fixture' })) })
     await deliverWebsiteSummaries(now)
     expect(provider.send.mock.calls[0][0].text).toContain('1 urgent problem to review')
-    expect(provider.send.mock.calls[0][0].text).toContain('Some checks could not finish.')
+    expect(provider.send.mock.calls[0][0].text).not.toContain('Some checks could not finish.')
   })
   it('keeps existing website problems after a newer targeted check completes', async () => {
     const { id, site, now } = await fixture()

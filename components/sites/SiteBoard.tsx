@@ -29,7 +29,7 @@ import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { outcomeCardFreshness,projectSiteBoard } from '@/lib/sites/board-view'
 import { type SiteCardArea } from '@/lib/sites/card-areas'
 import { cardExecution } from '@/lib/sites/card-execution'
-import { siteCheckNotice,siteSummaryNotice } from '@/lib/sites/check-notice'
+import { siteCheckNotice } from '@/lib/sites/check-notice'
 import { executeSiteAction } from '@/lib/sites/client-actions'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { outcomeCoverageLabel,UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
@@ -113,7 +113,6 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   // The notice is stated rather than implied, because silence here reads as
   // "all clear" when it is the opposite.
   const alertNotice = siteWatchAlertNotice(alert)
-  const summaryNote = siteSummaryNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
   async function retryCheck() {
     if (!view.audit.id) return
     await submit(signal => executeSiteAction(`/api/reports/${view.audit.id}/retry`, { signal, method: 'POST' }, 'retry'))
@@ -152,8 +151,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
     monitoring: view.presentation.monitoring,
     disconnected,
   })
-  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' &&
-    (banner.kind !== 'incomplete' || summaryNote))
+  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' && banner.kind !== 'incomplete')
   const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
 
   return (
@@ -168,11 +166,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
         <p className="mt-2 text-sm text-muted-foreground">{SITE_ACTION_COPY.scopedRun.retained}</p>
       </section> : null}
       <SiteActionRecovery siteId={siteId} error={actionError} availability={view.actions.check} />
-      {viewMode === 'home' && showActivityPanel && !notice ? <SiteActivityPanel banner={banner} disconnected={disconnected}>
-      {summaryNote ? <p className="mt-2 text-sm text-muted-foreground">{summaryNote.body}</p> : null}
-      </SiteActivityPanel> : null}
+      {viewMode === 'home' && showActivityPanel && !notice ? <SiteActivityPanel banner={banner} disconnected={disconnected} /> : null}
       {viewMode === 'home' && notice ? <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={view.presentation.run.recoveryAction === 'retry' ? retryCheck : undefined} retryLoading={busy} /> : null}
-      {viewMode === 'home' && !showActivityPanel && summaryNote ? <p role="status" className="text-sm text-muted-foreground">{summaryNote.body}</p> : null}
 
       {viewMode === 'home' && alertNotice ? (
       <section className="rounded-card bg-background p-5 shadow-board" role="status">

@@ -29,11 +29,13 @@ describe('recorded Site activity', () => {
     ] })
     expect(activity.events).toEqual([{ label: 'Check results recorded', at: '2026-10-07T12:00:23.000Z' }])
   })
-  it('does not paint an incomplete review as a completed milestone', () => {
+  it('shows the saved check without an incomplete optional review milestone', () => {
     const activity = projectSiteActivity({ ...input, status: 'COMPLETED', failureCode: 'AI_CONTRACT_INVALID', events: [
-      { stage: 'finalizing', event: 'triage_completed', status: 'completed', occurredAt: new Date() },
+      { stage: 'judging', event: 'triage_degraded_completed', status: 'partial', occurredAt: new Date() },
     ] })
-    expect(activity.milestones[3].state).toBe('partial')
-    expect(activity.milestones[4].state).toBe('done')
+    expect(activity.state).toBe('completed')
+    expect(activity.milestones.map(milestone => milestone.label)).not.toContain('Reviewing findings')
+    expect(activity.milestones.at(-1)).toMatchObject({ label: 'Saving results', state: 'done' })
+    expect(activity.events).toEqual([])
   })
 })

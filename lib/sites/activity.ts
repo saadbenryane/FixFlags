@@ -1,4 +1,5 @@
 import { SITE_ACTIVITY_COPY } from '@/lib/marketing/copy/terminology'
+import { analysisDidNotFinish, hasEnrichmentFailure } from './analysis-completion'
 
 export type SiteActivity = {
   state: 'queued' | 'running' | 'completed' | 'partial' | 'failed' | 'unverified'
@@ -15,36 +16,44 @@ export function projectSiteActivity(input: {
   status: string | null
   startedAt: Date | null
   failureCode: string | null
+  failureStage?: string | null
+  reportCompleteness?: string | null
+  failedModules?: unknown
+  evidenceCoverage?: unknown
   pages: Array<{ status: string }>
   events: Array<{ stage: string; event?: string; status: string; occurredAt: Date }>
 }): SiteActivity {
   const index = stages.indexOf(input.status ?? '')
   const pagesReached = input.pages.filter((page) => ['CHECKING', 'JUDGING', 'COMPLETED', 'PARTIAL'].includes(page.status)).length
   const failed = input.status === 'FAILED'
-  const state = !input.status ? 'unverified' : failed ? 'failed' : input.status === 'COMPLETED'
-    ? input.failureCode ? 'partial' : 'completed' : input.status === 'QUEUED' ? 'queued' : 'running'
+  const completed = input.status === 'COMPLETED'
+  const enrichmentUnavailable = completed && hasEnrichmentFailure(input)
+  const currentEvents = input.events.filter(event => !input.startedAt || event.occurredAt >= input.startedAt)
+  const reviewRecorded = currentEvents.some(event => event.event === 'triage_completed' && event.status === 'completed')
+  const state = !input.status ? 'unverified' : failed ? 'failed' : completed
+    ? analysisDidNotFinish(input) ? 'partial' : 'completed' : input.status === 'QUEUED' ? 'queued' : 'running'
   return {
     state,
     label: failed ? input.startedAt ? 'This check did not finish' : 'This check did not start'
-      : state === 'unverified' ? 'No check yet' : state === 'partial' ? 'Some checks could not finish' : labels[index] ?? 'Checking website',
+      : state === 'unverified' ? 'No check yet' : state === 'partial' ? 'Limited results' : labels[index] ?? 'Checking website',
     pagesReached,
     milestones: [
       { label: 'Website reached', state: pagesReached > 0 ? 'done' : input.status === 'CAPTURING' ? 'current' : 'pending' },
-      ...labels.slice(1, 5).map((label, offset) => ({
+      ...labels.slice(1, 5).flatMap((label, offset) => enrichmentUnavailable && !reviewRecorded && offset === 2 ? [] : [{
         label,
-        state: offset === 2 && input.failureCode && /^(AI_|AUDIT_TIMEOUT|AUDIT_PIPELINE_FAILED)/.test(input.failureCode) && ['FAILED', 'COMPLETED'].includes(input.status ?? '')
+        state: offset === 2 && failed && hasEnrichmentFailure(input)
           ? 'partial' as const
-          : (offset === 3 && input.status === 'COMPLETED') || input.events.some((event) => (!input.startedAt || event.occurredAt >= input.startedAt)
-          && event.status === 'completed'
-          && (offset === 2 ? event.event === 'triage_completed' : event.stage.toUpperCase() === stages[offset + 1] && /^(capture_completed|checks_completed|persist_completed|completed)$/.test(event.event ?? '')))
+          : (offset === 3 && completed) || (offset === 2 ? reviewRecorded : currentEvents.some(event =>
+            event.status === 'completed' && event.stage.toUpperCase() === stages[offset + 1]
+            && /^(capture_completed|checks_completed|persist_completed|completed)$/.test(event.event ?? '')))
           ? 'done' as const : !failed && index === offset + 1 ? 'current' as const : 'pending' as const,
-      })),
+      }]),
     ],
     // One latest receipt per milestone, not a per-page event dump. Old attempt
     // receipts cannot describe the current execution after restart recovery.
     events: stages.flatMap((stage, stageIndex) => {
-      const receipts = input.events.filter((event) => event.stage.toUpperCase() === stage
-        && (!input.startedAt || event.occurredAt >= input.startedAt)
+      const receipts = currentEvents.filter((event) => event.stage.toUpperCase() === stage
+        && !(enrichmentUnavailable && stage === 'JUDGING' && event.event !== 'triage_completed')
         && ['completed', 'started', 'failed', 'skipped', 'partial'].includes(event.status.toLowerCase()))
       const receipt = receipts.at(-1)
       return receipt ? [{ label: receipt.status === 'completed' ? SITE_ACTIVITY_COPY.recorded[stageIndex]

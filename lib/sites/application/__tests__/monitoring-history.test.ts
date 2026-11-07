@@ -51,7 +51,8 @@ describe('scope completion in monitoring history', () => {
   })
 
   it.each([
-    { failureCode: 'AI_CONTRACT_INVALID', failedModules: [], evidenceCoverage: { metadata: true } },
+    { failureCode: 'AI_CONTRACT_INVALID', failedModules: [], evidenceCoverage: {} },
+    { failureCode: 'AUDIT_TIMEOUT', failureStage: 'capturing', failedModules: [], evidenceCoverage: { metadata: true } },
     { failureCode: null, failedModules: ['browser'], evidenceCoverage: { metadata: true } },
     { failureCode: null, failedModules: ['flow'], evidenceCoverage: {} },
   ])('retains incomplete execution when collection did not finish: %j', facts => {
@@ -61,6 +62,13 @@ describe('scope completion in monitoring history', () => {
     expect(history).toMatchObject({ executionState: 'PARTIAL', completionState: 'PARTIAL' })
     expect(projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents[0])
       .toMatchObject({ title: BOARD_PREVIEW_COPY.incomplete, state: 'unknown' })
+  })
+
+  it('counts completed core observations in the trend when only enrichment was unavailable', () => {
+    const audit = { ...row(null), executionSpec: null, runRequests: [], reportCompleteness: 'PARTIAL',
+      failureCode: 'AUDIT_PIPELINE_FAILED', failureStage: 'judging', evidenceCoverage: { metadata: true },
+      failedModules: ['judge'], pages: [{ status: 'COMPLETED' }], verifierExecutions: [] }
+    expect(projectHistory(audit as never, ['audit'])).toMatchObject({ executionState: 'COMPLETED', completionState: 'COMPLETED' })
   })
 
   it('never uses completed collection to certify missing targeted verification', () => {

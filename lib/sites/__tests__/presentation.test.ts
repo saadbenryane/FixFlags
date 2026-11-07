@@ -77,7 +77,12 @@ describe('Site presentation', () => {
     expect(runPresentation({ auditId: null, auditStatus: null, startedAt: null, failureCode: null }).state).toBe('idle')
     expect(runPresentation({ auditId: 'a', auditStatus: 'QUEUED', startedAt: null, failureCode: null })).toMatchObject({ state: 'queued', recoveryAction: 'view_details' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'CHECKING', startedAt: new Date(), failureCode: null }).state).toBe('running')
-    expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: 'AI_CONTRACT_INVALID' })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+    const saved = { auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), reportCompleteness: 'PARTIAL',
+      evidenceCoverage: { metadata: true, aiAssessment: false } }
+    for (const failureCode of ['AI_CONTRACT_INVALID', 'AI_PROVIDER_NOT_CONFIGURED', 'AI_BUDGET_UNAVAILABLE', 'AI_REVIEW_FAILED', 'AUDIT_TIMEOUT', 'AUDIT_PIPELINE_FAILED'])
+      expect(runPresentation({ ...saved, failureCode, failureStage: 'judging' })).toMatchObject({ state: 'idle', recoveryAction: null })
+    expect(runPresentation({ ...saved, failureCode: 'AUDIT_TIMEOUT', failureStage: 'checking' })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+    expect(runPresentation({ ...saved, failureCode: 'AI_PROVIDER_NOT_CONFIGURED', evidenceCoverage: {} })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,
       reportCompleteness: 'PARTIAL' })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,

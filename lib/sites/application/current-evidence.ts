@@ -6,8 +6,8 @@ import { applicableCategoryEvidence, overlayCategoryCoverage, type CategoryEvide
 
 type EvidenceAudit = {
   id: string; parentId?: string | null; status: string; createdAt: Date; completedAt: Date | null;
-  executionSpec?: unknown; evidenceCoverage: unknown; failedModules?: unknown; failureCode?: string | null;
-  triageAt?: Date | null; aiReviewAt?: Date | null; verifierExecutions?: CoverageExecution[];
+  executionSpec?: unknown; evidenceCoverage: unknown; failedModules?: unknown;
+  verifierExecutions?: CoverageExecution[];
 }
 type CurrentFlag = { checkId: string | null; rubric: string; severity: string; impactTag: string | null }
 
@@ -22,8 +22,7 @@ export function projectCurrentSiteEvidence(input: {
   const coverageMaxAgeMs = siteCoverageMaxAgeMs(input.watchInterval ?? null, input.watchEveryMinutes)
   const flags = input.flags.map(flag => ({ ...flag, status: 'OPEN' }))
   const facts = (audit: EvidenceAudit | null) => ({ auditStatus: audit?.status ?? 'QUEUED', completedAt: audit?.completedAt ?? null,
-    evidenceCoverage: audit?.evidenceCoverage, failedModules: audit?.failedModules, failureCode: audit?.failureCode,
-    triageCompleted: Boolean(audit?.triageAt), extraReviewCompleted: Boolean(audit?.aiReviewAt),
+    evidenceCoverage: audit?.evidenceCoverage, failedModules: audit?.failedModules,
     verifierExecutions: audit?.verifierExecutions, flags, now: input.now, coverageMaxAgeMs })
   const lastKnown = input.prior ? overlayCategoryCoverage(buildCoverageFacts(facts(input.prior)),
     applicableCategoryEvidence(input.categories, input.prior), input.now, flags, coverageMaxAgeMs) : null

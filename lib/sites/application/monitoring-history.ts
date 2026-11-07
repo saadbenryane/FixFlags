@@ -15,7 +15,7 @@ import { analysisDidNotFinish } from '../analysis-completion'
 import { readSiteEvidence } from './site-evidence-read'
 
 const historySelect = {
-  id: true, parentId: true, status: true, failureCode: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
+  id: true, parentId: true, status: true, failureCode: true, failureStage: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
   runRequests: { orderBy: { requestedAt: 'desc' }, take: 1, select: {
     source: true, executionSpec: true, verificationTarget: true,
     selections: { select: { outcome: { select: { name: true } } } },
@@ -97,9 +97,11 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
       ['CLEAR', 'FLAG'].includes(assessment.state) && completeOutcomeEvidence(assessment.coverage, assessment.evidence)))
     : metadata.scope === 'DIAGNOSTIC' && recordedDiagnosticConclusion({ executionSpec: audit.executionSpec, audit })?.complete === true
   const pageCoverage = executionPageCoverage({ executionSpec: audit.executionSpec, pages: audit.pages, executions: audit.verifierExecutions })
-  let completionState: MonitoringHistoryEntry['completionState'] = audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt || audit.failureCode ||
-    (!completedScope && Array.isArray(audit.failedModules) && audit.failedModules.length > 0) ||
-    (!completedScope && !pageCoverage.complete) ? 'PARTIAL' : 'COMPLETED'
+  const executionIncomplete = !audit.completedAt || analysisDidNotFinish(audit)
+  let completionState: MonitoringHistoryEntry['completionState'] = audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt ||
+    Boolean(audit.failureCode && executionIncomplete) ||
+    (!completedScope && Array.isArray(audit.failedModules) && audit.failedModules.some(module => module !== 'judge' && module !== 'page-triage-evaluation')) ||
+    (!completedScope && (executionIncomplete || !pageCoverage.complete)) ? 'PARTIAL' : 'COMPLETED'
   const spec = readExecutionSpec(audit.executionSpec)
   let flagCount = flags.length
   if (accountOnly) completionState = audit.status === 'FAILED' ? 'FAILED' : accountConclusion?.complete ? 'COMPLETED' : 'PARTIAL'
@@ -125,7 +127,7 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
   // scope. Confirmed Flags remain useful even when other checks are incomplete.
   if (metadata.result === 'CLEAR' && completionState !== 'COMPLETED') metadata.result = 'COULD_NOT_VERIFY'
   return {
-    executionState: audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt || analysisDidNotFinish(audit) ? 'PARTIAL' : 'COMPLETED',
+    executionState: audit.status === 'FAILED' ? 'FAILED' : executionIncomplete ? 'PARTIAL' : 'COMPLETED',
     completionState,
     id: audit.id, checkedAt: (audit.completedAt ?? audit.updatedAt).toISOString(),
     evidenceAt: audit.status === 'COMPLETED' ? audit.completedAt?.toISOString() ?? null : null,

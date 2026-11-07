@@ -809,7 +809,7 @@ describe('SiteBoard chrome', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows a skipped written summary without a failed-check retry', async () => {
+  it('shows saved findings without an optional review warning', async () => {
     render(
       <MeProvider initialUser={null}>
         <SiteBoard
@@ -826,9 +826,7 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>
     )
-    expect(screen.getAllByRole('status').some(status => status.textContent === (
-      'The written summary did not run. The Flags below come from the browser check.'
-    ))).toBe(true)
+    expect(screen.queryByText(/written summary|analysis incomplete/i)).not.toBeInTheDocument()
     expect(screen.queryByText('Check failed')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
     expect(screen.getByText('Headline does not convey usage context')).toBeVisible()

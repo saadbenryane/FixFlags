@@ -10,12 +10,20 @@ it('distinguishes missing, incomplete, old and failing checks without claiming e
   const email = websiteSummaryEmail({ cadence: 'DAILY', asOf: new Date('2026-10-29T09:00:00Z'), timeZone: 'UTC', totalSites: 4,
     sites: [{ ...site, checkedAt: null }, { ...site, incomplete: true }, { ...site, unchanged: true }, { ...site, problems: 3, offline: true }] })
   expect(email.text).toContain('No completed check yet.')
-  expect(email.text).toContain('Some checks could not finish.')
+  expect(email.text).not.toContain('Some checks could not finish.')
+  expect(email.html).not.toContain('Some checks could not finish.')
   expect(email.text).toContain('This website check also appeared in your previous summary.')
   expect(email.text).toContain('3 problems to review')
   expect(email.html).toContain('https://validation.example.test/settings#email-updates')
   expect(email.html).not.toMatch(/<script|<style|@font-face|<hr/)
   expect(email.text).not.toContain('All clear')
+})
+it('shares the last check time without giving limited coverage an all-clear', () => {
+  const email = websiteSummaryEmail({ cadence: 'DAILY', sites: [{ ...site, incomplete: true }], totalSites: 1,
+    timeZone: 'UTC', asOf: new Date('2026-10-29T09:00:00Z') })
+  expect(email.text).toContain('Last checked')
+  expect(email.text).not.toMatch(/no problems to review|could not finish/i)
+  expect(email.html).not.toMatch(/no problems to review|could not finish/i)
 })
 it('bounds summary size even for accounts with many websites', () => {
   const email = websiteSummaryEmail({ cadence: 'WEEKLY', sites: Array.from({ length: 500 }, () => site),

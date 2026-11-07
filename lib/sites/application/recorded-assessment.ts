@@ -82,7 +82,7 @@ export function projectRecordedSiteResult(input: {
   }
   const coverage = spec?.category ? [categoryCoverageFact({ ...audit, executionSpec }, now)!] : buildCoverageFacts({
     auditStatus: audit.status, completedAt: audit.completedAt, now, evidenceCoverage: audit.evidenceCoverage,
-    failedModules: audit.failedModules, failureCode: audit.failureCode, verifierExecutions: audit.verifierExecutions, flags: [],
+    failedModules: audit.failedModules, verifierExecutions: audit.verifierExecutions, flags: [],
   })
   const recorded = recordedRunFlags({ executionSpec, audit })
   const assessment = projectSiteAssessment({ status, executionSpec, coverage, now, checkedAt: audit.completedAt,

@@ -232,6 +232,8 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
     site,
     executionProgress,
     activity: projectSiteActivity({ status: audit?.status ?? null, startedAt: audit?.startedAt ?? null, failureCode: audit?.failureCode ?? null,
+      failureStage: audit?.failureStage, reportCompleteness: audit?.reportCompleteness,
+      failedModules: audit?.failedModules, evidenceCoverage: audit?.evidenceCoverage,
       pages: checkedPages, events: [...(audit?.pipelineEvents ?? [])].reverse() }),
     checkedPages: checkedPages.map((page) => ({ ...page, checkedAt: page.updatedAt.toISOString() })),
     presentation,

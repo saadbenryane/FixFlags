@@ -159,23 +159,6 @@ function moduleAreas(module: string, version?: number): SiteCardArea[] {
   return [...new Set(areas.length ? areas : fallback ? [fallback] : [])]
 }
 
-/** Completed runs can retain useful observations without establishing health. */
-function incompleteAreaReason(input: {
-  area: SiteCardArea; openFlagCount: number; evidenced: boolean;
-  auditStatus: string | null; failureCode?: string | null; incomplete: boolean;
-  triageCompleted?: boolean; extraReviewCompleted?: boolean;
-}): string | null {
-  if (input.auditStatus !== 'COMPLETED') return null
-  if (input.incomplete) {
-    return SITE_BOARD_COPY.cardCheckIncomplete
-  }
-  // Prescription enriches findings without invalidating an observed check.
-  if (input.triageCompleted && !input.extraReviewCompleted && input.openFlagCount > 0 && input.area !== 'site' &&
-    ['AI_CONTRACT_INVALID', 'AI_REVIEW_FAILED'].includes(input.failureCode ?? '')) return SITE_BOARD_COPY.cardReviewIncomplete
-  if (input.failureCode && !input.evidenced && input.area !== 'site') return SITE_BOARD_COPY.cardCheckIncomplete
-  return null
-}
-
 /** Current task plans define the expected keyboard scope. Historical axe-only
  * observations retain their original contract rather than acquiring new tasks. */
 export function keyboardScopeComplete(executions: CoverageExecution[]) {
@@ -231,10 +214,7 @@ export function buildCoverageFacts(input: {
   now: Date
   coverageMaxAgeMs?: number
   evidenceCoverage: unknown
-  failureCode?: string | null
   failedModules?: unknown
-  triageCompleted?: boolean
-  extraReviewCompleted?: boolean
   flags: Array<{
     checkId: string | null
     rubric: string
@@ -315,12 +295,8 @@ export function buildCoverageFacts(input: {
     const checkedAt = observationTimes.get(area) ?? input.completedAt?.toISOString() ?? null
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
-    const incompleteReason = (area === 'search' && search && !search.complete && !inFlight
-      ? SITE_BOARD_COPY.cardCheckIncomplete : null)
-      ?? incompleteAreaReason({ area, openFlagCount, evidenced: evidenced.has(area), auditStatus: input.auditStatus,
-        failureCode: input.failureCode, incomplete: incompleteAreas.has(area),
-        triageCompleted: input.triageCompleted, extraReviewCompleted: input.extraReviewCompleted })
-      ?? (!inFlight && incompleteAreas.has(area) ? SITE_BOARD_COPY.cardCheckIncomplete : null)
+    const incompleteReason = !inFlight && (incompleteAreas.has(area) || (area === 'search' && search && !search.complete))
+      ? SITE_BOARD_COPY.cardCheckIncomplete : null
 
     // A committed failure is immediately useful even while unrelated work is
     // still running. A previous healthy card cannot conceal this execution's Flag.

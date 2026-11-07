@@ -33,7 +33,7 @@ export function categoryCoverageFact(audit: Pick<CategoryEvidenceAudit, 'id' | '
   if (!spec?.category) return null
   const fact = buildCoverageFacts({ auditStatus: audit.status, completedAt: audit.completedAt, now, coverageMaxAgeMs,
     evidenceCoverage: audit.evidenceCoverage, failedModules: audit.failedModules,
-    failureCode: audit.failureCode, verifierExecutions: audit.verifierExecutions, flags })
+    verifierExecutions: audit.verifierExecutions, flags })
     .find(fact => fact.area === spec.category!.area)!
   const pagesComplete = executionPageCoverage({ executionSpec: audit.executionSpec, pages: audit.pages, executions: audit.verifierExecutions }).complete
   const requiredWorkFailed = Array.isArray(audit.failedModules) && audit.failedModules.length > 0

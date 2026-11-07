@@ -42,6 +42,7 @@ export const siteEvidenceAuditSelect = {
   startedAt: true,
   pipelineEvents: { orderBy: { occurredAt: 'desc' }, take: 100, select: { stage: true, event: true, status: true, occurredAt: true } },
   failureCode: true,
+  failureStage: true,
   evidenceCoverage: true,
   verifierExecutions: siteCoverageExecutionSelect,
   url: true,

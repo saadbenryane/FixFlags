@@ -20,7 +20,7 @@ export function websiteSummaryEmail(input: {
     site.problems ? (site.urgentOnly ? C.summary.urgentProblems : C.summary.problems)(site.problems)
       : !site.checkedAt || site.incomplete || site.failed || site.offline || site.stale ? null : site.urgentOnly ? C.summary.quietUrgent : C.summary.quiet,
     !site.checkedAt ? C.summary.missing : null,
-    site.failed ? C.summary.failed : site.incomplete && site.checkedAt ? C.summary.incomplete : null,
+    site.failed ? C.summary.failed : null,
     site.stale ? C.summary.stale : null,
     site.checkedAt ? C.summary.checked(formatEmailDate(site.checkedAt, input.timeZone)) : null,
     site.unchanged && site.checkedAt ? C.summary.old : null,

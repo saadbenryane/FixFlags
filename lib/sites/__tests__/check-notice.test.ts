@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
-import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
+import { siteCheckNotice } from '@/lib/sites/check-notice'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
 import { siteCardHealth } from '@/lib/sites/site-health'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -29,21 +29,6 @@ describe('site check notice', () => {
     expect(siteCheckNotice({ status: 'CHECKING', failureCode: null })).toBeNull()
     expect(siteCheckNotice({ status: 'COMPLETED', failureCode: 'AI_PROVIDER_NOT_CONFIGURED' })).toBeNull()
     expect(siteCheckNotice({ status: null, failureCode: null })).toBeNull()
-  })
-
-  it('says the written summary was skipped without calling the check a failure', () => {
-    const provider = siteSummaryNotice({ status: 'COMPLETED', failureCode: 'AI_PROVIDER_NOT_CONFIGURED' })
-    expect(provider?.body).toBe('The written summary did not run. The Flags below come from the browser check.')
-    expect(provider?.body).not.toMatch(/scanner|provider key|deterministic|Sign up/i)
-    expect(siteSummaryNotice({ status: 'COMPLETED', failureCode: 'AUDIT_TIMEOUT' })?.body).toBe(
-      'The written summary ran out of time. The Flags below come from the browser check.'
-    )
-    expect(siteSummaryNotice({ status: 'COMPLETED', failureCode: 'AUDIT_PIPELINE_FAILED' })?.body).toBe(
-      'The written summary did not finish. The Flags below come from the browser check.'
-    )
-    expect(siteSummaryNotice({ status: 'FAILED', failureCode: 'AI_PROVIDER_NOT_CONFIGURED' })).toBeNull()
-    expect(siteSummaryNotice({ status: 'COMPLETED', failureCode: 'SITE_UNREACHABLE' })).toBeNull()
-    expect(siteSummaryNotice({ status: 'COMPLETED', failureCode: null })).toBeNull()
   })
 
   it('does not call a failed check with no flags a first look', () => {

@@ -45,6 +45,7 @@ export function projectHomePresentation(input: {
     auditStatus: audit?.status ?? null,
     startedAt: audit?.startedAt ?? null,
     failureCode: audit?.failureCode ?? null,
+    failureStage: audit?.failureStage,
     reportCompleteness: audit?.reportCompleteness ?? null,
     failedModules: audit?.failedModules,
     evidenceCoverage: audit?.evidenceCoverage,

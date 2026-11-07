@@ -229,6 +229,7 @@ export function runPresentation(input: {
   auditStatus: string | null
   startedAt: Date | null
   failureCode: string | null
+  failureStage?: string | null
   reportCompleteness?: string | null
   failedModules?: unknown
   evidenceCoverage?: unknown
