@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe('automatic scheduled Site care', () => {
   it('validates operator authority before reusing an admitted tick', async () => {
-    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation', executionToken: 'lease' }
     mocks.existing.mockResolvedValue({ status: 'QUEUED', audit: { projectId: 'site', status: 'QUEUED' }, id: 'recorded', auditId: 'recorded-audit', environment: 'production', verificationTarget: null,
       selections: [], executionSpec: { version: 1, scope: 'SITE', targetUrl: 'https://example.com/',
         environment: 'production', outcomes: [], checks: {}, verificationTarget: null } })
@@ -46,7 +46,9 @@ describe('automatic scheduled Site care', () => {
     expect(mocks.outcomes).not.toHaveBeenCalled()
   })
   it('reuses fresh broad evidence while independently requesting enabled production bindings at their saved cadence', async () => {
-    mocks.recent.mockResolvedValue({ id: 'recent-site-check', url: 'http://www.example.com:8080/', status: 'COMPLETED', createdAt: new Date(now.getTime() - 3600_000), pages: [], verifierExecutions: [] })
+    mocks.recent.mockResolvedValue({ id: 'recent-site-check', url: 'http://www.example.com:8080/', status: 'COMPLETED',
+      createdAt: new Date(now.getTime() - 3600_000), completedAt: new Date(now.getTime() - 3599_000),
+      pages: [{ url: 'http://www.example.com:8080/', status: 'COMPLETED', failureCode: null }], verifierExecutions: [] })
     await requestScheduledSiteRun({ ...input, interval: 'hourly' })
     expect(mocks.outcomes).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'site', enabled: true,
       environment: 'production', bindings: { some: { enabled: true, required: true } } } }))
@@ -54,7 +56,8 @@ describe('automatic scheduled Site care', () => {
     expect(mocks.recent.mock.calls[0][0].where.createdAt.gt).toEqual(new Date('2026-10-11T12:01:00Z'))
   })
   it('requests broad recovery when the latest completed analysis exhausted an obligation', async () => {
-    mocks.recent.mockResolvedValue({ id: 'interrupted-site-check', status: 'COMPLETED', createdAt: now, verifierExecutions: [{ id: 'interrupted-task' }] })
+    mocks.recent.mockResolvedValue({ id: 'interrupted-site-check', status: 'COMPLETED', createdAt: now, completedAt: now,
+      verifierExecutions: [{ id: 'interrupted-task' }] })
     await requestScheduledSiteRun({ ...input, interval: 'hourly' })
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ scope: 'SITE', outcomeIds: [] }))
     expect(mocks.outcomes).not.toHaveBeenCalled()
@@ -62,7 +65,7 @@ describe('automatic scheduled Site care', () => {
   })
   it.each(['SITE', 'OUTCOMES'] as const)('retains an admitted %s tick after scope freshness and configuration change', async scope => {
     mocks.existing.mockResolvedValue({ status: 'QUEUED', audit: { projectId: 'site', status: 'QUEUED' }, id: 'recorded', auditId: 'recorded-audit', environment: 'production', verificationTarget: null,
-      selections: [{ outcomeId: 'original-binding-owner' }], executionSpec: { version: 1, scope, targetUrl: 'https://example.com/',
+      selections: [{ outcomeId: 'original-binding-owner' }], executionSpec: { version: 1, scope, targetUrl: 'http://www.example.com:8080/',
         environment: 'production', outcomes: [], checks: {}, verificationTarget: null } })
     expect(await requestScheduledSiteRun(input)).toEqual({ runId: 'recorded', auditId: 'recorded-audit', outcomeIds: ['original-binding-owner'], reused: true })
     expect(mocks.recent).not.toHaveBeenCalled(); expect(mocks.outcomes).not.toHaveBeenCalled(); expect(mocks.request).not.toHaveBeenCalled()
@@ -71,12 +74,12 @@ describe('automatic scheduled Site care', () => {
     { status: 'FAILED', audit: { projectId: 'site', status: 'FAILED' } },
     { status: 'RUNNING', audit: { projectId: 'site', status: 'FAILED' } },
     { status: 'COMPLETED', audit: null },
-    { status: 'COMPLETED', audit: { projectId: 'another-site', status: 'COMPLETED' } },
-  ])('refuses an unavailable receipt without reinterpreting its scope: %j', async state => {
+    { status: 'COMPLETED', audit: { projectId: 'another-site', status: 'COMPLETED' }, code: 'RUN_AUDIT_SCOPE_CHANGED' },
+  ])('refuses an unavailable receipt without reinterpreting its scope: %j', async ({ code = 'SCHEDULED_RUN_UNAVAILABLE', ...state }) => {
     mocks.existing.mockResolvedValue({ id: 'recorded', auditId: 'recorded-audit', environment: 'production', verificationTarget: null,
-      selections: [], executionSpec: { version: 1, scope: 'SITE', targetUrl: 'https://example.com/', environment: 'production',
+      selections: [], executionSpec: { version: 1, scope: 'SITE', targetUrl: 'http://www.example.com:8080/', environment: 'production',
         outcomes: [], checks: {}, verificationTarget: null }, ...state })
-    await expect(requestScheduledSiteRun(input)).rejects.toMatchObject({ status: 409, code: 'SCHEDULED_RUN_UNAVAILABLE' })
+    await expect(requestScheduledSiteRun(input)).rejects.toMatchObject({ status: 409, code })
     expect(mocks.request).not.toHaveBeenCalled()
     expect(mocks.recent).not.toHaveBeenCalled()
   })

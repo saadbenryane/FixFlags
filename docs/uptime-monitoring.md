@@ -43,7 +43,14 @@ execution uncertainty. These checks do not establish production capacity.
 The `uptime-probes` BullMQ worker starts with the existing worker runtime. Durable monitor due times survive queue failures. A database lease and the unique monitor, target version, slot, and attempt identity prevent overlapping work and duplicate observations. After downtime, the scheduler issues the current slot and skips missed slots.
 
 The scheduler reads the shared clock for each initialization, dispatch attempt and
-publication. A slow earlier Site cannot stamp a later probe with an old slot.
+publication. Up to four monitors publish independently within each sweep, so a
+stalled publication leaves capacity for other Sites. A regular probe advances
+the schedule from its assigned slot. A response crossing a slot boundary leaves
+the following slot due. Pending failure confirmation keeps priority and retains
+its original slot before the regular schedule continues.
+Confirmation expires from the recorded failure time. A restart can still
+confirm a failure that crossed a slot boundary while its observation window
+remains open.
 Workers complete their current Site and target authority reads before claiming
 the observation lease, then recheck the slot and lease before the HTTP request.
 Expired preparation leaves the due intent available for a fresh attempt and
@@ -75,8 +82,16 @@ identity and worker claim remain unchanged; replay cannot create a duplicate
 probe or incident. Future confirmations wait for their original due time before
 reviving a terminal job. Installed-worker fixtures exercise exhausted delivery
 and an abandoned lease, then establish recovery through an actual observation.
+If two schedulers try the same replay, the losing retry rechecks the broker.
+Confirmed delivery is counted once by the worker's probe claim. A failed or
+missing job remains due for later reconciliation.
 
-Scheduling, notification delivery and history retention run independently, with at most one local sweep of each operation in flight. A slow email provider or cleanup cannot block probe dispatch. The uptime heartbeat describes scheduling readiness; notification failure remains in its delivery receipt. Shutdown stops worker intake immediately, drains admitted maintenance and active probes, and closes the producer only after dispatch finishes. Paused and deleted Sites do not consume the bounded dispatch batch. Restarted schedules can reactivate an existing disabled monitor without replacing its identity.
+Scheduling, notification delivery and history retention run independently, with at most one local sweep of each operation in flight. A slow email provider or cleanup cannot block probe dispatch. At each sweep the uptime heartbeat requires a running consumer with both Redis connections ready and an unpaused broker queue, even when no probe is due. Notification failure remains in its delivery receipt. Shutdown stops worker intake immediately, drains admitted maintenance and active probes, and closes the producer only after dispatch finishes. Paused and deleted Sites do not consume the bounded dispatch batch. Restarted schedules can reactivate an existing disabled monitor without replacing its identity.
+
+A dispatch sweep with failures and no successful publication marks scheduling
+unready. A partial failure still leaves the per-Site work due for retry while
+another Site can confirm queue availability. An empty sweep is ready. The next
+successful sweep refreshes the heartbeat without resetting probe history.
 
 Notification processing also isolates each receipt within a batch. Interrupted
 claims defer only the still-eligible selected receipt without consuming a provider
@@ -87,18 +102,28 @@ fixtures exercise claim, retry-write and deferral failures alongside independent
 acceptance, stale permissions and late senders. The email provider is controlled
 in these fixtures; acceptance does not establish real inbox delivery.
 
-Monitor initialization also isolates each Site. Automatic default setup and
-uptime-monitor creation share a persisted one-minute setup retry on the Site.
-Bounded sweeps select untouched Sites before due retries. A full failing batch
-cannot monopolize later sweeps; failed Sites remain eligible when the retry is
-due. Owner, target and unchanged setup-state fences protect retry writes, while
-explicit pause fields retain their separate authority. Successful setup clears
-its retry without replacing existing monitor identity or evidence. Existing due
-probes continue independently of initialization. A disposable PostgreSQL fixture
-injects setup failure, covers a full failing prefix and unsafe retained targets,
-verifies independent dispatch, then
-verifies setup and dispatch for the failed Site on retry. No full-analysis
-credits or Audit rows are consumed.
+Monitor initialization also isolates each Site. Analysis setup and uptime setup
+persist separate retry times and share selection that skips locked Sites and
+accounts before applying the batch limit. A deferred analysis cadence can
+coexist with immediate uptime setup and observation. Untouched Sites precede
+due retries. Setup and retry writes recheck the selected owner, URL, pause and
+retry time under the same row locks. Successful setup clears its retry in the
+transaction that creates the monitor.
+
+An owner edit that changes the normalized HTTP target clears any setup delay
+in the same transaction as the Site edit. An existing monitor keeps its ID and
+receives a new target generation and a due slot. Earlier probe leases and
+pending confirmations are invalidated. Earlier open incidents are retained as
+superseded. Returning to a previous origin starts another generation, so a
+response from an earlier visit cannot establish reachability or close an incident.
+
+Disposable PostgreSQL and Redis fixtures hold the earliest Site's row lock and
+use a one-Site setup batch. The installed Uptime runtime probes an existing
+monitor and a newly initialized independent Site while that lock is held. The
+released Site then receives its first probe. Separate fixtures exercise real
+insert failure, an entire failing batch, unsafe retained URLs, and changes to
+the selected Site's target or pause. Setup and probes consume no analysis
+credits or Audit rows.
 
 The separate dispatch fixture exercises the installed BullMQ producer and worker
 against isolated Redis, with migrated disposable PostgreSQL and shared summary
@@ -165,17 +190,29 @@ a website outage. These reads never open or recover incidents or send alerts.
 
 Overview reports 48 half-hour periods. A period is green only when all expected observations are recorded and successful. Missing or inconclusive observations remain neutral; a confirmed failure is marked separately. The 24-hour, seven-day, and 30-day history views include bounded pages of raw response evidence and incident history. Durations describe the interval between observed failure and recovery, not exact downtime. No uptime percentage is computed.
 
+Overview and history use the scheduler's five-minute slots. Confirmation attempts
+settle their original observation, and distinct retained timestamps in one slot
+cannot cover a different missed slot. Confirmed failure still takes precedence
+within a period. Raw history retains the recorded timestamps and attempts.
+
 `GET /api/sites/:siteId/uptime` requires the Site owner. It accepts only `24h`, `7d`, or `30d`, with a cursor scoped to that monitor, generation, and window. Each page returns at most 100 probes. The validated Site projection exposes Uptime only to authorized owner callers and refreshes enabled summaries every minute while idle.
 
-Overview and detailed history share the same projection and eligibility policy. Overview reads the observation samples and unresolved-incident count needed for its summary, without loading paginated probe rows or detailed incidents. Read paths do not import the queue or execution service.
+Overview and detailed history share the same projection and eligibility policy.
+PostgreSQL selects the last valid attempt for each scheduled timestamp and groups
+the results into periods. The application receives at most 48, 56 or 60 period
+rows for the selected window and applies the same due-slot rules to each.
+Detailed history reads raw probes separately, one page at a time. Overview
+omits those pages and detailed incidents. Read paths do not import the queue or
+execution service.
 
 Each incident has one persisted outage receipt and one recovery receipt. Delivery rechecks notification preferences, current monitoring eligibility, and target generation. Confirmed public unavailability is treated as critical for critical-only notifications. Recovery alerts also require the recovery preference. Leases and a stable provider idempotency key protect delivery retries. Failed delivery is retried with bounded exponential backoff, up to eight attempts. Receipt status remains available in the database; an observation is not a notification delivery receipt.
 
-Delivery also retains event order. An outage message that has not been sent is
-retired after its incident recovers. A delayed recovery is retired after a newer
-confirmed incident on the same target generation. The recovery claim repeats
-that condition in its database write, so a recurrence committed after selection
-cannot authorize the older message. Retired receipts use `SKIPPED` and retain
+Recording recovery retires any unclaimed outage message in the same
+transaction. A recovery message waits for the same incident's active outage
+send to settle or its lease to expire. Other Sites remain eligible while it
+waits. A delayed recovery is retired after a newer confirmed incident on the
+same target generation. The recovery claim checks both the outage lease and the
+recurrence condition again at the database write. Retired receipts use `SKIPPED` and retain
 their original incident, payload, attempt count and any delivery uncertainty.
 This does not retract a request already dispatched or claim that an uncertain
 earlier request was never received. Disposable PostgreSQL fixtures exercise
@@ -211,7 +248,7 @@ the fifth while a concurrent sweep runs. It verifies one live fifth attempt and
 its final acceptance. Separate cases verify failure-time backoff and claim deferral
 without changing the stored message or consuming an unclaimed provider attempt.
 
-Raw probe history is retained for 30 days. Incident records, including unresolved incidents, are preserved. The migration creates no historical observations. Existing screenshot recording times remain null; new screenshots receive a recording timestamp. The preview identifies its exact audit, viewport, and URL, and labels retained evidence during a new analysis.
+Raw probe history is retained for 30 days. Cleanup deletes at most 5,000 expired probes per pass and skips locked rows. While expired probes remain, cleanup resumes on the next maintenance tick. A drained pass waits until the next daily sweep. Incident records, including unresolved incidents, are preserved. The migration creates no historical observations. Existing screenshot recording times remain null; new screenshots receive a recording timestamp. The preview identifies its exact audit, viewport, and URL, and labels retained evidence during a new analysis.
 
 Reachability incidents never update rendered-page assessments, verification attempts, or Flags. Existing default page-availability verification is linked inside Uptime details. Separately named availability checks remain in their existing category details.
 

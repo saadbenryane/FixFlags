@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { getAuditTaskQueue } from '@/lib/queue/client'
+import { fixedClock } from '@/lib/time/clock'
 import { enqueueAiReview, recoverPendingAiReviews } from '../enqueue-ai-review'
+import { MAX_TASKS_PER_AUDIT } from '../progressive/contracts'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('prescription admission through current Site authority', () => {
@@ -59,6 +61,33 @@ run('prescription admission through current Site authority', () => {
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: first.id } })).toEqual(first)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: second.id } })).toEqual(second)
     expect(await recoverPendingAiReviews(1)).toBe(0)
+  })
+  it('lets a newer report recover after the oldest report exhausts its task budget', async () => {
+    const clock = fixedClock(new Date('2026-11-01T00:00:00Z'))
+    const oldest = await source(undefined, new Date('2026-10-01T00:00:00Z'), true)
+    const newer = await source(undefined, new Date('2026-10-02T00:00:00Z'), true)
+    await prisma.auditExecutionTask.createMany({ data: Array.from({ length: MAX_TASKS_PER_AUDIT }, (_, index) => ({
+      auditId: oldest.id, source: 'EXECUTION', targetKey: `fixture:past:${index}`, status: 'COMPLETED',
+    })) })
+
+    expect(await recoverPendingAiReviews(1, clock)).toBe(0)
+    const { prescriptionHandoffRetryAt: retryAt } = await prisma.audit.findUniqueOrThrow({ where: { id: oldest.id } })
+    expect(retryAt!.getTime()).toBeGreaterThan(clock.now().getTime())
+    expect(await recoverPendingAiReviews(1, clock)).toBe(1)
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: newer.id, workKind: 'prescription' } })).toBe(1)
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: oldest.id, workKind: 'prescription' } })).toBe(0)
+
+    await prisma.auditExecutionTask.deleteMany({ where: { auditId: oldest.id, targetKey: 'fixture:past:0' } })
+    expect(await recoverPendingAiReviews(1, clock)).toBe(0)
+    const waiting = await source(undefined, clock.now(), true)
+    const due = fixedClock(retryAt!)
+    expect(await recoverPendingAiReviews(1, due)).toBe(1)
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: waiting.id, workKind: 'prescription' } })).toBe(1)
+    expect(await recoverPendingAiReviews(1, due)).toBe(1)
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: oldest.id, workKind: 'prescription' } })).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: oldest.id } })).toMatchObject({
+      status: 'COMPLETED', completedAt: oldest.completedAt, prescriptionHandoffRetryAt: null, aiReviewAt: null,
+    })
   })
   it('retains legacy owned report admission and its recorded delay without a Site', async () => {
     const audit = await source(null), startedAt = Date.now()

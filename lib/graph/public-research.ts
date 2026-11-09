@@ -5,6 +5,14 @@ export const PUBLIC_RESEARCH_PATH = 'research/public-issues/v1'
 export const PUBLIC_RESEARCH_KIND = 'approved-public-issue-research-v1'
 export const MIN_PUBLIC_RESEARCH_SITES = 20
 
+export function isPermittedPublicResearchCheck(checkId: string) {
+  if (!Object.hasOwn(CHECK_REGISTRY, checkId)) return false
+  const { module } = CHECK_REGISTRY[checkId]
+  // The legacy module also produced deterministic Flags from connected
+  // Google data. Its check identifiers alone cannot prove public provenance.
+  return module !== 'search' && module !== 'search-performance' && module !== 'automatic-accounts'
+}
+
 const text = z.string().trim().min(1).max(4_000).regex(/^[^<>]*$/, 'Plain text required')
 const count = z.number().int().safe().nonnegative()
 const timestamp = z.iso.datetime()
@@ -48,8 +56,8 @@ export const publicIssueResearchSchema = z.strictObject({
   const ids = new Set<string>()
   for (const row of dataset.issues) {
     const definition = CHECK_REGISTRY[row.checkId]
-    if (!definition || definition.version !== row.checkVersion || ids.has(row.checkId)) {
-      ctx.addIssue({ code: 'custom', message: 'Unknown, duplicate, or version-mismatched check' })
+    if (!isPermittedPublicResearchCheck(row.checkId) || definition.version !== row.checkVersion || ids.has(row.checkId)) {
+      ctx.addIssue({ code: 'custom', message: 'Unknown, out-of-scope, duplicate, or version-mismatched check' })
     }
     ids.add(row.checkId)
     if (row.siteCount > dataset.sampleSiteCount || row.occurrenceCount < row.siteCount) {

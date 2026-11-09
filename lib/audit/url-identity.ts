@@ -86,6 +86,12 @@ const FILE_EXTENSIONS = new Set([
 
 const LOCALE_PATH = /^\/(?:[a-z]{2}|[a-z]{2}-[a-z]{2})(?=\/|$)/i
 const PAGINATION_PATH = /\/(?:page|p)\/\d+\/?$/i
+const AUTH_PATH = /\/(login|log-in|signin|sign-in|sign_in|auth|account\/login)(\/|$)/i
+
+export function hasAuthenticationPath(url: string): boolean {
+  try { return AUTH_PATH.test(new URL(url).pathname) }
+  catch { return false }
+}
 
 export type CanonicalDestination = {
   /** Stable identity key used for deduplication. */

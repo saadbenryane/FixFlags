@@ -9,15 +9,21 @@ import { MAX_MCP_CAPTURE_BYTES, MAX_REPAIR_CAPTURE_BYTES, repairEvidenceSchema, 
 import type { SiteRecord } from '../types'
 import type { SiteFlagDetail } from '../flags'
 import { readSiteEvidence } from './site-evidence-read'
+import { SiteRunRefusal } from './run-refusal'
+
+type RepairEvidenceSource = Pick<SiteFlagDetail, 'sourceAuditId' | 'checkId' | 'pageUrl'> & {
+  evidenceContext?: SiteFlagDetail['evidenceContext'] | null
+} & ({ id: string; sourceFlagId?: string | null } | { sourceFlagId: string; id?: string })
 
 /** Read an exact persisted source asset from private storage. Never fetch a
  * reported URL, forward a key, or substitute the newest Site screenshot. */
-export async function loadSiteRepairEvidence(site: SiteRecord, flag: SiteFlagDetail, captureUrl: string) {
+export async function loadSiteRepairEvidence(site: SiteRecord, flag: RepairEvidenceSource, captureUrl: string) {
   return readSiteEvidence(site, () => readSiteRepairEvidence(site, flag, captureUrl))
 }
 
-async function readSiteRepairEvidence(site: SiteRecord, flag: SiteFlagDetail, captureUrl: string) {
+async function readSiteRepairEvidence(site: SiteRecord, flag: RepairEvidenceSource, captureUrl: string) {
   const sourceFlagId = flag.sourceFlagId ?? flag.id
+  if (!sourceFlagId) throw new SiteRunRefusal('Flag not found', 404)
   const performanceMeasurements = flag.evidenceContext?.source === 'DETERMINISTIC' &&
     performanceEvidenceSource(flag.checkId) === 'lab' && flag.pageUrl
     ? await loadPerformanceEvidence(site, flag.sourceAuditId, flag.pageUrl) : []

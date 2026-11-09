@@ -30,9 +30,10 @@ export function projectUptimeStatus(project: MonitoringProject, monitor: Monitor
     state: monitor?.enabled && targetMatches ? monitor.state as UptimeState : 'unknown' })
   const incidentOpen = Boolean(enabled && monitor && targetMatches && monitor.incidents?.some(incident =>
     incident.version === monitor.version && incident.targetUrl === monitor.targetUrl && incident.confirmedAt <= now))
+  const nextCheckAt = state === 'checking' ? monitor?.confirmationDueAt ?? monitor?.nextProbeAt : monitor?.nextProbeAt
   return { enabled, targetUrl: target.ok ? target.url : project.url, state, incidentOpen,
     lastCheckedAt: lastCheckedAt?.toISOString() ?? null,
-    nextCheckAt: enabled && targetMatches && monitor ? (monitor.confirmationDueAt ?? monitor.nextProbeAt).toISOString() : null }
+    nextCheckAt: enabled && targetMatches ? nextCheckAt?.toISOString() ?? null : null }
 }
 
 /** Current reachability constrains current assurance, never a recorded run. */

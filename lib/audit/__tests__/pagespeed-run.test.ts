@@ -185,6 +185,34 @@ describe('fetchPageSpeedData', () => {
     expect(result.desktopFailure).toBeUndefined()
   })
 
+  it('does not convert incompatible metric units into healthy lab measurements', async () => {
+    const body = lighthouseBody(), { audits } = body.lighthouseResult as { audits: Record<string, unknown> }
+    audits['largest-contentful-paint'] = { numericValue: 4.5, numericUnit: 'second', scoreDisplayMode: 'numeric' }
+    audits['cumulative-layout-shift'] = { numericValue: 0, numericUnit: 'millisecond', scoreDisplayMode: 'numeric' }
+    audits['first-contentful-paint'] = { numericValue: 1200, numericUnit: 'millisecond', scoreDisplayMode: 'numeric' }
+    audits['total-blocking-time'] = { numericValue: 0, numericUnit: 'millisecond', scoreDisplayMode: 'numeric' }
+    fetchMock.mockResolvedValueOnce(Response.json(body))
+
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop).toMatchObject({ score: 85, lcp: null, cls: null, fcp: 1200, tbt: 0, inp: 160 })
+    expect(result.desktopFailure).toBeUndefined()
+  })
+
+  it('withholds verdicts when an audit identifies a different criterion or unsupported scoring mode', async () => {
+    const body = lighthouseBody(), { audits } = body.lighthouseResult as { audits: Record<string, unknown> }
+    audits['largest-contentful-paint'] = { id: 'first-contentful-paint', numericValue: 1200, numericUnit: 'millisecond' }
+    audits['unused-javascript'] = { id: 'unused-css-rules', score: 1, details: { overallSavingsBytes: 0 } }
+    audits['target-size'] = { id: 'target-size', scoreDisplayMode: 'unscored', score: 1 }
+    audits['color-contrast'] = { id: 'bypass', scoreDisplayMode: 'binary', score: 0 }
+    fetchMock.mockResolvedValueOnce(Response.json(body))
+
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile).toMatchObject({ score: 85, lcp: null, cls: 0.12, failedAccessibilityAudits: [] })
+    expect(result.mobile?.resourceAudits?.find(audit => audit.id === 'unused-javascript')).toMatchObject({ score: null, savings: null })
+    expect(result.mobile?.tapTargetAudits).toContainEqual(expect.objectContaining({ id: 'target-size', score: null }))
+    expect(result.mobileFailure).toBeUndefined()
+  })
+
   it.each([{ errorMessage: 'Measurement failed' }, { notApplicable: true }, { scoreDisplayMode: 'error' },
     { scoreDisplayMode: 'manual' }, { scoreDisplayMode: 'informative' }, { scoreDisplayMode: 'notApplicable' }])(
     'keeps failed or unmeasured accessibility criteria out of measured findings: %j', async status => {
@@ -227,15 +255,44 @@ describe('fetchPageSpeedData', () => {
     expect(readCruxMetric(result.mobile!.crux, 'inp')?.cohort.url).toBe('https://example.com/page')
   })
 
-  it('retains independent field context for the final page reported by a redirected lab measurement', async () => {
-    const requestedUrl = 'https://example.com/old', finalUrl = 'https://www.example.com/current'
+  it.each(['current', 'docs/auth/setup', 'login/help'])('retains independent field context after a lab redirect to %s', async path => {
+    const requestedUrl = 'https://example.com/old', finalUrl = 'https://www.example.com/' + path
     const payload = lighthouseBody({ loadingExperience: { id: finalUrl, metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
       originLoadingExperience: { id: 'https://www.example.com/', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 } } } })
     payload.lighthouseResult = { ...payload.lighthouseResult as object, requestedUrl, finalUrl }
     fetchMock.mockResolvedValueOnce(Response.json(payload))
     const result = await fetchPageSpeedData(requestedUrl, undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile?.score).toBe(85)
     expect(readCruxMetric(result.mobile!.crux, 'inp')).toMatchObject({ value: 900, cohort: { url: finalUrl, scope: 'page' } })
     expect(readCruxMetric(result.mobile!.crux, 'lcp')).toMatchObject({ value: 1400, cohort: { url: 'https://www.example.com/', scope: 'origin' } })
+  })
+
+  it.each(['finalUrl', 'mainDocumentUrl', 'finalDisplayedUrl'])('withholds lab and diverted field evidence when %s reports sign-in', async field => {
+    const requestedUrl = 'https://example.com/page', signIn = 'https://identity.example/login?state=fixture-state'
+    const payload = lighthouseBody({
+      loadingExperience: { id: signIn, metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
+      originLoadingExperience: { id: 'https://example.com/', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 } } },
+    })
+    payload.lighthouseResult = { ...payload.lighthouseResult as object, requestedUrl, finalDisplayedUrl: requestedUrl,
+      lighthouseVersion: '13.0.0', configSettings: { formFactor: 'mobile' }, [field]: signIn }
+    fetchMock.mockResolvedValueOnce(Response.json(payload))
+    const result = await fetchPageSpeedData(requestedUrl, undefined, { fresh: true, strategies: ['mobile'] })
+    expect(result.mobileFailure).toEqual({ code: 'MEASUREMENT_AUTHENTICATION_REDIRECT', retryable: false })
+    expect(result.mobile).toMatchObject({ score: null, lcp: null, inp: null, opportunities: [], tapTargetAudits: [],
+      diagnostics: { measurement: { scope: null } } })
+    expect(readCruxMetric(result.mobile!.crux, 'lcp')?.value).toBe(1400)
+    expect(runPerformanceChecks(result.mobile!, null, requestedUrl)).toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps lab evidence for a directly requested sign-in page', async () => {
+    const requestedUrl = 'https://example.com/login'
+    const payload = lighthouseBody()
+    payload.lighthouseResult = { ...payload.lighthouseResult as object, requestedUrl, finalDisplayedUrl: requestedUrl }
+    fetchMock.mockResolvedValueOnce(Response.json(payload))
+    const result = await fetchPageSpeedData(requestedUrl, undefined, { fresh: true, strategies: ['desktop'] })
+    expect(result.desktop?.score).toBe(85)
+    expect(result.desktopFailure).toBeUndefined()
   })
 
   it('does not accept a page path as an origin-level cohort', async () => {
@@ -268,6 +325,26 @@ describe('fetchPageSpeedData', () => {
     const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
     expect(result.desktop).toMatchObject({ score: null, lcp: null, cls: null, inp: 160 })
     expect(result.desktopFailure).toMatchObject({ code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
+  })
+
+  it.each([
+    { name: 'wrong device with invalid throttling', configSettings: { formFactor: 'mobile', throttling: 'invalid' } },
+    { name: 'wrong legacy device with invalid locale', configSettings: { emulatedFormFactor: 'mobile', locale: 100 } },
+    { name: 'conflicting device labels', configSettings: { formFactor: 'desktop', emulatedFormFactor: 'mobile' } },
+    { name: 'non-string requested URL', requestedUrl: ['https://example.com/'] },
+  ])('refuses $name while retaining separately matched field data', async scenario => {
+    const finalUrl = 'https://other.example/final'
+    const body = lighthouseBody({
+      loadingExperience: { id: finalUrl, metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
+      originLoadingExperience: { id: 'https://example.com/', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 } } },
+    })
+    body.lighthouseResult = { ...(body.lighthouseResult as object), finalUrl, lighthouseVersion: '13.0',
+      requestedUrl: scenario.requestedUrl ?? 'https://example.com/', configSettings: scenario.configSettings ?? { formFactor: 'desktop' } }
+    fetchMock.mockResolvedValueOnce(Response.json(body))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop).toMatchObject({ score: null, lcp: null, cls: null, inp: null, resourceAudits: [], failedAccessibilityAudits: [] })
+    expect(readCruxMetric(result.desktop!.crux, 'lcp')).toMatchObject({ value: 1400, cohort: { scope: 'origin', url: 'https://example.com/' } })
+    expect(result.desktopFailure).toEqual({ code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
   })
 
   it('includes tap-target opportunities only for mobile', async () => {

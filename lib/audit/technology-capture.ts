@@ -19,6 +19,8 @@ export const technologyCaptureSchema = z.object({
 /** Assess the primary capture before private HTML is removed from its checkpoint.
  * An incomplete observation can establish presence, never removal. */
 export function observeCapturedTechnologies(capture: ScreenshotResult): z.infer<typeof technologyCaptureSchema> {
+  if (capture.publicSignInRedirect)
+    return { detectorVersion: TECHNOLOGY_DETECTOR_VERSION, status: 'UNAVAILABLE', scope: null, detections: [] }
   const html = capture.desktopHtml ?? '', resources = capture.technologyResources ?? [], markers = capture.technologyRuntimeMarkers ?? []
   const headers = capture.responseHeaders ?? {}
   const observed = Boolean(html || resources.length || markers.length || Object.keys(headers).length || capture.tracking?.requests.length)

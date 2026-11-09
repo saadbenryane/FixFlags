@@ -258,6 +258,9 @@ export async function resolveAdminTarget(
         executionSpec: true,
         watchNotificationStatus: true,
         watchNotificationAttempts: true,
+        ...(action === 'WATCH_NOTIFICATION_RETRY' ? { watchNotificationAttemptCeiling: true,
+          watchNotificationNextAttemptAt: true, watchNotificationLeaseUntil: true, watchNotificationProviderId: true,
+          watchNotifiedAt: true, improvementProjectedAt: true, parentId: true } : {}),
         completedAt: true,
       },
     })

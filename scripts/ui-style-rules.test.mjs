@@ -15,7 +15,7 @@ test('retains display typography on brand and editorial surfaces', () => {
 })
 
 test('flat board panels and glass surfaces use their own semantic radii', () => {
-  assert.deepEqual(uiStyleFailures('components/sites/SiteExecutionProgress.tsx',
+  assert.deepEqual(uiStyleFailures('components/sites/SiteActivityPanel.tsx',
     '<section className="rounded-board-panel border border-border p-4" />'), [])
   assert.deepEqual(uiStyleFailures('components/ui/card.tsx',
     '<div className="rounded-card glass-surface shadow-card" />'), [])

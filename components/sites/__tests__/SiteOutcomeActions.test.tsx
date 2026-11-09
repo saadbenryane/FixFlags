@@ -201,7 +201,7 @@ it('keeps newer rendered verification activity from being downgraded by the acco
   expect(routeRefresh).toHaveBeenCalledOnce()
 })
 
-it('ignores unrelated Site runs when the selected Outcome has not changed', async () => {
+it('uses an incompatible Site run for admission without refreshing unrelated Outcome evidence', async () => {
   const initial = viewFixture(), current = structuredClone(initial)
   current.activeRuns = [{ id: 'other-run', auditId: 'other-audit', scope: 'CATEGORY', targetLabel: 'Search', trigger: 'MANUAL',
     status: 'RUNNING', requestedAt: '2026-11-03T12:00:00Z', progress: 10 }]
@@ -210,7 +210,31 @@ it('ignores unrelated Site runs when the selected Outcome has not changed', asyn
   vi.stubGlobal('fetch', fetcher)
   show(initial)
   await waitFor(() => expect(fetcher).toHaveBeenCalledOnce())
+  await waitFor(() => expect(screen.getByRole('button', { name: C.outcome.verify })).toBeDisabled())
   expect(routeRefresh).not.toHaveBeenCalled()
+})
+
+it.each(['UNKNOWN', 'OUTCOMES'] as const)('leaves admission to the server when the selected scope is ambiguous: %s', scope => {
+  const initial = viewFixture()
+  initial.readAt = 1000
+  initial.activeRuns = [{ id: 'run', auditId: 'audit', scope, targetLabel: null, trigger: 'MANUAL',
+    status: 'RUNNING', requestedAt: '2026-11-09T12:00:00Z', progress: 10 }]
+  vi.stubGlobal('EventSource', undefined)
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json(initial)))
+  show(initial)
+  expect(screen.getByRole('button', { name: C.outcome.verify })).toBeEnabled()
+})
+
+it('uses a newer Outcome summary to identify a run that selected a different Outcome', async () => {
+  const initial = viewFixture(); initial.readAt = 1000
+  const current = structuredClone(initial); current.readAt = 2000
+  current.activeRuns = [{ id: 'run', auditId: 'audit', scope: 'OUTCOMES', targetLabel: 'Other Outcome', trigger: 'MANUAL',
+    status: 'RUNNING', requestedAt: '2026-11-09T12:00:00Z', progress: 10 }]
+  vi.stubGlobal('EventSource', undefined)
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json(current)))
+  show(initial)
+  await waitFor(() => expect(screen.getByRole('button', { name: C.outcome.verify })).toBeDisabled())
+  expect(screen.getByText(C.outcome.blockedByRun)).toBeVisible()
 })
 
 it('refreshes changed related Flags once and acknowledges the returned server baseline', async () => {

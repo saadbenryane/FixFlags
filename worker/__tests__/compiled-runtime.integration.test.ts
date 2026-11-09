@@ -18,9 +18,10 @@ import { chromium, expect as browserExpect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { inspectAccessibilityViolations } from '../../e2e/approved-contrast'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { CARE_HOME } from '@/lib/marketing/copy/care-homepage'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy/errors'
+import { AUDIT_ERRORS, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy/errors'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
 import { AUTH } from '@/lib/marketing/copy/auth'
@@ -1040,11 +1041,22 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
     expect([sent[0].body.to].flat()).toEqual([mailRecipient])
     expect(sent[0].body.text).toContain('/sites/' + projectId)
     expect(siteHomeViewSchema.parse(await http('/api/sites/' + projectId)).watch.alert).toMatchObject({ state: 'accepted', status: 'SENT' })
+    expect((await deliveryEvent('email.bounced', randomUUID(), false)).status).toBe(400)
+    expect(siteHomeViewSchema.parse(await http('/api/sites/' + projectId)).watch.alert.state).toBe('accepted')
+    expect((await deliveryEvent('email.bounced')).status).toBe(200)
+    await vi.waitFor(async () => expect(siteHomeViewSchema.parse(await http('/api/sites/' + projectId)).watch.alert)
+      .toMatchObject({ state: 'undelivered', status: 'SENT', attempts: 1 }))
+    const settings = await fetch(webOrigin + '/sites/' + projectId + '/settings', { headers: { cookie: sessionCookie } })
+    expect(settings.ok).toBe(true)
+    expect(await settings.text()).toContain(WATCH_ALERT_DELIVERY.undeliveredTitle)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: manual.auditId } }))
+      .toMatchObject({ watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 })
     const directory = 'test-results/runtime/compiled-shared-watch-' + userId
     mkdirSync(directory, { recursive: true })
     writeFileSync(directory + '/receipt.json', JSON.stringify({ runId: manual.runId, auditId: manual.auditId, flagId: incident.id,
       actualHttpObservation: 503, nativeAssessment: 'FLAG', originalSource: recorded.source, originalTrigger: original.recheckTrigger,
       sameExecutionShared: true, scheduledReceipt: true, workerTimerDelivered: true, recordedProviderAcceptance: true,
+      invalidSignatureRefused: true, signedBounceVisibleOnSite: true,
       controlledProviderRequests: sent.length, realProviderUsed: false, actualInboxDelivery: false, productionChanged: false }, null, 2))
   }, 120_000)
 
@@ -1300,15 +1312,41 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       expect(claimed.watch.interval).not.toBeNull()
       expect(claimed.uptime?.enabled).toBe(true)
       expect(claimed.cards.find(card => card.id === 'performance')?.state).toBe('unknown')
+      // Seed a competing lease between the last Site read and the actual POST.
+      // Both checks use the real API, Site refresh and independent verification.
+      async function competeOnSubmission(path: string, idempotencyKey: string) {
+        await page.route(path, async route => {
+          await prisma.runRequest.create({ data: { projectId: claimedProjectId, source: 'WATCH', idempotencyKey,
+            status: 'RUNNING', leaseUntil: new Date(Date.now() + 5 * 60_000),
+            executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: url,
+              environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+          await route.continue()
+        }, { times: 1 })
+        return () => prisma.runRequest.delete({ where: { projectId_source_idempotencyKey: { projectId: claimedProjectId, source: 'WATCH', idempotencyKey } } })
+      }
       const availability = claimed.outcomes.find(outcome => outcome.kind === 'AVAILABILITY' && outcome.bindings.some(binding => binding.required))!
       expect(availability).toBeTruthy()
       await page.goto(`/sites/${claimedProjectId}/outcomes/${availability.id}`)
       const outcomeCheck = page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true })
-      await browserExpect(outcomeCheck).toBeEnabled()
-      const outcomeResponse = page.waitForResponse(response => new URL(response.url()).pathname.endsWith(`/outcomes/${availability.id}/verify`) && response.request().method() === 'POST')
+      await browserExpect(outcomeCheck).toBeEnabled({ timeout: 40_000 })
+      const outcomePath = `${webOrigin}/api/sites/${claimedProjectId}/outcomes/${availability.id}/verify`
+      const releaseOutcomeLease = await competeOnSubmission(outcomePath, 'browser-competing-outcome-run')
+      const outcomeRefused = page.waitForResponse(response => response.url() === outcomePath && response.request().method() === 'POST')
+      await outcomeCheck.click()
+      const outcomeConflict = await outcomeRefused
+      expect(outcomeConflict.status()).toBe(409)
+      expect(await outcomeConflict.json()).toMatchObject({ code: 'SITE_RUN_IN_PROGRESS' })
+      const outcomeRetryKey = outcomeConflict.request().headers()['idempotency-key']
+      expect(outcomeRetryKey).toEqual(expect.any(String))
+      await browserExpect(page.getByText(SITE_ACTION_COPY.outcome.blockedByRun, { exact: true })).toBeVisible()
+      await browserExpect(outcomeCheck).toBeDisabled()
+      await releaseOutcomeLease()
+      await browserExpect(outcomeCheck).toBeEnabled({ timeout: 15_000 })
+      const outcomeResponse = page.waitForResponse(response => response.url() === outcomePath && response.request().method() === 'POST')
       await outcomeCheck.click()
       const outcomeAccepted = await outcomeResponse
       expect(outcomeAccepted.ok()).toBe(true)
+      expect(outcomeAccepted.request().headers()['idempotency-key']).toBe(outcomeRetryKey)
       await complete((await outcomeAccepted.json()).auditId)
       const outcomeSection = page.locator('section').filter({ has: page.getByText(OUTCOME_DETAIL_COPY.state, { exact: true }) })
       await browserExpect(outcomeSection.getByRole('status').first()).toHaveText(outcomeStatusLabel('CLEAR', false), { timeout: 15_000 })
@@ -1363,21 +1401,48 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       const copiedRecording = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/fix') &&
         response.request().method() === 'POST' && response.request().postDataJSON()?.action === 'copy')
       await copy.click()
-      await browserExpect(page.getByRole('button', { name: SITE_DASHBOARD_COPY.bundleCopied, exact: true })).toBeVisible()
+      await browserExpect(page.getByRole('status').getByText(SITE_BOARD_COPY.copyPromptCopied, { exact: true })).toBeVisible()
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(prepared.prompt)
       expect((await copiedRecording).status()).toBe(200)
       expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: claimedProjectId }, type: 'HANDOFF_COPIED' } })).toBeGreaterThan(0)
 
+      await vi.waitFor(async () => {
+        expect(siteHomeViewSchema.parse(await browserHttp('/api/sites/' + claimedProjectId)).activeRuns).toEqual([])
+      }, { timeout: 40_000, interval: 250 })
       await page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
       const verifyDialog = page.getByRole('dialog', { name: SITE_BOARD_COPY.verifyFix, exact: true })
-      await verifyDialog.getByRole('textbox', { name: SITE_BOARD_COPY.changeLabel }).fill('Name the existing action control')
+      const changeNote = verifyDialog.getByRole('textbox', { name: SITE_BOARD_COPY.changeLabel })
+      const confirm = verifyDialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true })
+      await changeNote.fill('Name the existing action control')
+      const verificationPath = `${webOrigin}/api/sites/${claimedProjectId}/flags/${panel.flag.id}/verify`
+      const releaseFlagLease = await competeOnSubmission(verificationPath, 'browser-competing-flag-run')
+      const refused = page.waitForResponse(response => response.url() === verificationPath && response.request().method() === 'POST')
+      await confirm.click()
+      const conflict = await refused
+      expect(conflict.status()).toBe(409)
+      expect(await conflict.json()).toMatchObject({ code: 'SITE_RUN_IN_PROGRESS' })
+      const originalKey = conflict.request().headers()['idempotency-key']
+      expect(originalKey).toEqual(expect.any(String))
+      await browserExpect(verifyDialog.getByRole('status')).toHaveText(SITE_ACTION_COPY.verificationBlockedByRun)
+      await browserExpect(confirm).toBeDisabled()
+      await browserExpect(changeNote).toHaveValue('Name the existing action control')
+      await releaseFlagLease()
+      await browserExpect(confirm).toBeEnabled({ timeout: 15_000 })
       repaired = true
       const accepted = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/verify') && response.request().method() === 'POST')
-      await verifyDialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
+      await confirm.click()
       const response = await accepted
-      expect(response.ok()).toBe(true)
       const verification = await response.json()
+      expect(response.ok(), JSON.stringify(verification)).toBe(true)
+      expect(response.request().headers()['idempotency-key']).toBe(originalKey)
+      expect(await prisma.improvementAttempt.count({ where: { improvementId: panel.flag.id } })).toBe(1)
       await complete(verification.verificationAuditId)
+      const flagStatusPath = `/api/sites/${claimedProjectId}/flags/${panel.flag.sourceFlagId ?? panel.flag.id}?verification=${verification.verificationAuditId}`
+      const status = await page.request.get(flagStatusPath)
+      expect(status.status()).toBe(200)
+      expect(status.headers()['cache-control']).toBe('private, no-store')
+      expect(await status.json()).toEqual({ auditId: verification.verificationAuditId, verifying: false })
+      expect((await page.request.get(flagStatusPath.replace(verification.verificationAuditId, verification.parentAuditId))).status()).toBe(404)
       await browserExpect(page.getByText(SITE_DASHBOARD_COPY.flagResolved, { exact: true })).toBeVisible({ timeout: 15_000 })
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: verification.attemptId } }))
         .toMatchObject({ outcome: 'IMPROVED', comparable: true })

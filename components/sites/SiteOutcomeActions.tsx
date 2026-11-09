@@ -49,11 +49,17 @@ export function SiteOutcomeActions({ siteId, initial, initialView }: { siteId: s
   const receipt = accepted?.source === source ? accepted : null
   const enabled = receipt?.enabled ?? outcome.enabled
   const running = outcome.running || Boolean(receipt?.verificationQueued)
+  const siteCheckInProgress = view.activeRuns.some(run => {
+    if (run.status === 'INTERRUPTED') return false
+    // Only a newer summary can rule out selection of this Outcome.
+    if (run.scope === 'OUTCOMES') return Boolean(summary && !summary.running && view.readAt !== undefined && initialView.readAt !== undefined)
+    return run.scope !== 'UNKNOWN'
+  })
   useSiteDetailRefresh(JSON.stringify(['outcome', siteId, initial.id]), detailRevision(initialView, initial),
     detailRevision(view, outcome), readUnavailable || Boolean(view.recoveryUnavailable))
 
   return <>
-    {view.actions.check === 'available' ? <VerifyOutcomeButton siteId={siteId} outcomeId={outcome.id} running={running}
+    {view.actions.check === 'available' ? <VerifyOutcomeButton siteId={siteId} outcomeId={outcome.id} running={running} siteCheckInProgress={siteCheckInProgress}
       disabled={readUnavailable || Boolean(view.recoveryUnavailable) || !enabled || !outcome.bindings.some(binding => binding.required)}
       onRefresh={refresh} onAccepted={() => setAccepted(previous => ({ source,
         enabled: previous?.source === source ? previous.enabled : enabled, verificationQueued: true }))} /> : <SiteActionContinuation availability={view.actions.check}

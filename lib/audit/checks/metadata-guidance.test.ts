@@ -14,7 +14,7 @@ describe('source-bound metadata guidance', () => {
       expect(finding.fix).not.toMatch(/yourdomain|\/favicon\.ico|\/apple-touch-icon|Twitter Card|50-60|200 characters/)
     }
     expect(flags.find(flag => flag.checkId === 'favicon-missing')).toMatchObject({
-      problem: 'No favicon link is declared', evidence: 'No link rel="icon" or apple-touch-icon found in <head>',
+      problem: 'No usable favicon link is declared', evidence: 'The page head needs an icon link with a non-empty address for an image resource.',
     })
   })
 })

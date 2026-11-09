@@ -26,7 +26,7 @@ export function assembleFlowModuleCheck(input: {
       result.actionEvidence.candidateComplete === true && result.actionEvidence.candidateCount > 0)
     return { applicable: false, complete: true, passed: true,
       assertions: primaryAssertions.map(assertion => ({ ...assertion, disposition: 'observed' as const })) }
-  const trustAssertions = result.destinationTrust ? destinationTrustObservations(result) : []
+  const trustAssertions = result.destinationTrust || result.status === 'success' && result.destinationUX ? destinationTrustObservations(result) : []
   const contentAssertions = result.status === 'success' && result.destinationUX ? destinationContentObservations(result) : []
   const assertions: CheckAssertion[] = [...primaryAssertions, ...postClickAssertions(result.postClickMetrics, result.finalUrl, result.actionEvidence),
     ...pricingNavigationAssertions(result.multiStep?.pricingEvidence), ...trustAssertions, ...contentAssertions]

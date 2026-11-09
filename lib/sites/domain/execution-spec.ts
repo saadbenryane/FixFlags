@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { accountIntentSchema } from '../accounts/contracts'
 import { repairSourcesSchema } from './repair-source'
+import { actionContextSchema } from '@/lib/audit/flow/action-context'
 
 /** The areas a category check can cover. A category check inspects page
  * content, so it never covers the Pages card or site reachability. */
@@ -20,11 +21,11 @@ export const verificationTargetSchema = z.discriminatedUnion('kind', [
   ])
 import { scanAccessIntentSchema } from '@/lib/audit/scan-access-intent'
 export const monitoredBehaviorSchema = z.enum(['flow', 'pricing-navigation', 'slow-replay', 'journeys'])
-export const actionContextSchema = z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/)
 export const executionSpecSchema = z.object({
   scanAccess: scanAccessIntentSchema.optional(),
   engine: z.literal('progressive-v1').optional(),
   browserCollection: z.literal('per-profile-v1').optional(),
+  engagementCollection: z.literal('split-v1').optional(),
   reviewDepth: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   monitoringPages: z.array(z.string().url()).min(1).max(24).optional(),
   monitoringBehaviors: z.array(z.object({ pageUrl: z.string().url(), behaviors: z.array(monitoredBehaviorSchema).max(4),

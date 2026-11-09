@@ -10,10 +10,17 @@ export type CheckAssertion = {
   passed: boolean
   disposition?: 'observed'
   complete?: boolean
+  eventResponseQualified?: true
+  libraryResponseQualified?: true
+  pageResponseQualified?: true
   context?: string
   /** Individually measured scopes within an aggregate assertion. Missing scopes are absent. */
   measurements?: Array<{ context: string; passed: boolean; observed: string }>
   targets?: Array<{ selector: string; label: string; context?: string }>
+}
+
+export function currentPageResponseObservation(assertion: Pick<CheckAssertion, 'key' | 'passed' | 'pageResponseQualified'>): boolean {
+  return assertion.key !== 'page-response' || !assertion.passed || assertion.pageResponseQualified === true
 }
 
 export type CheckRecorder = (assertion: CheckAssertion) => void

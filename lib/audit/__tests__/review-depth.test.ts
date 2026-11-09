@@ -102,6 +102,21 @@ describe('review depth', () => {
     expect(plan.openCheckUrls).toContain('https://example.com/enterprise')
   })
 
+  it('reserves depth-three capacity for deeper pages before filling unused slots with direct links', () => {
+    const retained = ORIGIN + 'retained'
+    const pastedLinks = Array.from({ length: 4 }, (_, index) => ({ href: '/direct-' + index, text: 'Details' }))
+    const input = { pastedUrl: ORIGIN, depth: 3 as const, pastedLinks, reviewCeiling: 6 }
+    const first = planReviewTargets({ ...input, discoveryPass: 'first', retainedUrls: [retained] })
+    expect(first.reviewUrls).toEqual([ORIGIN, retained, ORIGIN + 'direct-0', ORIGIN + 'direct-1'])
+    expect(first.truncated).toBe(false)
+    const second = planReviewTargets({ ...input, discoveryPass: 'second', retainedUrls: first.reviewUrls,
+      linkedPageLinks: [{ pageUrl: retained, links: [{ href: '/second-hop', text: 'Get started' }] }] })
+    expect(second.reviewUrls).toEqual([...first.reviewUrls, ORIGIN + 'second-hop', ORIGIN + 'direct-2'])
+    expect(second.truncated).toBe(true)
+    expect(planReviewTargets({ ...input, discoveryPass: 'second', retainedUrls: first.reviewUrls }).reviewUrls)
+      .toEqual([...first.reviewUrls, ORIGIN + 'direct-2', ORIGIN + 'direct-3'])
+  })
+
   it('ranks conversion pages ahead of legal footer links even when legal comes first in the DOM', () => {
     const ranked = rankDestinations(collectEligibleDestinations(ORIGIN, LINKS))
     const paths = ranked.map((item) => item.canonical.pathname)

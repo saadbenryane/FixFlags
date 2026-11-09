@@ -1,5 +1,7 @@
 import type { SearchObservation } from './contracts'
 
+export const CANONICAL_HEAD_SELECTOR = 'head > link[rel~="canonical" i]:not([hreflang], [lang], [media], [type])'
+
 /** Client-safe declaration inventory. Evaluators and parsers stay in the worker. */
 export const SEARCH_DEFINITIONS = [
   { evaluator: 'presentation', responsibility: 'presentation', requiredEvidence: ['original-html', 'rendered-dom'],
@@ -27,6 +29,18 @@ export const SEARCH_DEFINITIONS = [
   evaluator: string; responsibility: SearchObservation['responsibility']; requiredEvidence: readonly string[];
   checkIds: readonly string[]; assertions: readonly string[]; guidance: string;
 }>
+
+export const SEARCH_LOCAL_MODULES = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
+  .map(item => 'module:search-' + item.evaluator)
+
+export function isLocalSearchTarget(targetKey: string): boolean {
+  return targetKey === 'module:search' || SEARCH_LOCAL_MODULES.includes(targetKey)
+}
+
+export function isSearchProviderModule(module: string): boolean {
+  return ['google', 'search-google', 'search-google-index', 'search-google-performance'].includes(module)
+}
+
 export type SearchCheckIdentity = typeof SEARCH_DEFINITIONS[number]['checkIds'][number]
 export const SEARCH_CHECK_REGISTRY = Object.fromEntries(SEARCH_DEFINITIONS.flatMap(definition =>
   definition.checkIds.map(id => [id, { ...definition, id, version: 2, resultSchema: 'search-observation-v2',

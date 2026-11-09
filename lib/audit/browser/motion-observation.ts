@@ -125,7 +125,7 @@ export async function collectReducedMotionWindow(browser: Browser, pageUrl: stri
     page = session.page
     try {
       const result = await observation!
-      const content = await observeViewport(page, { profile: 'motion', includeActions: false, excludeLoading: true })
+      const content = await observeViewport(page, { profile: 'motion', includeActions: false })
       return { ...result, restricted: documentEvidenceWithheld(session.safetyRestrictions), contentVisible: content.content,
         complete: result.complete && result.pageUrl === content.pageUrl }
     } finally { session.disposeNetwork() }

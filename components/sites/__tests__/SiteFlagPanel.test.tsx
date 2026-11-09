@@ -12,8 +12,8 @@ import { readSiteHomeView } from '@/lib/sites/site-view-contract'
 import { SITE_ACTION_COPY as A } from '@/lib/marketing/copy/site-actions'
 
 // The refresh contract under test supplies this existing action's running state.
-vi.mock('../SiteFlagActions', () => ({ SiteFlagActions: ({ verifying }: { verifying: boolean }) =>
-  <button disabled={verifying}>Check recorded fix</button> }))
+vi.mock('../SiteFlagActions', () => ({ SiteFlagActions: ({ verifying, initialVerificationAuditId }: { verifying: boolean; initialVerificationAuditId?: string }) =>
+  <button disabled={verifying} data-verification={initialVerificationAuditId}>Check recorded fix</button> }))
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -178,6 +178,20 @@ it('refreshes the selected incident when its representative capture changes with
   expect(screen.getByRole('button', { name: 'Check recorded fix' })).toBeEnabled()
   expect(fetch).toHaveBeenCalledTimes(2)
   expect(fetch).toHaveBeenLastCalledWith('/api/sites/fixture-site/flags/incident', expect.objectContaining({ cache: 'no-store' }))
+})
+
+it('keeps a retained verification identity on its original captured Flag when the incident moves', async () => {
+  const view = viewFixture()
+  let finish!: (response: Response) => void
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(payload({ verifying: true, activeVerificationAuditId: 'first-check' })))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve })))
+  const rendered = render(panel(view), { wrapper })
+  expect(await screen.findByRole('button', { name: 'Check recorded fix' })).toHaveAttribute('data-verification', 'first-check')
+  rendered.rerender(panel({ ...view, flags: [{ ...view.flags[0], sourceFlagId: 'source-2', verificationState: 'verifying' }] }))
+  expect(screen.getByRole('button', { name: 'Check recorded fix' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Check recorded fix' })).not.toHaveAttribute('data-verification')
+  await act(async () => { finish(Response.json(payload({ sourceFlagId: 'source-2', verifying: true, activeVerificationAuditId: 'second-check' }))) })
+  expect(screen.getByRole('button', { name: 'Check recorded fix' })).toHaveAttribute('data-verification', 'second-check')
 })
 
 it('refreshes changed repair evidence from a published Site view without changing the Flag identity or status', async () => {

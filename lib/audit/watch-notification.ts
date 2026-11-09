@@ -1,3 +1,5 @@
+import type { EmailDeliveryState } from '@/lib/email/delivery-state'
+
 /**
  * Watch alert delivery policy.
  *
@@ -22,7 +24,7 @@ export type WatchNotificationStatusLike =
  * `none`         No alert was warranted, so there is nothing to report.
  * `delivering`   An alert is warranted and FixFlags is still getting it out.
  * `accepted`     The provider accepted the message. Inbox delivery is unproven.
- * `undelivered`  FixFlags stopped trying. The customer was never told.
+ * `undelivered`  Attempts ended without confirmation or the provider reported a failure.
  */
 export type WatchAlertDeliveryState = 'none' | 'delivering' | 'accepted' | 'undelivered'
 
@@ -38,11 +40,12 @@ export function watchAlertDelivery(input: {
   attempts: number
   attemptCeiling?:number
   leaseUntil?: Date | string | null
+  providerState?: EmailDeliveryState
   now?: Date
 }): WatchAlertDeliveryState {
   const status = input.status
   if (!status || status === 'NOT_APPLICABLE') return 'none'
-  if (status === 'SENT') return 'accepted'
+  if (status === 'SENT') return input.providerState === 'bounced' || input.providerState === 'failed' ? 'undelivered' : 'accepted'
   if (status === 'SENDING') {
     const leaseUntil = input.leaseUntil ? new Date(input.leaseUntil) : null
     const leaseExpired = leaseUntil == null || (!Number.isNaN(leaseUntil.getTime())

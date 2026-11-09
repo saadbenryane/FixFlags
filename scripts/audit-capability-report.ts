@@ -1,12 +1,20 @@
 import { AUDIT_CAPABILITIES, capabilitySummary } from '@/lib/audit/capability-matrix'
 import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
-import { ADVERTISED_COVERAGE_REGISTRY } from '@/lib/audit/advertised-coverage'
+import { ADVERTISED_COVERAGE_REGISTRY, advertisedCoverageObligations } from '@/lib/audit/advertised-coverage'
+import { sourceIdentity } from './verification-candidate.mjs'
 
 function pad(value: string, width: number): string {
   return value.length >= width ? value : value + ' '.repeat(width - value.length)
 }
 
 function main() {
+  if (process.argv.includes('--json')) {
+    console.log(JSON.stringify({ schemaVersion: 'fixflags.capability-acceptance-inventory.v1',
+      generatedAt: new Date().toISOString(), source: sourceIdentity(),
+      boundary: 'Inventory only. Required scenarios and registered evaluators are not execution or acceptance evidence.',
+      responsibilities: advertisedCoverageObligations() }, null, 2))
+    return
+  }
   const summary = capabilitySummary()
 
   console.log('FixFlags audit capability matrix\n')

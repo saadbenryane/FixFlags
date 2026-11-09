@@ -2,7 +2,7 @@
  * Audit-time helper: loads an audit's URL + flags from the database and
  * forwards them to `persistAuditToGraph()`. Lives here (not in lib/audit/)
  * so the audit pipeline doesn't have a hard import on graph internals beyond
- * this single function - which it calls fire-and-forget after finalization.
+ * this single function, which it awaits after publishing the report.
  *
  * See docs/growth/architecture.md for the full data flow.
  */
@@ -20,9 +20,8 @@ import type { FlagSnapshot, SiteSnapshot } from '@/lib/graph/types'
  *  - audit.technologyObservations → Technology graph
  *  - audit.pages[].performanceData.industryGuess → Site.industryGuess
  *
- * Determinism: identical input → identical graph state. The unique constraint
- * on graph_issue_occurrence.flagId makes the operation idempotent across
- * retries.
+ * The graph transaction links and counts an Audit together. Its unique Flag
+ * occurrence key also prevents retries from duplicating issues.
  */
 export async function persistAuditGraphSnapshot(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUnique({

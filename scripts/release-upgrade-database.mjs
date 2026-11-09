@@ -18,7 +18,7 @@ const cacheDirectory = path.join(process.cwd(), '.cache')
 mkdirSync(cacheDirectory, { recursive: true })
 const directory = mkdtempSync(path.join(cacheDirectory, 'upgrade-rehearsal-'))
 const admin = new PrismaClient(), db = new PrismaClient({ datasourceUrl: url.href })
-let created = false
+let created = false, previousDb
 const git = args => execFileSync('git', args, { encoding: 'utf8' })
 const run = args => {
   const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...args], {
@@ -53,22 +53,25 @@ try {
   })});`)
   await admin.$executeRawUnsafe(`CREATE DATABASE "${name}"`); created = true
   run(['migrate', 'deploy', '--config', previousConfig])
+  run(['generate', '--config', previousConfig])
+  const { PrismaClient: PreviousClient } = createRequire(import.meta.url)(previousClientDirectory)
+  previousDb = new PreviousClient({ datasourceUrl: url.href })
   const previousNames = files.filter(file => file.endsWith('/migration.sql')).map(file => file.split('/').at(-2)).sort()
-  const ledger = await db.$queryRaw`SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY migration_name`
+  const ledger = await previousDb.$queryRaw`SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY migration_name`
   if (JSON.stringify(ledger.map(row => row.migration_name)) !== JSON.stringify(previousNames)) throw new Error('Previous migration ledger does not match its exact revision')
-  const user = await db.user.create({ data: { email: 'upgrade-' + name + '@example.test', name: 'Upgrade proof', plan: 'BUILDER',
+  const user = await previousDb.user.create({ data: { email: 'upgrade-' + name + '@example.test', name: 'Upgrade proof', plan: 'BUILDER',
     subscriptionStatus: 'ACTIVE', stripeCustomerId: 'cus_' + name, stripeSubscriptionId: 'sub_' + name }, select: { id: true } })
-  const site = await db.project.create({ data: { userId: user.id, name: 'Retained website', url: 'https://example.test/supplied-path',
+  const site = await previousDb.project.create({ data: { userId: user.id, name: 'Retained website', url: 'https://example.test/supplied-path',
     canonicalHost: 'example.test', watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-19T12:00:00Z') }, select: { id: true } })
-  const audit = await db.audit.create({ data: { userId: user.id, projectId: site.id, url: 'https://example.test/supplied-path', status: 'COMPLETED',
+  const audit = await previousDb.audit.create({ data: { userId: user.id, projectId: site.id, url: 'https://example.test/supplied-path', status: 'COMPLETED',
     isPublic: false, completedAt: new Date(), htmlMetadata: { retainedEvidenceReference: 'private-retained-capture' } }, select: { id: true } })
   const outcomeId = 'upgrade-outcome-' + randomUUID(), bindingId = 'upgrade-binding-' + randomUUID()
-  await db.$executeRaw`INSERT INTO site_outcomes (id, "projectId", name, slug, kind, "confirmedAt", "updatedAt")
+  await previousDb.$executeRaw`INSERT INTO site_outcomes (id, "projectId", name, slug, kind, "confirmedAt", "updatedAt")
     VALUES (${outcomeId}, ${site.id}, 'Retained page agreement', 'retained-page', 'AVAILABILITY', clock_timestamp(), clock_timestamp())`
-  await db.$executeRaw`INSERT INTO outcome_execution_bindings (id, "outcomeId", key, mechanism, config, version, "updatedAt")
+  await previousDb.$executeRaw`INSERT INTO outcome_execution_bindings (id, "outcomeId", key, mechanism, config, version, "updatedAt")
     VALUES (${bindingId}, ${outcomeId}, 'retained-http', 'HTTP_AVAILABILITY',
       ${JSON.stringify({ startUrl: 'https://example.test/supplied-path', expectedSelector: 'body' })}::jsonb, 3, clock_timestamp())`
-  async function retained() {
+  async function retained(db) {
     return {
       user: await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { id: true, plan: true, subscriptionStatus: true, stripeCustomerId: true, stripeSubscriptionId: true } }),
       site: await db.project.findUniqueOrThrow({ where: { id: site.id }, select: { id: true, userId: true, url: true, canonicalHost: true, watchInterval: true, watchNextRunAt: true } }),
@@ -77,40 +80,35 @@ try {
       binding: await db.$queryRaw`SELECT id, "outcomeId", key, mechanism, config, scope, version, enabled FROM outcome_execution_bindings WHERE id = ${bindingId}`,
     }
   }
-  const before = JSON.stringify(await retained())
+  const before = JSON.stringify(await retained(previousDb))
   run(['migrate', 'deploy', '--schema', 'prisma/schema.prisma'])
   run(['migrate', 'status', '--schema', 'prisma/schema.prisma'])
   run(['migrate', 'diff', '--from-schema-datasource', 'prisma/schema.prisma', '--to-schema-datamodel', 'prisma/schema.prisma', '--exit-code'])
-  if (JSON.stringify(await retained()) !== before) throw new Error('Upgrade changed subscription, Site, history or private evidence identity')
+  if (JSON.stringify(await retained(db)) !== before) throw new Error('Upgrade changed subscription, Site, history or private evidence identity')
   const permissions = await db.$queryRaw`SELECT "authorizationRevision" FROM site_outcomes WHERE id = ${outcomeId}`
   if (permissions[0]?.authorizationRevision !== 1) throw new Error('Upgrade did not establish the retained authorization baseline')
-  run(['generate', '--config', previousConfig])
-  const { PrismaClient: PreviousClient } = createRequire(import.meta.url)(previousClientDirectory)
-  const previousDb = new PreviousClient({ datasourceUrl: url.href })
   const rehearsalId = 'rollback-rehearsal-' + randomUUID()
   const rollback = new Error('Roll back compatibility rehearsal')
   try {
-    try {
-      await previousDb.$transaction(async tx => {
-        // Full previous-client reads catch removed or incompatible columns.
-        await tx.user.findUniqueOrThrow({ where: { id: user.id } })
-        await tx.project.findUniqueOrThrow({ where: { id: site.id } })
-        await tx.audit.findUniqueOrThrow({ where: { id: audit.id } })
-        await tx.improvement.create({ data: { id: rehearsalId, projectId: site.id, fingerprint: rehearsalId,
-          title: 'Compatibility rehearsal', judgment: 'Controlled local observation', expectedBenefit: 'Schema compatibility',
-          recommendedChange: 'No website change', successCondition: 'Previous client reads and writes succeed' } })
-        await tx.improvementAttempt.create({ data: { id: rehearsalId, improvementId: rehearsalId,
-          sourceAuditId: audit.id, builder: 'rollback-schema-rehearsal' } })
-        await tx.improvementAttempt.findUniqueOrThrow({ where: { id: rehearsalId } })
-        throw rollback
-      }, { timeout: 30_000 })
-      throw new Error('Compatibility rehearsal unexpectedly committed')
-    } catch (error) { if (error !== rollback) throw error }
-  } finally { await previousDb.$disconnect() }
+    await previousDb.$transaction(async tx => {
+      // Full previous-client reads catch removed or incompatible columns.
+      await tx.user.findUniqueOrThrow({ where: { id: user.id } })
+      await tx.project.findUniqueOrThrow({ where: { id: site.id } })
+      await tx.audit.findUniqueOrThrow({ where: { id: audit.id } })
+      await tx.improvement.create({ data: { id: rehearsalId, projectId: site.id, fingerprint: rehearsalId,
+        title: 'Compatibility rehearsal', judgment: 'Controlled local observation', expectedBenefit: 'Schema compatibility',
+        recommendedChange: 'No website change', successCondition: 'Previous client reads and writes succeed' } })
+      await tx.improvementAttempt.create({ data: { id: rehearsalId, improvementId: rehearsalId,
+        sourceAuditId: audit.id, builder: 'rollback-schema-rehearsal' } })
+      await tx.improvementAttempt.findUniqueOrThrow({ where: { id: rehearsalId } })
+      throw rollback
+    }, { timeout: 30_000 })
+    throw new Error('Compatibility rehearsal unexpectedly committed')
+  } catch (error) { if (error !== rollback) throw error }
   if (await db.improvement.count({ where: { id: rehearsalId } }) ||
     await db.improvementAttempt.count({ where: { id: rehearsalId } }))
     throw new Error('Compatibility rehearsal left synthetic writes behind')
-  if (JSON.stringify(await retained()) !== before) throw new Error('Compatibility rehearsal changed retained evidence')
+  if (JSON.stringify(await retained(db)) !== before) throw new Error('Compatibility rehearsal changed retained evidence')
   const evidence = { schemaVersion: 1, status: 'PASS', gitSha: git(['rev-parse', 'HEAD']).trim(), previousGitSha: previous,
     previousClientVersion, previousGeneratorVersion,
     completedAt: new Date().toISOString(), checks: ['previous migrations applied', 'retained subscription and Site identity',
@@ -124,7 +122,7 @@ try {
   }
   console.log('Upgrade proof passed from ' + previous.slice(0, 8) + ': subscriptions, Site identity, history and private evidence references preserved.')
 } finally {
-  await db.$disconnect()
+  await Promise.all([db.$disconnect(), previousDb?.$disconnect()])
   if (created) await admin.$executeRawUnsafe(`DROP DATABASE "${name}" WITH (FORCE)`)
   await admin.$disconnect()
   rmSync(directory, { recursive: true, force: true })

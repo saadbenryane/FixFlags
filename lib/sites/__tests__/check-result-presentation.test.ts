@@ -16,4 +16,9 @@ describe('plain-language tracking observations', () => {
     const failure = { ...suppressed, status: 'findings' as const }
     expect(presentCheckResult(failure).observation).toBe(failure.observation)
   })
+  it('preserves the actual library observation in older Tracking receipts', () => {
+    const library = { ...result, reason: 'tracking_provider_unverified' as const, assertionKey: 'tracking-library',
+      name: 'Vercel Analytics: library resource', observation: 'The library URL returned HTML. A successful library transfer was not established.' }
+    expect(presentCheckResult(library)).toEqual({ name: library.name, observation: library.observation })
+  })
 })

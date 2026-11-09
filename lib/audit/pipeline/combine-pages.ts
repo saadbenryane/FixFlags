@@ -2,6 +2,7 @@ import { computeRubricScores } from '../checks'
 import type { TriageOutput } from '../judge-triage-schema'
 import type { PageEvidence } from './types'
 import type { PageSpeedResult } from '../pagespeed'
+import { hasCurrentPageSpeedLabMeasurement } from '../performance-measurement'
 import { projectDeterministicFlags } from '../flag-projection'
 import type { DeterministicFlag } from '../flag-types'
 import type { RubricName } from '../constants'
@@ -12,6 +13,13 @@ function lowestPagespeed(results: Array<PageSpeedResult | null>): PageSpeedResul
   return scored.reduce((worst, current) =>
     (current.score ?? 100) < (worst.score ?? 100) ? current : worst
   )
+}
+
+/** Retain raw PageSpeed data on the page while qualifying its use as current lab evidence. */
+export function currentPageSpeedLab(page: Pick<PageEvidence, 'url' | 'desktop' | 'mobile'>, device: PageSpeedResult['strategy']) {
+  const result = page[device]
+  return result?.strategy === device && hasCurrentPageSpeedLabMeasurement(result, page.url) &&
+    [result.score, result.lcp, result.cls, result.fcp, result.tbt].some(value => typeof value === 'number') ? result : null
 }
 
 /**
@@ -26,12 +34,12 @@ export function productScoresFromFlags(
   }
   const collapsed = collapsedPageFlags(pageRuns, recordedFlags)
   const failedModules = [...new Set(pageRuns.flatMap((page) => page.failedModules))]
-  const desktop = lowestPagespeed(pageRuns.map((page) => page.desktop))
-  const mobile = lowestPagespeed(pageRuns.map((page) => page.mobile))
-  return computeRubricScores(collapsed, desktop, mobile, {
+  const desktop = pageRuns.map(page => currentPageSpeedLab(page, 'desktop'))
+  const mobile = pageRuns.map(page => currentPageSpeedLab(page, 'mobile'))
+  return computeRubricScores(collapsed, lowestPagespeed(desktop), lowestPagespeed(mobile), {
     pageSpeedAvailable: {
-      desktop: pageRuns.every((page) => Boolean(page.desktop)),
-      mobile: pageRuns.every((page) => Boolean(page.mobile)),
+      desktop: desktop.every(Boolean),
+      mobile: mobile.every(Boolean),
     },
     failedModules,
   })
@@ -39,7 +47,7 @@ export function productScoresFromFlags(
 
 /** True when every fully reviewed page has desktop and mobile PageSpeed. */
 export function reviewedPagesHaveFullPageSpeed(pageRuns: PageEvidence[]): boolean {
-  return pageRuns.length > 0 && pageRuns.every((page) => Boolean(page.desktop) && Boolean(page.mobile))
+  return pageRuns.length > 0 && pageRuns.every(page => currentPageSpeedLab(page, 'desktop') && currentPageSpeedLab(page, 'mobile'))
 }
 
 /**

@@ -103,7 +103,7 @@ stopped in their owning terminals, independently of `dev:stop`.
 
 ## Environment variables
 
-Required for dev: `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (`http://localhost:3000`), `NEXT_PUBLIC_APP_URL` (`http://localhost:3000`). AI explanation needs a usable provider key; independent deterministic execution does not. Doctor reports missing capabilities as limitations, not a release-ready result. Production readiness and credentialed release proof still require every shipped capability.
+Required for dev: `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (`http://localhost:3000`), `NEXT_PUBLIC_APP_URL` (`http://localhost:3000`). AI explanation needs a usable provider key and explicitly configured operational dollar limits; independent deterministic execution does not. Doctor reports missing capabilities as limitations, not a release-ready result. Production readiness and credentialed release proof still require every shipped capability.
 
 See `.env.example` for full list.
 
@@ -156,6 +156,8 @@ coordinated runtime cutover, not a rolling mixed-version migration. The isolated
 execution verifier exercises fresh migration history, retained-row upgrades,
 schema drift, receipt custody and completion projection without changing the
 configured database. Native browser and E2E acceptance remain separate.
+
+The November 5 provider admission and exact interpretation changes also require a coordinated cutover. Drain older web/worker processes before applying the additive migrations, configure the same spending-control mode (and caps when application mode is selected), and start both services from the candidate. An older writer does not implement the new spend admission protocol. Evidence-version triggers do protect retained observation writes, but schema compatibility alone does not establish mixed-runtime budget enforcement. Preserve all original receipts and unknown allocations. A rollback must keep paid inference disabled until every running process implements the intended admission protocol.
 
 PageSpeed, connected Google checks, and AI explanations use separate bounded queues.
 `AUDIT_PAGESPEED_CONCURRENCY`, `AUDIT_GOOGLE_CONCURRENCY`, and
@@ -283,6 +285,8 @@ One foreground writer may use the main checkout. Concurrent writers use separate
 - Liveness: `curl http://localhost:3000/api/health`
 - Launch readiness: `curl http://localhost:3000/api/health/ready` (503 until every launch-required subsystem is ready)
 - AI readiness: `GET /api/health/ai`
+- AI spending control: `LLM_BUDGET_MODE=provider` is the default and the owner's chosen policy. Configure spending in the provider account; FixFlags does not certify that the provider has an enforced hard limit. Existing attempt, measured usage, unknown-consumption and customer allowance receipts remain active. No second set of app limits is required. Optional `LLM_BUDGET_MODE=application` requires `LLM_BUDGET_DAILY_USD`, `LLM_BUDGET_SITE_DAILY_USD` and `LLM_BUDGET_RUN_USD` identically on web and worker, as positive USD values with up to six decimal places. In that mode, atomic UTC-day, Site-day and run windows freeze their cap on first admission, unsupported prices or missing/conflicting caps refuse dispatch, and unknown usage remains reserved. Responses settle according to their admitted mode even after a configuration change. Native checks and customer entitlements remain independent.
+- A custom `CHAT_BASE_URL` requires all four `CHAT_COST_*_PER_MTOK` values from its actual input/output/cache-read/cache-write contract. Its configured rate snapshot stays separate from direct provider prices. Unsupported reported tiers, models or modifiers remain unpriced. Two ordinary `LLM_COST_*` overrides do not establish a new model's cache/context price contract.
 - Worker diagnostics: `GET /api/health/worker` (heartbeat age, queue depth)
 - Browser diagnostics: `GET /api/health/browser` (worker-confirmed Playwright state + R2)
 - Audit pipeline: see `docs/audit-pipeline.md`
@@ -296,7 +300,7 @@ One foreground writer may use the main checkout. Concurrent writers use separate
 |---------|-------------|-----|
 | `Error: NEXT_PUBLIC_APP_URL is required` | Running CLI script without `.env.local` | Use `DOTENV_CONFIG_PATH=.env.local` prefix |
 | "FixFlags could not finish this check" | Missing R2 config in production | Set all `R2_*` env vars |
-| Scan completes but no AI score/verdict | Missing `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Set on Railway web service, redeploy. Check `/api/health` `aiConfigured` |
+| Scan completes but no AI score/verdict | Missing provider key, unavailable provider, missing price or operational budget | Inspect the authorized provider probe and recorded task failure. Configure the explicit dollar limits on web and worker before dispatch. Key presence alone does not establish availability. |
 | PageSpeed partial / 429 | No `PAGESPEED_API_KEY` | Set key in Railway; retries added in pipeline |
 | Audits stuck in QUEUED | Redis not running | `docker compose up -d` |
 | Audits stuck then fail | Worker down past give-up window | Check `/api/health/worker`; see `recover-audit-job.ts` |
@@ -307,9 +311,9 @@ One foreground writer may use the main checkout. Concurrent writers use separate
 ### Railway AI keys (production)
 
 1. Railway dashboard → FixFlags web service → Variables
-2. Set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`
+2. Set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`, and use the same `LLM_BUDGET_MODE` on web and worker (provider-managed by default).
 3. Redeploy (SDK clients init at module load)
-4. Verify: `curl https://fixflags.com/api/health/ready` → `"ok":true`
+4. Verify general readiness separately. `/api/health/ai` reports provider-key and budget configuration without spending. Its `validate=1` probe requires the current administrator session and trusted origin, records its operator receipt and consumes the same dollar budgets.
 5. Smoke: `npm run smoke:triage:prod`
 
 ## Local admin

@@ -10,6 +10,18 @@ export class SiteActionError extends Error {
   constructor(message: string, readonly status?: number, readonly code?: string) { super(message); this.name = 'SiteActionError' }
 }
 
+export function isSiteRunConflict(error: unknown): error is SiteActionError {
+  return error instanceof SiteActionError && error.status === 409 && error.code === 'SITE_RUN_IN_PROGRESS'
+}
+
+export async function refreshAfterVerificationConflict(error: unknown, signal: AbortSignal, refresh: () => unknown): Promise<never> {
+  if (!isSiteRunConflict(error)) throw error
+  if (!signal.aborted) {
+    try { await refresh() } catch { /* The admission refusal remains known even if the Site read fails. */ }
+  }
+  throw new SiteActionError(SITE_ACTION_COPY.verificationRetry, error.status, error.code)
+}
+
 const watchWrite = z.object({
   ok: z.literal(true), interval: watchIntervalSchema.nullable(), requested: watchIntervalSchema.nullable().optional(),
   code: z.string().optional(), message: z.string().optional(),

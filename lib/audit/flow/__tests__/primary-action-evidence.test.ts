@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { primaryActionAssertions, primaryPageContext, primaryControlContext, scopePrimaryActionFlags, PRIMARY_ACTION_VERIFICATION_RULE, type PrimaryActionEvidence } from '../primary-action-evidence'
+import { primaryActionAssertions, primaryActionResponseDestinationKey, primaryPageContext, primaryControlContext, scopePrimaryActionFlags, PRIMARY_ACTION_VERIFICATION_RULE, type PrimaryActionEvidence } from '../primary-action-evidence'
 import { runFlowChecks } from '../../checks/flow'
 import { scopedAssertionForTarget } from '../../checks/verification'
 import { checkReceiptSchema } from '../../checks/receipt'
@@ -57,6 +57,19 @@ describe('primary action repair evidence', () => {
     const changed = evidence({ controlContext: primaryControlContext({ pageContext, identity: '#other', label: 'Get started', href: pageUrl + 'start', controls: null }) })
     expect(scopedAssertionForTarget({ ...input, receipt: receipt(changed) })).toBeUndefined()
     expect(JSON.stringify(input.receipt)).not.toContain('PRIVATE_VALUE')
+  })
+  it('requires the same observed destination for a scoped response repair', () => {
+    const finalUrl = pageUrl + 'checkout?token=PRIVATE_VALUE'
+    const responseDestinationKey = primaryActionResponseDestinationKey(finalUrl)
+    const [flag] = runFlowChecks({ status: 'error_response', steps: [], finalUrl, httpStatus: 503,
+      actionEvidence: evidence({ response: 'error', httpStatus: 503, responseDestinationKey }) })
+    const compare = (observed: PrimaryActionEvidence) =>
+      scopedAssertionForTarget({ receipt: receipt(observed), checkId: flag.checkId, flag })
+    expect(compare(evidence({ responseDestinationKey }))?.assertion.passed).toBe(true)
+    expect(compare(evidence({ responseDestinationKey: primaryActionResponseDestinationKey(pageUrl + 'checkout/other') }))).toBeUndefined()
+    expect(compare(evidence({ responseDestinationKey: null }))).toBeUndefined()
+    expect(compare(evidence())).toBeUndefined()
+    expect(JSON.stringify(flag.evidenceTargets)).not.toContain('PRIVATE_VALUE')
   })
   it('never turns a restriction, challenge, or missing response into repair proof or a website error', () => {
     for (const response of ['restricted', 'challenge', 'unknown'] as const) {

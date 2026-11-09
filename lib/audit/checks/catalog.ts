@@ -5,7 +5,7 @@ import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { detectPagePurpose } from '../page-purpose'
 import { PAGE_CHECK_DEFINITIONS, type PageCheckDefinition } from './definitions'
-import { runMetadataChecks, runOgImageUrlCheck } from './metadata-checks'
+import { runMetadataChecks, runOgImageUrlCheck, runPreviewDeclarationChecks } from './metadata-checks'
 import { runPerformanceChecks } from './performance'
 import type { AxeViolation } from './accessibility'
 import { runSeoChecks } from './seo'
@@ -41,6 +41,9 @@ import type { HeadMetadataObservation } from './head-metadata'
 import type { DestinationCheckOptions } from './destination-evidence'
 import type { SectionLinkInventory } from './section-links'
 import type { PageLinkInventory } from './public-links'
+import type { PublicPagePreview } from './public-page-preview'
+import { isPreviewDeclarationCheck, usesPublicPreview, usesPublicPreviewImage } from './preview-contract'
+import { FAVICON_CHECK_VERSION, FAVICON_HREF_VERSION } from './favicon-declaration'
 
 export type PageCheckContext = {
   url: string; metadata: PageMetadata | null; desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
@@ -58,9 +61,11 @@ export type PageCheckContext = {
   headers?: Record<string, string> | null; axe?: AxeViolation[];
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
   publicDocument?: PublicDocument;
+  publicPreview?: PublicPagePreview;
+  checkVersions?: Readonly<Record<string, number>>;
   resourceTransport?: import('../resource-transport').ResourceTransport;
   deadline?: number;
-  destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt' | 'originalContexts' | 'retainedContexts'>;
+  destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt' | 'originalContexts' | 'retainedContexts' | 'legacyActionInventory'>;
   scope: { complete?: boolean; limitation?: string; collectedAt?: string };
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
@@ -110,9 +115,18 @@ export const PAGE_CHECKS = registerPageEvaluators([
       c.scope.limitation = PAGE_METADATA_LIMITATION
       return []
     }
-    return runMetadataChecks(metadata, c.record)
+    const faviconUnqualified = c.checkVersions?.['favicon-missing'] === FAVICON_CHECK_VERSION && metadata.faviconHrefVersion !== FAVICON_HREF_VERSION
+    return runMetadataChecks(faviconUnqualified ? { ...metadata, hasFavicon: undefined } : metadata,
+      c.record, !c.checkVersions || Object.keys(c.checkVersions).some(isPreviewDeclarationCheck))
   } },
-  { id: 'og-image', evaluate: c => {
+  { id: 'og-image', evaluate: async c => {
+    if (usesPublicPreview(c.checkVersions)) {
+      const preview = c.publicPreview
+      const findings = runPreviewDeclarationChecks(preview ?? {}, c.record, preview?.scope, c.checkVersions)
+      if (usesPublicPreviewImage(c.checkVersions)) findings.push(...await runOgImageUrlCheck(c.url, preview ?? {},
+        { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline }, preview?.scope))
+      return findings
+    }
     const ogImage = c.head && c.head.metadata.ogImage !== undefined ? c.head.metadata.ogImage : c.metadata?.ogImage
     const metadata = c.head || c.metadata ? { ogImage, linkBaseUrl: c.metadata?.linkBaseUrl } : null
     if (!metadata) {

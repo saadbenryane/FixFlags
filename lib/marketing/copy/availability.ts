@@ -21,6 +21,12 @@ const failures: Record<string, { summary: string; problem: string; evidence: str
     evidence: 'The public request succeeded, but the configured text or visible element was absent from the rendered page. An independent confirmation attempt also failed.',
     fix: 'Restore the configured content on the same page. Check rendering and client errors, then verify the same Outcome again.',
   },
+  missing_page: {
+    summary: 'The browser reached a missing page.',
+    problem: 'A required page shows a missing-page message.',
+    evidence: 'The browser received HTTP 200, but the page title or main heading identified a missing page. An independent confirmation attempt also failed.',
+    fix: 'Restore the original page or redirect it to its replacement, then verify this Outcome again.',
+  },
   dns_failure: {
     summary: 'The page hostname did not resolve.',
     problem: 'A required page could not be reached because its hostname did not resolve.',

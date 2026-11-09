@@ -44,6 +44,10 @@ Make routine monitoring operate on fresh executable evidence. Use deterministic 
 
 These recommendations follow current source inspection and the official sources linked below. No paid model comparison, GPU deployment, fine-tuning, production spend query or provider invoice reconciliation was performed for this research. The production model variables were inspected without exposing secrets; both services use the code defaults. The preceding credits-related HTTP 429 remains an availability observation, not a measured explanation of the entire bill. Railway RAM, database/storage and browser costs remain separate from OpenAI spend. FixFlags customer credits and entitlements are also separate from provider token charges.
 
+### Implementation follow-up
+
+The table below retains the research checkpoint, not a current implementation claim. The subsequent source correction is recorded in [the completion implementation](product-masterplan-history-2026-11-09.md#completion-implementation-november-5). Request-bound dollar admission, chat and operator custody, mixed-lifetime pricing and exact page-triage reuse are now implemented locally. Gateway prices require their own explicit four-category contract. Triage and journey defaults now use `gpt-4o-mini-2024-07-18` and `claude-haiku-4-5-20251001`, the published snapshots behind their former aliases. This does not select a new model family or establish quality, funding or savings. [OpenAI snapshots](https://developers.openai.com/api/docs/models/gpt-4o-mini) and [Claude versioning](https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions) establish the identity distinction. New receipts capture configured rates; earlier stored estimates remain unchanged. The current verified Sonnet 5 Standard input/output rates are $2/$10 per million tokens. [Anthropic pricing](https://platform.claude.com/docs/en/build-with-claude/prompt-caching).
+
 ### What exists today
 
 | Source owner | Observed implementation | Consequence for the plan |

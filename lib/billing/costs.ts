@@ -2,115 +2,14 @@ import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { CostPricingBasis, Prisma } from '@prisma/client'
 import { INITIAL_ANALYSIS_PROVIDER_PHASES, sumProviderPhases } from '@/lib/audit/provider-usage'
 import { prisma } from '@/lib/db'
-import { llmUsageSchema, type LlmUsage } from '@/lib/audit/provider-request'
-
-const MODEL_RATES: Record<string, { input: number; output: number; cacheReadMultiplier?: number; cacheWriteMultiplier?: number;
-  longContext?: { after: number; input: number; output: number } }> = {
-  'gpt-4o-mini': { input: 0.15, output: 0.6 },
-  // OpenAI Standard rates verified 2026-10-19: https://developers.openai.com/api/docs/models/gpt-6-luna
-  'gpt-6-luna': { input: 0.1, output: 0.5, cacheReadMultiplier: 0.1, cacheWriteMultiplier: 1.25,
-    longContext: { after: 272_000, input: 2, output: 1.5 } },
-  // Current models (USD per million tokens, sticker rates).
-  'claude-sonnet-5': { input: 3, output: 15 },
-  'claude-haiku-4-5': { input: 1, output: 5 },
-  'claude-opus-4-8': { input: 5, output: 25 },
-  // Legacy / retired IDs kept so historical audit rows still price correctly.
-  'claude-sonnet-4-20250514': { input: 3, output: 15 },
-  'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
-}
-
-function configuredRate(model: string, side: 'input' | 'output', contextTokens: number): number | null {
-  const override =
-    process.env[side === 'input' ? 'LLM_COST_INPUT_PER_MTOK' : 'LLM_COST_OUTPUT_PER_MTOK']
-  const defaults = MODEL_RATES[model]
-  const multiplier = defaults?.longContext && contextTokens > defaults.longContext.after ? defaults.longContext[side] : 1
-  const rate = override === undefined || override === ''
-    ? defaults && defaults[side] * multiplier : Number(override)
-  return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 ? rate : null
-}
-
-/**
- * Cached-input read multiplier vs. the base input rate.
- * Anthropic serves cache reads at ~0.1x; OpenAI cached input is ~0.5x.
- */
-function cacheReadMultiplier(model: string): number {
-  const configured = MODEL_RATES[model]?.cacheReadMultiplier
-  if (configured !== undefined) return configured
-  return model.includes('claude') ? 0.1 : 0.5
-}
-
-/**
- * Cache-write multiplier vs. the base input rate.
- * Rates follow the model. Current requests use the providers' default lifetime.
- */
-function cacheWriteMultiplier(model: string): number {
-  const configured = MODEL_RATES[model]?.cacheWriteMultiplier
-  if (configured !== undefined) return configured
-  return model.includes('claude') ? 1.25 : 0
-}
-
-function estimateSingleModelCostUsd(
-  model: string,
-  inputTokens: number,
-  outputTokens: number,
-  cacheReadTokens = 0,
-  cacheWriteTokens = 0,
-): number | null {
-  if ([inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens].every((value) => value === 0))
-    return 0
-  const contextTokens = inputTokens + cacheReadTokens + cacheWriteTokens
-  const inputRate = configuredRate(model, 'input', contextTokens)
-  const outputRate = configuredRate(model, 'output', contextTokens)
-  if (inputRate === null || outputRate === null) return null
-  const inputCost = (inputTokens / 1_000_000) * inputRate
-  const outputCost = (outputTokens / 1_000_000) * outputRate
-  const cacheReadCost = (cacheReadTokens / 1_000_000) * inputRate * cacheReadMultiplier(model)
-  const cacheWriteCost = (cacheWriteTokens / 1_000_000) * inputRate * cacheWriteMultiplier(model)
-  return inputCost + outputCost + cacheReadCost + cacheWriteCost
-}
-
-/**
- * Estimate LLM spend for a call (or a comma-joined multi-model run).
- *
- * `inputTokens` is normalized ordinary input, excluding cache reads and writes.
- * OpenAI includes both in its prompt total; Anthropic reports them separately.
- */
-export function estimateLlmCostUsd(
-  model: string,
-  inputTokens: number,
-  outputTokens: number,
-  cacheReadTokens = 0,
-  cacheWriteTokens = 0,
-): number | null {
-  if (
-    [inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens].some(
-      (value) => !Number.isFinite(value) || value < 0,
-    )
-  )
-    return null
-  // A combined token total cannot establish how much each model consumed.
-  if (model.split(',').filter((value) => value.trim()).length > 1) return null
-  return estimateSingleModelCostUsd(
-    model,
-    inputTokens,
-    outputTokens,
-    cacheReadTokens,
-    cacheWriteTokens,
-  )
-}
+import { type LlmUsage } from '@/lib/audit/provider-usage-contract'
+import { estimateLlmCostUsd, estimateLlmMeasurementCostUsd } from './provider-pricing'
+export { estimateLlmCostUsd, estimateLlmMeasurementCostUsd } from './provider-pricing'
 
 export type LlmCostPhase = 'triage' | 'prescription' | 'full'
 
-/** Preserve measured tokens when an unsupported processing tier cannot be priced. */
-export function estimateLlmMeasurementCostUsd(usage: LlmUsage): number | null {
-  if (!llmUsageSchema.safeParse(usage).success || (usage.reasoningTokens ?? 0) > usage.outputTokens) return null
-  if (usage.serviceTier !== undefined && usage.serviceTier !== 'default' && usage.serviceTier !== 'standard') return null
-  if (usage.provider === 'openai' && (usage.api !== 'chat.completions' || usage.serviceTier === 'standard')) return null
-  if (usage.provider === 'anthropic' && (usage.api !== 'messages' || usage.serviceTier === 'default')) return null
-  return estimateLlmCostUsd(usage.model, usage.inputTokens, usage.outputTokens, usage.cacheReadTokens, usage.cacheWriteTokens)
-}
-
 export interface AuditRunCostMetrics {
+  llmRecordedCostUsd?: number | null
   llmUsageComplete?: boolean
   llmMeasurements?: LlmUsage[]
   durationMs: number
@@ -182,7 +81,7 @@ function callerSpend(metrics: AuditRunCostMetrics): PhaseSpend {
   const complete = metrics.llmUsageComplete !== false
   if (metrics.llmMeasurements) {
     return { ...measurementTotals(metrics.llmMeasurements),
-      costUsd: complete ? priceMeasurements(metrics.llmMeasurements) : null }
+      costUsd: complete ? metrics.llmRecordedCostUsd !== undefined ? metrics.llmRecordedCostUsd : priceMeasurements(metrics.llmMeasurements) : null }
   }
   return {
     inputTokens: metrics.llmInputTokens,
@@ -205,7 +104,7 @@ async function readLoggedInitialAnalysis(auditId: string): Promise<PhaseSpend | 
   if (!events.length) return null
   const usage = sumProviderPhases(events, INITIAL_ANALYSIS_PROVIDER_PHASES)
   return { ...measurementTotals(usage.measurements), model: usage.model || null,
-    costUsd: usage.complete ? priceMeasurements(usage.measurements) : null }
+    costUsd: usage.complete ? usage.estimatedCostUsd : null }
 }
 
 export async function persistAuditRunCost(

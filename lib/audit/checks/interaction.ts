@@ -1,25 +1,17 @@
 import type { CaptureMetrics, PageLoadExperience } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
-import { blockingLoadingObservation, loadingDelayObservation, scopeLoadingFlag } from './loading-evidence'
+import { blockingLoadingObservation, delayedLoadingClearance, LOADING_DELAY_MS, loadingDelayObservation, scopeLoadingFlag } from './loading-evidence'
 import { motionAssertions, scopeMotionFlag } from './motion-evidence'
 
-function slowLoadFlag(load: PageLoadExperience | null | undefined): DeterministicFlag | null {
-  if (
-    !load?.loadingVisibleAtInitial || load.observation?.restricted === true ||
-    load.loadingVisibleAtFinal ||
-    load.loadingClearedMs === null ||
-    load.loadingClearedMs <= 3_000
-  ) {
-    return null
-  }
+function slowLoadFlag(load: PageLoadExperience, clearance: number): DeterministicFlag {
   const label = load.loadingLabel ? `"${load.loadingLabel}"` : 'loading UI'
-  const seconds = (load.loadingClearedMs / 1000).toFixed(1)
+  const seconds = (clearance / 1000).toFixed(1)
   return {
     checkId: 'loading-state-slow',
     rubric: 'EXPERIENCE',
     impactTag: 'CONVERSION',
-    severity: load.loadingClearedMs > 8_000 ? 'CRITICAL' : 'IMPORTANT',
+    severity: clearance > 8_000 ? 'CRITICAL' : 'IMPORTANT',
     problem: `Loading state delays usable content for ${seconds}s`,
     evidence: `The initial ${load.device} capture showed ${label}; it cleared after ${seconds}s. Initial screenshot: ${load.initialScreenshotUrl ?? 'not stored'}.`,
     fix: '1. Render the hero headline and primary CTA in the initial HTML\n2. Reserve skeletons for below-the-fold cards instead of covering the first screen\n3. Inline critical CSS and defer non-essential scripts so the first screen becomes usable faster',
@@ -40,12 +32,12 @@ export function runInteractionChecks(metrics: InteractionEvidence | null, record
     metrics?.motionComplete === true ? !metrics.motionIgnoresReducedPreference : undefined)
   record?.(blockingLoadingObservation(metrics))
   const windows = [metrics?.loadExperience, metrics?.desktopLoadExperience].filter((window): window is PageLoadExperience => Boolean(window))
-  if (windows.length) windows.forEach(window => record?.(loadingDelayObservation(window, 3000)))
+  if (windows.length) windows.forEach(window => record?.(loadingDelayObservation(window, LOADING_DELAY_MS)))
   else recordObservation(record, 'loading-delay', 'Recorded loading delay', 'Blocking initial loading UI clears within 3000ms',
     'No initial and final loading window was recorded.', undefined, true)
   const findings: DeterministicFlag[] = []
 
-  if (metrics?.stuckLoadingIndicator && metrics.loadingObservation?.restricted !== true) {
+  if (metrics?.stuckLoadingIndicator && !metrics.loadingObservation?.restricted && !metrics.loadingObservation?.interrupted) {
     const label = metrics.stuckLoadingLabel ? `"${metrics.stuckLoadingLabel}"` : 'loading UI'
     findings.push(scopeLoadingFlag({
       checkId: 'loading-indicator-stuck',
@@ -60,10 +52,12 @@ export function runInteractionChecks(metrics: InteractionEvidence | null, record
     }, [metrics.loadingObservation]))
   }
 
-  const mobileSlow = slowLoadFlag(metrics?.loadExperience)
-  const desktopSlow = slowLoadFlag(metrics?.desktopLoadExperience)
-  const slow = mobileSlow ?? desktopSlow
-  if (slow) findings.push(scopeLoadingFlag(slow, windows.filter(window => slowLoadFlag(window)).map(window => window.observation)))
+  const delayed = windows.flatMap(window => {
+    const clearance = delayedLoadingClearance(window, LOADING_DELAY_MS)
+    return clearance === null ? [] : [{ window, clearance }]
+  })
+  const first = delayed[0]
+  if (first) findings.push(scopeLoadingFlag(slowLoadFlag(first.window, first.clearance), delayed.map(({ window }) => window.observation)))
 
   if (metrics?.motionIgnoresReducedPreference) {
     const label = metrics.motionSampleLabel ? `"${metrics.motionSampleLabel}"` : 'animated element'

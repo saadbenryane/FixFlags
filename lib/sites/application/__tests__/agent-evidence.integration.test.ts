@@ -21,7 +21,11 @@ run('Site agent canonical evidence', () => {
     auditId = (await prisma.audit.create({ data: { userId, projectId, url: 'https://example.com/', status: 'COMPLETED', completedAt: new Date() } })).id
     model.mockReset().mockRejectedValue(new Error('External model calls are disabled in this local fixture'))
   })
-  afterEach(async () => { vi.restoreAllMocks(); await prisma.user.deleteMany({ where: { id: userId } }) })
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await prisma.audit.deleteMany({ where: { userId } })
+    await prisma.user.deleteMany({ where: { id: userId } })
+  })
   const ask = (message: string, flagId?: string) => sendSiteAgentMessage({ siteId: projectId, userId,
     requestKey: randomUUID(), message, ...(flagId ? { flagId } : {}) })
   const capture = (data: Partial<Prisma.FlagUncheckedCreateInput> = {}) => prisma.flag.create({ data: { auditId,
@@ -41,6 +45,22 @@ run('Site agent canonical evidence', () => {
     const answer = await ask("What's unresolved?")
     expect(answer.reply).toContain(flag.problem)
     expect(answer.citations).toEqual(expect.arrayContaining([expect.objectContaining({ id: flag.id })]))
+    expect(model).not.toHaveBeenCalled()
+  })
+
+  it('reports an unavailable comparison without losing current finding answers', async () => {
+    const flag = await capture()
+    const foreign = await prisma.project.create({ data: { userId, canonicalHost: 'other.example.com',
+      url: 'https://other.example.com/', name: 'Separate Site' } })
+    const parent = await prisma.audit.create({ data: { projectId: foreign.id, userId, url: foreign.url,
+      status: 'COMPLETED', completedAt: new Date() } })
+    await prisma.audit.update({ where: { id: auditId }, data: { parentId: parent.id, executionSpec: {
+      version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/', environment: 'production',
+      checks: { 'title-missing': 2 }, outcomes: [], verificationTarget: null,
+    } } })
+
+    expect(await ask('What changed?')).toMatchObject({ reply: expect.stringContaining('comparison is unavailable'), citations: [] })
+    expect(await ask("What's unresolved?")).toMatchObject({ reply: expect.stringContaining(flag.problem) })
     expect(model).not.toHaveBeenCalled()
   })
 

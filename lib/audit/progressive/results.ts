@@ -7,11 +7,12 @@ import { recordAssertionVerifiers } from '../checks/verification'
 import { searchAttentionSchema } from '../search/contracts'
 import { persistDeterministicFlags } from '../persist'
 import type { TaskContext } from './registry'
-import type { TaskArtifact } from './contracts'
+import { TaskFailure, type TaskArtifact } from './contracts'
 import { observationsForFlag, supportingObservationsSchema } from '../flag-observations'
 import { nativeHttpEvidenceSchema } from '../native-http-evidence'
 import { recordedFindingArtifactsSql } from './recorded-findings'
 import { relatedProjectionChecks } from '../suppression'
+import { matchesRecordedVerifierPage, matchesRecordedVerifierTask } from '@/lib/improvements/verifier-scope'
 
 export const flagSchema = z.object({
   checkId: z.string().min(1), rubric: z.enum(['MESSAGE', 'EXPERIENCE', 'REACH']),
@@ -30,7 +31,9 @@ export const flagSchema = z.object({
 }).strict()
 export const checkArtifactSchema = z.object({
   flags: z.array(flagSchema).max(500), receipt: checkReceiptSchema, httpEvidence: nativeHttpEvidenceSchema.optional(),
-}).strict()
+  pageResponseInterrupted: z.literal(true).optional(),
+}).strict().refine(result => !result.pageResponseInterrupted || result.receipt.module === 'page-response' &&
+  result.receipt.complete === false && result.receipt.execution?.source === 'http', 'Page response interruption requires an incomplete HTTP observation')
 
 /** A shared collector may inspect more than a category admits. Only admitted
  * findings can be committed or later reconstructed from its task artifact. */
@@ -84,6 +87,8 @@ export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.Tran
 
 /** Module observations and repair proofs share their originating task's commit. */
 export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<typeof checkReceiptSchema>, tx: Prisma.TransactionClient, scopeSuffix = '') {
+  if (receipt.execution && (receipt.execution.auditId !== context.audit.id || receipt.execution.taskId !== context.task.id))
+    throw new TaskFailure('CHECK_RECEIPT_PROVENANCE_MISMATCH', false)
   const spec = readExecutionSpec(context.audit.executionSpec)
   const allowedCheckIds = spec?.category ? Object.keys(spec.checks) : undefined
   if (spec?.category) receipt = { ...receipt, assertions: scopeCheckEvidence({ module: receipt.module,
@@ -91,12 +96,19 @@ export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<
   if (allowedCheckIds && !receipt.assertions.length && CHECK_MODULES[receipt.module]?.area !== spec!.category!.area) return
   receipt = { ...receipt, ...summarizeCheckAssertions(receipt) }
   const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix + (context.input.verificationContext ? ':control:' + context.input.verificationContext : '')
-  await tx.auditVerificationReceipt.upsert({
+  const stored = await tx.auditVerificationReceipt.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey } },
     create: { taskId: context.task.id, auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey,
       source: 'DETERMINISTIC', pageUrl: receipt.pageUrl, status: 'COMPLETED', checkVersion: receipt.execution?.checkVersion ?? 1,
       detail: receipt as Prisma.InputJsonValue, evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receipt.module, pageUrl: receipt.pageUrl } }, update: {},
+    select: { status: true, pageUrl: true, taskId: true, detail: true },
   })
+  if (!context.audit.parentId || context.audit.executionSpec != null && !spec) return
+  // A replay can retain an earlier module receipt. Only its durable evidence can supply a verdict.
+  const recorded = checkReceiptSchema.safeParse(stored.detail)
+  if (stored.status !== 'COMPLETED' || !recorded.success || recorded.data.module !== receipt.module ||
+    !recorded.data.execution || !matchesRecordedVerifierTask(stored.taskId, recorded.data.execution.taskId) ||
+    !matchesRecordedVerifierPage(stored.pageUrl, recorded.data.pageUrl) || !matchesRecordedVerifierPage(receipt.pageUrl, recorded.data.pageUrl)) return
   await recordAssertionVerifiers({ auditId: context.audit.id, parentId: context.audit.parentId, primary: context.input.primary,
-    sourceFlagIds: spec?.verificationSourceFlagIds, receipt, allowedCheckIds }, tx)
+    sourceFlagIds: spec?.verificationSourceFlagIds, projectId: context.audit.projectId, spec, receipt: recorded.data, allowedCheckIds }, tx)
 }

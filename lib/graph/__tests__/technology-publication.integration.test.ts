@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistTechnologyObservations } from '@/lib/audit/technology-profile'
 import { persistAuditGraphSnapshot } from '../snapshot'
-import { reconcileSiteTechnologies } from '../persist'
+import { persistAuditToGraph, reconcileSiteTechnologies } from '../persist'
 import type { DetectedTech } from '@/lib/audit/tech-detect'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
@@ -67,5 +67,31 @@ run('technology profile publication authority', () => {
       throw new Error('Controlled interruption before commit')
     })).rejects.toThrow('Controlled interruption')
     expect(await current()).toEqual(['React'])
+  })
+
+  it('counts an Audit once when the same snapshot is published concurrently', async () => {
+    const auditId = await publish('SITE', [detected('React')])
+    const before = await prisma.site.findUniqueOrThrow({ where: { hostname: host } })
+    await Promise.all([persistAuditGraphSnapshot(auditId), persistAuditGraphSnapshot(auditId)])
+    expect(await prisma.site.findUniqueOrThrow({ where: { id: before.id } })).toMatchObject({ auditCount: before.auditCount })
+  })
+
+  it('rolls back graph links and counters when a late Flag write fails', async () => {
+    const failedHost = 'interrupted-' + host, rootUrl = 'https://' + failedHost + '/'
+    const audit = await prisma.audit.create({ data: { url: rootUrl, status: 'COMPLETED', completedAt: new Date() } })
+    auditIds.push(audit.id)
+    const fingerprint = randomUUID()
+    try {
+      await expect(persistAuditToGraph(audit.id, { rootUrl, pageUrls: [rootUrl], pageRoles: {}, detectedTech: [], industryGuess: null }, [{
+        flagId: randomUUID(), checkId: 'title-missing', rubric: 'REACH', fingerprint, problem: 'Fixture issue', fix: 'Fixture fix', pageUrl: rootUrl,
+        prompts: { generic: null, cursor: null, claude: null, windsurf: null, lovable: null, bolt: null },
+      }])).rejects.toThrow()
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ siteId: null })
+      expect(await prisma.site.findUnique({ where: { hostname: failedHost } })).toBeNull()
+      expect(await prisma.issue.findUnique({ where: { fingerprint } })).toBeNull()
+    } finally {
+      await prisma.site.deleteMany({ where: { hostname: failedHost } })
+      await prisma.issue.deleteMany({ where: { fingerprint } })
+    }
   })
 })

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { parseMetadataFromHtml, trimMetadataForStorage } from '../metadata'
 import { runSecurityBasicsChecks, securityObservations } from '../checks/security'
-import { assertionForTarget } from '../checks/verification'
+import { assertionForTarget, scopedAssertionForTarget } from '../checks/verification'
 import { checkReceiptSchema } from '../checks/receipt'
 import { runAllChecks } from '../checks'
 import { pageMetadataSchema } from '../progressive/snapshots'
@@ -23,7 +23,8 @@ function observation(html: string) {
 function receipt(html: string) {
   const { assertions } = observation(html)
   return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'security',
-    pageUrl: url, passed: assertions.every(item => item.passed), applicable: true, assertions })
+    pageUrl: url, passed: assertions.every(item => item.passed), applicable: true, assertions,
+    execution: { auditId: 'resource-audit', taskId: 'resource-check', checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() } })
 }
 
 describe('shared resource transport evidence', () => {
@@ -96,10 +97,73 @@ describe('shared resource transport evidence', () => {
     const { metadata, assertion } = observation(`<noscript><h1>Fallback heading</h1><img src="http://fallback.example/a.png"></noscript>
       <template><script src="http://template.example/app.js"></script></template>
       <script type="application/ld+json" src="http://metadata.example/data"></script>
-      <img src="http://localhost/image"><img src="http://127.0.0.1/image"><img src="http://[::1]/image">`)
+      <img src="http://localhost/image"><img src="http://dev.localhost./image">
+      <img src="http://127.0.0.1/image"><img src="http://127.1/image"><img src="http://[::1]/image">`)
     expect(metadata.h1s).toContain('Fallback heading')
     expect(metadata.resourceTransport!.insecure).toEqual([])
     expect(assertion.passed).toBe(true)
+  })
+
+  it('flags ordinary HTTP hostnames that resemble loopback addresses', () => {
+    const { metadata, assertion } = observation(`<script src="http://127.cdn.example/app.js?token=SECRET"></script>
+      <img src="http://127.0.0.1.cdn.example/image">`)
+    expect(metadata.resourceTransport!.insecure.map(item => item.url)).toEqual([
+      'http://127.cdn.example/app.js', 'http://127.0.0.1.cdn.example/image',
+    ])
+    expect(assertion).toMatchObject({ passed: false, complete: true })
+    const [flag] = runSecurityBasicsChecks(url, metadata)
+    expect(flag.evidence).toContain('http://127.cdn.example/app.js')
+    expect(flag.evidence).not.toContain('SECRET')
+  })
+
+  it('recognizes executable HTML script declarations and ignores script data blocks', () => {
+    const { metadata } = observation(`<script type=" application/x-javascript " src="http://cdn.example/legacy.js"></script>
+      <script type="text/javascript1.5" src="http://cdn.example/versioned.js"></script>
+      <script language="JScript" src="http://cdn.example/language.js"></script>
+      <script type="" language="vbscript" src="http://cdn.example/empty-type.js"></script>
+      <script type="MODULE" src="http://cdn.example/module.js"></script>
+      <script type="text/javascript; charset=utf-8" src="http://cdn.example/parameters.js"></script>
+      <script language="vbscript" src="http://cdn.example/unsupported.js"></script>`)
+    expect(metadata.resourceTransport!.insecure.map(item => new URL(item.url).pathname)).toEqual([
+      '/legacy.js', '/versioned.js', '/language.js', '/empty-type.js', '/module.js',
+    ])
+  })
+
+  it('recollects historical inventories and requires current evidence for a new mixed-content finding', async () => {
+    const body = '<script type="application/x-javascript" src="http://cdn.example/legacy.js"></script>'
+    const legacy = { version: 1 as const, complete: true, inspected: 0, insecure: [] }
+    const historical = { ...parseMetadataFromHtml(body, url), resourceTransport: legacy }
+    expect(pageMetadataSchema.parse(historical).resourceTransport).toEqual(legacy)
+    expect(securityObservations(url, historical)[1]).toMatchObject({ passed: false, complete: false })
+    const resources = await collectResourceTransportEvidence(url, historical, { url, finalUrl: url, status: 200,
+      headers: { 'content-type': 'text/html' }, body, complete: true, reason: null, collectedAt: new Date().toISOString(),
+      redirects: [] }, Date.now() + 10_000)
+    const [flag] = runSecurityBasicsChecks(url, historical, resources)
+    expect(flag).toMatchObject({ checkId: 'security-mixed-content' })
+    const repaired = receipt('<script type="application/x-javascript" src="https://cdn.example/legacy.js"></script>')
+    const oldReceipt = { ...repaired, assertions: repaired.assertions.map(assertion => ({ ...assertion, context: undefined })) }
+    expect(scopedAssertionForTarget({ receipt: oldReceipt, checkId: flag.checkId, flag })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: oldReceipt, checkId: flag.checkId, flag: {} })?.assertion).toMatchObject({ passed: true })
+    expect(scopedAssertionForTarget({ receipt: repaired, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: true })
+  })
+
+  it('preserves earlier proof while requiring corrected evidence to verify a current finding', async () => {
+    const body = '<script src="http://127.cdn.example/app.js"></script>'
+    const legacy = { version: 2 as const, complete: true, inspected: 1, insecure: [] }
+    const historical = { ...parseMetadataFromHtml(body, url), resourceTransport: legacy }
+    expect(pageMetadataSchema.parse(historical).resourceTransport).toEqual(legacy)
+    expect(securityObservations(url, historical)[1]).toMatchObject({ passed: false, complete: false })
+    const resources = await collectResourceTransportEvidence(url, historical, { url, finalUrl: url, status: 200,
+      headers: { 'content-type': 'text/html' }, body, complete: true, reason: null, collectedAt: new Date().toISOString(),
+      redirects: [] }, Date.now() + 10_000)
+    const [flag] = runSecurityBasicsChecks(url, historical, resources)
+    const repaired = receipt('<script src="https://127.cdn.example/app.js"></script>')
+    const oldReceipt = { ...repaired, assertions: repaired.assertions.map(assertion => assertion.key === 'resource-transport'
+      ? { ...assertion, context: 'resource-transport:v2' } : assertion) }
+    expect(scopedAssertionForTarget({ receipt: oldReceipt, checkId: flag.checkId, flag })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: oldReceipt, checkId: flag.checkId, flag: { ...flag, evidenceTargets: undefined } })?.assertion)
+      .toMatchObject({ passed: true })
+    expect(scopedAssertionForTarget({ receipt: repaired, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: true })
   })
 
   it('redacts credentials, queries and fragments and deduplicates resource evidence', () => {

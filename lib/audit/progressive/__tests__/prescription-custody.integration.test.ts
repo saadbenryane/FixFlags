@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { withExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { mergePrescriptionResults } from '@/lib/audit/persist'
@@ -7,6 +7,7 @@ import { freezePrescriptionScope } from '@/lib/audit/prescription-scope'
 import { runAiReview } from '@/lib/audit/run-ai-review'
 import { beginPrescriptionUsage } from '@/lib/audit/prescription-usage'
 import { beginProviderUsage } from '@/lib/audit/provider-usage'
+import { boundProviderRequest } from '@/lib/audit/provider-request-bound'
 import { openAIResponseUsage } from '@/lib/audit/provider-request'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { recordSettledPrescriptionCost, settlePrescriptionAudit } from '../incomplete'
@@ -15,17 +16,23 @@ import { observationsForFlag } from '@/lib/audit/flag-observations'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('prescription custody in PostgreSQL', () => {
+  const bound = (model: string) => boundProviderRequest(model, 'chat.completions', { model, max_tokens: 4096, messages: [{ role: 'user', content: 'Controlled request' }] })
   const userId = 'prescription-custody-' + randomUUID(), audits: string[] = []
   beforeAll(async () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+    vi.stubEnv('LLM_BUDGET_MODE', 'application')
+    vi.stubEnv('LLM_BUDGET_DAILY_USD', '100')
+    vi.stubEnv('LLM_BUDGET_SITE_DAILY_USD', '100')
+    vi.stubEnv('LLM_BUDGET_RUN_USD', '100')
     await prisma.user.create({ data: { id: userId, email: userId + '@example.test', role: 'ADMIN' } })
   })
   afterAll(async () => {
     await prisma.audit.deleteMany({ where: { id: { in: audits } } })
     await prisma.user.deleteMany({ where: { id: userId } })
     await prisma.$disconnect()
+    vi.unstubAllEnvs()
   })
   async function fixture(kind: 'prescription' | 'judge' = 'prescription') {
     const token = randomUUID(), now = new Date()
@@ -190,9 +197,9 @@ run('prescription custody in PostgreSQL', () => {
   it('prices rejected and successful triage responses once from durable measurements', async () => {
     const f = await fixture('judge')
     await withExecutionOwnership(f.owner, async () => {
-      const rejected = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      const rejected = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini', bound('gpt-4o-mini'))
       await rejected({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5, cacheReadTokens: 3 })
-      const accepted = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      const accepted = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini', bound('gpt-4o-mini'))
       await accepted({ model: 'gpt-4o-mini', inputTokens: 40, outputTokens: 10, cacheReadTokens: 7 })
     })
     const metrics = { phase: 'triage' as const, durationMs: 0, pagespeedCalls: 0,
@@ -210,7 +217,7 @@ run('prescription custody in PostgreSQL', () => {
   it('keeps a triage request unpriced when its task loses response authority', async () => {
     const f = await fixture('judge')
     await withExecutionOwnership(f.owner, async () => {
-      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini', bound('gpt-4o-mini'))
       await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
       await expect(response({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5 })).rejects.toThrow('no longer owns')
     })
@@ -225,7 +232,7 @@ run('prescription custody in PostgreSQL', () => {
     const f = await fixture('judge')
     await withExecutionOwnership(f.owner, async () => {
       for (const phase of ['journey_planner', 'journey_evaluator'] as const) {
-        const response = await beginProviderUsage(f.audit.id, phase, 'gpt-4o-mini')
+        const response = await beginProviderUsage(f.audit.id, phase, 'gpt-4o-mini', bound('gpt-4o-mini'))
         await response({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5 })
       }
       const metrics = { phase: 'triage' as const, durationMs: 0, pagespeedCalls: 0,
@@ -236,7 +243,7 @@ run('prescription custody in PostgreSQL', () => {
       expect(first.triageCostUsd?.toString()).toBe('0.000012')
       await persistAuditRunCost(f.audit.id, metrics)
       expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })).toEqual(first)
-      await beginProviderUsage(f.audit.id, 'journey_evaluator', 'gpt-4o-mini')
+      await beginProviderUsage(f.audit.id, 'journey_evaluator', 'gpt-4o-mini', bound('gpt-4o-mini'))
       await persistAuditRunCost(f.audit.id, metrics)
       expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
         .toMatchObject({ triageInputTokens: 40, triageOutputTokens: 10, triageCostUsd: null, pricingBasis: 'UNPRICED' })
@@ -248,7 +255,7 @@ run('prescription custody in PostgreSQL', () => {
     await prisma.audit.update({ where: { id: f.audit.id }, data: { executionLeaseUntil: new Date(Date.now() + 60_000) } })
     const owner = { auditId: f.owner.auditId, token: f.owner.token, generation: f.owner.generation }
     await withExecutionOwnership(owner, async () => {
-      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini', bound('gpt-4o-mini'))
       await response({ model: 'gpt-4o-mini', inputTokens: 10, outputTokens: 2 })
     })
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, executionId: f.audit.id, event: 'triage_provider_response' } })).toBe(1)
@@ -257,7 +264,7 @@ run('prescription custody in PostgreSQL', () => {
   it('retains actual provider provenance and cache charges, deduplicating replayed responses without guessing priority prices', async () => {
     const f = await fixture('judge')
     await withExecutionOwnership(f.owner, async () => {
-      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-6-luna')
+      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-6-luna', bound('gpt-6-luna'))
       const usage = openAIResponseUsage({ id: 'controlled-provider-response', model: 'gpt-6-luna', service_tier: 'default',
         usage: { prompt_tokens: 12000, completion_tokens: 1000,
           prompt_tokens_details: { cached_tokens: 4000, cache_write_tokens: 7000 },
@@ -271,9 +278,9 @@ run('prescription custody in PostgreSQL', () => {
       expect(cost).toMatchObject({ triageInputTokens: 1000, triageOutputTokens: 1000, pricingBasis: 'CONFIGURED_ESTIMATE' })
       expect(cost.triageCostUsd?.toString()).toBe('0.001515')
       const event = await prisma.auditPipelineEvent.findFirstOrThrow({ where: { auditId: f.audit.id, event: 'triage_provider_response' } })
-      expect(event.detail).toMatchObject({ version: 2, usage: { provider: 'openai', api: 'chat.completions', serviceTier: 'default',
+      expect(event.detail).toMatchObject({ version: 3, usage: { provider: 'openai', api: 'chat.completions', serviceTier: 'default',
         providerResponseId: 'controlled-provider-response', cacheWriteTokens: 7000, reasoningTokens: 300 } })
-      const priority = await beginProviderUsage(f.audit.id, 'journey_evaluator', 'gpt-6-luna')
+      const priority = await beginProviderUsage(f.audit.id, 'journey_evaluator', 'gpt-6-luna', bound('gpt-6-luna'))
       await priority({ ...usage, serviceTier: 'priority' })
       await persistAuditRunCost(f.audit.id, metrics)
       expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
@@ -356,7 +363,7 @@ run('prescription custody in PostgreSQL', () => {
     await withExecutionOwnership(f.owner, async () => {
       // The provider has been admitted, then its task is exhausted while the
       // external request is in flight. Late customer writes remain forbidden.
-      const response = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
+      const response = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini', bound('gpt-4o-mini'))
       await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
       await expect(response({ inputTokens: 20, outputTokens: 5, model: 'gpt-4o-mini' }))
         .rejects.toThrow('no longer owns')
@@ -371,9 +378,9 @@ run('prescription custody in PostgreSQL', () => {
     await persistAuditRunCost(f.audit.id, { phase: 'triage', durationMs: 0, pagespeedCalls: 0,
       llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'gpt-4o-mini' })
     await withExecutionOwnership(f.owner, async () => {
-      const rejected = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
+      const rejected = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini', bound('gpt-4o-mini'))
       await rejected({ inputTokens: 20, outputTokens: 5, model: 'gpt-4o-mini' })
-      const accepted = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
+      const accepted = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini', bound('gpt-4o-mini'))
       await accepted({ inputTokens: 40, outputTokens: 10, model: 'gpt-4o-mini' })
     })
     await prisma.auditExecutionTask.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })

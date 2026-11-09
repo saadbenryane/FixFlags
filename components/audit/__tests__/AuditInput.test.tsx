@@ -276,7 +276,6 @@ describe('AuditInput scan handoff', () => {
     expect(trackStartedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         journeyId,
-        auditId: 'audit-attributed',
         reused: false,
       }),
     )

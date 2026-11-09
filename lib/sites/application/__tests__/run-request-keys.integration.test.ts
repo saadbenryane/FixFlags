@@ -175,7 +175,7 @@ enabled('durable keys on the existing Site request ledger', () => {
     // A flag alone cannot acquire the operator exception. No account lifecycle
     // task or external cleanup is executed by this key-routing fixture.
     await expect(retainSharedRunKey(input, () => true)).rejects.toMatchObject({ code: 'ACCOUNT_UNAVAILABLE' })
-    const operator = { kind: 'admin' as const, actorId, operationId: operation.id }
+    const operator = { kind: 'admin' as const, actorId, operationId: operation.id, executionToken: operation.executionToken! }
     expect(await retainSharedRunKey({ ...input, operator }, run => run.id === original.id))
       .toMatchObject({ id: original.id, requestedByUserId: userId, keyRequestedByUserId: actorId })
     expect(await loadRunRequestByKey(input)).toMatchObject({ id: original.id, keyRequestedByUserId: actorId })

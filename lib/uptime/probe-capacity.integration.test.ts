@@ -147,10 +147,10 @@ run('native public HTTP probe under execution contention', () => {
         let previous: { monitorId: string; probeId: string } | null = null
         if (phase === 'previously-disabled') {
           await prisma.entitlementGrant.update({ where: { id: grant.id }, data: { revokedAt: now } })
-          const monitor = await prisma.uptimeMonitor.create({ data: { projectId: project.id, targetUrl: project.url,
+          const monitor = await prisma.uptimeMonitor.update({ where: { projectId: project.id }, data: {
             enabled: false, state: 'paused', nextProbeAt: now } })
           const before = new Date(now.getTime() - 300_000)
-          const probe = await prisma.uptimeProbe.create({ data: { monitorId: monitor.id, version: 1, targetUrl: project.url,
+          const probe = await prisma.uptimeProbe.create({ data: { monitorId: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl,
             scheduledAt: before, observedAt: before, attempt: 1, result: 'ONLINE', reason: 'response_received', statusCode: 200, durationMs: 50, finalUrl: project.url } })
           previous = { monitorId: monitor.id, probeId: probe.id }
         }

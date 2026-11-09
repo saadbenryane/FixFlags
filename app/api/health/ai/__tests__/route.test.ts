@@ -26,6 +26,7 @@ const HEALTH = {
   configuredProviders: ['openai'],
   openai: true,
   anthropic: true,
+  budget: { configured: true, mode: 'provider' },
 }
 
 beforeEach(() => {
@@ -40,6 +41,12 @@ afterEach(() => {
 })
 
 describe('GET /api/health/ai', () => {
+  it('refuses invalid application budget configuration without making a paid request', async () => {
+    getAiProviderHealth.mockReturnValue({ ...HEALTH, budget: { configured: false } })
+    const response = await GET(new NextRequest('https://example.com/api/health/ai'))
+    expect((await response.json()).ok).toBe(false)
+    expect(validateAiProviderCredentials).not.toHaveBeenCalled()
+  })
   it('reports the provider health without validating credentials by default', async () => {
     getAiProviderHealth.mockReturnValue(HEALTH)
 

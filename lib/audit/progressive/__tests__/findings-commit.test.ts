@@ -8,6 +8,7 @@ vi.mock('@/lib/audit/persist', () => ({ persistDeterministicFlags: persist }))
 import { serializeArtifact } from '../contracts'
 import type { TaskContext } from '../registry'
 import { recordedPageEvidence } from '../lifecycle'
+import { evaluatorHandlers } from '../evaluators'
 
 describe('finding publication cost', () => {
   it.each(['BLOCKED', 'EXHAUSTED'])('retains independent field observations in completed page evidence after %s lab collection', async workState => {
@@ -100,6 +101,20 @@ describe('finding publication cost', () => {
     expect(flags[1].supportingObservations.items[0]).toMatchObject({ pageUrl: 'https://example.com/pricing', provenance: { taskId: 'peer-task' } })
   })
 
+  it('does not publish Search repair proofs from a mismatched retained receipt', async () => {
+    const pageUrl = 'https://example.com/'
+    const receipt = { kind: 'search-checks', version: 1, auditId: 'current', pageUrl, collectedAt: '2026-10-16T10:00:00.000Z',
+      complete: true, observations: [] }
+    const readAudit = vi.fn()
+    const tx = { auditVerificationReceipt: { upsert: vi.fn().mockResolvedValue({ detail: { ...receipt, auditId: 'foreign' } }) },
+      audit: { findUnique: readAudit } } as unknown as Prisma.TransactionClient
+    const context = { audit: { id: 'current' }, task: { id: 'search-task' },
+      input: { pageUrl, module: 'search-presentation' } } as TaskContext
+    const commit = evaluatorHandlers.find(handler => handler.kind === 'search')!.commit!
+    await expect(commit(context, serializeArtifact('search', { receipt, flags: [] }), tx)).rejects.toMatchObject({ code: 'SEARCH_RECEIPT_SCOPE_MISMATCH' })
+    expect(readAudit).not.toHaveBeenCalled()
+  })
+
   it('commits the actual module revision and incomplete evidence without manufacturing a pass', async () => {
     const spec = { version: 1, scope: 'CATEGORY', category: { area: 'conversion', sourceAuditId: 'before', pages: ['https://example.com/'] }, targetUrl: 'https://example.com/', environment: 'production', checks: { 'messaging-no-audience': 2 }, outcomes: [], verificationTarget: null }
     const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'messaging-clarity', passed: true, applicable: true, complete: true, pageUrl: spec.targetUrl,
@@ -112,6 +127,17 @@ describe('finding publication cost', () => {
     upsert.mockClear()
     await commitCheckReceipt({ audit: { id: 'original', parentId: null, executionSpec: spec }, task: { id: 'task' }, input: {} } as TaskContext,
       checkReceiptSchema.parse({ ...receipt, module: 'console', assertions: [] }), {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  auditVerifierExecution: { upsert } } as unknown as Prisma.TransactionClient)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects new module evidence attributed to another task before writing the receipt', async () => {
+    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'trust',
+      passed: true, applicable: true, pageUrl: 'https://example.com/',
+      execution: { auditId: 'run', taskId: 'another-task', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-16T10:00:00.000Z' } })
+    const upsert = vi.fn()
+    const tx = { auditVerificationReceipt: { upsert } } as unknown as Prisma.TransactionClient
+    await expect(commitCheckReceipt({ audit: { id: 'run' }, task: { id: 'current-task' }, input: {} } as TaskContext, receipt, tx))
+      .rejects.toMatchObject({ code: 'CHECK_RECEIPT_PROVENANCE_MISMATCH', retryable: false })
     expect(upsert).not.toHaveBeenCalled()
   })
 

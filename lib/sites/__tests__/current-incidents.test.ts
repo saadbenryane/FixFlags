@@ -139,6 +139,8 @@ describe('current incident projection', () => {
       impactTag: 'REVENUE', rubric: 'EXPERIENCE', severity: 'CRITICAL', problem: 'Checkout is unavailable', evidence: 'The purchase request failed',
       whyItMatters: 'Customers cannot pay', fix: 'Restore checkout' })
     const receipt = { state: 'CLEAR', outcomeId: 'checkout-outcome', evidence: { reason: 'reached', incident } }
+    let confirmedId = checkout.id
+    db.current.mockImplementation(async (parts: TemplateStringsArray) => parts.join('').includes('jsonb_to_recordset') ? [{ id: confirmedId }] : [])
     db.improvements.mockResolvedValue([{ id: 'incident', fingerprint, status: 'VERIFIED', outcome: { id: 'checkout-outcome', name: 'Checkout' },
       occurrences: [{ flag: checkout }], attempts: [] }])
     db.proofs.mockResolvedValue([recovery({ executionSpec: { ...recovery().executionSpec, checks: {}, scope: 'OUTCOMES' }, verifierExecutions: [],
@@ -153,6 +155,7 @@ describe('current incident projection', () => {
     receipt.evidence = { reason: 'reached', incident: { ...incident, recoveredFlagIds: ['other-flag'] } }
     expect(await loadSiteFlags(site)).toMatchObject([{ status: 'UNVERIFIED' }])
     const continuation = { ...checkout, id: 'continuation', auditId: 'during' }
+    confirmedId = continuation.id
     db.flags.mockResolvedValue([])
     db.improvements.mockResolvedValue([{ id: 'incident', fingerprint, status: 'VERIFIED', occurrences: [{ flag: continuation }], attempts: [] }])
     db.assessments.mockResolvedValue([{ auditId: 'during', outcomeId: 'checkout-outcome', audit: { projectId: 'site-1' }, evidence: {

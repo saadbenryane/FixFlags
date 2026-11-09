@@ -16,7 +16,10 @@ import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/securi
 import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
-import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { ANALYTICS_JOURNEY_PARAM, isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { ANALYTICS_CONSENT_COOKIE } from '@/lib/analytics/consent'
+import { GUIDE_ENTRY_PARAM, readGuideEntry } from '@/lib/analytics/guide-entry'
+import { SITE_URL } from '@/lib/marketing/copy/brand'
 
 const createSchema = z.object({
   url: z.string().url('Enter a valid URL that starts with https://'),
@@ -109,8 +112,21 @@ export async function POST(req: NextRequest) {
     const { delayMs } = queueInfo
 
     const referer = req.headers.get('referer')
-    const refererPath = referer ? (() => { try { return new URL(referer).pathname } catch { return null } })() : null
+    const refererUrl = referer ? (() => { try { return new URL(referer) } catch { return null } })() : null
+    const refererPath = refererUrl?.pathname ?? null
     const clientSource = parseClientAuditSource(parsed.data.source)
+    const journeyId = req.cookies?.get(ANALYTICS_CONSENT_COOKIE)?.value === 'granted' ? parsed.data.journeyId : undefined
+    const guideParams = refererPath === '/new' ? refererUrl?.searchParams : undefined
+    const guideOrigin = refererUrl?.origin
+    const publicGuideOrigin = guideOrigin === req.nextUrl.origin || guideOrigin === SITE_URL.replace(/\/$/, '')
+    const guideEntry = guideParams && publicGuideOrigin && !session?.user && !parsed.data.parentId &&
+      clientSource === 'HOMEPAGE' && journeyId
+      ? readGuideEntry(guideParams) : undefined
+    // Measurement identifiers belong only in consented telemetry.
+    const referrerParams = refererUrl?.searchParams
+    const hadMeasurementMarker = referrerParams?.has(GUIDE_ENTRY_PARAM) || referrerParams?.has(ANALYTICS_JOURNEY_PARAM)
+    referrerParams?.delete(GUIDE_ENTRY_PARAM)
+    referrerParams?.delete(ANALYTICS_JOURNEY_PARAM)
     if (parsed.data.scanAccess) {
       if (!session?.user) {
         return apiError('Sign in required for preview scan access', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
@@ -136,7 +152,7 @@ export async function POST(req: NextRequest) {
     const attribution = buildAttribution({
       url,
       source: clientSource,
-      referer,
+      referer: hadMeasurementMarker ? refererUrl?.href : referer,
       pathname: refererPath ?? req.nextUrl.pathname,
       searchParams: req.nextUrl.searchParams,
       utmSource: parsed.data.utmSource,
@@ -144,7 +160,8 @@ export async function POST(req: NextRequest) {
       utmCampaign: parsed.data.utmCampaign,
       gclid: parsed.data.gclid,
       fbclid: parsed.data.fbclid,
-      journeyId: parsed.data.journeyId,
+      journeyId,
+      guideEntry,
     })
 
     const outcome = await checkAndPlan({

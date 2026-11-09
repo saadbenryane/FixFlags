@@ -1,19 +1,22 @@
 import { searchSectionBody, type SearchSection } from './rendered-snapshot'
-import { createHash } from 'node:crypto'
 import robotsParser from 'robots-parser'
 import type { DeterministicFlag } from '../flag-types'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
-import { parseSitemap } from './collect'
+import { crawlNavigationTargets, hasPublicSearchChallenge, isMissingPublicResource, missingDocument, parseSitemap, publicSearchResponseHeaders } from './collect'
 import { SEARCH_DEFINITIONS, SEARCH_CHECK_REGISTRY } from './definitions'
 import { inspectStructuredData, inspectFeature, entityValues } from './structured-data'
-import { searchObservationSchema, STRUCTURED_PROPERTY_LIMIT, type PublicDocument, type SearchPageEvidence, type SearchObservation, type SearchReceipt } from './contracts'
+import { searchObservationSchema, SITEMAP_SYNTAX_VERSION, STRUCTURED_PROPERTY_LIMIT, type PublicDocument, type SearchPageEvidence, type SearchObservation, type SearchReceipt, type SearchComparisonBaseline } from './contracts'
 import { boundSearchObservations } from './observation-bounds'
 import { pageScopedSearchAttention } from './attention-scope'
 import { canonicalDeclarations } from './canonical-declarations'
-import { parseActiveHtmlDocument } from '../html-document'
+import { htmlDocumentBase, parseActiveHtmlDocument } from '../html-document'
+import { isPublicSignInRedirect, PUBLIC_SIGN_IN_REDIRECT } from '../browser/page-capture'
+import { isSuccessfulPublicGetStatus, publicResponseStatusRestriction } from '../http-evidence'
+import { searchResourceKey, searchUrlIdentity as urlIdentity } from './resource-identity'
+import { displayDestination } from '../checks/destination-evidence'
 
 type Rule = keyof typeof C.rules
-type EvaluatorInput = { evidence: SearchPageEvidence; previous?: SearchReceipt | null }
+type EvaluatorInput = { evidence: SearchPageEvidence; previous?: SearchComparisonBaseline | null }
 type Definition = {
   id: string; version: 2; responsibility: SearchObservation['responsibility'];
   checkIds: readonly string[]; resultSchema: 'search-observation-v2'; guidance: Rule;
@@ -23,7 +26,7 @@ type Definition = {
 type ObservationInput = Omit<Partial<SearchObservation>, 'attention'> & {
   checkId: string; rule: Rule; source: SearchObservation['source'];
   disposition: SearchObservation['disposition']; reason: string; observed: string;
-  attention?: SearchObservation['attention']['kind']; document?: PublicDocument; locator?: string; excerpt?: string;
+  attention?: SearchObservation['attention']['kind']; document?: PublicDocument; locator?: string; excerpt?: string; resourceUrl?: string;
 }
 
 // Active-document corrections cannot certify recovery from an earlier detector.
@@ -34,7 +37,11 @@ activeDocumentChecks.add('search-discovery-links')
 
 function observation(evidence: SearchPageEvidence, input: ObservationInput): SearchObservation {
   const definition = C.rules[input.rule], document = input.document
-  const version = activeDocumentChecks.has(input.checkId) ? 3 : evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1)
+  // Exact target recovery still compares the same URL and HTTP response. The
+  // declaration checks have a new placement and source contract.
+  const version = input.checkVersion ?? (input.responsibility === 'canonical' ? input.checkId === 'search-canonical-target' ? 5 : 6
+    : activeDocumentChecks.has(input.checkId) ? 3 : evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1))
+  const resourceUrl = input.resourceUrl ?? (input.source === 'sitemap' ? document?.url : undefined)
   return searchObservationSchema.parse({
     id: input.id ?? `${input.checkId}:${input.source}`, checkId: input.checkId, checkVersion: version,
     responsibility: input.responsibility ?? 'presentation', name: input.name ?? definition.name,
@@ -46,8 +53,8 @@ function observation(evidence: SearchPageEvidence, input: ObservationInput): Sea
       collectedAt: document?.collectedAt ?? evidence.collectedAt }],
     limitation: input.limitation ?? C.localLimit, guidance: input.guidance ?? definition.guidance,
     entityTypes: input.entityTypes,
-    entityId: input.entityId, invalidProperties: input.invalidProperties,
-    ...(input.source === 'sitemap' && document ? { resourceKey: createHash('sha256').update(urlIdentity(document.url)).digest('hex') } : {}),
+    entityId: input.entityId, invalidProperties: input.invalidProperties, validatedProperties: input.validatedProperties,
+    ...(resourceUrl ? { resourceKey: searchResourceKey(resourceUrl) } : {}),
   })
 }
 
@@ -59,14 +66,14 @@ function primary(evidence: SearchPageEvidence, section: SearchSection = 'metadat
   const rendered = html(evidence.rendered, section)
   return rendered ? [evidence.rendered, 'rendered-dom', rendered] : [evidence.original, 'original-html', html(evidence.original, section)]
 }
-function urlIdentity(value: string): string { try { const url = new URL(value); url.hash = ''; return url.toString() } catch { return value } }
 function unknown(evidence: SearchPageEvidence, checkId: string, responsibility: SearchObservation['responsibility'], rule: Rule, source: SearchObservation['source']) {
   const document = source === 'original-html' ? evidence.original : source === 'rendered-dom' ? evidence.rendered
     : source === 'robots-txt' ? evidence.robots : source === 'sitemap' ? evidence.sitemaps.find(item => !item.complete) : undefined
-  const reason = !evidence.public ? 'private_capture' : document?.status != null && (document.status < 200 || document.status >= 300)
+  const reason = !evidence.public ? 'private_capture' : document?.status != null && !isSuccessfulPublicGetStatus(document.status)
     ? 'content_response_not_successful' : document?.reason ?? 'required_evidence_unavailable'
   return observation(evidence, { checkId, responsibility, rule, source, document, disposition: 'unknown', reason,
     observed: reason === 'private_capture' ? 'A credentialed capture cannot establish publicly available Search evidence.'
+      : reason === PUBLIC_SIGN_IN_REDIRECT ? 'The capture reached sign-in. The requested public page could not be inspected.'
       : reason === 'document_truncated' ? 'The document exceeded the inspection limit. Absence and success were not established.' : C.unknown })
 }
 
@@ -117,17 +124,23 @@ function presentation({ evidence }: EvaluatorInput): SearchObservation[] {
 
 function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
   const observations: SearchObservation[] = [], tokens: string[] = []
+  const responseScopeUnavailable = evidence.renderedResponseScoped === false
   let parsed = 0
   for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     const $ = html(document, 'indexing')
-    if (!$) { observations.push(unknown(evidence, 'search-indexing-source', 'indexing', 'indexing', source)); continue }
-    parsed += 1
+    if ($) parsed += 1
+    else observations.push(unknown(evidence, 'search-indexing-source', 'indexing', 'indexing', source))
     const directives: string[] = []
-    $('meta[name]').each((_, node) => {
+    if ($) $('meta[name]').each((_, node) => {
       const name = ($(node).attr('name') ?? '').toLowerCase()
       if (name === 'robots' || name === 'googlebot') directives.push(`${name}: ${$(node).attr('content') ?? ''}`)
     })
-    const header = document.headers['x-robots-tag']
+    const header = source === 'original-html' || !responseScopeUnavailable && ($ || evidence.renderedResponseScoped === true)
+      ? publicSearchResponseHeaders(document)?.['x-robots-tag'] : undefined
+    if ($ && source === 'rendered-dom' && responseScopeUnavailable) observations.push(observation(evidence, {
+      id: 'search-indexing-source:http:rendered-response', checkId: 'search-indexing-source', rule: 'indexing', responsibility: 'indexing',
+      source: 'http', document, disposition: 'unknown', reason: 'rendered_response_scope_unavailable', observed: C.unknown, locator: 'X-Robots-Tag',
+    }))
     if (header) directives.push(`X-Robots-Tag: ${header}`)
     for (const raw of directives) {
       const parts = raw.toLowerCase().replace(/^x-robots-tag:\s*/, '').split(',')
@@ -140,16 +153,17 @@ function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
         if (applies) tokens.push(...part.split(/[\s;]+/).filter(Boolean))
       }
     }
-    observations.push(observation(evidence, { checkId: 'search-indexing-source', rule: 'indexing', responsibility: 'indexing', source, document,
+    if ($ || header) observations.push(observation(evidence, { checkId: 'search-indexing-source', rule: 'indexing', responsibility: 'indexing',
+      source: $ ? source : 'http', ...(!$ ? { id: 'search-indexing-source:http:' + source } : {}), document,
       disposition: 'observed', reason: 'indexing_directives_recorded', observed: directives.join('; ') || 'No applicable indexing exclusions recorded in this source.',
-      locator: 'meta[name="robots"], meta[name="googlebot"], X-Robots-Tag' }))
+      locator: $ ? 'meta[name="robots"], meta[name="googlebot"], X-Robots-Tag' : 'X-Robots-Tag' }))
   }
   const excluded = tokens.includes('noindex') || tokens.includes('none')
   const wasAllowed = previous?.pageUrl === evidence.pageUrl && previous.observations.some(item =>
     item.checkId === 'robots-blocks-indexing' && (item.disposition === 'passed' && item.reason === 'no_index_restrictions' ||
       item.attention.kind === 'flag' && item.reason === 'indexing_policy_regressed'))
-  const listed = evidence.sitemapsComplete && evidence.sitemapUrls.some(url => urlIdentity(url) === urlIdentity(evidence.pageUrl))
-  const bothSources = parsed === 2
+  const listed = evidence.sitemapUrls.some(url => urlIdentity(url) === urlIdentity(evidence.pageUrl))
+  const bothSources = parsed === 2 && !responseScopeUnavailable
   observations.push(observation(evidence, { checkId: 'robots-blocks-indexing', rule: 'indexing', responsibility: 'indexing', source: 'http',
     disposition: excluded ? wasAllowed || listed ? 'failed' : 'observed' : bothSources ? 'passed' : parsed ? 'observed' : 'unknown',
     reason: excluded ? wasAllowed ? 'indexing_policy_regressed' : listed ? 'sitemap_indexing_conflict' : 'declared_indexing_exclusion'
@@ -158,37 +172,51 @@ function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
       : bothSources ? 'No noindex or none directive was recorded in either public source.'
       : parsed ? 'No noindex or none directive was recorded in the captured source.' : C.unknown,
     attention: excluded && (wasAllowed || listed) ? 'flag' : 'observation',
-    ...(!excluded && parsed && !bothSources ? { limitation: C.alternateSource } : {}),
+    ...(!excluded && parsed && !bothSources ? { limitation: parsed === 2
+      ? 'The browser response could not be matched to the rendered page.' : C.alternateSource } : {}),
     evidence: observations.flatMap(item => item.evidence).slice(0, 20) }))
   return observations
 }
 
 function crawl({ evidence, previous }: EvaluatorInput): SearchObservation[] {
-  const document = evidence.robots
-  if (new URL(document.url).origin !== new URL(evidence.pageUrl).origin)
-    return [observation(evidence, { checkId: 'search-crawl-access', responsibility: 'crawl', rule: 'robots', source: 'robots-txt', document,
-      disposition: 'unknown', reason: 'robots_authority_mismatch', observed: C.unknown })]
-  if (!document.complete || document.status == null || document.status >= 500 || document.status === 429)
-    return [unknown(evidence, 'search-crawl-access', 'crawl', 'robots', 'robots-txt')]
-  if (document.status >= 400) return [
-    observation(evidence, { checkId: 'robots-txt-missing', rule: 'robots', responsibility: 'crawl', source: 'robots-txt', document,
-      disposition: 'observed', reason: 'robots_unavailable_no_restrictions_assumed', observed: `robots.txt returned HTTP ${document.status}. This is not itself an indexing failure.` }),
-    observation(evidence, { checkId: 'search-crawl-access', rule: 'robots', responsibility: 'crawl', source: 'robots-txt', document,
-      disposition: 'passed', reason: 'crawl_allowed', observed: 'The robots.txt response establishes no applicable crawl restriction under Google’s 4xx interpretation.' }),
-  ]
-  if (/<(?:!doctype|html)\b/i.test(document.body ?? '')) return [unknown(evidence, 'search-crawl-access', 'crawl', 'robots', 'robots-txt')]
-  // Redirected rules govern the initial authority, not the resource's host.
-  const parser = robotsParser(document.url, document.body ?? '')
-  const allowed = parser.isAllowed(evidence.pageUrl, 'Googlebot')
-  const regression = previous?.pageUrl === evidence.pageUrl && previous.observations.some(item => item.checkId === 'search-crawl-access' &&
-    (item.reason === 'crawl_allowed' || item.attention.kind === 'flag' && item.reason === 'crawl_policy_regressed'))
-  return [observation(evidence, { checkId: 'search-crawl-access', rule: 'robots', responsibility: 'crawl', source: 'robots-txt', document,
-    disposition: allowed === undefined ? 'unknown' : allowed ? 'passed' : regression ? 'failed' : 'observed',
-    reason: allowed === undefined ? 'robots_rule_unknown' : allowed ? 'crawl_allowed' : regression ? 'crawl_policy_regressed' : 'declared_crawl_restriction',
-    observed: allowed ? 'Applicable robots.txt rules permit Googlebot crawling of this URL.'
-      : allowed === false ? `Applicable robots.txt rules restrict crawling of this URL (line ${parser.getMatchingLineNumber(evidence.pageUrl, 'Googlebot') ?? 'unknown'}).`
-      : C.unknown, attention: allowed === false && regression ? 'flag' : 'observation', locator: 'Googlebot rules',
-    limitation: 'This evaluates published robots.txt rules. It does not prove that a verified Googlebot request can access the server.' })]
+  const initialOrigin = new URL(evidence.pageUrl).origin
+  const redirects = new Map((evidence.redirectRobots ?? []).map(document => [document.url, document]))
+  return crawlNavigationTargets(evidence.pageUrl, evidence.original).flatMap((target, index) => {
+    const origin = new URL(target).origin, robotsUrl = new URL('/robots.txt', origin).href
+    const document = origin === initialOrigin ? evidence.robots
+      : redirects.get(robotsUrl) ?? missingDocument(robotsUrl, 'redirect_robots_unavailable')
+    const resourceKey = searchResourceKey(target)
+    const record = (input: Omit<ObservationInput, 'rule' | 'responsibility' | 'source' | 'document'>) => observation(evidence, {
+      ...input, rule: 'robots', responsibility: 'crawl', source: 'robots-txt', document, resourceUrl: target,
+      ...(index > 0 ? { id: `${input.checkId}:robots-txt:${resourceKey}`, observed: `${displayDestination(target)}. ${input.observed}` } : {}),
+    })
+    const unavailable = (reason: string) => [record({ checkId: 'search-crawl-access', disposition: 'unknown', reason, observed: C.unknown })]
+    if (new URL(document.url).origin !== origin) return unavailable('robots_authority_mismatch')
+    if (hasPublicSearchChallenge(document)) return unavailable('public_access_challenge')
+    if (!document.complete || document.status == null || document.status >= 500 || document.status === 429 || document.reason === PUBLIC_SIGN_IN_REDIRECT)
+      return unavailable(document.reason ?? 'content_response_not_successful')
+    if (document.status >= 400) return [
+      record({ checkId: 'robots-txt-missing', disposition: 'observed', reason: 'robots_unavailable_no_restrictions_assumed',
+        observed: `robots.txt returned HTTP ${document.status}. This is not itself an indexing failure.` }),
+      record({ checkId: 'search-crawl-access', disposition: 'passed', reason: 'crawl_allowed',
+        observed: 'The robots.txt response establishes no applicable crawl restriction under Google’s 4xx interpretation.' }),
+    ]
+    if (!isSuccessfulPublicGetStatus(document.status) || /<(?:!doctype|html)\b/i.test(document.body ?? ''))
+      return unavailable('required_evidence_unavailable')
+    // A redirect of the rules file itself retains the authority that requested it.
+    const parser = robotsParser(document.url, document.body ?? '')
+    const allowed = parser.isAllowed(target, 'Googlebot')
+    const regression = previous?.pageUrl === evidence.pageUrl && previous.observations.some(item => item.checkId === 'search-crawl-access' &&
+      (item.resourceKey === resourceKey || index === 0 && !item.resourceKey) &&
+      (item.reason === 'crawl_allowed' || item.attention.kind === 'flag' && item.reason === 'crawl_policy_regressed'))
+    return [record({ checkId: 'search-crawl-access',
+      disposition: allowed === undefined ? 'unknown' : allowed ? 'passed' : regression ? 'failed' : 'observed',
+      reason: allowed === undefined ? 'robots_rule_unknown' : allowed ? 'crawl_allowed' : regression ? 'crawl_policy_regressed' : 'declared_crawl_restriction',
+      observed: allowed ? 'Applicable robots.txt rules permit Googlebot crawling of this URL.'
+        : allowed === false ? `Applicable robots.txt rules restrict crawling of this URL (line ${parser.getMatchingLineNumber(target, 'Googlebot') ?? 'unknown'}).`
+        : C.unknown, attention: allowed === false && regression ? 'flag' : 'observation', locator: 'Googlebot rules',
+      limitation: 'This evaluates published robots.txt rules. It does not prove that a verified Googlebot request can access the server.' })]
+  })
 }
 
 function crawlWithResponse(input: EvaluatorInput): SearchObservation[] {
@@ -203,54 +231,76 @@ function crawlWithResponse(input: EvaluatorInput): SearchObservation[] {
 function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
   const declarations: Array<{ url: string; raw: string; document: PublicDocument; source: 'original-html' | 'rendered-dom' | 'http' }> = []
   const observations: SearchObservation[] = []
+  const headers = publicSearchResponseHeaders(evidence.original)
   let parsed = 0
-  for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
-    const $ = html(document, 'canonical')
-    if (!$) { observations.push(unknown(evidence, 'search-canonical-invalid', 'canonical', 'canonical', source)); continue }
-    parsed += 1
-    for (const { raw, url } of canonicalDeclarations($, document.finalUrl, source === 'original-html' ? document.headers.link : undefined)) {
+  let headersComplete = true
+  for (const [document, source] of [[evidence.original, 'original-html'], [evidence.original, 'http'], [evidence.rendered, 'rendered-dom']] as const) {
+    const $ = source === 'http' ? null : html(document, 'canonical')
+    if ($) parsed++
+    const result = canonicalDeclarations($, document.finalUrl, source === 'http' ? headers?.link : undefined)
+    if (source === 'http') headersComplete = result.headersComplete
+    const locator = source === 'http' ? 'Link header' : 'head link[rel="canonical"]'
+    let invalid = false
+    for (const { raw, url } of result.declarations) {
       if (url) declarations.push({ url, raw, document, source })
-      else observations.push(observation(evidence, { checkId: 'search-canonical-invalid', rule: 'canonical', responsibility: 'canonical', source, document,
-        id: `search-canonical-invalid:${source}:${observations.length}`, disposition: 'failed', reason: 'canonical_declaration_invalid',
-        observed: raw || 'Empty canonical declaration.', attention: 'flag', locator: 'link[rel="canonical"], Link header' }))
+      else {
+        invalid = true
+        observations.push(observation(evidence, { checkId: 'search-canonical-invalid', rule: 'canonicalSyntax', responsibility: 'canonical', source, document,
+          id: `search-canonical-invalid:${source}:${observations.length}`, disposition: 'failed', reason: 'canonical_declaration_invalid',
+          observed: raw || 'Empty canonical declaration.', attention: 'flag', locator }))
+      }
     }
+    if (invalid) continue
+    const inspected = source === 'http' ? headers && headersComplete : $
+    observations.push(inspected ? observation(evidence, { id: `search-canonical-syntax:${source}`, checkId: 'search-canonical-invalid', rule: 'canonicalSyntax',
+      responsibility: 'canonical', source, document, locator, disposition: 'passed', reason: 'canonical_declarations_parsed',
+      observed: `${result.declarations.length} valid canonical declarations were recorded.` })
+      : unknown(evidence, 'search-canonical-invalid', 'canonical', 'canonicalSyntax', source))
   }
   const urls = [...new Set(declarations.map(item => item.url))]
   const invalid = observations.some(item => item.reason === 'canonical_declaration_invalid')
-  const bothSources = parsed === 2
-  observations.push(parsed ? observation(evidence, { id: 'search-canonical-syntax:http', checkId: 'search-canonical-invalid', rule: 'canonical',
-    responsibility: 'canonical', source: 'http', disposition: invalid ? 'failed' : 'passed',
-    reason: invalid ? 'canonical_declaration_invalid' : 'canonical_declarations_parsed',
-    observed: `${declarations.length} valid canonical declarations were recorded.`,
-    attention: invalid ? 'flag' : 'observation',
-    ...(!invalid && !bothSources ? { limitation: C.alternateSource } : {}) })
-    : observation(evidence, { id: 'search-canonical-syntax:http', checkId: 'search-canonical-invalid', rule: 'canonical',
-      responsibility: 'canonical', source: 'http', disposition: 'unknown', reason: 'canonical_evidence_incomplete', observed: C.unknown }))
-  if (urls.length > 1) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical', source: 'http',
+  const bothSources = parsed === 2 && headers !== undefined && headersComplete
+  const inspected = parsed > 0 || declarations.length > 0
+  if (urls.length > 1) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonicalConflict', responsibility: 'canonical', source: 'http',
     disposition: 'failed', reason: 'canonical_signals_conflict', observed: urls.join(' | '), attention: 'flag',
     evidence: declarations.slice(0, 20).map(item => ({ source: item.source, url: item.document.finalUrl,
-      locator: 'canonical declaration', excerpt: item.raw, collectedAt: item.document.collectedAt })) }))
-  else if (bothSources) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical',
+      locator: 'canonical declaration', excerpt: item.raw.slice(0, 2000), collectedAt: item.document.collectedAt })) }))
+  else if (bothSources) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonicalConflict', responsibility: 'canonical',
     source: 'http', disposition: 'passed', reason: 'canonical_signals_consistent',
     observed: `${urls.length} distinct canonical targets were recorded; no contradictory declarations were found in the inspected sources.` }))
-  else if (parsed) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical',
+  else if (inspected) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonicalConflict', responsibility: 'canonical',
     source: 'http', disposition: 'observed', reason: 'canonical_comparison_incomplete', limitation: C.alternateSource,
     observed: 'No contradictory canonical declarations were found in the captured source.' }))
-  else observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical',
+  else observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonicalConflict', responsibility: 'canonical',
     source: 'http', disposition: 'unknown', reason: 'canonical_evidence_incomplete', observed: C.unknown }))
+  const { original } = evidence
   for (const url of urls) {
-    const target = evidence.canonicalTargets.find(item => item.url === url || item.finalUrl === url)
-    const broken = target?.complete && target.status != null && target.status >= 400 && target.status < 500 && target.status !== 429
-    observations.push(observation(evidence, { checkId: 'search-canonical-target', rule: 'canonical', responsibility: 'canonical', source: 'http',
-      id: `search-canonical-target:${url}`, disposition: broken ? 'failed' : target?.complete && target.status != null && target.status >= 200 && target.status < 300 ? 'passed' : 'unknown',
-      reason: broken ? 'canonical_target_broken' : target?.complete && target.status === 200 ? 'canonical_target_reachable' : 'canonical_target_unverified',
-      observed: `${url}: ${target?.status == null ? 'response unavailable' : `HTTP ${target.status}`}`, attention: broken ? 'flag' : 'observation', document: target,
-      locator: 'canonical target response' }))
+    // A redirect from another declared URL cannot replace this target's own
+    // observation. Older artifacts duplicated the original navigation under
+    // its requested URL, even when it was reused for a different terminal URL.
+    const target = evidence.canonicalTargets.find(item => item.url === url &&
+      (item.url === item.finalUrl || item.url !== original.url || item.collectedAt !== original.collectedAt || item.finalUrl !== original.finalUrl))
+      ?? (original.complete && original.finalUrl === url ? original : undefined)
+    const status = target?.status
+    const restricted = target && status != null && (hasPublicSearchChallenge(target) || publicResponseStatusRestriction(status))
+    const broken = target && !restricted && (isMissingPublicResource(target) ||
+      target.complete && status != null && status >= 400 && status < 500)
+    const signInRedirect = target?.status != null && (target.reason === PUBLIC_SIGN_IN_REDIRECT || isPublicSignInRedirect({
+      requestedUrl: url, finalUrl: target.finalUrl, status: target.status, body: target.body ?? '',
+    }))
+    const reachable = headersComplete && target?.complete && status != null && isSuccessfulPublicGetStatus(status) && !restricted && !signInRedirect
+    observations.push(observation(evidence, { checkId: 'search-canonical-target', rule: 'canonicalTarget', responsibility: 'canonical', source: 'http',
+      id: `search-canonical-target:${url}`, disposition: broken ? 'failed' : reachable ? 'passed' : 'unknown',
+      reason: broken ? 'canonical_target_broken' : reachable ? 'canonical_target_reachable' : 'canonical_target_unverified',
+      ...(!headersComplete ? { limitation: 'The HTTP Link field could not be fully interpreted.' } : {}),
+      observed: `${url}: ${target?.status == null ? 'response unavailable' : `HTTP ${target.status}`}${signInRedirect ? ' after redirecting to sign-in' : ''}`,
+      attention: broken ? 'flag' : 'observation', document: target,
+      locator: 'canonical target response', resourceUrl: url }))
   }
   if (!urls.length && !invalid) observations.push(bothSources
     ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
       reason: 'canonical_optional_absent', observed: 'No canonical preference was recorded. This does not itself prevent indexing.' })
-    : parsed ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
+    : parsed && headersComplete ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
       reason: 'canonical_optional_absent', limitation: C.alternateSource, observed: 'No canonical preference was recorded in the captured source.' })
     : unknown(evidence, 'canonical-missing', 'canonical', 'canonical', 'http'))
   return observations
@@ -259,22 +309,26 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
 function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
   if (!evidence.sitemaps.length) return [unknown(evidence, 'sitemap-missing', 'discovery', 'sitemap', 'sitemap')]
   return evidence.sitemaps.flatMap((document, index) => {
-    const parsed = parseSitemap(document), missing = document.status === 404 || document.status === 410
+    const parsed = parseSitemap(document), missing = isMissingPublicResource(document)
     const declared = evidence.declaredSitemaps.includes(document.url)
-    const invalid = document.complete && document.status === 200 && !parsed.valid && !['sitemap_url_limit', 'sitemap_parse_unavailable'].includes(parsed.reason)
+    const invalid = document.complete && document.status === 200 && !parsed.valid &&
+      !['sitemap_url_limit', 'sitemap_parse_unavailable', 'sitemap_no_page_locations', 'public_access_challenge'].includes(parsed.reason)
+    const diagnosis = C.sitemapDetails[parsed.reason as keyof typeof C.sitemapDetails] ?? C.unknown
     const base = { rule: 'sitemap' as const, responsibility: 'discovery' as const, source: 'sitemap' as const,
       document, locator: 'sitemap document', observed: parsed.valid ? `${parsed.urls.length} page URLs and ${parsed.children.length} child sitemaps recorded in this document.`
-        : missing ? `${document.url} returned HTTP ${document.status}.` : `${document.url}: ${parsed.reason}.` }
+        : missing ? `${document.url} returned HTTP ${document.status}.` : `${document.url}\n${diagnosis}` }
     return [
       ...(parsed.valid ? [observation(evidence, { ...base, checkId: 'search-sitemap-contents', id: `sitemap-contents:${index}`,
         disposition: 'observed', reason: 'sitemap_parsed' })] : []),
       observation(evidence, { ...base, checkId: 'sitemap-missing', id: `sitemap-presence:${index}`,
-        disposition: parsed.valid || invalid ? 'passed' : missing && declared ? 'failed' : missing ? 'observed' : 'unknown',
-        reason: parsed.valid || invalid ? 'sitemap_response_recorded' : parsed.reason,
+        disposition: parsed.valid ? 'passed' : missing && declared ? 'failed' : missing || invalid ? 'observed' : 'unknown',
+        reason: parsed.valid || invalid ? 'sitemap_response_recorded' : missing ? 'sitemap_unavailable' : parsed.reason,
         attention: missing && declared ? 'flag' : missing ? 'recommendation' : 'observation' }),
       observation(evidence, { ...base, checkId: 'search-sitemap-invalid', id: `sitemap-syntax:${index}`,
+        checkVersion: SITEMAP_SYNTAX_VERSION,
         disposition: parsed.valid ? 'passed' : invalid ? 'failed' : missing ? 'not_applicable' : 'unknown',
-        reason: parsed.reason, attention: invalid ? declared ? 'flag' : 'recommendation' : 'observation' }),
+        reason: parsed.valid && parsed.format ? 'sitemap_alternate_format_parsed' : parsed.reason,
+        attention: invalid ? declared ? 'flag' : 'recommendation' : 'observation' }),
     ]
   }).concat(evidence.sitemapsComplete ? [] : [unknown(evidence, 'search-sitemap-coverage', 'discovery', 'sitemap', 'sitemap')])
 }
@@ -282,10 +336,11 @@ function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
 function discoveryWithLinks(input: EvaluatorInput): SearchObservation[] {
   const { evidence } = input, [document, source, $] = primary(evidence, 'links')
   if (!$) return [...discovery(input), unknown(evidence, 'search-discovery-links', 'discovery', 'sitemap', source)]
+  const base = htmlDocumentBase($, document.finalUrl)
   const links: string[] = []
   $('a[href]').each((_, node) => {
     try {
-      const url = new URL($(node).attr('href')!, document.finalUrl)
+      const url = new URL($(node).attr('href')!, base)
       if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) links.push(url.toString())
     } catch { /* Invalid links do not become discovery evidence. */ }
   })
@@ -350,21 +405,26 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
         const profile = type === 'BlogPosting' || type === 'NewsArticle' || type === 'TechArticle' ? 'Article' : type
         const feature = inspectFeature(entity, profile, inspection.entities)
         const invalid = feature?.invalid ?? []
+        const validated = feature?.validated ?? []
         // A long entity keeps all observed properties in ordinary bounded records.
         // Recovery still compares the original entity, type, source and properties.
-        for (let offset = 0; offset < Math.max(1, invalid.length); offset += STRUCTURED_PROPERTY_LIMIT) {
+        for (let offset = 0; offset < Math.max(1, invalid.length, validated.length); offset += STRUCTURED_PROPERTY_LIMIT) {
           const properties = invalid.slice(offset, offset + STRUCTURED_PROPERTY_LIMIT)
+          const validatedProperties = validated.slice(offset, offset + STRUCTURED_PROPERTY_LIMIT)
+          const missing = offset ? [] : feature?.missing ?? []
+          const recommended = offset ? [] : feature?.recommended ?? []
           const details = feature ? [...properties.map(key => `Invalid: ${key}`),
-            ...(offset ? [] : feature.missing.map(key => `Missing feature requirement: ${key}`)),
-            ...(offset ? [] : feature.recommended.map(key => `Recommended: ${key}`))] : ['Detected type is outside feature-specific validation.']
+            ...missing.map(key => `Missing feature requirement: ${key}`),
+            ...recommended.map(key => `Recommended: ${key}`)] : ['Detected type is outside feature-specific validation.']
           observations.push(observation(evidence, { id: `entity:${snapshotSource}:${entity.id}:${type}` + (offset ? `:properties:${offset}` : ''),
             checkId: 'search-structured-feature', rule: 'feature', name: `${entity.format} · ${type}`, responsibility: 'structured-data',
-            source: snapshotSource, document: snapshot, disposition: feature ? feature.invalid.length ? 'failed' : feature.missing.length || feature.recommended.length ? 'observed' : 'passed' : 'not_applicable',
-            reason: feature ? feature.invalid.length ? 'markup_property_invalid' : feature.missing.length ? 'feature_requirements_missing' : feature.recommended.length ? 'feature_recommended_properties' : 'supported_feature_rules_passed' : 'unsupported_feature_type',
-            observed: details.length ? details.join('; ') : 'The stated feature rules passed for this entity.',
-            attention: feature?.invalid.length ? 'flag' : feature && (feature.missing.length || feature.recommended.length) ? 'recommendation' : 'observation',
+            source: snapshotSource, document: snapshot, disposition: feature ? properties.length ? 'failed' : missing.length || recommended.length ? 'observed' : 'passed' : 'not_applicable',
+            reason: feature ? properties.length ? 'markup_property_invalid' : missing.length ? 'feature_requirements_missing' : recommended.length ? 'feature_recommended_properties' : 'supported_feature_rules_passed' : 'unsupported_feature_type',
+            observed: details.length ? details.join('; ') : offset ? `Validated: ${validatedProperties.join(', ')}.`
+              : 'The stated feature rules passed for this entity.',
+            attention: properties.length ? 'flag' : missing.length || recommended.length ? 'recommendation' : 'observation',
             locator: entity.locator, entityTypes: [type], entityId: entity.id,
-            invalidProperties: properties, limitation: C.structuredLimit,
+            invalidProperties: properties, validatedProperties, limitation: C.structuredLimit,
             guidance: feature ? `${C.rules.feature.guidance} Reference: ${feature.source}` : C.rules.feature.guidance }))
         }
         const name = entityValues(entity, profile === 'Article' ? 'headline' : 'name', inspection.entities)[0]
@@ -425,7 +485,7 @@ export function validateSearchRegistration(definitions: readonly Definition[]) {
 }
 validateSearchRegistration(SEARCH_CHECK_DEFINITIONS)
 
-export async function evaluateSearch(evidence: SearchPageEvidence, previous?: SearchReceipt | null, evaluators?: readonly string[]) {
+export async function evaluateSearch(evidence: SearchPageEvidence, previous?: SearchComparisonBaseline | null, evaluators?: readonly string[]) {
   const observations: SearchObservation[] = []
   for (const definition of SEARCH_CHECK_DEFINITIONS) {
     if (evaluators && !evaluators.includes(definition.id.slice(7))) continue

@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "fixflags.controlled-destination-page-response-comparison.v1",
+  "observedAt": "2026-11-09T13:54:14.547Z",
+  "method": "paired destination and page-response checks with the same complete synthetic HTTP 200 HTML",
+  "source": {
+    "baseRevision": "3e7453bc20d3d79c3e72730c64ee90d0af9c4ed7",
+    "selectedFileSha256": {
+      "lib/audit/open-check.ts": "09ee8ce06f27d92bca7cd63f9d5001cff0f932caa19df5201060e25544683009",
+      "lib/audit/soft-404.ts": "cfe91d510cf51a859fb87d34916c26982131a8c4eef8d4a92eb53589b98da83f",
+      "lib/audit/html-document.ts": "078d47206033a82737a7c464acc8c3f885aaa3a61a6e2268dbf1f73e60bc1932",
+      "lib/audit/checks/page-response.ts": "7879313e6efb736ff041c4433a257f59c6193e52e8cbaf213d930ccb7379fe3c"
+    },
+    "fixtureSha256": "87881477ca63c310af09db159109b2d61641d81b414ce968425491d593d528b6",
+    "node": "v22.23.2"
+  },
+  "limitations": [
+    "Hand-authored cases, not a sample of customer sites or AI builder output.",
+    "Injected HTTP responses exercise the destination check, not network collection, browser rendering or the booking action.",
+    "The case descriptions are fixture design facts. Classifier outcomes are observations and may disagree with them.",
+    "The page-response check receives the same complete document as controlled evidence. Its success concerns the response alone."
+  ],
+  "observations": [
+    {
+      "caseId": "booking-control",
+      "path": "/book-control",
+      "fixtureDesign": "The booking page is present in the supplied response.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "reachable",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": true,
+      "suppliedPage": "present",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "booking-soft-404",
+      "path": "/book",
+      "fixtureDesign": "The response says the booking page is missing while returning HTTP 200.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "missing",
+      "pageResponseOutcome": "failure",
+      "pageResponseCheckIds": [
+        "page-http-error"
+      ]
+    },
+    {
+      "caseId": "working-404-guide",
+      "path": "/docs/repair-a-missing-page",
+      "fixtureDesign": "The requested instructional article is present. Its title and heading discuss HTTP 404.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "present",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "branded-missing-labels",
+      "path": "/brand-missing",
+      "fixtureDesign": "The branded title and heading both say that the page is missing.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "missing",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "branded-title-plain-heading",
+      "path": "/brand-plain-missing",
+      "fixtureDesign": "The branded title is paired with a plain missing-page heading.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "missing",
+      "pageResponseOutcome": "failure",
+      "pageResponseCheckIds": [
+        "page-http-error"
+      ]
+    },
+    {
+      "caseId": "bare-404-label",
+      "path": "/bare-missing",
+      "fixtureDesign": "The error template uses only the number 404 as its title and heading.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "missing",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "body-only-missing-message",
+      "path": "/body-missing",
+      "fixtureDesign": "The missing-page message is in the body with a generic title and heading.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "missing",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "contact-extension-404",
+      "path": "/phone-booking",
+      "fixtureDesign": "The requested contact page is present and 404 is a phone extension.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "present",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "hidden-missing-heading",
+      "path": "/hidden-error",
+      "fixtureDesign": "The booking document is present and the missing-page heading is hidden.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "present",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    },
+    {
+      "caseId": "expired-offer-notice",
+      "path": "/offer-booking",
+      "fixtureDesign": "The booking document is present and the notice refers to a past offer.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false,
+      "suppliedPage": "present",
+      "pageResponseOutcome": "success",
+      "pageResponseCheckIds": []
+    }
+  ]
+}

@@ -122,6 +122,35 @@ describe('source-conditioned loading repair evidence', () => {
       expect(scopedAssertionForTarget({ receipt: receipt(metrics(mobile, window('desktop', 500))), checkId: flag.checkId, flag })).toBeUndefined()
     }
   })
+  it('does not report a completed clearance when the mobile loader returns before capture', () => {
+    const reappeared = { ...window('mobile', 5200), loadingVisibleAtFinal: true }
+    const data = metrics(reappeared, window('desktop', 500))
+    const original = runMobileUXQualityChecks(metrics()).find(flag => flag.checkId === 'mobile-load-delay-content')!
+    expect(runInteractionChecks(data).map(flag => flag.checkId)).toEqual(['loading-indicator-stuck'])
+    expect(runMobileUXQualityChecks(data).some(flag => flag.checkId === original.checkId)).toBe(false)
+    const observed = receipt(data, 'mobile-ux-quality')
+    expect(observed.assertions.find(assertion => assertion.key === 'mobile-loading-delay'))
+      .toMatchObject({ passed: false, complete: false })
+    expect(scopedAssertionForTarget({ receipt: observed, checkId: original.checkId, flag: original })).toBeUndefined()
+  })
+  it('withholds both findings and repair proof from interrupted loading samples', () => {
+    const original = runInteractionChecks(metrics())[0]
+    for (const elapsed of [500, 5200, null]) {
+      const mobile = window('mobile', elapsed), desktop = window('desktop', elapsed)
+      mobile.observation!.interrupted = true
+      desktop.observation!.interrupted = true
+      const data = metrics(mobile, desktop)
+      expect(runInteractionChecks(data)).toEqual([])
+      expect(runMobileUXQualityChecks(data).some(flag => flag.checkId === 'mobile-load-delay-content')).toBe(false)
+      const observed = receipt(data)
+      expect(observed.assertions.filter(assertion => assertion.key !== 'reduced-motion')).toEqual([
+        expect.objectContaining({ key: 'blocking-loading-ui', passed: false, complete: false }),
+        expect.objectContaining({ key: 'loading-delay', passed: false, complete: false }),
+        expect.objectContaining({ key: 'loading-delay', passed: false, complete: false }),
+      ])
+      expect(scopedAssertionForTarget({ receipt: observed, checkId: original.checkId, flag: original })).toBeUndefined()
+    }
+  })
   it('verifies a stuck mobile loader and the separate mobile delay threshold', () => {
     const stuck = runInteractionChecks(metrics(window('mobile', null), window('desktop', 500)))[0]
     const healthy = metrics(window('mobile', 500), window('desktop', 500))
@@ -142,14 +171,15 @@ describe('source-conditioned loading repair evidence', () => {
     const spec = { version: 1, engine: 'progressive-v1', scope: 'DIAGNOSTIC', targetUrl: pageUrl, environment: 'production',
       checks: { 'mobile-load-delay-content': 2 }, outcomes: [], verificationTarget: { kind: 'DIAGNOSTIC', pageUrl, checkId: 'mobile-load-delay-content',
         attemptId: 'attempt', parentAuditId: 'before' } }
-    const context = (clearedMs: number) => ({ audit: { id: 'after', executionSpec: spec }, task: { id: 'task' },
+    const context = (mobile: PageLoadExperience) => ({ audit: { id: 'after', executionSpec: spec }, task: { id: 'task' },
       input: { pageUrl, position: 0, primary: true, role: 'primary', module: 'mobile-ux-quality' }, deadline: Date.now() + 10_000,
       dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
         pageId: 'page', metadata: null, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopBase64: null, mobileBase64: null,
-          consoleErrors: [], captureStatus: { desktop: 'failed', mobile: 'pending' }, captureFailures: [], captureMetrics: metrics(window('mobile', clearedMs)) },
+          consoleErrors: [], captureStatus: { desktop: 'failed', mobile: 'pending' }, captureFailures: [], captureMetrics: metrics(mobile) },
       }) }]]) }) as unknown as TaskContext
-    const slow = checkArtifactSchema.parse(readArtifact(await evaluate(context(5200)), 'check').data)
-    const fast = checkArtifactSchema.parse(readArtifact(await evaluate(context(500)), 'check').data)
+    const slow = checkArtifactSchema.parse(readArtifact(await evaluate(context(window('mobile', 5200))), 'check').data)
+    const fast = checkArtifactSchema.parse(readArtifact(await evaluate(context(window('mobile', 500))), 'check').data)
+    const returned = checkArtifactSchema.parse(readArtifact(await evaluate(context({ ...window('mobile', 5200), loadingVisibleAtFinal: true })), 'check').data)
     const flag = slow.flags.find(item => item.checkId === 'mobile-load-delay-content')
     expect(flag).toBeDefined()
     expect(slow.receipt.assertions.map(assertion => assertion.key)).toEqual(['mobile-loading-delay'])
@@ -157,6 +187,8 @@ describe('source-conditioned loading repair evidence', () => {
     expect(slow.receipt.assertions.find(assertion => assertion.key === 'mobile-loading-delay')).toMatchObject({ passed: false, complete: true })
     expect(slow.receipt.assertions.find(assertion => assertion.key === 'mobile-loading-delay')?.disposition).toBeUndefined()
     expect(fast.flags).toEqual([])
+    expect(returned.flags).toEqual([])
+    expect(returned.receipt).toMatchObject({ complete: false, assertions: [{ key: 'mobile-loading-delay', passed: false, complete: false }] })
     expect(fast.receipt.assertions.find(assertion => assertion.key === 'mobile-loading-delay')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
     expect(scopedAssertionForTarget({ receipt: fast.receipt, checkId: flag!.checkId, flag: flag! })).toBeUndefined()
     expect(scopedAssertionForTarget({ receipt: slow.receipt, checkId: flag!.checkId, flag: flag! })?.assertion.passed).toBe(false)

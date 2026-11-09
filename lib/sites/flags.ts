@@ -21,9 +21,14 @@ import { readSiteEvidence } from './application/site-evidence-read'
 import { createHash } from 'node:crypto'
 import { loadCurrentFlagVerifications } from './application/flag-verification-state'
 import { loadCurrentFindingSources } from './application/current-finding-sources'
+import { latestConfirmedOutcomeFlagId } from './application/outcome-finding-sources'
+import { outcomeFlagOwner } from '@/lib/audit/flag-identity'
 import { SiteRunRefusal } from './application/run-refusal'
 import { loadResolvedFindingSources, resolvedSourceMatches } from './application/resolved-finding-sources'
 import { loadAcceptedFlagRecoveries } from './application/accepted-flag-recoveries'
+import { readSupportingEvidencePage, supportingEvidenceRevision, type SupportingEvidencePage } from './supporting-evidence'
+import { buildSiteRepairBrief } from './repair-brief'
+import { combineAccessibilityFixes } from '@/lib/audit/flag-identity'
 
 const guidanceSelect = { fix: true, agentPrompt: true, cursorPrompt: true, claudePrompt: true,
   windsurfPrompt: true, lovablePrompt: true, boltPrompt: true } satisfies Prisma.FlagSelect
@@ -35,32 +40,34 @@ const guidanceInclude = { audit: { select: guidanceAuditSelect } } satisfies Pri
 const findingSelect = { id: true, auditId: true, createdAt: true, source: true, checkId: true, rubric: true, severity: true,
   impactTag: true, problem: true, evidence: true, whyItMatters: true, fix: true, pageUrl: true, status: true,
   resolvedInId: true, confidence: true, affectedPaths: true, fingerprint: true, verificationRule: true,
-  supportingObservations: true, evidenceTargets: true, attentionPolicy: true,
+  supportingObservations: true, supportingObservationVersion: true, supportingObservationIndex: true,
+  evidenceTargets: true, attentionPolicy: true,
   improvementOccurrence: { select: { improvementId: true } } } satisfies Prisma.FlagSelect
 
-async function loadFindingEvidence(projectId: string, sourceIds: string[]) {
+async function loadFindingEvidence(projectId: string, sourceIds: string[], includeSupporting = true) {
   const ids = [...new Set(sourceIds)]
   const evidence = new Map<string, Prisma.FlagGetPayload<{ select: typeof findingSelect }>>()
   for (let offset = 0; offset < ids.length; offset += 128) {
     for (const flag of await prisma.flag.findMany({ where: { id: { in: ids.slice(offset, offset + 128) }, audit: { projectId } },
-      select: findingSelect })) evidence.set(flag.id, flag)
+      select: { ...findingSelect, supportingObservations: includeSupporting } }))
+      evidence.set(flag.id, { ...flag, supportingObservations: includeSupporting ? flag.supportingObservations : null })
   }
   if (ids.some(id => !evidence.has(id))) throw new SiteRunRefusal('Finding evidence changed. Try again.', 409)
   return evidence
 }
 
-async function loadCurrentIncidentScope(site: SiteRecord, improvement: { id: string; status: string }) {
+async function loadCurrentIncidentScope(site: SiteRecord, improvement: { id: string; status: string }, includeSupporting = true) {
   if (site.projectId) {
     const current = await loadCurrentFindingSources([site.projectId], [{ ...improvement, projectId: site.projectId }], { includeUnbound: false })
     const sources = current.byImprovement.get(improvement.id) ?? []
-    const evidence = await loadFindingEvidence(site.projectId, sources.map(source => source.flag.id))
+    const evidence = await loadFindingEvidence(site.projectId, sources.map(source => source.flag.id), includeSupporting)
     return sources.map(source => ({ createdAt: source.createdAt, flag: { ...evidence.get(source.flag.id)!, status: source.flag.status } }))
   }
   return prisma.improvementOccurrence.findMany({
     where: { improvementId: improvement.id, audit: { id: site.primaryAuditId ?? '' } },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     select: { createdAt: true, flag: { select: { id: true, auditId: true, pageUrl: true, affectedPaths: true, status: true, resolvedInId: true,
-      source: true, evidence: true, checkId: true, fingerprint: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
+      source: true, evidence: true, fix: true, checkId: true, fingerprint: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
   })
 }
 
@@ -88,6 +95,7 @@ function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
   supportingObservations?: unknown
   supportingEvidenceUnreadable?: boolean
   repairDefinition?: RepairDefinition | null
+  scopedRepairGuidance?: string
   repairScopeEvidence?: unknown
   audit?: Parameters<typeof repairGuidanceState>[0]['audit']
   id: string
@@ -121,7 +129,9 @@ function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
     affectedPageCount: affectedPaths.length,
     outcomeId: flag.relatedOutcome?.id,
   })
-  const repairDefinition = resolveRepairDefinition({ ...flag, supportingEvidenceUnreadable })
+  const definition = resolveRepairDefinition({ ...flag, supportingEvidenceUnreadable })
+  const repairDefinition = definition && !supportingEvidenceUnreadable && definition.kind !== 'evidence-recovery' && flag.scopedRepairGuidance
+    ? { ...definition, source: 'recorded' as const, guidance: flag.scopedRepairGuidance } : definition
   const fix = repairDefinition?.guidance ?? ''
   return {
     ...(supportingEvidenceUnreadable ? { supportingEvidenceUnreadable: true } : {}),
@@ -236,10 +246,15 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
         if (!flag) return []
         const paths = incidentAffectedPaths(currentOccurrenceFlags)
         if (auditFlag?.pageUrl) paths.push(auditFlag.pageUrl)
+        const scopedRepairGuidance = currentOccurrenceFlags.some(source => source.id === flag.id)
+          ? combineAccessibilityFixes(currentOccurrenceFlags) : undefined
         return [{
           ...flag,
           status: flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
           improvementId: imp.id,
+          scopedRepairGuidance,
+          ...(scopedRepairGuidance && currentOccurrenceFlags.some(source => hasUnreadableStoredSupportingObservations(source.supportingObservations))
+            ? { supportingEvidenceUnreadable: true } : {}),
           repairScopeEvidence: currentOccurrenceFlags.map(source => createHash('sha256').update(JSON.stringify({
             id: source.id, evidence: source.evidence, supportingObservations: source.supportingObservations,
             verificationRule: source.verificationRule })).digest('hex')),
@@ -337,6 +352,8 @@ export type SiteFlagDetail = SiteFlagSeed & {
   repairGuidance?: RepairGuidanceState
   supportingObservations?: ReturnType<typeof publicSupportingObservations>
   supportingEvidenceUnreadable?: boolean
+  supportingEvidenceRevision?: string
+  supportingEvidencePage?: SupportingEvidencePage
   outcomeId: string | null
   sourceAuditId: string
   evidenceContext?: FlagEvidenceContext
@@ -350,6 +367,7 @@ export type SiteFlagDetail = SiteFlagSeed & {
   viewport: string | null
   attempts: SiteFlagAttemptView[]
   verificationFeedback?: import('./flag-resolution').FlagVerificationFeedback | null
+  activeVerificationAuditId?: string | null
   verifying: boolean
 }
 
@@ -370,7 +388,20 @@ export async function loadSiteFlagDetail(
   return readSiteEvidence(site, () => readSiteFlagDetail(site, flagId))
 }
 
-async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<SiteFlagDetail | null> {
+/** HTTP and MCP continuation use the same bounded evidence owner. */
+export async function loadSiteRepairBriefPage(site: SiteRecord, flagId: string, appUrl: string, observationOffset = 0, expectedContextHash?: string) {
+  return (await loadSiteRepairContextPage(site, flagId, appUrl, observationOffset, expectedContextHash))?.brief ?? null
+}
+
+export async function loadSiteRepairContextPage(site: SiteRecord, flagId: string, appUrl: string, observationOffset = 0, expectedContextHash?: string) {
+  return readSiteEvidence(site, async () => {
+    const flag = await readSiteFlagDetail(site, flagId, { observationOffset })
+    return flag ? { brief: buildSiteRepairBrief(site.siteId, flag, appUrl, flagId, observationOffset, expectedContextHash),
+      attempts: flag.attempts, verifying: flag.verifying } : null
+  })
+}
+
+async function readSiteFlagDetail(site: SiteRecord, flagId: string, page?: { observationOffset: number }): Promise<SiteFlagDetail | null> {
   // Detail is a historical resource, independent of the open inbox and its pagination.
   let flagRow = await prisma.flag.findFirst({
     where: {
@@ -378,25 +409,35 @@ async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<Sit
       OR: [{ id: flagId }, { improvementOccurrence: { improvementId: flagId } }],
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    omit: { supportingObservations: Boolean(page) },
     include: { improvementOccurrence: { include: { improvement: { select: { id: true, status: true, outcomeId: true } } } },
       ...guidanceInclude },
   })
   if (!flagRow) return null
   const initialImprovement = flagRow.improvementOccurrence?.improvement
-  const occurrenceScope = initialImprovement && flagRow.id !== flagId ? await loadCurrentIncidentScope(site, initialImprovement) : []
-  const recoveries = site.projectId ? (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
-    flags: [flagRow] }])).get(site.projectId) : null
-  const activeScope = currentIncidentFlags(occurrenceScope.map(occurrence => occurrence.flag), recoveries ?? new Set<string>())
+  const durableLink = flagRow.id !== flagId ? initialImprovement : undefined
+  const occurrenceScope = durableLink ? await loadCurrentIncidentScope(site, durableLink, !page) : []
+  const activeScope = currentIncidentFlags(occurrenceScope.map(occurrence => occurrence.flag), new Set<string>())
+  const bound = outcomeFlagOwner(flagRow.fingerprint)
   const currentSource = newestRecordedFlag(activeScope)
+  const sourceId = currentSource?.id ?? (durableLink && bound && site.projectId
+    ? await latestConfirmedOutcomeFlagId({ projectId: site.projectId, outcomeId: bound.outcomeId, improvementId: durableLink.id })
+    : flagRow.id)
   // Durable incident links open the unresolved original capture. Exact Flag
   // links remain historical resources, including completed recoveries.
-  if (flagRow.id !== flagId && currentSource && currentSource.id !== flagRow.id) {
-    flagRow = await prisma.flag.findFirst({ where: { id: currentSource.id,
-      audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
+  if (!sourceId) return null
+  if (sourceId !== flagRow.id) {
+    flagRow = await prisma.flag.findFirst({ where: { id: sourceId,
+      audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' },
+      improvementOccurrence: { improvementId: durableLink?.id },
+    },
+      omit: { supportingObservations: Boolean(page) },
       include: { improvementOccurrence: { include: { improvement: { select: { id: true, status: true, outcomeId: true } } } },
       ...guidanceInclude } })
     if (!flagRow) return null
   }
+  const recoveries = site.projectId ? (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
+    flags: [flagRow] }])).get(site.projectId) : null
   const improvement = flagRow.improvementOccurrence?.improvement
   const legacyRecovery = site.projectId && improvement && flagRow.status === 'OPEN'
     ? (await loadAcceptedFlagRecoveries(site.projectId, [{ id: flagRow.id, auditId: flagRow.auditId, improvementId: improvement.id }])).get(flagRow.id) : undefined
@@ -441,8 +482,12 @@ async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<Sit
   const expectedBehavior = linkedOutcome?.expectation?.trim() || customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
   const affectedPaths = flagRow.id === flagId ? seed.affectedPaths : incidentAffectedPaths(activeScope)
-  const incidentEvidence = flagRow.id !== flagId && activeScope.length > 1 ? incidentSupportingEvidence(activeScope) : null
-  const supportingEvidenceUnreadable = incidentEvidence?.unreadable ?? hasUnreadableStoredSupportingObservations(flagRow.supportingObservations)
+  const grouped = flagRow.id !== flagId && activeScope.length > 1
+  const evidenceSources = grouped ? activeScope : [flagRow]
+  const evidencePage = page ? await readSupportingEvidencePage(site, evidenceSources, grouped, page.observationOffset, 25) : null
+  const incidentEvidence = grouped && !page ? incidentSupportingEvidence(activeScope) : null
+  const supportingEvidenceUnreadable = evidencePage ? evidencePage.total === null
+    : incidentEvidence?.unreadable ?? hasUnreadableStoredSupportingObservations(flagRow.supportingObservations)
   const sourceStatus = flagRow.status === 'FIXED' && !provenRecovery ? 'UNVERIFIED'
     : siteFlagDetailStatus(improvement?.status, flagRow.status, Boolean(legacyRecovery))
   const observedAt = flagRow.improvementOccurrence?.createdAt ?? flagRow.createdAt
@@ -451,6 +496,7 @@ async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<Sit
   const verifying = currentCheck?.verifying ?? false
   const scopedSeed = toSiteFlagSeed({
     ...seed,
+    scopedRepairGuidance: grouped ? combineAccessibilityFixes(activeScope) : undefined,
     audit: flagRow.audit,
     supportingObservations: flagRow.supportingObservations,
     supportingEvidenceUnreadable,
@@ -468,7 +514,9 @@ async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<Sit
     outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
     evidenceContext: flagEvidenceContext(flagRow),
-    supportingObservations: incidentEvidence?.observations ?? publicSupportingObservations(flagRow.supportingObservations),
+    supportingObservations: evidencePage ? evidencePage.observations ?? [] : incidentEvidence?.observations ?? publicSupportingObservations(flagRow.supportingObservations),
+    supportingEvidenceRevision: evidencePage?.revision ?? supportingEvidenceRevision(evidenceSources, grouped),
+    ...(evidencePage ? { supportingEvidencePage: evidencePage } : {}),
     supportingEvidenceUnreadable,
     verificationRule: flagRow.verificationRule,
     confidence: flagRow?.confidence ?? null,
@@ -492,6 +540,7 @@ async function readSiteFlagDetail(site: SiteRecord, flagId: string): Promise<Sit
       verifying: attemptHasActiveVerification(attempt, site.projectId!),
     })),
     verifying,
+    activeVerificationAuditId: currentCheck?.verifying ? currentCheck.auditId : null,
     verificationFeedback: currentCheck?.feedback ?? null,
   }
 }

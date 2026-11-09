@@ -3,6 +3,7 @@ import { buildCombinedTriageOutput, collapsedPageFlags, productScoresFromFlags, 
 import type { PageRun } from '../pipeline/types'
 import type { TriageOutput } from '../judge-triage-schema'
 import type { TriageResult } from '../judge-triage'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from './check-fixtures'
 
 const RUBRIC_NAMES = ['MESSAGE', 'EXPERIENCE', 'REACH'] as const
 
@@ -266,8 +267,8 @@ describe('productScoresFromFlags', () => {
 
   it('does not treat PageSpeed as product-complete when a reviewed page is missing it', () => {
     const withSpeed = pageRunWithFlags()
-    withSpeed.desktop = { score: 90, strategy: 'desktop' } as never
-    withSpeed.mobile = { score: 85, strategy: 'mobile' } as never
+    withSpeed.desktop = healthyDesktopPs({ score: 90, diagnostics: { measurement: pageSpeedMeasurementFixture(withSpeed.url) } })
+    withSpeed.mobile = healthyDesktopPs({ score: 85, strategy: 'mobile', diagnostics: { measurement: pageSpeedMeasurementFixture(withSpeed.url, 'mobile') } })
     const withoutSpeed = pageRunWithFlags()
     withoutSpeed.url = 'https://example.com/pricing'
 
@@ -276,6 +277,14 @@ describe('productScoresFromFlags', () => {
 
     const scores = productScoresFromFlags([withSpeed, withoutSpeed])
     expect(scores.EXPERIENCE).toBeDefined()
+  })
+
+  it('does not use an old lab score as the current Experience score', () => {
+    const page = pageRunWithFlags()
+    page.desktop = healthyDesktopPs({ score: 20, diagnostics: { measurement: pageSpeedMeasurementFixture(page.url,
+      'desktop', { fetchTime: new Date(Date.now() - 86_400_000).toISOString() }) } })
+    expect(productScoresFromFlags([page]).EXPERIENCE).toBe(productScoresFromFlags([pageRunWithFlags()]).EXPERIENCE)
+    expect(page.desktop.score).toBe(20)
   })
 })
 

@@ -28,6 +28,7 @@ export function siteNotificationEmail(input: {
   const visibleRegressions = input.regressions.slice(0, visibleLimit)
   const visibleRecoveries = input.recoveries.slice(0, visibleLimit - visibleRegressions.length)
   const remaining = input.regressions.length + input.recoveries.length - visibleRegressions.length - visibleRecoveries.length
+  const multipleUpdates = input.regressions.length + input.recoveries.length > 1
   const preferencesUrl = `${appUrl}/sites/${encodeURIComponent(input.projectId)}/settings`
   const attachments: { filename: string; content: string; contentType: 'text/plain' }[] = []
   const regressions = visibleRegressions.map((flag, index) => {
@@ -38,19 +39,32 @@ export function siteNotificationEmail(input: {
       `${C.repair.report}: ${report}`, `${C.repair.finding}: ${href(flag.id)}`,
       `${flag.problem || ''}\nURL: ${flag.pageUrl || input.url}\n${C.repair.missing}`,
     ].filter(Boolean).join('\n\n')
-    // Keep long evidence complete without making narrow inboxes or message clipping hide it.
-    const attached = Buffer.byteLength(escapeEmailHtml(prompt)) > 5000
+    // Keep a short single fix copyable in the message. A list of problems
+    // stays scannable while each prepared task remains complete in its file.
+    const attached = Boolean(task && multipleUpdates) || Buffer.byteLength(escapeEmailHtml(prompt)) > 5000
     const filename = `fixflags-fix-${index + 1}.txt`
-    if (attached) attachments.push({ filename, content: Buffer.from(prompt).toString('base64'), contentType: 'text/plain' })
-    const instructions = attached ? `<p>${escapeEmailHtml(C.repair.attachment(filename))}</p>`
-      : `<p style="font-size:14px;line-height:1.5;">${escapeEmailHtml(task ? C.repair.intro : C.repair.recheckIntro)}</p><pre style="margin:12px 0 24px;padding:16px;background:${brandLight.muted};border-radius:12px;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">${escapeEmailHtml(prompt)}</pre>`
-    return emailChangeBlock({ now: { text: customerFindingLabel({ ...flag, problem }), href: href(flag.id) } })
-      + `<h3 style="margin:20px 0 8px;font-size:15px;">${task ? C.repair.heading : C.repair.nextSteps}</h3>${instructions}`
+    const finding = emailChangeBlock({ now: { text: customerFindingLabel({ ...flag, problem }), href: href(flag.id),
+      detail: attached && multipleUpdates ? C.repair.attachmentLabel(filename) : undefined } })
+    if (attached) {
+      attachments.push({ filename, content: Buffer.from(prompt).toString('base64'), contentType: 'text/plain' })
+      return multipleUpdates ? finding : finding + `<p style="font-size:14px;line-height:1.5;">${escapeEmailHtml(C.repair.attachment(filename))}</p>`
+    }
+    return finding + `<h3 style="margin:20px 0 8px;font-size:15px;">${task ? C.repair.heading : C.repair.nextSteps}</h3>`
+      + `<p style="font-size:14px;line-height:1.5;">${escapeEmailHtml(task ? C.repair.intro : C.repair.recheckIntro)}</p>`
+      + `<pre style="margin:12px 0 24px;padding:16px;background:${brandLight.muted};border-radius:12px;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">${escapeEmailHtml(prompt)}</pre>`
   }).join('')
-  const recoveries = visibleRecoveries.map(flag => emailChangeBlock({
-    before: { label: C.before, text: customerFindingLabel({ ...flag, problem: flag.problem || C.previousProblem }), href: href(flag.id) },
-    now: { label: C.now, text: C.recoveredResult }, improved: true,
-  })).join('')
+  const attachmentIntro = multipleUpdates && attachments.length
+    ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.5;">${escapeEmailHtml(C.repair.attachedPrompts)}</p>` : ''
+  const recoveries = visibleRecoveries.map(flag => {
+    const page = flag.pageUrl && URL.canParse(flag.pageUrl) ? new URL(flag.pageUrl) : null
+    const path = page && ['http:', 'https:'].includes(page.protocol)
+      ? `${page.hostname === host ? '' : page.host}${page.pathname}`.slice(0, 240) : null
+    const label = customerFindingLabel({ ...flag, problem: flag.problem || C.previousProblem })
+    return emailChangeBlock({
+      before: { label: C.before, text: path ? `${label} (${path})` : label, href: href(flag.id) },
+      now: { label: C.now, text: C.recoveredResult }, improved: true,
+    })
+  }).join('')
   const remainderIds = input.regressions.slice(visibleRegressions.length).flatMap(flag => flag.id ? [flag.id] : [])
   const continuationFiles: string[] = []
   if (remainderIds.length) {
@@ -81,8 +95,18 @@ export function siteNotificationEmail(input: {
   const section = (title: string, content: string) => content
     ? `<h2 style="margin:28px 0 8px;font-size:16px;">${title}</h2>${content}` : ''
   const mixed = Boolean(regressions && recoveries)
-  const action = leadFlag?.id ? C.evidence : C.flags
-  const html = emailLayout(`<p style="margin:0 0 24px;">${escapeEmailHtml(greeting)}</p>${emailNotificationHeading(host, heading)}${mixed ? section(C.attention, regressions) + section(C.recovery, recoveries) : regressions + recoveries}${remaining ? `<p>${C.more(remaining)}</p>` : ''}${continuationFiles.map(filename => `<p>${escapeEmailHtml(C.repair.remainingAttachment(filename))}</p>`).join('')}${checked ? `<p style="font-size:13px;color:${brandLight.mutedForeground};">${escapeEmailHtml(checked)}</p>` : ''}<p style="margin:24px 0 0;"><a href="${escapeEmailHtml(href(leadFlag?.id))}" style="${emailButtonStyle}">${action}</a></p>`, { preview: heading, preferencesUrl })
+  const action = `<p style="margin:0 0 24px;"><a href="${escapeEmailHtml(href(leadFlag?.id))}" style="${emailButtonStyle}">${leadFlag?.id ? C.evidence : C.flags}</a></p>`
+  const body = [
+    `<p style="margin:0 0 24px;">${escapeEmailHtml(greeting)}</p>`,
+    emailNotificationHeading(host, heading),
+    action,
+    attachmentIntro,
+    mixed ? section(C.attention, regressions) + section(C.recovery, recoveries) : regressions + recoveries,
+    remaining ? `<p>${C.more(remaining)}</p>` : '',
+    ...continuationFiles.map(filename => `<p>${escapeEmailHtml(C.repair.remainingAttachment(filename))}</p>`),
+    checked ? `<p style="font-size:13px;color:${brandLight.mutedForeground};">${escapeEmailHtml(checked)}</p>` : '',
+  ].join('')
+  const html = emailLayout(body, { preview: heading, preferencesUrl })
   return {
     subject: C.subject(host, input.regressions.length, input.recoveries.length),
     ...emailContent(html),

@@ -8,7 +8,7 @@ import { prisma } from '@/lib/db'
 import { getEntitlements, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
-import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { readReportComparison } from '@/lib/audit/diff-flags'
 import { toRankableFlag } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixArtifacts } from '@/lib/audit/finish-plan'
@@ -276,7 +276,7 @@ export async function loadReportRouteState(
         })
       : Promise.resolve(null),
     audit.status === 'COMPLETED' && audit.parentId
-      ? getFlagDiffSummary(audit.parentId, id)
+      ? readReportComparison(audit.parentId, id)
       : Promise.resolve(null),
     isOwner && session?.user
       ? loadCompletedReviewHistoryRows({
@@ -286,7 +286,7 @@ export async function loadReportRouteState(
         })
       : Promise.resolve([]),
     isOwner && session?.user && audit.status === 'COMPLETED' && Boolean(audit.parentId)
-      ? loadVerificationReceiptsForReview(id, session.user.id)
+      ? loadVerificationReceiptsForReview(id, session.user.id, audit.projectId)
       : Promise.resolve([]),
   ])
   if (isOwner && await resolveAuditAccess(audit, session?.user) !== 'owner') notFound()
@@ -487,7 +487,7 @@ export async function loadReportRouteState(
       pageType: audit.pageType,
       checkedAt: audit.completedAt,
       freshComparableUpdate:
-        Boolean(audit.parentId) && audit.reportCompleteness === 'FULL',
+        Boolean(recheckDiff) && audit.reportCompleteness === 'FULL',
       history: scoreHistory,
       updateDiff: recheckDiff,
       agentMessages,

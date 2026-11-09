@@ -1,7 +1,8 @@
 import type { Page } from 'playwright'
 import { z } from 'zod'
 import { publishedTrustSignals } from '../metadata'
-import { analyticsMarkupSignals, METADATA_MARKUP_TOKENS } from '../metadata-markup-signals'
+import { analyticsMarkupSignals, ANALYTICS_CONFIGURATION_ATTRIBUTES, ANALYTICS_INLINE_DECLARATION, ANALYTICS_RESOURCE_DECLARATION,
+  METADATA_MARKUP_TOKENS } from '../metadata-markup-signals'
 import { auditPageObservation, captureObservationScopeSchema, captureObservationKey, type CaptureObservationScope } from './observation-scope'
 import { documentEvidenceWithheld } from './document-evidence'
 import type { RenderedCopy } from './rendered-copy'
@@ -20,7 +21,7 @@ export type PublicSignalCollection = 'all' | 'trust' | 'analytics'
 export async function readPublicPageSignals(page: Page, collection: PublicSignalCollection = 'all'): Promise<PublicPageSignals | null> {
   const url = page.url(), original = auditPageObservation(page)
   if (original?.restricted) return null
-  const parts = await page.evaluate(({ textLimit, anchorLimit, jsonLimit, markers, collectTrust, collectAnalytics }) => {
+  const parts = await page.evaluate(({ textLimit, anchorLimit, jsonLimit, markers, collectTrust, collectAnalytics, inline, resources, attributes }) => {
     ;(globalThis as unknown as { __name?: (fn: unknown) => unknown }).__name ??= fn => fn
     const published = (element: Element) => !element.closest('noscript,template')
     const nodes = collectTrust ? [...document.querySelectorAll('a')].filter(published) : []
@@ -55,29 +56,41 @@ export async function readPublicPageSignals(page: Page, collection: PublicSignal
       jsonBytes += raw.length
       try { jsonLd.push(JSON.parse(raw || '{}')) } catch { /* Match the HTML parser's unreadable-markup policy. */ }
     }
-    // Preserve the shared markup vocabulary without transferring implementation
-    // text, project keys or an oversized document into the stored observation.
-    const found = new Set<string>(), walker = collectAnalytics
-      ? document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT) : null
-    let markupComplete = collectAnalytics, markupBytes = 0, visited = 0, current: Node | null = collectAnalytics ? document.documentElement : null
-    while (current) {
-      if (++visited > 20_000) { markupComplete = false; break }
-      // Template content is outside the active document walker. Its uninspected
-      // markup cannot establish the absence of the shared declaration markers.
-      if (current instanceof HTMLTemplateElement && current.content.childNodes.length) markupComplete = false
-      const value = current.nodeType === Node.ELEMENT_NODE ? [...(current as Element).attributes].map(attribute => attribute.name + '=' + attribute.value).join(' ')
-        : current.nodeValue ?? ''
-      const remaining = textLimit - markupBytes
-      const sample = value.slice(0, Math.max(0, remaining)).toLowerCase()
-      for (const marker of markers) if (sample.includes(marker)) found.add(marker)
-      markupBytes += value.length
-      if (markupBytes > textLimit) { markupComplete = false; break }
-      current = walker?.nextNode() ?? null
+    // Only candidate declarations spend this budget. Read explicit declarations
+    // first so a large inline candidate cannot obscure independently known tags.
+    const found = new Set<string>(), scripts: Element[] = []
+    const candidates = collectAnalytics ? document.querySelectorAll([
+      inline, resources, 'template', ...attributes.map(attribute => `[${attribute}]`),
+    ].join(',')) : []
+    const candidateLimit = 20_000
+    let markupComplete = collectAnalytics && candidates.length <= candidateLimit, remaining = textLimit
+    function observe(value: string) {
+      if (!value) return
+      if (value.length > remaining) markupComplete = false
+      if (remaining === 0) return
+      const sample = value.slice(0, remaining)
+      remaining -= sample.length
+      const lower = sample.toLowerCase()
+      for (const marker of markers) if (lower.includes(marker)) found.add(marker)
+    }
+    for (let index = 0; index < Math.min(candidates.length, candidateLimit); index++) {
+      const node = candidates[index]
+      if (node.parentElement?.closest('noscript,template')) continue
+      if (node instanceof HTMLTemplateElement && node.content.childNodes.length) markupComplete = false
+      if (node.matches(resources)) observe(node.getAttribute('src') ?? node.getAttribute('href') ?? '')
+      for (const attribute of attributes) observe(node.getAttribute(attribute) ?? '')
+      if (node.matches(inline)) scripts.push(node)
+    }
+    for (const script of scripts) {
+      if (!script.hasChildNodes()) continue
+      if (remaining === 0) { markupComplete = false; break }
+      observe(script.textContent ?? '')
     }
     return { anchors, privacyInLongAnchor, publishedText: textParts.join(''), publishedHrefs, jsonLd,
       anchorOverflow: nodes.length > anchorLimit || hrefs.length > anchorLimit,
       hrefOverflow: hrefs.some(anchor => (anchor.getAttribute('href') ?? '').length > 2000), textOverflow, jsonOverflow, markupComplete, markers: [...found] }
   }, { textLimit: 500_000, anchorLimit: 5000, jsonLimit: 100_000, markers: [...METADATA_MARKUP_TOKENS],
+    inline: ANALYTICS_INLINE_DECLARATION, resources: ANALYTICS_RESOURCE_DECLARATION, attributes: [...ANALYTICS_CONFIGURATION_ATTRIBUTES],
     collectTrust: collection !== 'analytics', collectAnalytics: collection !== 'trust' }).catch(() => null)
   const observed = auditPageObservation(page)
   if (!parts || page.url() !== url || observed?.restricted || original && (!observed || captureObservationKey(original.scope) !== captureObservationKey(observed.scope))) return null

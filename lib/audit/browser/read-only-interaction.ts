@@ -1,5 +1,5 @@
 import type { Page } from 'playwright'
-import { classifyTrackingEndpoint } from '../tracking/endpoints'
+import { classifyBrowserTrackingRequest } from '../tracking/endpoints'
 
 /** Local UI observations cannot submit data, navigate or open another window. */
 export async function readOnlyInteraction(page: Page, pageUrl: string) {
@@ -8,7 +8,7 @@ export async function readOnlyInteraction(page: Page, pageUrl: string) {
     const request = route.request()
     let ownPage = false
     try { ownPage = request.frame().page() === page } catch { /* No owning frame means outside this observation. */ }
-    if (ownPage && classifyTrackingEndpoint(request.url(), request.resourceType(), pageUrl)?.role === 'event') {
+    if (ownPage && classifyBrowserTrackingRequest(request, pageUrl)?.role === 'event') {
       await route.fallback(); return
     }
     if (!ownPage || request.isNavigationRequest() || !['GET', 'HEAD', 'OPTIONS'].includes(request.method().toUpperCase())) {

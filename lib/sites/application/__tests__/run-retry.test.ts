@@ -61,7 +61,7 @@ describe('shared admitted-scope retries', () => {
     mocks.audit.mockResolvedValue({ ...audit, status: 'COMPLETED', triageAt: null, failureCode: 'AI_FAILURE' })
     await retryAdmittedRun('failed', owner)
     expect(mocks.request).toHaveBeenCalledTimes(1)
-    await expect(retryAdmittedRun('failed', { kind: 'admin', actorId: 'operator', operationId: 'operation' })).rejects.toMatchObject({ status: 409 })
+    await expect(retryAdmittedRun('failed', { kind: 'admin', actorId: 'operator', operationId: 'operation', executionToken: 'lease' })).rejects.toMatchObject({ status: 409 })
     expect(mocks.request).toHaveBeenCalledTimes(1)
   })
 })

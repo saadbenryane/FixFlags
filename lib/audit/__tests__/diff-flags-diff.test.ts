@@ -61,12 +61,19 @@ import {
   diffFlagsAgainstParent,
   getFlagDiffSummary,
   persistFlagDiffSummary,
+  readReportComparison,
   diffMatchKey,
   isFoundOnNewlyReviewedPage,
   reviewedPageUrls,
 } from '../diff-flags'
 import { CHECK_REGISTRY } from '../check-registry'
 import { FLAG_COMPARISON_TARGET, comparisonEvidenceComplete } from '../flag-comparison'
+import { SECTION_LINK_VERIFICATION_RULE } from '../checks/section-links'
+import { TRACKING_VERIFICATION_RULE } from '../tracking/identity'
+import { ENGAGEMENT_VERIFICATION_RULE } from '../network-engagement-evidence'
+import { ACCESSIBILITY_VERIFICATION_RULE } from '../checks/accessibility-rules'
+import { PAGESPEED_LAB_RULE } from '../performance-measurement'
+import { searchResourceKey } from '../search/resource-identity'
 
 type FlagRow = {
   id: string
@@ -80,6 +87,9 @@ type FlagRow = {
   affectedPaths?: unknown
   fingerprint?: string
   supportingObservations?: unknown
+  verificationRule?: string
+  evidenceTargets?: unknown
+  attentionPolicy?: unknown
 }
 
 function flag(overrides: Partial<FlagRow>): FlagRow {
@@ -98,6 +108,7 @@ function flag(overrides: Partial<FlagRow>): FlagRow {
 }
 
 function childAudit(overrides: {
+  parentId?: string | null
   status?: string
   reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
   pages?: Array<{ url: string; status: string; completeness: 'FULL' | 'PARTIAL' | 'UNKNOWN' }>
@@ -164,7 +175,13 @@ describe('completed comparison facts', () => {
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: 'parent',
       verifierExecutions: [{ status: scenario === 'incomplete' ? 'PENDING' : 'COMPLETED', detail }] })
     await expect(getFlagDiffSummary('parent', 'child')).rejects.toThrow(/comparison/)
+    await expect(readReportComparison('parent', 'child')).resolves.toBeNull()
     expect(prismaMock.flag.findMany).not.toHaveBeenCalled()
+  })
+  it('does not conceal an unexpected database failure', async () => {
+    const failure = new Error('Database unavailable')
+    prismaMock.audit.findUnique.mockRejectedValue(failure)
+    await expect(readReportComparison('parent', 'child')).rejects.toBe(failure)
   })
   it('requires the completed original parent before recording a comparison', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), status: 'RUNNING', parentId: 'parent' })
@@ -199,6 +216,8 @@ describe('completed comparison facts', () => {
 
 describe('durable diagnostic continuity', () => {
   const pageUrl = 'https://example.com/'
+  const isUnresolvedHistory = (query: { where: { audit?: unknown; OR?: unknown; status?: { in?: unknown } } }) =>
+    Boolean(query.where.audit && !query.where.OR && query.where.status?.in)
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset().mockResolvedValue([])
     prismaMock.flag.update.mockReset()
@@ -223,6 +242,166 @@ describe('durable diagnostic continuity', () => {
     expect(summary.newIssues).toEqual([])
     expect(prismaMock.improvement.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'project-1', outcomeId: null } }))
   })
+  it('retains recovery on the original page when the same check fails on a different page', async () => {
+    const original = previous()
+    const sibling = previous({ id: 'sibling', pageUrl: 'https://example.com/another' })
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [original]
+      : input.where.auditId === 'current-audit' ? [sibling] : [])
+    prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit',
+      targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
+        kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing',
+        verdict: 'passed', comparable: true, observationIds: ['fresh-title'], reason: 'Original page title is present',
+      } }])
+    await diffFlagsAgainstParent('current-audit', 'gap')
+    expect(prismaMock.flag.update.mock.calls).toEqual([[{ where: { id: original.id }, data: { status: 'FIXED', resolvedInId: 'current-audit' } }]])
+    const result = await getFlagDiffSummary('gap', 'current-audit')
+    expect(result.fixed).toMatchObject([{ id: original.id }])
+    expect(result.newIssues).toMatchObject([{ id: sibling.id }])
+    expect(result.regressed).toEqual([])
+  })
+  it.each(['FIXED', 'OPEN'] as const)('uses the nearest history on the original page when it was %s', async status => {
+    const earlier = { ...previous({ status: 'FIXED' }), resolvedInId: 'recovery' }
+    const nearer = previous({ id: 'nearer-open' })
+    const unrelated = previous({ id: 'other-page', pageUrl: 'https://example.com/another' })
+    const child = [previous({ id: 'fresh-sibling', pageUrl: unrelated.pageUrl }), previous({ id: 'fresh-original' })]
+    recoveryProofs.mockResolvedValue(new Map([['project-1', Object.assign(new Map([
+      ['recovery', new Date('2026-10-11T12:00:00Z')],
+    ]), { hasFlag: (flag: { id: string }) => flag.id === earlier.id })]]))
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [unrelated]
+      : input.where.auditId === 'current-audit' ? child : input.where.OR ? (status === 'OPEN' ? [nearer, earlier] : [earlier]) : [])
+    prismaMock.improvement.findMany.mockResolvedValue([{ occurrences: [{ flag: unrelated }] }])
+    await diffFlagsAgainstParent('current-audit', 'gap')
+    expect(prismaMock.flag.update.mock.calls).toEqual(status === 'FIXED'
+      ? [[{ where: { id: 'fresh-original' }, data: { status: 'REGRESSED' } }]] : [])
+    const result = await getFlagDiffSummary('gap', 'current-audit')
+    expect(result.regressed.map(flag => flag.id)).toEqual(status === 'FIXED' ? ['fresh-original'] : [])
+    expect(result.unchanged.map(flag => flag.id).sort()).toEqual(status === 'FIXED' ? ['fresh-sibling'] : ['fresh-original', 'fresh-sibling'])
+    expect(result.newIssues).toEqual([])
+  })
+  it.each(['different fragment', 'different capture', 'unscoped history'] as const)('compares section links with %s', async scenario => {
+    const target = (capture: string, fragment: string) => ({ context: 'section:v2:' + capture.repeat(64) + ':' + fragment.repeat(64) })
+    const link = previous({ checkId: 'broken-page-anchors', verificationRule: SECTION_LINK_VERIFICATION_RULE })
+    const original = { ...link, evidenceTargets: scenario === 'unscoped history' ? [] : [target('a', 'b')] }
+    const current = { ...link, id: 'new-capture', evidenceTargets: [target('c', scenario === 'different fragment' ? 'd' : 'b')] }
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [original]
+      : input.where.auditId === 'current-audit' ? [current] : [])
+    const summary = await getFlagDiffSummary('gap', 'current-audit')
+    if (scenario === 'different fragment') {
+      expect(summary.newIssues).toMatchObject([{ id: current.id }])
+      expect(summary.inconclusive).toMatchObject([{ id: original.id }])
+      expect(summary.unchanged).toEqual([])
+    } else {
+      expect(summary.newIssues).toEqual([])
+      expect(summary.inconclusive).toEqual([])
+      expect(summary.unchanged).toMatchObject([{ id: current.id }])
+    }
+    expect(summary.fixed).toEqual([])
+  })
+  it.each([
+    { description: 'comparable historical tracking capture', originalVersion: 2, currentVersion: 3, request: 'a', same: true },
+    { description: 'different tracking request', originalVersion: 4, currentVersion: 4, request: 'd', same: false },
+    { description: 'different tracking capture method', originalVersion: 3, currentVersion: 4, request: 'a', same: false },
+  ])('compares $description using the verifier request identity', async ({ originalVersion, currentVersion, request, same }) => {
+    const target = (version: number, key: string) => ({ context: 'tracking:page_load:vercel:library:example.com/script.js:request:v' + version +
+      ':' + key.repeat(64) + ':capture:' + 'b'.repeat(64) + ':page:' + 'c'.repeat(64) })
+    const flag = previous({ checkId: 'tracking-library-http-error', verificationRule: TRACKING_VERIFICATION_RULE })
+    const original = { ...flag, evidenceTargets: [target(originalVersion, 'a')] }
+    const current = { ...flag, id: 'fresh-library', evidenceTargets: [target(currentVersion, request)] }
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [original]
+      : input.where.auditId === 'current-audit' ? [current] : [])
+    const summary = await getFlagDiffSummary('gap', 'current-audit')
+    expect(summary.unchanged.map(item => item.id)).toEqual(same ? [current.id] : [])
+    expect(summary.newIssues.map(item => item.id)).toEqual(same ? [] : [current.id])
+    expect(summary.inconclusive.map(item => item.id)).toEqual(same ? [] : [original.id])
+    expect(summary.fixed).toEqual([])
+  })
+  it('keeps separate engagement request failures on the same page', async () => {
+    const target = (key: string) => ({ context: 'engagement:page_load:control:page:request:v2:' + key.repeat(64) +
+      ':capture:' + 'b'.repeat(64) + ':page:' + 'c'.repeat(64) })
+    const flag = previous({ checkId: 'api-engagement-server-error', verificationRule: ENGAGEMENT_VERIFICATION_RULE })
+    const original = { ...flag, evidenceTargets: [target('a')] }
+    const current = { ...flag, id: 'new-request', evidenceTargets: [target('d')] }
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [original]
+      : input.where.auditId === 'current-audit' ? [current] : [])
+    const summary = await getFlagDiffSummary('gap', 'current-audit')
+    expect(summary.unchanged).toEqual([])
+    expect(summary.newIssues).toMatchObject([{ id: current.id }])
+    expect(summary.inconclusive).toMatchObject([{ id: original.id }])
+  })
+  it.each(['same rule on another element', 'different device', 'unavailable historical capture'] as const)(
+    'compares Accessibility observations with %s', async scenario => {
+      const target = (device: string, capture: string, selector: string) => ({
+        context: `accessibility:axe:${device}:${capture}:axe-target-size:4.10.3:target-size:same-origin-v2`, selector,
+      })
+      const flag = previous({ checkId: 'axe-target-size', verificationRule: ACCESSIBILITY_VERIFICATION_RULE })
+      const original = { ...flag, evidenceTargets: [target('desktop', scenario === 'unavailable historical capture' ? 'unknown' : 'a'.repeat(64), '#original')] }
+      const current = { ...flag, id: 'fresh-target', evidenceTargets: [scenario === 'different device'
+        ? target('mobile', 'b'.repeat(64), '#different') : target('desktop', 'a'.repeat(64), '#different')] }
+      prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [original]
+        : input.where.auditId === 'current-audit' ? [current] : [])
+      const result = await getFlagDiffSummary('gap', 'current-audit')
+      const separate = scenario === 'different device'
+      expect(result.newIssues.map(item => item.id)).toEqual(separate ? [current.id] : [])
+      expect(result.inconclusive.map(item => item.id)).toEqual(separate ? [original.id] : [])
+      expect(result.unchanged.map(item => item.id)).toEqual(separate ? [] : [current.id])
+      expect(result.fixed).toEqual([])
+    }
+  )
+  it.each([
+    { before: 'perf-score-critical', after: 'perf-score-poor', beforeSeverity: 'CRITICAL', afterSeverity: 'IMPORTANT', sameProfile: true, result: 'unchanged' },
+    { before: 'perf-score-poor', after: 'perf-score-critical', beforeSeverity: 'IMPORTANT', afterSeverity: 'CRITICAL', sameProfile: true, result: 'regressed' },
+    { before: 'perf-score-critical', after: 'perf-score-poor', beforeSeverity: 'CRITICAL', afterSeverity: 'IMPORTANT', sameProfile: false, result: 'newIssues' },
+  ] as const)('classifies $before to $after as $result under the recorded lab scope', async scenario => {
+    const target = (profile: string) => ({ context: `pagespeed-condition:v1:${'a'.repeat(64)}:${profile.repeat(64)}:lab:score` })
+    const initial = previous({ checkId: scenario.before, severity: scenario.beforeSeverity, verificationRule: PAGESPEED_LAB_RULE,
+      evidenceTargets: [target('b')] })
+    const current = previous({ id: 'new-score', checkId: scenario.after, severity: scenario.afterSeverity,
+      verificationRule: PAGESPEED_LAB_RULE, evidenceTargets: [target(scenario.sameProfile ? 'b' : 'c')] })
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [initial]
+      : input.where.auditId === 'current-audit' ? [current] : [])
+    const summary = await getFlagDiffSummary('gap', 'current-audit')
+    expect(summary[scenario.result]).toMatchObject([{ id: current.id }])
+    expect(summary.fixed).toEqual([])
+  })
+  it('uses the closest structured-property failure after a gap instead of an older repair', async () => {
+    const scoped = (id: string, properties: string[]) => previous({ id, checkId: 'search-structured-feature', attentionPolicy: {
+      policy: 'search', version: 5, kind: 'flag', reason: 'invalid property', pageScopes: [{ pageUrl, reason: 'invalid property',
+        markupTargets: [{ entityId: 'product', entityType: 'Product', source: 'rendered-dom', properties }] }],
+    } })
+    const parent = scoped('latest-url', ['url'])
+    const earlier = { ...scoped('old-price', ['price']), status: 'FIXED' as const, resolvedInId: 'recovery' }
+    const unscoped = { ...earlier, id: 'legacy-without-property', attentionPolicy: undefined }
+    const unresolved = scoped('more-recent-price', ['price'])
+    const current = scoped('grouped-current', ['url', 'price'])
+    recoveryProofs.mockResolvedValue(new Map([['project-1', Object.assign(new Map([
+      ['recovery', new Date('2026-10-11T12:00:00Z')],
+    ]), { hasFlag: (flag: { id: string }) => [earlier.id, unscoped.id].includes(flag.id) })]]))
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [parent]
+      : input.where.auditId === 'current-audit' ? [current] : input.where.OR ? [unscoped, unresolved, earlier]
+        : input.where.status === 'FIXED' && input.where.resolvedInId?.not === null ? [earlier] : [])
+    await diffFlagsAgainstParent('current-audit', 'gap')
+    expect(prismaMock.flag.update).not.toHaveBeenCalled()
+    const summary = await getFlagDiffSummary('gap', 'current-audit')
+    expect(summary.unchanged).toMatchObject([{ id: current.id }])
+    expect(summary.regressed).toEqual([])
+    expect(summary.newIssues).toEqual([])
+    expect(prismaMock.flag.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      status: { in: ['OPEN', 'REGRESSED', 'FIXED'] }, OR: expect.arrayContaining([{ pageUrl: { in: expect.arrayContaining([pageUrl]) } }]),
+    }) }))
+  })
+  it.each(['keyed', 'legacy'])('reports a newly blocked crawl hop alongside a continuing %s failure', async prior => {
+    const scope = (resourceKeys: string[]) => ({ policy: 'search', version: 2, kind: 'flag', reason: 'crawl_policy_regressed',
+      pageScopes: [{ pageUrl, reason: 'crawl_policy_regressed', sources: ['robots-txt'], resourceKeys }] })
+    const initial = searchResourceKey(pageUrl)
+    const original = previous({ checkId: 'search-crawl-access', attentionPolicy: prior === 'keyed' ? scope([initial]) : undefined })
+    const current = previous({ id: 'expanded', checkId: 'search-crawl-access', attentionPolicy: scope([initial, 'b'.repeat(64)]) })
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.auditId === 'gap' ? [original]
+      : input.where.auditId === 'current-audit' ? [current] : [])
+    const result = await getFlagDiffSummary('gap', 'current-audit')
+    expect(result.newIssues).toMatchObject([{ id: current.id }])
+    expect(result.unchanged).toEqual([])
+    expect(result.regressed).toEqual([])
+  })
   it('keeps missing responsibility evidence inconclusive across a gap', async () => {
     prismaMock.flag.findMany.mockResolvedValue([])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: previous() }], attempts: [] }])
@@ -237,7 +416,7 @@ describe('durable diagnostic continuity', () => {
         category: { area: 'search', sourceAuditId: 'gap', pages: [pageUrl] },
         checks: { 'title-missing': CHECK_REGISTRY['title-missing'].version }, outcomes: [], verificationTarget: null } }
     prismaMock.audit.findUnique.mockResolvedValue(audit)
-    prismaMock.flag.findMany.mockImplementation(async query => query.where.auditId === 'gap' || query.where.improvementOccurrence ? [other] : [])
+    prismaMock.flag.findMany.mockImplementation(async query => query.where.auditId === 'gap' || isUnresolvedHistory(query) ? [other] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'other-improvement', occurrences: [{ flag: other }], attempts: [] }])
     expect(Object.values(await getFlagDiffSummary('gap', 'current-audit')).flat()).toEqual([])
     await diffFlagsAgainstParent('current-audit', 'gap')
@@ -273,7 +452,7 @@ describe('durable diagnostic continuity', () => {
       { NOT: { executionSpec: { path: ['scope'], equals: 'FIXTURE_SETUP' } } },
     ] })
     expect(history.AND[1]).toEqual(analysisEnvironmentWhere('production'))
-    const unresolved = prismaMock.flag.findMany.mock.calls.find(([input]) => input.where.improvementOccurrence)?.[0]
+    const unresolved = prismaMock.flag.findMany.mock.calls.find(([input]) => isUnresolvedHistory(input))?.[0]
     expect(unresolved.where.audit).toEqual(history)
   })
   it('does not repeat an old recovery on healthy monitoring runs', async () => {
@@ -283,7 +462,7 @@ describe('durable diagnostic continuity', () => {
     expect(Object.values(summary).flat()).toEqual([])
   })
   it('closes an older pending fix only with its own positive scoped evidence', async () => {
-    prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [previous()] : [])
+    prismaMock.flag.findMany.mockImplementation(async input => isUnresolvedHistory(input) ? [previous()] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ occurrences: [{ flag: previous({ id: 'latest' }) }] }])
     prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
@@ -297,7 +476,7 @@ describe('durable diagnostic continuity', () => {
   })
   it.each(['passed', 'failed', 'missing'] as const)('reads recovery evidence beyond the first batch and preserves %s evidence', async verdict => {
     const original = previous()
-    prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [original] : [])
+    prismaMock.flag.findMany.mockImplementation(async input => isUnresolvedHistory(input) ? [original] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: original }], attempts: [] }])
     const proof = (result: 'passed' | 'failed') => ({
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: result, comparable: true,
@@ -326,14 +505,15 @@ describe('durable diagnostic continuity', () => {
     for (const input of reads) {
       expect(input).toMatchObject({ where: { status: 'COMPLETED', OR: [{ auditId: 'current-audit', targetKey: { in: expect.arrayContaining(['check:title-missing']) } }] },
         take: 512, orderBy: { id: 'asc' } })
-      expect(input.select).toEqual({ id: true, auditId: true, targetKey: true, status: true, detail: true })
+      expect(input.select).toEqual({ id: true, auditId: true, targetKey: true, status: true, pageUrl: true, detail: true,
+        task: { select: { id: true, pageUrl: true } } })
     }
   })
   it('checks unacted older conditions and never summarizes a partially recovered responsibility as fixed', async () => {
     const latest = previous({ id: 'latest' })
     const samePage = previous({ id: 'older-same-page' })
     const otherPage = previous({ id: 'older-other-page', pageUrl: 'https://example.com/original' })
-    prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [samePage, otherPage] : [])
+    prismaMock.flag.findMany.mockImplementation(async input => isUnresolvedHistory(input) ? [samePage, otherPage] : [])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: latest }], attempts: [] }])
     prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ id: 'title-proof', auditId: 'current-audit', targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
@@ -641,11 +821,14 @@ describe('getFlagDiffSummary', () => {
 })
 
 describe('diffFlagsAgainstParent', () => {
+  const recordedChild = (overrides: Parameters<typeof childAudit>[0] = {}) =>
+    childAudit({ parentId: 'parent-audit', ...overrides })
+
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
     prismaMock.flag.update.mockReset()
     prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.findUnique.mockResolvedValue(childAudit())
+    prismaMock.audit.findUnique.mockResolvedValue(recordedChild())
     prismaMock.$transaction.mockReset()
     prismaMock.$transaction.mockImplementation(async (work: unknown) => typeof work === 'function'
       ? work(prismaMock) : Promise.all(work as Promise<unknown>[]))
@@ -682,7 +865,7 @@ describe('diffFlagsAgainstParent', () => {
         flag({ id: 'p1', checkId: 'dead-link', status: 'OPEN' }),
       ])
       .mockResolvedValueOnce([])
-    prismaMock.audit.findUnique.mockResolvedValue(childAudit({ reportCompleteness: 'FULL' }))
+    prismaMock.audit.findUnique.mockResolvedValue(recordedChild({ reportCompleteness: 'FULL' }))
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
@@ -704,7 +887,7 @@ describe('diffFlagsAgainstParent', () => {
       ])
       .mockResolvedValueOnce([])
     prismaMock.audit.findUnique.mockResolvedValue(
-      childAudit({
+      recordedChild({
         reportCompleteness: 'PARTIAL',
         pages: [
           { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'PARTIAL' },
@@ -731,7 +914,7 @@ describe('diffFlagsAgainstParent', () => {
       ])
       .mockResolvedValueOnce([])
     prismaMock.audit.findUnique.mockResolvedValue(
-      childAudit({
+      recordedChild({
         reportCompleteness: 'PARTIAL',
         pages: [
           { url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' },
@@ -793,8 +976,6 @@ describe('diffFlagsAgainstParent', () => {
         flag({ id: 'p1', checkId: 'a', status: 'OPEN' }),
       ])
       .mockResolvedValueOnce([])
-    prismaMock.audit.findUnique.mockResolvedValue(null)
-
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
     expect(mutateProjectIntelligence).not.toHaveBeenCalled()
   })
@@ -813,7 +994,6 @@ describe('diffFlagsAgainstParent', () => {
   it('keeps notification delivery outside diagnostic comparison', async () => {
     notifyWatchRegression.mockRejectedValue(new Error('email down'))
     prismaMock.flag.findMany.mockResolvedValue([])
-    prismaMock.audit.findUnique.mockResolvedValue(childAudit())
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
     expect(notifyWatchRegression).not.toHaveBeenCalled()
@@ -824,7 +1004,6 @@ describe('diffFlagsAgainstParent', () => {
     const before = flag({ id: 'bound-before', checkId: 'outcome-availability-failed', status: 'FIXED', fingerprint: 'outcome:v1:availability:http' })
     const after = flag({ ...before, id: 'bound-after', status: 'OPEN' })
     prismaMock.flag.findMany.mockResolvedValueOnce([before]).mockResolvedValueOnce([after])
-    prismaMock.audit.findUnique.mockResolvedValue(childAudit())
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
     expect(prismaMock.flag.update).not.toHaveBeenCalled()
   })

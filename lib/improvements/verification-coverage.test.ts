@@ -37,6 +37,22 @@ describe('assessVerificationCoverage', () => {
       .toMatchObject({ comparable: false, reason: expect.stringMatching(/scope could not be read/),
         coverage: { evidenceComparable: false, verifierExecuted: false } })
   })
+  it('does not turn a historical Pages status-only success into repair evidence', () => {
+    const checkId = 'page-http-error'
+    const assertion = { key: 'page-response', name: 'Public page response', expected: 'The page responds successfully',
+      observed: 'The page returned HTTP 200.', passed: true, complete: true }
+    const detail = { kind: 'check-verifier', version: 1, auditId: 'after', taskId: 'http', checkId, checkVersion: 1,
+      pageUrl: complete.pageUrl, source: 'http', collectedAt: '2026-10-12T12:00:00Z', comparable: true, verdict: 'passed', assertion }
+    const execution = { ...complete.verifierExecutions[0], targetKey: 'check:' + checkId, detail }
+    const input = { ...complete, auditId: detail.auditId, checkId, verifierExecutions: [execution] }
+    expect(assessVerificationCoverage(input)).toMatchObject({ comparable: false, coverage: { evidenceComparable: false } })
+    expect(assessVerificationCoverage({ ...input, verifierExecutions: [{ ...execution,
+      detail: { ...detail, assertion: { ...assertion, pageResponseQualified: true } } }] })).toMatchObject({ comparable: true, verdict: 'passed' })
+    expect(assessVerificationCoverage({ ...input, verifierExecutions: [{ ...execution,
+      task: { id: 'different-task', pageUrl: detail.pageUrl },
+      detail: { ...detail, assertion: { ...assertion, pageResponseQualified: true } } }] }))
+      .toMatchObject({ comparable: false, coverage: { evidenceComparable: false } })
+  })
   it.each(['failed-peer', 'missing-peer', 'repaired'] as const)('requires the original multi-page scope despite a successful representative-page verifier: %s', scenario => {
     const pageUrl = 'https://example.com/', peer = 'https://example.com/pricing'
     const receipt = (url: string, passed: boolean) => ({ targetKey: 'module:performance', scopeKey: 'page:' + url,
@@ -47,6 +63,8 @@ describe('assessVerificationCoverage', () => {
           [{ key: 'lcp', name: 'LCP', expected: 'Fast loading', observed: passed ? '1000ms' : '6000ms', passed, complete: true }]),
       } })
     const main = receipt(pageUrl, true)
+    const incomplete = { ...main, scopeKey: 'incomplete:' + pageUrl,
+      detail: { ...main.detail, applicable: false, complete: false, assertions: [] } }
     const exact = { ...main, targetKey: 'check:lcp-poor', scopeKey: 'page:https://example.com', detail: {
       kind: 'check-verifier', version: 1, ...main.detail.execution, checkId: 'lcp-poor', pageUrl,
       comparable: true, verdict: 'passed', assertion: main.detail.assertions[0],
@@ -58,7 +76,7 @@ describe('assessVerificationCoverage', () => {
         verificationRule: runPerformanceChecks(healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl) } }), null, pageUrl)[0].verificationRule,
         evidenceTargets: [pageUrl, peer].flatMap(url => runPerformanceChecks(healthyDesktopPs({ lcp: 3000,
           diagnostics: { measurement: pageSpeedMeasurementFixture(url) } }), null, url)[0].evidenceTargets ?? []) },
-      verifierExecutions: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
+      verifierExecutions: [incomplete, main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
     }
     const decision = assessVerificationCoverage(input)
     expect(decision.comparable).toBe(scenario !== 'missing-peer')

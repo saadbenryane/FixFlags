@@ -63,7 +63,7 @@ function discoveryFiles(root) {
     ...walk(path.join(root, 'app/(app)/dashboard')),
     ...walk(path.join(root, 'app/(app)/settings')),
     ...walk(path.join(root, 'content/docs')),
-    path.join(root, 'app/sitemap.ts'),
+    path.join(root, 'app/sitemap.xml/entries.ts'),
   ]
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false

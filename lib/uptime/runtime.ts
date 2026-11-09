@@ -4,6 +4,7 @@ import { executeUptimeProbe, retainUptimeHistory, dispatchDueUptimeProbes, initi
 import { deliverUptimeNotifications } from './alerts'
 import { logger } from '@/lib/logger'
 import { createTimerScheduler } from '@/lib/queue/timer-scheduler'
+import { UPTIME_SWEEP_INTERVAL_MS } from './domain'
 
 /** Independent HTTP work does not depend on browser availability. */
 export function startUptimeRuntime() {
@@ -12,8 +13,9 @@ export function startUptimeRuntime() {
   let lastRetention = 0
   async function scheduling() {
     try {
-      await dispatchDueUptimeProbes()
-      await touchWorkerHeartbeat({ uptimeReady: true, lastUptimeSweepAt: new Date().toISOString() })
+      const { published, failed } = await dispatchDueUptimeProbes()
+      if (failed > 0 && published === 0 || !await worker.checkReady()) await touchWorkerHeartbeat({ uptimeReady: false })
+      else await touchWorkerHeartbeat({ uptimeReady: true, lastUptimeSweepAt: new Date().toISOString() })
     } catch (error) {
       logger.error('Uptime scheduling maintenance failed', error)
       await touchWorkerHeartbeat({ uptimeReady: false }).catch(heartbeatError => logger.error('Uptime heartbeat failed', heartbeatError))
@@ -23,12 +25,14 @@ export function startUptimeRuntime() {
   const notifications = () => deliverUptimeNotifications()
   async function retention() {
     if (Date.now() - lastRetention < 86400_000) return
-    await retainUptimeHistory()
-    lastRetention = Date.now()
+    const remaining = await retainUptimeHistory()
+    // Keep yielding to the ordinary maintenance cadence while batches or
+    // temporarily locked probes remain. Only a drained sweep starts the wait.
+    if (!remaining) lastRetention = Date.now()
   }
   for (const task of [initialization, scheduling, notifications, retention]) {
     scheduler.schedule(task, 1000)
-    scheduler.schedule(task, 30_000, true)
+    scheduler.schedule(task, UPTIME_SWEEP_INTERVAL_MS, true)
   }
   return {
     waitUntilReady: () => worker.waitUntilReady(),

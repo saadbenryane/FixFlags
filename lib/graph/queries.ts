@@ -1,4 +1,5 @@
 /** Public research reads approved aggregates, never customer graph records. */
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { hasCurrentResearchPermissions } from '@/lib/growth/research-permissions'
 import {
@@ -30,14 +31,19 @@ export interface IssuePageData {
   }
 }
 
-export async function getPublicIssueLibrary(): Promise<IssuePageData[]> {
-  const artifact = await prisma.growthArtifact.findUnique({
-    where: { path: PUBLIC_RESEARCH_PATH },
-    select: { kind: true, payload: true },
-  })
-  if (artifact?.kind !== PUBLIC_RESEARCH_KIND) return []
-  const dataset = parsePublicIssueResearch(artifact.payload)
-  if (!dataset || !(await hasCurrentResearchPermissions(dataset))) return []
+// Metadata, the page, and related links share this snapshot within a render.
+export const getPublicIssueLibrary = cache(async (): Promise<IssuePageData[]> => {
+  const dataset = await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`
+    const artifact = await tx.growthArtifact.findUnique({
+      where: { path: PUBLIC_RESEARCH_PATH },
+      select: { kind: true, payload: true },
+    })
+    if (artifact?.kind !== PUBLIC_RESEARCH_KIND) return null
+    const release = parsePublicIssueResearch(artifact.payload)
+    return release && await hasCurrentResearchPermissions(release, tx) ? release : null
+  }, { isolationLevel: 'RepeatableRead' }).catch(() => null)
+  if (!dataset) return []
   return dataset.issues.map((issue) => ({
     checkId: issue.checkId,
     rubric: issue.rubric,
@@ -56,7 +62,7 @@ export async function getPublicIssueLibrary(): Promise<IssuePageData[]> {
       limitations: dataset.limitations,
     },
   })).sort((a, b) => b.siteCount - a.siteCount || a.checkId.localeCompare(b.checkId))
-}
+})
 
 export async function getIssuePage(checkId: string): Promise<IssuePageData | null> {
   return (await getPublicIssueLibrary()).find((issue) => issue.checkId === checkId) ?? null
@@ -64,12 +70,12 @@ export async function getIssuePage(checkId: string): Promise<IssuePageData | nul
 
 /** Sitemap and index use the same reviewed release as the detail page. */
 export async function getIndexableIssueCheckIds(): Promise<
-  Array<{ checkId: string; siteCount: number; lastSeenAt: Date }>
+  Array<{ checkId: string; siteCount: number; reviewedAt: Date }>
 > {
   return (await getPublicIssueLibrary()).map((issue) => ({
     checkId: issue.checkId,
     siteCount: issue.siteCount,
-    lastSeenAt: new Date(issue.research.windowEnd),
+    reviewedAt: new Date(issue.research.reviewedAt),
   }))
 }
 

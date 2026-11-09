@@ -32,6 +32,35 @@ describe('open-check', () => {
     expect(observed.results.map(result => result.url)).toEqual(planned.urls)
     expect(observed.truncated).toBe(true)
   })
+
+  it('uses free request capacity while a sibling is slow and reports destinations in admission order', async () => {
+    const urls = ['slow', 'first', 'missing', 'last'].map(path => 'https://example.com/' + path)
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const settled: string[] = []
+    let active = 0, peak = 0
+    const observed = openCheckDestinations(urls, { concurrency: 2, fetchImpl: async url => {
+      active++
+      peak = Math.max(peak, active)
+      if (url === urls[0]) await held
+      settled.push(url)
+      active--
+      return jsonResponse(url === urls[2] ? 404 : 200, '<h1>Details</h1>', {}, url)
+    } })
+
+    try {
+      // Drain asynchronous work without allowing the first request to settle.
+      await new Promise<void>(resolve => setTimeout(resolve, 0))
+      expect([...settled]).toEqual(urls.slice(1))
+      expect(active).toBe(1)
+    } finally { release(); await observed }
+    const result = await observed
+    expect(peak).toBe(2)
+    expect(result.results.map(item => item.url)).toEqual(urls)
+    expect(deadDestinationFlags(result.results, 'https://example.com/')).toMatchObject([
+      { checkId: 'broken-internal-links', evidence: expect.stringContaining('/missing (not_found 404)') },
+    ])
+  })
   it('uses GET evidence even when HEAD claims success', async () => {
     const fetchImpl: OpenCheckFetch = async (_url, init) => jsonResponse(init?.method === 'HEAD' ? 200 : 404,
       '<title>Page not found</title>', { 'content-type': 'text/html' }, 'https://example.com/gone')
@@ -100,6 +129,15 @@ describe('open-check', () => {
     })
     expect(result).toMatchObject({ outcome: 'reachable', status: 200, shouldFlagDead: false })
   })
+
+  it.each([[200, 'reachable', false], [404, 'not_found', true]] as const)(
+    'keeps a real HTTP %s destination distinct from its decorative SVG title', async (status, outcome, shouldFlagDead) => {
+      const url = 'https://example.com/details'
+      const html = '<!doctype html><html><body><svg><title>Access denied</title>' +
+        '<foreignObject><h1>Verify you are human</h1></foreignObject></svg><main><h1>Useful details</h1></main></body></html>'
+      const result = await openCheckDestination(url, { fetchImpl: async () => jsonResponse(status, html, { 'content-type': 'text/html' }, url) })
+      expect(result).toMatchObject({ outcome, status, shouldFlagDead })
+    })
 
   it('Flags a 200 soft-404', async () => {
     const html = '<html><title>Page not found</title><h1>Page not found</h1></html>'

@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   attemptFindMany: vi.fn(),
   occurrenceFindMany: vi.fn(),
   loadTechnologyProfile: vi.fn(),
-  getFlagDiffSummary: vi.fn(),
+  readReportComparison: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -35,7 +35,7 @@ vi.mock('@/lib/audit/technology-profile', () => ({
 }))
 
 vi.mock('@/lib/audit/diff-flags', () => ({
-  getFlagDiffSummary: mocks.getFlagDiffSummary,
+  readReportComparison: mocks.readReportComparison,
 }))
 
 import {
@@ -58,8 +58,8 @@ beforeEach(() => {
     technologies: [],
     insight: null,
   })
-  mocks.getFlagDiffSummary.mockReset()
-  mocks.getFlagDiffSummary.mockResolvedValue({
+  mocks.readReportComparison.mockReset()
+  mocks.readReportComparison.mockResolvedValue({
     fixed: [],
     inconclusive: [],
     unchanged: [],
@@ -181,17 +181,23 @@ describe('loadVerificationReceiptsForReview', () => {
 
     const receipts = await loadVerificationReceiptsForReview(
       'review-2',
-      'user-1'
+      'user-1',
+      'site-1',
     )
 
     expect(mocks.attemptFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           verificationAuditId: 'review-2',
-          improvement: { project: { userId: 'user-1' } },
+          improvement: { project: { userId: 'user-1' }, projectId: 'site-1' },
+          sourceAudit: { projectId: 'site-1' },
+          verificationAudit: { projectId: 'site-1' },
         },
       })
     )
+    expect(mocks.occurrenceFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ audit: { projectId: 'site-1' } }),
+    }))
     expect(receipts).toEqual([
       expect.objectContaining({
         id: 'attempt-1',
@@ -207,7 +213,7 @@ describe('loadVerificationReceiptsForReview', () => {
     mocks.attemptFindMany.mockResolvedValue([])
 
     await expect(
-      loadVerificationReceiptsForReview('review-2', 'user-1')
+      loadVerificationReceiptsForReview('review-2', 'user-1', null)
     ).resolves.toEqual([])
     expect(mocks.occurrenceFindMany).not.toHaveBeenCalled()
   })
@@ -636,7 +642,7 @@ describe('loadProductWorkspace', () => {
       regressed: [],
       newIssues: [],
     }
-    mocks.getFlagDiffSummary.mockResolvedValue(summary)
+    mocks.readReportComparison.mockResolvedValue(summary)
     mocks.projectFindFirst.mockResolvedValue(product())
     mocks.auditFindFirst
       .mockResolvedValueOnce(null)
@@ -649,7 +655,7 @@ describe('loadProductWorkspace', () => {
       signalsEligible: true,
     })
 
-    expect(mocks.getFlagDiffSummary).toHaveBeenCalledWith('review-1', 'review-update')
+    expect(mocks.readReportComparison).toHaveBeenCalledWith('review-1', 'review-update')
     expect(workspace?.latestUpdateDiff).toEqual(summary)
     expect(workspace?.latestUpdateDiffPartial).toBe(true)
   })

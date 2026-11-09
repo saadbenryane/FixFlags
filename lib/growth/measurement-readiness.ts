@@ -1,4 +1,6 @@
 import { inspectFixFlagsReporting } from './reporting-access'
+import { stripeReportingMode } from './commercial-evidence'
+import { FIXFLAGS_GA_MEASUREMENT_ID, FIXFLAGS_GA_PROPERTY, FIXFLAGS_SEARCH_PROPERTY } from './reporting-targets'
 
 export function validateMeasurementWindow(startDate: string, endDate: string) {
   for (const date of [startDate, endDate]) {
@@ -9,13 +11,13 @@ export function validateMeasurementWindow(startDate: string, endDate: string) {
 }
 
 /** Configuration presence is not access proof. The default never contacts providers. */
-export async function inspectGrowthReadiness(options: { startDate: string; endDate: string; live?: boolean }, env: NodeJS.ProcessEnv = process.env, inspect = inspectFixFlagsReporting) {
+export async function inspectGrowthReadiness(options: { startDate: string; endDate: string; live?: boolean }, env: Partial<NodeJS.ProcessEnv> = process.env, inspect = inspectFixFlagsReporting) {
   validateMeasurementWindow(options.startDate, options.endDate)
   const prerequisites = {
-    ga4Property: env.GA4_PROPERTY_ID?.replace(/^properties\//, '') === '541892062' ? 'configured' : 'unavailable',
-    searchConsoleProperty: env.GSC_PROPERTY === 'sc-domain:fixflags.com' ? 'configured' : 'unavailable',
+    ga4Property: env.GA4_PROPERTY_ID?.replace(/^properties\//, '') === FIXFLAGS_GA_PROPERTY ? 'configured' : 'unavailable',
+    searchConsoleProperty: env.GSC_PROPERTY === FIXFLAGS_SEARCH_PROPERTY ? 'configured' : 'unavailable',
     reportingCredential: env.GSC_SERVICE_ACCOUNT_KEY?.trim() ? 'present-unverified' : 'unavailable',
-    browserMeasurement: env.NEXT_PUBLIC_GA_ID === 'G-5GEP9X4ZWG' ? 'configured-build-unverified' : 'unavailable',
+    browserMeasurement: env.NEXT_PUBLIC_GA_ID === FIXFLAGS_GA_MEASUREMENT_ID ? 'configured-build-unverified' : 'unavailable',
     operationalDatabase: env.DATABASE_URL?.trim() ? 'present-unverified' : 'unavailable',
   }
   let reporting: Awaited<ReturnType<typeof inspectFixFlagsReporting>> | null = null
@@ -31,7 +33,13 @@ export async function inspectGrowthReadiness(options: { startDate: string; endDa
     observationWindow: { startDate: options.startDate, endDate: options.endDate },
     checkedAt: new Date().toISOString(),
     liveRequested: Boolean(options.live), prerequisites, reportingStatus, reporting,
-    operationalCohorts: { status: 'not-requested', source: 'scripts/growth/inspect-customer-value.ts', modes: ['cycles', 'acquisition', 'sites', 'sites28'] },
+    operationalCohorts: { status: 'not-requested', source: 'scripts/growth/inspect-customer-value.ts', modes: ['cycles', 'acquisition', 'sites', 'sites28', 'outcomes'] },
+    commercialEvidence: {
+      status: 'not-requested',
+      configuredStripeMode: stripeReportingMode(env.STRIPE_SECRET_KEY),
+      source: 'scripts/growth/inspect-commercial-evidence.ts',
+    },
+    researchReadiness: { status: 'not-requested', source: 'scripts/growth/inspect-research-readiness.ts' },
     limitations: [
       'Presence does not prove credential validity, provider permissions, browser build configuration or deployment.',
       'Provider reads use only the existing known FixFlags properties and read-only reporting inspector. No configuration changes or database writes.',

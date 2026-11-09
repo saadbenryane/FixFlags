@@ -1,3 +1,6 @@
+import type { ScreenshotResult } from '../screenshot'
+import { searchResourceKey } from '../search/resource-identity'
+
 /** Refusals of a mutation, payment, download, or auxiliary document. The public
  * page that was already captured stays usable. */
 const ACTION_REFUSALS = new Set([
@@ -27,4 +30,12 @@ export function renderedDocumentForSearch<T>(snapshot: {
     renderedSearchSnapshot: withheld ? undefined : snapshot?.renderedSearchSnapshot,
     renderedComplete: Boolean(renderedHtml) && snapshot?.desktopHtmlTruncated !== true && !withheld,
   }
+}
+
+/** An initial browser response cannot describe the HTTP policy of a later route. */
+export function renderedResponseHeadersForSearch(snapshot: Pick<ScreenshotResult, 'desktopFinalUrl' | 'desktopResponseResourceKey' |
+  'responseHeaders' | 'collectionRestrictions'> | null | undefined) {
+  if (!snapshot?.desktopFinalUrl || snapshot.desktopResponseResourceKey !== searchResourceKey(snapshot.desktopFinalUrl) ||
+    documentEvidenceWithheld(snapshot.collectionRestrictions)) return undefined
+  return snapshot.responseHeaders ?? undefined
 }

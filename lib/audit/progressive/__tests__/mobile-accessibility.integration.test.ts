@@ -12,22 +12,26 @@ import { MOBILE_CAPTURE_PROFILE } from '../../browser/capture-profile'
 import { requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { TASK_QUEUES } from '../queues'
+import { getFlagDiffSummary } from '../../diff-flags'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('mobile Accessibility through native collection and workers', () => {
   const userId = 'mobile-accessibility-' + randomUUID(), projectId = userId + '-site'
-  let url = '', phase: 'broken' | 'desktop-only' | 'unavailable' | 'repaired' = 'broken'
+  let url = '', phase: 'broken' | 'desktop-only' | 'unavailable' | 'repaired' | 'desktop-broken' | 'both-broken' = 'broken'
   let worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
     response.setHeader('content-type', 'text/html')
     if (phase === 'unavailable' && request.headers['user-agent']?.includes('iPhone')) {
       response.writeHead(503); response.end('<html><body>Mobile document unavailable</body></html>'); return
     }
+    const desktopSmall = phase === 'desktop-broken' || phase === 'both-broken'
+    const mobileHealthy = phase === 'repaired' || phase === 'desktop-broken'
     response.end('<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>Mobile controls</title><style>body{font-family:Arial;color:#111;background:#fff}button{border:0;padding:0;' +
-      'vertical-align:top;width:' + (phase === 'desktop-only' ? 96 : 64) + 'px;height:44px;background:#222;color:#fff}' +
-      '@media(max-width:600px){button{font-size:9px;width:' + (phase === 'repaired' ? 40 : 14) +
-      'px;height:' + (phase === 'repaired' ? 40 : 14) + 'px}}</style></head><body><main><h1>Choose an action</h1>' +
+      'vertical-align:top;width:' + (desktopSmall ? 14 : phase === 'desktop-only' ? 96 : 64) + 'px;height:' +
+      (desktopSmall ? 14 : 44) + 'px;background:#222;color:#fff}' +
+      '@media(max-width:600px){button{font-size:9px;width:' + (mobileHealthy ? 40 : 14) +
+      'px;height:' + (mobileHealthy ? 40 : 14) + 'px}}</style></head><body><main><h1>Choose an action</h1>' +
       '<button id="first" aria-label="First action">A</button><button id="second" aria-label="Second action">B</button>' +
       '</main></body></html>')
   })
@@ -99,5 +103,28 @@ run('mobile Accessibility through native collection and workers', () => {
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } }))
       .toMatchObject({ improvementId: repaired.improvementId })
+
+    phase = 'desktop-broken'
+    const swapped = await category('mobile-repaired-desktop-broken')
+    const desktop = await prisma.flag.findFirstOrThrow({ where: { auditId: swapped, checkId: 'axe-target-size' } })
+    expect(desktop).toMatchObject({ status: 'OPEN', evidenceTargets: expect.arrayContaining([
+      expect.objectContaining({ device: 'desktop', context: expect.stringContaining('accessibility:axe:desktop:') }),
+    ]) })
+    const swappedAudit = await prisma.audit.findUniqueOrThrow({ where: { id: swapped } })
+    const swap = await getFlagDiffSummary(swappedAudit.parentId, swapped)
+    expect(swap.fixed).toEqual(expect.arrayContaining([expect.objectContaining({ id: recurrence.id })]))
+    expect(swap.newIssues).toEqual(expect.arrayContaining([expect.objectContaining({ id: desktop.id })]))
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: recurrence.id } }))
+      .toMatchObject({ status: 'FIXED', resolvedInId: swapped })
+
+    phase = 'both-broken'
+    const repeated = await category('mobile-and-desktop-broken')
+    const both = await prisma.flag.findFirstOrThrow({ where: { auditId: repeated, checkId: 'axe-target-size' } })
+    expect(both).toMatchObject({ status: 'REGRESSED', evidenceTargets: expect.arrayContaining([
+      expect.objectContaining({ device: 'desktop' }), expect.objectContaining({ device: 'mobile' }),
+    ]) })
+    const repeatedAudit = await prisma.audit.findUniqueOrThrow({ where: { id: repeated } })
+    expect((await getFlagDiffSummary(repeatedAudit.parentId, repeated)).regressed)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: both.id })]))
   }, 120_000)
 })

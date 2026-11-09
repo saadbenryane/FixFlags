@@ -5,18 +5,48 @@ import { safeFetchResource } from '../url'
 import { collectPreviewImageResponse, PREVIEW_IMAGE_MAX_BYTES, type PreviewImageResponse } from './preview-image-response'
 import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
+import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
+import { PUBLIC_PREVIEW_VERIFICATION_RULE } from './preview-contract'
+import type { PublicPagePreview } from './public-page-preview'
+import { isSuccessfulPublicGetStatus } from '../http-evidence'
 
-export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
+type PreviewFields = Pick<RuntimeHeadMetadata, 'ogImage' | 'ogTitle' | 'ogDescription'>
+const previewFields = [
+  { field: 'ogImage', key: 'preview-image-presence', checkId: 'og-image-missing', tag: 'og:image', name: 'Link preview image is specified',
+    problem: 'No image is specified for link previews', fix: C.previewImage, severity: 'IMPORTANT' },
+  { field: 'ogTitle', key: 'preview-title-presence', checkId: 'og-title-missing', tag: 'og:title', name: 'Link preview title is specified',
+    problem: 'No title is specified for link previews', fix: C.previewTitle, severity: 'POLISH' },
+  { field: 'ogDescription', key: 'preview-description-presence', checkId: 'og-description-missing', tag: 'og:description', name: 'Link preview description is specified',
+    problem: 'No description is specified for link previews', fix: C.previewDescription, severity: 'POLISH' },
+] as const
+
+export function runPreviewDeclarationChecks(meta: PreviewFields, record?: (assertion: CheckAssertion) => void, scope?: PublicPagePreview['scope'],
+  checks?: Readonly<Record<string, number>>) {
+  const findings: DeterministicFlag[] = []
+  const context = scope ? destinationContext(scope.pageUrl, scope.finalUrl, 'public-preview-head-v1') : undefined
+  for (const { field, key, checkId, tag, name, problem, fix, severity } of previewFields) {
+    if (checks && !checks[checkId]) continue
+    const value = meta[field]
+    const source = context ? 'the public HTML head' : 'the captured page metadata'
+    record?.({ key, name, expected: name, observed: value === undefined ? 'The preview declaration could not be inspected.'
+      : value ? `Present in ${source}.` : `Absent from ${source}.`, passed: Boolean(value), complete: value !== undefined, context })
+    if (value === undefined || value) continue
+    findings.push({ checkId, rubric: 'REACH', impactTag: 'SHARING', severity, problem,
+      evidence: `${context ? 'The public HTML head' : 'The captured page metadata'} has no non-empty ${tag} declaration.`, fix, confidence: 1, source: 'DETERMINISTIC',
+      ...(context ? { verificationRule: PUBLIC_PREVIEW_VERIFICATION_RULE, evidenceTargets: [{ kind: 'page', source: 'measured',
+        device: 'desktop', label: 'Public HTML head', context }] } : {}) })
+  }
+  return findings
+}
+
+export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion: CheckAssertion) => void, includeRenderedPreview = true): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   // Record only the presence assertions actually evaluated here. These are
   // bounded observations, not claims about search ranking or rendered previews.
   for (const [key, name, value] of [
     ['title-presence', 'Page title is specified', meta.title],
     ['description-presence', 'Meta description is specified', meta.description],
-    ['preview-image-presence', 'Link preview image is specified', meta.ogImage],
-    ['preview-title-presence', 'Link preview title is specified', meta.ogTitle],
-    ['preview-description-presence', 'Link preview description is specified', meta.ogDescription],
-    ['favicon-presence', 'A favicon is declared', meta.hasFavicon],
+    ['favicon-presence', 'A favicon link supplies an icon address', meta.hasFavicon],
     ['viewport-presence', 'Mobile viewport is declared', meta.viewport],
     ['language-presence', 'Page language is declared', meta.lang],
   ] as const) {
@@ -100,47 +130,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
     })
   }
 
-  if (meta.ogImage !== undefined && !meta.ogImage) {
-    findings.push({
-      checkId: 'og-image-missing',
-      rubric: 'REACH',
-      impactTag: 'SHARING',
-      severity: 'IMPORTANT',
-      problem: 'No image is specified for link previews',
-      evidence: 'No <meta property="og:image"> tag found in <head>. A sharing service may choose a fallback; its rendered preview was not tested.',
-      fix: C.previewImage,
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  if (meta.ogTitle !== undefined && !meta.ogTitle) {
-    findings.push({
-      checkId: 'og-title-missing',
-      rubric: 'REACH',
-      impactTag: 'SHARING',
-      severity: 'POLISH',
-      problem: 'og:title is missing',
-      evidence: 'No <meta property="og:title"> tag found',
-      fix: C.previewTitle,
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  if (meta.ogDescription !== undefined && !meta.ogDescription) {
-    findings.push({
-      checkId: 'og-description-missing',
-      rubric: 'REACH',
-      impactTag: 'SHARING',
-      severity: 'POLISH',
-      problem: 'og:description is missing',
-      evidence: 'No <meta property="og:description"> tag found',
-      fix: C.previewDescription,
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
+  if (includeRenderedPreview) findings.push(...runPreviewDeclarationChecks(meta, record))
 
   if (meta.viewport !== undefined && !meta.viewport) {
     findings.push({
@@ -203,8 +193,8 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       rubric: 'REACH',
       impactTag: 'SEO',
       severity: 'POLISH',
-      problem: 'No favicon link is declared',
-      evidence: 'No link rel="icon" or apple-touch-icon found in <head>',
+      problem: 'No usable favicon link is declared',
+      evidence: 'The page head needs an icon link with a non-empty address for an image resource.',
       fix: C.favicon,
       confidence: 1.0,
       source: 'DETERMINISTIC',
@@ -218,6 +208,7 @@ export async function runOgImageUrlCheck(
   pageUrl: string,
   meta: { ogImage?: string | null; linkBaseUrl?: string },
   options: DestinationCheckOptions = {},
+  publicScope?: CaptureObservationScope,
 ): Promise<DeterministicFlag[]> {
   const limitation = 'A bounded public GET observes response facts and first-frame PNG, JPEG, WebP or GIF decoding within 5MB, 16 million pixels and the execution budget. Unsupported formats and incomplete decoding remain unknown. Sharing-platform rendering, later animation frames and caches were not evaluated.'
   if (meta.ogImage === undefined) {
@@ -230,7 +221,11 @@ export async function runOgImageUrlCheck(
   if (!meta.ogImage) { destinationScope(options, true, limitation); return [] }
   let imageUrl: string
   let invalid = false
-  try { imageUrl = new URL(meta.ogImage, meta.linkBaseUrl ?? pageUrl).toString() }
+  try {
+    const resolved = new URL(meta.ogImage, meta.linkBaseUrl ?? pageUrl)
+    imageUrl = resolved.href
+    invalid = Boolean(publicScope && (!['https:', 'http:'].includes(resolved.protocol) || resolved.username || resolved.password))
+  }
   catch { imageUrl = meta.ogImage; invalid = true }
   let complete = invalid, responseComplete = invalid, passed = false, broken = invalid, imageEligible = false
   let decoding: PreviewImageResponse['decoding']
@@ -241,21 +236,28 @@ export async function runOgImageUrlCheck(
       const response = options.observeImage ? await options.observeImage(imageUrl, init)
         : await collectPreviewImageResponse(() => (options.fetchDocument ?? safeFetchResource)(imageUrl, init), options.deadline)
       const status = response.statusCode, contentType = response.contentType, restricted = response.restriction !== null
-      imageEligible = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
+      const successful = publicScope ? isSuccessfulPublicGetStatus(status) : status >= 200 && status < 300
+      imageEligible = !restricted && successful && /^image\//.test(contentType) && response.hasContent
       decoding = response.decoding
-      passed = imageEligible && decoding?.state !== 'invalid'
-      broken = !restricted && (status >= 400 || status >= 200 && status < 300 &&
+      passed = imageEligible && (publicScope ? decoding?.state === 'decoded' : decoding?.state !== 'invalid')
+      broken = !restricted && (status >= 400 || successful &&
         (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && !response.hasContent)) || imageEligible && decoding?.state === 'invalid'
       responseComplete = passed || broken
       complete = responseComplete && (!imageEligible || decoding?.state === 'decoded' || decoding?.state === 'invalid')
       observed = `GET HTTP ${status}${contentType ? `, ${contentType.slice(0, 120)}` : ', no content type'}. ${restricted ? 'Access to the normal image response was not established. ' : ''}${limitation}`
     } catch { observed = 'No public image response was obtained. Network errors and scanner refusals remain unknown.' }
   }
-  const context = destinationContext(pageUrl, imageUrl)
+  const publicIdentity = publicScope ? captureObservationKey(publicScope) : undefined
+  const syntaxContext = publicScope ? destinationContext(publicScope.pageUrl, publicScope.finalUrl, 'public-preview-image-url-v2') : undefined
+  const context = invalid && syntaxContext ? syntaxContext
+    : destinationContext(pageUrl, imageUrl, publicIdentity ? 'public-preview-image-v2:' + publicIdentity : undefined)
   options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
-    expected: 'The declared image destination returns a successful GET response with image content type, content and no observed decoding failure',
-    observed, passed, complete: responseComplete, context })
-  const decodingContext = destinationContext(pageUrl, imageUrl, 'preview-image-decoding-v1')
+    expected: publicScope ? 'The published image URL returns image bytes that decode under the supported policy'
+      : 'The declared image destination returns a successful GET response with image content type, content and no observed decoding failure',
+    observed, passed, complete: responseComplete, context,
+    ...(syntaxContext ? { targets: [{ selector: 'meta[property="og:image"], meta[property="og:image:url"]',
+      label: 'Published image address', context: syntaxContext }] } : {}) })
+  const decodingContext = destinationContext(pageUrl, imageUrl, publicIdentity ? 'public-preview-image-decoding-v2:' + publicIdentity : 'preview-image-decoding-v1')
   const decodingObserved = decoding?.state === 'decoded'
     ? `The ${decoding.format} first frame decoded from the collected bytes (${decoding.width} × ${decoding.height}).`
     : decoding?.state === 'invalid' ? `The collected ${decoding.format} bytes could not be decoded.`
@@ -270,8 +272,10 @@ export async function runOgImageUrlCheck(
   return [{
     checkId: 'og-image-broken', rubric: 'REACH', impactTag: 'SHARING', severity: 'IMPORTANT',
     problem: invalid ? 'og:image URL is invalid' : decodingFailed ? 'Link preview image data could not be decoded' : 'og:image URL does not load',
-    evidence: `${displayDestination(imageUrl)}: ${decodingFailed ? decodingObserved + ' ' : ''}${observed}`,
-    fix: '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
+    evidence: invalid && publicScope ? 'The public HTML head declares an image address that cannot be opened over HTTP or HTTPS.'
+      : `${displayDestination(imageUrl)}: ${decodingFailed ? decodingObserved + ' ' : ''}${observed}`,
+    fix: invalid && publicScope ? 'Publish a valid HTTP or HTTPS image address in the page’s HTML head. Check that it opens the intended image.'
+      : '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
     confidence: 1.0, source: 'DETERMINISTIC', verificationRule: DESTINATION_VERIFICATION_RULE,
     evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Link preview image response', context: decodingFailed ? decodingContext : context }],
   }]

@@ -64,6 +64,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
           id: { in: ids },
           OR: [{ userId: null }, { userId }],
         },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: {
           id: true,
           userId: true,
@@ -78,7 +79,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         },
       })
 
-      const projects = new Map<string, { id: string; canonicalHost: string; auditIds: string[]; restored: boolean }>()
+      const projects = new Map<string, { id: string; canonicalHost: string; auditIds: string[]; restored: boolean; importedContext: boolean }>()
       for (const audit of claimable) {
         const canonicalHost = canonicalProductHost(audit.url)
         if (!canonicalHost) throw new Error(`Cannot attach Product for audit ${audit.id}`)
@@ -118,26 +119,22 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         }
         if (!project) throw new Error(`Cannot attach Product for audit ${audit.id}`)
 
-        const contract = parseProductContract(audit.productContract)
-        if (contract) {
-          const next = mergeContractIntoProductIntelligence(
-            parseProductIntelligence(project.productIntelligence),
-            contract
-          )
-          await tx.project.update({
-            where: { id: project.id },
-            data: {
+        const claimed = projects.get(project.id) ?? { id: project.id, canonicalHost, auditIds: [], restored, importedContext: false }
+        if (audit.userId !== userId || audit.projectId !== project.id) {
+          // A fresh attachment may seed context once from the newest usable
+          // report. Owner edits and already-attached reports keep their authority.
+          const current = parseProductIntelligence(project.productIntelligence)
+          const contract = !claimed.importedContext && current?.source !== 'user' ? parseProductContract(audit.productContract) : null
+          if (contract) {
+            const next = mergeContractIntoProductIntelligence(current, contract)
+            await tx.project.update({ where: { id: project.id }, data: {
               productIntelligence: next as unknown as Prisma.InputJsonObject,
               productIntelligenceRevision: { increment: 1 },
-            },
-          })
+            } })
+            claimed.importedContext = true
+          }
+          await tx.audit.update({ where: { id: audit.id }, data: { userId, projectId: project.id } })
         }
-
-        await tx.audit.update({
-          where: { id: audit.id },
-          data: { userId, projectId: project.id },
-        })
-        const claimed = projects.get(project.id) ?? { id: project.id, canonicalHost, auditIds: [], restored }
         claimed.auditIds.push(audit.id)
         projects.set(project.id, claimed)
       }

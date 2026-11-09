@@ -2,7 +2,8 @@ vi.mock('@/lib/growth/research-permissions', () => ({ hasCurrentResearchPermissi
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { researchFixture } from './fixtures/public-research'
 const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { growthArtifact: { findUnique } } }))
+vi.mock('@/lib/db', () => ({ prisma: { $transaction: async (read: (tx: unknown) => unknown) =>
+  read({ growthArtifact: { findUnique }, $executeRaw: vi.fn() }) } }))
 import { getRelatedIssues } from '../related'
 import { PUBLIC_RESEARCH_KIND } from '../public-research'
 

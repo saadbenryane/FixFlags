@@ -24,6 +24,8 @@ export const SITE_CONNECTION_COPY = {
     `Analytics recorded ${sessions !== null || activeUsers !== null ? [sessions !== null ? `${sessions} sessions` : null, activeUsers !== null ? `${activeUsers} active users` : null].filter(Boolean).join(' and ') : `${pageViews} page views`} ${period}. ${age}`,
   analyticsMissingCounts: 'Analytics has no reported counts for this Site. Earlier context retains its original date.',
   analyticsAvailable: 'Analytics traffic counts are available as context.',
+  analyticsPartial: 'Some Analytics context is unavailable. Earlier counts keep their original reporting dates.',
+  analyticsLimited: 'Analytics could not provide usable counts for this period. Earlier context keeps its original date.',
   searchPage: (query: string, impressions: number | null, clicks: number | null, period: string, age: string, pageScope: 'current' | 'reported' = 'current') =>
     `Search Console: "${query}" had ${[impressions !== null ? `${impressions} impressions` : null, clicks !== null ? `${clicks} clicks` : null].filter(Boolean).join(' and ')} on ${pageScope === 'current' ? 'this page' : 'a reported page'} ${period}. ${age}`,
   searchMissingCounts: 'Search Console has no reported counts for this Site. Earlier context retains its original date.',

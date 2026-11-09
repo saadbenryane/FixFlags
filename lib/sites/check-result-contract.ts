@@ -13,4 +13,10 @@ export const siteCheckResultSchema = z.object({
 export const siteCheckPageSchema = z.object({ results: z.array(siteCheckResultSchema), nextCursor: z.string().nullable(), total: z.number().int().nonnegative().nullable().optional() })
 export const RESULT_SELECTION_CHANGED = 'RESULT_SELECTION_CHANGED'
 
+export class CheckResultSelectionChanged extends Error {
+  constructor(readonly reason: 'cursor' | 'evidence' = 'cursor') {
+    super(reason === 'cursor' ? 'Invalid check history cursor' : 'Check evidence selection changed')
+  }
+}
+
 export type SiteCheckResult = z.infer<typeof siteCheckResultSchema>

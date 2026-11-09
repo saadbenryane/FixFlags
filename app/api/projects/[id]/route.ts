@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
-import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
+import { removeSite, siteRemovalSchema, updateOwnedSiteIdentity } from '@/lib/sites/application/settings-commands'
 
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -33,17 +31,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const target = parsed.data.url === undefined ? null : normalizeAuditNavigationUrl(parsed.data.url)
     if (target && !target.ok) return apiError('Enter a valid name or URL', 400, { code: 'INVALID_PROJECT' })
 
-    const existing = await prisma.project.findFirst({ where: { id, userId: session.user.id, deletedAt: null } })
-    if (!existing) return apiError('Project not found', 404, { code: 'NOT_FOUND' })
-    if (parsed.data.url !== undefined && canonicalProductHost(parsed.data.url) !== existing.canonicalHost) {
-      return apiError('A Project hostname cannot be changed; create the other Product instead', 409, { code: 'PROJECT_HOST_MISMATCH' })
-    }
-    const project = await prisma.project.update({
-      where: { id, userId: session.user.id, deletedAt: null, canonicalHost: existing.canonicalHost },
-      data: {
-        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
-        ...(target?.ok ? { url: new URL(target.url).origin } : {}),
-      },
+    const project = await updateOwnedSiteIdentity({ projectId: id, userId: session.user.id }, {
+      name: parsed.data.name, origin: target?.ok ? new URL(target.url).origin : undefined,
     })
 
     return NextResponse.json(project)

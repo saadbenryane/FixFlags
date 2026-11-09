@@ -1,4 +1,5 @@
 import { measuredProviderRequest, openAIResponseUsage, anthropicResponseUsage } from './provider-request'
+import type { ProviderUsageAdmission } from './provider-usage'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import type { PrescriptionOutput } from './judge-prescription-schema'
@@ -35,7 +36,7 @@ export type { ExistingFlagForPrescription } from './flag-types'
 
 export interface PrescriptionContext {
   validationFeedback?: string
-  onAttempt?: (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
+  onAttempt?: ProviderUsageAdmission
   url: string
   metadata: PageMetadata | null
   techStack: string[]
@@ -232,49 +233,48 @@ async function runAnthropicPrescription(
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = {
+      model: cfg.model,
+      max_tokens: cfg.maxTokens,
+      system: [
+        {
+          type: 'text',
+          text: buildPrescriptionSystemPrompt(),
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      tools: [{ name: 'quality_prescription_v2', description: 'Return bounded guidance plans for the exact recorded findings',
+        input_schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'anthropic') as Anthropic.Tool.InputSchema }],
+      tool_choice: { type: 'tool', name: 'quality_prescription_v2' },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            ...imageContent,
+            {
+              type: 'text',
+              text: buildPrescriptionUserPrompt({
+                url: context.url,
+                pageText: context.metadata?.pageText ?? '',
+                metadata: context.metadata ? {
+                  title: context.metadata.title, description: context.metadata.description,
+                  h1s: context.metadata.h1s, h2s: context.metadata.h2s, ctaTexts: context.metadata.ctaTexts,
+                } : null,
+                techStack: context.techStack,
+                existingFlags: context.existingFlags,
+                validationFeedback: context.validationFeedback,
+                rubrics: context.rubrics,
+                screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
+              }),
+            },
+          ],
+        },
+      ],
+    } satisfies Parameters<typeof client.messages.create>[0]
     const { response, usage } = await measuredProviderRequest({
+      api: 'messages', requestBody,
       model: cfg.model, onAttempt: context.onAttempt,
-      request: () => client.messages.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        system: [
-          {
-            type: 'text',
-            text: buildPrescriptionSystemPrompt(),
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        tools: [{ name: 'quality_prescription_v2', description: 'Return bounded guidance plans for the exact recorded findings',
-          input_schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'anthropic') as Anthropic.Tool.InputSchema }],
-        tool_choice: { type: 'tool', name: 'quality_prescription_v2' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              ...imageContent,
-              {
-                type: 'text',
-                text: buildPrescriptionUserPrompt({
-                  url: context.url,
-                  pageText: context.metadata?.pageText ?? '',
-                  metadata: context.metadata ? {
-                    title: context.metadata.title, description: context.metadata.description,
-                    h1s: context.metadata.h1s, h2s: context.metadata.h2s, ctaTexts: context.metadata.ctaTexts,
-                  } : null,
-                  techStack: context.techStack,
-                  existingFlags: context.existingFlags,
-                  validationFeedback: context.validationFeedback,
-                  rubrics: context.rubrics,
-                  screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
-                }),
-              },
-            ],
-          },
-        ],
-      },
-      { signal: controller.signal }
-      ),
+      request: () => client.messages.create(requestBody, { signal: controller.signal }),
       usage: response => anthropicResponseUsage(response, cfg.model),
     })
 
@@ -337,27 +337,26 @@ async function runOpenAIPrescription(
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const { response, usage } = await measuredProviderRequest({
-      model: cfg.model, onAttempt: context.onAttempt,
-      request: () => client.chat.completions.create(
-      {
-        model: cfg.model,
-        ...(cfg.reasoningEffort ? { max_completion_tokens: cfg.maxTokens, reasoning_effort: cfg.reasoningEffort } : { max_tokens: cfg.maxTokens }),
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'quality_prescription_v2',
-            strict: true,
-            schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'openai'),
-          },
+    const requestBody = {
+      model: cfg.model,
+      ...(cfg.reasoningEffort ? { max_completion_tokens: cfg.maxTokens, reasoning_effort: cfg.reasoningEffort } : { max_tokens: cfg.maxTokens }),
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'quality_prescription_v2',
+          strict: true,
+          schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'openai'),
         },
-        messages: [
-          { role: 'system', content: buildPrescriptionSystemPrompt() },
-          { role: 'user', content },
-        ],
       },
-      { signal: controller.signal }
-      ),
+      messages: [
+        { role: 'system', content: buildPrescriptionSystemPrompt() },
+        { role: 'user', content },
+      ],
+    } satisfies Parameters<typeof client.chat.completions.create>[0]
+    const { response, usage } = await measuredProviderRequest({
+      api: 'chat.completions', requestBody,
+      model: cfg.model, onAttempt: context.onAttempt,
+      request: () => client.chat.completions.create(requestBody, { signal: controller.signal }),
       usage: response => openAIResponseUsage(response, cfg.model),
     })
 

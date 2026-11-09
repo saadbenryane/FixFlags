@@ -6,6 +6,7 @@ import { OBSERVATION_TARGETS } from './observation-progress'
 export function recordedFindingArtifactsSql(auditId: string | Prisma.Sql) {
   return Prisma.sql`
     SELECT "workResult"->'data'->'flags' AS findings, "id" AS "taskId",
+      COALESCE("workInput"->>'pageUrl', "pageUrl") AS "pageUrl", "workKind",
       COALESCE("workResult"->'data'->'receipt'->'execution'->>'collectedAt', "workResult"->>'collectedAt') AS "collectedAt", "createdAt", "id"
       FROM "audit_execution_tasks"
       WHERE "auditId" = ${auditId} AND "workState" = 'COMPLETED'
@@ -14,7 +15,7 @@ export function recordedFindingArtifactsSql(auditId: string | Prisma.Sql) {
         AND ("workInput"->'verificationContexts') IS NULL
         AND ("workResult"->'data'->'observationProgress') IS NULL
     UNION ALL
-    SELECT detail->'data'->'flags' AS findings, "taskId",
+    SELECT detail->'data'->'flags' AS findings, "taskId", "pageUrl", detail->>'kind' AS "workKind",
       COALESCE(detail->'data'->'receipt'->'execution'->>'collectedAt', detail->>'collectedAt') AS "collectedAt", "createdAt", "id"
       FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" IN (${Prisma.join(OBSERVATION_TARGETS)})
         AND status = 'COMPLETED' AND detail->'data'->'flags' <> '[]'::jsonb`

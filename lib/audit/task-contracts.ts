@@ -5,7 +5,7 @@ import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { startMonitoringAudit } from '@/lib/audit/monitoring'
 import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
-import { diffMatchKey, getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { readReportComparisonWithRecovery } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { findHighestSeverityFlagWithFix } from '@/lib/audit/report-access'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
@@ -343,6 +343,24 @@ export interface TaskOutcomeAccessOptions {
   finishPlanLimit?: number
 }
 
+/** Legacy attempt receipts can credit only their named source capture. */
+function legacyAttemptRecoveryIds(attempt: { outcome: string | null; comparable: boolean | null; sourceAuditId: string;
+  sourceFlagIds: string[]; handoffReference: string | null; evidenceReference: unknown }, auditId: string) {
+  if (attempt.outcome !== 'IMPROVED' || attempt.comparable !== true) return []
+  const value = attempt.evidenceReference
+  const evidence = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as { beforeAuditId?: unknown; beforeFlagId?: unknown; beforeFlagIds?: unknown; afterAuditId?: unknown } : null
+  if (evidence?.beforeAuditId != null && evidence.beforeAuditId !== attempt.sourceAuditId ||
+    evidence?.afterAuditId != null && evidence.afterAuditId !== auditId) return []
+  const handoff = attempt.handoffReference?.startsWith('flag:') ? attempt.handoffReference.slice(5) : null
+  const source = typeof evidence?.beforeFlagId === 'string' && evidence.beforeFlagId ? evidence.beforeFlagId : handoff
+  if (handoff && source !== handoff || source && attempt.sourceFlagIds.length && !attempt.sourceFlagIds.includes(source)) return []
+  const recordedIds = evidence?.beforeFlagIds
+  const ids = evidence?.afterAuditId === auditId && Array.isArray(recordedIds)
+    ? attempt.sourceFlagIds.filter(id => recordedIds.includes(id)) : []
+  return source ? [...ids, source] : ids
+}
+
 export async function loadCompletedTaskOutcome(
   reportId: string,
   tool: PromptToolKey = 'universal',
@@ -395,51 +413,30 @@ export async function loadCompletedTaskOutcome(
     access?.demonstratedFlag,
     access?.finishPlanLimit
   )
-  if (!audit.parentId) {
-    return { reportId, reportUrl: reportUrl(reportId), ...site, status: 'COMPLETED', ...completed }
+  const report = { reportId, reportUrl: reportUrl(reportId), ...site, status: 'COMPLETED', ...completed }
+  if (!audit.parentId) return report
+  const recheck = { ...report, parentReportId: audit.parentId, nextFixList: completed.fixList, nextFinishPlan: completed.finishPlan }
+  const comparison = await readReportComparisonWithRecovery(audit.parentId, reportId)
+  if (!comparison) return { ...recheck, diff: null }
+  const { summary: diff } = comparison
+
+  const attempts = audit.projectId ? await prisma.improvementAttempt.findMany({
+    where: { verificationAuditId: reportId, outcome: { not: null },
+      improvement: { projectId: audit.projectId }, sourceAudit: { projectId: audit.projectId },
+      verificationAudit: { projectId: audit.projectId, parentId: audit.parentId } },
+    select: { id: true, builder: true, changeSummary: true, testedCondition: true, outcome: true, comparable: true,
+      verificationCoverage: true, verificationReason: true, evidenceReference: true, remainingRisk: true,
+      sourceAuditId: true, sourceFlagIds: true, handoffReference: true, improvement: { select: { id: true, title: true } } },
+    orderBy: { updatedAt: 'desc' },
+  }) : []
+  const proven = new Set(comparison.verifiedRecoveryIds ?? attempts.flatMap(attempt => legacyAttemptRecoveryIds(attempt, reportId)))
+  const independentlyImproved: FlagDiffSummaryItem[] = [], noLongerObserved: FlagDiffSummaryItem[] = []
+  for (const flag of diff.fixed) {
+    if (flag.id && !flag.supportingEvidenceUnreadable && proven.has(flag.id)) independentlyImproved.push(flag)
+    else noLongerObserved.push(flag)
   }
-  const [diff, attempts] = await Promise.all([
-    getFlagDiffSummary(audit.parentId, reportId),
-    prisma.improvementAttempt.findMany({
-      where: { verificationAuditId: reportId, outcome: { not: null } },
-      include: {
-        improvement: {
-          select: {
-            id: true,
-            title: true,
-            occurrences: {
-              where: { auditId: audit.parentId },
-              select: {
-                flag: {
-                  select: { checkId: true, problem: true, rubric: true },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { updatedAt: 'desc' },
-    }),
-  ])
-  const independentlyImprovedKeys = new Set(
-    attempts
-      .filter((attempt) => attempt.outcome === 'IMPROVED')
-      .flatMap((attempt) => attempt.improvement.occurrences)
-      .map((occurrence) => diffMatchKey(occurrence.flag))
-  )
-  const independentlyImproved = diff.fixed.filter((flag) =>
-    independentlyImprovedKeys.has(diffMatchKey(flag))
-  )
-  const noLongerObserved = diff.fixed.filter((flag) =>
-    !independentlyImprovedKeys.has(diffMatchKey(flag))
-  )
   return {
-    reportId,
-    reportUrl: reportUrl(reportId),
-    ...site,
-    status: 'COMPLETED',
-    ...completed,
-    parentReportId: audit.parentId,
+    ...recheck,
     diff: {
       fixed: independentlyImproved.length,
       noLongerObserved: noLongerObserved.length,
@@ -456,9 +453,6 @@ export async function loadCompletedTaskOutcome(
         regressed: diff.regressed,
       },
     },
-    nextFixList: completed.fixList,
-    nextFinishPlan: completed.finishPlan,
-    technologyProfile: completed.technologyProfile,
     verificationReceipts: attempts.flatMap((attempt) =>
       attempt.outcome && attempt.testedCondition
         ? [{

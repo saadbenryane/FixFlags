@@ -286,6 +286,16 @@ describe('safeFetchHtml', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('retains an explicit challenge response without following its redirect', async () => {
+    fetchMock
+      .mockResolvedValueOnce(htmlResponse('', { status: 302, location: 'https://example.com/gate' }))
+      .mockResolvedValueOnce(new Response(null, { status: 302, headers: { 'cf-mitigated': ' Challenge ', location: 'https://example.com/final' } }))
+    const result = await safeFetchDocument('https://example.com/')
+    expect(result).toMatchObject({ finalUrl: 'https://example.com/gate', statusCode: 302, redirects: ['https://example.com/'] })
+    expect(result.headers['cf-mitigated']).toBe('Challenge')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('throws when a redirect is missing its location header', async () => {
     fetchMock.mockResolvedValue(htmlResponse('', { status: 302 }))
     await assert.rejects(() => safeFetchHtml('https://example.com/'))

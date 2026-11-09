@@ -11,7 +11,7 @@ function preparation(kind: Kind, changed = false) {
   const task = { sourceFlagId: 'source', referenceFlagId: 'incident', promptHash: (changed ? 'b' : 'a').repeat(64) }
   return Response.json(kind === 'flag' ? { ok: true, prompt, ...task } : { ok: true, prompt, tasks: [task] })
 }
-function setup(kind: Kind, { changed = false, denied = false } = {}) {
+function setup(kind: Kind, { changed = false, denied = false, inline = false } = {}) {
   const writeText = denied ? vi.fn().mockRejectedValue(new Error('Clipboard refused')) : vi.fn().mockResolvedValue(undefined)
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
   const recorded: string[] = []
@@ -26,7 +26,9 @@ function setup(kind: Kind, { changed = false, denied = false } = {}) {
     } })
   })
   vi.stubGlobal('fetch', fetcher)
-  render(kind === 'flag' ? <SitePromptCopyButton siteId="site" flagId="incident" /> : <SiteFixBundleButton siteId="site" area="security" availability="available" />)
+  const presentation = inline ? 'preview' : 'button'
+  render(kind === 'flag' ? <SitePromptCopyButton siteId="site" flagId="incident" presentation={presentation} />
+    : <SiteFixBundleButton siteId="site" area="security" availability="available" presentation={presentation} />)
   return { fetcher, writeText, recorded, copyLabel: kind === 'flag' ? B.copyPrompt : C.fixCategory,
     copiedLabel: kind === 'flag' ? B.copyPromptCopied : C.bundleCopied }
 }
@@ -49,6 +51,15 @@ it.each(['flag', 'bundle'] as const)('copies the inspected %s through its canoni
   expect(writeText).toHaveBeenCalledExactlyOnceWith('Original repair instructions')
   expect(recorded).toEqual(['/api/sites/site/flags/incident/fix'])
   expect(fetcher).toHaveBeenCalledTimes(3)
+})
+
+it.each(['flag', 'bundle'] as const)('acknowledges an inline %s copy using the same label as its other actions', async kind => {
+  const { copyLabel, copiedLabel, writeText } = setup(kind, { inline: true })
+  fireEvent.click(screen.getByLabelText(C.promptPreview))
+  expect(await screen.findByRole('textbox', { name: B.fixPromptLabel })).toHaveValue('Original repair instructions')
+  fireEvent.click(screen.getByRole('button', { name: copyLabel }))
+  expect(await screen.findByRole('button', { name: copiedLabel })).toBeEnabled()
+  expect(writeText).toHaveBeenCalledExactlyOnceWith('Original repair instructions')
 })
 
 it.each(['flag', 'bundle'] as const)('requires review of changed %s instructions and can copy directly from the updated review', async kind => {

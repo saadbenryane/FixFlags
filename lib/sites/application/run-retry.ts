@@ -9,7 +9,7 @@ import { auditAccessSourceSelect, canManageAudit } from '@/lib/audit/access'
 
 export function admittedResponsibilityHash(spec: ExecutionSpec) {
   return createHash('sha256').update(canonicalIntent({ ...spec, outcomes: canonicalExecutionOutcomes(spec.outcomes),
-    engine: undefined, browserCollection: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
+    engine: undefined, browserCollection: undefined, engagementCollection: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
 }
 
 type RetryActor = AdminDomainActor | { kind: 'owner'; userId: string }

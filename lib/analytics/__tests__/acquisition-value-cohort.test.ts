@@ -69,6 +69,94 @@ describe('exact-source anonymous acquisition value', () => {
     expect(report.coverage.missingSourceAudits).toBe(1)
   })
 
+  it('separates receipt coverage, timed audit completion, and unavailable sources', () => {
+    const input = fixture()
+    const cases = [
+      audit({ id: 'private-at-deadline', completedAt: at(7) }),
+      audit({ id: 'private-late-completion', completedAt: at(8) }),
+      audit({ id: 'private-future-completion', completedAt: at(11) }),
+      audit({ id: 'private-undated', completedAt: null }),
+      audit({ id: 'private-out-of-order', startedAt: at(1) }),
+      audit({ id: 'private-failed', status: 'FAILED' }),
+      audit({ id: 'private-invalid-start', createdAt: at(1) }),
+    ]
+    input.audits.push(...cases)
+    input.starts.push(...cases.map(({ id }) => start(id)), start('private-missing'))
+    input.results.push(
+      { idempotencyKey: 'analysis_completed:private-at-deadline', createdAt: at(8) },
+      { idempotencyKey: 'analysis_completed:private-missing', createdAt: at(1) },
+    )
+    const report = calculateAcquisitionValueCohort(input)
+    expect(report.processingEvidence).toEqual({
+      receiptWithinFollowup: 1,
+      completedAuditWithinFollowupWithoutReceipt: 1,
+      completedAuditAfterFollowupWithoutReceipt: 1,
+      noDatedCompletionWithoutReceipt: 4,
+      unavailableSource: 2,
+    })
+    expect(report.matureCohort).toMatchObject({ starts: 9, analysisCompletionReceipts: 1 })
+    expect(JSON.stringify(report)).not.toContain('private-')
+  })
+
+  it('separates retained terminal timing from nonterminal state and keeps unknown failure codes private', () => {
+    const input = fixture()
+    const cases = [
+      { id: 'private-early', status: 'FAILED', completedAt: at(.25), startedAt: null, failureCode: 'QUEUE_ENQUEUE_FAILED' },
+      { id: 'private-within', status: 'FAILED', completedAt: at(7), failureCode: 'SITE_UNREACHABLE' },
+      { id: 'private-late', status: 'FAILED', completedAt: at(8), failureCode: 'SITE_UNREACHABLE' },
+      { id: 'private-undated', status: 'FAILED', completedAt: null, failureCode: 'private-reason@example.test' },
+      { id: 'private-out-of-order', status: 'FAILED', startedAt: at(5), completedAt: at(4) },
+      { id: 'private-capturing', status: 'CAPTURING', completedAt: null },
+      { id: 'private-inconsistent', status: 'COMPLETED', completedAt: null },
+    ]
+    for (const entry of cases) {
+      input.audits.push(audit({ ...entry, source: 'HOMEPAGE', userId: null, projectId: null, project: null }))
+      input.starts.push({ ...start(entry.id, entry.id === 'private-early' ? .5 : 0),
+        properties: { anonymous: true, guideEntry: 'website-online-but-not-working', journeyId: `ffj_${'a'.repeat(32)}` } })
+    }
+    const report = calculateAcquisitionValueCohort(input)
+    const processingGaps = {
+      failedBeforeRecordedStart: 1, failedWithinFollowup: 1, failedAfterFollowup: 1, failedWithoutUsableTime: 2,
+      recordedNonterminal: 1, unverifiedAuditState: 1,
+    }
+    expect(report).toMatchObject({
+      processingEvidence: { noDatedCompletionWithoutReceipt: 7 },
+      processingGaps,
+      guideEntries: [{ starts: 7, analysisCompletionReceipts: 0, processingGaps }],
+      recordedFailureCodes: [
+        { code: 'QUEUE_ENQUEUE_FAILED', audits: 1 }, { code: 'SITE_UNREACHABLE', audits: 2 },
+        { code: 'unrecognized', audits: 1 }, { code: 'unrecorded', audits: 1 },
+      ],
+    })
+    expect(JSON.stringify(report)).not.toMatch(/private-|ffj_/)
+  })
+
+  it('partitions guide processing and pairs completion and claim receipts by exact analysis', () => {
+    const input = fixture()
+    const guide = 'website-online-but-not-working'
+    input.audits[0].source = 'HOMEPAGE'
+    const added = [
+      audit({ id: 'private-claim-only', source: 'HOMEPAGE' }),
+      audit({ id: 'private-completion-only', source: 'HOMEPAGE', project: null, projectId: null, userId: null }),
+      audit({ id: 'private-late', source: 'HOMEPAGE', completedAt: at(8), project: null, projectId: null, userId: null }),
+      audit({ id: 'private-pending', source: 'HOMEPAGE', status: 'CHECKING', completedAt: null, project: null, projectId: null, userId: null }),
+    ]
+    input.audits.push(...added)
+    input.starts.push(...added.map(({ id }) => start(id)))
+    for (const row of input.starts) row.properties = { anonymous: true, guideEntry: guide, journeyId: `ffj_${'a'.repeat(32)}` }
+    input.results.push({ idempotencyKey: 'analysis_completed:private-completion-only', createdAt: at(.2) })
+    input.claims.push({ ...input.claims[0], idempotencyKey: 'analysis_claimed:private-claim-only' })
+
+    const report = calculateAcquisitionValueCohort(input)
+
+    expect(report.guideEntries).toMatchObject([{ guide, starts: 5, analysisCompletionReceipts: 2, claimReceipts: 2,
+      claimReceiptsWithCompletionReceipt: 1, processingEvidence: {
+        receiptWithinFollowup: 2, completedAuditWithinFollowupWithoutReceipt: 1,
+        completedAuditAfterFollowupWithoutReceipt: 1, noDatedCompletionWithoutReceipt: 1,
+      }, processingGaps: { recordedNonterminal: 1 } }])
+    expect(JSON.stringify(report)).not.toMatch(/private-|ffj_/)
+  })
+
   it('does not credit another source audit from the same Site or a standalone improvement event', () => {
     const input = fixture(); input.cycles[0].sourceAuditId = 'later-monitoring-audit'
     expect(calculateAcquisitionValueCohort(input).matureCohort.independentlyImproved).toBe(0)
@@ -134,11 +222,46 @@ describe('exact-source anonymous acquisition value', () => {
     expect(JSON.stringify(report)).not.toContain('private-')
   })
 
+  it('withholds guide grouping for legacy, non-public and unrecognized entry records', () => {
+    const input = fixture()
+    const journeyId = `ffj_${'b'.repeat(32)}`
+    input.audits[0].source = 'HOMEPAGE'
+    const guideEntry = 'website-online-but-not-working'
+    input.starts[0].properties = { anonymous: true, guideEntry, journeyId }
+    expect(calculateAcquisitionValueCohort(input).guideEntries).toMatchObject([
+      { guide: guideEntry, starts: 1, claimReceipts: 1, independentlyImproved: 1 },
+    ])
+    input.starts[0].properties = { anonymous: true, guideEntry }
+    expect(calculateAcquisitionValueCohort(input).guideEntries).toEqual([])
+    input.starts[0].properties = { anonymous: true, guideEntry: 'https://private.example/path', journeyId }
+    expect(calculateAcquisitionValueCohort(input).guideEntries).toEqual([])
+    input.starts[0].properties = { anonymous: true, guideEntry, journeyId }
+    input.audits[0].source = 'API'
+    expect(calculateAcquisitionValueCohort(input).guideEntries).toEqual([])
+  })
+
   it('requires the exact audit and owner for claim evidence even on the same Site', () => {
     const input = fixture(); input.claims[0].idempotencyKey = 'analysis_claimed:another-source'
     expect(calculateAcquisitionValueCohort(input).matureCohort.claimReceipts).toBe(0)
     input.claims[0].idempotencyKey = 'analysis_claimed:private-source'; input.claims[0].userId = 'other-owner'
     expect(calculateAcquisitionValueCohort(input).matureCohort.claimReceipts).toBe(0)
+  })
+
+  it('withholds claims before the recorded guide start and keeps the inclusive seven-day boundary', () => {
+    const input = fixture()
+    input.audits[0].source = 'HOMEPAGE'
+    input.starts[0].createdAt = at(1.5)
+    input.starts[0].properties = { anonymous: true, guideEntry: 'website-online-but-not-working', journeyId: `ffj_${'a'.repeat(32)}` }
+    expect(calculateAcquisitionValueCohort(input)).toMatchObject({
+      status: 'partial', coverage: { claimReceiptBeforeStart: 1 },
+      guideEntries: [{ starts: 1, claimReceipts: 0, observedSharesPct: { claimReceipts: null } }],
+    })
+    input.claims[0].createdAt = at(8.5)
+    expect(calculateAcquisitionValueCohort(input).guideEntries[0].claimReceipts).toBe(1)
+    input.claims[0].createdAt = new Date(at(8.5).getTime() + 1)
+    expect(calculateAcquisitionValueCohort(input)).toMatchObject({
+      coverage: { claimReceiptBeforeStart: 0, claimReceiptAfterFollowup: 1 }, guideEntries: [{ claimReceipts: 0 }],
+    })
   })
 
   it('permits cycle bookkeeping to follow the recorded attempt without rewriting action time', () => {

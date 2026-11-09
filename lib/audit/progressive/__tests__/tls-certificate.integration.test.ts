@@ -23,14 +23,18 @@ import { TASK_QUEUES } from '../queues'
 import { dispatchReadyTasks, reconcileTasks } from '../engine'
 import * as pageSessions from '@/lib/audit/browser/page-session'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { readSupportingObservations } from '@/lib/audit/flag-observations'
+import { legacyCertificateRequestContext } from '@/lib/audit/checks/certificate-scope'
+import { LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE } from '@/lib/audit/tls-evidence'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('public certificate findings through URL admission and installed workers', () => {
   const userId = 'certificate-' + randomUUID(), pageUrl = 'http://example.com/?creator=PRIVATE_VALUE'
   const secureUrl = 'https://example.com/secure?session=PRIVATE_TLS_VALUE'
+  const alternateUrl = 'https://example.com:8443/secure'
   let phase = 'expired', projectId: string
   let tls: ReturnType<typeof createTestTlsCertificates>, worker: ReturnType<typeof startWorker> | undefined
-  let plain: ReturnType<typeof httpServer>, secure: ReturnType<typeof httpsServer>
+  let plain: ReturnType<typeof httpServer>, secure: ReturnType<typeof httpsServer>, alternate: ReturnType<typeof httpsServer>
   let trusted: Agent, unknownTrust: Agent
   const refusals: string[] = []
   beforeAll(async () => {
@@ -41,22 +45,27 @@ run('public certificate findings through URL admission and installed workers', (
     const body = '<!doctype html><html lang="en"><head><title>Useful public service</title></head><body><main><h1>Useful public service</h1><p>The requested service is available.</p></main></body></html>'
     plain = httpServer((_request, response) => {
       response.setHeader('connection', 'close')
-      if (phase !== 'downgrade') { response.writeHead(302, { location: secureUrl }); response.end(); return }
+      if (phase !== 'downgrade') {
+        response.writeHead(phase === 'not-modified' ? 304 : 302, { location: phase === 'bypassed' ? alternateUrl : secureUrl }); response.end(); return
+      }
       response.setHeader('content-type', 'text/html'); response.end(body)
     })
     secure = httpsServer({ key: tls.key, cert: tls.certificates.expired }, (_request, response) => {
       response.setHeader('connection', 'close'); response.setHeader('content-type', 'text/html')
       response.end(phase === 'surface-missing' ? '<!doctype html><html lang="en"><head><title>Useful public service</title></head><body></body></html>' : body)
     })
-    await Promise.all([new Promise<void>(resolve => plain.listen(0, '127.0.0.1', resolve)),
-      new Promise<void>(resolve => secure.listen(0, '127.0.0.1', resolve))])
+    alternate = httpsServer({ key: tls.key, cert: tls.certificates.valid }, (_request, response) => {
+      response.setHeader('connection', 'close'); response.setHeader('content-type', 'text/html'); response.end(body)
+    })
+    await Promise.all([plain, secure, alternate].map(server => new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))))
     trusted = new Agent({ connect: { ca: tls.ca, servername: 'example.com' }, pipelining: 0 })
     unknownTrust = new Agent({ connect: { servername: 'example.com' }, pipelining: 0 })
     const nativeFetch = globalThis.fetch
     vi.stubGlobal('fetch', async (input: string | URL | Request, options?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
       if (url.hostname !== 'example.com') throw new Error('External transport unavailable in this fixture')
-      const transport = url.protocol + '//127.0.0.1:' + ((url.protocol === 'https:' ? secure : plain).address() as { port: number }).port
+      const server = url.port === '8443' ? alternate : url.protocol === 'https:' ? secure : plain
+      const transport = url.protocol + '//127.0.0.1:' + (server.address() as { port: number }).port
       try {
         return await nativeFetch(transport + url.pathname + url.search, { ...options,
           dispatcher: phase === 'unknown' ? unknownTrust : trusted } as RequestInit)
@@ -77,7 +86,7 @@ run('public certificate findings through URL admission and installed workers', (
       const client = await queue.client; await queue.close(); client.disconnect()
     }
     await trusted?.close(); await unknownTrust?.close()
-    for (const server of [plain, secure]) if (server) { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
+    for (const server of [plain, secure, alternate]) if (server) { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
     tls?.dispose(); vi.unstubAllGlobals(); await prisma.$disconnect()
   })
   async function complete(auditId: string) {
@@ -99,7 +108,7 @@ run('public certificate findings through URL admission and installed workers', (
   }
   async function verify(flagId: string, next: string, outcome: 'UNCHANGED' | 'INCONCLUSIVE' | 'IMPROVED', scope = 'certificate', ownerId = userId) {
     phase = next; refusals.length = 0
-    secure.setSecureContext({ key: tls.key, cert: tls.certificates[next === 'expired' ? 'expired' : 'valid'] })
+    secure.setSecureContext({ key: tls.key, cert: tls.certificates[next === 'expired' || next === 'bypassed' ? 'expired' : 'valid'] })
     const fix = await recordSiteFlagFix({ siteId: projectId, userId: ownerId, flagId, idempotencyKey: scope + '-fix-' + next,
       changeSummary: 'Restore a valid public HTTPS connection' })
     const check = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: projectId, userId: ownerId, flagId,
@@ -111,6 +120,7 @@ run('public certificate findings through URL admission and installed workers', (
     const run = await prisma.runRequest.findFirstOrThrow({ where: { auditId: check.verificationAuditId! }, select: { id: true } })
     expect(await getOwnedRun(ownerId, run.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR'
       : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
+    return check.verificationAuditId!
   }
   it('preserves the failed redirect hop, refuses uncertain and downgraded repairs, then verifies HTTPS and recurrence', async () => {
     const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
@@ -134,6 +144,15 @@ run('public certificate findings through URL admission and installed workers', (
     await verify(flag.id, 'expired', 'UNCHANGED')
     await verify(flag.id, 'unknown', 'INCONCLUSIVE')
     await verify(flag.id, 'downgrade', 'INCONCLUSIVE')
+    const bypassed = await verify(flag.id, 'bypassed', 'INCONCLUSIVE')
+    const bypassTask = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: bypassed, workKind: 'http', pageUrl } })
+    expect(httpArtifactSchema.parse(readArtifact(bypassTask.workResult, 'http').data).document)
+      .toMatchObject({ finalUrl: alternateUrl, status: 200, redirects: [pageUrl] })
+    const notModified = await verify(flag.id, 'not-modified', 'INCONCLUSIVE')
+    const stopped = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: notModified, workKind: 'http', pageUrl } })
+    expect(httpArtifactSchema.parse(readArtifact(stopped.workResult, 'http').data).document)
+      .toMatchObject({ finalUrl: pageUrl, status: 304, redirects: [], reason: 'redirect_unresolved' })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
     await verify(flag.id, 'valid', 'IMPROVED')
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED' })
     phase = 'expired'; secure.setSecureContext({ key: tls.key, cert: tls.certificates.expired })
@@ -142,6 +161,15 @@ run('public certificate findings through URL admission and installed workers', (
     const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: flag.checkId } })
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
+    // Replay the original v1 finding format with its retained HTTP observation.
+    const observations = readSupportingObservations(recurrence.supportingObservations)!
+    const legacy = observations.items.map(item => ({ ...item, verificationRule: LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE,
+      evidenceTargets: item.evidenceTargets.map(target => ({ ...target, context: legacyCertificateRequestContext(item.pageUrl!) })) }))
+    await prisma.flag.update({ where: { id: recurrence.id }, data: { verificationRule: LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE,
+      evidenceTargets: legacy.flatMap(item => item.evidenceTargets), supportingObservations: { version: 1, items: legacy } } })
+    await verify(recurrence.id, 'bypassed', 'INCONCLUSIVE', 'legacy-certificate')
+    await verify(recurrence.id, 'valid', 'IMPROVED', 'legacy-certificate')
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: recurrence.id } })).toMatchObject({ status: 'FIXED' })
   }, 180_000)
 
   it('confirms certificate refusal for the default availability Outcome and independently verifies rendered recovery', async () => {

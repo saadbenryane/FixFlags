@@ -2,7 +2,7 @@ import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { recordObservation, type CheckRecorder } from './assertion'
-import { loadingDelayObservation, mobileLoadingDelayFlag } from './loading-evidence'
+import { loadingDelayObservation, MOBILE_LOADING_DELAY_MS, mobileLoadingDelayFlag } from './loading-evidence'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 export function runMobileUXQualityChecks(
@@ -36,11 +36,12 @@ export function runMobileUXQualityChecks(
   })) : [{ inputs: [], small: captureMetrics.inputsBelow16px.length > 0, context: undefined }]
   for (const group of groups) {
     const passed = fontsComplete && !group.small
-    // A passing 16px sample records CSS sizing and cannot certify recovery.
+    // Only identified controls can verify the measured CSS condition.
+    const identified = /^mobile-input:[a-f0-9]{64}$/.test(group.context ?? '')
     record?.({ key: 'mobile-input-fonts', name: SITE_ACTION_COPY.mobileInputs.name,
       expected: SITE_ACTION_COPY.mobileInputs.expected,
       observed: fontsComplete ? SITE_ACTION_COPY.mobileInputs.observed(group.small ? group.inputs.length : 0) : SITE_ACTION_COPY.mobileInputs.limited,
-      passed, complete: fontsComplete, ...(passed ? { disposition: 'observed' as const } : {}), context: group.context,
+      passed, complete: fontsComplete, ...(passed && !identified ? { disposition: 'observed' as const } : {}), context: group.context,
       targets: group.inputs.map(input => ({ selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference, context: input.context })) })
   }
 
@@ -68,13 +69,16 @@ export function runMobileUXQualityChecks(
   // A completed ratio is the conclusion. A missing measurement stays advisory and cannot certify recovery.
   const positionRatio = measuredPosition
     ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight : undefined
-  if (conversion) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
-    'The sampled primary action is below the top 20 percent of the initial mobile viewport',
-    positionRatio === undefined ? 'No usable primary action position was measured.'
+  const placementContext = captureMetrics.mobilePrimaryCtaContext ?? 'mobile-action:unknown'
+  if (conversion) record?.({ key: 'mobile-cta-position', name: 'Mobile action position',
+    expected: 'The sampled primary action is below the top 20 percent of the initial mobile viewport',
+    observed: positionRatio === undefined ? 'No usable primary action position was measured.'
       : `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.`,
-    positionRatio === undefined ? undefined : positionRatio >= 0.2, positionRatio === undefined)
+    passed: positionRatio !== undefined && positionRatio >= 0.2, complete: positionRatio !== undefined,
+    context: placementContext,
+  })
   const mobileLoad = captureMetrics.loadExperience
-  if (mobileLoad?.device === 'mobile') record?.(loadingDelayObservation(mobileLoad, 4000, 'mobile-loading-delay', true))
+  if (mobileLoad?.device === 'mobile') record?.(loadingDelayObservation(mobileLoad, MOBILE_LOADING_DELAY_MS, 'mobile-loading-delay', true))
   else recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
     'No mobile loading window was recorded.', undefined, true)
 
@@ -88,6 +92,7 @@ export function runMobileUXQualityChecks(
         impactTag: 'CONVERSION',
         severity: 'POLISH',
         problem: 'Primary CTA is in the hard-to-reach top zone on mobile',
+        evidenceTargets: [{ kind: 'page', source: 'measured', device: 'mobile', label: 'Observed page', context: placementContext }],
         evidence: `CTA "${captureMetrics.mobilePrimaryCtaText ?? 'Primary CTA'}" appears at ${Math.round(positionRatio * 100)}% of the viewport height. The top edge is harder to reach one-handed on larger phones.`,
         fix: '1. Move the primary CTA into the middle or lower mobile viewport (35-75% from top)\n2. Keep the CTA at least 48px tall\n3. Consider a sticky bottom CTA for the primary action\n4. Test one-handed on a 6.7" phone',
         confidence: 0.7,

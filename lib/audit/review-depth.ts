@@ -125,12 +125,14 @@ export function planReviewTargets(input: {
   depth: ReviewDepth
   pastedLinks: Array<{ href: string; text: string }>
   linkedPageLinks?: Array<{ pageUrl: string; links: Array<{ href: string; text: string }> }>
+  discoveryPass?: 'first' | 'second'
   reviewCeiling?: number
   retainedUrls?: readonly string[]
 }): ReviewPlan {
   const pasted = canonicalizeDestination(input.pastedUrl)
   const origin = pasted?.url ?? input.pastedUrl
   const reviewCeiling = input.reviewCeiling ?? INTERNAL_REVIEW_PAGE_CEILING
+  let passCeiling = reviewCeiling
   const fromPasted = collectEligibleDestinations(origin, input.pastedLinks)
   const rankedFromPasted = rankDestinations(fromPasted)
 
@@ -146,7 +148,7 @@ export function planReviewTargets(input: {
     representedDestinations.add(canonical.key)
     if (eligibleNavigations.has(navigation)) return
     eligibleNavigations.add(navigation)
-    if (reviewUrls.length >= reviewCeiling) return
+    if (reviewUrls.length >= passCeiling) return
     reviewUrls.push(navigation)
   }
 
@@ -154,15 +156,14 @@ export function planReviewTargets(input: {
 
   if (input.depth >= 2) {
     for (const url of monitoringReviewUrls(input.pastedUrl, input.retainedUrls ?? [])) addReview(url, true)
-    for (const destination of rankedFromPasted) addReview(destination.canonical.url)
-  }
-
-  if (input.depth >= 3) {
-    const hop2: EligibleLink[] = []
-    for (const page of input.linkedPageLinks ?? []) {
-      hop2.push(...collectEligibleDestinations(origin, page.links))
+    // Preserve existing obligations and reserve half the remaining slots for
+    // deeper discovery. An empty second hop can fill them with deferred links.
+    if (input.depth === 3 && input.discoveryPass === 'first') {
+      passCeiling = reviewUrls.length + Math.ceil((reviewCeiling - reviewUrls.length) / 2)
     }
-    for (const destination of rankDestinations(hop2)) addReview(destination.canonical.url)
+    const deeper = input.depth === 3 ? rankDestinations((input.linkedPageLinks ?? []).flatMap(page => collectEligibleDestinations(origin, page.links))) : []
+    const candidates = input.discoveryPass === 'second' ? [...deeper, ...rankedFromPasted] : [...rankedFromPasted, ...deeper]
+    for (const destination of candidates) addReview(destination.canonical.url)
   }
 
   const openCheckUrls = new Set<string>()
@@ -187,7 +188,7 @@ export function planReviewTargets(input: {
     depth: input.depth,
     reviewUrls,
     openCheckUrls: [...openCheckUrls],
-    truncated: eligibleNavigations.size > reviewUrls.length,
+    truncated: eligibleNavigations.size > reviewCeiling,
   }
 }
 

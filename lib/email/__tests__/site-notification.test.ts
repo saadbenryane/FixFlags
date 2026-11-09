@@ -73,6 +73,34 @@ describe('combined Site notification', () => {
     expect(message.html).not.toContain('THE FINAL OBSERVATION')
     expect(Buffer.byteLength(message.html)).toBeLessThan(20_000)
   })
+  it('keeps the action above a multi-Flag summary and attaches each complete prepared task', () => {
+    const findings = Array.from({ length: 6 }, (_, index) => ({
+      id: 'flag-' + index, problem: 'Recorded problem ' + index,
+      repairPrompt: ('Recorded repair and acceptance evidence ' + index + '\n').repeat(100),
+    }))
+    const message = renderSiteNotification({ projectId: 'site', url: 'https://example.com', name: null, checkedAt: null,
+      regressions: findings, recoveries: [] })
+    const $ = load(message.html)
+    expect(message.html.indexOf('>View details</a>')).toBeLessThan(message.html.indexOf(findings[0].problem))
+    expect($('pre')).toHaveLength(0)
+    expect(message.attachments?.map(file => Buffer.from(file.content, 'base64').toString('utf8')))
+      .toEqual(findings.map(finding => finding.repairPrompt))
+    for (const finding of findings) expect(message.html).toContain('/flags/' + finding.id + '?source=watch-email')
+    expect(message.text.match(/Open an attached fix prompt/g)).toHaveLength(1)
+    expect(Buffer.byteLength(message.html)).toBeLessThan(16_000)
+  })
+  it.each([[8, 8], [9, 6]])('preserves all %i sources with %i frozen tasks', (count, visible) => {
+    const findings = Array.from({ length: count }, (_, index) => ({
+      id: 'flag-' + index, problem: 'Problem ' + index, repairPrompt: 'Complete task ' + index,
+    }))
+    const message = renderSiteNotification({ projectId: 'site', url: 'https://example.com', name: null, checkedAt: null,
+      regressions: findings, recoveries: [] })
+    const contents = message.attachments!.map(file => Buffer.from(file.content, 'base64').toString('utf8'))
+    expect(contents.slice(0, visible)).toEqual(findings.slice(0, visible).map(finding => finding.repairPrompt))
+    const remaining = contents.slice(visible).flatMap(content => JSON.parse(content.split('Source Flag IDs: ')[1]) as string[])
+    expect(remaining).toEqual(findings.slice(visible).map(finding => finding.id))
+    expect(contents.length).toBeLessThanOrEqual(8)
+  })
   it('provides a recheck instruction instead of inventing a repair for unreadable evidence', () => {
     const message = siteNotificationEmail({ projectId: 'site', url: 'https://example.com', name: null, checkedAt: null,
       regressions: [{ id: 'image', problem: 'An image failed', evidence: 'Unreadable aggregate', fix: 'Invented fix', supportingEvidenceUnreadable: true }], recoveries: [] })
@@ -138,6 +166,17 @@ describe('combined Site notification', () => {
     expect(message.subject).toBe('example.com: 2 problems resolved')
     expect(message.text).not.toMatch(/recovery verified|all clear|everything works|we fixed/i)
     expect(message.html).not.toMatch(/<hr\b|border-(top|bottom|left|right):/)
+  })
+
+  it('identifies the recovered page without copying private URL components', () => {
+    const message = siteNotificationEmail({ projectId: 'site', url: 'https://example.com', name: null, checkedAt: null,
+      regressions: [], recoveries: [{ id: 'fixed', problem: 'Page title is missing',
+        pageUrl: 'https://private-user:private-password@example.com/catalog?key=private-query#private-fragment' }] })
+    for (const body of [message.html, message.text]) {
+      expect(body).toContain('(/catalog)')
+      expect(body).toContain('/sites/site/flags/fixed?source=watch-email')
+      expect(body).not.toMatch(/private-(user|password|query|fragment)/)
+    }
   })
 
   it('does not invent a passing before state for a newly found problem', () => {

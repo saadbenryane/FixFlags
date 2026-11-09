@@ -23,14 +23,16 @@ export async function settleRecordedPages(tx: Prisma.TransactionClient, auditId:
       EXISTS (SELECT 1 FROM audit_execution_tasks desktop WHERE desktop."auditId" = collected."auditId"
         AND desktop."pageUrl" = collected."pageUrl" AND desktop."workKind" = 'browser'
         AND COALESCE(desktop."workInput"->>'device', 'desktop') <> 'mobile') AS "desktopRequired",
-      (jsonb_typeof("workResult"#>'{data,snapshot,captureMetrics}') = 'object'
+      ("workResult"#>'{data,snapshot,mobileSignInRedirect}' IS DISTINCT FROM 'true'::jsonb AND
+        (jsonb_typeof("workResult"#>'{data,snapshot,captureMetrics}') = 'object'
         OR jsonb_typeof("workResult"#>'{data,snapshot,mobileAccessibility,evidence}') = 'object'
-        OR "workResult"#>'{data,snapshot,consoleCoverage,mobile,complete}' = 'true'::jsonb) IS TRUE AS "mobileObserved",
+        OR "workResult"#>'{data,snapshot,consoleCoverage,mobile,complete}' = 'true'::jsonb)) IS TRUE AS "mobileObserved",
       jsonb_set("workResult", '{data}', jsonb_build_object(
       'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata',
       'snapshot', jsonb_strip_nulls(jsonb_build_object(
         'desktopHttpStatus', "workResult"#>'{data,snapshot,desktopHttpStatus}',
         'desktopFinalUrl', "workResult"#>'{data,snapshot,desktopFinalUrl}',
+        'publicSignInRedirect', "workResult"#>'{data,snapshot,publicSignInRedirect}',
         'collectionRestrictions', "workResult"#>'{data,snapshot,collectionRestrictions}',
         'desktopLoadExperience', CASE WHEN jsonb_typeof("workResult"#>'{data,snapshot,desktopLoadExperience,observation}') = 'object'
           THEN jsonb_build_object('observation', "workResult"#>'{data,snapshot,desktopLoadExperience,observation}') END)))) AS "workResult"
@@ -44,7 +46,8 @@ export async function settleRecordedPages(tx: Prisma.TransactionClient, auditId:
     const artifact = taskArtifactSchema.safeParse(task.workResult)
     if (!artifact.success || artifact.data.kind !== 'browser') continue
     const collected = collectedPageSchema.safeParse(artifact.data.data)
-    if (!collected.success || !collected.data.metadata && !(task.device !== 'mobile' && hasRecordedDesktopCollection(collected.data.snapshot, task.pageUrl)) &&
+    if (!collected.success || collected.data.snapshot?.desktopHttpStatus === 206 ||
+      !collected.data.metadata && !(task.device !== 'mobile' && hasRecordedDesktopCollection(collected.data.snapshot, task.pageUrl)) &&
       !(task.device === 'mobile' && !task.desktopRequired && task.mobileObserved)) continue
     const page = pages.find(page => page.id === collected.data.pageId && page.url === task.pageUrl)
     if (!page) continue

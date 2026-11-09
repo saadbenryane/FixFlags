@@ -17,7 +17,8 @@ export const previewImageDecodingSchema = z.discriminatedUnion('state', [
   }).strict(),
 ])
 export const previewImageResponseSchema = z.object({ statusCode: z.number().int(), contentType: z.string(),
-  hasContent: z.boolean(), complete: z.boolean(), restriction: z.enum(['authentication_required', 'access_denied', 'rate_limited', 'bot_challenge']).nullable(),
+  hasContent: z.boolean(), complete: z.boolean(),
+  restriction: z.enum(['authentication_required', 'intermediary_authentication_required', 'access_denied', 'rate_limited', 'bot_challenge']).nullable(),
   decoding: previewImageDecodingSchema.optional() }).strict()
 export type PreviewImageResponse = z.infer<typeof previewImageResponseSchema>
 type Decoding = z.infer<typeof previewImageDecodingSchema>

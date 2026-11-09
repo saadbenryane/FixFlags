@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { KeyboardEvidence } from '../browser/keyboard-probe'
+import { KEYBOARD_FOCUS_POLICY, type KeyboardEvidence } from '../browser/keyboard-probe'
 import { runKeyboardChecks } from './keyboard'
 import { scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
@@ -13,7 +13,7 @@ describe('keyboard evidence evaluation', () => {
   it.each([undefined, 'painted-properties-v2'] as const)('keeps corrected focus paint observations separate from historical detector evidence (%s)', focusPolicy => {
     const scope = { pageUrl: evidence.pageUrl, finalUrl: evidence.pageUrl, profile: 'desktop', access: 'public' }
     const original = runKeyboardChecks({ ...evidence, scope, focusPolicy, steps: [{ ...evidence.steps[0], indicator: 'missing' }] }).flags[0]
-    const current = runKeyboardChecks({ ...evidence, scope, focusPolicy: 'painted-properties-v3' })
+    const current = runKeyboardChecks({ ...evidence, scope, focusPolicy: KEYBOARD_FOCUS_POLICY })
     expect(scopedAssertionForTarget({ checkId: original.checkId!, flag: original, receipt: checkReceiptSchema.parse({
       kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: evidence.pageUrl, applicable: true,
       complete: true, passed: true, assertions: current.assertions,
@@ -23,6 +23,8 @@ describe('keyboard evidence evaluation', () => {
       .flags.find(flag => flag.checkId === 'keyboard-nav-trap')!.evidenceTargets
     expect(navigation('painted-properties-v2')).toEqual(navigation())
     expect(navigation('painted-properties-v3')).toEqual(navigation())
+    expect(navigation('painted-properties-v4')).toEqual(navigation())
+    expect(navigation(KEYBOARD_FOCUS_POLICY)).toEqual(navigation())
   })
   it('requires the same requested page, final page, browser profile and access for original-control repair', () => {
     const scope = { pageUrl: evidence.pageUrl, finalUrl: evidence.pageUrl, profile: 'desktop', access: 'public' }

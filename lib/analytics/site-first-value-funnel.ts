@@ -1,8 +1,16 @@
+import type { Prisma } from '@prisma/client'
+import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { FIXFLAGS_LANDING_SCOPE } from '@/lib/growth/reporting-targets'
 import { analysisCompletionAuditId, analysisCompletionKeys } from './analysis-completion'
+import { ACQUISITION_FOLLOWUP_DAYS, observedAnalysisClaim, type AcquisitionAudit, type AcquisitionClaim } from './acquisition-value-cohort'
 
 const START_PREFIX = 'analyze_started:'
+const DAY = 86_400_000
+const FOLLOWUP_MS = ACQUISITION_FOLLOWUP_DAYS * DAY
+const LANDING_ARTIFACT_PATH = 'ga/rolling-28d/landing-journeys'
+const MAX_LANDING_STARTS = 10_000
 
 type StartEventRow = {
   idempotencyKey: string
@@ -10,9 +18,7 @@ type StartEventRow = {
   createdAt?: Date
 }
 
-type AuditRow = {
-  id: string
-  userId: string | null
+type AuditRow = Pick<AcquisitionAudit, 'id' | 'createdAt' | 'userId' | 'projectId' | 'project'> & {
   status: string
   utmSource: string | null
   source: string
@@ -20,6 +26,7 @@ type AuditRow = {
 
 type ResultEventRow = {
   idempotencyKey: string
+  createdAt: Date
 }
 
 export type FirstValueSourceRow = {
@@ -39,7 +46,7 @@ export type SiteFirstValueFunnel = {
   firstUsefulResult: number
   resultRate: number
   claimed: number
-  claimRate: number
+  claimRate: number | null
   failedBeforeResult: number
   stillRunning: number
   completedWithoutReceipt: number
@@ -62,6 +69,7 @@ export type LandingJourneyArtifact = {
 
 export type LandingFirstValueFunnel = {
   status: LandingJourneyArtifact['status'] | 'missing' | 'incomparable'
+  computedAt?: string
   fetchedAt: string | null
   startDate: string | null
   endDate: string | null
@@ -75,15 +83,51 @@ export type LandingFirstValueFunnel = {
   resultRate: number | null
   claimRate: number | null
   instrumentedStarts: number
+  startReceiptCoverage?: { retainedStarts: number; withUsableTabKey: number; withExactLandingMatch: number } | null
   unattributedEventCount: number
   rowLimitReached: boolean
   providerLimited: boolean
+  followupComplete: boolean
 }
+
+const count = z.number().int().nonnegative()
+const rate = count.max(100).nullable()
+const landingScopeSchema = z.object({
+  property: z.literal(FIXFLAGS_LANDING_SCOPE.property),
+  hostname: z.literal(FIXFLAGS_LANDING_SCOPE.hostname),
+  streamId: z.literal(FIXFLAGS_LANDING_SCOPE.streamId),
+  pagePath: z.literal(FIXFLAGS_LANDING_SCOPE.pagePath),
+  eventName: z.literal(FIXFLAGS_LANDING_SCOPE.eventName),
+})
+const landingSnapshotSchema = z.object({
+  version: z.union([z.literal(3), z.literal(4)]),
+  scope: landingScopeSchema,
+  computedAt: z.iso.datetime(),
+  status: z.enum(['available', 'partial', 'unavailable', 'incomparable']),
+  fetchedAt: z.iso.datetime(),
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+  reportingTimeZone: z.string().nullable(),
+  landingSessions: count.nullable(),
+  startedSessions: count.nullable(),
+  completedAnalysisSessions: count.nullable(),
+  claimedSessions: count.nullable(),
+  startRate: rate,
+  resultRate: rate,
+  claimRate: rate,
+  unattributedEventCount: count,
+  rowLimitReached: z.boolean(),
+  providerLimited: z.boolean(),
+  startReceiptCoverage: z.object({ retainedStarts: count, withUsableTabKey: count, withExactLandingMatch: count }).nullable().optional(),
+  followupComplete: z.boolean(),
+})
+
+export type LandingJourneySnapshot = z.infer<typeof landingSnapshotSchema>
 
 function eventAuditId(idempotencyKey: string, prefix: string): string | null {
   if (!idempotencyKey.startsWith(prefix)) return null
-  const auditId = idempotencyKey.slice(prefix.length).trim()
-  return auditId || null
+  const auditId = idempotencyKey.slice(prefix.length)
+  return auditId && auditId === auditId.trim() ? auditId : null
 }
 
 function isAnonymousStart(properties: unknown): boolean {
@@ -185,21 +229,30 @@ export function calculateSiteFirstValueFunnel(input: {
   starts: StartEventRow[]
   audits: AuditRow[]
   results: ResultEventRow[]
+  claims?: AcquisitionClaim[]
+  asOf?: Date
   landingArtifact?: LandingJourneyArtifact | null
   landingStarts?: StartEventRow[]
 }): SiteFirstValueFunnel {
+  const asOf = input.asOf ?? new Date()
+  const claimsByKey = new Map(input.claims?.map(claim => [claim.idempotencyKey, claim]))
+  const matchesClaim = (audit: AuditRow, startAt: Date | undefined, cutoff = asOf) =>
+    observedAnalysisClaim(audit, claimsByKey.get(`analysis_claimed:${audit.id}`), startAt, cutoff)
+  const startTimes = new Map<string, Date>()
   const startedIds = new Set(
     input.starts
       .filter((event) => isAnonymousStart(event.properties))
       .map((event) => eventAuditId(event.idempotencyKey, START_PREFIX))
       .filter((auditId): auditId is string => Boolean(auditId)),
   )
-  const resultIds = new Set(
-    input.results
-      .map((event) => analysisCompletionAuditId(event.idempotencyKey))
-      .filter((auditId): auditId is string => auditId !== null)
-      .filter((auditId) => startedIds.has(auditId)),
-  )
+  const completionTimes = new Map<string, Date[]>()
+  for (const result of input.results) {
+    const auditId = analysisCompletionAuditId(result.idempotencyKey)
+    if (!auditId) continue
+    const times = completionTimes.get(auditId) ?? []
+    times.push(result.createdAt)
+    completionTimes.set(auditId, times)
+  }
   const auditsById = new Map(
     input.audits
       .filter((audit) => startedIds.has(audit.id))
@@ -207,6 +260,7 @@ export function calculateSiteFirstValueFunnel(input: {
   )
 
   let claimed = 0
+  let claimCoverageIncomplete = auditsById.size !== startedIds.size
   let failedBeforeResult = 0
   let stillRunning = 0
   let completedWithoutReceipt = 0
@@ -217,6 +271,7 @@ export function calculateSiteFirstValueFunnel(input: {
     if (!isAnonymousStart(event.properties)) continue
     const auditId = eventAuditId(event.idempotencyKey, START_PREFIX)
     const journeyId = eventJourneyId(event.properties)
+    if (auditId && event.createdAt) startTimes.set(auditId, event.createdAt)
     if (auditId && journeyId) journeyByAuditId.set(auditId, journeyId)
   }
 
@@ -224,9 +279,10 @@ export function calculateSiteFirstValueFunnel(input: {
     const audit = auditsById.get(auditId)
     if (!audit) continue
 
-    const hasResult = resultIds.has(auditId)
-    const wasClaimed = Boolean(audit.userId)
+    const hasResult = completionTimes.has(auditId)
+    const wasClaimed = matchesClaim(audit, startTimes.get(auditId))
     if (wasClaimed) claimed++
+    else if (audit.userId || audit.projectId) claimCoverageIncomplete = true
     if (!hasResult) {
       if (audit.status === 'FAILED') failedBeforeResult++
       else if (audit.status === 'COMPLETED') completedWithoutReceipt++
@@ -247,33 +303,51 @@ export function calculateSiteFirstValueFunnel(input: {
   }
 
   const started = startedIds.size
-  const analysisCompleted = resultIds.size
+  const analysisCompleted = [...startedIds].filter(id => completionTimes.has(id)).length
   const landingJourneyIds = input.landingArtifact
     ? new Set(input.landingArtifact.journeyIds)
     : null
   const startedJourneyIds = new Set<string>()
+  const retainedStartAudits = new Set<string>()
+  const keyedStartAudits = new Set<string>()
+  const matchedStartAudits = new Set<string>()
   const resultJourneyIds = new Set<string>()
   const claimedJourneyIds = new Set<string>()
+  const unresolvedResultJourneys = new Set<string>()
+  const unresolvedClaimJourneys = new Set<string>()
   const landingStarts = input.landingStarts ?? input.starts
-  const comparableLanding = hasComparableLandingWindow(input.landingArtifact) &&
+  const artifact = input.landingArtifact
+  const exportAt = artifact ? new Date(artifact.fetchedAt) : null
+  const comparableLanding = hasComparableLandingWindow(artifact) && exportAt !== null && exportAt <= asOf &&
     landingStarts.every((event) => !isAnonymousStart(event.properties) ||
       Boolean(event.createdAt && Number.isFinite(event.createdAt.getTime())))
   if (landingJourneyIds && comparableLanding) {
-    const artifact = input.landingArtifact!
-    const allResultIds = new Set(input.results.map((result) => analysisCompletionAuditId(result.idempotencyKey)))
     const allAuditsById = new Map(input.audits.map((audit) => [audit.id, audit]))
     for (const event of landingStarts) {
       if (!isAnonymousStart(event.properties) || !event.createdAt ||
-        !Number.isFinite(event.createdAt.getTime()) || event.createdAt > new Date(artifact.fetchedAt)) continue
-      const eventDate = calendarDate(event.createdAt, artifact.reportingTimeZone!)
+        !Number.isFinite(event.createdAt.getTime()) || event.createdAt > exportAt) continue
+      const eventDate = calendarDate(event.createdAt, artifact.reportingTimeZone)
       if (eventDate < artifact.startDate || eventDate > artifact.endDate) continue
       const auditId = eventAuditId(event.idempotencyKey, START_PREFIX)
+      if (!auditId) continue
+      retainedStartAudits.add(auditId)
       const journeyId = eventJourneyId(event.properties)
-      if (!auditId || !journeyId) continue
+      if (!journeyId) continue
+      keyedStartAudits.add(auditId)
       if (!landingJourneyIds.has(journeyId)) continue
+      matchedStartAudits.add(auditId)
       startedJourneyIds.add(journeyId)
-      if (allResultIds.has(auditId)) resultJourneyIds.add(journeyId)
-      if (allAuditsById.get(auditId)?.userId) claimedJourneyIds.add(journeyId)
+      const audit = allAuditsById.get(auditId)
+      if (!audit || !(audit.createdAt <= event.createdAt)) {
+        unresolvedResultJourneys.add(journeyId)
+        unresolvedClaimJourneys.add(journeyId)
+        continue
+      }
+      const cutoff = new Date(Math.min(asOf.getTime(), event.createdAt.getTime() + FOLLOWUP_MS))
+      // Dispatch precedes the start receipt, so completion can legitimately be logged first.
+      if (completionTimes.get(auditId)?.some(time => time >= audit.createdAt && time <= cutoff)) resultJourneyIds.add(journeyId)
+      if (matchesClaim(audit, event.createdAt, cutoff)) claimedJourneyIds.add(journeyId)
+      else if ((audit.userId || audit.projectId) && !matchesClaim(audit, event.createdAt)) unresolvedClaimJourneys.add(journeyId)
     }
   }
   const landingSessions =
@@ -281,6 +355,9 @@ export function calculateSiteFirstValueFunnel(input: {
       ? landingJourneyIds!.size
       : null
   const completedAnalysisSessions = landingSessions === null ? null : resultJourneyIds.size
+  const followupComplete = comparableLanding &&
+    calendarDate(new Date(asOf.getTime() - FOLLOWUP_MS), artifact.reportingTimeZone) > artifact.endDate
+  const rateDenominator = artifact?.status === 'available' ? landingSessions : null
   return {
     started,
     analysisCompleted,
@@ -288,7 +365,7 @@ export function calculateSiteFirstValueFunnel(input: {
     firstUsefulResult: analysisCompleted,
     resultRate: percentage(analysisCompleted, started),
     claimed,
-    claimRate: percentage(claimed, started),
+    claimRate: claimCoverageIncomplete || !started ? null : percentage(claimed, started),
     failedBeforeResult,
     stillRunning,
     completedWithoutReceipt,
@@ -308,22 +385,19 @@ export function calculateSiteFirstValueFunnel(input: {
       completedAnalysisSessions,
       firstUsefulResultSessions: completedAnalysisSessions,
       claimedSessions: landingSessions === null ? null : claimedJourneyIds.size,
-      startRate:
-        landingSessions === null || landingSessions === 0
-          ? null
-          : percentage(startedJourneyIds.size, landingSessions),
-      resultRate:
-        landingSessions === null || landingSessions === 0
-          ? null
-          : percentage(resultJourneyIds.size, landingSessions),
-      claimRate:
-        landingSessions === null || landingSessions === 0
-          ? null
-          : percentage(claimedJourneyIds.size, landingSessions),
+      startRate: rateDenominator ? percentage(startedJourneyIds.size, rateDenominator) : null,
+      resultRate: rateDenominator && followupComplete && ![...unresolvedResultJourneys].some(id => !resultJourneyIds.has(id))
+        ? percentage(resultJourneyIds.size, rateDenominator) : null,
+      claimRate: rateDenominator && followupComplete && ![...unresolvedClaimJourneys].some(id => !claimedJourneyIds.has(id))
+        ? percentage(claimedJourneyIds.size, rateDenominator) : null,
       instrumentedStarts: journeyByAuditId.size,
+      ...(artifact && { startReceiptCoverage: comparableLanding ? {
+        retainedStarts: retainedStartAudits.size, withUsableTabKey: keyedStartAudits.size, withExactLandingMatch: matchedStartAudits.size,
+      } : null }),
       unattributedEventCount: input.landingArtifact?.unattributedEventCount ?? 0,
       rowLimitReached: input.landingArtifact?.rowLimitReached ?? false,
       providerLimited: input.landingArtifact?.providerLimited ?? false,
+      followupComplete,
     },
   }
 }
@@ -332,20 +406,77 @@ export function calculateSiteFirstValueFunnel(input: {
 export async function loadSiteFirstValueFunnel(
   since: Date,
 ): Promise<SiteFirstValueFunnel> {
-  const landingArtifactRow = await prisma.growthArtifact.findUnique({
-    where: { path: 'ga/rolling-28d/landing-journeys' },
-    select: { payload: true },
+  const asOf = new Date()
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`
+    const stored = await tx.growthArtifact.findUnique({
+      where: { path: LANDING_ARTIFACT_PATH },
+      select: { payload: true },
+    })
+    const snapshot = landingSnapshotSchema.safeParse(stored?.payload)
+    const funnel = await readSiteFirstValueFunnel(tx, since, asOf)
+    if (snapshot.success && new Date(snapshot.data.computedAt) <= asOf) {
+      const landing = snapshot.data
+      funnel.landing = { ...landing, instrumentedStarts: funnel.landing.instrumentedStarts,
+        firstUsefulResultSessions: landing.completedAnalysisSessions,
+        ...(landing.version === 3 && {
+          status: landing.status === 'available' ? 'partial' : landing.status,
+          startRate: null, resultRate: null, claimRate: null,
+        }),
+      }
+    } else if (stored) {
+      // Older exports have no proof of the source scope and cannot supply a denominator.
+      funnel.landing.status = 'incomparable'
+    }
+    return funnel
+  }, { isolationLevel: 'RepeatableRead' })
+}
+
+/** Join the provider keys within a read-only snapshot and return aggregate data only. */
+export async function captureLandingJourneySnapshot(payload: unknown, asOf = new Date(),
+  db: Pick<typeof prisma, '$transaction'> = prisma): Promise<LandingJourneySnapshot> {
+  const source = z.object({ scope: landingScopeSchema }).safeParse(payload)
+  if (!source.success) throw new Error('Landing export lacks FixFlags source scope')
+  const artifact = parseLandingJourneyArtifact(payload)
+  if (!artifact) throw new Error('Invalid landing journey export')
+  const { landing } = await db.$transaction(async tx => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`
+    return readSiteFirstValueFunnel(tx, asOf, asOf, artifact)
+  }, { isolationLevel: 'RepeatableRead' })
+  return landingSnapshotSchema.parse({
+    ...landing, version: 4, scope: source.data.scope,
+    computedAt: asOf.toISOString(), reportingTimeZone: artifact.reportingTimeZone,
   })
-  const landingArtifact = parseLandingJourneyArtifact(landingArtifactRow?.payload)
+}
+
+async function readSiteFirstValueFunnel(tx: Prisma.TransactionClient, since: Date, asOf: Date,
+  landingArtifact: LandingJourneyArtifact | null = null) {
+  if (landingArtifact && !hasComparableLandingWindow(landingArtifact)) {
+    return calculateSiteFirstValueFunnel({ starts: [], audits: [], results: [], asOf, landingArtifact })
+  }
   // One extra UTC day covers the earliest midnight in any GA reporting timezone.
   // Actual membership is checked against GA calendar dates below, without guessing offsets.
-  const querySince = hasComparableLandingWindow(landingArtifact)
-    ? new Date(Math.min(since.getTime(), Date.parse(`${landingArtifact.startDate}T00:00:00Z`) - 86_400_000))
+  const comparable = hasComparableLandingWindow(landingArtifact)
+  const querySince = comparable
+    ? new Date(Math.min(since.getTime(), Date.parse(`${landingArtifact.startDate}T00:00:00Z`) - DAY))
     : since
-  const allStarts = await prisma.siteLifecycleEvent.findMany({
-    where: { name: 'analyze_started', createdAt: { gte: querySince } },
+  const queryUntil = comparable
+    ? new Date(Math.min(asOf.getTime(), Date.parse(`${landingArtifact.endDate}T00:00:00Z`) + 2 * DAY))
+    : asOf
+  const rows = await tx.siteLifecycleEvent.findMany({
+    where: { name: 'analyze_started', version: 1, userId: null, createdAt: { gte: querySince, lte: queryUntil } },
     select: { idempotencyKey: true, properties: true, createdAt: true },
+    ...(landingArtifact ? { take: MAX_LANDING_STARTS + 1 } : {}),
   })
+  if (landingArtifact && rows.length > MAX_LANDING_STARTS) {
+    return calculateSiteFirstValueFunnel({ starts: [], audits: [], results: [], asOf,
+      landingArtifact: { ...landingArtifact, status: 'unavailable' } })
+  }
+  const landingKeys = landingArtifact ? new Set(landingArtifact.journeyIds) : null
+  const allStarts = landingKeys ? rows.filter(row => {
+    const key = eventJourneyId(row.properties)
+    return key !== null && landingKeys.has(key)
+  }) : rows
   const starts = allStarts.filter((event) => event.createdAt >= since)
   const auditIds = [
     ...new Set(
@@ -361,32 +492,43 @@ export async function loadSiteFirstValueFunnel(
       starts,
       audits: [],
       results: [],
+      asOf,
       landingArtifact,
-      landingStarts: allStarts,
+      landingStarts: rows,
     })
   }
 
-  const [audits, results] = await Promise.all([
-    prisma.audit.findMany({
+  const [audits, results, claims] = await Promise.all([
+    tx.audit.findMany({
       where: { id: { in: auditIds } },
       select: {
         id: true,
         userId: true,
+        projectId: true,
+        project: { select: { id: true, userId: true, deletedAt: true } },
+        createdAt: true,
         status: true,
         utmSource: true,
         source: true,
       },
     }),
-    prisma.siteLifecycleEvent.findMany({
+    tx.siteLifecycleEvent.findMany({
       where: {
         name: { in: ['analysis_completed', 'first_useful_result'] },
+        version: 1,
+        createdAt: { lte: asOf },
         idempotencyKey: {
           in: auditIds.flatMap(analysisCompletionKeys),
         },
       },
-      select: { idempotencyKey: true },
+      select: { idempotencyKey: true, createdAt: true },
+    }),
+    tx.siteLifecycleEvent.findMany({
+      where: { name: 'analysis_claimed', version: 1, createdAt: { lte: asOf },
+        idempotencyKey: { in: auditIds.map(id => `analysis_claimed:${id}`) } },
+      select: { idempotencyKey: true, projectId: true, userId: true, createdAt: true },
     }),
   ])
 
-  return calculateSiteFirstValueFunnel({ starts, audits, results, landingArtifact, landingStarts: allStarts })
+  return calculateSiteFirstValueFunnel({ starts, audits, results, claims, asOf, landingArtifact, landingStarts: rows })
 }

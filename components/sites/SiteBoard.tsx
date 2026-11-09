@@ -151,7 +151,6 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
     monitoring: view.presentation.monitoring,
     disconnected,
   })
-  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' && banner.kind !== 'incomplete')
   const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
 
   return (
@@ -166,7 +165,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
         <p className="mt-2 text-sm text-muted-foreground">{SITE_ACTION_COPY.scopedRun.retained}</p>
       </section> : null}
       <SiteActionRecovery siteId={siteId} error={actionError} availability={view.actions.check} />
-      {viewMode === 'home' && showActivityPanel && !notice ? <SiteActivityPanel banner={banner} disconnected={disconnected} /> : null}
+      {viewMode === 'home' && banner?.kind === 'paused' && !notice ? <SiteActivityPanel banner={banner} disconnected={disconnected} /> : null}
       {viewMode === 'home' && notice ? <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={view.presentation.run.recoveryAction === 'retry' ? retryCheck : undefined} retryLoading={busy} /> : null}
 
       {viewMode === 'home' && alertNotice ? (
@@ -184,7 +183,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
         <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
-          notice={checking ? SITE_ACTION_COPY.execution.live : undefined}
+          notice={checking && !disconnected && !currentReadUnavailable ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
             if (item.id === 'pages') { openWorkspace('pages'); return }
             const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')

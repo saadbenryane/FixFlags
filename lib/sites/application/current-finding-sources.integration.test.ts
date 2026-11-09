@@ -4,11 +4,17 @@ import { prisma } from '@/lib/db'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
-import { loadSiteFlags, loadSiteFlagDetail } from '../flags'
+import { loadSiteFlags, loadSiteFlagDetail, loadSiteRepairBriefPage } from '../flags'
 import { loadSiteSummaries } from './list-sites'
 import { loadCurrentFindingSources } from './current-finding-sources'
 import type { SiteRecord } from '../types'
 import { unboundSiteFindingWhere } from './incident-proofs'
+import { materializeAttentionForAudit } from '@/lib/improvements/occurrences'
+import { ACCESSIBILITY_VERIFICATION_RULE } from '@/lib/audit/checks/accessibility-rules'
+import { observationsForFlag } from '@/lib/audit/flag-observations'
+import { loadSiteFlagCopyTask } from './flag-copy-task'
+import { recordSiteFlagFix } from './flag-verification'
+import { getAppUrl } from '@/lib/get-app-url'
 
 // The former overview fetched this full presentation for historical sources
 // before evaluating recovery. Keep that query as a local transfer reference.
@@ -66,7 +72,58 @@ run('current finding history with bounded PostgreSQL reads', () => {
     vi.restoreAllMocks()
     await prisma.user.deleteMany({ where: { id: owner } })
   })
-  function site(): SiteRecord { return { kind: 'project', projectId, userId: owner, primaryAuditId: sourceId, url } as SiteRecord }
+  function site(): SiteRecord { return { kind: 'project', siteId: projectId, projectId, userId: owner, primaryAuditId: sourceId, url } as SiteRecord }
+
+  it('uses both current review repairs for the board, paginated brief, copy and frozen repair scope', async () => {
+    const checkId = 'form-inputs-no-label'
+    const olderPage = url + 'contact', newerPage = url + 'plans'
+    async function review(pageUrl: string, selector: string, fix: string, order: number) {
+      const audit = await prisma.audit.create({ data: { projectId, userId: owner, url: pageUrl, status: 'COMPLETED',
+        createdAt: at(order), completedAt: at(order + 1), executionSpec: { ...spec, targetUrl: pageUrl, checks: { [checkId]: 1 } } } })
+      const finding = { checkId, source: 'DETERMINISTIC' as const, pageUrl,
+        evidence: selector + ' has no accessible name', fix, verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
+        evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const,
+          label: selector, selector, context: 'accessibility:axe:desktop:' + selector }],
+      }
+      const flag = await prisma.flag.create({ data: { ...finding, auditId: audit.id,
+        createdAt: at(order + 1), fingerprint: 'check:' + checkId, rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+        problem: 'Control needs an accessible name', whyItMatters: 'People need the control name.', confidence: 1, position: 0,
+        supportingObservations: observationsForFlag(finding, { auditId: audit.id, taskId: 'accessibility-' + order, checkVersion: 1 }) } })
+      await materializeAttentionForAudit(audit.id)
+      return flag
+    }
+    const older = await review(olderPage, '#email', 'Associate the email field with its label.', 500)
+    const newer = await review(newerPage, '#plan', 'Name the plan selector.', 510)
+    const current = (await loadSiteFlags(site())).find(flag => flag.checkId === checkId)!
+    expect(current.sourceFlagId).toBe(newer.id)
+    const incident = current.improvementId!
+    expect(current.fix).toContain('For ' + olderPage + '\n' + older.fix)
+    expect(current.fix).toContain('For ' + newerPage + '\n' + newer.fix)
+    const copy = await loadSiteFlagCopyTask(site(), incident)
+    const brief = await loadSiteRepairBriefPage(site(), incident, getAppUrl(), 0, copy.revision.contextHash)
+    expect(brief?.repair.guidance).toBe(current.fix)
+    expect(copy.prompt).toContain(older.fix)
+    expect(copy.prompt).toContain(newer.fix)
+    expect((await loadSiteFlagDetail(site(), newer.id))?.fix).toBe(newer.fix)
+
+    await prisma.flag.update({ where: { id: older.id }, data: { fix: 'Use the visible Email label to name the field.' } })
+    await expect(loadSiteRepairBriefPage(site(), incident, getAppUrl(), 0, copy.revision.contextHash))
+      .rejects.toMatchObject({ code: 'REPAIR_CONTEXT_CHANGED' })
+    const updated = await loadSiteFlagCopyTask(site(), incident)
+    expect(updated.prompt).toContain('Use the visible Email label to name the field.')
+    const declared = await recordSiteFlagFix({ siteId: projectId, flagId: incident, userId: owner,
+      expectedContextHash: updated.revision.contextHash, idempotencyKey: 'cross-review-accessibility',
+      changeSummary: 'Name both recorded controls' })
+    const attempt = await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: declared.attemptId } })
+    expect(attempt.sourceFlagIds.toSorted()).toEqual([older.id, newer.id].sort())
+
+    await prisma.flag.update({ where: { id: older.id }, data: { status: 'IGNORED' } })
+    expect(await loadSiteFlagDetail(site(), incident)).toMatchObject({
+      sourceFlagIds: [newer.id], affectedPaths: [newerPage], fix: newer.fix,
+    })
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: declared.attemptId }, select: { sourceFlagIds: true } }))
+      .toEqual({ sourceFlagIds: attempt.sourceFlagIds })
+  })
 
   it('retains unresolved sources while full recovered diagnoses stay outside current overview reads', async () => {
     const reference = await prisma.improvement.findMany({ where: { id: incidentId }, select: { id: true, status: true, fingerprint: true,
@@ -123,5 +180,37 @@ run('current finding history with bounded PostgreSQL reads', () => {
     expect(findings.find(flag => flag.improvementId === incidentId)).toMatchObject({ sourceFlagId: currentIds.at(-1), priorityBand: 'other' })
     expect((await loadSiteSummaries(owner))[0].presentation.flags.fixFirstCount).toBe(0)
     expect(await loadSiteFlagDetail(site(), incidentId)).toMatchObject({ sourceFlagId: currentIds.at(-1) })
+  })
+
+  it('shows only the current measured severity while retaining uncovered pages and exact historical records', async () => {
+    const scoreSpec = { ...spec, checks: { 'perf-score-critical': 1, 'perf-score-poor': 1 } }
+    const earlier = await prisma.audit.create({ data: { projectId, userId: owner, url, status: 'COMPLETED',
+      createdAt: at(500), completedAt: at(501), executionSpec: scoreSpec } })
+    const later = await prisma.audit.create({ data: { projectId, userId: owner, url, status: 'COMPLETED',
+      createdAt: at(510), completedAt: at(511), executionSpec: scoreSpec } })
+    async function source(auditId: string, pageUrl: string, score: number, position = 0) {
+      const report = healthyDesktopPs({ score, diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl) } })
+      const [flag] = runPerformanceChecks(report, null, pageUrl)
+      return prisma.flag.create({ data: { ...flag, auditId, pageUrl, source: 'DETERMINISTIC', status: 'OPEN', position,
+        createdAt: auditId === earlier.id ? at(520) : at(511), whyItMatters: 'Visitors wait for this page.' } })
+    }
+    const baselineCount = (await loadSiteSummaries(owner))[0].presentation.flags.count
+    const critical = await source(earlier.id, url, 35)
+    await materializeAttentionForAudit(earlier.id)
+    const poor = await source(later.id, url, 65)
+    await materializeAttentionForAudit(later.id)
+    async function performanceFlags() { return (await loadSiteFlags(site())).filter(flag => flag.checkId?.startsWith('perf-score-')) }
+    expect(await performanceFlags()).toMatchObject([{ sourceFlagId: poor.id, checkId: 'perf-score-poor' }])
+    expect((await loadSiteSummaries(owner))[0].presentation.flags.count).toBe(baselineCount + 1)
+    expect(await loadSiteFlagDetail(site(), critical.id)).toMatchObject({ sourceFlagId: critical.id, checkId: 'perf-score-critical' })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: critical.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+
+    const peer = await source(earlier.id, url + 'peer', 35, 1)
+    await materializeAttentionForAudit(earlier.id)
+    const current = await performanceFlags()
+    expect(current.map(flag => flag.checkId).sort()).toEqual(['perf-score-critical', 'perf-score-poor'])
+    const retained = current.find(flag => flag.checkId === 'perf-score-critical')!
+    expect((await loadSiteFlagDetail(site(), retained.improvementId!))?.sourceFlagIds.toSorted()).toEqual([critical.id, peer.id].sort())
+    expect((await loadSiteSummaries(owner))[0].presentation.flags.count).toBe(baselineCount + 2)
   })
 })

@@ -9,6 +9,8 @@ import type { SiteCheckResult } from '@/lib/sites/check-result-contract'
 import { siteCoverageMaxAgeMs } from '../evidence-freshness'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 import { searchEvidence } from '../search-evidence'
+import { recordedPageEvidenceScope } from '../page-coverage'
+import { buildCoverageFacts } from '../coverage'
 
 const collectedAt = '2026-10-12T10:00:00.000Z'
 const now = new Date(collectedAt)
@@ -26,17 +28,68 @@ function observation(overrides: Partial<SearchObservation> = {}): SearchObservat
     evidence: [], limitation: '', guidance: '', ...overrides }
 }
 function receipt(overrides: Partial<SearchReceipt> = {}): SearchReceipt {
-  return { kind: 'search-checks', version: 1, auditId: 'a', pageUrl, collectedAt, complete: true, observations: [], ...overrides }
+  return { kind: 'search-checks', version: 1, auditId: 'a', pageUrl, collectedAt, complete: true,
+    observations: [observation({ disposition: 'passed', reason: 'crawl_allowed', observed: 'The checked URL is allowed.' })], ...overrides }
 }
 
 describe('Search evidence recovery', () => {
+  it('cannot complete a page inventory with an empty evaluator receipt', () => {
+    const executions = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
+      .map(item => ({ targetKey: 'module:search-' + item.evaluator, status: 'COMPLETED', auditId: 'a', pageUrl,
+        detail: receipt({ observations: item.evaluator === 'canonical' ? [] : [observation({
+          id: item.evaluator, checkId: item.checkIds[0], responsibility: item.responsibility, disposition: 'passed',
+        })] }) }))
+    const empty = executions.find(item => item.targetKey === 'module:search-canonical')!
+    empty.detail.collectedAt = '2026-10-13T10:00:00.000Z'
+    expect(searchEvidence(executions, { auditId: 'a', pages: [pageUrl] })).toMatchObject({ complete: false, evidenced: true, checkedAt: collectedAt })
+  })
+
   it('refuses retained Search receipts from unfinished or mismatched executions', () => {
     const recorded = { targetKey: 'module:search', status: 'COMPLETED', auditId: 'a', pageUrl, detail: receipt() }
     expect(searchEvidence([recorded])?.complete).toBe(true)
-    expect(searchEvidence([{ ...recorded, status: 'FAILED' }])).toBeNull()
-    expect(searchEvidence([{ ...recorded, status: 'RUNNING' }])).toBeNull()
-    expect(searchEvidence([{ ...recorded, auditId: 'foreign' }])).toBeNull()
-    expect(searchEvidence([{ ...recorded, pageUrl: 'https://example.com/another' }])).toBeNull()
+    for (const change of [{ status: 'FAILED' }, { status: 'RUNNING' }, { auditId: 'foreign' }, { pageUrl: 'https://example.com/another' }]) {
+      expect(searchEvidence([{ ...recorded, ...change }])).toMatchObject({ complete: false, receipts: [], evidenced: false })
+    }
+    expect(searchEvidence([{ ...recorded, status: 'NOT_APPLICABLE' }])).toBeNull()
+  })
+  it('does not let captured metadata stand in for the only unreadable public Search receipt', () => {
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, flags: [], evidenceCoverage: { metadata: true },
+      verifierExecutions: [{ targetKey: 'module:search-presentation', status: 'COMPLETED', pageUrl, detail: null }] })
+    expect(facts.find(fact => fact.area === 'search')).toMatchObject({
+      state: 'unknown', evidenced: false, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete,
+    })
+  })
+  it('retains frozen and discovered pages in the Search scope before they have observation rows', () => {
+    const retained = pageUrl + 'pricing', discovered = pageUrl + 'about'
+    const scope = recordedPageEvidenceScope({ id: 'a', executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE',
+      environment: 'production', targetUrl: pageUrl, monitoringPages: [pageUrl, retained],
+      checks: { 'search-page-language': 2 }, outcomes: [], verificationTarget: null },
+      verifierExecutions: [{ targetKey: 'task:p2:browser', workKind: 'browser', pageUrl: discovered }] })
+    expect(scope).toMatchObject({ auditId: 'a', search: true, pages: [pageUrl, retained, discovered] })
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, flags: [],
+      evidenceCoverage: { metadata: true }, pageScope: scope })
+    expect(facts.find(fact => fact.area === 'search')).toMatchObject({
+      state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete,
+    })
+  })
+  it('keeps a failed public Search collector visible while ignoring optional provider failure for public health', () => {
+    const publicResult = { targetKey: 'module:search', status: 'COMPLETED', pageUrl, detail: receipt({ observations: [
+      observation({ disposition: 'passed', reason: 'crawl_allowed' }),
+    ] }) }
+    const provider = { targetKey: 'module:search-google-index', status: 'FAILED', pageUrl, detail: null }
+    const failed = { targetKey: 'module:search-canonical', status: 'FAILED', pageUrl: pageUrl + 'about', detail: null }
+    const fact = (verifierExecutions: Array<typeof publicResult | typeof provider>,
+      auditStatus: string, failedModules: string[] = []) => buildCoverageFacts({
+      auditStatus, completedAt: auditStatus === 'COMPLETED' ? now : null, now, flags: [], evidenceCoverage: {},
+      verifierExecutions, failedModules, pendingAreas: new Set(),
+    }).find(fact => fact.area === 'search')
+    expect(fact([publicResult, provider], 'COMPLETED', ['google', 'search-google-index'])).toMatchObject({ state: 'healthy' })
+    expect(fact([publicResult, failed], 'CHECKING')).toMatchObject({
+      state: 'unknown', evidenced: true, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete,
+    })
+    const search = card()
+    applySearchCardEvidence(search, [publicResult, failed], false, now)
+    expect(search).toMatchObject({ state: 'unknown', evidenced: true, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
   })
   it('preserves the oldest current area observation through the full card projection', () => {
     const old = new Date(now.getTime() - 2 * 86400_000).toISOString()
@@ -159,7 +212,9 @@ describe('Search evidence recovery', () => {
   it('keeps complete local evidence healthy without requiring Search Console', () => {
     const search = card()
     const executions = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
-      .map(item => ({ targetKey: 'module:search-' + item.evaluator, detail: receipt() }))
+      .map(item => ({ targetKey: 'module:search-' + item.evaluator, detail: receipt({ observations: [observation({
+        id: item.evaluator, checkId: item.checkIds[0], responsibility: item.responsibility, disposition: 'passed',
+      })] }) }))
     applySearchCardEvidence(search, executions, false, now)
     expect(search.state).toBe('healthy')
     expect(search.incompleteReason).toBeNull()
@@ -169,7 +224,9 @@ describe('Search evidence recovery', () => {
     const search = card()
     const executions = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
       .map((item, index) => ({ targetKey: 'module:search-' + item.evaluator,
-        detail: receipt({ auditId: index === 0 ? 'earlier-audit' : 'later-audit' }) }))
+        detail: receipt({ auditId: index === 0 ? 'earlier-audit' : 'later-audit', observations: [observation({
+          id: item.evaluator, checkId: item.checkIds[0], responsibility: item.responsibility, disposition: 'passed',
+        })] }) }))
     applySearchCardEvidence(search, executions, false, now)
     expect(search).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
   })
@@ -263,12 +320,10 @@ describe('Clear category results', () => {
     applyCardEvidence({ cards: [card], audit: null, summaryResults, inFlight: false, pageCount: 1, connectionNotes: {}, now })
   }
 
-  it('reports zero Flags when Tracking observed requests and found none', () => {
+  it('does not promote an observed request from presentation results into Tracking health', () => {
     const tracking = card({ id: 'tracking', name: 'Tracking', state: 'unknown', answer: 'Couldn’t verify', evidenced: false, checkedAt: collectedAt })
     project(tracking, [trackingResult()])
-    expect(tracking).toMatchObject({ state: 'healthy', answer: SITE_PRESENTATION_COPY.flags(0), detail: null, openFlagCount: 0 })
-    expect(tracking.facts.join(' ')).toContain('do not prove delivery')
-    expect(`${tracking.answer} ${tracking.detail ?? ''}`).not.toContain('retained')
+    expect(tracking).toMatchObject({ state: 'unknown', answer: 'Couldn’t verify', evidenced: false, openFlagCount: 0 })
   })
 
   it('does not turn an unverified or stale Tracking check into zero Flags', () => {

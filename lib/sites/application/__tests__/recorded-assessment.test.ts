@@ -7,13 +7,14 @@ import * as attention from '@/lib/audit/attention'
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findUniqueOrThrow: vi.fn() } } }))
 const now = new Date('2026-10-20T12:00:00Z')
 function fixture() {
-  return { id: 'audit', parentId: null, status: 'COMPLETED' as const, completedAt: now, failureCode: null, flags: [],
+  return { id: 'audit', projectId: 'site', parentId: null, parent: null, status: 'COMPLETED' as const, completedAt: now, failureCode: null, flags: [],
     executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
       environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null },
     evidenceCoverage: {}, failedModules: [], pages: [{ url: 'https://example.com/', status: 'COMPLETED' as const }],
     verifierExecutions: [{ targetKey: 'module:security', status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1,
       module: 'security', pageUrl: 'https://example.com/', passed: true, applicable: true, complete: true,
-      assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Recorded', passed: true, complete: true })) } }],
+      assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Recorded', passed: true, complete: true })),
+      execution: { auditId: 'audit', taskId: 'security', checkVersion: 1, source: 'http', collectedAt: now.toISOString() } } }],
     outcomeAssessments: [],
   }
 }
@@ -96,7 +97,7 @@ describe('recorded Site conclusion boundaries', () => {
   it('retains confirmed findings when supplementary conclusion data is unreadable', async () => {
     const { audit, detail } = await publication(true)
     detail.siteAssessment.specHash = '0'.repeat(64)
-    expect(readFlagComparison(detail, { auditId: audit.id, parentAuditId: audit.parentId }).newIssues).toHaveLength(1)
+    expect(readFlagComparison(detail, audit).newIssues).toHaveLength(1)
     expect(projectRecordedSiteResult({ audit, assessments: [], now })).toMatchObject({
       assessment: { result: 'FLAG', completeness: 'PARTIAL' }, findings: [{ id: 'original', problem: 'Original observed problem' }],
     })

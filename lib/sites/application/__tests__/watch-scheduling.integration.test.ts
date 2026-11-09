@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { prisma } from '@/lib/db'
 import * as entitlements from '@/lib/billing/effective-entitlements'
 import * as scheduledRuns from '../scheduled-runs'
+import * as watchStorage from '../scheduled-watch-storage'
 import { calcWatchNextRun, toStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { SiteRunRefusal } from '../run-refusal'
 import { processDueProjectWatches } from '@/lib/audit/project-watch'
@@ -10,6 +11,9 @@ import { setProjectWatch } from '../monitoring-settings'
 import { ensureDefaultMonitoring } from '../default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { fixedClock } from '@/lib/time/clock'
+import { loadProductWatch } from '@/lib/products/application/queries'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
+import { watchBoardState } from '@/lib/sites/watch-state'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 run('watch scheduling state with migrated PostgreSQL', () => {
@@ -49,33 +53,137 @@ run('watch scheduling state with migrated PostgreSQL', () => {
   })
   afterAll(async () => { await prisma.$disconnect() })
 
-  it('defers one failed account lookup and admits the next due Site', async () => {
+  it.each([
+    ['Site', 'before selection'], ['Site', 'after selection'], ['Site', 'before lease'],
+    ['account', 'before selection'], ['account', 'after selection'], ['account', 'before lease'],
+  ] as const)('admits the next due Site when the oldest Site’s %s row is locked %s', async (row, timing) => {
+    const before = await prisma.project.findUniqueOrThrow({ where: { id: first.id } })
+    let release!: () => void, acquired!: () => void
+    const released = new Promise<void>(resolve => { release = resolve })
+    const locked = new Promise<void>(resolve => { acquired = resolve })
+    let holder: Promise<void> | undefined
+    async function holdFirstRow() {
+      holder = prisma.$transaction(async tx => {
+        if (row === 'Site') await tx.$queryRaw`SELECT id FROM projects WHERE id = ${first.id} FOR UPDATE`
+        else await tx.$queryRaw`SELECT id FROM users WHERE id = ${first.userId} FOR NO KEY UPDATE`
+        acquired()
+        await released
+      }, { timeout: 10_000 })
+      await locked
+    }
+    if (timing === 'before selection') await holdFirstRow()
+    if (timing === 'after selection') {
+      const select = watchStorage.selectDueWatchProjects
+      vi.spyOn(watchStorage, 'selectDueWatchProjects').mockImplementationOnce(async (...args) => {
+        const rows = await select(...args)
+        await holdFirstRow()
+        return rows
+      })
+    }
+    if (timing === 'before lease') {
+      const readPolicy = entitlements.loadEffectiveEntitlements
+      vi.spyOn(entitlements, 'loadEffectiveEntitlements').mockImplementation(async (...args) => {
+        const policy = await readPolicy(...args)
+        if (args[0] === first.userId) await holdFirstRow()
+        return policy
+      })
+    }
+    const sweep = processDueProjectWatches(timing === 'before selection' ? 1 : 2, { clock: fixedClock(now) })
+    try {
+      await vi.waitFor(() => expect(scheduledRuns.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: second.id })),
+        { timeout: 1500 })
+      expect(await sweep).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
+        watchNextRunAt: before.watchNextRunAt, watchLeaseUntil: null, watchConsecutiveFailures: before.watchConsecutiveFailures,
+        watchLastAttemptAt: timing === 'before lease' ? now : before.watchLastAttemptAt,
+      })
+    } finally { release(); await holder; await sweep }
+    if (timing === 'before lease') vi.mocked(entitlements.loadEffectiveEntitlements).mockRestore()
+    expect(await processDueProjectWatches(1, { clock: fixedClock(now) })).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    expect(scheduledRuns.requestScheduledSiteRun).toHaveBeenLastCalledWith(expect.objectContaining({ projectId: first.id }))
+  })
+
+  it('admits another owner while a Site stalls and keeps that owner’s Sites in due order', async () => {
+    const sameOwner = await prisma.project.create({ data: { userId: first.userId, name: 'Second Site on the same account',
+      url: 'https://same-owner.example.com/', canonicalHost: 'same-owner.example.com', watchInterval: 'WEEKLY',
+      watchNextRunAt: new Date(now.getTime() - 90_000) } })
+    const admit = vi.mocked(scheduledRuns.requestScheduledSiteRun)
+    const original = admit.getMockImplementation()!
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    admit.mockImplementation(async input => {
+      if (input.projectId === first.id) {
+        await held
+        throw new Error('Controlled stalled admission')
+      }
+      return original(input)
+    })
+    const sweep = processDueProjectWatches(3, { clock: fixedClock(now) })
+    try {
+      await vi.waitFor(async () => {
+        expect(admit.mock.calls.map(([input]) => input.projectId)).toEqual(expect.arrayContaining([first.id, second.id]))
+        expect(await prisma.project.findUniqueOrThrow({ where: { id: second.id } })).toMatchObject({
+          watchNextRunAt: calcWatchNextRun('weekly', now), watchLeaseUntil: null,
+        })
+      }, { timeout: 2500 })
+      expect(admit.mock.calls.some(([input]) => input.projectId === sameOwner.id)).toBe(false)
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
+        watchLeaseUntil: new Date(now.getTime() + 10 * 60_000),
+      })
+      release()
+      await expect(sweep).resolves.toEqual({ processed: 3, enqueued: 2, errors: 1 })
+      expect(admit.mock.calls.filter(([input]) => input.userId === first.userId).map(([input]) => input.projectId))
+        .toEqual([first.id, sameOwner.id])
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
+        watchNextRunAt: new Date(now.getTime() + 6 * 60 * 60_000), watchConsecutiveFailures: 4, watchLeaseUntil: null,
+      })
+    } finally {
+      release()
+      await sweep
+    }
+  })
+
+  it('defers an interrupted account lookup without exposing diagnostics or misreporting a plan limit', async () => {
+    const diagnostic = 'Controlled database quota error, PRIVATE_CONNECTION_DETAILS'
+    const retryMessage = 'The scheduled check did not finish. FixFlags will try again.'
+    const retryAt = new Date(now.getTime() + 6 * 60 * 60_000)
     const original = entitlements.loadEffectiveEntitlements
-    vi.spyOn(entitlements, 'loadEffectiveEntitlements').mockImplementation(async (userId, db) => {
-      if (userId === first.userId) throw new Error('Controlled account lookup failure')
-      return original(userId, db)
+    const lookup = vi.spyOn(entitlements, 'loadEffectiveEntitlements').mockImplementation(async (...args) => {
+      if (args[0] === first.userId) throw new Error(diagnostic)
+      return original(...args)
     })
     expect(await processDueProjectWatches(20, { clock: fixedClock(now) })).toEqual({ processed: 1, enqueued: 1, errors: 1 })
+    lookup.mockRestore()
     expect(scheduledRuns.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: second.id }))
     expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
-      watchNextRunAt: new Date(now.getTime() + 6 * 60 * 60_000), watchConsecutiveFailures: 4, watchLeaseUntil: null })
+      watchNextRunAt: retryAt, watchConsecutiveFailures: 4, watchLeaseUntil: null, watchLastError: retryMessage })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: second.id } })).toMatchObject({
       watchNextRunAt: new Date(now.getTime() + 7 * 24 * 60 * 60_000), watchConsecutiveFailures: 3, watchLeaseUntil: null })
+    // Rows created by the earlier scheduler can still contain diagnostics.
+    await prisma.project.update({ where: { id: first.id }, data: { watchLastError: diagnostic } })
+    expect(await loadSiteRecord(first.id)).toMatchObject({ watchLastError: retryMessage })
+    expect(await loadProductWatch(first.id, first.userId)).toMatchObject({ watchLastError: retryMessage, watchNextRunAt: retryAt })
+    expect(watchBoardState({ interval: 'weekly', nextRunAt: retryAt, pausedAt: null, lastError: diagnostic,
+      consecutiveFailures: 4, now })).toBe('delayed')
+    expect(await processDueProjectWatches(1, { clock: fixedClock(retryAt), onlyProjectId: first.id }))
+      .toEqual({ processed: 1, enqueued: 1, errors: 0 })
   })
 
   it.each(['never-attempted', 'same-clock-attempt'] as const)('admits each Site once when workers select the same %s cohort', async prior => {
     if (prior === 'same-clock-attempt') await prisma.project.updateMany({ where: { id: { in: [first.id, second.id] } },
       data: { watchLastAttemptAt: now } })
-    const select = prisma.project.findMany.bind(prisma.project)
+    const select = watchStorage.selectDueWatchProjects
     let selected = 0, release!: () => void
+    let selection = Promise.resolve()
     const barrier = new Promise<void>(resolve => { release = resolve })
-    vi.spyOn(prisma.project, 'findMany').mockImplementation(async input => {
-      const rows = await select(input)
+    vi.spyOn(watchStorage, 'selectDueWatchProjects').mockImplementation(async (...args) => {
+      const result = selection.then(() => select(...args))
+      selection = result.then(() => undefined)
+      const rows = await result
       // Both real SQL selections complete before either worker takes a row claim.
-      if (input.where?.watchNextRunAt && typeof input.where.watchNextRunAt === 'object' && 'lte' in input.where.watchNextRunAt) {
-        if (++selected === 2) release()
-        await barrier
-      }
+      expect(rows.map(row => row.id)).toEqual([first.id, second.id])
+      if (++selected === 2) release()
+      await barrier
       return rows
     })
     const results = await Promise.all([processDueProjectWatches(20, { clock: fixedClock(now) }),
@@ -89,36 +197,77 @@ run('watch scheduling state with migrated PostgreSQL', () => {
       watchNextRunAt: new Date(now.getTime() + 7 * 24 * 60 * 60_000) } })).toBe(2)
   })
 
-  it('rotates a bounded sweep past an interrupted policy read even when its retry write fails', async () => {
+  it.each(['advancing clock', 'same timestamp'] as const)('rotates a bounded sweep past an interrupted policy read and failed retry write: %s', async timing => {
+    if (timing === 'same timestamp') await prisma.project.updateMany({ where: { id: { in: [first.id, second.id] } },
+      data: { watchLastAttemptAt: now } })
     const originalPolicy = entitlements.loadEffectiveEntitlements
     vi.spyOn(entitlements, 'loadEffectiveEntitlements').mockImplementation(async (userId, db) => {
       if (userId === first.userId) throw new Error('Controlled persistent account lookup failure')
       return originalPolicy(userId, db)
     })
-    const update = prisma.project.updateMany.bind(prisma.project)
-    vi.spyOn(prisma.project, 'updateMany').mockImplementation(async input => {
-      if (input.where?.id === first.id && input.data.watchConsecutiveFailures !== undefined)
+    const update = watchStorage.updateUnlockedWatchProject
+    vi.spyOn(watchStorage, 'updateUnlockedWatchProject').mockImplementation(async (...args) => {
+      const [id, , data] = args
+      if (id === first.id && data.watchConsecutiveFailures !== undefined)
         throw new Error('Controlled retry persistence failure')
-      return update(input)
+      return update(...args)
     })
     const before = await prisma.project.findUniqueOrThrow({ where: { id: first.id } })
     expect(await processDueProjectWatches(1, { clock: fixedClock(now) })).toEqual({ processed: 0, enqueued: 0, errors: 1 })
-    const later = new Date(now.getTime() + 1000)
+    const later = timing === 'same timestamp' ? now : new Date(now.getTime() + 1000)
     expect(await processDueProjectWatches(1, { clock: fixedClock(later) })).toEqual({ processed: 1, enqueued: 1, errors: 0 })
     expect(scheduledRuns.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: second.id }))
     expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
-      watchLastAttemptAt: now, watchNextRunAt: before.watchNextRunAt, watchLeaseUntil: null,
+      watchLastAttemptAt: timing === 'same timestamp' ? new Date(now.getTime() + 1) : now,
+      watchNextRunAt: before.watchNextRunAt, watchLeaseUntil: null,
       watchConsecutiveFailures: before.watchConsecutiveFailures, watchLastRunAt: before.watchLastRunAt })
     expect(await processDueProjectWatches(1, { clock: fixedClock(new Date(now.getTime() + 2000)) }))
       .toEqual({ processed: 0, enqueued: 0, errors: 1 })
   })
 
+  it('refuses a stale selection with the same timestamp before repeating the policy read', async () => {
+    await prisma.project.update({ where: { id: first.id }, data: { watchLastAttemptAt: now } })
+    const scope = { projectId: first.id }
+    const selected = await watchStorage.selectDueWatchProjects(now, 1, scope)
+    expect(selected.map(row => row.id)).toEqual([first.id])
+    vi.spyOn(watchStorage, 'selectDueWatchProjects').mockResolvedValue(selected)
+    const readPolicy = entitlements.loadEffectiveEntitlements
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const policy = vi.spyOn(entitlements, 'loadEffectiveEntitlements').mockImplementation(async (...args) => {
+      await held
+      return readPolicy(...args)
+    })
+    const input = { clock: fixedClock(now), onlyProjectId: first.id }
+    const firstSweep = processDueProjectWatches(1, input)
+    let staleSweep: typeof firstSweep | undefined
+    try {
+      await vi.waitFor(() => expect(policy).toHaveBeenCalledOnce())
+      staleSweep = processDueProjectWatches(1, input)
+      await vi.waitFor(async () => {
+        expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } }))
+          .toMatchObject({ watchLastAttemptAt: new Date(now.getTime() + 1), watchLeaseUntil: null })
+      })
+      await expect(staleSweep).resolves.toEqual({ processed: 0, enqueued: 0, errors: 0 })
+      expect(policy).toHaveBeenCalledOnce()
+      release()
+      await expect(firstSweep).resolves.toEqual({ processed: 1, enqueued: 1, errors: 0 })
+      expect(scheduledRuns.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({
+        projectId: first.id, now, claim: expect.objectContaining({ attemptedAt: new Date(now.getTime() + 1) }),
+      }))
+    } finally {
+      release()
+      await Promise.allSettled([firstSweep, staleSweep])
+    }
+  })
+
   it.each(['pause', 'reschedule', 'transfer', 'suspend', 'lease', 'attempt'] as const)('fences the attempt rotation after a concurrent %s change', async change => {
     const replacement = new Date(now.getTime() + 30 * 60_000)
-    const update = prisma.project.updateMany.bind(prisma.project)
+    const update = watchStorage.updateUnlockedWatchProject
     let changed = false
-    vi.spyOn(prisma.project, 'updateMany').mockImplementation(async input => {
-      if (!changed && input.data.watchLastAttemptAt) {
+    vi.spyOn(watchStorage, 'updateUnlockedWatchProject').mockImplementation(async (...args) => {
+      const [, , data] = args
+      if (!changed && data.watchLastAttemptAt) {
         changed = true
         if (change === 'pause') await prisma.project.update({ where: { id: first.id }, data: { watchInterval: null, watchNextRunAt: null } })
         if (change === 'reschedule') await prisma.project.update({ where: { id: first.id }, data: { watchNextRunAt: replacement } })
@@ -127,7 +276,7 @@ run('watch scheduling state with migrated PostgreSQL', () => {
         if (change === 'lease') await prisma.project.update({ where: { id: first.id }, data: { watchLeaseUntil: replacement } })
         if (change === 'attempt') await prisma.project.update({ where: { id: first.id }, data: { watchLastAttemptAt: replacement } })
       }
-      return update(input)
+      return update(...args)
     })
     expect(await processDueProjectWatches(1, { clock: fixedClock(now), onlyProjectId: first.id }))
       .toEqual({ processed: 0, enqueued: 0, errors: 0 })
@@ -178,11 +327,12 @@ run('watch scheduling state with migrated PostgreSQL', () => {
 
   it('does not defer a successor after an uncertain attempt-write acknowledgement', async () => {
     const before = await prisma.project.findUniqueOrThrow({ where: { id: first.id } })
-    const replacement = new Date(now.getTime() + 1000), update = prisma.project.updateMany.bind(prisma.project)
+    const replacement = new Date(now.getTime() + 1000), update = watchStorage.updateUnlockedWatchProject
     let interrupted = false
-    vi.spyOn(prisma.project, 'updateMany').mockImplementation(async input => {
-      const result = await update(input)
-      if (!interrupted && input.data.watchLastAttemptAt) {
+    vi.spyOn(watchStorage, 'updateUnlockedWatchProject').mockImplementation(async (...args) => {
+      const [, , data] = args
+      const result = await update(...args)
+      if (!interrupted && data.watchLastAttemptAt) {
         interrupted = true
         await prisma.project.update({ where: { id: first.id }, data: { watchLastAttemptAt: replacement } })
         throw new Error('Controlled acknowledgement loss after the attempt committed')
@@ -376,7 +526,7 @@ run('watch scheduling state with migrated PostgreSQL', () => {
   })
 
 
-  it('retains the admitted operator owner when ownership changes before due selection', async () => {
+  it.each(['owner transfer', 'session revoked', 'execution replaced'] as const)('does not write a due attempt after %s', async change => {
     const actorId = 'scoped-operator-' + randomUUID(), sessionId = randomUUID()
     await prisma.user.create({ data: { id: actorId, email: actorId + '@example.test', role: 'admin' } }); userIds.push(actorId)
     await prisma.session.create({ data: { id: sessionId, userId: actorId, token: randomUUID(), expiresAt: new Date(Date.now() + 60_000) } })
@@ -385,16 +535,24 @@ run('watch scheduling state with migrated PostgreSQL', () => {
       input: {}, expectedRevision: 'fixture', idempotencyKey: randomUUID(), requestHash: 'fixture', intentExpiresAt: new Date(Date.now() + 60_000),
       status: 'RUNNING', executionToken: randomUUID(), leaseUntil: new Date(Date.now() + 60_000) } })
     const before = await prisma.project.findUniqueOrThrow({ where: { id: first.id } })
-    const select = prisma.project.findMany.bind(prisma.project)
-    vi.spyOn(prisma.project, 'findMany').mockImplementation(async input => {
-      await prisma.project.update({ where: { id: first.id }, data: { userId: second.userId } })
-      return select(input)
+    const select = watchStorage.selectDueWatchProjects
+    vi.spyOn(watchStorage, 'selectDueWatchProjects').mockImplementationOnce(async (...args) => {
+      if (change === 'owner transfer') {
+        await prisma.project.update({ where: { id: first.id }, data: { userId: second.userId } })
+        return select(...args)
+      }
+      const rows = await select(...args)
+      if (change === 'session revoked') await prisma.session.delete({ where: { id: sessionId } })
+      else await prisma.adminOperation.update({ where: { id: operation.id }, data: { executionToken: randomUUID() } })
+      return rows
     })
     try {
-      expect(await processDueProjectWatches(1, { onlyProjectId: first.id, clock: fixedClock(now),
-        operator: { kind: 'admin', actorId, operationId: operation.id } })).toEqual({ processed: 0, enqueued: 0, errors: 0 })
+      const tick = processDueProjectWatches(1, { onlyProjectId: first.id, clock: fixedClock(now),
+        operator: { kind: 'admin', actorId, operationId: operation.id, executionToken: operation.executionToken! } })
+      if (change === 'owner transfer') await expect(tick).resolves.toEqual({ processed: 0, enqueued: 0, errors: 0 })
+      else await expect(tick).rejects.toMatchObject({ code: change === 'session revoked' ? 'ADMIN_ACCESS_REVOKED' : 'ADMIN_DOMAIN_ACCESS_DENIED' })
       expect(scheduledRuns.requestScheduledSiteRun).not.toHaveBeenCalled()
-      expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({ userId: second.userId,
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({ userId: change === 'owner transfer' ? second.userId : first.userId,
         watchNextRunAt: before.watchNextRunAt, watchLastAttemptAt: before.watchLastAttemptAt, watchLeaseUntil: before.watchLeaseUntil })
     } finally { await prisma.adminOperation.delete({ where: { id: operation.id } }) }
   })

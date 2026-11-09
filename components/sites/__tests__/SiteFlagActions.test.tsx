@@ -26,12 +26,118 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  const scheduledRun: SiteHomeView['activeRuns'][number] = {
+    id: 'watch-run', auditId: 'watch-audit', scope: 'SITE', targetLabel: null, trigger: 'SCHEDULED',
+    status: 'RUNNING', requestedAt: '2026-11-09T12:00:00Z', progress: 25,
+  }
+
+  it('keeps the verification draft available while a recorded Site check owns admission', () => {
+    const initial = siteViewFixture()
+    initial.activeRuns = [scheduledRun]
+    const props = { repairGuidance: 'pending' as const, initial, siteId: 'p_site', flagId: 'flag-1' }
+    const rendered = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    const dialog = within(screen.getByRole('dialog'))
+    const note = dialog.getByRole('textbox')
+    fireEvent.change(note, { target: { value: 'Published the button label.' } })
+    expect(dialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeDisabled()
+    expect(dialog.getByRole('status')).toHaveTextContent(SITE_ACTION_COPY.verificationBlockedByRun)
+    resource.view = { ...initial, activeRuns: [] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    expect(dialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+    expect(note).toHaveValue('Published the button label.')
+  })
+
+  it('lets the server reclaim an interrupted run when verification is requested', () => {
+    const initial = siteViewFixture()
+    initial.activeRuns = [{ ...scheduledRun, status: 'INTERRUPTED' }]
+    render(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+    expect(dialog.queryByText(SITE_ACTION_COPY.verificationBlockedByRun)).not.toBeInTheDocument()
+  })
+
+  it('refreshes after a run admission conflict and retries the original declaration', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({ code: 'SITE_RUN_IN_PROGRESS', message: 'Another Site run is already in progress' }, { status: 409 }))
+      .mockResolvedValueOnce(Response.json({ ok: true, accepted: true, siteId: 'p_site', flagId: 'flag-1', verificationAuditId: 'verification',
+        runId: 'run', runRequestId: 'run', attemptId: 'attempt', parentAuditId: 'original', expectedBehavior: null }))
+    vi.stubGlobal('fetch', fetchMock)
+    const initial = siteViewFixture()
+    const props = { repairGuidance: 'pending' as const, initial, siteId: 'p_site', flagId: 'flag-1' }
+    const rendered = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    const dialog = within(screen.getByRole('dialog'))
+    const note = dialog.getByRole('textbox')
+    fireEvent.change(note, { target: { value: 'Published the button label.' } })
+    await act(async () => { fireEvent.click(dialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+    expect(resource.refresh).toHaveBeenCalledOnce()
+    expect(dialog.getByRole('alert')).toHaveTextContent(SITE_ACTION_COPY.verificationRetry)
+    resource.view = { ...initial, activeRuns: [scheduledRun] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    expect(dialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeDisabled()
+    expect(dialog.queryByRole('alert')).not.toBeInTheDocument()
+    resource.view = { ...initial, activeRuns: [] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    expect(note).toHaveValue('Published the button label.')
+    await act(async () => { fireEvent.click(dialog.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ body: fetchMock.mock.calls[0][1].body, headers: fetchMock.mock.calls[0][1].headers })
+    expect(screen.getByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+  })
+
   it('keeps a recorded verification pending when the Site summary still predates it', () => {
     const initial = siteViewFixture()
     initial.flags = [siteFlagFixture({ repairGuidance: 'pending', verificationState: 'unverified' })]
     render(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" verifying />)
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifying })).toBeDisabled()
     expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.verifyFix })).not.toBeInTheDocument()
+  })
+
+  it('waits for the exact repair check even when Timeline shows it as completed or omits it', async () => {
+    const auditId = 'exact-settlement-audit'
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({ ok: true, accepted: true,
+      siteId: 'p_site', flagId: 'flag-1', verificationAuditId: auditId, runId: 'run', runRequestId: 'run',
+      attemptId: 'attempt', parentAuditId: 'original', expectedBehavior: null }))
+      .mockResolvedValueOnce(Response.json({ auditId, verifying: true }))
+      .mockResolvedValueOnce(Response.json({ auditId, verifying: false }))
+    vi.stubGlobal('fetch', fetchMock)
+    const initial = siteViewFixture()
+    const onVerificationSettled = vi.fn().mockResolvedValue(undefined)
+    const props = { repairGuidance: 'pending' as const, initial, siteId: 'p_site', flagId: 'flag-1', compact: true, onVerificationSettled }
+    const rendered = render(<SiteFlagActions {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.verifyFix })) })
+    resource.view = { ...initial, monitoringHistory: [{ id: auditId, status: 'COMPLETED',
+      executionState: 'COMPLETED', completionState: 'PARTIAL', flagCount: 0, checkedAt: '2026-11-09T12:00:00.000Z' }] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifying })).toBeDisabled()
+    const finalize = { type: 'projection', notice: { auditId, version: 1, kind: 'finalize',
+      state: 'COMPLETED', taskId: 'finalize', observationReference: null } } as const
+    await act(async () => resource.update?.({ ...finalize, notice: { ...finalize.notice, auditId: 'other' } }))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await act(async () => resource.update?.(finalize))
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifying })).toBeDisabled()
+    resource.view = { ...initial, monitoringHistory: [] }
+    rendered.rerender(<SiteFlagActions {...props} />)
+    await act(async () => resource.update?.({ type: 'reconnected' }))
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+    expect(onVerificationSettled).toHaveBeenCalledOnce()
+    expect(screen.queryByText(SITE_BOARD_COPY.verificationStarted)).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenLastCalledWith(`/api/sites/p_site/flags/flag-1?verification=${auditId}`, expect.objectContaining({ cache: 'no-store' }))
+  })
+
+  it('rechecks an already admitted historical repair when there is no live notice', async () => {
+    const auditId = 'retained-active-verification'
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({ auditId, verifying: false }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="retained-flag"
+      initialVerificationAuditId={auditId} verifying />)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifying })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: SITE_BOARD_COPY.verifyFix }, { timeout: 4500 })).toBeEnabled()
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(`/api/sites/p_site/flags/retained-flag?verification=${auditId}`, expect.anything())
+    expect(refresh).toHaveBeenCalledOnce()
   })
 
   it.each([false, true])('follows verification started in another session without losing the open declaration (compact: %s)', compact => {

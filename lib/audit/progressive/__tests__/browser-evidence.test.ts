@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AuditExecutionTask } from '@prisma/client'
-import { readBrowserEvidence } from '../browser-evidence'
+import { hasRecordedDesktopCollection, readBrowserEvidence } from '../browser-evidence'
 import { serializeArtifact } from '../contracts'
 
 const window = (complete: boolean, errors = 0) => ({ complete, finalUrl: complete ? 'https://example.com/' : null,
@@ -20,6 +20,14 @@ function task(device: 'desktop' | 'mobile', state = 'COMPLETED', pageId = 'page'
 }
 
 describe('independent browser observation assembly', () => {
+  it('does not use an earlier HTTP response to qualify a replacement document at the same URL', () => {
+    const pageUrl = 'https://example.com/'
+    const observation = { version: 1, device: 'desktop', scope: { pageUrl, finalUrl: pageUrl, profile: 'desktop', access: 'public' },
+      ready: true, contentVisible: true, restricted: false }
+    const snapshot = { desktopHttpStatus: 200, desktopFinalUrl: pageUrl, desktopLoadExperience: { observation } }
+    expect(hasRecordedDesktopCollection(snapshot, pageUrl)).toBe(true)
+    expect(hasRecordedDesktopCollection({ ...snapshot, desktopLoadExperience: { observation: { ...observation, interrupted: true } } }, pageUrl)).toBe(false)
+  })
   it('never renews a joined observation with the later profile timestamp', () => {
     const desktop = task('desktop'), mobile = task('mobile')
     desktop.workResult = { ...desktop.workResult as object, collectedAt: '2026-10-01T12:00:00.000Z' }

@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { readBoundedJson } from '@/lib/http/read-json'
 import { GoogleProviderError as SearchConsoleError, googleResponseFailure, readGoogleTokens } from './google-response'
+import { readSearchConsoleRows, searchConsolePerformanceRow } from './search-console-report'
 export { GoogleProviderError as SearchConsoleError, providerRetryDelay } from './google-response'
 
 const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
@@ -198,6 +199,7 @@ export async function querySearchAnalytics(
   pageUrl?: string,
   signal?: AbortSignal,
 ): Promise<GscSearchRow[]> {
+  const pageScoped = Boolean(pageUrl) || dimensions.includes('page')
   const res = await fetch(
     `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
     {
@@ -213,6 +215,8 @@ export async function querySearchAnalytics(
         dimensions,
         rowLimit,
         startRow,
+        dataState: 'final',
+        ...(pageScoped ? { aggregationType: 'byPage' } : {}),
         ...(pageUrl ? { dimensionFilterGroups: [{ filters: [{ dimension: 'page', operator: 'equals', expression: pageUrl }] }] } : {}),
       }),
     }
@@ -220,15 +224,8 @@ export async function querySearchAnalytics(
   if (!res.ok) {
     throw await googleResponseFailure(res)
   }
-  const parsed = searchRowsSchema.safeParse(await readBoundedJson(res, 1_000_000).catch(() => null))
-  if (!parsed.success) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
-  return parsed.data.rows ?? []
+  return readSearchConsoleRows(res, searchConsolePerformanceRow, { dimensionCount: dimensions.length, limit: rowLimit, pageScoped })
 }
-
-const searchRowsSchema = z.object({ rows: z.array(z.object({
-  keys: z.array(z.string()), clicks: z.number().finite().nonnegative(), impressions: z.number().finite().nonnegative(),
-  ctr: z.number().finite().nonnegative(), position: z.number().finite().nonnegative(),
-})).max(1000).optional() })
 
 const indexResultSchema = z.object({
   verdict: z.string().optional(), coverageState: z.string().optional(), robotsTxtState: z.string().optional(),

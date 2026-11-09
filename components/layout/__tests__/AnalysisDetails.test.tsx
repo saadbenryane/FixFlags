@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AnalysisDetails, SiteAnalysisDetails } from '../AnalysisDetails'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import { SITE_WORKSPACE_COPY as C } from '@/lib/marketing/copy/workspace'
+import { SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 
 const props = { statusLabel: 'Analyzing', active: true, disconnected: false }
 
@@ -32,6 +33,28 @@ describe('website analysis details', () => {
     expect(screen.getByRole('status')).toHaveTextContent(C.disconnected)
     expect(screen.queryByRole('button', { name: C.retryUpdates })).not.toBeInTheDocument()
   })
+
+  it.each([['idle', 'COMPLETED'], ['partial', 'COMPLETED'], ['failed', 'FAILED'], ['interrupted', 'FAILED']] as const)(
+    'keeps the same live region and focus when analysis settles as %s', (state, auditStatus) => {
+      const view = siteViewFixture()
+      const tree = (run: typeof view.presentation.run, status: string) => <>
+        <button>Keep reading</button>
+        <SiteAnalysisDetails view={{ ...view, audit: { ...view.audit, status },
+          presentation: { ...view.presentation, run } }} disconnected={false} />
+      </>
+      const run = { ...view.presentation.run, state: 'running' as const, auditId: 'audit-1' }
+      const page = render(tree(run, 'CHECKING'))
+      const status = screen.getByRole('status')
+      expect(status).toHaveTextContent(C.analyzing)
+      const reader = screen.getByRole('button', { name: 'Keep reading' })
+      reader.focus()
+      const label = SITE_PRESENTATION_COPY.run[state]
+      page.rerender(tree({ ...run, state, label }, auditStatus))
+      expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent(state === 'idle' ? C.analysisFinished : label)
+      expect(reader).toHaveFocus()
+    },
+  )
 
   it('owns one explicit read retry and releases it after failure without dropping the recorded status', async () => {
     let fail!: (reason: Error) => void

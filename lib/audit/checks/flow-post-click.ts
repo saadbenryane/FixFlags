@@ -28,19 +28,21 @@ export function postClickAssertions(metrics: PostClickMetrics | undefined, expec
     action.responseExpected && action.response === 'healthy'
     ? `flow:loading:v2:${control}:${createHash('sha256').update(expectedUrl).digest('hex')}` : undefined
   const scope = context ? { context } : { disposition: 'observed' as const }
+  const destinationAvailable = action?.destinationContentObserved !== false
+  const contentArrivedInTime = metrics.timeToFirstContentMs !== null && metrics.timeToFirstContentMs <= BLANK_DESTINATION_MS
   return [{ key: 'destination-content-timing', name: 'Destination content observation',
     expected: 'Meaningful destination content is observed within 3000ms of the click',
     observed: metrics.timeToFirstContentMs === null ? `Content arrival was not observed; absence was established through ${metrics.contentAbsentThroughMs ?? 0}ms.`
       : `Content was first observed at ${metrics.timeToFirstContentMs}ms; absence was established through ${metrics.contentAbsentThroughMs ?? 0}ms.`,
-    complete: samePage && metrics.contentComplete === true,
-    passed: metrics.timeToFirstContentMs !== null && metrics.timeToFirstContentMs <= BLANK_DESTINATION_MS,
+    complete: samePage && metrics.contentComplete === true && (destinationAvailable || !contentArrivedInTime),
+    passed: destinationAvailable && contentArrivedInTime,
     ...scope },
   { key: 'destination-loading-ui', name: 'Destination loading UI observation',
     expected: 'Blocking loading UI does not persist for 2000ms in the reached viewport',
     observed: metrics.stuckLoading === null ? 'Loading UI could not be conclusively observed.'
       : metrics.stuckLoading ? 'Blocking loading UI persisted across the recorded observation.' : 'No persistent blocking loading UI was recorded.',
-    complete: samePage && metrics.loadingComplete === true && (metrics.stuckLoading === true || metrics.timeToFirstContentMs !== null),
-    passed: metrics.stuckLoading === false, ...scope }]
+    complete: samePage && metrics.loadingComplete === true && (metrics.stuckLoading === true || destinationAvailable && metrics.timeToFirstContentMs !== null),
+    passed: destinationAvailable && metrics.stuckLoading === false, ...scope }]
 }
 
 export function scopePostClickFlags(flags: DeterministicFlag[], result: FlowScanResult) {

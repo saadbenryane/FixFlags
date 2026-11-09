@@ -10,12 +10,13 @@ import { lifecycleHandlers } from './lifecycle'
 import { accountHandlers } from './accounts'
 import { actionHandlers } from './actions'
 import { registerTaskHandlers } from './registry'
-import { persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, recoverProgressiveTasks, recoverInterruptedTaskDelivery } from './engine'
+import { persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, continueTaskGraph, recoverProgressiveTasks, recoverInterruptedTaskDelivery } from './engine'
 import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
 import { closeParserWorker } from './cpu'
 import { recoverPendingAiReviews } from '../enqueue-ai-review'
+import { claimProgressiveRecovery, selectProgressiveRecovery } from './recovery-claim'
 
 const handlers = registerTaskHandlers([...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers, ...accountHandlers])
 for (const coverage of ADVERTISED_COVERAGE_REGISTRY.values()) for (const evaluator of coverage.evaluators) {
@@ -23,9 +24,7 @@ for (const coverage of ADVERTISED_COVERAGE_REGISTRY.values()) for (const evaluat
     throw new Error('Advertised task evaluator is not registered: ' + evaluator)
 }
 
-/** The Audit job admits a graph and returns. Physical work has separate, fenced
- * checkpoints and resource queues; a completed coordinator is not a completed analysis. */
-export async function coordinateProgressiveAudit(auditId: string): Promise<void> {
+async function admitProgressiveGraph(auditId: string) {
   const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, select: { status: true, executionSpec: true } })
   const spec = readExecutionSpec(audit.executionSpec)
   if (!spec || spec.engine !== 'progressive-v1' || ['COMPLETED', 'FAILED'].includes(audit.status)) return
@@ -45,39 +44,52 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
       await persistTaskPlan(auditId, plans)
     }
   })
-  await dispatchReadyTasks(await reconcileTasks(auditId))
+  return true
+}
+
+/** The Audit job admits a graph, then offers ready work to its resource queues. */
+export async function coordinateProgressiveAudit(auditId: string): Promise<void> {
+  if (await admitProgressiveGraph(auditId)) await dispatchReadyTasks(await reconcileTasks(auditId))
+}
+
+export async function recoverPendingCoordinators(limit = 25) {
+  const dueAt = new Date()
+  const audits = await selectProgressiveRecovery('coordinator', dueAt, limit)
+  const deadline = Date.now() + 10_000
+  for (const { id: auditId } of audits) {
+    if (Date.now() >= deadline) break
+    try {
+      if (await claimProgressiveRecovery('coordinator', dueAt, auditId))
+        await admitProgressiveGraph(auditId)
+    }
+    catch (error) { logger.error('Audit coordination interrupted; retained admission will be retried', error, { auditId }) }
+  }
 }
 
 export async function recoverProgressiveAudits(limit = 25) {
-  await recoverPendingAiReviews(limit).catch(error => logger.error('Prescription handoff sweep interrupted; existing tasks remain recoverable', error))
-  const now = new Date()
-  const pending = await prisma.audit.findMany({ where: {
-    status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
-    executionTasks: { none: {} },
-    dispatchNextAt: { lte: now },
-  }, orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.min(100, Math.max(1, limit)), select: { id: true, dispatchNextAt: true } })
-    .catch(error => { logger.error('Progressive admission sweep failed; existing graphs remain recoverable', error); return [] })
-  for (const audit of pending) {
-    try {
-      // Rotate attempted admissions before reading their graph. Interrupted
-      // reads and capacity waits cannot monopolize the next bounded pass.
-      const admitted = await prisma.audit.updateMany({ where: { id: audit.id, dispatchNextAt: audit.dispatchNextAt,
-        status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
-        executionTasks: { none: {} } },
-      data: { dispatchNextAt: new Date(now.getTime() + 10_000) } })
-      if (admitted.count) await coordinateProgressiveAudit(audit.id)
-    }
-    catch (error) { logger.error('Audit coordination interrupted; retained admission will be retried', error, { auditId: audit.id }) }
-  }
-  return recoverProgressiveTasks(limit)
+  const [result] = await Promise.all([
+    recoverProgressiveTasks(limit),
+    recoverPendingCoordinators(limit).catch(error => logger.error('Progressive admission sweep failed; existing graphs remain recoverable', error)),
+    recoverPendingAiReviews(limit).catch(error => logger.error('Prescription handoff sweep interrupted; existing tasks remain recoverable', error)),
+  ])
+  return result
 }
 
 export function startProgressiveWorkers() {
   let activeTasks = 0
+  const continuations = new Set<Promise<void>>()
+  // Recorded observations release their physical queue slots. The same graph
+  // coordinator continues immediately under the worker runtime's ownership.
+  function continueExecution(auditId: string) {
+    const pending = continueTaskGraph(auditId)
+      .catch(error => logger.error('Task graph continuation interrupted; durable work remains recoverable', error, { auditId }))
+      .finally(() => { continuations.delete(pending) })
+    continuations.add(pending)
+  }
   const workers = Object.entries(TASK_QUEUES).map(([resource, config]) => {
     const worker = createOwnedWorker(config.name, async job => {
       activeTasks++
-      try { return await executeTask(job.data, handlers) }
+      try { return await executeTask(job.data, handlers, continueExecution) }
       finally { activeTasks-- }
     }, {
       concurrency: config.concurrency, lockDuration: 90_000, maxStalledCount: 0,
@@ -95,6 +107,9 @@ export function startProgressiveWorkers() {
   let closing: Promise<void> | undefined
   return { activeCount: () => activeTasks, waitUntilReady: () => Promise.all(workers.map(worker => worker.waitUntilReady())), close: () => closing ??= (async () => {
     await Promise.all(workers.map(worker => worker.close()))
+    // No worker can add another continuation after its graceful close. Finish
+    // admitted publication before parser and shared producer teardown.
+    await Promise.all([...continuations])
     await closeParserWorker()
   })() }
 }

@@ -8,6 +8,11 @@ describe('Outcome scope proof', () => {
     expect(comparableOutcomeCoverage(scope, { ...scope, bindings: [{ ...scope.bindings[0], config: { expectedSelector: 'body', startUrl: 'https://example.com/' } }] })).toBe(true)
     expect(completeOutcomeEvidence(scope, { reason: 'available' })).toBe(true)
   })
+  it('accepts an omitted legacy binding scope only when no scope was configured', () => {
+    const legacy = { ...scope, bindings: [{ ...scope.bindings[0], scope: undefined }] }
+    expect(comparableOutcomeCoverage(scope, legacy)).toBe(true)
+    expect(comparableOutcomeCoverage({ ...scope, bindings: [{ ...scope.bindings[0], scope: { device: 'mobile' } }] }, legacy)).toBe(false)
+  })
   it('rejects changed, duplicated or unrecorded responsibility', () => {
     for (const changed of [
       { ...scope, environment: 'staging' }, { ...scope, requiredBindings: ['http', 'http'] },

@@ -13,6 +13,7 @@ describe('recorded HTTP evidence consumers', () => {
   it('keeps Search document evaluation independent of metadata while preserving discovery and resource declarations', () => {
     expect(httpCollectionRequirements([{ ...consumer('search-canonical'), workKind: 'search' }])).toEqual({ collectMetadata: false })
     expect(httpCollectionRequirements([{ ...consumer('summary'), workKind: 'search' }])).toEqual({ collectMetadata: false })
+    expect(httpCollectionRequirements([{ workKind: 'cross-page', workInput: null }])).toEqual({ collectMetadata: false })
     expect(httpCollectionRequirements([consumer('security-headers'), consumer('security')])).toEqual({ collectMetadata: false })
     expect(httpCollectionRequirements([{ workKind: 'discovery', workInput: null }])).toEqual({ collectMetadata: true })
   })

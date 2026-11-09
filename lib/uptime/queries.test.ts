@@ -1,8 +1,8 @@
 import { uptimeReadSite } from './__tests__/read-site'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const db = vi.hoisted(() => ({ authorize: vi.fn(), monitor: vi.fn(), project: vi.fn(), probes: vi.fn(), incidents: vi.fn(), incidentCount: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { uptimeMonitor: { findUnique: db.monitor }, project: { findUnique: db.project, findFirst: db.authorize },
-  uptimeProbe: { findMany: db.probes }, uptimeIncident: { findMany: db.incidents, count: db.incidentCount } } }))
+const db = vi.hoisted(() => ({ authorize: vi.fn(), monitor: vi.fn(), project: vi.fn(), periods: vi.fn(), probes: vi.fn(), incidents: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { $queryRaw: db.periods, uptimeMonitor: { findUnique: db.monitor }, project: { findUnique: db.project, findFirst: db.authorize },
+  uptimeProbe: { findMany: db.probes }, uptimeIncident: { findMany: db.incidents } } }))
 import { loadUptimeEvents, loadUptimeHistory, loadUptimeSummary, loadUptimeStatus } from './queries'
 import { uptimeSummarySchema } from './contracts'
 const project = { id: 'owned-project', userId: 'owner', url: 'https://example.com/', deletedAt: null, watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-20T12:00:00Z'),
@@ -11,7 +11,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   db.authorize.mockResolvedValue({ id: project.id })
   db.monitor.mockResolvedValue(null); db.project.mockResolvedValue(project)
-  db.probes.mockResolvedValue([]); db.incidents.mockResolvedValue([]); db.incidentCount.mockResolvedValue(0)
+  db.periods.mockResolvedValue([]); db.probes.mockResolvedValue([]); db.incidents.mockResolvedValue([])
 })
 describe('Uptime before the first recorded observation', () => {
   it('shows truthful gaps without creating a monitor or probe on read', async () => {
@@ -38,6 +38,7 @@ describe('Uptime before the first recorded observation', () => {
     db.authorize.mockResolvedValue(null)
     await expect(loadUptimeHistory(uptimeReadSite(project))).rejects.toMatchObject({ status: 404 })
     expect(db.monitor).not.toHaveBeenCalled()
+    expect(db.periods).not.toHaveBeenCalled()
   })
 })
 
@@ -51,39 +52,42 @@ describe('Uptime summary reads', () => {
     expect(db.monitor).not.toHaveBeenCalled()
     expect(db.probes).not.toHaveBeenCalled()
     expect(db.incidents).not.toHaveBeenCalled()
-    expect(db.incidentCount).not.toHaveBeenCalled()
   })
   it('withholds earlier observations from a suspended owner', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
     db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url,
       project: { ...project, user: { ...project.user, lifecycleStatus: 'SUSPENDED' } },
-      enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null })
+      enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null, incidents: [] })
     db.authorize.mockResolvedValue(null)
     await expect(loadUptimeSummary(uptimeReadSite(project), now)).rejects.toMatchObject({ status: 404 })
   })
   it('uses the same facts as history without loading detailed probes or incidents', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
     db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url, project,
-      enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null })
-    db.probes.mockResolvedValue([{ id: 'probe_1', targetUrl: project.url, scheduledAt: now, observedAt: now,
+      enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null, incidents: [] })
+    const startAt = new Date(now.getTime() - 30 * 60_000)
+    db.periods.mockResolvedValue([{ startAt, checked: 6, allOnline: true, failed: false }])
+    db.probes.mockResolvedValue([{ id: 'probe_1', targetUrl: project.url, scheduledAt: startAt, observedAt: startAt,
       attempt: 1, result: 'ONLINE', confirmed: false, reason: 'response_received', statusCode: 200, durationMs: 50, finalUrl: project.url }])
     const summary = await loadUptimeSummary(uptimeReadSite(project), now)
     expect(summary).toMatchObject({ enabled: true, state: 'online', lastCheckedAt: now.toISOString(), openIncidentCount: 0 })
-    expect(db.probes).toHaveBeenCalledOnce()
-    expect(db.probes).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ result: true, confirmed: true }) }))
+    expect(summary?.segments.at(-1)).toMatchObject({ state: 'online', checked: 6, expected: 6 })
+    expect(db.periods).toHaveBeenCalledOnce()
+    expect(db.probes).not.toHaveBeenCalled()
     expect(db.incidents).not.toHaveBeenCalled()
     const history = await loadUptimeHistory(uptimeReadSite(project), '24h', null, now)
     expect(summary).toEqual(uptimeSummarySchema.parse(history))
     expect(history!.historyScope).toEqual({ key: 'monitor_1:1', from: '2026-10-12T12:00:00.000Z', through: now.toISOString() })
     expect(history!.probes).toHaveLength(1)
+    expect(db.probes).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ take: 101 }))
     expect(db.incidents).toHaveBeenCalledOnce()
   })
   it('keeps an open incident visible when the Site URL has not yet retargeted the monitor', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
     const previous = 'https://previous.example/'
     db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: previous, project,
-      enabled: true, state: 'offline', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null })
-    db.incidentCount.mockResolvedValue(1)
+      enabled: true, state: 'offline', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null,
+      incidents: [{ version: 1, targetUrl: previous, confirmedAt: now }] })
     db.incidents.mockResolvedValue([{ id: 'incident_1', targetUrl: previous, reason: 'response_error',
       startedAt: now, confirmedAt: now, recoveredAt: null, supersededAt: null }])
     const summary = await loadUptimeSummary(uptimeReadSite(project), now)
@@ -91,6 +95,8 @@ describe('Uptime summary reads', () => {
     const history = await loadUptimeHistory(uptimeReadSite(project), '24h', null, now)
     expect(history).toMatchObject({ openIncidentCount: 1, state: 'unknown', targetUrl: project.url })
     expect(history!.incidents).toEqual([expect.objectContaining({ id: 'incident_1', targetUrl: previous, recoveredAt: null, supersededAt: null })])
+    expect(db.periods).not.toHaveBeenCalled()
+    expect(db.probes).not.toHaveBeenCalled()
   })
 })
 

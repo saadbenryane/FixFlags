@@ -1,5 +1,5 @@
 import { CONSENT_CONTEXT_SELECTOR, isConsentControl } from './consent-controls'
-import { analyticsMarkupSignals } from './metadata-markup-signals'
+import { analyticsMarkupSignals, ANALYTICS_CONFIGURATION_ATTRIBUTES, ANALYTICS_INLINE_DECLARATION, ANALYTICS_RESOURCE_DECLARATION } from './metadata-markup-signals'
 import * as cheerio from 'cheerio'
 import { safeFetchHtml } from './url'
 import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
@@ -8,6 +8,7 @@ import { collectResourceTransport, type ResourceTransport } from './resource-tra
 import { htmlDocumentBase, htmlDocumentIds, htmlDocumentLinks, metadataHtmlDocument, isInertHtmlNode } from './html-document'
 import { collectFormInventory } from './metadata-form-inventory'
 import { HTML_CONTROL_NAMES_VERSION } from './checks/accessibility-rules'
+import { FAVICON_HREF_VERSION, FAVICON_LINK_SELECTOR, hasDeclaredFavicon } from './checks/favicon-declaration'
 
 export interface PageMetadata {
   controlNamesVersion?: typeof HTML_CONTROL_NAMES_VERSION
@@ -55,6 +56,7 @@ export interface PageMetadata {
   hasPrivacyPolicy: boolean
   hasContactInfo: boolean
   hasFavicon: boolean
+  faviconHrefVersion?: typeof FAVICON_HREF_VERSION
   hasSkipLink: boolean
   navLandmarkCount: number
   pageText: string
@@ -87,6 +89,7 @@ export type RuntimeHeadMetadata = Partial<
     | 'viewport'
     | 'robots'
     | 'hasFavicon'
+    | 'faviconHrefVersion'
   >
 >
 
@@ -112,7 +115,10 @@ export function mergeRuntimeHeadMetadata(
     if (value !== undefined) merged[field] = field === 'ogImage' || field === 'canonical'
       ? absoluteMetadataUrl(value, metadata.linkBaseUrl) : value?.trim() || null
   }
-  if (runtime.hasFavicon !== undefined) merged.hasFavicon = runtime.hasFavicon
+  if (runtime.hasFavicon !== undefined && (runtime.faviconHrefVersion || !metadata.faviconHrefVersion)) {
+    merged.hasFavicon = runtime.hasFavicon
+    merged.faviconHrefVersion = runtime.faviconHrefVersion
+  }
   return merged
 }
 
@@ -341,8 +347,16 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
     if (placeholder) ctaTexts.push(placeholder)
   })
 
-  const htmlStr = html.toLowerCase()
-  const { hasAnalytics, hasCookieBasedAnalytics } = analyticsMarkupSignals(htmlStr)
+  const analyticsDeclarations: string[] = []
+  const configurationSelector = ANALYTICS_CONFIGURATION_ATTRIBUTES.map(attribute => `[${attribute}]`).join(',')
+  document(`${ANALYTICS_INLINE_DECLARATION},${ANALYTICS_RESOURCE_DECLARATION},${configurationSelector}`).each((_, element) => {
+    if (isInertHtmlNode(element)) return
+    const declaration = document(element)
+    if (declaration.is(ANALYTICS_INLINE_DECLARATION)) analyticsDeclarations.push(declaration.html() ?? '')
+    if (declaration.is(ANALYTICS_RESOURCE_DECLARATION)) analyticsDeclarations.push(declaration.attr('src') ?? declaration.attr('href') ?? '')
+    for (const attribute of ANALYTICS_CONFIGURATION_ATTRIBUTES) analyticsDeclarations.push(declaration.attr(attribute) ?? '')
+  })
+  const { hasAnalytics, hasCookieBasedAnalytics } = analyticsMarkupSignals(analyticsDeclarations.join('\n'))
 
   // Consent evidence must describe a published surface or control, not a
   // mention inside implementation code, examples, or inactive markup.
@@ -386,9 +400,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
     jsonLd,
   })
 
-  const hasFavicon = $(
-    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
-  ).length > 0
+  const hasFavicon = hasDeclaredFavicon(document(FAVICON_LINK_SELECTOR).toArray().map(link => document(link).attr('href')), linkBaseUrl, url)
 
   const navLandmarkCount = $('nav, [role="navigation"]').length
 
@@ -481,6 +493,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
     hasPrivacyPolicy,
     hasContactInfo,
     hasFavicon,
+    faviconHrefVersion: FAVICON_HREF_VERSION,
     hasSkipLink,
     navLandmarkCount,
     pageText,

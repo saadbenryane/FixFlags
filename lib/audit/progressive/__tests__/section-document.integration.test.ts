@@ -108,6 +108,11 @@ run('shared section evaluation against actual redirected browser documents', () 
       const planned = planReviewTargets({ pastedUrl: pageUrl, depth: 2, pastedLinks: resolvedPageLinks(pageUrl, recorded.navigation!) })
       expect(planned.reviewUrls).not.toContain(origin + '/sections?edition=original')
       expect(planned.openCheckUrls).not.toContain(origin + '/sections?edition=original')
+      await prisma.$executeRaw`UPDATE audit_execution_tasks SET "workResult" =
+        jsonb_set("workResult", '{data,snapshot,desktopHttpStatus}', '206'::jsonb)
+        WHERE "auditId" = ${auditId} AND "workKind" = 'browser'`
+      const [partial] = await recordedPageEvidence(auditId)
+      expect(partial).toMatchObject({ url: pageUrl, pageId: page.id, metadata: null, navigation: null })
     } finally {
       if (auditId) await prisma.audit.delete({ where: { id: auditId } })
       session.disposeNetwork(); await session.page.context().close()

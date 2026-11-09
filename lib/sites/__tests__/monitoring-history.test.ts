@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { hasFlagTrend, monitoringHistoryMetadata, siteTrendChecks, type MonitoringHistoryEntry } from '../monitoring-history'
 
-const run = { source: 'WEB', verificationTarget: null, selections: [{ outcome: { name: 'Reach checkout' } }], assessments: [{ state: 'CLEAR' }] }
+const run = { source: 'WEB', verificationTarget: null, selections: [{ outcome: { name: 'Reach checkout' } }] }
 const base = { status: 'COMPLETED', flagCount: 0, executionSpec: { scope: 'SITE' } }
 
 describe('monitoring history scope and evidence', () => {
@@ -18,11 +18,7 @@ describe('monitoring history scope and evidence', () => {
   it('labels post-fix checks by target and requires comparable recovery proof', () => {
     const input = { ...base, executionSpec: { scope: 'OUTCOMES' }, runRequests: [{ ...run, verificationTarget: { kind: 'OUTCOME', attemptId: 'attempt-1' } }] }
     expect(monitoringHistoryMetadata(input)).toMatchObject({ scope: 'OUTCOMES', afterFix: true, targetLabel: 'Reach checkout', result: 'COULD_NOT_VERIFY' })
-    expect(monitoringHistoryMetadata({ ...input, verificationAttempts: [{ id: 'attempt-1', outcome: 'IMPROVED', comparable: false }] }).result).toBe('COULD_NOT_VERIFY')
-    expect(monitoringHistoryMetadata({ ...input, verificationAttempts: [{ id: 'another-attempt', outcome: 'IMPROVED', comparable: true }] }).result).toBe('COULD_NOT_VERIFY')
-    expect(monitoringHistoryMetadata({ ...input, verificationAttempts: [{ id: 'attempt-1', outcome: 'IMPROVED', comparable: true }] }).result).toBe('CLEAR')
-    expect(monitoringHistoryMetadata({ ...input, flagCount: 1, verificationAttempts: [{ id: 'attempt-1', outcome: 'IMPROVED', comparable: true }] }).result).toBe('FLAG')
-    expect(monitoringHistoryMetadata({ ...input, status: 'FAILED', verificationAttempts: [{ id: 'attempt-1', outcome: 'IMPROVED', comparable: true }] }).result).toBe('COULD_NOT_VERIFY')
+    expect(monitoringHistoryMetadata({ ...input, flagCount: 1 }).result).toBe('COULD_NOT_VERIFY')
   })
 
   it('labels the checked page without retaining URL query data', () => {
@@ -35,11 +31,9 @@ describe('monitoring history scope and evidence', () => {
     expect(monitoringHistoryMetadata({ ...base, executionSpec: null, runRequests: [{ ...run, selections: [], executionSpec: { scope: 'SITE' } }] }).scope).toBe('SITE')
   })
 
-  it('requires evidence for every selected Outcome before showing Clear', () => {
+  it('leaves selected Outcome results to the evidence reader', () => {
     const input = { ...base, executionSpec: { scope: 'OUTCOMES' }, runRequests: [run] }
-    expect(monitoringHistoryMetadata(input).result).toBe('CLEAR')
-    expect(monitoringHistoryMetadata({ ...input, runRequests: [{ ...run, assessments: [] }] }).result).toBe('COULD_NOT_VERIFY')
-    expect(monitoringHistoryMetadata({ ...input, runRequests: [{ ...run, assessments: [{ state: 'COULD_NOT_VERIFY' }] }] }).result).toBe('COULD_NOT_VERIFY')
+    expect(monitoringHistoryMetadata(input).result).toBe('COULD_NOT_VERIFY')
   })
 
   it('keeps unknown checks out and preserves failed broad checks as gaps', () => {

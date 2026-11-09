@@ -1,20 +1,19 @@
 import { test, expect } from '@playwright/test'
 import { PrismaClient } from '@prisma/client'
-import { hashPassword } from 'better-auth/crypto'
 import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { loadEnvConfig } from '@next/env'
-import { AUTH } from '../lib/marketing/copy/auth'
 import { PUBLIC_SITE_COPY } from '../lib/marketing/copy/public-site'
 import { SITE_DASHBOARD_COPY } from '../lib/marketing/copy/site-dashboard'
 import type { SiteHomeView } from '../lib/sites/application/queries'
 import { repairFileSchema } from '../lib/sites/repair-file-contract'
 import { SITE_BOARD_COPY } from '../lib/marketing/copy/terminology'
 import { AGENT_HANDOFF_COPY } from '../lib/marketing/copy/agent-handoff'
+import { verifyClaimSignup } from './support/verify-claim-signup'
 
 test.use({ actionTimeout: 15_000 })
 
-test('anonymous evidence survives ordinary sign-in and becomes private owner evidence', async ({ page, browser, baseURL }) => {
+test('anonymous evidence survives ordinary signup and becomes private owner evidence after verification', async ({ page, browser, baseURL }) => {
   test.skip(process.env.FIXFLAGS_LOCAL_RELIABILITY_PROOF !== '1', 'Explicit isolated local proof only')
   test.setTimeout(240_000)
   loadEnvConfig(process.cwd())
@@ -25,11 +24,7 @@ test('anonymous evidence survives ordinary sign-in and becomes private owner evi
   const db = new PrismaClient()
   const nonce = randomBytes(8).toString('hex')
   const email = `reliability-${nonce}@example.invalid`
-  const password = `Ff!${randomBytes(18).toString('base64url')}`
-  // Only the existing account is seeded. Admission, creator cookies, sign-in,
-  // claim, reading position and evidence access use ordinary application paths.
-  const user = await db.user.create({ data: { email, name: 'Claim fixture', emailVerified: true } })
-  await db.account.create({ data: { userId: user.id, accountId: user.id, providerId: 'credential', password: await hashPassword(password) } })
+  const password = `Ff1!${randomBytes(18).toString('base64url')}`
   try {
     const configured = await page.request.post(`${runtime.fixtureOrigin}/control`, {
       headers: { Authorization: `Bearer ${runtime.token}` }, data: { fixtureEnabled: true, broken: false },
@@ -80,14 +75,14 @@ test('anonymous evidence survives ordinary sign-in and becomes private owner evi
     await continuation.focus()
     const position = await category.evaluate(node => ({ top: node.querySelector('[data-dialog-scroll]')!.scrollTop, y: scrollY, destination: location.pathname + location.search + location.hash }))
     await continuation.click()
-    const authentication = page.getByRole('dialog').filter({ has: page.getByLabel('Email') })
-    await expect(authentication).toBeVisible()
-    await authentication.getByRole('button', { name: AUTH.signUp.footerLink, exact: true }).click()
-    await authentication.getByLabel('Email').fill(email)
-    await authentication.getByLabel('Password', { exact: true }).fill(password)
-    const handoff = page.waitForURL(url => url.pathname === '/post-login')
-    await authentication.getByRole('button', { name: AUTH.signIn.cta, exact: true }).click()
-    await handoff
+    const userId = await verifyClaimSignup({ page, db, email, password, origin: new URL(baseURL).origin,
+      stillAnonymous: async () => { expect((await home()).body.site.userId).toBeNull() },
+      messages: async () => {
+        const response = await page.request.get(`${runtime.fixtureOrigin}/control`, { headers: { Authorization: `Bearer ${runtime.token}` } })
+        expect(response.ok()).toBe(true)
+        return (await response.json()).messages
+      },
+    })
     await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'search')
     const returnedCategory = page.getByRole('dialog')
     await expect(returnedCategory.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
@@ -100,9 +95,11 @@ test('anonymous evidence survives ordinary sign-in and becomes private owner evi
       node.contains(document.activeElement) && Math.abs(node.querySelector('[data-dialog-scroll]')!.scrollTop - before.top) <= 1 && Math.abs(scrollY - before.y) <= 1, position), { timeout: 6000 }).toBe(true)
     expect(new URL(page.url()).pathname + new URL(page.url()).search + new URL(page.url()).hash).toBe(position.destination)
     const claimed = (await home()).body
-    expect(claimed.site.userId).toBe(user.id)
+    expect(await db.user.findUniqueOrThrow({ where: { id: userId }, select: { emailVerified: true } })).toEqual({ emailVerified: true })
+    expect(claimed.site.userId).toBe(userId)
+    expect(claimed.site.url).toBe(original.site.url)
     const retained = await db.audit.findUniqueOrThrow({ where: { id: originalAuditId }, select: { userId: true, projectId: true } })
-    expect(retained.userId).toBe(user.id)
+    expect(retained.userId).toBe(userId)
     expect(retained.projectId).toBe(claimed.site.projectId)
     expect(findings(claimed)).toEqual(expect.arrayContaining(originalFindings))
     expect(claimed.monitoringHistory).toEqual(expect.arrayContaining([expect.objectContaining({ id: originalAuditId })]))
@@ -115,6 +112,10 @@ test('anonymous evidence survives ordinary sign-in and becomes private owner evi
     } finally { await stranger.close() }
     const repair = claimed.flags[0]
     const projectId = claimed.site.projectId!
+    expect(await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { watchInterval: true, watchNextRunAt: true } }))
+      .toEqual({ watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date) })
+    expect(await db.uptimeMonitor.findUnique({ where: { projectId }, select: { enabled: true, targetUrl: true } }))
+      .toEqual({ enabled: true, targetUrl: new URL(original.site.url).href })
     const copiedCount = () => db.improvementCycleEvent.count({ where: { cycle: { projectId }, type: 'HANDOFF_COPIED' } })
     const beforeCopy = await copiedCount()
     const beforeAttempts = await db.improvementAttempt.count({ where: { improvement: { projectId } } })
@@ -138,10 +139,12 @@ test('anonymous evidence survives ordinary sign-in and becomes private owner evi
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(repair.problem)
     await expect.poll(copiedCount).toBe(beforeCopy + 1)
     expect(await db.improvementAttempt.count({ where: { improvement: { projectId } } })).toBe(beforeAttempts)
-    await test.info().attach('ordinary-sign-in-claim', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
-      scope: 'Disposable local database, real production web, queue, worker and Chromium; controlled website and storage transports. Existing verified fixture account, no signup or email delivery claim.',
+    await test.info().attach('ordinary-signup-claim', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+      scope: 'Disposable local database, standalone web app, queue, worker and Chromium with controlled website, storage and email transports.',
+      signupVerified: true, noSessionBeforeVerification: true, verificationEmailRetried: true,
       originalAuditId, originalSiteId: siteId, canonicalProjectId: claimed.site.projectId,
       sameAuditOwned: true, originalFindings, historyAndTrendRetained: true, originalCapture: beforeCapture,
+      defaultWeeklyWatch: true, defaultUptimeEnabled: true,
       restoredCategoryAndReadingPosition: true, strangerCaptureDenied: true,
       completeRepairDownloaded: true, nativeClipboardReadback: true, copyReceiptRecorded: true,
     })) })

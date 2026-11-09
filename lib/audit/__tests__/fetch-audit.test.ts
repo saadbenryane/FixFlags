@@ -1,5 +1,6 @@
 import { describe, it, vi, beforeEach, afterEach } from 'vitest'
 import assert from 'node:assert/strict'
+import { performanceMeasurement } from '../performance-measurement'
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
@@ -338,7 +339,11 @@ describe('getGatedAuditForRequest', () => {
       targetUrl: url, environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
       pages: [{ url, performanceData: null }, { url: url + 'pricing', performanceData: null }] })
     const lab = { score: 90, lcp: 1200, cls: 0.01, fcp: 800, tbt: 30 }
-    mocks.queryRaw.mockResolvedValue(['desktop', 'mobile'].map(device => ({ pageUrl: url, device, observation: { ...lab, strategy: device } })))
+    const requestedAt = new Date('2026-10-01T10:00:00Z')
+    mocks.queryRaw.mockResolvedValue((['desktop', 'mobile'] as const).map(device => ({ pageUrl: url, device, observation: {
+      ...lab, strategy: device, measurement: performanceMeasurement({ requestedUrl: url, finalUrl: url,
+        lighthouseVersion: '13.0.0', configSettings: { formFactor: device }, fetchTime: '2026-10-01T10:00:01Z' }, device, requestedAt),
+    } })))
     const result = await getGatedAuditForRequest('a1')
     assert.equal(result.kind, 'ok')
     if (result.kind === 'ok') assert.deepEqual(result.audit.pageSpeedCoverage, { status: 'partial', observedRoutes: 1, totalRoutes: 2,

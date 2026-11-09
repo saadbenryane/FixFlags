@@ -20,7 +20,7 @@ describe('exact assertion verification', () => {
     { module: 'journeys', checkId: 'journey-signup-no-form', key: 'destination-form', rule: JOURNEY_VERIFICATION_RULE,
       context: `journey:signup:destination:${'a'.repeat(64)}:${'b'.repeat(64)}:[{"selector":"#original","label":"Sign up"}]`, source: 'rendered-dom' },
     { module: 'network', checkId: 'api-engagement-server-error', key: 'engagement-server-response', rule: ENGAGEMENT_VERIFICATION_RULE,
-      context: `engagement:page_load:control:page:request:v1:${'a'.repeat(64)}:capture:${'b'.repeat(64)}:page:${'c'.repeat(64)}`, source: 'browser-network' },
+      context: `engagement:page_load:control:page:request:v4:${'a'.repeat(64)}:capture:${'b'.repeat(64)}:page:${'c'.repeat(64)}`, source: 'browser-network' },
     { module: 'messaging-clarity', checkId: 'messaging-weak-value-prop', key: 'headline-outcome', rule: RENDERED_PAGE_VERIFICATION_RULE,
       context: 'rendered-page:' + 'a'.repeat(64), source: 'rendered-dom' },
     { module: 'keyboard', checkId: 'focus-visible-missing', key: 'focus-styles', rule: 'Keyboard probe: repeat navigation',
@@ -43,6 +43,8 @@ describe('exact assertion verification', () => {
     const irrelevant = [
       { ...failed, execution: { ...failed.execution!, auditId: 'another-execution' } },
       { ...failed, execution: { ...failed.execution!, checkVersion: 2 } },
+      { ...failed, execution: { ...failed.execution!, checkVersions: {} } },
+      { ...failed, execution: { ...failed.execution!, checkVersions: { [sample.checkId]: 2 } } },
       { ...failed, execution: { ...failed.execution!, source: 'http' as const } },
       { ...failed, failed: true }, { ...failed, applicable: false },
       { ...failed, complete: false, assertions: failed.assertions.map(assertion => ({ ...assertion, complete: false })) },
@@ -52,6 +54,8 @@ describe('exact assertion verification', () => {
     const missing = { ...target, selector: '#missing', context: target.context.replace('a'.repeat(64), 'd'.repeat(64)) }
     const incompleteOriginal = { ...original, evidenceTargets: [target, missing] }
     expect(scopedAssertionForTarget({ receipt: healthy, checkId: sample.checkId, flag: incompleteOriginal })).toBeUndefined()
+    const omittedCheck = { ...healthy, execution: { ...healthy.execution!, checkVersions: {} } }
+    expect(scopedAssertionForTarget({ receipt: omittedCheck, receipts: [healthy], checkId: sample.checkId, flag: original })).toBeUndefined()
     expect(scopedAssertionForTarget({ receipt: healthy, receipts: [failed], checkId: sample.checkId, flag: incompleteOriginal })?.assertion.passed).toBe(false)
   })
   it('keeps historical keyboard controls without capture conditions unverified', () => {
@@ -183,12 +187,14 @@ describe('exact assertion verification', () => {
   })
 
   it('requires the original Tracking endpoint and phase, retaining unknown for suppressed or unobserved scopes', async () => {
-    const context = 'tracking:page_load:google-analytics:library:www.googletagmanager.com/gtag/js:request:v2:' + 'a'.repeat(64) + ':capture:' + 'b'.repeat(64) + ':page:' + 'c'.repeat(64)
-    const assertion = { key: 'tracking-library', name: 'Library transfer', expected: 'Resource completes', observed: 'HTTP 200, transfer completed', passed: true, complete: true, context }
+    const context = 'tracking:page_load:google-analytics:library:www.googletagmanager.com/gtag/js:request:v3:' + 'a'.repeat(64) + ':capture:' + 'b'.repeat(64) + ':page:' + 'c'.repeat(64)
+    const historicalContext = context.replace(':request:v3:', ':request:v2:')
+    const assertion = { key: 'tracking-library', name: 'Library transfer', expected: 'Resource completes', observed: 'HTTP 200, transfer completed',
+      passed: true, complete: true, libraryResponseQualified: true as const, context }
     const measurement = checkReceiptSchema.parse({ ...receipt, module: 'measurement', complete: true, passed: true,
       assertions: [assertion], execution: { ...receipt.execution!, source: 'browser-network' } })
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'tracking-library-http-error', pageUrl: receipt.pageUrl,
-      verificationRule: TRACKING_VERIFICATION_RULE, evidenceTargets: [{ kind: 'page', context }] }
+      verificationRule: TRACKING_VERIFICATION_RULE, evidenceTargets: [{ kind: 'page', context: historicalContext }] }
     const upsert = vi.fn()
     const tx = { $queryRaw: vi.fn().mockResolvedValue([]), get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  flag: { findMany: vi.fn().mockResolvedValue([flag]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: measurement }, tx as never)
@@ -202,7 +208,9 @@ describe('exact assertion verification', () => {
       { ...assertion, context: context.replace('page_load', 'public_action') },
       { ...assertion, context: context.replace('google-analytics', 'plausible') },
       { ...assertion, context: context.replace('/gtag/js', '/analytics.js') },
-      { ...assertion, context: context.replace(':request:v2:', ':request:legacy:') },
+      { ...assertion, context: context.replace(':request:v3:', ':request:legacy:') },
+      { ...assertion, context: context.replace(':request:v3:', ':request:v4:') },
+      { ...assertion, context: historicalContext },
       { ...assertion, complete: false, passed: false },
       { ...assertion, disposition: 'observed' as const },
       { key: 'analytics-markup', name: 'Markup', expected: 'Snippet present', observed: 'Present', passed: true },

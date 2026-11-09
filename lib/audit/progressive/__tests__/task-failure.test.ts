@@ -27,11 +27,11 @@ describe('observed scope and operational interruption policy', () => {
   })
   it.each([
     ['HTTP_ERROR', 404], ['HTTP_ERROR', 503], ['HTTP_FORBIDDEN', 403], ['HTTP_FORBIDDEN', 200],
-    ['HTTP_RATE_LIMIT', 429], ['NON_HTML_RESPONSE', 200],
+    ['HTTP_RATE_LIMIT', 429], ['NON_HTML_RESPONSE', 200], ['public_sign_in_redirect', 200], ['HTTP_PARTIAL_RESPONSE', 206],
   ] as const)('settles an observed %s response (%i) without treating it as a worker crash', (code, status) => {
     const failure = classifyTaskFailure(new PageCaptureError('Unavailable page response', { code, httpStatus: status,
       contentType: 'text/html', finalUrl: 'https://example.com/' }))
-    expect(failure).toMatchObject({ code: 'PAGE_' + code, retryable: false, crash: false })
+    expect(failure).toMatchObject({ code: 'PAGE_' + code.toUpperCase(), retryable: false, crash: false })
     expect(retryDecision({ now: 0, admittedAt: 0, attempts: 1, crash: failure.crash, retryable: failure.retryable }).retry).toBe(false)
   })
   it.each(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH'])('retains recovery for an interrupted transport: %s', code => {

@@ -9,9 +9,8 @@ export default function DocsLoading() {
       className="px-5 py-16 sm:px-8"
       role="status"
       aria-busy="true"
-      aria-labelledby="docs-loading-title"
+      aria-label={DOCS_UI_COPY.loading}
     >
-      <h1 id="docs-loading-title" className="sr-only">{DOCS_UI_COPY.loading}</h1>
       <Skeleton className="h-4 w-24 rounded-md" />
       <Skeleton className="mt-6 h-12 w-3/4 rounded-md" />
       <Skeleton className="mt-5 h-6 w-full rounded-md" />

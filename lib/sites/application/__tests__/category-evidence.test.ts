@@ -6,24 +6,26 @@ import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 import { readExecutionSpec } from '../../domain/execution-spec'
 import { siteCoverageMaxAgeMs } from '../../evidence-freshness'
 import { projectCurrentSiteEvidence } from '../current-evidence'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { recordCheckObservations } from '@/lib/audit/checks/observations'
 
 const now = new Date('2026-10-12T12:00:00Z')
-const baseline = { id: 'full', status: 'COMPLETED', createdAt: new Date('2026-10-11T12:00:00Z') }
+const baseline = { id: 'full', projectId: 'site', parentId: null, parent: null, status: 'COMPLETED', createdAt: new Date('2026-10-11T12:00:00Z') }
 function category(overrides: Partial<CategoryEvidenceAudit> = {}): CategoryEvidenceAudit {
-  return { id: 'security-recheck', parentId: baseline.id, projectId: 'site', status: 'COMPLETED', createdAt: now, completedAt: now,
+  return { id: 'security-recheck', parentId: baseline.id, projectId: 'site', parent: { projectId: 'site' }, status: 'COMPLETED', createdAt: now, startedAt: now, completedAt: now,
     executionSpec: { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', environment: 'production',
       targetUrl: 'https://example.com/', category: { area: 'security', sourceAuditId: baseline.id, pages: ['https://example.com/'] },
       checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null },
     failureCode: null, failedModules: [], evidenceCoverage: {}, pages: [{ url: 'https://example.com/', status: 'COMPLETED' }],
     verifierExecutions: [{ id: 'receipt', targetKey: 'module:security', status: 'COMPLETED', workKind: null, workState: null, workDependencies: [], pageUrl: 'https://example.com/', updatedAt: now,
       detail: { kind: 'site-module-check', version: 1, module: 'security', passed: true, applicable: true, complete: true,
-        pageUrl: 'https://example.com/', assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })) } }],
+        pageUrl: 'https://example.com/', assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })),
+        execution: { auditId: 'security-recheck', taskId: 'security', checkVersion: 1, source: 'http', collectedAt: now.toISOString() } } }],
     ...overrides }
 }
 const base = () => buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: baseline.createdAt, now,
   evidenceCoverage: { metadata: true, desktopPageSpeed: true }, flags: [] })
-function completedCategory() {
-  const audit = category()
+function completedCategory(audit = category()) {
   audit.verifierExecutions.push({ id: 'comparison', targetKey: 'projection:flag-comparison', status: 'COMPLETED', workKind: null,
     workState: null, workDependencies: [], pageUrl: null, updatedAt: now, detail: { kind: 'flag-comparison', version: 1,
       auditId: audit.id, parentAuditId: audit.parentId,
@@ -35,6 +37,28 @@ function completedCategory() {
 }
 
 describe('category evidence projection', () => {
+  it.each([false, true])('requires the frozen linked page in a mobile Performance recheck (observed: %s)', linkedObserved => {
+    const root = 'https://example.com/', linked = root + 'pricing', id = 'performance-recheck'
+    const audit = completedCategory(category({ id, executionSpec: { version: 1, engine: 'progressive-v1', scope: 'CATEGORY',
+      environment: 'production', targetUrl: root, category: { area: 'performance', sourceAuditId: baseline.id, pages: [root, linked] },
+      checks: { 'mobile-lcp-poor': 1 }, outcomes: [], verificationTarget: null },
+    evidenceCoverage: { desktopPageSpeed: true, mobilePageSpeed: true }, pages: [root, linked].map(url => ({ url, status: 'COMPLETED' })),
+    verifierExecutions: (linkedObserved ? [root, linked] : [root]).map(pageUrl => {
+      const mobile = healthyDesktopPs({ strategy: 'mobile', diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, 'mobile') } })
+      return { id: 'receipt-' + pageUrl, targetKey: 'module:mobile', status: 'COMPLETED', workKind: null, workState: null,
+        workDependencies: [], pageUrl, updatedAt: now, detail: { kind: 'site-module-check', version: 1, module: 'mobile',
+          applicable: true, complete: true, passed: true, pageUrl,
+          assertions: recordCheckObservations('mobile', { url: pageUrl, desktop: null, mobile, metadata: null }).filter(item => item.key === 'lcp'),
+          execution: { auditId: id, taskId: 'speed-' + pageUrl, checkVersion: 1, checkVersions: { 'mobile-lcp-poor': 1 },
+            source: 'pagespeed-mobile', collectedAt: now.toISOString() } } }
+    }) }))
+    const selected = applicableCategoryEvidence([audit], baseline)
+    const fact = overlayCategoryCoverage(base(), selected, now).find(item => item.area === 'performance')
+    expect(fact?.state).toBe(linkedObserved ? 'healthy' : 'unknown')
+    if (linkedObserved) expect(fact).toMatchObject({ label: 'Mobile speed measured' })
+    else expect(fact?.incompleteReason).toEqual(expect.any(String))
+  })
+
   it('selects only the applicable completed inventory within one Site', () => {
     const prior = { id: 'prior', status: 'COMPLETED' }
     for (const status of ['QUEUED', 'CHECKING', 'FAILED']) expect(categoryEvidenceBaselines('site', { id: 'current', status }, prior))
@@ -85,6 +109,12 @@ describe('category evidence projection', () => {
     expect(after.find(fact => fact.area === 'security')).toMatchObject({ state: 'healthy', checkedAt: now.toISOString() })
     for (const fact of before.filter(fact => fact.area !== 'security')) expect(after.find(item => item.area === fact.area)).toEqual(fact)
   })
+  it('withholds category assurance when the comparison parent belongs to another Site', () => {
+    const audit = completedCategory(category({ parent: { projectId: 'foreign' } }))
+    const selected = applicableCategoryEvidence([audit], baseline)
+    expect(overlayCategoryCoverage(base(), selected, now).find(fact => fact.area === 'security'))
+      .toMatchObject({ state: 'unknown', evidenced: false })
+  })
   it('applies current broad care to category observations while leaving their recorded window intact', () => {
     const before = base(), selected = applicableCategoryEvidence([completedCategory()], baseline)
     const later = new Date(now.getTime() + 2 * 86400_000)
@@ -111,6 +141,30 @@ describe('category evidence projection', () => {
     audit.verifierExecutions = audit.verifierExecutions.filter(record => record.targetKey !== 'task:p0:http')
     const result = overlayCategoryCoverage(base(), applicableCategoryEvidence([audit], baseline), now)
     expect(result.find(fact => fact.area === 'security')).toMatchObject({ state: 'unknown', evidenced: false })
+  })
+  it('keeps public Search conclusive when optional Google work has settled without evidence', () => {
+    const pageUrl = 'https://example.com/'
+    const audit = completedCategory(category({ id: 'search-recheck', executionSpec: {
+      version: 1, engine: 'progressive-v1', scope: 'CATEGORY', environment: 'production', targetUrl: pageUrl,
+      category: { area: 'search', sourceAuditId: baseline.id, pages: [pageUrl] }, checks: { 'title-missing': 2 },
+      outcomes: [], verificationTarget: null,
+    }, verifierExecutions: [{ id: 'search', targetKey: 'module:search', status: 'COMPLETED', workKind: null,
+      workState: null, workDependencies: [], pageUrl, updatedAt: now, detail: {
+        kind: 'search-checks', version: 1, auditId: 'search-recheck', pageUrl, collectedAt: now.toISOString(), complete: true,
+        observations: [{ id: 'title', checkId: 'title-missing', checkVersion: 2, responsibility: 'presentation', name: 'Page title',
+          disposition: 'passed', reason: 'title_present', expected: 'Page has a title', observed: 'Recorded title',
+          source: 'original-html', collectedAt: now.toISOString(), pageUrl,
+          attention: { policy: 'search', version: 1, kind: 'observation', reason: 'title_present' }, evidence: [], limitation: '', guidance: '' }],
+      } }] }))
+    const fact = () => overlayCategoryCoverage(base(), applicableCategoryEvidence([audit], baseline), now).find(fact => fact.area === 'search')
+    const provider = audit.verifierExecutions.find(row => row.workKind === 'google')!
+    provider.status = 'FAILED'
+    provider.workState = 'EXHAUSTED'
+    audit.failedModules = ['google', 'search-google-index']
+    expect(fact()).toMatchObject({ state: 'healthy', evidenced: true })
+    provider.status = 'PENDING'
+    provider.workState = 'WAITING'
+    expect(fact()).toMatchObject({ state: 'unknown', evidenced: false })
   })
   it('withholds category health until its own comparison projection is committed', () => {
     const audit = completedCategory()

@@ -8,6 +8,7 @@ import { HELP_ARTICLES } from '@/lib/help/catalog'
 import IntegrationGuide, { generateMetadata, generateStaticParams } from '@/app/(docs)/docs/integrations/[integration]/page'
 import IntegrationsDocsPage from '@/app/(docs)/docs/integrations/page'
 import DocsHomePage from '@/app/(docs)/docs/page'
+import DocsLoading from '@/app/(docs)/docs/loading'
 import { getDocsPage } from '@/lib/docs/catalog'
 
 vi.mock('@/lib/docs/content', async () => {
@@ -22,6 +23,12 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPageViewTracker: () => null }))
 
 describe('integration guides', () => {
+  it('announces the loading state without adding a document heading', () => {
+    render(<DocsLoading />)
+    expect(screen.getByRole('status', { name: 'Loading documentation' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+  })
+
   it('offers direct paths on the documentation home while preserving its article anchors', async () => {
     render(await DocsHomePage())
     for (const key of ['getting-started', 'site-care', 'fix-with-ai', 'integrations'] as const) {

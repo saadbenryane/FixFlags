@@ -66,7 +66,8 @@ describe('Analytics Site report scope', () => {
     expect(payload.requests[1]).toMatchObject({ metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'screenPageViews' }], limit: 1,
       dimensionFilter: payload.requests[0].dimensionFilter, dateRanges: payload.requests[0].dateRanges })
     expect(payload.requests[1].dimensions).toBeUndefined()
-    expect(rows).toEqual({ pages: [{ pagePath: '/pricing', sessions: 12, pageViews: 24 }, { pagePath: '/missing', sessions: undefined, pageViews: undefined }], audience: { sessions: 8, activeUsers: 3, pageViews: 40 } })
+    expect(rows).toEqual({ pages: [{ pagePath: '/pricing', sessions: 12, pageViews: 24 }],
+      audience: { sessions: 8, activeUsers: 3, pageViews: 40 }, pagesLimited: true, audienceLimited: false })
   })
   it('selects watched paths from owned URLs, keeps case and excludes other origins and malformed pages', () => {
     const scope = analyticsReportScope('shop.example', 'properties/123')
@@ -79,6 +80,6 @@ describe('Analytics Site report scope', () => {
   it('rejects a malformed success response without manufacturing an empty report', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })))
     await expect(liveGoogleClient().queryAnalytics('fixture-access', analyticsReportScope('shop.example', 'properties/123'),
-      { startDate: '2026-09-01', endDate: '2026-09-28' })).rejects.toThrow('Analytics report columns are unavailable')
+      { startDate: '2026-09-01', endDate: '2026-09-28' })).rejects.toThrow('Analytics report batch is incomplete')
   })
 })

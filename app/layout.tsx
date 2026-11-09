@@ -13,6 +13,8 @@ import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
 import { bodyFont, displayFont } from './fonts'
 import { ANALYTICS_CONSENT_BOOTSTRAP } from '@/lib/analytics/consent'
+import { usesControlledGooglePageviews } from '@/lib/analytics/controlled-pageview'
+import { FIXFLAGS_PUBLIC_GA_PAGES } from '@/lib/growth/public-ga-pages'
 
 
 export const viewport: Viewport = {
@@ -66,7 +68,8 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: ANALYTICS_CONSENT_BOOTSTRAP }} />
       </head>
       {/* Fonts are served by this deployment. Next preloads the primary text faces. */}
-      <body className={`${fontVariables} font-sans antialiased`}>
+      <body className={`${fontVariables} font-sans antialiased`}
+        data-ga-public-paths={usesControlledGooglePageviews() ? FIXFLAGS_PUBLIC_GA_PAGES.join(' ') : undefined}>
         <Providers>
           <a
             href="#main-content"

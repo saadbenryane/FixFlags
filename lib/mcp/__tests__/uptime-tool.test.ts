@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { MCP_TOOLS } from '../tool-manifest'
 import { projectUptimeStatus } from '@/lib/uptime/status'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
+import { CheckResultSelectionChanged, RESULT_SELECTION_CHANGED } from '@/lib/sites/check-result-contract'
 
 const stubs = vi.hoisted(() => ({ sites: vi.fn(), site: vi.fn(), outcomes: vi.fn(), latest: vi.fn(), results: vi.fn(), summary: vi.fn(), history: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findMany: stubs.sites } } }))
@@ -96,6 +97,23 @@ it('returns a restart action for an expired, foreign or superseded cursor instea
   expect(handlers.get(MCP_TOOLS.listOutcomes.name)!.schema.safeParse(next.arguments).success).toBe(true)
   expect(stubs.summary).not.toHaveBeenCalled()
   expect(stubs.history).toHaveBeenCalledTimes(1)
+})
+
+it('restarts stale check history without dropping the separately selected uptime page', async () => {
+  stubs.results.mockRejectedValueOnce(new CheckResultSelectionChanged())
+  const result = await call(MCP_TOOLS.listOutcomes.name, {
+    siteId: 'site-alias', resultCursor: 'old-check-page', uptimeWindow: '7d', uptimeCursor: 'probe-page',
+  })
+  const args = { siteId: 'site-alias', uptimeWindow: '7d', uptimeCursor: 'probe-page' }
+  expect(result).toMatchObject({ isError: true, structuredContent: { status: 'ERROR', error: {
+    code: RESULT_SELECTION_CHANGED, recoverable: true, action: 'restart_check_history',
+  }, next: { tool: MCP_TOOLS.listOutcomes.name, arguments: args } } })
+  expect(stubs.history).not.toHaveBeenCalled()
+  stubs.history.mockResolvedValueOnce({ ...summary, window: '7d', nextCursor: null })
+  const resumed = await call(MCP_TOOLS.listOutcomes.name, (result.structuredContent.next as { arguments: unknown }).arguments)
+  expect(resumed.structuredContent).toMatchObject({ siteId: 'site-alias', checkResults: [] })
+  expect(stubs.results).toHaveBeenLastCalledWith(ownedSite, null, undefined)
+  expect(stubs.history).toHaveBeenLastCalledWith(ownedSite, '7d', 'probe-page')
 })
 
 it.each([null, { kind: 'project', siteId: 'site-alias', projectId: 'foreign-project', userId: 'someone-else' }])('denies inaccessible Site evidence before reading uptime', async site => {

@@ -122,6 +122,30 @@ describe('runAuthCheckoutChecks', () => {
     expect(flags).toEqual([])
   })
 
+  it('checks actual action paths, labels and payment hosts without treating URL parameters as action links', async () => {
+    const source = 'https://example.com/'
+    const links = [
+      { href: '/help?next=/checkout', text: 'Help' },
+      { href: '/article?source=buy.stripe.com#login', text: 'Article' },
+      { href: 'https://buy.stripe.com.example.com/help', text: 'Help' },
+      { href: '/support#signup', text: 'Support' },
+      { href: '/checkout?token=PRIVATE_VALUE', text: 'Plans' },
+      { href: '/gateway?action=subscribe', text: 'Subscribe' },
+      { href: 'https://www.paypal.com/pay?id=PRIVATE_VALUE', text: 'Pay' },
+      { href: '/login?return=/checkout', text: 'Log in' },
+    ].map(link => ({ ...link, rel: null }))
+    const openDestination = vi.fn(async (url: string) => ({ url, status: 404, outcome: 'not_found' as const, shouldFlagDead: true }))
+    const findings = await runAuthCheckoutChecks(source, metaWithLinks(links), { openDestination })
+    expect(openDestination.mock.calls.map(([url]) => url)).toEqual(links.slice(4).map(link => new URL(link.href, source).href))
+    expect(findings).toMatchObject([
+      { checkId: 'checkout-link-dead', evidenceTargets: expect.arrayContaining(links.slice(4, 7).map(link => expect.objectContaining({
+        context: destinationContext(source, new URL(link.href, source).href),
+      }))) },
+      { checkId: 'auth-page-broken', evidenceTargets: [{ context: destinationContext(source, new URL(links[7].href, source).href) }] },
+    ])
+    expect(JSON.stringify(findings)).not.toContain('PRIVATE_VALUE')
+  })
+
   it('does not raise a false alarm when HEAD is blocked (network error)', async () => {
     restore = (() => {
       const original = globalThis.fetch

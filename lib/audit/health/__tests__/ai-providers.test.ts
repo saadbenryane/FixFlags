@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+const actor = { id: 'admin', role: 'admin', email: 'admin@example.test', sessionId: 'session', authenticatedAt: new Date() }
+vi.mock('@/lib/admin/provider-usage', () => ({ adminProviderUsage: () => async () => async () => {} }))
 const isAiProviderConfigured = vi.hoisted(() => vi.fn())
 const getJudgeProviderChain = vi.hoisted(() => vi.fn())
 const getConfiguredJudgeProviderChain = vi.hoisted(() => vi.fn())
@@ -53,6 +55,7 @@ describe('getAiProviderHealth', () => {
     const health = getAiProviderHealth()
     expect(health).toEqual({
       configured: true,
+      budget: { configured: true, mode: 'provider' },
       providerChain: ['openai', 'anthropic'],
       configuredProviders: ['openai'],
       openai: true,
@@ -82,13 +85,13 @@ describe('validateAiProviderCredentials', () => {
 
   it('returns null when no provider is configured', async () => {
     getConfiguredJudgeProviderChain.mockReturnValue([])
-    await expect(validateAiProviderCredentials()).resolves.toBeNull()
+    await expect(validateAiProviderCredentials(actor)).resolves.toBeNull()
   })
 
   it('reports a missing OpenAI key without calling the SDK', async () => {
     getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
     getOpenAIProviderKey.mockReturnValue('')
-    const result = await validateAiProviderCredentials()
+    const result = await validateAiProviderCredentials(actor)
     expect(result).toMatchObject({ ok: false, provider: 'openai' })
     expect(result?.error).toContain('OPENAI_API_KEY')
     expect(openaiCreate).not.toHaveBeenCalled()
@@ -99,7 +102,7 @@ describe('validateAiProviderCredentials', () => {
     getOpenAIProviderKey.mockReturnValue('sk-test')
     openaiCreate.mockResolvedValueOnce({ id: 'probe' })
 
-    const result = await validateAiProviderCredentials()
+    const result = await validateAiProviderCredentials(actor)
     expect(result).toEqual({ ok: true, provider: 'openai', model: 'openai-configured-triage' })
     expect(getTriageProviderConfig).toHaveBeenCalledWith('openai', 15_000)
     expect(openaiOptions).toHaveBeenCalledWith({ apiKey: 'sk-test', timeout: 15_000, maxRetries: 0 })
@@ -115,7 +118,7 @@ describe('validateAiProviderCredentials', () => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-test')
     anthropicCreate.mockResolvedValueOnce({ id: 'probe' })
 
-    const result = await validateAiProviderCredentials()
+    const result = await validateAiProviderCredentials(actor)
     expect(result).toEqual({ ok: true, provider: 'anthropic', model: 'anthropic-configured-triage' })
     expect(getTriageProviderConfig).toHaveBeenCalledWith('anthropic', 15_000)
     expect(anthropicOptions).toHaveBeenCalledWith({ apiKey: 'sk-ant-test', timeout: 15_000, maxRetries: 0 })
@@ -128,7 +131,7 @@ describe('validateAiProviderCredentials', () => {
 
   it('reports an unknown provider from the chain', async () => {
     getConfiguredJudgeProviderChain.mockReturnValue(['custom'])
-    const result = await validateAiProviderCredentials()
+    const result = await validateAiProviderCredentials(actor)
     expect(result).toMatchObject({ ok: false, provider: 'custom' })
     expect(result?.error).toContain('Unknown provider')
   })
@@ -138,7 +141,7 @@ describe('validateAiProviderCredentials', () => {
     getOpenAIProviderKey.mockReturnValue('sk-test')
     openaiCreate.mockRejectedValueOnce(Object.assign(new Error('401 invalid api key'), { status: 401 }))
 
-    const result = await validateAiProviderCredentials()
+    const result = await validateAiProviderCredentials(actor)
     expect(result).toMatchObject({ ok: false, provider: 'openai', failure: 'authentication_rejected' })
     expect(result?.error).toContain('401 invalid api key')
   })
@@ -148,13 +151,13 @@ describe('validateAiProviderCredentials', () => {
     getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
     getOpenAIProviderKey.mockReturnValue('sk-test')
     openaiCreate.mockRejectedValueOnce(Object.assign(new Error('Provider request did not complete'), { status }))
-    expect(await validateAiProviderCredentials()).toMatchObject({ ok: false, provider: 'openai', failure })
+    expect(await validateAiProviderCredentials(actor)).toMatchObject({ ok: false, provider: 'openai', failure })
   })
 
   it('reports a typed credit failure as unavailable quota rather than authentication or temporary pacing', async () => {
     getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
     getOpenAIProviderKey.mockReturnValue('sk-test')
     openaiCreate.mockRejectedValueOnce(Object.assign(new Error('Provider credit unavailable'), { status: 429, code: 'credit_balance_exhausted' }))
-    expect(await validateAiProviderCredentials()).toMatchObject({ ok: false, provider: 'openai', failure: 'quota_exhausted' })
+    expect(await validateAiProviderCredentials(actor)).toMatchObject({ ok: false, provider: 'openai', failure: 'quota_exhausted' })
   })
 })

@@ -1,22 +1,21 @@
 import { createHash } from 'node:crypto'
 import type { OutcomeAssessmentState, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { FLAG_COMPARISON_TARGET, readFlagComparisonFacts, comparisonEvidenceComplete, type FlagDiffSummary } from '@/lib/audit/flag-comparison'
+import { FLAG_COMPARISON_TARGET, flagComparisonAuditScopeSelect, readFlagComparisonFacts, comparisonEvidenceComplete, type FlagComparisonAuditScope, type FlagDiffSummary } from '@/lib/audit/flag-comparison'
 import type { CustomerFlagInput } from '@/lib/audit/attention'
 import { isCustomerFlag, hasUnavailableFlagEvidence } from '@/lib/audit/attention'
 import { recordedSiteAssessmentSchema, type SiteAssessment } from '../assessment-contract'
 import { projectSiteAssessment, recordedRunFlags } from '../assessment'
 import { canonicalIntent, readExecutionSpec } from '../domain/execution-spec'
-import { currentOutcomeState } from '../outcome-state'
 import { buildCoverageFacts, coverageObservationTimes, type CoverageExecution } from '../coverage'
 import { SITE_COVERAGE_MAX_AGE_MS } from '../evidence-freshness'
-import { executionPageCoverage } from '../page-coverage'
+import { executionPageCoverage, recordedPageEvidenceScope } from '../page-coverage'
 import { categoryCoverageFact, type CategoryEvidenceAudit } from './category-evidence'
 import { categoryCoverageExecutionSelect } from './site-execution'
 import type { RecordedCompletionTask } from '@/lib/audit/progressive/recorded-completeness'
 
 type AssessmentObservation = { outcomeId: string; state: OutcomeAssessmentState; validUntil: Date }
-type RecordedAudit = Pick<CategoryEvidenceAudit, 'id' | 'parentId' | 'status' | 'completedAt' | 'executionSpec' |
+type RecordedAudit = FlagComparisonAuditScope & Pick<CategoryEvidenceAudit, 'id' | 'status' | 'completedAt' | 'executionSpec' |
   'evidenceCoverage' | 'failedModules' | 'failureCode' | 'pages'> & {
   verifierExecutions: Array<CoverageExecution & RecordedCompletionTask>;
   flags: CustomerFlagInput[];
@@ -36,13 +35,14 @@ export function projectRecordedSiteResult(input: {
 }): RecordedSiteResult {
   const { audit, now } = input, executionSpec = input.executionSpec ?? audit.executionSpec
   const spec = readExecutionSpec(executionSpec), status = input.status ?? audit.status
+  const pageScope = recordedPageEvidenceScope({ ...audit, executionSpec })
   const publication = audit.verifierExecutions.find(row => row.targetKey === FLAG_COMPARISON_TARGET && row.status === 'COMPLETED')
   let invalidSnapshot = false
   let findings: RecordedSiteResult['findings'] = null
   let facts: ReturnType<typeof readFlagComparisonFacts> | undefined
   if (publication) {
     try {
-      facts = readFlagComparisonFacts(publication.detail, { auditId: audit.id, parentAuditId: audit.parentId })
+      facts = readFlagComparisonFacts(publication.detail, audit)
       if (facts.siteAssessment !== undefined) {
         const saved = recordedSiteAssessmentSchema.parse(facts.siteAssessment)
         if (!spec || !['SITE', 'CATEGORY'].includes(spec.scope) || saved.specHash !== specHash(executionSpec) ||
@@ -53,7 +53,7 @@ export function projectRecordedSiteResult(input: {
           saved.assessment.completeness === 'FULL' && !comparisonEvidenceComplete(summary)) throw new Error('Recorded finding evidence changed')
         findings = savedFindings
         if (status === 'COMPLETED' && audit.status === 'COMPLETED') {
-          const observationTimes = coverageObservationTimes(audit.verifierExecutions)
+          const observationTimes = coverageObservationTimes(audit.verifierExecutions, pageScope)
           const observedAreas = saved.assessment.requiredAreas.flatMap(area => {
             const observedAt = observationTimes.get(area)
             return observedAt ? [{ area, deadline: Date.parse(observedAt) + SITE_COVERAGE_MAX_AGE_MS }] : []
@@ -82,16 +82,18 @@ export function projectRecordedSiteResult(input: {
   }
   const coverage = spec?.category ? [categoryCoverageFact({ ...audit, executionSpec }, now)!] : buildCoverageFacts({
     auditStatus: audit.status, completedAt: audit.completedAt, now, evidenceCoverage: audit.evidenceCoverage,
-    failedModules: audit.failedModules, verifierExecutions: audit.verifierExecutions, flags: [],
+    failedModules: audit.failedModules, verifierExecutions: audit.verifierExecutions,
+    pageScope, flags: [],
   })
   const recorded = recordedRunFlags({ executionSpec, audit })
   const assessment = projectSiteAssessment({ status, executionSpec, coverage, now, checkedAt: audit.completedAt,
-    pagesComplete: executionPageCoverage({ executionSpec, pages: audit.pages, executions: audit.verifierExecutions }).complete,
+    pagesComplete: executionPageCoverage({ auditId: audit.id, executionSpec, pages: audit.pages,
+      executions: audit.verifierExecutions, failedModules: audit.failedModules }).complete,
     flags: recorded.flags.filter(flag => isCustomerFlag({ ...flag, status: undefined })),
     assessmentComplete: recorded.complete && !invalidSnapshot,
     outcomes: spec?.outcomes.map(outcome => {
       const assessment = input.assessments.find(item => item.outcomeId === outcome.id)
-      return { id: outcome.id, state: currentOutcomeState(assessment ?? null, now), validUntil: assessment?.validUntil }
+      return { id: outcome.id, state: assessment?.state ?? 'COULD_NOT_VERIFY', validUntil: assessment?.validUntil }
     }),
   })
   return { assessment, findings }
@@ -101,13 +103,13 @@ export function projectRecordedSiteResult(input: {
  * never backfill old publications or replace their original conclusions. */
 export async function preparePublishedSiteAssessment(auditId: string, comparison: unknown) {
   const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, select: {
-    id: true, parentId: true, status: true, completedAt: true, executionSpec: true,
+    id: true, ...flagComparisonAuditScopeSelect, status: true, completedAt: true, executionSpec: true,
     evidenceCoverage: true, failedModules: true, failureCode: true,
     pages: { select: { url: true, status: true } }, verifierExecutions: categoryCoverageExecutionSelect,
     outcomeAssessments: { select: { outcomeId: true, state: true, validUntil: true } },
   } })
   if (audit.status !== 'COMPLETED' || !audit.completedAt) throw new Error('A Site conclusion requires its completed observation')
-  const facts = readFlagComparisonFacts(comparison, { auditId: audit.id, parentAuditId: audit.parentId })
+  const facts = readFlagComparisonFacts(comparison, audit)
   const { assessment } = projectRecordedSiteResult({
     audit: { ...audit, flags: [], verifierExecutions: [...audit.verifierExecutions.filter(row => row.targetKey !== FLAG_COMPARISON_TARGET),
       { targetKey: FLAG_COMPARISON_TARGET, status: 'COMPLETED', detail: comparison }] },

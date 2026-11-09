@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
+import { lockAdminSiteOperation, type AdminSiteOperationScope } from '@/lib/admin/domain-actor'
 
 export const EXECUTION_LEASE_MS = 90_000
 export type ExecutionOwnership = { auditId: string; token: string; generation: number; taskId?: string; signal?: AbortSignal }
@@ -30,18 +31,31 @@ export function withExecutionSignal<T>(signal: AbortSignal, work: () => Promise<
   return ownership.run({ ...owner, signal: combined }, work)
 }
 
-export async function claimExecution(auditId: string, { projectionOnly = false, resume = false }: { projectionOnly?: boolean; resume?: boolean } = {}): Promise<ExecutionOwnership | null> {
+/** Use the same eligibility at sweep selection and again under the Audit lock. */
+export function completedProjectionWhere(now: Date): Prisma.AuditWhereInput {
+  return { status: 'COMPLETED', improvementProjectedAt: null,
+    OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }],
+    executionTasks: { none: { workKind: 'finalize', workState: 'RUNNING', workLeaseUntil: { gt: now } } },
+  }
+}
+
+export async function claimExecution(auditId: string, {
+  projectionOnly = false, resume = false, skipLocked = false, expectedScope, expectedState,
+}: { projectionOnly?: boolean; resume?: boolean; skipLocked?: boolean;
+  expectedScope?: { projectId: string | null; parentId: string | null }; expectedState?: Prisma.AuditWhereInput } = {}): Promise<ExecutionOwnership | null> {
   const caller = ownership.getStore()
   assertExecutionActive(caller)
   const token = randomUUID()
   return runTransaction(async tx => {
-    if (!await lockExecutionScope(tx, auditId)) return null
+    if (!await lockExecutionScope(tx, auditId, { skipLocked })) return null
     assertExecutionActive(caller)
     const now = new Date()
     const claimed = await tx.audit.updateMany({
-      where: { id: auditId, status: projectionOnly ? 'COMPLETED' : resume ? { notIn: ['COMPLETED', 'FAILED'] } : 'QUEUED',
-        ...(!projectionOnly ? resume ? {} : { startedAt: null } : { improvementProjectedAt: null }),
-        OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }] },
+      where: { id: auditId, ...expectedScope, ...(expectedState ? { AND: [expectedState] } : {}), ...(projectionOnly ? completedProjectionWhere(now) : {
+        status: resume ? { notIn: ['COMPLETED', 'FAILED'] } : 'QUEUED',
+        ...(resume ? {} : { startedAt: null }),
+        OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }],
+      }) },
       data: { executionToken: token, executionGeneration: { increment: 1 },
         executionLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
     })
@@ -107,13 +121,15 @@ export async function renewExecution(owner: ExecutionOwnership): Promise<boolean
 }
 
 /** Claims and writes acquire one stable Site and Audit scope in that order. */
-export async function lockExecutionScope(tx: Prisma.TransactionClient, auditId: string): Promise<boolean> {
+export async function lockExecutionScope(tx: Prisma.TransactionClient, auditId: string,
+  { skipLocked = false }: { skipLocked?: boolean } = {}): Promise<boolean> {
   // Commands and workers share Project -> Audit -> task lock order. Removal
   // can fence queued work without deadlocking an account reservation.
   // FOR SHARE blocks Site removal without queueing every observation behind
   // one project writer. The task row stays exclusive for its own commit.
+  const wait = skipLocked ? Prisma.sql`SKIP LOCKED` : Prisma.empty
   const [scope] = await tx.$queryRaw<Array<{ projectId: string | null; lockedProjectId: string | null }>>`
-    SELECT a."projectId", (SELECT p.id FROM "projects" p WHERE p.id = a."projectId" FOR SHARE) AS "lockedProjectId"
+    SELECT a."projectId", (SELECT p.id FROM "projects" p WHERE p.id = a."projectId" FOR SHARE ${wait}) AS "lockedProjectId"
     FROM "audits" a WHERE a.id = ${auditId}
   `
   if (!scope) return false
@@ -128,7 +144,7 @@ export async function lockExecutionScope(tx: Prisma.TransactionClient, auditId: 
     if (projects.length !== 1 || !projects[0].authorized) return false
   }
   const [locked] = await tx.$queryRaw<Array<{ projectId: string | null }>>`
-    SELECT "projectId" FROM "audits" WHERE id = ${auditId} FOR UPDATE
+    SELECT "projectId" FROM "audits" WHERE id = ${auditId} FOR UPDATE ${wait}
   `
   if (!locked) return false
   // Claim may attach an anonymous Audit while this transaction waits. Release
@@ -290,17 +306,21 @@ export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work:
 /** A failed physical execution cannot be revived by a delayed queue delivery.
  * Callers may add a scope guard, but cannot weaken the ownership comparison. */
 export async function expireUnownedExecution(audit: { id: string; executionToken: string | null; executionGeneration: number },
-  now: Date, scope: Prisma.AuditWhereInput = {}): Promise<boolean> {
-  const changed = await prisma.audit.updateMany({
+  now: Date, scope: Prisma.AuditWhereInput = {}, authority?: AdminSiteOperationScope): Promise<boolean> {
+  const expire = (db: Prisma.TransactionClient) => db.audit.updateMany({
     where: { AND: [scope, { id: audit.id, executionToken: audit.executionToken, executionGeneration: audit.executionGeneration,
       OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }], status: { notIn: ['COMPLETED', 'FAILED'] } }] },
     data: { status: 'FAILED', executionToken: null, executionLeaseUntil: null, completedAt: now,
       failureCode: 'EXECUTION_LEASE_EXPIRED', failureStage: 'worker',
       errorMsg: 'The worker stopped before this check completed. Retry starts a new execution; earlier evidence is preserved.' },
   })
+  const changed = authority ? await executionTransaction(async tx => {
+    await lockAdminSiteOperation(authority, tx, audit.id)
+    return expire(tx)
+  }) : await expire(prisma)
   if (changed.count !== 1) return false
   const { markOutcomeRunsCouldNotVerify } = await import('@/lib/sites/application/run-reconciliation')
-  await markOutcomeRunsCouldNotVerify(audit.id, 'EXECUTION_LEASE_EXPIRED', 'The worker stopped before this check completed.')
+  await markOutcomeRunsCouldNotVerify(audit.id, 'EXECUTION_LEASE_EXPIRED', 'The worker stopped before this check completed.', authority)
   return true
 }
 

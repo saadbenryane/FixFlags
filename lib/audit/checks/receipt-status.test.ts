@@ -37,7 +37,10 @@ describe('check receipt summaries', () => {
   })
   it('never replaces a recorded non-advisory failure with a passing module summary', () => {
     const failure = { key: 'https', name: 'HTTPS', expected: 'HTTPS', observed: 'HTTP', passed: false, complete: true }
-    expect(readCheckReceipt({ ...receipt, module: 'security', assertions: [failure] })).toMatchObject({ passed: false, complete: true })
+    const transport = { ...receipt, module: 'security', assertions: [failure] }
+    expect(readCheckReceipt(transport)).toMatchObject({ passed: false, complete: false })
+    expect(readCheckReceipt({ ...transport, execution: { auditId: 'audit', taskId: 'http-check', checkVersion: 1,
+      source: 'http', collectedAt: '2026-10-12T12:00:00Z' } })).toMatchObject({ passed: false, complete: true })
   })
   it('retains complete advisory observations without treating them as verified criterion passes', () => {
     expect(readCheckReceipt({ ...receipt, assertions: [{ ...assertion, complete: true }] }))

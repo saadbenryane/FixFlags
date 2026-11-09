@@ -11,14 +11,15 @@ import {
 } from '@/lib/sites/connections/match'
 
 describe('Site connection matching', () => {
-  it('matches a Search Console property only when the host is the same Site', () => {
+  it('matches a Search Console property only when it covers the Site URL', () => {
     const properties = [
       { siteUrl: 'sc-domain:other.example' },
       { siteUrl: 'https://www.shop.example/' },
     ]
-    expect(chooseSearchProperty(properties, 'shop.example')).toBe('https://www.shop.example/')
-    expect(chooseSearchProperty([{ siteUrl: 'sc-domain:shop.example' }], 'shop.example')).toBe('sc-domain:shop.example')
-    expect(chooseSearchProperty(properties, 'other.example')).toBe('sc-domain:other.example')
+    expect(chooseSearchProperty(properties, 'https://www.shop.example/pricing')).toBe('https://www.shop.example/')
+    expect(chooseSearchProperty(properties, 'https://shop.example/')).toBeNull()
+    expect(chooseSearchProperty([{ siteUrl: 'sc-domain:shop.example' }], 'https://shop.example/')).toBe('sc-domain:shop.example')
+    expect(chooseSearchProperty(properties, 'https://other.example/')).toBe('sc-domain:other.example')
   })
 
   it('matches Analytics only through a stream on the Site host', () => {
@@ -106,6 +107,17 @@ describe('Site connection matching', () => {
     // The provider selected pagePath, so query variants share its aggregate.
     expect(contextLinesForPage(facts, 'https://shop.example/pricing/?plan=teams').join(' ')).toContain('42 page views')
     expect(cardContext(facts).tracking).toContain('2 recorded pages')
+  })
+  it('summarizes a single Analytics reporting window when earlier page context is retained', () => {
+    const scope = analyticsReportScope('shop.example', 'properties/1')
+    const [old] = factsFromAnalyticsRows([{ pagePath: '/earlier', pageViews: 12 }], scope)
+    const [latest] = factsFromAnalyticsRows([{ pagePath: '/current', pageViews: 0 }], scope)
+    const facts = [
+      { ...old, contextState: 'unavailable' as const, observedAt: '2026-10-14T12:00:00Z', periodStart: '2026-09-16', periodEnd: '2026-10-13' },
+      { ...latest, contextState: 'unavailable' as const, observedAt: '2026-10-15T12:00:00Z', periodStart: '2026-09-17', periodEnd: '2026-10-14' },
+    ]
+    expect(cardContext(facts).tracking).toContain('1 recorded page from 2026-09-17 to 2026-10-14')
+    expect(contextLinesForPage(facts, 'https://shop.example/earlier').join(' ')).toContain('12 page views from 2026-09-16 to 2026-10-13')
   })
   it('withholds ambiguous Analytics paths while retaining separately scoped Site audience', () => {
     const scope = analyticsReportScope('shop.example', 'properties/1')

@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import robots from '@/app/robots'
-import sitemap from '@/app/sitemap'
+import { buildPublicSitemap as sitemap } from '@/app/sitemap.xml/entries'
+import { GET as getSitemap } from '@/app/sitemap.xml/route'
 import { dynamic, GET } from '@/app/llms.txt/route'
 import nextConfig from '@/next.config'
 import { getIndexableIssueCheckIds } from '@/lib/graph/queries'
@@ -20,15 +21,20 @@ const baseUrl = SITE_URL.replace(/\/$/, '')
 const issue = {
   checkId: 'missing-alt-text',
   siteCount: 20,
-  lastSeenAt: new Date('2026-10-01T12:00:00Z'),
+  reviewedAt: new Date('2026-10-01T12:00:00Z'),
 }
 
 describe('technical discovery', () => {
   it('discovers every published guide with its reviewed modification date', async () => {
-    const entries = await sitemap()
-    for (const guide of WEBSITE_GUIDES) {
-      expect(entries).toContainEqual(expect.objectContaining({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(GUIDE_REVIEWED_AT) }))
-      expect(buildLlmsTxt()).toContain(`](${baseUrl}/guides/${guide.slug})`)
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      const entries = await sitemap()
+      for (const guide of WEBSITE_GUIDES) {
+        expect(entries).toContainEqual(expect.objectContaining({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(GUIDE_REVIEWED_AT) }))
+        expect(buildLlmsTxt()).toContain(`](${baseUrl}/guides/${guide.slug})`)
+      }
+    } finally {
+      vi.unstubAllEnvs()
     }
   })
   beforeEach(() => {
@@ -100,16 +106,42 @@ describe('technical discovery', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
     expect(response.headers.get('Cache-Control')).toBe('no-store')
-    expect(await response.text()).toBe(buildLlmsTxt({ hasReviewedResearch: true }))
+    expect(await response.text()).toBe(buildLlmsTxt([issue.checkId]))
+  })
+
+  it('serves current sitemap XML with no-store and removes research on the next request', async () => {
+    const approved = await getSitemap()
+    expect(approved.status).toBe(200)
+    expect(approved.headers.get('content-type')).toBe('application/xml; charset=utf-8')
+    expect(approved.headers.get('cache-control')).toBe('no-store')
+    expect(await approved.text()).toContain(
+      `<loc>${baseUrl}/issues/${issue.checkId}</loc>\n<lastmod>${issue.reviewedAt.toISOString()}</lastmod>`)
+    vi.mocked(getIndexableIssueCheckIds).mockResolvedValue([])
+    const withdrawn = await getSitemap()
+    expect(withdrawn.headers.get('cache-control')).toBe('no-store')
+    const xml = await withdrawn.text()
+    expect(xml).not.toContain(`<loc>${baseUrl}/issues`)
+    expect(xml).toContain(`<loc>${baseUrl}/docs</loc>`)
+  })
+
+  it('bounds reviewed issue links and leaves the library index available for the rest', () => {
+    const checks = Array.from({ length: 21 }, (_, index) => `reviewed-check-${index}`)
+    const text = buildLlmsTxt(checks)
+    expect(text).toContain(`](${baseUrl}/issues)`)
+    expect(text.match(/\/issues\/reviewed-check-/g)).toHaveLength(20)
+    expect(text).not.toContain('/issues/reviewed-check-20)')
   })
 
   it('withholds unavailable or withdrawn research on the next request and preserves other public resources', async () => {
     const approved = await GET()
-    expect(await approved.text()).toContain(`](${baseUrl}/issues)`)
+    const approvedText = await approved.text()
+    expect(approvedText).toContain(`](${baseUrl}/issues)`)
+    expect(approvedText).toContain(`](${baseUrl}/issues/${issue.checkId})`)
     vi.mocked(getIndexableIssueCheckIds).mockResolvedValue([])
     const withdrawn = await GET()
     const text = await withdrawn.text()
     expect(text).not.toContain(`](${baseUrl}/issues)`)
+    expect(text).not.toContain(`](${baseUrl}/issues/${issue.checkId})`)
     expect(text).toContain(`](${baseUrl}/docs)`)
     expect(text).toContain(`](${baseUrl}/tools/meta-preview)`)
     vi.mocked(getIndexableIssueCheckIds).mockRejectedValue(new Error('private database detail'))
@@ -133,7 +165,8 @@ describe('technical discovery', () => {
         .toEqual(new Date(post.updatedAt ?? post.publishedAt ?? post.date))
     }
     expect(entries.find((entry) => entry.url.endsWith(`/issues/${issue.checkId}`))?.lastModified)
-      .toEqual(issue.lastSeenAt)
+      .toEqual(issue.reviewedAt)
+    expect(entries.find((entry) => entry.url.endsWith('/issues'))?.lastModified).toEqual(issue.reviewedAt)
   })
 
   it('keeps an empty Flag Library out of the sitemap without hiding public guides', async () => {

@@ -1,4 +1,5 @@
 import { cruxEvidenceSchema, readCruxMetric } from './crux'
+import { hasCurrentPageSpeedLabMeasurement } from './performance-measurement'
 
 export type PageSpeedStrategy = 'desktop' | 'mobile'
 
@@ -14,7 +15,7 @@ export interface PageSpeedCoverage {
   missingRoutes: PageSpeedMissingRoute[]
 }
 
-function observation(value: unknown, strategy: PageSpeedStrategy) {
+function observation(value: unknown, strategy: PageSpeedStrategy, currentPageUrl?: string) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { observed: false, complete: false }
   const data = value as Record<string, unknown>
   if (data.strategy !== undefined && data.strategy !== strategy) return { observed: false, complete: false }
@@ -23,11 +24,15 @@ function observation(value: unknown, strategy: PageSpeedStrategy) {
   const lab = ['score', 'lcp', 'cls', 'fcp', 'tbt']
   const crux = cruxEvidenceSchema.safeParse(data.crux)
   const field = crux.success && (['lcp', 'cls', 'fcp', 'inp', 'ttfb'] as const).some(key => readCruxMetric(crux.data, key))
-  return { observed: lab.some(metric) || metric('inp') || field, complete: lab.every(metric) }
+  const currentLab = currentPageUrl === undefined || data.strategy === strategy &&
+    hasCurrentPageSpeedLabMeasurement({ strategy, diagnostics: { measurement: data.measurement } }, currentPageUrl)
+  return { observed: (currentLab && lab.some(metric)) || (currentPageUrl === undefined && metric('inp')) || field,
+    complete: currentLab && lab.every(metric) }
 }
 
 export function derivePageSpeedCoverage(
-  routes: Array<{ url: string; performanceData: unknown }>
+  routes: Array<{ url: string; performanceData: unknown }>,
+  options?: { requireCurrentLab: boolean },
 ): PageSpeedCoverage {
   const normalizedRoutes = routes.length > 0
     ? routes
@@ -41,8 +46,9 @@ export function derivePageSpeedCoverage(
       route.performanceData && typeof route.performanceData === 'object'
         ? route.performanceData as Record<string, unknown>
         : {}
-    const desktop = observation(data.desktop, 'desktop')
-    const mobile = observation(data.mobile, 'mobile')
+    const currentPageUrl = options?.requireCurrentLab ? route.url : undefined
+    const desktop = observation(data.desktop, 'desktop', currentPageUrl)
+    const mobile = observation(data.mobile, 'mobile', currentPageUrl)
     const missing: PageSpeedStrategy[] = []
     if (!desktop.complete) missing.push('desktop')
     if (!mobile.complete) missing.push('mobile')

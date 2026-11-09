@@ -4,8 +4,7 @@ import { repairBriefSchema, repairContextHashSchema, repairObservationOffsetSche
 import { deliverSiteRepairBrief } from '@/lib/sites/repair-delivery'
 import { loadSiteRepairEvidence } from '@/lib/sites/application/repair-evidence'
 import { apiError, handleRouteError } from '@/lib/api/errors'
-import { loadSiteFlagDetail } from '@/lib/sites/flags'
-import { buildSiteRepairBrief } from '@/lib/sites/repair-brief'
+import { loadSiteRepairBriefPage } from '@/lib/sites/flags'
 import { getAppUrl } from '@/lib/get-app-url'
 
 /** Read-only private evidence. Possession of the URL never grants access. */
@@ -39,14 +38,13 @@ async function readBrief(request: Request, context: { params: Promise<{ siteId: 
     expectedDocumentHash !== null && !repairContextHashSchema.safeParse(expectedDocumentHash).success ||
     documentOffset > 0 && (!expected || !expectedDocumentHash))
     return apiError('Continuing a repair document requires a valid offset and both revisions.', 400)
-  const flag = await loadSiteFlagDetail(site, flagId)
-  if (!flag) return apiError('Flag not found', 404)
-  let brief = buildSiteRepairBrief(site.siteId, flag, getAppUrl(), flagId, observationOffset, expected ?? undefined)
+  let brief = await loadSiteRepairBriefPage(site, flagId, getAppUrl(), observationOffset, expected ?? undefined)
+  if (!brief) return apiError('Flag not found', 404)
   const view = query.get('view')
   if (view !== null && view !== 'capture') return apiError('Invalid repair evidence view.', 400)
   if (view === 'capture' && !expected) return apiError('Reading a capture requires its repair context revision.', 400)
   if (query.get('includeEvidence') === 'true' || view === 'capture') {
-    const attached = await loadSiteRepairEvidence(site, flag, `${brief.links.json}&view=capture`)
+    const attached = await loadSiteRepairEvidence(site, brief.flag, `${brief.links.json}&view=capture`)
     if (view === 'capture') {
       if (!attached.image || attached.evidence.capture.state !== 'available')
         return apiError('This source capture is not available.', 404, { code: 'REPAIR_CAPTURE_UNAVAILABLE' })

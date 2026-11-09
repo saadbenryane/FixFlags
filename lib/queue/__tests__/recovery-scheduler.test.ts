@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ watches: vi.fn(), notifications: vi.fn(), contexts: vi.fn(), lock: vi.fn(), dispatch: vi.fn(), progressive: vi.fn(),
-  stuck: vi.fn(), projections: vi.fn(), runs: vi.fn() }))
+  coordinator: vi.fn(), prescriptions: vi.fn(), retirement: vi.fn(), lease: vi.fn(), stuck: vi.fn(), projections: vi.fn(), runs: vi.fn(), watchSetup: vi.fn() }))
 vi.mock('@/lib/queue/lock', () => ({ tryAcquireLock: mocks.lock,
-  withSchedulerLease: async (_name: string, task: (signal: AbortSignal) => Promise<void>) => task(new AbortController().signal) }))
+  withSchedulerLease: mocks.lease }))
 vi.mock('@/lib/audit/project-watch', () => ({ processDueProjectWatches: mocks.watches, retryPendingWatchNotifications: mocks.notifications }))
+vi.mock('@/lib/sites/application/default-monitoring', () => ({ initializeDefaultMonitoring: mocks.watchSetup }))
 vi.mock('@/lib/notifications/service', () => ({ deliverWebsiteSummaries: async () => {} }))
 vi.mock('@/lib/email/maintenance', () => ({ maintainEmailDelivery: async () => {}, retryPendingNurtureEmails: async () => {} }))
 vi.mock('@/lib/sites/connections/google', () => ({ refreshDueGoogleContexts: mocks.contexts }))
 vi.mock('@/lib/sites/accounts/retention', () => ({ deleteExpiredAccountMessages: async () => 0 }))
+vi.mock('@/lib/billing/provider-budget', () => ({ deleteExpiredProviderWindows: async () => 0 }))
 vi.mock('@/lib/audit/recover-audit-job', () => ({ recoverCompletedImprovementProjections: mocks.projections, runStuckAuditRecoverySweep: mocks.stuck }))
 vi.mock('@/lib/leads/run-nurture', () => ({ runNurtureSweep: async () => ({}) }))
 vi.mock('@/lib/integrity/watch', () => ({ processIntegrityMaintenance: async () => ({ walks: 0, pulseWalks: 0 }) }))
@@ -19,18 +21,26 @@ vi.mock('@/lib/signals/product-signals', () => ({ deleteExpiredProductSignals: a
 vi.mock('@/lib/sites/application/run-leases', () => ({ recoverExpiredSiteRuns: mocks.runs }))
 vi.mock('@/lib/sites/application/run-requests', () => ({ reconcileOutcomeRunsForAudit: async () => {} }))
 vi.mock('@/lib/audit/dispatch', () => ({ dispatchPendingAudits: mocks.dispatch }))
-vi.mock('@/lib/audit/progressive/runtime', () => ({ recoverProgressiveAudits: mocks.progressive }))
+vi.mock('@/lib/audit/progressive/runtime', () => ({ recoverPendingCoordinators: mocks.coordinator }))
+vi.mock('@/lib/audit/progressive/engine', () => ({ recoverActiveTaskGraphs: mocks.progressive }))
+vi.mock('@/lib/audit/enqueue-ai-review', () => ({ recoverPendingAiReviews: mocks.prescriptions }))
+vi.mock('@/lib/audit/progressive/delivery-window', () => ({ retireObsoleteTaskDeliveries: mocks.retirement }))
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), error: vi.fn() } }))
 import { startRecoveryScheduler } from '../recovery-scheduler'
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.resetAllMocks()
   mocks.lock.mockResolvedValue(true)
+  mocks.lease.mockImplementation(async (_name: string, task: (signal: AbortSignal) => Promise<void>) => task(new AbortController().signal))
   mocks.watches.mockResolvedValue({ processed: 0, enqueued: 0, errors: 0 })
+  mocks.watchSetup.mockResolvedValue(undefined)
   mocks.notifications.mockResolvedValue(0)
   mocks.contexts.mockResolvedValue(undefined)
   mocks.dispatch.mockResolvedValue(0)
   mocks.progressive.mockResolvedValue(0)
+  mocks.coordinator.mockResolvedValue(undefined)
+  mocks.prescriptions.mockResolvedValue(0)
+  mocks.retirement.mockResolvedValue(undefined)
   mocks.stuck.mockResolvedValue({ requeued: 0, failed: 0, checked: 0 })
   mocks.projections.mockResolvedValue({ projected: 0, failed: 0, checked: 0 })
   mocks.runs.mockResolvedValue(0)
@@ -53,6 +63,7 @@ describe('independent scheduled Site maintenance', () => {
     try {
       await vi.advanceTimersByTimeAsync(125_000)
       expect(mocks.watches).toHaveBeenCalledTimes(5)
+      expect(mocks.watchSetup).toHaveBeenCalledTimes(5)
       expect(mocks.lock.mock.calls.some(([name]) => name === 'project-watches')).toBe(false)
     } finally { await scheduler.stop() }
   })
@@ -64,6 +75,7 @@ describe('independent scheduled Site maintenance', () => {
     try {
       await vi.advanceTimersByTimeAsync(125_000)
       expect(mocks.watches).toHaveBeenCalledOnce()
+      expect(mocks.watchSetup).toHaveBeenCalledTimes(5)
       expect(mocks.notifications).toHaveBeenCalledTimes(5)
       expect(mocks.contexts).toHaveBeenCalledOnce()
       expect(mocks.runs).toHaveBeenCalledTimes(2)
@@ -116,6 +128,35 @@ describe('independent scheduled Site maintenance', () => {
       await vi.advanceTimersByTimeAsync(11_000)
       expect(mocks.dispatch).toHaveBeenCalledTimes(2)
       expect(mocks.progressive).toHaveBeenCalledTimes(2)
+    } finally { await scheduler.stop() }
+  })
+
+  const progressiveStages = ['dispatch', 'coordinator', 'progressive', 'prescriptions', 'retirement'] as const
+  it.each(progressiveStages)('continues other progressive work while %s is stalled', async stage => {
+    let finish!: () => void
+    mocks[stage].mockReturnValue(new Promise(resolve => { finish = () => resolve(undefined) }))
+    const scheduler = startRecoveryScheduler()
+    try {
+      await vi.advanceTimersByTimeAsync(25_000)
+      expect(mocks[stage]).toHaveBeenCalledOnce()
+      for (const peer of progressiveStages) if (peer !== stage) expect(mocks[peer]).toHaveBeenCalledTimes(3)
+    } finally { finish(); await scheduler.stop() }
+  })
+
+  it('continues database-backed recovery when Redis scheduler leases are unavailable', async () => {
+    mocks.lease.mockResolvedValue(false)
+    const scheduler = startRecoveryScheduler()
+    try {
+      await vi.advanceTimersByTimeAsync(11_000)
+      expect(mocks.dispatch).toHaveBeenCalledTimes(2)
+      expect(mocks.coordinator).toHaveBeenCalledTimes(2)
+      expect(mocks.progressive).toHaveBeenCalledTimes(2)
+      expect(mocks.prescriptions).not.toHaveBeenCalled()
+      expect(mocks.retirement).not.toHaveBeenCalled()
+      const names = mocks.lease.mock.calls.map(([name]) => name)
+      expect(new Set(names.filter(name => name.startsWith('progressive-')))).toEqual(new Set([
+        'progressive-prescriptions', 'progressive-retirement',
+      ]))
     } finally { await scheduler.stop() }
   })
 

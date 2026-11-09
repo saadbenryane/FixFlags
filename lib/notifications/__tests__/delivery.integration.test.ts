@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
+import { emailRecipientHash } from '@/lib/email/delivery-events'
 import { deliverWebsiteSummaries, saveNotificationPreferences } from '../service'
 import { DEFAULT_NOTIFICATION_PREFERENCES, nextSummaryAt } from '../preferences'
 import * as summaries from '@/lib/sites/application/list-sites'
@@ -44,6 +45,53 @@ run('summary delivery using real database claims', () => {
     expect(receipt).toMatchObject({ status: 'SENT', providerId: 'accepted', attempts: 1 })
     expect(provider.send.mock.calls[0][0].text).toContain('No completed check yet.')
     expect((await prisma.notificationPreference.findUniqueOrThrow({ where: { userId: id } })).nextSendAt!.getTime()).toBeGreaterThan(now.getTime())
+  })
+  it('admits independent current accounts ahead of obsolete receipts and an older account backlog', async () => {
+    const accounts = [await fixture(), await fixture(), await fixture()]
+    const [backlog, independent, obsolete] = accounts, now = obsolete.now
+    await prisma.notificationPreference.updateMany({ where: { userId: { in: accounts.map(account => account.id) } },
+      data: { revision: 1, nextSendAt: new Date(now.getTime() + 86_400_000) } })
+    const rows = [obsolete, obsolete, backlog, backlog, independent].map((account, index) => {
+      const due = new Date(now.getTime() - (5 - index) * 60_000)
+      return { id: randomUUID(), userId: account.id, revision: account === obsolete ? 0 : 1, scheduledAt: due, nextAttemptAt: due }
+    })
+    await prisma.notificationDigest.createMany({ data: rows })
+    provider.send.mockImplementation(async () => ({ data: { id: randomUUID() }, error: null }))
+
+    await deliverWebsiteSummaries(now, 2)
+    expect(provider.send).toHaveBeenCalledTimes(2)
+    expect(await prisma.notificationDigest.findMany({ where: { id: { in: rows.map(row => row.id) }, status: 'SENT' }, select: { id: true } }))
+      .toEqual(expect.arrayContaining([{ id: rows[2].id }, { id: rows[4].id }]))
+
+    await deliverWebsiteSummaries(now, 3)
+    expect(provider.send).toHaveBeenCalledTimes(3)
+    expect(await prisma.notificationDigest.count({ where: { id: { in: [rows[0].id, rows[1].id] }, status: 'SKIPPED', attempts: 0 } })).toBe(2)
+  })
+  it('delivers another account while a provider call is pending and keeps each account in order', async () => {
+    const slow = await fixture(), independent = await fixture(), now = independent.now
+    await prisma.notificationPreference.updateMany({ where: { userId: { in: [slow.id, independent.id] } },
+      data: { nextSendAt: new Date(now.getTime() + 86_400_000) } })
+    const rows = [slow, slow, independent].map((account, index) => {
+      const due = new Date(now.getTime() - (3 - index) * 60_000)
+      return { id: randomUUID(), userId: account.id, revision: 0, scheduledAt: due, nextAttemptAt: due }
+    })
+    await prisma.notificationDigest.createMany({ data: rows })
+    let release!: () => void
+    const hold = new Promise<void>(resolve => { release = resolve })
+    provider.send.mockImplementation(async (_message, options) => {
+      if (options.idempotencyKey === `fixflags-summary-${rows[0].id}`) await hold
+      return { data: { id: randomUUID() }, error: null }
+    })
+    const sweep = deliverWebsiteSummaries(now, 3)
+    try {
+      await vi.waitFor(async () => {
+        expect(await prisma.notificationDigest.findUniqueOrThrow({ where: { id: rows[2].id } })).toMatchObject({ status: 'SENT' })
+      }, { timeout: 1500 })
+      expect(await prisma.notificationDigest.findUniqueOrThrow({ where: { id: rows[0].id } })).toMatchObject({ status: 'SENDING' })
+      expect(await prisma.notificationDigest.findUniqueOrThrow({ where: { id: rows[1].id } })).toMatchObject({ status: 'PENDING', attempts: 0 })
+    } finally { release(); await sweep }
+    expect(provider.send).toHaveBeenCalledTimes(3)
+    expect(await prisma.notificationDigest.count({ where: { id: { in: rows.map(row => row.id) }, status: 'SENT', attempts: 1 } })).toBe(3)
   })
   it('delivers a due receipt created after the sweep starts without waiting for another sweep', async () => {
     const { id, now } = await fixture()
@@ -145,6 +193,44 @@ run('summary delivery using real database claims', () => {
     })
     await deliverWebsiteSummaries(now)
     expect(provider.send).not.toHaveBeenCalled()
+  })
+  it.each(['transfer', 'opt-out', 'bounce', 'bounce during retry'] as const)('refuses a summary when a %s commits after the send claim', async change => {
+    const { id, site, now } = await fixture()
+    const retrying = change === 'bounce during retry'
+    let prior = null
+    if (retrying) {
+      provider.send.mockResolvedValueOnce({ error: { message: 'Try later' }, data: null })
+      await deliverWebsiteSummaries(now)
+      prior = await prisma.notificationDigest.findFirstOrThrow({ where: { userId: id, status: 'FAILED' } })
+    }
+    const recipientHash = emailRecipientHash(`${id}@notification.test`)
+    const update = prisma.notificationDigest.updateMany.bind(prisma.notificationDigest)
+    let changed = false
+    vi.spyOn(prisma.notificationDigest, 'updateMany').mockImplementation(async input => {
+      const result = await update(input)
+      if (input.data.status !== 'SENDING' || result.count !== 1) return result
+      if (change === 'transfer') {
+        const owner = randomUUID(); users.push(owner)
+        await prisma.user.create({ data: { id: owner, email: `${owner}@notification.test` } })
+        await prisma.project.update({ where: { id: site.id }, data: { userId: owner } })
+      } else if (change === 'opt-out') {
+        await saveNotificationPreferences(id, { cadence: 'OFF' }, now)
+      } else {
+        await prisma.emailSuppression.create({ data: { recipientHash, reason: 'BOUNCED', occurredAt: now, providerId: randomUUID() } })
+      }
+      changed = true
+      return result
+    })
+    try {
+      await deliverWebsiteSummaries(retrying ? new Date(now.getTime() + 6 * 60_000) : now)
+      expect(changed).toBe(true)
+      expect(provider.send).toHaveBeenCalledTimes(prior?.attempts ?? 0)
+      expect(await prisma.notificationDigest.findFirstOrThrow({ where: { userId: id } })).toMatchObject({
+        status: 'SKIPPED', attempts: prior?.attempts ?? 0, leaseUntil: null, payload: prior?.payload ?? null, providerId: null,
+      })
+    } finally {
+      await prisma.emailSuppression.deleteMany({ where: { recipientHash } })
+    }
   })
   it.each(['reconciliation', 'due'] as const)('continues scheduling independent accounts after an unreadable %s preference', async phase => {
     const accounts = [await fixture(), await fixture()].sort((a, b) => a.id.localeCompare(b.id))

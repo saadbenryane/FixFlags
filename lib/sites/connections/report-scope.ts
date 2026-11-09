@@ -14,7 +14,7 @@ export type SearchFactScope = z.infer<typeof searchFactScopeSchema>
 export type ConnectionReportScope = AnalyticsReportScope | AnalyticsPageFactScope | SearchFactScope
 export type AnalyticsAudience = { sessions?: number; activeUsers?: number; pageViews?: number }
 export type AnalyticsPage = { pagePath?: string; sessions?: number; pageViews?: number }
-export type AnalyticsReport = { pages: AnalyticsPage[]; audience: AnalyticsAudience }
+export type AnalyticsReport = { pages: AnalyticsPage[]; audience: AnalyticsAudience; pagesLimited?: boolean; audienceLimited?: boolean }
 export const ANALYTICS_PAGE_LIMIT = 25
 
 /** Explicitly request the Site entry and bounded saved pages even outside the provider's top rows. */

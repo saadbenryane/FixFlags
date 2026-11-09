@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "fixflags.controlled-destination-study.v1",
+  "observedAt": "2026-11-09T14:32:28.332Z",
+  "method": "existing destination evaluator with synthetic GET responses",
+  "source": {
+    "baseRevision": "3e7453bc20d3d79c3e72730c64ee90d0af9c4ed7",
+    "selectedFileSha256": {
+      "lib/audit/open-check.ts": "f0da521ae58dd232963b81e729aab6443b839797882bd601902f2e722b9153b4",
+      "lib/audit/soft-404.ts": "fce19b9884ca674324b0925c3f37a48f0bdee7a2d6fc1a533654ce237f0ac0a8",
+      "lib/audit/html-document.ts": "078d47206033a82737a7c464acc8c3f885aaa3a61a6e2268dbf1f73e60bc1932"
+    },
+    "fixtureSha256": "da2b86cf1c1df44e7ac8887d6d72f86cfcb872ac323cc964c12deac8eba0b892",
+    "node": "v22.23.2"
+  },
+  "limitations": [
+    "Hand-authored cases, not a sample of customer sites or AI builder output.",
+    "Injected HTTP responses exercise the destination check, not network collection, browser rendering or the booking action.",
+    "The case descriptions are fixture design facts. Classifier outcomes are observations and may disagree with them."
+  ],
+  "observations": [
+    {
+      "caseId": "booking-control",
+      "path": "/book-control",
+      "fixtureDesign": "The booking page is present in the supplied response.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "reachable",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": true
+    },
+    {
+      "caseId": "missing-with-404",
+      "path": "/removed",
+      "fixtureDesign": "The response explicitly says the page is missing and returns HTTP 404.",
+      "httpStatus": 404,
+      "statusOnly2xx": false,
+      "destinationOutcome": "not_found",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false
+    },
+    {
+      "caseId": "booking-soft-404",
+      "path": "/book",
+      "fixtureDesign": "The response says the booking page is missing while returning HTTP 200.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false
+    },
+    {
+      "caseId": "booking-repaired",
+      "path": "/book",
+      "fixtureDesign": "The original booking content is restored at the same URL.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "reachable",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": true
+    },
+    {
+      "caseId": "booking-recurred",
+      "path": "/book",
+      "fixtureDesign": "The explicit missing-page response returns at the same URL.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false
+    },
+    {
+      "caseId": "wrong-page",
+      "path": "/book-wrong-page",
+      "fixtureDesign": "The response contains a working homepage template instead of the intended booking page.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "reachable",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": true
+    },
+    {
+      "caseId": "unresolved-shell",
+      "path": "/book-shell",
+      "fixtureDesign": "The HTML contains a loading shell. The fixture does not exercise what renders after JavaScript runs.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "reachable",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": true
+    },
+    {
+      "caseId": "access-challenge",
+      "path": "/book-protected",
+      "fixtureDesign": "A challenge is returned. The normal destination response is unobserved.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "blocked",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": false
+    },
+    {
+      "caseId": "incomplete-body",
+      "path": "/book-large",
+      "fixtureDesign": "The supplied booking document exceeds the default destination body budget.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "reachable",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": true
+    },
+    {
+      "caseId": "working-404-guide",
+      "path": "/docs/repair-a-missing-page",
+      "fixtureDesign": "The requested instructional article is present. Its title and heading discuss HTTP 404.",
+      "httpStatus": 200,
+      "statusOnly2xx": true,
+      "destinationOutcome": "render_error",
+      "classifiedAsDeadDestination": true,
+      "successfulPublicGetEvidence": false
+    },
+    {
+      "caseId": "sign-in-required",
+      "path": "/members/book",
+      "fixtureDesign": "The booking page requires authentication. Its signed-in behavior is unobserved.",
+      "httpStatus": 401,
+      "statusOnly2xx": false,
+      "destinationOutcome": "auth_required",
+      "classifiedAsDeadDestination": false,
+      "successfulPublicGetEvidence": false
+    }
+  ]
+}

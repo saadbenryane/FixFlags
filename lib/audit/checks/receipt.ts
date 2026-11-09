@@ -1,11 +1,13 @@
-import { currentControlNameObservation } from './accessibility-rules'
+import { currentAccessibilityObservation, currentControlNameObservation } from './accessibility-rules'
 import { z } from 'zod'
-import { CHECK_OBSERVATION_REASONS, type CheckAssertion } from './assertion'
-import { CHECK_REGISTRY } from '../check-registry'
+import { CHECK_OBSERVATION_REASONS, currentPageResponseObservation, type CheckAssertion } from './assertion'
+import { executionCheckModule } from '../check-registry'
 import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import type { DeterministicFlag } from '../flag-types'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { currentFormFeedbackObservation } from './form-validation'
+import { currentTrackingResponseObservation } from '../tracking/contracts'
+import { currentEngagementResponseObservation } from '../network-engagement-evidence'
 
 /** Shared modules can observe several areas. Select admitted evidence before
  * deriving completeness, so unrelated measurements cannot decide this result. */
@@ -30,6 +32,9 @@ export const checkAssertionSchema = z.object({
   expected: z.string().min(1).max(2000), observed: z.string().min(1).max(2000),
   passed: z.boolean(), disposition: z.literal('observed').optional(),
   complete: z.boolean().optional(), context: z.string().min(1).max(4200).optional(),
+  eventResponseQualified: z.literal(true).optional(),
+  libraryResponseQualified: z.literal(true).optional(),
+  pageResponseQualified: z.literal(true).optional(),
   measurements: z.array(z.object({ context: z.string().min(1).max(4200), passed: z.boolean(),
     observed: z.string().min(1).max(2000) }).strict()).max(8).refine(items => new Set(items.map(item => item.context)).size === items.length,
     'Duplicate measured scope').optional(),
@@ -40,6 +45,7 @@ export const checkReceiptSchema = z.object({
   kind: z.literal('site-module-check'), version: z.literal(1), module: z.string().min(1),
   passed: z.boolean(), applicable: z.boolean(), failed: z.boolean().optional(),
   complete: z.boolean().optional(), limitation: z.string().max(2000).optional(),
+  publicLinkInventoryComplete: z.boolean().optional(),
   pageUrl: z.string().url(), assertions: z.array(checkAssertionSchema).max(300).default([]),
   execution: z.object({ auditId: z.string().min(1), taskId: z.string().min(1), checkVersion: z.number().int().positive(),
     /** Individual check identities admitted in the frozen execution scope. */
@@ -48,8 +54,8 @@ export const checkReceiptSchema = z.object({
     collectedAt: z.string().datetime() }).strict().optional(),
 }).superRefine((receipt, context) => {
   if (!CHECK_MODULES[receipt.module]) context.addIssue({ code: 'custom', message: 'Unregistered execution module' })
-  for (const id of Object.keys(receipt.execution?.checkVersions ?? {})) {
-    if (CHECK_REGISTRY[id]?.module !== receipt.module) context.addIssue({ code: 'custom', message: 'Check version outside execution module' })
+  for (const [id, version] of Object.entries(receipt.execution?.checkVersions ?? {})) {
+    if (executionCheckModule(id, version) !== receipt.module) context.addIssue({ code: 'custom', message: 'Check version outside execution module' })
   }
   for (const assertion of receipt.assertions) {
     if (!CHECK_ASSERTIONS[receipt.module]?.[assertion.key]) context.addIssue({ code: 'custom', message: 'Unregistered assertion identity' })
@@ -75,16 +81,38 @@ export function summarizeCheckAssertions(input: { passed: boolean; complete?: bo
     ...(incomplete ? { complete: false } : input.complete !== undefined ? { complete: input.complete } : {}) }
 }
 
+export const UNCOLLECTED_CHECK_LIMITATION = 'The evidence for this check was not collected. The result remains unknown.'
+
+export function uncollectedCheckAssertions(assertions: CheckAssertion[]): CheckAssertion[] {
+  return assertions.map(assertion => assertion.complete === false && !assertion.passed ? assertion : {
+    ...assertion, passed: false, complete: false, observed: UNCOLLECTED_CHECK_LIMITATION, measurements: undefined, reason: undefined,
+  })
+}
+
 /** Historical receipts have no version. Only explicitly recorded, valid fields survive. */
 export function readCheckReceipt(detail: unknown) {
   const current = checkReceiptSchema.safeParse(detail)
   if (current.success) {
     let qualified = current.data
+    const uncollected = !qualified.execution && qualified.limitation === UNCOLLECTED_CHECK_LIMITATION
+    const unboundTransport = qualified.module === 'security' && qualified.execution?.source !== 'http'
+    if (uncollected || unboundTransport)
+      qualified = { ...qualified, complete: false, assertions: uncollectedCheckAssertions(qualified.assertions) }
     if (qualified.module === 'form-validation') qualified = { ...qualified,
       assertions: current.data.assertions.map(assertion => currentFormFeedbackObservation(assertion) ? assertion : { ...assertion, complete: false }),
     }
     if (qualified.module === 'accessibility') qualified = { ...qualified,
-      assertions: qualified.assertions.map(assertion => currentControlNameObservation(assertion) ? assertion : { ...assertion, complete: false }),
+      assertions: qualified.assertions.map(assertion => currentAccessibilityObservation(assertion, qualified.assertions)
+        ? assertion : { ...assertion, complete: false }),
+    }
+    if (qualified.module === 'measurement') qualified = { ...qualified,
+      assertions: qualified.assertions.map(qualifyTrackingResponse),
+    }
+    if (qualified.module === 'network') qualified = { ...qualified,
+      assertions: qualified.assertions.map(qualifyEngagementResponse),
+    }
+    if (qualified.module === 'page-response') qualified = { ...qualified,
+      assertions: qualified.assertions.map(qualifyPageResponse),
     }
     // Retain genuine HTTP facts without inventing historical pixel decoding.
     if (qualified.module === 'og-image' && qualified.assertions.some(assertion => assertion.key === 'preview-image-response' && assertion.passed) &&
@@ -96,12 +124,36 @@ export function readCheckReceipt(detail: unknown) {
   if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true as const, unavailable: true }
   const assertions = Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
     const parsed = checkAssertionSchema.safeParse(value)
-    return parsed.success ? [currentFormFeedbackObservation(parsed.data) && currentControlNameObservation(parsed.data) ? parsed.data : { ...parsed.data, complete: false }] : []
+    if (!parsed.success) return []
+    const assertion = qualifyPageResponse(qualifyEngagementResponse(qualifyTrackingResponse(parsed.data)))
+    return [currentFormFeedbackObservation(assertion) && currentControlNameObservation(assertion) ? assertion : { ...assertion, complete: false }]
   }) : []
   const currentAssertions = assertions.some(assertion => assertion.key === 'preview-image-decoding') ? assertions
     : assertions.map(assertion => assertion.key === 'preview-image-response' && assertion.passed ? { ...assertion, complete: false } : assertion)
   const unavailable = typeof old.passed !== 'boolean' && currentAssertions.length === 0 ||
     old.assertions !== undefined && !Array.isArray(old.assertions) ||
     Array.isArray(old.assertions) && old.assertions.length !== assertions.length
-  return { passed: typeof old.passed === 'boolean' ? old.passed : undefined, assertions: currentAssertions, legacy: true as const, unavailable }
+  const summary = summarizeCheckAssertions({ passed: old.passed !== false, assertions: currentAssertions,
+    complete: typeof old.complete === 'boolean' ? old.complete : undefined, failed: old.failed === true })
+  return { ...summary, passed: typeof old.passed === 'boolean' || !summary.passed ? summary.passed : undefined,
+    ...(typeof old.applicable === 'boolean' ? { applicable: old.applicable } : {}),
+    assertions: currentAssertions, legacy: true as const, unavailable }
+}
+
+function qualifyTrackingResponse(assertion: CheckAssertion): CheckAssertion {
+  return currentTrackingResponseObservation(assertion) ? assertion : { ...assertion, passed: false, complete: false,
+    observed: assertion.key === 'tracking-library'
+      ? 'An earlier check recorded a completed library request without establishing a non-empty transfer.'
+      : 'An earlier check recorded an HTTP success without qualifying the event endpoint response.' }
+}
+
+function qualifyEngagementResponse(assertion: CheckAssertion): CheckAssertion {
+  return currentEngagementResponseObservation(assertion) ? assertion : { ...assertion, passed: false, complete: false,
+    observed: 'An earlier check recorded a successful response. The request path through redirects remains unknown.' }
+}
+
+function qualifyPageResponse(assertion: CheckAssertion): CheckAssertion {
+  const limitation = ' The earlier check recorded HTTP status only.'
+  return currentPageResponseObservation(assertion) ? assertion : { ...assertion, passed: false, complete: false,
+    observed: assertion.observed.slice(0, 2000 - limitation.length) + limitation }
 }

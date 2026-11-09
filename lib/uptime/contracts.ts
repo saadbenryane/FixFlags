@@ -4,8 +4,11 @@ import type { UptimeHistory, UptimeSummary } from './domain'
 const time = z.string().datetime(), nullableTime = time.nullable()
 const count = z.number().int().nonnegative()
 export const uptimeWindowSchema = z.enum(['24h', '7d', '30d'])
-export const uptimeCursorSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/)
-export const uptimeIncidentSchema = z.object({ id: z.string(), targetUrl: z.string(), startedAt: time, confirmedAt: time, recoveredAt: nullableTime, supersededAt: nullableTime, reason: z.string() })
+// Accept the bounded transport form here. The owned reader validates the
+// version and scope, including obsolete bare probe IDs.
+export const uptimeCursorSchema = z.string().regex(/^[a-zA-Z0-9_.-]{1,150}$/)
+export const uptimeIncidentSchema = z.object({ id: z.string(), targetUrl: z.string(), failureOrigin: z.string().nullable().optional(),
+  startedAt: time, confirmedAt: time, recoveredAt: nullableTime, supersededAt: nullableTime, reason: z.string() })
 export const uptimeSummarySchema: z.ZodType<UptimeSummary> = z.object({
   enabled: z.boolean(), targetUrl: z.string(), state: z.enum(['online', 'offline', 'checking', 'unknown', 'paused']),
   lastCheckedAt: nullableTime, nextCheckAt: nullableTime, openIncidentCount: count, incidentOpen: z.boolean().optional(),

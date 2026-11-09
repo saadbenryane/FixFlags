@@ -77,8 +77,9 @@ export async function readIntegrityArtifact(
     return getPrivateObjectBytes(key, options)
   }
   try {
-    return await fs.readFile(path.join(LOCAL_DIR, runId, filename))
+    return await fs.readFile(path.join(LOCAL_DIR, runId, filename), { signal: options.signal })
   } catch {
+    options.signal?.throwIfAborted()
     return null
   }
 }

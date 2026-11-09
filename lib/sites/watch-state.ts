@@ -3,6 +3,24 @@ import { scheduleFromWatch, scheduleLabel } from './monitoring-schedule'
 import { monitoringIsOverdue } from './monitoring-freshness'
 export type WatchBoardState = 'off' | 'watching' | 'paused' | 'delayed' | 'quota'
 
+export const WATCH_MESSAGES = {
+  paused: 'Paused. This Site is not on a check schedule.',
+  accountUnavailable: 'Watching is not available on this account.',
+  scheduleUnavailable: 'This schedule is not available on your plan. Choose an available monitoring schedule.',
+  allowanceUsed: 'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
+  retryPending: 'The scheduled check did not finish. FixFlags will try again.',
+} as const
+
+const allowanceMessages = new Set([WATCH_MESSAGES.allowanceUsed, 'This month’s Site check allowance is used.',
+  'Watch paused because this month’s Site check allowance is used.'])
+const publicMessages = new Set([...Object.values(WATCH_MESSAGES), ...allowanceMessages, 'Paused.'])
+
+/** Older scheduler rows can contain an internal exception instead of a customer message. */
+export function watchErrorMessage(error: string | null): string | null {
+  if (!error || publicMessages.has(error)) return error || null
+  return WATCH_MESSAGES.retryPending
+}
+
 export function watchBoardState(input: {
   interval: WatchInterval | null
   nextRunAt: Date | string | null
@@ -13,7 +31,7 @@ export function watchBoardState(input: {
 }): WatchBoardState {
   const nextRunAt = input.nextRunAt
   const error = input.lastError ?? ''
-  const quota = /allowance|quota|upgrade/i.test(error)
+  const quota = allowanceMessages.has(error)
 
   if (input.interval && input.pausedAt) return 'paused'
   if (quota && input.interval) return 'quota'

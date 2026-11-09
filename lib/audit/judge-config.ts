@@ -93,7 +93,8 @@ export function getTriageProviderConfig(provider: string, maxTimeoutMs?: number)
     ...base,
     model:
       env.TRIAGE_MODEL ??
-      (provider === 'anthropic' ? 'claude-haiku-4-5' : 'gpt-4o-mini'),
+      // Pin the same published snapshots behind the former convenience aliases.
+      (provider === 'anthropic' ? 'claude-haiku-4-5-20251001' : 'gpt-4o-mini-2024-07-18'),
     maxTokens,
   }
 }

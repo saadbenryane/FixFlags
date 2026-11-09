@@ -30,7 +30,8 @@ export function presentCheckResult(result: SiteCheckResult) {
   if (result.area !== 'tracking' || result.source !== 'browser-network' || result.status !== 'unknown') return original
   if (result.reason === 'tracking_no_library') return { name: C.tracking.library, observation: C.tracking.noActivity }
   if (result.reason === 'tracking_no_event') return { name: C.tracking.activity, observation: C.tracking.noActivity }
-  if (result.reason === 'tracking_provider_unverified') return { name: C.tracking.recording, observation: C.tracking.noRecording }
+  if (result.reason === 'tracking_provider_unverified' && result.assertionKey === 'tracking-provider-recording')
+    return { name: C.tracking.recording, observation: C.tracking.noRecording }
   if (result.reason === 'tracking_suppressed')
     return { name: C.tracking.delivery, observation: C.tracking.suppressed }
   return original

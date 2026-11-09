@@ -87,7 +87,7 @@ import {
 
 describe('persistImprovementCycle', () => {
   it('counts category usage through the existing idempotent completion ledger', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ userId: 'owner', improvementProjectedAt: null,
+    mocks.auditFindUnique.mockResolvedValue({ userId: 'owner', status: 'COMPLETED', improvementProjectedAt: null,
       executionSpec: { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: 'https://example.com/', environment: 'production',
         category: { area: 'security', sourceAuditId: 'full', pages: ['https://example.com/'] }, checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null } })
     await persistImprovementCycle('category', 'full')
@@ -96,7 +96,7 @@ describe('persistImprovementCycle', () => {
   it('classifies a completed first Watch without waiting for comparison history', async () => {
     mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
     await persistImprovementCycle('first-watch', null)
-    assert.deepEqual(mocks.classifyWatchResult.mock.calls.at(-1), [null, 'first-watch'])
+    assert.deepEqual(mocks.classifyWatchResult.mock.calls.at(-1), ['first-watch'])
   })
 
   beforeEach(() => resetMocks())
@@ -109,7 +109,7 @@ describe('persistImprovementCycle', () => {
 
     await persistImprovementCycle('audit-1', 'parent-1')
 
-    expect(mocks.classifyWatchResult).toHaveBeenCalledWith('parent-1', 'audit-1')
+    expect(mocks.classifyWatchResult).toHaveBeenCalledWith('audit-1')
     expect(mocks.notifyWatchRegression).not.toHaveBeenCalled()
     expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledTimes(1)
     expect(mocks.materializeAttentionForAudit).toHaveBeenCalledTimes(1)
@@ -151,7 +151,7 @@ describe('persistImprovementCycle', () => {
   it('classifies notifications only after both evidence projections commit and leaves failed classification retryable', async () => {
     mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
     await persistImprovementCycle('broad-watch', 'parent')
-    expect(mocks.classifyWatchResult).toHaveBeenCalledWith('parent', 'broad-watch')
+    expect(mocks.classifyWatchResult).toHaveBeenCalledWith('broad-watch')
     expect(mocks.runRequestFindMany.mock.invocationCallOrder[0]).toBeLessThan(mocks.classifyWatchResult.mock.invocationCallOrder[0])
     expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.classifyWatchResult.mock.invocationCallOrder[0])
     expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.persistFlagDiffSummary.mock.invocationCallOrder[0])
@@ -208,7 +208,7 @@ function resetMocks(): void {
     fn.mockReset()
   }
   mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW })
-  mocks.auditUpdate.mockResolvedValue({ id: 'audit-1' })
+  mocks.auditUpdate.mockResolvedValue({ id: 'audit-1', userId: AUDIT_ROW.userId })
   mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
   mocks.persistAuditRunCost.mockResolvedValue(undefined)
   mocks.diffFlagsAgainstParent.mockResolvedValue(undefined)
@@ -226,14 +226,14 @@ describe('persistAuditFailedModules', () => {
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
 
-  it('persists a deduped sorted module list', async () => {
+  it('persists a deduped sorted list of Run and page gaps', async () => {
     await persistAuditFailedModules('audit-1', [
       { failedModules: ['nav-probes', 'form-probes'] },
       { failedModules: ['nav-probes'] },
-    ])
+    ], ['discovery', 'nav-probes'])
     expect(mocks.auditUpdate).toHaveBeenCalledWith({
       where: { id: 'audit-1' },
-      data: { failedModules: ['form-probes', 'nav-probes'] },
+      data: { failedModules: ['discovery', 'form-probes', 'nav-probes'] },
     })
   })
 

@@ -66,6 +66,17 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     expect(result.videoUrl || result.gifUrl).toBeTruthy()
   }, 90_000)
 
+  it('retains both failed checkout observations without confirming either destination', async () => {
+    const result = await runPathProbe({ url: `${origin}/alternating-checkout/`, allowLocalhost: true, browser })
+    expect(result).toMatchObject({ health: 'UNKNOWN', reason: 'flaky', confirmed: false })
+    expect(result.attempts.map(attempt => ({
+      url: attempt.finalUrl, status: attempt.outcome.httpStatus,
+    }))).toEqual([
+      { url: `${origin}/checkout/first/unavailable`, status: 503 },
+      { url: `${origin}/checkout/second/unavailable`, status: 503 },
+    ])
+  }, 90_000)
+
   it.each(['checkout', 'configured'] as const)('continues %s observations and releases the browser before optional storage settles', async kind => {
     let release!: () => void
     const held = new Promise<void>(resolve => { release = resolve })
@@ -150,7 +161,14 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
 })
 
 async function listenFixtures(): Promise<{ origin: string; close: () => Promise<void> }> {
+  let alternatingVisits = 0
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
+    if (request.url === '/alternating-checkout/') {
+      const destination = alternatingVisits++ % 2 === 0 ? 'first' : 'second'
+      response.writeHead(200, { 'Content-Type': 'text/html' })
+      response.end(`<h1>Trail Pack</h1><a href="/checkout/${destination}/unavailable">Buy now</a>`)
+      return
+    }
     void serveFixture(request, response)
   })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))

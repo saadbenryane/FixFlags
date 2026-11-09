@@ -33,6 +33,9 @@ import {
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { readGeneratedAvailability } from '@/lib/sites/application/default-availability-target'
+import { admittedOutcomeAuthorization, snapshotOutcomeAuthorization } from '@/lib/sites/domain/outcome-authorization'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { ensureSiteForAudit } from '@/lib/sites/ensure-site'
 import { admitScanAccess } from './scan-access-store'
 import { resolveVisitorKey, rotateVisitorKey } from '@/lib/sites/visitor-identity'
@@ -52,6 +55,8 @@ import { assertScheduledClaim, staleScheduledClaim, type ScheduledClaimProject }
 import { RateLimitError, RateLimitUnavailableError } from '@/lib/security/rate-limit'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 import { readRepairSources } from '@/lib/sites/domain/repair-source'
+import { admittedOutcomeCoverage, comparableOutcomeCoverage } from '@/lib/sites/domain/outcome-proof'
+import { loadSelectedOutcomeRepairSource } from '@/lib/sites/application/outcome-repair-source'
 
 type AuditCreateContext = {
   url: string
@@ -80,11 +85,14 @@ export interface CreateAuditResult {
   parentId: string | null
   /** Customer Site id (Project id or provisional p_…). */
   siteId: string
+  admittedOutcomeIds?: string[]
 }
 
 /** Internal control result for an identically admitted tenant command. */
 export class RunAdmissionReplay extends Error {
-  constructor(readonly runId: string, readonly auditId: string, readonly outcomeIds: string[] = []) { super('Run intent already admitted'); this.name = 'RunAdmissionReplay' }
+  constructor(readonly runId: string, readonly auditId: string, readonly outcomeIds: string[], readonly executionSpec: unknown) {
+    super('Run intent already admitted'); this.name = 'RunAdmissionReplay'
+  }
 }
 
 /** Unsigned visitors reuse a public scan of the same URL instead of starting a duplicate job. */
@@ -293,8 +301,10 @@ export async function createAndEnqueueAudit(
     reused: boolean
     parentId: string | null
     site: SiteRecord
+    admittedOutcomeIds?: string[]
   }
-  async function packageAudit(tx: Prisma.TransactionClient, row: { id: string; status: AuditStatus; reused: boolean; parentId: string | null }) {
+  async function packageAudit(tx: Prisma.TransactionClient, row: { id: string; status: AuditStatus; reused: boolean; parentId: string | null;
+    admittedOutcomeIds?: string[] }) {
     if (options.runRequestAdmission) {
       if (!options.runRequestId || options.runRequestAdmission.id !== options.runRequestId || options.runRequestAdmission.projectId !== projectId)
         throw new ParentAuditError('Run admission does not match this Site', 400)
@@ -307,6 +317,8 @@ export async function createAndEnqueueAudit(
   const isWatchReview = options.recheckTrigger === 'WATCH'
   if (userId) {
     audit = await productTransaction(async (tx) => {
+      let watchTargetRevision = 1
+      let monitoringSite: { id: string; url: string } | undefined
       const cleanup = Boolean(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup')
       const policy = await loadEffectiveEntitlements(userId,tx)
       if(!policy || !policy.available && !cleanup) throw new ParentAuditError('This account cannot start new work.',403)
@@ -315,7 +327,7 @@ export async function createAndEnqueueAudit(
         // An existing Site command retains its selected identity. Only new-URL
         // admission may create or restore a Site through hostname resolution.
         const [ownedProject] = await tx.$queryRaw<Array<ScheduledClaimProject & { id: string; canonicalHost: string | null }>>`
-          SELECT "id", "url", "canonicalHost", "watchInterval", "watchEveryMinutes",
+          SELECT "id", "url", "canonicalHost", "watchTargetRevision", "watchInterval", "watchEveryMinutes",
             "watchNextRunAt", "watchLastAttemptAt", "watchLeaseUntil", "watchPausedAt" FROM "projects"
           WHERE "id" = ${options.runRequestAdmission.projectId} AND "userId" = ${userId}
             AND (${cleanup} OR "deletedAt" IS NULL)
@@ -328,10 +340,12 @@ export async function createAndEnqueueAudit(
           assertScheduledClaim(ownedProject, options.scheduledClaim)
         }
         if (!ownedProject) throw new SiteNotFound()
+        watchTargetRevision = ownedProject.watchTargetRevision ?? 1
         if (!cleanup && canonicalProductHost(url) !== (ownedProject.canonicalHost ?? canonicalProductHost(ownedProject.url)))
           throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
         projectId = ownedProject.id
-        if (!cleanup) await ensureDefaultMonitoring(tx, projectId, userId)
+        if (!cleanup && await ensureDefaultMonitoring(tx, projectId, userId) &&
+          executionSpec.scope === 'SITE' && executionSpec.environment === 'production') monitoringSite = ownedProject
       } else if (!cleanup) {
         try {
           const ownedProject = await ensureProductProject(userId, url, tx)
@@ -370,6 +384,9 @@ export async function createAndEnqueueAudit(
           },
           select: {
             id: true,
+            improvementId: true,
+            improvement: { select: { outcomeId: true } },
+            handoffReference: true,
             sourceFlagIds: true,
             sourceObservations: true,
             verificationAudit: {
@@ -378,6 +395,10 @@ export async function createAndEnqueueAudit(
           },
         })
         if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
+        const outcomeTarget = executionSpec.verificationTarget?.kind === 'OUTCOME' ? executionSpec.verificationTarget : null
+        const outcome = outcomeTarget && executionSpec.scope === 'OUTCOMES' && executionSpec.outcomes.length === 1 ? executionSpec.outcomes[0] : null
+        if (outcomeTarget && (!projectId || outcome?.id !== outcomeTarget.outcomeId || attempt.improvement.outcomeId !== outcomeTarget.outcomeId))
+          throw new ParentAuditError('Verification must retain the original Outcome.', 409)
         if (executionSpec.scope === 'DIAGNOSTIC') {
           const original = readRepairSources(attempt.sourceObservations)
           const sourceIds = original?.flags.map(flag => flag.id) ?? attempt.sourceFlagIds ?? []
@@ -388,6 +409,12 @@ export async function createAndEnqueueAudit(
         }
         if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
           return packageAudit(tx, { ...attempt.verificationAudit, reused: true })
+        }
+        if (outcomeTarget && outcome && projectId) {
+          const original = await loadSelectedOutcomeRepairSource(tx, { projectId,
+            sourceAuditId: outcomeTarget.parentAuditId, outcomeId: outcome.id }, attempt)
+          if (!original || original.kind !== outcome.kind || !comparableOutcomeCoverage(original.coverage, admittedOutcomeCoverage(executionSpec, outcome)))
+            throw new ParentAuditError('The current Outcome setup could not be matched to the original finding.', 409)
         }
         if (attempt.verificationAudit?.status === 'FAILED') {
           await tx.improvementAttempt.update({
@@ -414,7 +441,7 @@ export async function createAndEnqueueAudit(
           if (existing.requestHash !== intent.requestHash || existing.keyRequestedByUserId !== (options.operator?.actorId ?? userId))
             throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
           if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
-          throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort())
+          throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort(), existing.executionSpec)
         }
       }
 
@@ -486,8 +513,30 @@ export async function createAndEnqueueAudit(
 
       const access = await admitScanAccess(tx, { projectId, userId, targetUrl: url,
         explicit: options.scanAccess, useProject: options.useProjectScanAccess, allowRemovedForCleanup: cleanup })
+      let admittedSpec = executionSpec
+      let admittedOutcomeIds: string[] | undefined
+      let requestContext = options.runRequestAdmission?.context
+      if (monitoringSite && options.runRequestAdmission) {
+        // Setup may have created or retargeted the generated default after
+        // preparation. Freeze its current binding with the Site still locked.
+        const automatic = await readGeneratedAvailability(tx, monitoringSite)
+        const prior = automatic && executionSpec.outcomes.find(outcome => outcome.id === automatic.snapshot.id)
+        if (automatic && canonicalIntent(prior) !== canonicalIntent(automatic.snapshot)) {
+          if (options.preservePreparedScope) throw new SiteRunRefusal('This run’s admitted scope cannot be reproduced with the current configuration. Start a new check with its current scope.', 409, 'RETRY_SCOPE_CHANGED')
+          const outcomes = prior ? executionSpec.outcomes.map(outcome => outcome.id === prior.id ? automatic.snapshot : outcome)
+            : [...executionSpec.outcomes, automatic.snapshot]
+          const authorizations = outcomes.map(({ id }) => {
+            const revision = id === automatic.snapshot.id ? automatic.authorizationRevision : admittedOutcomeAuthorization(requestContext, id)
+            if (revision === null) throw new ParentAuditError('Outcome authorization changed before admission. Run it again.', 409)
+            return { id, authorizationRevision: revision }
+          })
+          admittedSpec = { ...executionSpec, outcomes }
+          admittedOutcomeIds = outcomes.map(({ id }) => id).sort()
+          requestContext = { ...requestContext as Prisma.InputJsonObject, outcomeAuthorization: snapshotOutcomeAuthorization(authorizations) }
+        }
+      }
       data.scanAccessEncrypted = access.config ? encryptScanAccess(access.config) : null
-      data.executionSpec = { ...executionSpec, reviewDepth, scanAccess: access.intent } as Prisma.InputJsonValue
+      data.executionSpec = { ...admittedSpec, reviewDepth, scanAccess: access.intent } as Prisma.InputJsonValue
       if (access.config) data.isPublic = false
       const created = await tx.audit.create({
         data: { ...data, projectId, planAtAdmission: user.plan, journeyReviewIncluded: true },
@@ -504,6 +553,8 @@ export async function createAndEnqueueAudit(
           if (admitted.count !== 1) throw new ParentAuditError('Signup configuration changed before admission. Run it again.', 409)
         }
         await tx.runRequest.create({ data: { ...options.runRequestAdmission, auditId: created.id,
+          ...(admittedOutcomeIds ? { legacyOutcomeId: admittedOutcomeIds[0], selections: { create: admittedOutcomeIds.map(outcomeId => ({ outcomeId })) } } : {}),
+          context: watchTargetRevision > 1 ? { ...requestContext as Prisma.InputJsonObject, watchTargetRevision } : requestContext,
           executionSpec: data.executionSpec } })
       }
       if (options.verificationAttemptId) {
@@ -513,7 +564,7 @@ export async function createAndEnqueueAudit(
         })
       }
       return packageAudit(tx, {
-        id: created.id, status: 'QUEUED' as const, reused: false, parentId: created.parentId,
+        id: created.id, status: 'QUEUED' as const, reused: false, parentId: created.parentId, admittedOutcomeIds,
       })
     })
   } else {
@@ -624,7 +675,8 @@ export async function createAndEnqueueAudit(
     properties: {
       anonymous: !userId,
       trigger: options.recheckTrigger ?? 'manual',
-      journeyId: options.attribution?.journeyId,
+      journeyId: options.attribution?.journeyId ?? undefined,
+      guideEntry: !userId && !options.parentId ? options.attribution?.guideEntry : undefined,
     },
   }).catch(() => undefined)
 
@@ -634,5 +686,6 @@ export async function createAndEnqueueAudit(
     reused: false,
     parentId: audit.parentId,
     siteId: site.siteId,
+    ...(audit.admittedOutcomeIds ? { admittedOutcomeIds: audit.admittedOutcomeIds } : {}),
   }
 }

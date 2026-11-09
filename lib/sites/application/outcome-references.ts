@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '../types'
+import { outcomeReceiptJoins } from './outcome-receipt-sql'
 
 export type OutcomeReferences = {
   id: string; assessmentIds: string[]; successfulAssessmentId: string | null; runRequestIds: string[];
@@ -28,15 +29,18 @@ function loadOutcomeReferences(scope: SiteRecord | { projectIds: string[] },
     : scope.kind === 'project' ? Prisma.sql`o."projectId" = ${scope.projectId}`
       : Prisma.sql`o."provisionalSiteId" = ${scope.provisionalSiteId}`
   const history = (selection: Prisma.Sql) => detail ? selection : Prisma.sql`ARRAY[]::text[]`
+  const receipts = Prisma.sql`FROM outcome_assessments source ${outcomeReceiptJoins}
+    WHERE source."outcomeId" = o.id AND request."projectId" = o."projectId"`
   return prisma.$queryRaw<OutcomeReferences[]>(Prisma.sql`
     SELECT o.id,
-      ARRAY(SELECT a.id FROM outcome_assessments a JOIN run_requests r ON r.id = a."runRequestId"
-        WHERE a."outcomeId" = o.id ORDER BY r."requestedAt" DESC, a."assessedAt" DESC LIMIT ${detail ? 20 : 1}) AS "assessmentIds",
-      ${detail ? Prisma.sql`(SELECT a.id FROM outcome_assessments a WHERE a."outcomeId" = o.id AND a.state = 'CLEAR'
-        AND ((a.evidence -> 'supersededByAssessmentId') IS NULL OR (a.evidence -> 'supersededByAssessmentId') = 'null'::jsonb)
-        ORDER BY a."assessedAt" DESC LIMIT 1)` : Prisma.sql`NULL::text`} AS "successfulAssessmentId",
+      ARRAY(SELECT source.id ${receipts} ORDER BY request."requestedAt" DESC, source."assessedAt" DESC LIMIT ${detail ? 20 : 1}) AS "assessmentIds",
+      ${detail ? Prisma.sql`(SELECT source.id ${receipts} AND source.state = 'CLEAR'
+        AND source.evidence ->> 'supersededByAssessmentId' IS NULL
+        ORDER BY source."assessedAt" DESC LIMIT 1)` : Prisma.sql`NULL::text`} AS "successfulAssessmentId",
       ARRAY(SELECT s."runRequestId" FROM run_request_outcomes s JOIN run_requests r ON r.id = s."runRequestId"
-        WHERE s."outcomeId" = o.id ORDER BY r."requestedAt" DESC LIMIT ${detail ? 20 : 1}) AS "runRequestIds",
+        WHERE s."outcomeId" = o.id AND r."projectId" = o."projectId"
+          AND (r."auditId" IS NULL OR EXISTS (SELECT 1 FROM audits a WHERE a.id = r."auditId" AND a."projectId" = r."projectId"))
+        ORDER BY r."requestedAt" DESC LIMIT ${detail ? 20 : 1}) AS "runRequestIds",
       ${history(Prisma.sql`ARRAY(SELECT b.id FROM outcome_binding_attempts b WHERE b."outcomeId" = o.id
         ORDER BY b."createdAt" DESC LIMIT 20)`)} AS "bindingAttemptIds",
       ${history(Prisma.sql`ARRAY(SELECT e.id FROM outcome_binding_executions e WHERE e."outcomeId" = o.id

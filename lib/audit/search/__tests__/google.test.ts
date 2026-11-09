@@ -17,10 +17,10 @@ vi.mock('@/lib/db', () => {
   const ledger = {
     findUnique: vi.fn(async ({ where }) => {
       const key = where.auditId_targetKey_scopeKey
-      const detail = stubs.persisted.get(key.auditId + key.scopeKey)
+      const detail = stubs.persisted.get(key.auditId + key.targetKey + key.scopeKey)
       return detail ? { detail } : null
     }),
-    upsert: vi.fn(async ({ create }) => { stubs.persisted.set(create.auditId + create.scopeKey, create.detail); return create }),
+    upsert: vi.fn(async ({ create }) => { stubs.persisted.set(create.auditId + create.targetKey + create.scopeKey, create.detail); return create }),
   }
   const tx = {get auditExecutionTask() { return this.auditVerifierExecution }, get auditVerificationReceipt() { return this.auditVerifierExecution },  $executeRaw: vi.fn(), auditVerifierExecution: ledger,
     $queryRaw: vi.fn(async () => []), project: { findFirst: vi.fn(async () => ({ id: 'site' })) },
@@ -141,6 +141,17 @@ describe('owner-scoped Google evidence', () => {
     expect(stubs.analytics.mock.calls[0][7]).toBe(PAGE)
     expect(result.findings.find(item => item.checkId === 'low-ctr')?.attentionPolicy?.kind).toBe('recommendation')
     expect(result.receipts[0].observations.find(item => item.checkId === 'indexing-failure')?.google?.lastCrawlAt).toBe('2026-10-01T00:00:00Z')
+  })
+  it('keeps reporting evidence out of an indexed-version receipt and never replays it as inspection', async () => {
+    const command = { auditId: 'audit', userId: 'owner', pages: [{ url: PAGE }], deadline: Date.now() + 10_000 }
+    const report = await runGoogleSearchForAudit({ ...command, receiptModule: 'search-google-performance' })
+    expect(report.receipts[0].observations.map(item => item.source)).toEqual(['google-analytics', 'google-analytics'])
+    expect(stubs.inspect).not.toHaveBeenCalled()
+    expect(stubs.analytics).toHaveBeenCalledOnce()
+    stubs.persisted.set('auditmodule:search-google-indexpage:' + PAGE, report.receipts[0])
+    await expect(runGoogleSearchForAudit({ ...command, receiptModule: 'search-google-index' })).rejects.toThrow('incompatible')
+    expect(stubs.inspect).not.toHaveBeenCalled()
+    expect(stubs.analytics).toHaveBeenCalledOnce()
   })
   it('independently inspects Google when aggregate context is unavailable but the current credential is valid', async () => {
     const connection = await stubs.connection()

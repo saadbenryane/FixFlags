@@ -23,4 +23,20 @@ describe('server-rendered discovery', () => {
     expect(links[0].getAttribute('type')).toBe('text/plain')
     expect(document.querySelector('main')?.textContent).toBe('Website content')
   })
+
+  it('provides finite path labels in the initial document only for controlled Google pageviews', () => {
+    const renderPaths = () => new DOMParser().parseFromString(
+      renderToStaticMarkup(<RootLayout><main id="main-content">Website content</main></RootLayout>), 'text/html',
+    ).body.dataset.gaPublicPaths
+    try {
+      vi.stubEnv('NEXT_PUBLIC_GA_PAGEVIEW_MODE', 'automatic')
+      expect(renderPaths()).toBeUndefined()
+      vi.stubEnv('NEXT_PUBLIC_GA_PAGEVIEW_MODE', 'controlled')
+      const paths = renderPaths()?.split(' ')
+      expect(paths).toEqual(expect.arrayContaining(['/', '/guides/website-online-but-not-working', '/new', '/post-login']))
+      expect(paths?.every(path => !/^\/(sites|report|share|admin)(\/|$)/.test(path))).toBe(true)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
 })

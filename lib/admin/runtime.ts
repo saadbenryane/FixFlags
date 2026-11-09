@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import type { Queue } from 'bullmq'
 import { Prisma, type AdminOperation } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { createOwnedQueue, createOwnedWorker } from '@/lib/queue/bullmq-ownership'
+import { createQueueProducer, createOwnedWorker } from '@/lib/queue/bullmq-ownership'
 import { createTimerScheduler } from '@/lib/queue/timer-scheduler'
 import { logger } from '@/lib/logger'
 import { AdminActionError, AdminDeferredAction, AdminOutcomeUnknown } from './errors'
@@ -15,18 +14,10 @@ import { performAdminExternalAction } from './external-actions'
 import type { AdminActionRequest } from './contracts'
 
 const OPERATION_LEASE_MS = 5 * 60_000
-let queue: Queue | undefined
-function adminQueue() {
-  if (!queue) {
-    queue = createOwnedQueue('admin-operations', {
-      defaultJobOptions: { attempts: 1, removeOnComplete: true, removeOnFail: true },
-    })
-    queue.on('error', (error) =>
-      logger.error('Admin queue unavailable', { message: redactAdminText(error.message) }),
-    )
-  }
-  return queue
-}
+const producer = createQueueProducer('admin-operations', {
+  defaultJobOptions: { attempts: 1, removeOnComplete: true, removeOnFail: true },
+  onError: error => logger.error('Admin queue unavailable', { message: redactAdminText(error.message) }),
+})
 
 export async function dispatchAdminOperation(id: string) {
   const operation = await prisma.adminOperation.findUnique({
@@ -35,7 +26,7 @@ export async function dispatchAdminOperation(id: string) {
   })
   if (!operation || operation.status !== 'QUEUED') return
   try {
-    await adminQueue().add(
+    await producer.get().add(
       'execute',
       { operationId: id },
       { jobId: `admin-${id}-${operation.attempts}` },
@@ -137,6 +128,7 @@ export async function executeAdminOperation(id: string) {
   })
   if (!claimed.count) return
   const operation = await prisma.adminOperation.findUniqueOrThrow({ where: { id } })
+  if (operation.executionToken !== token) return
   try {
     const input = decodedAdminInput(operation)
     await prisma.$transaction((tx) =>
@@ -252,8 +244,7 @@ export function startAdminOperationRuntime() {
     waitUntilReady: () => worker.waitUntilReady(),
     close: () => closing ??= (async () => {
       await Promise.all([scheduler.stop(), worker.close()])
-      await queue?.close()
-      queue = undefined
+      await producer.close()
     })(),
   }
 }

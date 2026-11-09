@@ -4,6 +4,7 @@ import { readWorkspaceLocation, siteWorkspaceHref } from '../workspace-location'
 import { projectSiteBoard } from '../board-view'
 import { siteFlagFixture, siteViewFixture } from './site-view-fixture'
 import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
+import { UPTIME_COPY as U } from '@/lib/marketing/copy/uptime'
 
 const root = 'https://example.com/'
 const pricing = 'https://example.com/pricing'
@@ -21,6 +22,27 @@ describe('workspace projections', () => {
     expect(events.find(item => item.id === 'category')?.detail).toBe(`${B.history.manual} · Performance`)
     expect(events.find(item => item.id === 'diagnostic')?.detail).toBe(`${B.history.manual} · ${B.history.diagnostic} · /pricing`)
     expect(events.find(item => item.id === 'outcome')?.detail).toBe(`${B.history.manual} · ${B.history.outcomes} · Reach checkout`)
+  })
+  it('keeps a recovered repair in the Timeline alongside other findings from that run', () => {
+    const view = siteViewFixture()
+    view.monitoringHistory = [{ checkedAt: '2026-11-03T00:00:00Z', scope: 'OUTCOMES', afterFix: true,
+      executionState: 'COMPLETED', completionState: 'COMPLETED', result: 'CLEAR', flagCount: 1,
+      flags: [{ id: 'other', title: 'An unrelated finding' }] }]
+    expect(projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents[0]).toMatchObject({
+      state: 'healthy', resultLabel: B.history.recovered, flags: [{ id: 'other' }],
+    })
+  })
+  it('places an uptime target change in the Timeline with the original checked URL', () => {
+    const view = siteViewFixture()
+    const confirmedAt = '2026-11-03T00:00:00Z', supersededAt = '2026-11-05T00:00:00Z'
+    view.uptimeEvents = [{ id: 'incident', targetUrl: pricing, startedAt: confirmedAt, confirmedAt,
+      recoveredAt: null, supersededAt, reason: 'response_error' }]
+    const events = projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents.filter(event => event.id.startsWith('uptime-'))
+    expect(events).toMatchObject([
+      { title: U.targetChanged, detail: pricing, dateTime: supersededAt, state: 'unknown',
+        evidenceHref: `/sites/${view.site.siteId}#category-uptime` },
+      { title: U.eventDown, detail: pricing, dateTime: confirmedAt, state: 'attention' },
+    ])
   })
   it('keeps one shared Flag on each affected page with only that page’s capture', () => {
     const shared = siteFlagFixture({ affectedPaths: [root, pricing] })

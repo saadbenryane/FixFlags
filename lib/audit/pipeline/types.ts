@@ -35,6 +35,7 @@ export interface ReviewStageResult<TArtifact = unknown> {
 export interface PageEvidence {
   navigation?: import('../checks/public-links').PageLinkInventory | null
   preview?: import('../checks/page-preview').PagePreviewObservation
+  publicPreview?: import('../checks/public-page-preview').PublicPagePreview
   renderedScope?: import('../browser/observation-scope').CaptureObservationScope
   searchReceipt?: import('../search/contracts').SearchReceipt
   pageId: string

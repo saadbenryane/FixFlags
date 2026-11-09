@@ -20,6 +20,7 @@ import { selectJourneyRuns, type JourneyRun } from './review-scope'
 import { convertEvaluationToFindings, prepareJourneyFindings, type JourneyReviewDraft } from './review-findings'
 import { recordJourneyResult } from './review-persistence'
 import { observeJourneyPlan } from './plan-observation'
+import { PageCaptureError, PUBLIC_SIGN_IN_REDIRECT } from '../browser/page-capture'
 
 // Keep existing callers on their established API while each responsibility has one owner.
 export { orderJourneysFromContract } from './review-scope'
@@ -69,10 +70,10 @@ export async function runJourneyReviewsForAudit(
   const remaining = () => Math.max(5_000, options.deadline - Date.now())
   const aiGuard = createJourneyAIGuard()
   let usageUnknown = false
-  const admitUsage = (phase: ProviderUsagePhase): ProviderUsageAdmission => async model => {
+  const admitUsage = (phase: ProviderUsagePhase): ProviderUsageAdmission => async (model, bound) => {
     const permission = aiGuard.canCall(4_000)
     if (usageUnknown || !permission.allowed) throw new Error(`Journey provider admission refused: ${usageUnknown ? 'usage unknown' : permission.reason}`)
-    const record = await beginProviderUsage(auditId, phase, model)
+    const record = await beginProviderUsage(auditId, phase, model, bound)
     return async usage => {
       await record(usage)
       if (usage) aiGuard.tokenBudget.record(usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0), usage.outputTokens)
@@ -104,6 +105,7 @@ export async function runJourneyReviewsForAudit(
           logger.info('Journey planner succeeded', { journeyType, goal: plan.goal,
             steps: plan.steps.length, confidence: plan.confidence })
         } catch (err) {
+          if (err instanceof PageCaptureError && err.code === PUBLIC_SIGN_IN_REDIRECT) throw err
           planningIncomplete = 'provider_failed'
           logger.warn('Journey plan unavailable; collecting native observations separately', {
             journeyType,
@@ -133,7 +135,7 @@ export async function runJourneyReviewsForAudit(
       options.onOverlayObservations?.(result.overlayObservations ?? [])
       options.onPageObservations?.(result.pageObservations ?? [])
       options.onJourneyFindings?.(result.findings.filter(projectedJourneyFinding).map(finding => ({ ...finding, affectedPaths: finding.affectedPaths ?? [result.startUrl] })))
-      const findings = await persistJourneyResult(auditId, result, undefined, options.allowedCheckIds, Boolean(options.onOverlayObservations || options.onPageObservations))
+      const { findings } = await persistJourneyResult(auditId, result, undefined, options.allowedCheckIds, Boolean(options.onOverlayObservations || options.onPageObservations))
       findingCount += findings.length
 
       if (planningIncomplete || result.blockedReason || result.status !== 'COMPLETED' || (journeyType === 'multi-step-funnel' && result.steps.length < 3)) {
@@ -180,7 +182,7 @@ export async function runJourneyReviewsForAudit(
               findings: evalFindings,
               journeyType,
             }, undefined, options.allowedCheckIds)
-            findingCount += persisted.length
+            findingCount += persisted.findings.length
           }
           const evaluatorUsage = evalResult.usage
           if (evaluatorUsage) await executionWrite(tx => tx.journeyReview.updateMany({
@@ -201,8 +203,12 @@ export async function runJourneyReviewsForAudit(
         }
       }
     } catch (err) {
-      options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'walk_incomplete', rejections: [] })
-      logger.error('Journey review failed', { journeyType, err })
+      const diverted = err instanceof PageCaptureError && err.code === PUBLIC_SIGN_IN_REDIRECT
+      options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: diverted ? PUBLIC_SIGN_IN_REDIRECT : 'walk_incomplete', rejections: [] })
+      if (diverted) {
+        await logPipelineEvent(auditId, { stage: 'JOURNEY_REVIEW', event: 'assessment_partial', status: 'partial',
+          detail: journeyType + ': requested entry redirected to sign-in' })
+      } else logger.error('Journey review failed', { journeyType, err })
     }
   }
 

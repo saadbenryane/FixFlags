@@ -8,6 +8,7 @@ import { appendAdminActivity } from './activity'
 import { fenceCustomerWork, guardCustomerLifecycleAction } from './database-actions'
 import { resolveAdminTarget } from './targets'
 import { AdminDeferredAction, AdminActionError, AdminOutcomeUnknown } from './errors'
+import { adminDomainActorForOperation } from './domain-actor'
 
 export async function performAdminErasure(
   operation: AdminOperation,
@@ -77,7 +78,7 @@ export async function performAdminErasure(
       accountMode: 'cleanup',
       outcomeIds: [],
       idempotencyKey: `admin-erasure-cleanup:${operation.id}:${site.id}`,
-      operator: { kind: 'admin', actorId: operation.actorId, operationId: operation.id },
+      operator: adminDomainActorForOperation(operation),
       context: { adminOperationId: operation.id, action: 'account_erasure_cleanup' },
     })
     const run = await prisma.runRequest.findUniqueOrThrow({

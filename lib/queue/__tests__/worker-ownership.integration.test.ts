@@ -5,6 +5,10 @@ import { prisma } from '@/lib/db'
 import { TASK_QUEUES } from '@/lib/audit/progressive/queues'
 import { createOwnedQueue, createOwnedWorker } from '../bullmq-ownership'
 import { randomUUID } from 'node:crypto'
+import { persistTaskPlan, reconcileTasks, dispatchReadyTasks, loadTasks } from '@/lib/audit/progressive/engine'
+import { serializeArtifact } from '@/lib/audit/progressive/contracts'
+import { getAuditTaskQueue } from '../client'
+import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
 run('native BullMQ connection ownership', () => {
@@ -41,6 +45,69 @@ run('native BullMQ connection ownership', () => {
       factory.mockRestore(); created.forEach(client => client.disconnect()); observer.disconnect()
     }
   })
+  it('drains graph publication after physical workers close while retaining the producer', async () => {
+    const observer = redisClients.createQueueRedis(), created: ReturnType<typeof redisClients.createWorkerRedis>[] = []
+    const original = redisClients.createWorkerRedis
+    const factory = vi.spyOn(redisClients, 'createWorkerRedis').mockImplementation(() => {
+      const client = original(); created.push(client); return client
+    })
+    const pageUrl = 'https://example.com/', input = { pageUrl, position: 0, primary: true, role: 'primary' }
+    const audit = await prisma.audit.create({ data: { url: pageUrl, startedAt: new Date(), executionSpec: {
+      version: 1, engine: 'progressive-v1', targetUrl: pageUrl, scope: 'SITE', environment: 'production',
+      checks: { 'page-http-error': CHECK_REGISTRY['page-http-error'].version }, outcomes: [], verificationTarget: null,
+    } } })
+    await persistTaskPlan(audit.id, [
+      { key: 'collected', kind: 'http', scope: pageUrl, input, dependencies: [] },
+      { key: 'source', kind: 'check', scope: pageUrl, input: { ...input, module: 'page-response' }, dependencies: ['collected'] },
+      { key: 'follow-up', kind: 'http', scope: pageUrl, input, dependencies: ['source'] },
+    ])
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:collected' }, data: {
+      workState: 'COMPLETED', status: 'COMPLETED', workResult: serializeArtifact('http', { metadata: null, document: {
+        url: pageUrl, finalUrl: pageUrl, status: 200, headers: { 'content-type': 'text/html' }, body: '<title>Useful service</title><h1>Service</h1>',
+        complete: true, reason: null, redirects: [], collectedAt: new Date().toISOString(),
+      } }),
+    } })
+    const tasks = await loadTasks(audit.id), source = tasks.find(task => task.targetKey === 'task:source')!
+    const dependent = tasks.find(task => task.targetKey === 'task:follow-up')!
+    const producer = getAuditTaskQueue('http'), evaluation = getAuditTaskQueue('evaluate'), add = producer.add.bind(producer)
+    const held = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>()
+    const publication = vi.spyOn(producer, 'add').mockImplementation(async (...args) => {
+      if (args[1].taskId === dependent.id) { entered.resolve(); await held.promise }
+      return add(...args)
+    })
+    const workers = startProgressiveWorkers()
+    let closed = false
+    try {
+      await workers.waitUntilReady()
+      const ids = new Set(await Promise.all(created.map(async client => String(await client.client('ID')))))
+      await dispatchReadyTasks(await reconcileTasks(audit.id))
+      await entered.promise
+      await vi.waitFor(async () => expect(await (await evaluation.getJob(source.id + '-g1'))?.getState()).toBe('completed'),
+        { timeout: 3000, interval: 20 })
+      const closing = workers.close()
+      void closing.then(() => { closed = true })
+      await vi.waitFor(async () => {
+        const live = String(await observer.client('LIST')).split('\n').flatMap(line => line.match(/^id=(\d+)/)?.[1] ?? [])
+        expect(live.filter(id => ids.has(id))).toEqual([])
+      }, { timeout: 3000, interval: 20 })
+      expect(closed).toBe(false)
+      expect(await (await producer.client).ping()).toBe('PONG')
+      held.resolve(); await closing
+      expect(closed).toBe(true)
+      expect(await producer.getJob(dependent.id + '-g1')).toMatchObject({ data: { taskId: dependent.id, generation: 1 } })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: dependent.id } }))
+        .toMatchObject({ workState: 'READY', workAttempts: 0 })
+    } finally {
+      held.resolve(); await workers.close(); publication.mockRestore(); factory.mockRestore()
+      await (await producer.getJob(dependent.id + '-g1'))?.remove()
+      await prisma.audit.delete({ where: { id: audit.id } })
+      const clients = await Promise.all([producer.client, evaluation.client])
+      await Promise.all([producer.close(), evaluation.close()])
+      new Set(clients).forEach(client => client.disconnect())
+      created.forEach(client => client.disconnect()); observer.disconnect()
+    }
+  }, 15_000)
+
   it('retains a live worker connection through its job acknowledgement and closes only its own clients', async () => {
     const name = 'owned-' + randomUUID(), observer = redisClients.createQueueRedis()
     const producer = createOwnedQueue(name)

@@ -40,12 +40,28 @@ revision. A synthetic success establishes only the exercised behavior.
 ```sh
 npm run growth:verify-live
 npm run growth:verify-live -- --json
+npm run growth:verify-live -- --expect-no-research
 ```
 
 This read-only command checks the current sitemap rather than historical sample
 routes or retired copy assumptions. It checks public responses, canonical metadata,
 indexing restrictions, H1 and title presence, social previews, parseable structured
-data and named search-crawler rules. Conditional issue research is not required.
+data and named search-crawler rules. For the guide collection it also checks
+that the index and all guide details appear in the sitemap and `llms.txt`,
+that server HTML links the homepage to the index and the index to each guide,
+and that each guide article contains its own Analyze link. Navigation anchors
+must target the canonical same-origin path. Results distinguish directly
+visible markup from hidden React segments with matching placement markers.
+The verifier ignores other hidden and template links. It inspects the
+Analyze link without opening it or submitting an analysis.
+Research is optional. When it is advertised, the verifier checks that the
+library and detail URLs agree with `llms.txt` and that advertised details
+show the reviewed sample, observation dates, and matching review date in
+the sitemap and structured data. Use `--expect-no-research` when no release
+should be discoverable. It also checks the direct library route for a
+withheld or empty, nonindexable response and verifies that `llms.txt` is
+served without caching. These public checks do not validate private consent,
+and they cannot discover unlinked legacy issue URLs.
 It rejects private, foreign-origin and parameterized sitemap destinations before
 fetching. Requests are bounded and redirects are not followed. A loopback fixture
 may be selected with `SEO_VERIFY_ORIGIN`; other unrelated hosts are rejected.
@@ -55,6 +71,20 @@ that a page returned an error. Passing checks do not establish indexing, ranking
 AI citations, browser performance, actual crawler access, conversion or product
 reliability. Google Search Console, Bing Webmaster Tools and verified request logs
 remain the appropriate sources for their respective outcomes.
+
+On 2026-11-09 at 16:09 UTC, the public run advertised 67 sitemap URLs and
+checked 66 HTML pages. Research withholding passed in the sitemap, in
+`llms.txt`, and on the direct library route. The broader run still failed
+the single-H1 check on ten documentation pages. No transport checks were
+unavailable.
+
+At 16:13 UTC, a paired HTTP read covered all ten canonical documentation
+routes. Each live response had three H1 elements in the raw HTML. Two
+belonged to loading statuses and one belonged to the streamed document.
+An isolated production build from `3e7453bc` with the local loading
+component change returned HTTP 200 on all ten routes. Each response kept
+the same nonempty document H1 and the named loading status, with one H1
+total. This verifies the local correction for the live finding.
 
 ## Free-tool measurement
 

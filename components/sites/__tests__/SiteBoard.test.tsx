@@ -45,6 +45,27 @@ it('keeps Site checking usable after a stream interruption while showing the dis
   } finally { rendered.unmount(); vi.unstubAllGlobals() }
 })
 
+it('gives a disconnected active analysis one status and stops promising live results', async () => {
+  const listeners = new Map<string, () => void>()
+  vi.stubGlobal('EventSource', class {
+    addEventListener(name: string, listener: () => void) { listeners.set(name, listener) }
+    close() {}
+  })
+  const initial = boardView()
+  initial.presentation.run.state = 'running'
+  initial.audit.status = 'RUNNING'
+  const fetch = vi.fn(async () => Response.json(initial))
+  vi.stubGlobal('fetch', fetch)
+  const rendered = render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+    expect(screen.getByText(SITE_ACTION_COPY.execution.live)).toBeVisible()
+    act(() => listeners.get('error')?.())
+    expect(screen.getAllByText('Updates disconnected', { exact: true })).toHaveLength(1)
+    expect(screen.queryByText(SITE_ACTION_COPY.execution.live)).not.toBeInTheDocument()
+  } finally { rendered.unmount(); vi.unstubAllGlobals() }
+})
+
 it('recovers unavailable Site reads without reloading or starting a check', async () => {
   vi.stubGlobal('EventSource', undefined)
   const initial = boardView()
@@ -369,7 +390,7 @@ describe('SiteBoard chrome', () => {
     vi.stubGlobal('fetch', fetchMock)
     try {
       render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-      expect(screen.queryByText('Analysis incomplete')).not.toBeInTheDocument()
+      expect(screen.getByText('Analysis incomplete')).toHaveClass('sr-only')
       expect(screen.queryByRole('button', { name: 'Run details' })).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'Analysis incomplete' })).not.toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: 'Check again', exact: true })).toHaveLength(1)

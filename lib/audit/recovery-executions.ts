@@ -42,7 +42,8 @@ export async function loadRecoveryExecutions(sources: RecoverySource[], database
     for (;;) {
       const batch = await database.auditVerificationReceipt.findMany({
         where: { status: 'COMPLETED', OR: selection, ...(afterId ? { id: { gt: afterId } } : {}) },
-        select: { id: true, auditId: true, targetKey: true, status: true, detail: true }, orderBy: { id: 'asc' }, take: RECEIPT_BATCH_SIZE,
+        select: { id: true, auditId: true, targetKey: true, status: true, pageUrl: true, detail: true,
+          task: { select: { id: true, pageUrl: true } } }, orderBy: { id: 'asc' }, take: RECEIPT_BATCH_SIZE,
       })
       for (const row of batch) {
         const rows = executions.get(row.auditId) ?? []

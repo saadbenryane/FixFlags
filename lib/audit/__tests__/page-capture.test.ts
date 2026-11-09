@@ -41,6 +41,11 @@ describe('public document challenge evidence', () => {
       expect(isBotInterstitialDocument({ status: 200, headers: {}, body })).toBe(true)
     expect(isBotInterstitialDocument({ status: 200, headers: { 'cf-mitigated': 'challenge' }, body: '' })).toBe(true)
   })
+  it('uses the page title and heading outside SVG to identify a challenge', () => {
+    const decorated = '<svg><title>Useful page</title><foreignObject><h1>Useful page</h1></foreignObject></svg>'
+    expect(isBotInterstitialDocument({ status: 200, headers: {}, body: decorated + '<main><h1>Verify you are human</h1></main>' }))
+      .toBe(true)
+  })
   it('keeps real server errors distinct from access challenge responses', () => {
     expect(isBotInterstitialDocument({ status: 503, headers: {}, body: '<h1>Service unavailable</h1><footer>Cloudflare</footer>' })).toBe(false)
     expect(isBotInterstitialDocument({ status: 403, headers: {}, body: 'Checking your browser before accessing' })).toBe(true)

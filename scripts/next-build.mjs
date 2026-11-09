@@ -4,6 +4,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
+import { invalidateVerificationCandidate, recordVerificationCandidate, sourceIdentity } from './verification-candidate.mjs'
 
 const cacheDirectory = path.join(process.cwd(), '.cache')
 const lockFile = path.join(cacheDirectory, 'next-build.lock')
@@ -38,6 +39,12 @@ while (lockFd == null) {
 }
 
 try {
+  const root = process.cwd()
+  let candidateSource
+  if (requestedDistDirectory === '.next-e2e') {
+    invalidateVerificationCandidate(root)
+    candidateSource = sourceIdentity(root)
+  }
   const incrementalState = path.join(
     process.cwd(),
     requestedDistDirectory,
@@ -55,6 +62,7 @@ try {
     env: { ...process.env, NEXT_DIST_DIR: requestedDistDirectory },
     stdio: 'inherit',
   })
+  if (result.status === 0 && candidateSource) recordVerificationCandidate(root, candidateSource)
   process.exitCode = result.status ?? 1
 } finally {
   closeSync(lockFd)

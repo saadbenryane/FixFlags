@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { prescriptionScopeSchema } from '../prescription-scope'
+import { actionContextSchema } from '../flow/action-context'
 import { jsonValueSchema } from '@/lib/json-value'
 export { jsonValueSchema, type JsonValue } from '@/lib/json-value'
 
@@ -26,8 +27,8 @@ export const taskInputSchema = z.object({
   fixtureId: z.string().min(1).max(120).optional(),
   device: z.enum(['desktop', 'mobile']).optional(),
   consoleIdentityKey: z.string().uuid().optional(),
-  verificationContext: z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/).optional(),
-  verificationContexts: z.array(z.string().regex(/^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$/)).min(1).max(5000).optional(),
+  verificationContext: actionContextSchema.optional(),
+  verificationContexts: z.array(actionContextSchema).min(1).max(5000).optional(),
   prescriptionScope: prescriptionScopeSchema.optional(),
   prescriptionContractVersion: z.literal(2).optional(),
   prescriptionFlagKeys: z.array(z.string().min(1).max(2000)).max(12).optional(),

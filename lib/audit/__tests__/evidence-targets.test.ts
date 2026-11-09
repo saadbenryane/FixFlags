@@ -123,10 +123,10 @@ describe('evidence-targets', () => {
 
   it('collects unique axe targets', () => {
     const targets = axeTargetsFromViolations([
-      { nodes: [{ target: ['main', 'h1'] }, { target: ['main', 'h1'] }] },
+      { nodes: [{ target: ['main h1'] }, { target: ['main h1'] }, { target: ['iframe', 'h1'] }] },
       { nodes: [{ target: ['button.submit'] }] },
     ])
     assert.equal(targets.length, 2)
-    assert.deepEqual(targets[0], ['main', 'h1'])
+    assert.deepEqual(targets[0], ['main h1'])
   })
 })

@@ -40,12 +40,14 @@ export async function runAllChecks(
     publicTrustScope?: import('../browser/observation-scope').CaptureObservationScope;
     publicTrustCopy?: import('../browser/rendered-copy').RenderedCopy | null;
     publicDocument?: import('../search/contracts').PublicDocument;
+    publicPreview?: import('./public-page-preview').PublicPagePreview;
+    checkVersions?: Readonly<Record<string, number>>;
     resourceTransport?: import('../resource-transport').ResourceTransport;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
     renderedCopyScope?: import('../browser/observation-scope').CaptureObservationScope | null;
     mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
     allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea;
-    destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt' | 'originalContexts' | 'retainedContexts'> },
+    destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt' | 'originalContexts' | 'retainedContexts' | 'legacyActionInventory'> },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
@@ -61,7 +63,8 @@ export async function runAllChecks(
       scope: {}, deadline: runtimeEvidence?.deadline, destinations: runtimeEvidence?.destinations, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
       accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, mobileAccessibility: runtimeEvidence?.mobileAccessibility, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
       renderedCopyScope: runtimeEvidence?.renderedCopyScope,
-      publicDocument: runtimeEvidence?.publicDocument, resourceTransport: runtimeEvidence?.resourceTransport, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
+      publicDocument: runtimeEvidence?.publicDocument, publicPreview: runtimeEvidence?.publicPreview, checkVersions: runtimeEvidence?.checkVersions,
+      resourceTransport: runtimeEvidence?.resourceTransport, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
       record: assertion => { assertions.push(assertion) } }
     try {
       const evaluated = await check.evaluate(input)

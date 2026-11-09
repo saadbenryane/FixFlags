@@ -145,6 +145,15 @@ describe('public link observations', () => {
     expect(inventory).toMatchObject({ complete: true, links: [{ href: 'next?a=1&b=2', text: 'Plans & prices' }] })
     expect(publicLinkUrls(page + 'redirected', inventory!)).toEqual([page + 'docs/next?a=1&b=2'])
   })
+  it('withholds both native and parsed links from a diverted sign-in capture', () => {
+    const login = page + 'login', body = '<a href="/account-help">Account help</a>'
+    const metadata = parseMetadataFromHtml(body, login)
+    const snapshot = { finalUrl: login, documentBaseUrl: login, sections: {
+      links: { html: body, complete: true, observed: 1, limit: 2000, reason: null },
+    } }
+    expect(capturedPageLinks({ renderedSearchSnapshot: snapshot, publicSignInRedirect: true }, metadata)).toBeNull()
+    expect(capturedPageLinks({ renderedSearchSnapshot: snapshot }, metadata)?.links).toHaveLength(1)
+  })
   it('keeps positive links and their GET proofs when the native inventory is incomplete', () => {
     const inventory = capturedPageLinks({ renderedSearchSnapshot: { documentBaseUrl: page, sections: {
       links: { html: '<a href="/ready">Details</a>', complete: false, observed: 2001, limit: 2000, reason: 'section_limit' },

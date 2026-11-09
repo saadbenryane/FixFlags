@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { prisma } from '@/lib/db'
 import { listSiteOutcomes, loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { claimAnonymousAudits } from '../claim-anonymous'
-import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
+import { createAnonymousClaim, createAnonymousClaims } from '@/lib/security/anonymous-claim'
 import * as sites from '@/lib/sites/ensure-site'
 import * as ownedIdentity from '@/lib/improvements/owned-flag-identity'
 import { loadSiteFindings } from '@/lib/sites/flags'
@@ -12,9 +12,13 @@ import { fixedClock } from '@/lib/time/clock'
 import { getAuditQueue } from '@/lib/queue/client'
 import { getFlagDiffSummary, persistFlagDiffSummary } from '../diff-flags'
 import { FLAG_COMPARISON_TARGET } from '../flag-comparison'
-import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { ensureDefaultMonitoring, MONITORING_SCHEDULE_UNAVAILABLE } from '@/lib/sites/application/default-monitoring'
 import { removeSite } from '@/lib/sites/application/settings-commands'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import * as betaPolicy from '@/lib/billing/beta-policy'
+import { finalizeTriageDegraded } from '../finalize'
+import { initializeUptimeMonitors } from '@/lib/uptime/service'
+import { projectSiteAnalysis } from '@/lib/sites/application/project-analysis'
 
 const cookies = vi.hoisted(() => ({ get: vi.fn(), delete: vi.fn() }))
 vi.mock('next/headers', () => ({ cookies: async () => cookies }))
@@ -84,6 +88,24 @@ run('anonymous claim with migrated PostgreSQL', () => {
     expect(cookies.delete).toHaveBeenCalledOnce()
   })
 
+  it.each(['scheduled', 'analysis halted', 'paused'] as const)('claims an existing Site with %s monitoring intent', async mode => {
+    if (mode === 'analysis halted') vi.spyOn(betaPolicy, 'hasOpenBetaAccess').mockReturnValue(false)
+    const watchNextRunAt = mode === 'scheduled' ? new Date(Date.now() + 86_400_000) : null
+    const watchPausedAt = mode === 'paused' ? new Date() : null
+    const watchInterval = mode === 'analysis halted' ? 'DAILY' : 'WEEKLY'
+    const watchLastError = mode === 'analysis halted' ? MONITORING_SCHEDULE_UNAVAILABLE : null
+    await prisma.project.update({ where: { id: projectId }, data: { watchNextRunAt, watchPausedAt, watchInterval, watchLastError } })
+
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId, projectId })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchNextRunAt, watchPausedAt, watchInterval, watchLastError })
+    const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId } })
+    if (mode === 'paused') expect(monitor).toBeNull()
+    else expect(monitor).toMatchObject({ enabled: true, targetUrl: url, version: 1, lastCheckedAt: null })
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.uptimeMonitor.findUnique({ where: { projectId } })).toEqual(monitor)
+  })
+
   it('refuses a previously claimed report after its linked Site changes owner', async () => {
     const foreignUserId = 'claim-foreign-' + randomUUID()
     await prisma.user.create({ data: { id: foreignUserId, email: foreignUserId + '@example.test', preferredTools: [] } })
@@ -122,6 +144,107 @@ run('anonymous claim with migrated PostgreSQL', () => {
     expect(claimed).toMatchObject({ url: site.url, userId, canonicalHost: host })
     const coverage = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId: claimed!.projectId }, include: { bindings: true } })
     expect(coverage.bindings[0].config).toEqual({ startUrl: site.url, expectedSelector: 'body' })
+  })
+
+  it.each(['existing owner context', 'owner edit after claim', 'unchanged claim replay'] as const)(
+    'keeps Site context authoritative when handling %s', async scenario => {
+      const contract = { purpose: 'Original report purpose', firstValueJourney: 'Open the original route',
+        criticalOutcomes: ['Open the original page'], source: 'heuristic', inferredAt: new Date().toISOString() }
+      const ownerContext = { purpose: 'Owner-edited purpose', firstValueJourney: 'Use the new entry page', criticalOutcomes: ['Reach pricing'],
+        source: 'user', updatedAt: new Date().toISOString(), intentionalNotes: ['Use the new entry page'] }
+      const editContext = () => prisma.project.update({ where: { id: projectId }, data: {
+        productIntelligence: ownerContext, productIntelligenceRevision: { increment: 1 },
+      } })
+      await prisma.audit.update({ where: { id: auditId }, data: { productContract: contract, url: 'http://www.example.com:8080/pricing' } })
+      if (scenario === 'existing owner context') await editContext()
+      expect(await claimAnonymousAudits(userId)).toBe(1)
+      const claimed = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+      expect(claimed.productIntelligence).toMatchObject(scenario === 'existing owner context' ? ownerContext : { purpose: contract.purpose })
+      expect(claimed.productIntelligenceRevision).toBe(1)
+      expect(claimed.url).toBe(url)
+      const before = scenario === 'owner edit after claim' ? await editContext() : claimed
+      expect(await claimAnonymousAudits(userId)).toBe(1)
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({
+        productIntelligence: before.productIntelligence, productIntelligenceRevision: before.productIntelligenceRevision,
+      })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId, projectId, productContract: contract })
+    },
+  )
+
+  it('uses the newest admitted anonymous origin and context when claiming multiple reports for one Site', async () => {
+    await prisma.project.delete({ where: { id: projectId } })
+    const newestUrl = 'http://www.example.com:8080/pricing'
+    const report = (purpose: string) => ({ purpose, firstValueJourney: 'Find pricing', criticalOutcomes: ['See pricing'], source: 'heuristic' })
+    const older = await prisma.audit.update({ where: { id: auditId }, data: { productContract: report('Older report context') } })
+    const newest = await prisma.audit.create({ data: { url: newestUrl, status: 'COMPLETED', skipUsageCount: true, aiReviewAt: new Date(),
+      createdAt: new Date(older.createdAt.getTime() + 1000), productContract: report('Newest report context') } })
+    try {
+      const provisional = await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })
+      const site = await sites.ensureSiteForAudit({ url: newestUrl, auditId: newest.id, sessionKey: provisional.sessionKey })
+      cookies.get.mockReturnValue({ value: createAnonymousClaims([older.id, newest.id]) })
+      expect(await claimAnonymousAudits(userId)).toBe(2)
+      const claimed = (await sites.loadSiteRecord(site.siteId))!
+      expect(claimed).toMatchObject({ userId, url: site.url })
+      expect(await prisma.audit.count({ where: { id: { in: [older.id, newest.id] }, userId, projectId: claimed.projectId } })).toBe(2)
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: claimed.projectId! } })).toMatchObject({
+        productIntelligence: { purpose: 'Newest report context' }, productIntelligenceRevision: 1,
+      })
+      await initializeUptimeMonitors(undefined, 1, claimed.projectId!)
+      expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId: claimed.projectId! } })).toMatchObject({
+        targetUrl: new URL(site.url).href,
+      })
+    } finally { await prisma.audit.delete({ where: { id: newest.id } }) }
+  })
+
+  it('publishes pages and Outcomes under the owner when claim completes before projection writes', async () => {
+    const signup = url + 'signup'
+    await prisma.audit.update({ where: { id: auditId }, data: {
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', environment: 'production', targetUrl: url,
+        checks: {}, outcomes: [], verificationTarget: null },
+      pages: { create: { url, normalizedUrl: url, position: 0, role: 'primary', status: 'COMPLETED', title: 'Home' } },
+      journeyReviews: { create: { journeyType: 'signup', startUrl: url, status: 'COMPLETED', steps: { create: {
+        stepNumber: 1, actionType: 'navigate', actionDetail: {}, url: signup, accessibilityTree: '',
+      } } } },
+    } })
+    const transact = prisma.$transaction.bind(prisma)
+    const boundary = vi.spyOn(prisma, '$transaction').mockImplementationOnce(async (write, options) => {
+      expect(await claimAnonymousAudits(userId)).toBe(1)
+      return transact(write, options)
+    })
+    try { await projectSiteAnalysis(auditId) }
+    finally { boundary.mockRestore() }
+
+    expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: projectId })
+    expect(await prisma.sitePage.count({ where: { provisionalSiteId: provisionalId } })).toBe(0)
+    expect(await prisma.siteOutcome.count({ where: { provisionalSiteId: provisionalId } })).toBe(0)
+    const owned = await prisma.siteOutcome.findUniqueOrThrow({ where: { projectId_slug: { projectId, slug: 'signup' } },
+      include: { pages: { include: { page: true } } } })
+    expect(owned.pages.map(link => link.page.url).sort()).toEqual([url, signup])
+    expect(owned.pages.every(link => link.page.projectId === projectId)).toBe(true)
+  })
+
+  it('accounts for a Review claimed after finalization begins and before completion commits', async () => {
+    await prisma.audit.update({ where: { id: auditId }, data: { status: 'FINALIZING', skipUsageCount: false } })
+    const complete = prisma.audit.update.bind(prisma.audit)
+    const boundary = vi.spyOn(prisma.audit, 'update').mockImplementation(async args => {
+      if (args.where.id === auditId && args.data.status === 'COMPLETED') {
+        expect(await claimAnonymousAudits(userId)).toBe(1)
+        expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ status: 'FINALIZING', userId, usageCountedAt: null })
+      }
+      return complete(args)
+    })
+    try {
+      await finalizeTriageDegraded({ auditId, durationMs: 100, pagespeedCalls: 0, reason: 'unknown', errorMsg: 'Controlled incomplete collection',
+        evidence: { desktopScreenshot: false, mobileScreenshot: false, metadata: false, desktopPageSpeed: false, mobilePageSpeed: false } })
+    } finally { boundary.mockRestore() }
+
+    const result = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    expect(result).toMatchObject({ userId, projectId, status: 'COMPLETED', usageCountedAt: expect.any(Date) })
+    expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: projectId })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).auditsUsed).toBe(1)
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect((await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).usageCountedAt).toEqual(result.usageCountedAt)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).auditsUsed).toBe(1)
   })
 
   it('preserves completed anonymous comparison evidence through claiming and replay', async () => {

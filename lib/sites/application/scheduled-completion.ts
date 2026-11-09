@@ -1,31 +1,29 @@
-import { createHash } from 'node:crypto'
 import { Prisma } from '@prisma/client'
-import { prisma } from '@/lib/db'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
-import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domain-actor'
+import { lockAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domain-actor'
+import { AdminActionError } from '@/lib/admin/errors'
 import { calcWatchNextRun, toStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { logger } from '@/lib/logger'
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { assertScheduledClaim, staleScheduledClaim, type ScheduledRunClaim, type ScheduledClaimProject } from './scheduled-admission'
 import { readExecutionSpec } from '../domain/execution-spec'
-import { analysisEnvironmentSourceSql } from './analysis-scope'
 import { SiteRunRefusal } from './run-refusal'
-import { interruptedAnalysisWorkSql, interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
-import { scheduledContextSchema, readScheduledContext, type ScheduledContext } from './scheduled-observation'
+import { incompleteScheduledAnalysisWhere } from '@/lib/audit/progressive/recorded-completeness'
+import { scheduledContextSchema, readScheduledContext, watchRunTargetsSite, watchTargetHash, type ScheduledContext } from './scheduled-observation'
 
 import { loadFreshScheduledBroadSource, scheduledOutcomesWhere } from './scheduled-scope'
-
-const targetHash = (url: string) => createHash('sha256').update(url).digest('hex')
+import { recordCompletionAttempt, selectScheduledCompletionCandidates, updateUnlockedWatchProject, type WatchWriteAuthority } from './scheduled-watch-storage'
+import { WATCH_MESSAGES } from '../watch-state'
 
 type ScheduledOwner = { projectId: string; userId: string; interval: ScheduledRunClaim['interval']; operator?: AdminDomainActor }
 async function lockScheduledSite(tx: Prisma.TransactionClient, input: ScheduledOwner) {
   const [site] = await tx.$queryRaw<Array<ScheduledClaimProject & { watchConsecutiveFailures: number }>>`
-    SELECT p.url, p."watchInterval", p."watchEveryMinutes", p."watchNextRunAt", p."watchLastAttemptAt", p."watchLeaseUntil", p."watchPausedAt", p."watchConsecutiveFailures"
+    SELECT p.url, p."watchTargetRevision", p."watchInterval", p."watchEveryMinutes", p."watchNextRunAt", p."watchLastAttemptAt", p."watchLeaseUntil", p."watchPausedAt", p."watchConsecutiveFailures"
     FROM projects p JOIN users u ON u.id = p."userId" WHERE p.id = ${input.projectId} AND p."userId" = ${input.userId}
       AND p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' FOR UPDATE OF p`
   if (!site) throw staleScheduledClaim()
-  if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId, tx)
+  if (input.operator) await lockAdminDomainActor(input.operator, input.userId, input.projectId, tx)
   const policy = await loadEffectiveEntitlements(input.userId, tx)
   if (!policy?.available || !policy.watchIntervals.includes(input.interval)) throw staleScheduledClaim()
   return site
@@ -39,7 +37,7 @@ export async function settleIdleScheduledCare(input: ScheduledOwner & { targetUr
     const site = await lockScheduledSite(tx, input)
     if (site.url !== input.targetUrl) throw staleScheduledClaim()
     if (input.claim) assertScheduledClaim(site, input.claim)
-    const retained = await loadFreshScheduledBroadSource(tx, { ...input, now: input.admittedAt })
+    const retained = await loadFreshScheduledBroadSource(tx, { ...input, targetRevision: site.watchTargetRevision, now: input.admittedAt })
     if (!retained) return { scope: 'SITE' as const, outcomes: [] }
     const outcomes = await tx.siteOutcome.findMany({ where: scheduledOutcomesWhere(input.projectId), select: { id: true }, orderBy: { id: 'asc' } })
     if (outcomes.length) return { scope: 'OUTCOMES' as const, outcomes }
@@ -65,11 +63,13 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
       select: { context: true, executionSpec: true, status: true, audit: { select: { status: true } } } })
     const spec = readExecutionSpec(run?.executionSpec)
     if (!run || !spec || !['SITE', 'OUTCOMES'].includes(spec.scope) || spec.environment !== 'production' || spec.verificationTarget)
-      throw new SiteRunRefusal('The scheduled check did not finish. FixFlags will try again.', 409, 'SCHEDULED_RUN_UNAVAILABLE')
+      throw new SiteRunRefusal(WATCH_MESSAGES.retryPending, 409, 'SCHEDULED_RUN_UNAVAILABLE')
+    if (!watchRunTargetsSite(spec.targetUrl, run.context, site)) throw staleScheduledClaim()
     const old = readScheduledContext(run.context)
     if (!old.success && run.context && typeof run.context === 'object' && 'scheduled' in run.context)
       throw new SiteRunRefusal('The recorded monitoring context is unavailable.', 409, 'SCHEDULE_CONTEXT_UNAVAILABLE')
     if (old.success) {
+      if (old.data.targetHash !== watchTargetHash(site.url) || (old.data.targetRevision ?? 1) !== site.watchTargetRevision) throw staleScheduledClaim()
       if (old.data.scheduledAt !== input.claim.scheduledAt.getTime() || old.data.interval !== input.claim.interval || old.data.everyMinutes !== input.claim.everyMinutes)
         throw new SiteRunRefusal('Another scheduled check still owns this execution.', 409, 'SITE_RUN_IN_PROGRESS')
       return false
@@ -77,7 +77,7 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
     assertScheduledClaim(site, input.claim)
     const nextCadenceAt = calcWatchNextRun(input.claim.interval, input.admittedAt, input.claim.everyMinutes)
     const retainedBroad = spec.scope === 'OUTCOMES' ? await loadFreshScheduledBroadSource(tx, {
-      projectId: input.projectId, targetUrl: site.url, interval: input.claim.interval,
+      projectId: input.projectId, targetUrl: site.url, targetRevision: site.watchTargetRevision, interval: input.claim.interval,
       everyMinutes: input.claim.everyMinutes, now: input.admittedAt,
     }) : null
     // A narrow check cannot renew the broad evidence it skipped. If that
@@ -85,7 +85,8 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
     const nextRunAt = spec.scope === 'OUTCOMES'
       ? Math.min(nextCadenceAt.getTime(), retainedBroad?.renewAt.getTime() ?? input.admittedAt.getTime())
       : nextCadenceAt.getTime()
-    const scheduled = scheduledContextSchema.parse({ version: 1, targetHash: targetHash(site.url), interval: input.claim.interval,
+    const scheduled = scheduledContextSchema.parse({ version: 1, targetHash: watchTargetHash(site.url),
+      ...(site.watchTargetRevision > 1 ? { targetRevision: site.watchTargetRevision } : {}), interval: input.claim.interval,
       everyMinutes: input.claim.everyMinutes, scheduledAt: input.claim.scheduledAt.getTime(), attemptedAt: input.claim.attemptedAt.getTime(),
       nextRunAt, failures: site.watchConsecutiveFailures })
     const context = run.context && typeof run.context === 'object' && !Array.isArray(run.context) ? run.context : {}
@@ -96,67 +97,46 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
     if (changed.count !== 1) throw staleScheduledClaim()
     return run.status === 'COMPLETED' && run.audit?.status === 'COMPLETED'
   })
-  if (complete) await reconcileScheduledCompletions(1, systemClock, { runId: input.runId, projectId: input.projectId })
+  if (complete) await reconcileScheduledCompletions(1, systemClock, { runId: input.runId, projectId: input.projectId,
+    authority: input.operator ? { actor: input.operator, userId: input.userId } : undefined })
     .catch(error => logger.warn('Scheduled completion deferred after admission', { runId: input.runId, error }))
 }
-
-type Candidate = { id: string; projectId: string; userId: string; context: Prisma.JsonValue; status: string;
-  auditId: string; completedAt: Date; updatedAt: Date; targetUrl: string; watchLastError: string | null; interrupted: boolean }
 
 /** One cohort serves normal completion and bounded recovery. JSON comparisons
  * avoid trusting timestamp casts or interpreting malformed historical context. */
 export async function reconcileScheduledCompletions(limit = 20, clock: Clock = systemClock,
-  scope: { projectId?: string; runId?: string } = {}): Promise<number> {
-  const now = clock.now()
-  const rows = await prisma.$queryRaw<Candidate[]>(Prisma.sql`
-    SELECT r.id, r."projectId", "source"."userId", r.context, r."updatedAt", "source".status, "source".id AS "auditId", "source"."completedAt", p.url AS "targetUrl", p."watchLastError",
-      ${interruptedAnalysisWorkSql} AS interrupted
-    FROM run_requests r JOIN audits "source" ON "source".id = r."auditId" AND "source"."projectId" = r."projectId"
-    JOIN projects p ON p.id = r."projectId" AND p."userId" = "source"."userId" JOIN users u ON u.id = p."userId"
-    WHERE p."deletedAt" IS NULL AND p."watchPausedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND p."watchLeaseUntil" IS NULL
-      AND r.environment = 'production' AND ${analysisEnvironmentSourceSql('production')} AND r.context#>'{scheduled,version}' = '1'::jsonb
-      AND ((r.status = 'FAILED' AND "source".status = 'FAILED') OR (r.status = 'COMPLETED' AND "source".status = 'COMPLETED'
-        AND (p."watchConsecutiveFailures" > 0 OR p."watchLastError" IS NOT NULL OR ${interruptedAnalysisWorkSql})))
-      AND "source"."completedAt" IS NOT NULL AND "source"."completedAt" <= ${now}
-      AND r.context#>'{scheduled,attemptedAt}' = to_jsonb((extract(epoch FROM p."watchLastAttemptAt") * 1000)::bigint)
-      AND r.context#>'{scheduled,nextRunAt}' = to_jsonb((extract(epoch FROM p."watchNextRunAt") * 1000)::bigint)
-      AND r.context#>'{scheduled,failures}' = to_jsonb(p."watchConsecutiveFailures")
-      AND r.context#>>'{scheduled,interval}' = lower(p."watchInterval"::text)
-      AND r.context#>'{scheduled,everyMinutes}' = COALESCE(to_jsonb(p."watchEveryMinutes"), 'null'::jsonb)
-      AND r.context#>>'{scheduled,targetHash}' = encode(sha256(convert_to(p.url, 'UTF8')), 'hex')
-      ${scope.projectId ? Prisma.sql`AND p.id = ${scope.projectId}` : Prisma.empty}
-      ${scope.runId ? Prisma.sql`AND r.id = ${scope.runId}` : Prisma.empty}
-    ORDER BY r."updatedAt", "source"."completedAt", r.id LIMIT ${Math.max(1, Math.min(100, limit))}`)
+  scope: { projectId?: string; runId?: string; authority?: WatchWriteAuthority } = {}): Promise<number> {
+  const { projectId, runId, authority } = scope
+  const rows = await selectScheduledCompletionCandidates(clock.now(), limit, { projectId, runId, userId: authority?.userId })
   let changed = 0
   for (const row of rows) {
     try {
       // Reuse the run-recovery activity clock. Persist effort before parsing or
       // projecting so a failed oldest cohort yields across bounded sweeps.
       // This timestamp never advances a Site clock or an execution lease.
-      const attempted = await prisma.runRequest.updateMany({ where: {
-        id: row.id, projectId: row.projectId, auditId: row.auditId, updatedAt: row.updatedAt,
-        status: row.status as 'FAILED' | 'COMPLETED', context: { equals: row.context as Prisma.InputJsonValue },
-        project: { userId: row.userId, deletedAt: null, watchPausedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
-        audit: { projectId: row.projectId, userId: row.userId, status: row.status as 'FAILED' | 'COMPLETED', completedAt: row.completedAt },
-      }, data: { updatedAt: new Date(Math.max(clock.now().getTime(), row.updatedAt.getTime() + 1)) } })
+      const attempted = await recordCompletionAttempt(row, clock, authority)
       if (attempted.count !== 1) continue
       const parsed = readScheduledContext(row.context)
       if (!parsed.success) continue
       const saved: ScheduledContext = parsed.data
-      const failed = row.status === 'FAILED' || row.interrupted
+      const failed = row.status === 'FAILED' || row.incomplete
       const delay = [15, 60, 360][Math.min(saved.failures, 2)] * 60_000
-      const result = await prisma.project.updateMany({ where: { id: row.projectId, userId: row.userId, url: row.targetUrl, deletedAt: null, watchPausedAt: null,
+      const result = await updateUnlockedWatchProject(row.projectId, { userId: row.userId, url: row.targetUrl, deletedAt: null, watchPausedAt: null,
+        watchTargetRevision: saved.targetRevision ?? 1,
         user: { lifecycleStatus: 'ACTIVE' }, watchInterval: toStoredWatchInterval(saved.interval), watchEveryMinutes: saved.everyMinutes,
         watchNextRunAt: new Date(saved.nextRunAt), watchLastAttemptAt: new Date(saved.attemptedAt), watchLeaseUntil: null,
         watchConsecutiveFailures: saved.failures, watchLastError: row.watchLastError,
         audits: { some: { id: row.auditId, userId: row.userId, status: row.status as 'FAILED' | 'COMPLETED', completedAt: row.completedAt,
-          verifierExecutions: row.interrupted ? { some: interruptedAnalysisWorkWhere } : { none: interruptedAnalysisWorkWhere },
+          ...(row.incomplete ? incompleteScheduledAnalysisWhere : { NOT: incompleteScheduledAnalysisWhere }),
           runRequests: { some: { id: row.id, status: row.status as 'FAILED' | 'COMPLETED', context: { equals: row.context as Prisma.InputJsonValue } } } } },
-      }, data: failed ? { watchNextRunAt: new Date(Math.min(saved.nextRunAt, row.completedAt.getTime() + delay)),
-        watchConsecutiveFailures: saved.failures + 1, watchLastError: 'The scheduled check did not finish. FixFlags will try again.' }
-        : { watchConsecutiveFailures: 0, watchLastError: null } })
+      }, failed ? { watchNextRunAt: new Date(Math.min(saved.nextRunAt, row.completedAt.getTime() + delay)),
+        watchConsecutiveFailures: saved.failures + 1, watchLastError: WATCH_MESSAGES.retryPending }
+        : { watchConsecutiveFailures: 0, watchLastError: null }, { authority })
       changed += result.count
-    } catch (error) { logger.warn('Scheduled completion deferred; other Sites will continue', { runId: row.id, error }) }
+    } catch (error) {
+      if (error instanceof AdminActionError) throw error
+      logger.warn('Scheduled completion deferred; other Sites will continue', { runId: row.id, error })
+    }
   }
   return changed
 }

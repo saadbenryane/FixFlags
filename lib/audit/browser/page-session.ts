@@ -21,12 +21,14 @@ import {
   type NetworkMonitor,
   type TechnologyResourceRecord,
 } from './network-monitor'
-import { isBotInterstitialPage, PageCaptureError } from './page-capture'
+import { isBotInterstitialPage, observePublicSignInRedirect, PageCaptureError, PARTIAL_PAGE_RESPONSE, PUBLIC_SIGN_IN_REDIRECT } from './page-capture'
+import { responseEvidenceHeaders } from '../http-evidence'
 import { actionableConsoleErrors } from '../console-evidence'
 import type { ConsoleMessage as RecordedConsoleMessage } from '../console-evidence'
 import { createHmac, randomUUID } from 'node:crypto'
-import { classifyTrackingEndpoint } from '../tracking/endpoints'
+import { classifyBrowserTrackingRequest } from '../tracking/endpoints'
 import { bindAuditPageObservation } from './observation-scope'
+import { displayDestination } from '../checks/destination-evidence'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -51,6 +53,7 @@ export interface AuditPageSession {
   httpStatus: number | null
   /** Response headers from the initial page navigation. */
   responseHeaders: Record<string, string>
+  responseUrl?: string
   originalDocument?: PublicDocument
   /** Same-origin / engagement network failures collected during the session. */
   networkFailures: NetworkFailureRecord[]
@@ -59,8 +62,10 @@ export interface AuditPageSession {
   technologyResourcesTruncated: () => boolean
   tracking: NetworkMonitor['tracking']
   engagement: NetworkMonitor['engagement']
-  settleEngagement: NetworkMonitor['settleEngagement']
+  settleNetwork: NetworkMonitor['settleNetwork']
   setTrackingPhase: NetworkMonitor['setTrackingPhase']
+  setPublicActionControl: NetworkMonitor['setPublicActionControl']
+  markNavigationChallenge: NetworkMonitor['markNavigationChallenge']
   /** Optional form probe result when journeySafe engagement POST was observed. */
   formProbe: FormProbeResult | null
   /** Scanner-imposed restrictions, not customer failures. */
@@ -71,6 +76,7 @@ export interface AuditPageSession {
 export interface CreateAuditPageOptions {
   resourcePriority?: 'availability'
   profile: CaptureProfile
+  collectTrackingLibraries?: boolean
   consoleErrors?: RecordedConsoleMessage[]
   consoleIdentityKey?: string
   /** Demo fixture flow on localhost; skips public-URL guard for local dev URLs. */
@@ -79,6 +85,8 @@ export interface CreateAuditPageOptions {
   settle?: boolean
   /** Account inspection needs the rendered error response to assess an already known identity. */
   retainErrorDocument?: boolean
+  /** Standalone public probes must qualify their own landing document before using it. */
+  requirePublicLanding?: boolean
   /** Extra journey guards: block payments, downloads, and unauthorized mutations. */
   journeySafe?: boolean
   /** Local UI activation may not bypass routing through workers or sockets. */
@@ -123,7 +131,7 @@ async function originalNavigationDocument(response: Response | null, targetUrl: 
     const redirects: string[] = []
     let previous = response.request().redirectedFrom()
     while (previous && redirects.length < 5) { redirects.unshift(previous.url()); previous = previous.redirectedFrom() }
-    return { url: targetUrl, finalUrl: response.url(), status: response.status(), headers: response.headers(),
+    return { url: targetUrl, finalUrl: response.url(), status: response.status(), headers: responseEvidenceHeaders(Object.entries(response.headers())),
       body: buffer.toString('utf8'), complete: true, reason: null, collectedAt: new Date().toISOString(), redirects }
   } catch { return missingDocument(targetUrl, 'original_html_unavailable') }
   finally { if (timer) clearTimeout(timer) }
@@ -239,15 +247,26 @@ export async function createAuditPage(
 
   const guardRequest = async (route: import('playwright').Route) => {
     assertActive()
-    const requestUrl = route.request().url()
+    const request = route.request()
+    const requestUrl = request.url(), method = request.method()
     const fallback = () => { assertActive(); return route.fallback() }
     // Observe the browser's own attempts without replaying or manufacturing
     // events. These refusals do not make an unrelated customer action fail.
-    if (classifyTrackingEndpoint(requestUrl, route.request().resourceType(), targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(route.request().method())) {
-      network.suppressTracking(route.request())
+    if (classifyBrowserTrackingRequest(request, targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(method)) {
+      network.suppressTracking(request)
       refusedUrls.add(requestUrl)
       await route.abort('blockedbyclient')
       return
+    }
+    if (options.requestPolicy) {
+      const admitted = await options.requestPolicy({ url: requestUrl, method, navigation: request.isNavigationRequest(),
+        postData: request.postData(), resourceType: request.resourceType() })
+      assertActive()
+      if (!admitted) {
+        refusedUrls.add(requestUrl)
+        await route.abort('blockedbyclient')
+        return
+      }
     }
     const refuse = (reason: 'protected_action_requires_fixture' | 'payment_or_download_blocked') => {
       refusedUrls.add(requestUrl)
@@ -255,9 +274,9 @@ export async function createAuditPage(
       options.onSafetyRefusal?.(reason)
     }
     const routeGuards = guardOptions ? { ...guardOptions, onRefusal: refuse } : undefined
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(route.request().method()) && route.request().isNavigationRequest()) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && request.isNavigationRequest()) {
       let ownerDocument = false
-      try { ownerDocument = route.request().frame() === page.mainFrame() } catch { /* Initial auxiliary documents can precede their frame. */ }
+      try { ownerDocument = request.frame() === page.mainFrame() } catch { /* Initial auxiliary documents can precede their frame. */ }
       if (!ownerDocument) {
         // Navigation mutation authority belongs to the original document. Account walks
         // already close popups and cannot validate their navigation or cleanup.
@@ -292,17 +311,8 @@ export async function createAuditPage(
   }
   const credentialOrigin = options.scanAccess?.origin ?? targetUrl
   const configuredHeaders = scanAccessToFetchHeaders(options.scanAccess ? { headers: options.scanAccess.headers, origin: options.scanAccess.origin } : null, credentialOrigin)
-  await installRequestBoundary(page, credentialOrigin, configuredHeaders, guardRequest, options.requestPolicy
-    ? async request => {
-      assertActive()
-      // The shared guard suppresses recognized telemetry before it is sent.
-      // It cannot consume a caller's one mutation or invalidate read-only inspection.
-      if (classifyTrackingEndpoint(request.url, request.resourceType, targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(request.method)) return true
-      const admitted = await options.requestPolicy!(request)
-      assertActive()
-      if (!admitted) refusedUrls.add(request.url)
-      return admitted
-    } : undefined)
+  await installRequestBoundary(page, credentialOrigin, configuredHeaders, guardRequest,
+    options.collectTrackingLibraries ? network.observeLibraries : undefined)
 
   let consoleTruncated = false
   let consoleLoadedAt: number | null = null, lastConsoleErrorAt: number | null = null
@@ -344,15 +354,22 @@ export async function createAuditPage(
   // callbacks (e.g. status polling requests) run before we continue.
   await new Promise<void>((resolve) => setImmediate(resolve))
 
-  const responseHeaders: Record<string, string> = {}
+  const responseHeaders = response ? responseEvidenceHeaders(Object.entries(response.headers())) : {}
   if (response) {
-    const rawHeaders = response.headers()
-    for (const [key, value] of Object.entries(rawHeaders)) {
-      responseHeaders[key] = value
-    }
-
-    const contentType = response.headers()['content-type']?.toLowerCase() ?? ''
+    const contentType = responseHeaders['content-type']?.toLowerCase() ?? ''
     const httpStatus = response.status()
+    if (isBotInterstitialPage({ cfMitigated: responseHeaders['cf-mitigated'] })) {
+      network.dispose()
+      throw new PageCaptureError('Destination presented a bot challenge instead of the Product', {
+        code: 'HTTP_FORBIDDEN', httpStatus, contentType: contentType || null, finalUrl: page.url(),
+      })
+    }
+    if (httpStatus === 206) {
+      network.dispose()
+      throw new PageCaptureError('Destination returned only part of the requested page', {
+        code: PARTIAL_PAGE_RESPONSE, httpStatus, contentType: contentType || null, finalUrl: page.url(),
+      })
+    }
     const statusOk = response.ok() || httpStatus === 304 || (httpStatus >= 200 && httpStatus < 400)
 
     const hasHtmlDocument = await page.evaluate(() => {
@@ -378,15 +395,6 @@ export async function createAuditPage(
       })
     }
 
-    if (isBotInterstitialPage({ cfMitigated: rawHeaders['cf-mitigated'] })) {
-      network.dispose()
-      throw new PageCaptureError('Destination presented a bot challenge instead of the Product', {
-        code: 'HTTP_FORBIDDEN',
-        httpStatus,
-        contentType: contentType || null,
-        finalUrl: page.url(),
-      })
-    }
   }
 
   if (options.settle !== false) {
@@ -404,6 +412,17 @@ export async function createAuditPage(
     })
   }
 
+  if (options.requirePublicLanding && !options.scanAccess && !options.storageState) {
+    const finalUrl = await observePublicSignInRedirect(page, targetUrl, response?.status() ?? null)
+    if (finalUrl) {
+      network.dispose()
+      throw new PageCaptureError('The requested public page redirected to sign-in', {
+        code: PUBLIC_SIGN_IN_REDIRECT, finalUrl: displayDestination(finalUrl), httpStatus: response?.status(),
+        contentType: response?.headers()['content-type'],
+      })
+    }
+  }
+
   if (options.journeySafe && !options.buyPath) {
     await blockFormSubmits(page, options.localFormValidationToken)
   }
@@ -418,14 +437,17 @@ export async function createAuditPage(
       minimumMs: Math.min(90000, Math.max(2000, lastConsoleErrorAt !== null && consoleLoadedAt !== null ? lastConsoleErrorAt - consoleLoadedAt + 1000 : 0)) }),
     httpStatus: response?.status() ?? null,
     responseHeaders,
+    responseUrl: response?.url(),
     originalDocument: options.collectSearchEvidence ? await originalNavigationDocument(response, targetUrl, options.deadline) : undefined,
     networkFailures: network.failures,
     technologyResources: network.resources,
     technologyResourcesTruncated: network.resourcesTruncated,
     tracking: network.tracking,
     engagement: network.engagement,
-    settleEngagement: network.settleEngagement,
+    settleNetwork: network.settleNetwork,
     setTrackingPhase: network.setTrackingPhase,
+    setPublicActionControl: network.setPublicActionControl,
+    markNavigationChallenge: network.markNavigationChallenge,
     // The interaction happens after navigation; expose the current probe,
     // rather than freezing its initial null value in the returned session.
     get formProbe() { return formProbeState?.result ?? null },

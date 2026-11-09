@@ -11,7 +11,7 @@ import { scopedAssertionForTarget } from '../../checks/verification'
 import { capturedPageLinks } from '../../checks/public-links'
 import { runAuthCheckoutChecks } from '../../checks/auth-checkout'
 
-const page = { evaluate: async (fn: () => unknown) => fn() } as unknown as Page
+const page = { evaluate: async (fn: (arg: string) => unknown, arg: string) => fn(arg) } as unknown as Page
 beforeEach(() => { document.documentElement.innerHTML = '<head></head><body></body>' })
 
 describe('bounded rendered Search sections', () => {
@@ -134,23 +134,46 @@ describe('bounded rendered Search sections', () => {
 
   it('retains the native base for isolated canonical sections and fences earlier detector evidence', async () => {
     document.head.innerHTML = '<base href="https://example.com/catalog/"><link rel="canonical" href="item">'
+    document.body.innerHTML = '<link rel="canonical" href="/outside-head">'
     const snapshot = await collectRenderedSearchSnapshot(page)
     expect(snapshot.documentBaseUrl).toBe('https://example.com/catalog/')
+    expect(snapshot.sections.canonical).toMatchObject({ observed: 1, complete: true })
+    expect(snapshot.sections.canonical.html).not.toContain('/outside-head')
     const observations = await evaluateSearch(evidence('', { collectorVersion: 2, original: recordedDocument('<base href="/catalog/"><link rel="canonical" href="item">'),
       rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false }),
       canonicalTargets: [recordedDocument('Ready', { url: PAGE + 'catalog/item', finalUrl: PAGE + 'catalog/item' })] }), undefined, ['canonical'])
-    expect(observations.find(item => item.checkId === 'search-canonical-target')).toMatchObject({ disposition: 'passed', checkVersion: 3,
+    expect(observations.find(item => item.checkId === 'search-canonical-target')).toMatchObject({ disposition: 'passed', checkVersion: 5,
       observed: PAGE + 'catalog/item: HTTP 200' })
     const receipt = { kind: 'search-checks' as const, version: 1 as const, auditId: 'new', pageUrl: PAGE,
       collectedAt: new Date().toISOString(), complete: true, observations }
     const policy = { policy: 'search', version: 2, kind: 'flag', reason: 'canonical_signals_conflict', sources: ['http'] }
     expect(assessSearchRecovery(receipt, 'search-canonical-conflict', policy)).toMatchObject({ comparable: false, verdict: 'unknown' })
-    expect(assessSearchRecovery(receipt, 'search-canonical-conflict', { ...policy, version: 3 })).toMatchObject({ comparable: true, verdict: 'passed' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-conflict', { ...policy, version: 3 })).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-conflict', { ...policy, version: 5 })).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-conflict', { ...policy, version: 6 })).toMatchObject({ comparable: true, verdict: 'passed' })
+    const resourceKey = observations.find(item => item.checkId === 'search-canonical-target')!.resourceKey
+    const targetPolicy = { ...policy, reason: 'canonical_target_broken', resourceKeys: [resourceKey] }
+    expect(assessSearchRecovery(receipt, 'search-canonical-target', { ...targetPolicy, version: 3 })).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-target', { ...targetPolicy, version: 4 })).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-target', { ...targetPolicy, version: 5, resourceKeys: undefined }))
+      .toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-target', { ...targetPolicy, version: 5 }))
+      .toMatchObject({ comparable: true, verdict: 'passed' })
     const { documentBaseUrl: omitted, ...historical } = snapshot
     void omitted
     const unavailable = await evaluateSearch(evidence('', { original: recordedDocument(null),
       rendered: recordedDocument(null, { searchSnapshot: historical, complete: false }) }), undefined, ['canonical'])
     expect(unavailable.find(item => item.checkId === 'search-canonical-conflict')).toMatchObject({ disposition: 'unknown' })
+    const oldSection = { ...snapshot, canonicalHeadScoped: undefined, sections: { ...snapshot.sections,
+      canonical: { ...snapshot.sections.canonical, html: '<link rel="canonical" href="/outside-head">' } } }
+    const oldPartial = await evaluateSearch(evidence('', { original: recordedDocument(null),
+      rendered: recordedDocument(null, { searchSnapshot: oldSection, complete: false }) }), undefined, ['canonical'])
+    expect(oldPartial.some(item => item.checkId === 'search-canonical-target')).toBe(false)
+    expect(oldPartial.find(item => item.checkId === 'search-canonical-conflict')).toMatchObject({ disposition: 'unknown' })
+    const oldFull = await evaluateSearch(evidence('', { original: recordedDocument(null),
+      rendered: recordedDocument(document.documentElement.outerHTML, { searchSnapshot: oldSection }) }), undefined, ['canonical'])
+    expect(oldFull.filter(item => item.checkId === 'search-canonical-target').map(item => item.id))
+      .toEqual(['search-canonical-target:' + PAGE + 'catalog/item'])
   })
 
   it('inspects useful Search evidence independently of a large hydration payload', async () => {
@@ -178,6 +201,25 @@ describe('bounded rendered Search sections', () => {
       rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false }) }))
     expect(observations.find(item => item.checkId === 'title-missing')).toMatchObject({ disposition: 'passed' })
     expect(observations.find(item => item.checkId === 'search-discovery-links')).toMatchObject({ disposition: 'unknown' })
+  })
+
+  it('resolves discovery links using their observed base and falls back when an older section omitted it', async () => {
+    document.head.innerHTML = '<base href="' + PAGE + 'catalog/">'
+    document.body.innerHTML = '<a href="details">Details</a><a href="#plans">Plans</a>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    const discovery = async (rendered: Parameters<typeof recordedDocument>[1], original = recordedDocument(null)) => {
+      const results = await evaluateSearch(evidence('', { original,
+        rendered: recordedDocument(null, { finalUrl: snapshot.finalUrl, ...rendered }) }), undefined, ['discovery'])
+      return results.find(item => item.checkId === 'search-discovery-links')
+    }
+    const links = PAGE + 'catalog/details\n' + PAGE + 'catalog/#plans'
+    expect(await discovery({ searchSnapshot: snapshot, complete: false })).toMatchObject({
+      source: 'rendered-dom', disposition: 'observed', evidence: [{ excerpt: links }],
+    })
+    const historical = { ...snapshot, documentBaseUrl: undefined }
+    expect(await discovery({ searchSnapshot: historical, complete: false })).toMatchObject({ disposition: 'unknown' })
+    expect(await discovery({ searchSnapshot: historical, complete: false }, recordedDocument(document.documentElement.outerHTML)))
+      .toMatchObject({ source: 'original-html', disposition: 'observed', evidence: [{ excerpt: links }] })
   })
 
   it.each(['metadata', 'links', 'text'] as const)('retains structured markup results when the independent %s section is incomplete', async section => {

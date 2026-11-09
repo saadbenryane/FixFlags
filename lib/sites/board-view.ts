@@ -64,7 +64,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
     time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
     dateTime: item.checkedAt,
-    state: item.status === 'FAILED' || item.executionState !== 'COMPLETED' || item.completionState === 'PARTIAL' || item.result === 'COULD_NOT_VERIFY' || item.scope !== 'SITE' && item.result == null ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
+    state: item.status === 'FAILED' || item.executionState !== 'COMPLETED' || item.completionState === 'PARTIAL' || item.result === 'COULD_NOT_VERIFY' || item.scope !== 'SITE' && item.result == null ? 'unknown' as const : item.result === 'FLAG' || !item.afterFix && item.flagCount > 0 ? 'attention' as const : 'healthy' as const,
     flagCount: item.scope && item.scope !== 'SITE' ? undefined : item.flagCount,
     flags: (item.flags ?? []).map(flag => ({ ...flag, href: `/sites/${siteId}/flags/${flag.id}` })),
   }))
@@ -73,6 +73,9 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
       dateTime: incident.confirmedAt, state: 'attention' as const, evidenceHref: `/sites/${siteId}#category-uptime`, evidenceLabel: U.details },
     ...(incident.recoveredAt ? [{ id: `uptime-recovered-${incident.id}`, title: U.eventRecovered, detail: incident.targetUrl,
       time: formatEvidenceTimestamp(incident.recoveredAt) ?? incident.recoveredAt, dateTime: incident.recoveredAt, state: 'healthy' as const,
+      evidenceHref: `/sites/${siteId}#category-uptime`, evidenceLabel: U.details }] : incident.supersededAt ? [{
+      id: `uptime-superseded-${incident.id}`, title: U.targetChanged, detail: incident.targetUrl,
+      time: formatEvidenceTimestamp(incident.supersededAt) ?? incident.supersededAt, dateTime: incident.supersededAt, state: 'unknown' as const,
       evidenceHref: `/sites/${siteId}#category-uptime`, evidenceLabel: U.details }] : []),
   ])
   const timelineEvents = [...monitoringEvents, ...uptimeEvents].sort((a, b) => Date.parse(b.dateTime) - Date.parse(a.dateTime))

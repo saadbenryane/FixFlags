@@ -1,21 +1,25 @@
 import { z } from 'zod'
-import { TLS_CERTIFICATE_VERIFICATION_RULE } from '../tls-evidence'
-import { certificateRequestContext } from './security'
-import { KEYBOARD_CONTEXT_PATTERN } from './keyboard'
+import { LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE, TLS_CERTIFICATE_VERIFICATION_RULE } from '../tls-evidence'
+import { LEGACY_RESOURCE_TRANSPORT_CONTEXT, RESOURCE_TRANSPORT_CONTEXT, RESOURCE_TRANSPORT_VERIFICATION_RULE } from '../resource-transport'
+import { certificateRequestScope, legacyCertificateRequestContext, readLegacyCertificatePeer } from './certificate-scope'
+import { readSupportingObservations, type SupportingObservation } from '../flag-observations'
+import { currentKeyboardFocusTarget, KEYBOARD_CONTEXT_PATTERN } from './keyboard'
 import { JOURNEY_VERIFICATION_RULE, readJourneyContext } from './journey-evidence'
 import { readSlowActionTargets, sameSlowActionIdentity, slowActionContextSchema, SLOW_REPLAY_CONTEXT, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
 import type { Prisma } from '@prisma/client'
 import { baseCheckId } from '../flag-identity'
 import { verifierScopeKey, verifierTargetKey } from '@/lib/improvements/verifier-scope'
 import { checkAssertionSchema, checkReceiptSchema, recordedCheckVersion } from './receipt'
+import { currentPageResponseObservation } from './assertion'
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
 import { DESTINATION_VERIFICATION_RULE, PUBLIC_LINK_VERIFICATION_RULE } from './destination-evidence'
 import { FORM_VERIFICATION_RULE } from '../flow/form-evidence'
 import { currentFormFeedbackObservation } from './form-validation'
-import { SECURITY_HEADER_VERIFICATION_RULE, currentSecurityHeaderObservation } from './security-headers'
+import { SECURITY_HEADER_VERIFICATION_RULE, currentSecurityHeaderObservation, currentSecurityHeaderTarget } from './security-headers'
 import { CONSOLE_VERIFICATION_RULE, readConsoleContext } from '../console-evidence'
-import { ACCESSIBILITY_VERIFICATION_RULE, currentControlNameObservation } from './accessibility-rules'
+import { ACCESSIBILITY_VERIFICATION_RULE, AXE_EMBEDDED_SCOPE_CONTEXT, AXE_FRAME_SELECTOR_SEPARATOR, currentAccessibilityObservation, isComparableAccessibilityContext } from './accessibility-rules'
 import { PRIMARY_ACTION_VERIFICATION_RULE } from '../flow/primary-action-evidence'
+import { PRIMARY_ACTION_RESPONSE_CONTEXT } from '../flow/action-context'
 import { POST_CLICK_CHECKS, POST_CLICK_VERIFICATION_RULE, postClickTargetSchema } from './flow-post-click'
 import { DESTINATION_TRUST_VERIFICATION_RULE, destinationTrustTargetSchema } from './flow-destination-trust'
 import { DESTINATION_CONTENT_CHECKS, DESTINATION_CONTENT_VERIFICATION_RULE, destinationContentTargetSchema } from './flow-destination-content'
@@ -26,13 +30,18 @@ import { LOADING_CHECKS, LOADING_VERIFICATION_RULE } from './loading-evidence'
 import { MOTION_VERIFICATION_RULE } from './motion-evidence'
 import { INITIAL_OVERLAY_VERIFICATION_RULE, OVERLAY_CHECKS, OVERLAY_CONTEXT_PATTERN, scopedOverlayRule } from './overlay-evidence'
 import { hasRenderedPageResponsibility, RENDERED_PAGE_CONTEXT, RENDERED_PAGE_VERIFICATION_RULE } from './rendered-page-evidence'
-import { CORRIDOR_CONTEXT, CORRIDOR_VERIFICATION_RULE } from './corridor-consistency'
+import { CORRIDOR_CONTEXT } from './corridor-consistency'
+import { corridorVerificationSource } from './corridor-contract'
+import { isPreviewDeclarationCheck, PUBLIC_PREVIEW_VERIFICATION_RULE } from './preview-contract'
 import { TAP_TARGET_CONTEXT, TAP_TARGET_VERIFICATION_RULE } from '../pagespeed-tap-targets'
 import { RESOURCE_REPAIR_RULE, resourceCheckPolicy, resourcePageKey } from '../pagespeed-opportunities'
 import { PAGESPEED_LAB_RULE, performanceLabKey, performancePageKey, readPerformanceContext } from '../performance-measurement'
-import { TRACKING_VERIFICATION_RULE, TRACKING_REQUEST_CONTEXT } from '../tracking/identity'
+import { currentTrackingRequestTarget, isComparableTrackingContext, redactTrackingAssertion, TRACKING_VERIFICATION_RULE } from '../tracking/identity'
+import { currentTrackingResponseObservation } from '../tracking/contracts'
 import { verificationEvidence } from './verification-evidence'
-import { ENGAGEMENT_CONTEXT, ENGAGEMENT_VERIFICATION_RULE } from '../network-engagement-evidence'
+import { currentEngagementResponseObservation, ENGAGEMENT_CONTEXT, ENGAGEMENT_VERIFICATION_RULE } from '../network-engagement-evidence'
+import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { readPendingFrozenRepairSources } from '@/lib/sites/domain/verification-source'
 
 export const checkVerifierSchema = z.object({
   kind: z.literal('check-verifier'), version: z.literal(1),
@@ -44,7 +53,8 @@ export const checkVerifierSchema = z.object({
 
 /** Presence assertions cannot verify a different, stricter responsibility. */
 export function assertionForTarget(receipt: z.infer<typeof checkReceiptSchema>, checkId: string) {
-  return receipt.assertions.find(assertion => assertion.complete !== false && assertion.disposition !== 'observed' && MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId))
+  return receipt.assertions.find(assertion => assertion.complete !== false && assertion.disposition !== 'observed' &&
+    currentPageResponseObservation(assertion) && MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId))
 }
 
 type Assertion = z.infer<typeof checkAssertionSchema>
@@ -87,8 +97,45 @@ export function scopedAssertionForTarget(input: {
   receipt: z.infer<typeof checkReceiptSchema>; checkId: string;
   flag: { evidenceTargets?: unknown; verificationRule?: string | null };
   receipts?: Array<z.infer<typeof checkReceiptSchema>>;
+  originalObservations?: readonly SupportingObservation[];
 }) {
-  const { receipt, checkId, flag, receipts } = input
+  const { receipt, checkId, flag } = input
+  const checkVersion = recordedCheckVersion(receipt, checkId)
+  if (!checkVersion || !receipt.applicable || receipt.failed) return undefined
+  // Module versions describe the receipt format and shared evaluator. Each
+  // contributing receipt must also admit this exact check and method.
+  const receipts = input.receipts?.filter(source => recordedCheckVersion(source, checkId) === checkVersion)
+  if (checkId === 'security-certificate-invalid') {
+    const legacy = flag.verificationRule === LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE
+    if (receipt.module !== 'security' || receipt.execution?.source !== 'http' ||
+      !legacy && flag.verificationRule !== TLS_CERTIFICATE_VERIFICATION_RULE) return undefined
+    const targets = z.array(z.object({ context: z.string() }).passthrough()).min(1).safeParse(flag.evidenceTargets)
+    const aggregate = assertionForTarget(receipt, checkId)
+    if (!targets.success || aggregate?.complete !== true) return undefined
+    const { pageUrl } = receipt
+    const legacyScope = legacyCertificateRequestContext(pageUrl)
+    const scope = certificateRequestScope(pageUrl)
+    let original: (string | null)[] = targets.data.map(target => target.context).filter(context => context.startsWith(scope))
+    if (legacy) {
+      if (!targets.data.some(target => target.context === legacyScope)) return undefined
+      original = (input.originalObservations ?? []).filter(item => item.pageUrl &&
+        legacyCertificateRequestContext(item.pageUrl) === legacyScope && baseCheckId(item.checkId) === checkId)
+        .map(item => item.source === 'DETERMINISTIC' && item.checkVersion === checkVersion && item.provenance?.collectedAt &&
+          item.verificationRule === LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE &&
+          item.evidenceTargets.some(target => target.context === legacyScope)
+          ? readLegacyCertificatePeer(pageUrl, item.evidence, false) : null)
+    }
+    const historicalPeer = legacy && aggregate.context === legacyScope && !aggregate.measurements
+      ? readLegacyCertificatePeer(pageUrl, aggregate.observed, aggregate.passed) : null
+    const measurements = aggregate.measurements ?? (historicalPeer
+      ? [{ context: historicalPeer, passed: aggregate.passed, observed: aggregate.observed }] : [])
+    const comparisons = original.map(context => {
+      const measurement = measurements.find(item => item.context === context)
+      return measurement ? { ...aggregate, ...measurement, measurements: [measurement] } : undefined
+    })
+    const combined = combineScopedAssertions(comparisons, item => item)
+    return combined ? { assertion: combined.assertion, supportingTasks: [] } : undefined
+  }
   if (receipt.module === 'network') {
     if (receipt.execution?.source !== 'browser-network' || flag.verificationRule !== ENGAGEMENT_VERIFICATION_RULE) return undefined
     const targets = z.array(z.object({ kind: z.literal('page'), source: z.literal('measured'), device: z.literal('desktop'),
@@ -98,6 +145,7 @@ export function scopedAssertionForTarget(input: {
       source.execution?.auditId === receipt.execution!.auditId && source.execution.source === 'browser-network' &&
       source.execution.checkVersion === receipt.execution!.checkVersion)
     const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
+      currentEngagementResponseObservation(item) &&
       MODULE_CHECK_DEFINITIONS.network.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
     const matched = targets.data.map(target => matchingObservation(candidates, candidate => candidate.item.context === target.context, candidate => candidate.item))
     const combined = combineScopedAssertions(matched, candidate => candidate.item)
@@ -162,11 +210,12 @@ export function scopedAssertionForTarget(input: {
     return combined ? { assertion: combined.assertion, supportingTasks: [] } : undefined
   }
   if (receipt.module === 'corridor') {
-    if (flag.verificationRule !== CORRIDOR_VERIFICATION_RULE || receipt.execution?.source !== 'rendered-dom') return undefined
+    const evidenceSource = corridorVerificationSource(flag.verificationRule)
+    if (!evidenceSource || receipt.execution?.source !== evidenceSource) return undefined
     const targets = z.array(z.object({ context: z.string().regex(CORRIDOR_CONTEXT) }).passthrough()).min(1).safeParse(flag.evidenceTargets)
     if (!targets.success) return undefined
     const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'corridor' && source.applicable && !source.failed &&
-      source.execution?.auditId === receipt.execution!.auditId && source.execution.source === 'rendered-dom' &&
+      source.execution?.auditId === receipt.execution!.auditId && source.execution.source === evidenceSource &&
       source.execution.checkVersion === receipt.execution!.checkVersion)
     const candidates = sources.flatMap(source => source.assertions.map(assertion => ({ assertion, source })))
     const matched = targets.data.map(target => matchingObservation(candidates,
@@ -210,6 +259,8 @@ export function scopedAssertionForTarget(input: {
     if (receipt.assertions.some(assertion => assertion.context?.startsWith('rendered-page:'))) return undefined
   }
   const tracking = receipt.module === 'measurement' && checkId.startsWith('tracking-')
+  const preview = receipt.module === 'og-image' && isPreviewDeclarationCheck(checkId)
+  const previewImage = receipt.module === 'og-image' && checkId === 'og-image-broken'
   const destination = receipt.module === 'page-response' || receipt.module === 'auth-checkout' || receipt.module === 'og-image' || receipt.module === 'seo' && checkId === 'broken-internal-links'
   const accessibility = receipt.module === 'accessibility'
   const primaryAction = receipt.module === 'flow'
@@ -221,10 +272,11 @@ export function scopedAssertionForTarget(input: {
   const headers = receipt.module === 'security-headers' && (flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE || ['security-headers-missing', 'security-headers-hardening'].includes(checkId))
     const form = receipt.module === 'form-validation'
     let assertion = assertionForTarget(receipt, checkId)
-    if (checkId === 'security-certificate-invalid' && (flag.verificationRule !== TLS_CERTIFICATE_VERIFICATION_RULE ||
-      receipt.execution?.source !== 'http' || assertion?.context !== certificateRequestContext(receipt.pageUrl) ||
-      !Array.isArray(flag.evidenceTargets) || !flag.evidenceTargets.some(target => target && typeof target === 'object' &&
-        'context' in target && target.context === assertion?.context))) return undefined
+    if (checkId === 'security-mixed-content' && flag.verificationRule === RESOURCE_TRANSPORT_VERIFICATION_RULE) {
+      const currentScope = Array.isArray(flag.evidenceTargets) && flag.evidenceTargets.some(target => target?.context === RESOURCE_TRANSPORT_CONTEXT)
+      const legacyProof = !currentScope && assertion?.context === LEGACY_RESOURCE_TRANSPORT_CONTEXT
+      if (receipt.execution?.source !== 'http' || !legacyProof && assertion?.context !== RESOURCE_TRANSPORT_CONTEXT) return undefined
+    }
     if (!assertion && !tracking && !destination && !form && !headers && !accessibility && !primaryAction && !sections && !loading && !overlays && !mobileNavigation && receipt.module !== 'journeys' && receipt.module !== 'slow-replay') return undefined
     let supportingTasks: Array<{ taskId: string; pageUrl: string; collectedAt: string }> = []
     if (mobileNavigation) {
@@ -343,7 +395,7 @@ export function scopedAssertionForTarget(input: {
       if (receipt.execution?.source !== 'browser-console' || flag.verificationRule !== CONSOLE_VERIFICATION_RULE || !contexts.success) return undefined
       const expected = contexts.data.map(target => target.context)
       if (!expected.some(context => context.startsWith('console:page_load:desktop:')) || !expected.some(context => context.startsWith('console:page_load:mobile:')) || expected.some(context => context.includes(':unknown'))) return undefined
-      const sources = [receipt, ...input.receipts ?? []].filter(source => source.module === 'console' && source.applicable && !source.failed &&
+      const sources = [receipt, ...receipts ?? []].filter(source => source.module === 'console' && source.applicable && !source.failed &&
         source.execution?.source === 'browser-console' && source.execution.auditId === receipt.execution!.auditId && source.execution.checkVersion === receipt.execution!.checkVersion)
       const windows = expected.map(readConsoleContext)
       if (windows.some(window => !window || window.milliseconds < 2000)) return undefined
@@ -367,9 +419,12 @@ export function scopedAssertionForTarget(input: {
         source.execution?.source === 'keyboard' && source.execution.auditId === receipt.execution?.auditId &&
         source.execution.checkVersion === receipt.execution?.checkVersion).flatMap(source => source.assertions.filter(item => item.complete !== false && item.disposition !== 'observed' &&
         MODULE_CHECK_DEFINITIONS.keyboard?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
-      const matched = priorTargets.map(prior => matchingObservation(candidates, ({ item, source }) =>
-        (!item.passed || item.complete === true || source.complete === true) && item.targets?.some(target =>
-          target.selector === prior.selector && target.label === prior.label && target.context === prior.context), candidate => candidate.item))
+      const matched = priorTargets.map(prior => {
+        const context = currentKeyboardFocusTarget(prior.context)
+        return matchingObservation(candidates, ({ item, source }) =>
+          (!item.passed || item.complete === true || source.complete === true) && item.targets?.some(target =>
+            target.selector === prior.selector && target.label === prior.label && target.context === context), candidate => candidate.item)
+      })
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       supportingTasks = supportingTaskReferences(combined.matched)
@@ -384,24 +439,38 @@ export function scopedAssertionForTarget(input: {
       const pricing = primaryAction && checkId === 'flow-pricing-nav-broken'
       const destinationTrust = primaryAction && checkId === 'flow-cta-destination-no-trust'
       const destinationContent = primaryAction && DESTINATION_CONTENT_CHECKS.includes(checkId)
-      const scopedRule = receipt.module === 'seo' && checkId === 'broken-internal-links' ? flag.verificationRule === PUBLIC_LINK_VERIFICATION_RULE : accounts ? flag.verificationRule === 'Automatic account observation v1' : sections ? flag.verificationRule === SECTION_LINK_VERIFICATION_RULE : pricing ? flag.verificationRule === PRICING_NAVIGATION_RULE : postClick ? flag.verificationRule === POST_CLICK_VERIFICATION_RULE : destinationTrust ? flag.verificationRule === DESTINATION_TRUST_VERIFICATION_RULE : destinationContent ? flag.verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE : primaryAction ? flag.verificationRule === PRIMARY_ACTION_VERIFICATION_RULE : accessibility ? flag.verificationRule === ACCESSIBILITY_VERIFICATION_RULE : tracking ? flag.verificationRule === TRACKING_VERIFICATION_RULE : form ? flag.verificationRule === FORM_VERIFICATION_RULE : headers ? flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE : flag.verificationRule === DESTINATION_VERIFICATION_RULE
+      const scopedRule = preview ? flag.verificationRule === PUBLIC_PREVIEW_VERIFICATION_RULE : receipt.module === 'seo' && checkId === 'broken-internal-links' ? flag.verificationRule === PUBLIC_LINK_VERIFICATION_RULE : accounts ? flag.verificationRule === 'Automatic account observation v1' : sections ? flag.verificationRule === SECTION_LINK_VERIFICATION_RULE : pricing ? flag.verificationRule === PRICING_NAVIGATION_RULE : postClick ? flag.verificationRule === POST_CLICK_VERIFICATION_RULE : destinationTrust ? flag.verificationRule === DESTINATION_TRUST_VERIFICATION_RULE : destinationContent ? flag.verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE : primaryAction ? flag.verificationRule === PRIMARY_ACTION_VERIFICATION_RULE : accessibility ? flag.verificationRule === ACCESSIBILITY_VERIFICATION_RULE : tracking ? flag.verificationRule === TRACKING_VERIFICATION_RULE : form ? flag.verificationRule === FORM_VERIFICATION_RULE : headers ? flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE : flag.verificationRule === DESTINATION_VERIFICATION_RULE
       if (!scopedRule || !contexts.success || !contexts.data.length) return undefined
-      if (tracking && contexts.data.some(target => !TRACKING_REQUEST_CONTEXT.test(target.context))) return undefined
+      if (tracking && contexts.data.some(target => !isComparableTrackingContext(target.context))) return undefined
       if (sections && contexts.data.some(target => !/^section:(?:v2:)?[a-f0-9]{64}:[a-f0-9]{64}$/.test(target.context))) return undefined
       if (postClick && !z.array(postClickTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
       if (pricing && !z.array(pricingNavigationTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
       if (destinationTrust && !z.array(destinationTrustTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
       if (destinationContent && !z.array(destinationContentTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
-      if (primaryAction && !postClick && !pricing && !destinationTrust && !destinationContent && contexts.data.some(target => !/^flow:(page|control):[a-f0-9]{64}$/.test(target.context))) return undefined
-      if (accessibility && contexts.data.some(target => target.context.includes(':unknown:') || !target.context.startsWith('accessibility:'))) return undefined
-      const sources = [receipt, ...input.receipts ?? []].filter(source => source.execution?.auditId === receipt.execution!.auditId &&
+      if (primaryAction && !postClick && !pricing && !destinationTrust && !destinationContent &&
+        contexts.data.some(target => !/^flow:(page|control):[a-f0-9]{64}$/.test(target.context) &&
+          !(checkId === 'flow-cta-404' && PRIMARY_ACTION_RESPONSE_CONTEXT.test(target.context)))) return undefined
+      if (accessibility && contexts.data.some(target => !isComparableAccessibilityContext(target.context))) return undefined
+      const sources = [receipt, ...receipts ?? []].filter(source => source.execution?.auditId === receipt.execution!.auditId &&
         source.module === receipt.module && source.execution.source === sourceKind && source.execution.checkVersion === receipt.execution!.checkVersion && source.applicable && !source.failed)
       const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
+        currentPageResponseObservation(item) &&
         (!headers || currentSecurityHeaderObservation(item)) &&
         (!form || currentFormFeedbackObservation(item)) &&
-        (!accessibility || currentControlNameObservation(item)) &&
-        MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
-      const matched = contexts.data.map(prior => matchingObservation(candidates, candidate => candidate.item.context === prior.context, candidate => candidate.item))
+        (!tracking || currentTrackingResponseObservation(item)) &&
+        (!accessibility || currentAccessibilityObservation(item, source.assertions)) &&
+        MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId))
+        .map(item => ({ item: tracking ? redactTrackingAssertion(item) : item, source })))
+      const matched = contexts.data.map(prior => {
+        // Historical iframe findings only recorded the outer page context.
+        if (accessibility && typeof prior.selector === 'string' && prior.selector.includes(AXE_FRAME_SELECTOR_SEPARATOR) &&
+          !prior.context.includes(AXE_EMBEDDED_SCOPE_CONTEXT)) return undefined
+        const context = headers ? currentSecurityHeaderTarget(prior.context, checkId)
+          : tracking ? currentTrackingRequestTarget(prior.context) : prior.context
+        return matchingObservation(candidates, candidate => candidate.item.context === context ||
+          previewImage && candidate.item.key === 'preview-image-response' && candidate.item.targets?.some(target => target.context === context) === true,
+        candidate => candidate.item)
+      })
       const combined = combineScopedAssertions(matched, candidate => candidate.item)
       if (!combined) return undefined
       supportingTasks = supportingTaskReferences(combined.matched)
@@ -416,15 +485,21 @@ export function scopedAssertionForTarget(input: {
 export async function recordAssertionVerifiers(input: {
   auditId: string; parentId: string | null; primary: boolean;
   sourceFlagIds?: readonly string[];
+  spec?: ExecutionSpec | null;
+  projectId?: string | null;
   receipt: z.infer<typeof checkReceiptSchema>;
   allowedCheckIds?: readonly string[];
 }, tx: Prisma.TransactionClient): Promise<void> {
   const { receipt } = input
   if (!input.parentId || !receipt.applicable || !receipt.execution || receipt.execution.auditId !== input.auditId || !receipt.assertions.length) return
+  const frozen = input.spec?.verificationSources
+    ? await readPendingFrozenRepairSources(tx, { id: input.auditId, parentId: input.parentId, projectId: input.projectId }, input.spec) : null
+  if (input.spec?.verificationSources && !frozen) return
   const flags: Array<{ checkId: string | null; source: string; fingerprint: string | null; pageUrl: string | null;
-    verificationRule: string | null; evidenceTargets: unknown }> = []
+    verificationRule: string | null; evidenceTargets: unknown; supportingObservations?: unknown }> = []
   let after = ''
-  for (;;) {
+  if (frozen) flags.push(...frozen)
+  else for (;;) {
     const selected = await tx.flag.findMany({
       where: {
         ...(input.sourceFlagIds ? { id: { in: [...input.sourceFlagIds], ...(after ? { gt: after } : {}) } }
@@ -432,7 +507,8 @@ export async function recordAssertionVerifiers(input: {
         improvementOccurrence: { improvement: { attempts: { some: { sourceAuditId: input.parentId, outcome: null } } } },
       },
       take: 500, orderBy: { id: 'asc' },
-      select: { id: true, checkId: true, source: true, fingerprint: true, pageUrl: true, verificationRule: true, evidenceTargets: true },
+      select: { id: true, checkId: true, source: true, fingerprint: true, pageUrl: true, verificationRule: true, evidenceTargets: true,
+        ...(receipt.module === 'security' ? { supportingObservations: true } : {}) },
     })
     flags.push(...selected)
     if (selected.length < 500) break
@@ -459,7 +535,9 @@ export async function recordAssertionVerifiers(input: {
         assertionKeys: Object.entries(MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions ?? {})
           .filter(([, definition]) => definition.verifies.some(id => checks.has(id))).map(([key]) => key) }, tx)
     }
-    const scoped = scopedAssertionForTarget({ receipt, checkId, flag, receipts: contextualReceipts })
+    const originalObservations = flag.verificationRule === LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE
+      ? readSupportingObservations(flag.supportingObservations)?.items : undefined
+    const scoped = scopedAssertionForTarget({ receipt, checkId, flag, receipts: contextualReceipts, originalObservations })
     if (!scoped) continue
     const { assertion, supportingTasks } = scoped
     const checkVersion = recordedCheckVersion(receipt, checkId)
@@ -469,15 +547,28 @@ export async function recordAssertionVerifiers(input: {
     const detail = checkVerifierSchema.parse({ kind: 'check-verifier', version: 1,
       ...execution, checkVersion, checkId, pageUrl: resource ? receipt.pageUrl : contextual ? flag.pageUrl ?? receipt.pageUrl : receipt.pageUrl, comparable: true,
       verdict: assertion.passed ? 'passed' : 'failed', assertion })
-    const targetKey = verifierTargetKey(flag)!
-    const scopeKey = verifierScopeKey(resource ? receipt.pageUrl : flag.pageUrl)
-    await tx.auditVerificationReceipt.upsert({
-      where: { auditId_targetKey_scopeKey: { auditId: input.auditId, targetKey, scopeKey } },
-      create: { taskId: detail.taskId, auditId: input.auditId, targetKey, scopeKey, checkId, source: flag.source, pageUrl: resource ? receipt.pageUrl : flag.pageUrl,
-        status: 'COMPLETED', checkVersion: detail.checkVersion, detail: detail as Prisma.InputJsonValue,
-        evidenceReference: { auditId: input.auditId, taskId: detail.taskId, pageUrl: detail.pageUrl,
-          assertion: assertion.key, source: detail.source, collectedAt: detail.collectedAt, ...(supportingTasks.length ? { supportingTasks } : {}) } },
+    const key = { auditId: input.auditId, targetKey: verifierTargetKey(flag)!,
+      scopeKey: verifierScopeKey(resource ? receipt.pageUrl : flag.pageUrl) }
+    const proof = { taskId: detail.taskId, detail: detail as Prisma.InputJsonValue,
+      evidenceReference: { auditId: input.auditId, taskId: detail.taskId, pageUrl: detail.pageUrl,
+        assertion: assertion.key, source: detail.source, collectedAt: detail.collectedAt, ...(supportingTasks.length ? { supportingTasks } : {}) } }
+    const stored = await tx.auditVerificationReceipt.upsert({
+      where: { auditId_targetKey_scopeKey: key },
+      create: { ...key, ...proof, checkId, source: flag.source, pageUrl: resource ? receipt.pageUrl : flag.pageUrl,
+        status: 'COMPLETED', checkVersion },
       update: {},
+      select: { detail: true },
     })
+    if (assertion.passed) continue
+    const prior = checkVerifierSchema.safeParse(stored?.detail)
+    // Module receipts are immutable. The derived summary for this Run can
+    // narrow from a pass to a comparable failure as additional tasks settle.
+    if (prior.success && prior.data.verdict === 'passed' && prior.data.auditId === input.auditId &&
+      prior.data.checkId === checkId && prior.data.checkVersion === checkVersion) {
+      await tx.auditVerificationReceipt.updateMany({
+        where: { ...key, source: flag.source, status: 'COMPLETED', checkVersion, detail: { path: ['verdict'], equals: 'passed' } },
+        data: proof,
+      })
+    }
   }
 }

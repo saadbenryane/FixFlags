@@ -1,6 +1,7 @@
 import { currentExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { runGoalProbe, type BrowserJourneyConfig } from '@/lib/integrity/run-goal-probe'
 import { classifyWalk, goalProbeReason } from '@/lib/integrity/classify'
+import { outcomeArtifactNamespace } from '@/lib/integrity/artifact-namespace'
 import { recordBindingEvidence, type BindingObservation } from './binding-evidence'
 
 /** Generic browser journey runner for any goal-driven outcome (login, signup, password reset, etc.) */
@@ -13,7 +14,7 @@ export async function runGenericBrowserJourneyBinding(input: {
   config: BrowserJourneyConfig
 }): Promise<void> {
   const result = await runGoalProbe({
-    runId: `outcome-${input.runId}-${input.bindingKey}-g${currentExecutionOwnership()?.generation ?? 0}`,
+    runId: outcomeArtifactNamespace(input, currentExecutionOwnership()?.generation ?? 0),
     config: input.config,
   })
   const isFlag = result.health === 'RED' && result.confirmed

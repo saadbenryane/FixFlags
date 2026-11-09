@@ -7,8 +7,10 @@ import { prisma } from '@/lib/db'
 import { loadSiteHome } from '../queries'
 import { loadSiteCheckResultPage } from '../check-results'
 import { loadCategoryEvidence } from '../category-evidence'
+import { projectCurrentSiteEvidence } from '../current-evidence'
 import { loadSiteSummaries } from '../list-sites'
 import { getOwnedRun } from '../run-queries'
+import { loadMonitoringHistory } from '../monitoring-history'
 import { setProjectWatch } from '../monitoring-settings'
 import { loadSiteOutcomeDetail } from '../outcome-queries'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
@@ -17,6 +19,7 @@ import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { persistFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
+import { DEFAULT_AVAILABILITY_EVALUATOR } from '@/lib/sites/domain/outcome-evaluation'
 import { observationsForFlag } from '@/lib/audit/flag-observations'
 import { classifyWatchResult } from '@/lib/audit/project-watch'
 import { readSiteHomeView } from '@/lib/sites/site-view-contract'
@@ -32,7 +35,18 @@ import { buildSummaryPayload } from '@/lib/notifications/summary'
 import { NOTIFICATIONS_COPY } from '@/lib/marketing/copy/notifications'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { recordCheckObservations } from '@/lib/audit/checks/observations'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
+import { runTrackingChecks } from '@/lib/audit/checks/tracking'
+import { primaryActionAssertions, primaryActionResponseDestinationKey, primaryControlContext, primaryPageContext } from '@/lib/audit/flow/primary-action-evidence'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+
+function securityObservation(auditId: string, pageUrl: string, collectedAt: Date, taskId = auditId + '-security') {
+  return { kind: 'site-module-check', version: 1, module: 'security', pageUrl, applicable: true, passed: true, complete: true,
+    assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })),
+    execution: { auditId, taskId, checkVersion: 1, source: 'http', collectedAt: collectedAt.toISOString() } }
+}
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 run('current Site evidence publication in PostgreSQL', () => {
@@ -50,15 +64,13 @@ run('current Site evidence publication in PostgreSQL', () => {
       environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null }
     // Finalization stores completion before its idempotent findings projection.
     // This is its interruption boundary, not proof of webpage collection.
-    const audit = await prisma.audit.create({ data: { projectId, userId, url: project.url, status: 'COMPLETED',
-      completedAt: new Date(), reportCompleteness: 'FULL', executionSpec, evidenceCoverage: {},
+    auditId = randomUUID()
+    const completedAt = new Date()
+    await prisma.audit.create({ data: { id: auditId, projectId, userId, url: project.url, status: 'COMPLETED',
+      completedAt, reportCompleteness: 'FULL', executionSpec, evidenceCoverage: {},
       pages: { create: { url: project.url, normalizedUrl: project.url, status: 'COMPLETED', role: 'homepage', position: 0 } },
       verificationReceipts: { create: { targetKey: 'module:security', scopeKey: 'page:' + project.url,
-        pageUrl: project.url, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
-          kind: 'site-module-check', version: 1, module: 'security', pageUrl: project.url, applicable: true, passed: true, complete: true,
-          assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })),
-        } } } } })
-    auditId = audit.id
+        pageUrl: project.url, source: 'DETERMINISTIC', status: 'COMPLETED', detail: securityObservation(auditId, project.url, completedAt) } } } })
     const request = await prisma.runRequest.create({ data: { projectId, auditId, requestedByUserId: userId,
       source: 'WEB', idempotencyKey: randomUUID(), executionSpec, status: 'COMPLETED', completedAt: new Date() } })
     runId = request.id
@@ -323,21 +335,178 @@ run('current Site evidence publication in PostgreSQL', () => {
       expect(await prisma.audit.findUniqueOrThrow({ where: { id: unrelated.id } })).toEqual(unrelated)
     })
 
+  it.each([1, 2] as const)('shows Security health only after its page scope settles at review depth %s', async reviewDepth => {
+    const url = 'https://example.com/', linkedUrl = url + 'about', now = new Date()
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', environment: 'production',
+      targetUrl: url, reviewDepth, ...(reviewDepth === 2 ? { monitoringPages: [url, linkedUrl] } : {}),
+      checks: { 'no-https': 1, 'security-mixed-content': 1 },
+      outcomes: [], verificationTarget: null })
+    const currentId = randomUUID()
+    await prisma.audit.create({ data: { id: currentId, projectId, userId, url, status: 'CHECKING',
+      createdAt: new Date(now.getTime() + 1), startedAt: now, executionSpec: spec,
+      executionTasks: { create: initialTaskPlan(spec).map(task => ({ targetKey: 'task:' + task.key, scopeKey: task.scope,
+        source: 'SYSTEM', status: 'PENDING', workState: 'WAITING', workKind: task.kind, workDependencies: task.dependencies,
+        workInput: task.input, pageUrl: task.input.pageUrl })) } } })
+    const publishSecurity = (pageUrl: string, taskKey: string) => prisma.$transaction(async tx => {
+      const task = await tx.auditExecutionTask.findFirstOrThrow({ where: { auditId: currentId, targetKey: taskKey } })
+      await tx.auditVerificationReceipt.create({ data: { auditId: currentId, taskId: task.id, targetKey: 'module:security',
+        scopeKey: 'page:' + pageUrl, pageUrl, source: 'DETERMINISTIC', status: 'COMPLETED',
+        detail: securityObservation(currentId, pageUrl, now, task.id) } })
+      await tx.auditExecutionTask.update({ where: { id: task.id }, data: { status: 'COMPLETED', workState: 'COMPLETED' } })
+    })
+    const card = async () => (await loadSiteHome(projectId, { ownerEvidence: true }))!.cards.find(card => card.id === 'security')
+    // A new first check has no last-known health to show during discovery.
+    await prisma.audit.update({ where: { id: auditId }, data: { status: 'FAILED' } })
+    await publishSecurity(url, 'task:p0:security')
+    if (reviewDepth === 2) {
+      expect(await card()).toMatchObject({ state: 'unknown', evidenced: false, activity: 'checking' })
+      await prisma.auditExecutionTask.updateMany({ where: { auditId: currentId, workKind: 'discovery' },
+        data: { status: 'COMPLETED', workState: 'COMPLETED' } })
+      expect(await card()).toMatchObject({ state: 'unknown', evidenced: false, activity: 'checking' })
+      await publishSecurity(linkedUrl, 'task:p1:security')
+    }
+    expect(await card()).toMatchObject({ state: 'healthy', evidenced: true, checkedAt: now.toISOString() })
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: currentId, workKind: 'search', status: 'PENDING' } })).toBeGreaterThan(0)
+  })
+
+  it.each(['missing payload', 'partial legacy receipt'] as const)('keeps %s unknown across Security checks and current Site evidence', async mode => {
+    const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    const header = await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:security-headers',
+      scopeKey: 'page:' + audit.url, pageUrl: audit.url, source: 'DETERMINISTIC', status: 'COMPLETED',
+      detail: mode === 'missing payload' ? {} : { passed: true, complete: false,
+        assertions: [{ key: 'content-security-policy', name: 'Content Security Policy', expected: 'Policy declared', observed: 'Policy declared', passed: true }] } } })
+    await persistFlagDiffSummary(null, auditId)
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(home.cards.find(card => card.id === 'security')).toMatchObject({ state: 'unknown', incompleteReason: expect.any(String) })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'COULD_NOT_VERIFY' })
+    expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+    expect((await loadSiteNotificationSummaries(userId, new Date()))[0].notification.incomplete).toBe(true)
+    const history = await loadSiteCheckResultPage(home.site, audit, undefined, undefined, { area: 'security' }, true)
+    const shown = history.results.filter(item => item.evidenceReference.executionId === header.id)
+    expect(shown.map(item => item.status)).toEqual(mode === 'missing payload' ? ['unknown'] : ['passed', 'unknown'])
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: header.id } })).toEqual(header)
+  })
+
+  it.each([false, true])('does not use another task’s Security evidence (valid peer: %s)', async validPeer => {
+    const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    const tasks = await Promise.all(['linked', 'other'].map(key => prisma.auditExecutionTask.create({ data: {
+      auditId, targetKey: 'task:' + key, pageUrl: audit.url, source: 'SYSTEM', status: 'COMPLETED', workKind: 'check',
+    } })))
+    const original = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'module:security' } })
+    const { execution, ...detail } = securityObservation(auditId, audit.url, audit.completedAt!, tasks[1].id)
+    const data = { taskId: tasks[0].id, detail: validPeer ? { ...detail, execution, complete: false } : { ...detail, execution } }
+    const mismatched = validPeer ? await prisma.auditVerificationReceipt.create({ data: {
+      auditId, targetKey: original.targetKey, pageUrl: audit.url, source: original.source, status: 'COMPLETED',
+      scopeKey: 'mismatched-task', ...data,
+    } }) : await prisma.auditVerificationReceipt.update({ where: { id: original.id }, data })
+    await persistFlagDiffSummary(null, auditId)
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(home.cards.find(card => card.id === 'security')).toMatchObject({
+      state: validPeer ? 'healthy' : 'unknown', incompleteReason: validPeer ? null : expect.any(String),
+    })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: validPeer ? 'CLEAR' : 'COULD_NOT_VERIFY' })
+    expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+    expect((await loadSiteNotificationSummaries(userId, new Date()))[0].notification.incomplete).toBe(!validPeer)
+    const history = await loadSiteCheckResultPage(home.site, audit, undefined, undefined, { area: 'security' }, true)
+    expect(history.total).toBe(validPeer ? 4 : 1)
+    expect(history.results.filter(item => item.evidenceReference.executionId === mismatched.id)).toMatchObject([
+      { kind: 'execution', status: 'unknown', limitation: 'Recorded evidence could not be linked to this check.' },
+    ])
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: mismatched.id } })).toEqual(mismatched)
+  })
+
+  it('does not call an unreadable terminal Security receipt checked while the Run continues', async () => {
+    const audit = await prisma.audit.update({ where: { id: auditId }, data: { status: 'CHECKING', startedAt: new Date(), completedAt: null } })
+    await prisma.auditVerificationReceipt.updateMany({ where: { auditId, targetKey: 'module:security' }, data: { detail: {} } })
+    const entry = { pageUrl: audit.url, position: 0, primary: true, role: 'homepage' }
+    await prisma.auditExecutionTask.createMany({ data: [
+      { auditId, pageUrl: audit.url, targetKey: 'task:discovery', scopeKey: 'discovery', source: 'SYSTEM',
+        status: 'COMPLETED', workState: 'COMPLETED', workKind: 'discovery', workInput: entry },
+      { auditId, pageUrl: audit.url, targetKey: 'task:p0:metadata', scopeKey: 'page:' + audit.url, source: 'SYSTEM',
+        status: 'PENDING', workState: 'WAITING', workKind: 'check', workInput: { ...entry, module: 'metadata' } },
+    ] })
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(home.cards.find(card => card.id === 'security')).toMatchObject({ state: 'unknown',
+      status: SITE_ACTION_COPY.execution.partialStatus, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+  })
+
+  it.each(['missing', 'split', 'foreign', 'complete'] as const)('projects %s linked Security evidence from the same recorded page scope', async linked => {
+    const url = 'https://example.com/', peer = url + 'about', checkedAt = new Date()
+    const primary = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'module:security' } })
+    const detail = securityObservation(auditId, url, checkedAt)
+    await prisma.auditVerificationReceipt.update({ where: { id: primary.id }, data: {
+      detail: linked === 'split' ? { ...detail, assertions: detail.assertions.filter(assertion => assertion.key === 'https') } : detail,
+    } })
+    await prisma.auditPage.create({ data: { auditId, url: peer, normalizedUrl: peer, status: 'COMPLETED', role: 'internal', position: 1 } })
+    if (linked !== 'missing') {
+      const linkedDetail = securityObservation(linked === 'foreign' ? randomUUID() : auditId, peer, checkedAt)
+      await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:security', scopeKey: 'page:' + peer,
+        pageUrl: peer, status: 'COMPLETED', source: 'DETERMINISTIC',
+        detail: linked === 'split' ? { ...linkedDetail, assertions: linkedDetail.assertions.filter(assertion => assertion.key === 'image-transport') } : linkedDetail } })
+    }
+    await persistFlagDiffSummary(null, auditId)
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    const complete = linked === 'complete'
+    expect(home.cards.find(card => card.id === 'security')).toMatchObject({
+      state: complete ? 'healthy' : 'unknown', incompleteReason: complete ? null : expect.any(String),
+    })
+    expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: complete ? 'CLEAR' : 'COULD_NOT_VERIFY' })
+  })
+
+  it.each(['missing automated', 'missing keyboard', 'foreign keyboard', 'complete'] as const)('projects %s linked-page Accessibility evidence against the admitted methods', async linked => {
+    const pageUrl = 'https://example.com/', peer = pageUrl + 'about', collectedAt = new Date().toISOString()
+    const current = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    const executionSpec = { ...(current.executionSpec as Prisma.JsonObject),
+      checks: { 'buttons-no-text': CHECK_REGISTRY['buttons-no-text'].version, 'focus-visible-missing': CHECK_REGISTRY['focus-visible-missing'].version } }
+    await prisma.$transaction([
+      prisma.audit.update({ where: { id: auditId }, data: { executionSpec } }),
+      prisma.runRequest.update({ where: { id: runId }, data: { executionSpec } }),
+      prisma.auditPage.create({ data: { auditId, url: peer, normalizedUrl: peer, status: 'COMPLETED', role: 'internal', position: 1 } }),
+    ])
+    for (const url of [pageUrl, peer]) {
+      for (const checkModule of ['accessibility', 'keyboard'] as const) {
+        if (url === peer && (linked === 'missing automated' && checkModule === 'accessibility' || linked === 'missing keyboard' && checkModule === 'keyboard')) continue
+        const keys = checkModule === 'accessibility' ? ['automated-accessibility'] : ['focus-styles', 'keyboard-exit', 'tab-sequence']
+        await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:' + checkModule, scopeKey: 'page:' + url,
+          pageUrl: url, status: 'COMPLETED', source: 'DETERMINISTIC', detail: {
+            kind: 'site-module-check', version: 1, module: checkModule, pageUrl: url, complete: true, applicable: true, passed: true,
+            assertions: keys.map(key => ({ key, name: key, expected: 'Observed', observed: 'Recorded fixture result', passed: true, complete: true })),
+            execution: { auditId: url === peer && checkModule === 'keyboard' && linked === 'foreign keyboard' ? randomUUID() : auditId,
+              taskId: checkModule + ':' + url, checkVersion: 1, source: checkModule === 'keyboard' ? 'keyboard' : 'browser-accessibility', collectedAt },
+          } } })
+      }
+    }
+    await persistFlagDiffSummary(null, auditId)
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    const complete = linked === 'complete'
+    expect(home.cards.find(card => card.id === 'accessibility')).toMatchObject({
+      state: complete ? 'healthy' : 'unknown', incompleteReason: complete ? null : expect.any(String),
+    })
+    expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: complete ? 'CLEAR' : 'COULD_NOT_VERIFY' })
+  })
+
   it.each(['QUEUED', 'CHECKING', 'FAILED'] as const)('retains fresh category assurance while the next full-site check is %s', async status => {
     const now = Date.now(), url = 'https://example.com/'
     const baseline = await prisma.audit.update({ where: { id: auditId }, data: {
       createdAt: new Date(now - 10 * 86400_000), completedAt: new Date(now - 9 * 86400_000),
     }, include: { verifierExecutions: { where: { targetKey: 'module:security' } } } })
+    const broadReceipt = baseline.verifierExecutions[0]
+    await prisma.auditVerificationReceipt.update({ where: { id: broadReceipt.id },
+      data: { detail: securityObservation(auditId, url, baseline.completedAt!) } })
     await persistFlagDiffSummary(null, auditId)
     const spec = executionSpecSchema.parse({ ...(baseline.executionSpec as object), scope: 'CATEGORY',
       category: { area: 'security', sourceAuditId: auditId, pages: [url] } })
     // Persisted observations isolate reader provenance. They are not fresh
     // webpage collection or provider evidence.
-    const category = await prisma.audit.create({ data: { projectId, userId, url, parentId: auditId,
+    const categoryId = randomUUID()
+    const category = await prisma.audit.create({ data: { id: categoryId, projectId, userId, url, parentId: auditId,
       status: 'COMPLETED', createdAt: new Date(now - 2000), completedAt: new Date(now - 1000), executionSpec: spec,
       pages: { create: { url, normalizedUrl: url, status: 'COMPLETED', role: 'homepage', position: 0 } },
       verificationReceipts: { create: { targetKey: 'module:security', scopeKey: 'page:' + url,
-        status: 'COMPLETED', source: 'DETERMINISTIC', detail: baseline.verifierExecutions[0].detail!, updatedAt: new Date(now - 1000) } },
+        status: 'COMPLETED', source: 'DETERMINISTIC',
+        detail: securityObservation(categoryId, url, new Date(now - 1000)), updatedAt: new Date(now - 1000) } },
       executionTasks: { create: initialTaskPlan(spec).map(task => ({ targetKey: 'task:' + task.key, scopeKey: task.scope, source: 'SYSTEM' as const,
         status: 'COMPLETED' as const, workState: 'COMPLETED' as const, workKind: task.kind, workDependencies: task.dependencies,
         workInput: task.input, pageUrl: task.input.pageUrl })) } } })
@@ -347,6 +516,11 @@ run('current Site evidence publication in PostgreSQL', () => {
       checkedAt: category.completedAt!.toISOString() })
     const current = await prisma.audit.create({ data: { projectId, userId, url, status, createdAt: new Date(now),
       completedAt: status === 'FAILED' ? new Date(now) : null, executionSpec: baseline.executionSpec!, evidenceCoverage: {} } })
+    if (status === 'FAILED') {
+      await prisma.auditVerificationReceipt.create({ data: { auditId: current.id, targetKey: 'module:security',
+        scopeKey: 'page:' + url, pageUrl: url, status: 'COMPLETED', source: 'DETERMINISTIC',
+        detail: securityObservation(current.id, url, new Date(now)) } })
+    }
     const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
     const client = readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId)
     for (const view of [home, client]) {
@@ -476,6 +650,34 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect(await prisma.flag.count({ where: { auditId } })).toBe(0)
   })
 
+  it('withholds a saved Clear across Site views when the comparison parent belongs to another Site', async () => {
+    const parent = await prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/',
+      status: 'COMPLETED', completedAt: new Date(Date.now() - 60_000), createdAt: new Date(Date.now() - 60_000) } })
+    await prisma.audit.update({ where: { id: auditId }, data: { parentId: parent.id } })
+    await persistFlagDiffSummary(parent.id, auditId)
+    const receipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'projection:flag-comparison' } })
+
+    async function expectState(result: 'CLEAR' | 'COULD_NOT_VERIFY', state: 'clear' | 'could_not_verify') {
+      expect(await getOwnedRun(userId, runId)).toMatchObject({ result })
+      const home = await loadSiteHome(projectId, { ownerEvidence: true })
+      expect(home?.presentation.result.state).toBe(state)
+      expect(home?.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject({ result,
+        completionState: result === 'CLEAR' ? 'COMPLETED' : 'PARTIAL' })
+      expect((await loadSiteSummaries(userId)).find(site => site.id === projectId)?.presentation.result.state).toBe(state)
+    }
+
+    await expectState('CLEAR', 'clear')
+    const foreign = await prisma.project.create({ data: { userId, name: 'Separate Site',
+      canonicalHost: 'other.example.com', url: 'https://other.example.com/' } })
+    await prisma.audit.update({ where: { id: parent.id }, data: { projectId: foreign.id } })
+    await expectState('COULD_NOT_VERIFY', 'could_not_verify')
+    await prisma.audit.update({ where: { id: parent.id }, data: { projectId: null, userId: null } })
+    try {
+      await expectState('CLEAR', 'clear')
+      expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: receipt.id } })).toEqual(receipt)
+    } finally { await prisma.audit.delete({ where: { id: parent.id } }) }
+  })
+
   it('retains a Pages finding in its category conclusion despite complete page collection', async () => {
     await prisma.flag.create({ data: { auditId, source: 'AI', rubric: 'CLARITY', severity: 'IMPORTANT',
       problem: 'The page heading contradicts its stated purpose.', evidence: 'Recorded conflicting heading and page introduction.',
@@ -489,43 +691,224 @@ run('current Site evidence publication in PostgreSQL', () => {
     })
   })
 
-  it('keeps another page’s unavailable Search source incomplete across current Site and notification views', async () => {
+  it.each(['unavailable', 'missing', 'empty', 'empty module', 'wrong evaluator', 'complete', 'another run', 'outside scope', 'mismatched ledger page',
+    'foreign failure', 'admitted failure'] as const)('reads %s linked-page Search evidence consistently across current Site, saved run and notification views', async linked => {
     const now = new Date(), root = 'https://example.com/', about = root + 'about'
     const html = '<html lang="en"><head><title>Recorded title</title></head><body><h1>Recorded page</h1></body></html>'
-    const readTitle = async (url: string, available: boolean) => {
+    const readLanguage = async (url: string, available: boolean) => {
       const source = document(available ? html : null, { url, finalUrl: url, collectedAt: now.toISOString(),
         complete: available, reason: available ? null : 'document_truncated' })
       const observations = (await evaluateSearch(evidence(html, { auditId, pageUrl: url, collectorVersion: 2,
         collectedAt: now.toISOString(), original: source, rendered: source }), null, ['presentation']))
-        .filter(item => item.checkId === 'title-missing')
+        .filter(item => item.checkId === 'search-page-language')
       expect(observations.length).toBeGreaterThan(0)
-      expect(observations.every(item => item.disposition === (available ? 'passed' : 'unknown'))).toBe(true)
+      expect(observations.every(item => item.disposition === (available ? 'observed' : 'unknown'))).toBe(true)
       return { kind: 'search-checks', version: 1, auditId, pageUrl: url, collectedAt: now.toISOString(),
         complete: available, observations }
     }
     const baseline = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
-    await prisma.audit.update({ where: { id: auditId }, data: {
-      executionSpec: { ...(baseline.executionSpec as Prisma.JsonObject), checks: { 'title-missing': 2 } },
-    } })
+    const executionSpec = { ...(baseline.executionSpec as Prisma.JsonObject), checks: { 'search-page-language': CHECK_REGISTRY['search-page-language'].version } }
+    await prisma.$transaction([
+      prisma.audit.update({ where: { id: auditId }, data: { executionSpec } }),
+      prisma.runRequest.update({ where: { id: runId }, data: { executionSpec } }),
+    ])
     await prisma.auditPage.create({ data: { auditId, url: about, normalizedUrl: about, status: 'COMPLETED', role: 'internal', position: 1 } })
     // These are actual parser observations on supplied documents. The fixture
     // exercises persisted projection, not HTTP or browser collection.
-    for (const [url, available] of [[root, true], [about, false]] as const) {
+    for (const url of linked === 'missing' ? [root] : [root, about]) {
+      const detail = await readLanguage(url, url === root || linked !== 'unavailable')
       await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:search', scopeKey: 'page:' + url,
-        pageUrl: url, source: 'DETERMINISTIC', status: 'COMPLETED', detail: await readTitle(url, available) as Prisma.InputJsonValue } })
+        pageUrl: url, source: 'DETERMINISTIC', status: 'COMPLETED',
+        detail: (url === about && linked === 'empty' ? { ...detail, observations: [] } : detail) as Prisma.InputJsonValue } })
     }
+    if (['another run', 'outside scope', 'mismatched ledger page', 'foreign failure', 'admitted failure'].includes(linked)) {
+      const observed = linked === 'outside scope' ? root + 'outside' : about
+      const detail = await readLanguage(observed, false)
+      const failed = linked === 'foreign failure' || linked === 'admitted failure'
+      await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:search-presentation', scopeKey: 'retained-search',
+        pageUrl: linked === 'mismatched ledger page' ? root : observed, source: 'SEARCH', status: failed ? 'FAILED' : 'COMPLETED',
+        detail: { ...detail, auditId: linked === 'another run' || linked === 'foreign failure' ? randomUUID() : auditId } as Prisma.InputJsonValue } })
+    }
+    if (linked === 'empty module' || linked === 'wrong evaluator') await prisma.auditVerificationReceipt.create({ data: { auditId,
+      targetKey: 'module:search-canonical', scopeKey: 'page:' + about, pageUrl: about, source: 'SEARCH', status: 'COMPLETED',
+      detail: linked === 'wrong evaluator' ? (await readLanguage(about, true)) as Prisma.InputJsonValue
+        : { kind: 'search-checks', version: 1, auditId, pageUrl: about, collectedAt: now.toISOString(), complete: true, observations: [] } } })
     await persistFlagDiffSummary(null, auditId)
     const before = await prisma.auditVerificationReceipt.findMany({ where: { auditId }, orderBy: { id: 'asc' } })
     const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
     const list = (await loadSiteSummaries(userId))[0]
     const notification = (await loadSiteNotificationSummaries(userId, now))[0]
-    expect(home.cards.find(card => card.id === 'search')).toMatchObject({ state: 'unknown', incompleteReason: expect.any(String) })
-    expect(home.presentation.categories.find(category => category.id === 'search')).toMatchObject({ state: 'unknown' })
-    expect(home.presentation.result.state).toBe('could_not_verify')
+    const complete = ['complete', 'another run', 'outside scope', 'mismatched ledger page', 'foreign failure'].includes(linked)
+    const state = complete ? 'healthy' : 'unknown'
+    expect(home.cards.find(card => card.id === 'search')).toMatchObject({ state, incompleteReason: complete ? null : expect.any(String) })
+    expect(home.presentation.categories.find(category => category.id === 'search')).toMatchObject({ state })
+    expect(home.presentation.result.state).toBe(complete ? 'clear' : 'could_not_verify')
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: complete ? 'CLEAR' : 'COULD_NOT_VERIFY' })
     expect(list.presentation.result).toEqual(home.presentation.result)
-    expect(notification.notification.incomplete).toBe(true)
-    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).cards.find(card => card.id === 'search')?.state).toBe('unknown')
+    expect(notification.notification.incomplete).toBe(!complete)
+    expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).cards.find(card => card.id === 'search')?.state).toBe(state)
+    if (linked === 'empty' || linked === 'empty module' || linked === 'wrong evaluator') {
+      const checks = await loadSiteCheckResultPage(home.site, baseline, undefined, undefined, { area: 'search', pageUrl: about }, true)
+      expect(checks.results).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'execution', status: 'unknown', pageUrl: about })]))
+      if (linked !== 'empty') expect(checks.results).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'assertion', status: 'observed', pageUrl: about })]))
+      if (linked === 'wrong evaluator') {
+        const misplaced = before.find(row => row.targetKey === 'module:search-canonical')!
+        expect(checks.results.filter(row => row.evidenceReference.executionId === misplaced.id))
+          .toMatchObject([{ kind: 'execution', status: 'unknown' }])
+      }
+      expect(checks.total).toBe(checks.results.length)
+    }
     expect(await prisma.auditVerificationReceipt.findMany({ where: { auditId }, orderBy: { id: 'asc' } })).toEqual(before)
+  })
+
+  it.each(['verified', 'missing entry', 'other run', 'pricing only', 'click only', 'optional entry',
+    'different control', 'missing retained control', 'verified retained controls', 'same-page step'] as const)(
+    'qualifies a Conversion journey from its admitted action receipts (%s)', async mode => {
+      const root = 'https://example.com/', entry = root + 'help'
+      const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      const pageContextFor = (url: string) => primaryPageContext(url, url, { width: 1280, height: 800 })
+      const controlFor = (url: string, identity = 'primary') => primaryControlContext({ pageContext: pageContextFor(url),
+        identity, label: 'Get started', href: '/start', controls: null })
+      const retained = mode === 'missing retained control' || mode === 'verified retained controls'
+      const executionSpec = { ...(audit.executionSpec as Prisma.JsonObject), checks: { 'flow-cta-dead-end': CHECK_REGISTRY['flow-cta-dead-end'].version },
+        monitoringPages: [root, entry], monitoringEntryPages: [root, entry], ...(retained ? {
+          monitoringBehaviors: [{ pageUrl: entry, behaviors: ['flow'], actionContexts: [controlFor(entry), controlFor(entry, 'second')] }],
+        } : {}) }
+      await prisma.$transaction([
+        prisma.audit.update({ where: { id: auditId }, data: { executionSpec, evidenceCoverage: { flowScan: true } } }),
+        prisma.runRequest.update({ where: { id: runId }, data: { executionSpec } }),
+        prisma.auditPage.create({ data: { auditId, url: entry, normalizedUrl: entry, status: 'COMPLETED', role: 'internal', position: 1 } }),
+      ])
+      const observations = [{ pageUrl: root, identity: 'primary' }]
+      if (mode !== 'missing entry') observations.push({ pageUrl: entry, identity: 'primary' })
+      if (mode === 'verified retained controls') observations.push({ pageUrl: entry, identity: 'second' })
+      for (const { pageUrl, identity } of observations) {
+        const optional = mode === 'optional entry' && pageUrl === entry
+        const panel = mode === 'same-page step' && pageUrl === entry
+        const pageContext = pageContextFor(pageUrl), controlContext = controlFor(pageUrl, identity)
+        const assertions = primaryActionAssertions({ version: 1, pageContext, controlContext: optional ? null : controlContext,
+          candidateCount: optional ? 0 : 1, candidateComplete: true, clicked: !optional, clickBlocked: false,
+          navigation: optional ? 'unknown' : 'changed', ...(panel ? { samePageProgress: 'declared-panel' } : {}),
+          response: optional || panel ? 'unknown' : 'healthy', responseExpected: !optional && !panel,
+          httpStatus: optional || panel ? null : 200, responseDestinationKey: optional || panel ? null : primaryActionResponseDestinationKey(root + 'start'),
+          destinationContentObserved: !optional }, !optional)
+        if (mode === 'different control' && pageUrl === entry) {
+          assertions.find(assertion => assertion.key === 'primary-action-response')!.context = controlFor(entry, 'another')
+        }
+        const pricingOnly = mode === 'pricing only' && pageUrl === entry
+        await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:flow',
+          scopeKey: 'page:' + pageUrl + (pricingOnly ? ':pricing-navigation' : ':control:' + controlContext),
+          pageUrl, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
+            kind: 'site-module-check', version: 1, module: 'flow', pageUrl, applicable: !optional, complete: true, passed: !optional,
+            assertions: pricingOnly ? [{ key: 'pricing-navigation', name: 'Pricing link', expected: 'Pricing reached', observed: 'Pricing reached', passed: true, complete: true }]
+              : mode === 'click only' && pageUrl === entry ? assertions.filter(assertion => assertion.key === 'primary-action-click') : assertions,
+            execution: { auditId: mode === 'other run' && pageUrl === entry ? 'other-audit' : auditId, taskId: 'flow-' + pageUrl,
+              checkVersion: 1, source: 'rendered-dom', collectedAt: audit.completedAt!.toISOString() },
+          } } })
+      }
+      await persistFlagDiffSummary(null, auditId)
+      const before = await prisma.auditVerificationReceipt.findMany({ where: { auditId }, orderBy: { id: 'asc' } })
+      const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+      const complete = ['verified', 'optional entry', 'verified retained controls', 'same-page step'].includes(mode)
+      expect(home.cards.find(card => card.id === 'conversion')).toMatchObject({ state: complete ? 'healthy' : 'unknown',
+        incompleteReason: complete ? null : expect.any(String) })
+      expect(home.presentation.result.state).toBe(complete ? 'clear' : 'could_not_verify')
+      expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+      expect(await getOwnedRun(userId, runId)).toMatchObject({ result: complete ? 'CLEAR' : 'COULD_NOT_VERIFY' })
+      expect((await loadSiteNotificationSummaries(userId))[0].notification.incomplete).toBe(!complete)
+      expect(await prisma.auditVerificationReceipt.findMany({ where: { auditId }, orderBy: { id: 'asc' } })).toEqual(before)
+    })
+
+  it.each(['both devices', 'missing mobile', 'another run', 'field instead of lab', 'wrong check version', 'desktop only'] as const)(
+    'projects Performance from admitted lab receipts (%s)', async mode => {
+      const root = 'https://example.com/', linked = root + 'pricing'
+      const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      const checks = mode === 'desktop only' ? { 'lcp-poor': 1 } : { 'lcp-poor': 1, 'mobile-lcp-poor': 1 }
+      const executionSpec = { ...(audit.executionSpec as Prisma.JsonObject), checks, monitoringPages: [root, linked] }
+      await prisma.$transaction([
+        prisma.audit.update({ where: { id: auditId }, data: { executionSpec, evidenceCoverage: { desktopPageSpeed: true,
+          mobilePageSpeed: mode !== 'missing mobile' && mode !== 'both devices' } } }),
+        prisma.runRequest.update({ where: { id: runId }, data: { executionSpec } }),
+        prisma.auditPage.create({ data: { auditId, url: linked, normalizedUrl: linked, status: 'COMPLETED', role: 'internal', position: 1 } }),
+      ])
+      for (const pageUrl of [root, linked]) for (const strategy of ['desktop', 'mobile'] as const) {
+        const peerMobile = pageUrl === linked && strategy === 'mobile'
+        if (strategy === 'mobile' && mode === 'desktop only' || peerMobile && mode === 'missing mobile') continue
+        const fieldOnly = peerMobile && mode === 'field instead of lab'
+        const checkModule = strategy === 'desktop' || fieldOnly ? 'performance' : 'mobile'
+        const measurement = healthyDesktopPs({ strategy, diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, strategy) } })
+        const assertions = fieldOnly ? [{ key: 'inp', name: 'Field responsiveness', expected: 'At most 200ms', observed: '150ms',
+          complete: true, passed: true, disposition: 'observed' }]
+          : recordCheckObservations(checkModule, { url: pageUrl, metadata: null, desktop: strategy === 'desktop' ? measurement : null,
+            mobile: strategy === 'mobile' ? measurement : null }).filter(assertion => assertion.key === 'lcp')
+        const check = strategy === 'desktop' ? 'lcp-poor' : fieldOnly ? 'inp-poor' : 'mobile-lcp-poor'
+        await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:' + checkModule,
+          scopeKey: 'page:' + pageUrl + ':device:' + strategy, pageUrl, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
+            kind: 'site-module-check', version: 1, module: checkModule, pageUrl, applicable: true, complete: true, passed: true, assertions,
+            execution: { auditId: peerMobile && mode === 'another run' ? 'another-audit' : auditId, taskId: 'lab-' + pageUrl + strategy,
+              checkVersion: 1, checkVersions: { [check]: peerMobile && mode === 'wrong check version' ? 2 : 1 },
+              source: 'pagespeed-' + strategy, collectedAt: audit.completedAt!.toISOString() },
+          } } })
+      }
+      await persistFlagDiffSummary(null, auditId)
+      const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+      const complete = mode === 'both devices' || mode === 'desktop only'
+      const card = home.cards.find(item => item.id === 'performance')!
+      expect(card).toMatchObject({ state: complete ? 'healthy' : 'unknown', incompleteReason: complete ? null : expect.any(String) })
+      if (complete) {
+        const published = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, include: { pages: true, verifierExecutions: true } })
+        const performance = projectCurrentSiteEvidence({ audit: published, prior: null, categories: [], flags: [], now: new Date() })
+          .coverage.find(fact => fact.area === 'performance')
+        expect(performance?.label).toBe(mode === 'both devices' ? SITE_BOARD_COPY.healthyEvidence.performance.both.answer
+          : SITE_BOARD_COPY.healthyEvidence.performance.desktop.answer)
+      }
+      expect(home.presentation.result.state).toBe(complete ? 'clear' : 'could_not_verify')
+      expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+      expect(await getOwnedRun(userId, runId)).toMatchObject({ result: complete ? 'CLEAR' : 'COULD_NOT_VERIFY' })
+      expect((await loadSiteNotificationSummaries(userId))[0].notification.incomplete).toBe(!complete)
+    })
+
+  it.each(['fresh', 'expired', 'unqualified historical success'] as const)('keeps delivery unknown when Tracking request evidence is %s', async freshness => {
+    const pageUrl = 'https://example.com/'
+    const source = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+    const expired = freshness === 'expired'
+    const collectedAt = new Date(source.completedAt!.getTime() - (expired ? 9 * 86400_000 : 0)).toISOString()
+    const executionSpec = { ...(source.executionSpec as Prisma.JsonObject), checks: { 'tracking-endpoint-http-error': 1 } }
+    await prisma.$transaction([
+      prisma.audit.update({ where: { id: auditId }, data: { executionSpec } }),
+      prisma.runRequest.update({ where: { id: runId }, data: { executionSpec } }),
+    ])
+    const measured = runTrackingChecks(null, { version: 1, phase: 'page_load', durationMs: 100, truncated: false, consentInteraction: 'none',
+      requests: [{ provider: 'vercel', role: 'event', hostname: 'example.com', endpoint: '/_vercel/insights/view', method: 'POST',
+        phase: 'page_load', state: 'suppressed', status: null, reason: 'scanner_suppressed', atMs: 15 }] }, pageUrl, { hasAnalytics: true })
+    expect(measured.assertions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: 'tracking-initiation', disposition: 'observed', complete: true }),
+      expect.objectContaining({ key: 'tracking-provider-recording', passed: false, complete: false }),
+    ]))
+    const historicalSuccess = freshness === 'unqualified historical success'
+    const assertions = measured.assertions.map(assertion => historicalSuccess && assertion.key === 'tracking-http-response'
+      ? { ...assertion, reason: undefined, passed: true, complete: true, observed: 'The endpoint returned a successful HTTP response.' } : assertion)
+    const stored = await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:measurement', scopeKey: 'page:' + pageUrl,
+      pageUrl, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
+        kind: 'site-module-check', version: 1, module: 'measurement', pageUrl, applicable: true, passed: false,
+        complete: false, assertions,
+        execution: { auditId, taskId: 'recorded-tracking', source: 'browser-network', checkVersion: 1, collectedAt },
+      } } })
+    await persistFlagDiffSummary(null, auditId)
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(home.cards.find(card => card.id === 'tracking')).toMatchObject({ state: 'unknown',
+      answer: expired ? SITE_BOARD_COPY.checkOutOfDate : SITE_ACTION_COPY.execution.tracking.requestsObserved })
+    if (!expired) expect(home.cards.find(card => card.id === 'tracking')?.detail).toBe(SITE_ACTION_COPY.execution.tracking.deliveryLimit)
+    expect(home.presentation.result.state).toBe('could_not_verify')
+    expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+    expect(home.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'COULD_NOT_VERIFY', coverage: { completeness: 'PARTIAL' } })
+    expect((await loadSiteNotificationSummaries(userId))[0].notification.incomplete).toBe(true)
+    if (historicalSuccess) {
+      const checks = await loadSiteCheckResultPage(home.site, auditId, undefined, undefined, { area: 'tracking' }, true)
+      expect(checks?.results.find(result => result.assertionKey === 'tracking-http-response')).toMatchObject({ status: 'unknown' })
+      expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: stored.id } })).toEqual(stored)
+    }
   })
 
   it.each(['malformed', 'public-only', 'empty-array'] as const)('keeps %s supporting evidence unknown across current views, publication and history', async kind => {
@@ -556,7 +939,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect(JSON.stringify(publication.detail)).not.toContain('supportingObservations')
     await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS', notifyOnRecovery: true } })
     await prisma.audit.update({ where: { id: auditId }, data: { recheckTrigger: 'WATCH' } })
-    await classifyWatchResult(null, auditId)
+    await classifyWatchResult(auditId)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({
       watchRegressionCount: 0, watchRecoveryCount: 0, watchNotificationStatus: 'NOT_APPLICABLE',
     })
@@ -593,14 +976,15 @@ run('current Site evidence publication in PostgreSQL', () => {
     await persistFlagDiffSummary(null, auditId)
     let observedId = auditId, requestId = runId
     if (scope === 'CATEGORY') {
-      const source = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, include: { verifierExecutions: { where: { targetKey: 'module:security' } } } })
+      const source = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
       const spec = executionSpecSchema.parse({ ...(source.executionSpec as object), scope,
         category: { area: 'security', sourceAuditId: auditId, pages: [source.url] } })
-      const audit = await prisma.audit.create({ data: { projectId, userId, url: source.url, parentId: auditId,
-        status: 'COMPLETED', completedAt: new Date(), executionSpec: spec,
+      const categoryId = randomUUID(), completedAt = new Date()
+      const audit = await prisma.audit.create({ data: { id: categoryId, projectId, userId, url: source.url, parentId: auditId,
+        status: 'COMPLETED', completedAt, executionSpec: spec,
         pages: { create: { url: source.url, normalizedUrl: source.url, status: 'COMPLETED', role: 'homepage', position: 0 } },
         verificationReceipts: { create: [{ targetKey: 'module:security', scopeKey: 'page:' + source.url,
-          status: 'COMPLETED', source: 'DETERMINISTIC', detail: source.verifierExecutions[0].detail! }] },
+          status: 'COMPLETED', source: 'DETERMINISTIC', detail: securityObservation(categoryId, source.url, completedAt) }] },
         executionTasks: { create: initialTaskPlan(spec).map(task => ({ targetKey: 'task:' + task.key, scopeKey: task.scope, source: 'SYSTEM' as const,
           status: 'COMPLETED' as const, workState: 'COMPLETED' as const, workKind: task.kind, workDependencies: task.dependencies,
           workInput: task.input, pageUrl: task.input.pageUrl })) } } })
@@ -638,9 +1022,93 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'FLAG' })
   })
 
+  it.each(['another run', 'outside scope', 'mismatched ledger page', 'admitted page'] as const)(
+    'uses only admitted observation times for Site assurance when an old receipt represents %s', async kind => {
+      const { url, completedAt } = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      const linkedPage = url + 'pricing'
+      const collectedAt = new Date(completedAt!.getTime() - 9 * 86400_000)
+      const admitted = kind === 'admitted page'
+      if (admitted || kind === 'mismatched ledger page') {
+        await prisma.auditPage.create({ data: { auditId, url: linkedPage, normalizedUrl: linkedPage,
+          status: 'COMPLETED', role: 'internal', position: 1 } })
+      }
+      // A receipt can be attached to a run's ledger without matching the
+      // observation's original run, page or admitted responsibility.
+      const observedPage = kind === 'another run' ? url : linkedPage
+      await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:security', scopeKey: 'retained-security',
+        status: 'COMPLETED', source: 'DETERMINISTIC', pageUrl: kind === 'mismatched ledger page' ? url : observedPage,
+        detail: securityObservation(kind === 'another run' ? randomUUID() : auditId, observedPage, collectedAt) } })
+      // Keep a genuinely observed second page in the ledger for the mismatch
+      // case, so missing coverage cannot independently make the run incomplete.
+      if (kind === 'mismatched ledger page') {
+        await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:security', scopeKey: 'page:' + linkedPage,
+          status: 'COMPLETED', source: 'DETERMINISTIC', pageUrl: linkedPage, detail: securityObservation(auditId, linkedPage, completedAt!) } })
+      }
+      await persistFlagDiffSummary(null, auditId)
+      const publication = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'projection:flag-comparison' } })
+      const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+      const checkedAt = admitted ? collectedAt : completedAt!
+      expect(home.cards.find(card => card.id === 'security')).toMatchObject({ checkedAt: checkedAt.toISOString(), state: admitted ? 'unknown' : 'healthy' })
+      expect(home.presentation.result.state).toBe(admitted ? 'stale' : 'clear')
+      expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+      expect(home.monitoringHistory.find(entry => entry.id === auditId)?.result).toBe(admitted ? 'COULD_NOT_VERIFY' : 'CLEAR')
+      expect(await getOwnedRun(userId, runId)).toMatchObject({ result: admitted ? 'STALE' : 'CLEAR',
+        validUntil: new Date(checkedAt.getTime() + 8 * 86400_000).toISOString() })
+      expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: publication.id } })).toEqual(publication)
+    })
+
+  it.each(['another run', 'outside scope', 'mismatched ledger page', 'different module', 'admitted unfinished', 'admitted unavailable'] as const)(
+    'attributes a Security coverage gap only to admitted evidence (%s)', async kind => {
+      const { url, completedAt } = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      const linked = url + 'pricing'
+      const observedPage = kind === 'outside scope' || kind === 'mismatched ledger page' ? linked : url
+      const { execution, ...detail } = securityObservation(kind === 'another run' ? randomUUID() : auditId, observedPage, completedAt!)
+      const unavailable = kind === 'admitted unavailable'
+      const incomplete = kind === 'admitted unfinished' || unavailable
+      if (kind === 'mismatched ledger page') {
+        await prisma.auditPage.create({ data: { auditId, url: linked, normalizedUrl: linked, status: 'COMPLETED', role: 'internal', position: 1 } })
+        await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:security', scopeKey: 'page:' + linked,
+          pageUrl: linked, status: 'COMPLETED', source: 'DETERMINISTIC', detail: securityObservation(auditId, linked, completedAt!) } })
+      }
+      await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'module:security', scopeKey: 'unfinished-security',
+        pageUrl: kind === 'mismatched ledger page' ? url : observedPage, status: unavailable ? 'FAILED' : 'COMPLETED', source: 'DETERMINISTIC',
+        detail: { ...detail, passed: false, complete: false,
+          ...(unavailable ? { failed: true, assertions: [] } : { execution }),
+          ...(kind === 'different module' ? { module: 'performance', assertions: [] } : unavailable ? {} : {
+            assertions: detail.assertions.map(assertion => ({ ...assertion, passed: false, complete: false })),
+          }) } } })
+      await persistFlagDiffSummary(null, auditId)
+      const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+      expect(home.cards.find(card => card.id === 'security')).toMatchObject({ state: incomplete ? 'unknown' : 'healthy',
+        incompleteReason: incomplete ? SITE_BOARD_COPY.cardCheckIncomplete : null })
+      expect(home.presentation.result.state).toBe(incomplete ? 'could_not_verify' : 'clear')
+      expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(home.presentation.result)
+      expect(home.monitoringHistory.find(item => item.id === auditId)?.result).toBe(incomplete ? 'COULD_NOT_VERIFY' : 'CLEAR')
+      expect(await getOwnedRun(userId, runId)).toMatchObject({ result: incomplete ? 'COULD_NOT_VERIFY' : 'CLEAR' })
+      expect((await loadSiteNotificationSummaries(userId))[0].notification.incomplete).toBe(incomplete)
+    })
+
+  it('keeps reached page counts while publishing incomplete discovery across the Site and saved Run', async () => {
+    await prisma.audit.update({ where: { id: auditId }, data: { failedModules: ['discovery'], reportCompleteness: 'PARTIAL' } })
+    await persistFlagDiffSummary(null, auditId)
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
+    expect(home.presentation.coverage).toMatchObject({ pagesReached: 1, pagesExpected: 1, complete: false })
+    expect(home.presentation.categories.find(category => category.id === 'site')?.state).toBe('unknown')
+    expect(home.cards.find(card => card.id === 'security')?.state).toBe('healthy')
+    expect(home.presentation.result.state).toBe('could_not_verify')
+    expect((await loadSiteSummaries(userId))[0].presentation.coverage).toEqual(home.presentation.coverage)
+    expect(home.monitoringHistory.find(item => item.id === auditId)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'COULD_NOT_VERIFY', coverage: {
+      gaps: expect.arrayContaining([{ area: 'site', reason: 'pages' }]),
+    } })
+    expect((await loadSiteNotificationSummaries(userId))[0].notification.incomplete).toBe(true)
+  })
+
   it('expires broad Site evidence on daily care beside fresh uptime without rewriting its recorded conclusion', async () => {
     const checkedAt = new Date(Date.now() - 3 * 86400_000)
-    await prisma.audit.update({ where: { id: auditId }, data: { createdAt: checkedAt, completedAt: checkedAt } })
+    const { url } = await prisma.audit.update({ where: { id: auditId }, data: { createdAt: checkedAt, completedAt: checkedAt } })
+    await prisma.auditVerificationReceipt.updateMany({ where: { auditId, targetKey: 'module:security' },
+      data: { detail: securityObservation(auditId, url, checkedAt) } })
     await persistFlagDiffSummary(null, auditId)
     const publication = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'projection:flag-comparison' } })
     const recorded = await getOwnedRun(userId, runId)
@@ -667,11 +1135,12 @@ run('current Site evidence publication in PostgreSQL', () => {
     // receipt stays untouched; this case exercises saved-state read paths.
     const original = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, include: { verifierExecutions: true } })
     const source = original.verifierExecutions.find(row => row.targetKey === 'module:security')!
-    const refreshed = await prisma.audit.create({ data: { projectId, userId, url: original.url, status: 'COMPLETED',
-      completedAt: new Date(), executionSpec: original.executionSpec!, evidenceCoverage: {}, reportCompleteness: 'FULL',
+    const refreshedId = randomUUID(), refreshedAt = new Date()
+    const refreshed = await prisma.audit.create({ data: { id: refreshedId, projectId, userId, url: original.url, status: 'COMPLETED',
+      completedAt: refreshedAt, executionSpec: original.executionSpec!, evidenceCoverage: {}, reportCompleteness: 'FULL',
       pages: { create: { url: original.url, normalizedUrl: original.url, status: 'COMPLETED', role: 'homepage', position: 0 } },
       verificationReceipts: { create: { targetKey: source.targetKey, scopeKey: source.scopeKey, pageUrl: source.pageUrl,
-        status: source.status, source: source.source, detail: source.detail! } } } })
+        status: source.status, source: source.source, detail: securityObservation(refreshedId, original.url, refreshedAt) } } } })
     await prisma.runRequest.create({ data: { projectId, auditId: refreshed.id, requestedByUserId: userId, source: 'WATCH',
       idempotencyKey: randomUUID(), executionSpec: original.executionSpec!, status: 'COMPLETED', completedAt: refreshed.completedAt } })
     await persistFlagDiffSummary(null, refreshed.id)
@@ -679,6 +1148,68 @@ run('current Site evidence publication in PostgreSQL', () => {
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
     expect(await getOwnedRun(userId, runId)).toEqual(recorded)
     expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: publication.id } })).toEqual(publication)
+  })
+
+  it('requires the selected Outcome receipts and binding evidence in both run and Timeline', async () => {
+    const url = 'https://example.com/'
+    const binding = { key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', required: true, config: { startUrl: url } }
+    const sibling = { ...binding, key: 'sibling', config: { startUrl: url + 'pricing' } }
+    const otherProject = await prisma.project.create({ data: { userId, name: 'Separate Site',
+      url: 'https://other.example/', canonicalHost: 'other.example' } })
+    const [first, second, unrelated] = await Promise.all(['first', 'second', 'other'].map(slug => prisma.siteOutcome.create({
+      data: { projectId: slug === 'other' ? otherProject.id : projectId, name: slug, slug, kind: 'AVAILABILITY' },
+    })))
+    const executionSpec = { version: 1, scope: 'OUTCOMES', environment: 'production', targetUrl: url, checks: {}, verificationTarget: null,
+      outcomes: [first, second, unrelated].map(item => ({ id: item.id, kind: item.kind, expectation: null,
+        bindingPolicy: 'ALL_REQUIRED', bindings: item.id === second.id ? [binding, sibling] : [binding] })) }
+    await prisma.audit.update({ where: { id: auditId }, data: { executionSpec } })
+    await prisma.runRequest.update({ where: { id: runId }, data: { executionSpec,
+      selections: { create: [first, second, unrelated].map(item => ({ outcomeId: item.id })) } } })
+    const site = (await loadSiteRecord(projectId))!
+    const timeline = async () => (await loadMonitoringHistory(site)).timeline.find(item => item.id === auditId)
+    const validUntil = new Date(Date.now() + 60_000)
+    const coverage = { environment: 'production', requiredBindings: ['http'], observedBindings: ['http'],
+      bindings: [{ ...binding, evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] }
+    const completeCoverage = { ...coverage, requiredBindings: ['http', 'sibling'], observedBindings: ['http', 'sibling'],
+      bindings: [binding, sibling].map(item => ({ ...item, evaluator: DEFAULT_AVAILABILITY_EVALUATOR })) }
+    const receipt = { runRequestId: runId, auditId, state: 'CLEAR' as const, summary: 'Controlled positive observation',
+      coverage, evidence: { reason: 'available' }, validUntil }
+    const otherAudit = await prisma.audit.create({ data: { projectId: otherProject.id, userId, url: otherProject.url,
+      status: 'COMPLETED', completedAt: new Date() } })
+    await prisma.outcomeAssessment.createMany({ data: [
+      { ...receipt, outcomeId: first.id },
+      { ...receipt, outcomeId: unrelated.id, summary: 'Foreign Outcome evidence' },
+      { ...receipt, outcomeId: second.id, auditId: otherAudit.id, summary: 'Foreign Audit evidence' },
+    ] })
+    const fencedRun = await getOwnedRun(userId, runId)
+    expect(fencedRun).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL',
+      outcomes: [{ outcomeId: first.id, result: 'CLEAR' }, { outcomeId: second.id, result: null, evidence: null }] })
+    expect(JSON.stringify(fencedRun)).not.toContain('Foreign')
+    expect(await timeline()).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL', targetLabel: 'first, second' })
+
+    // Repair the controlled fixture and keep only the two original responsibilities.
+    const secondReceipt = { runRequestId_outcomeId: { runRequestId: runId, outcomeId: second.id } }
+    await prisma.outcomeAssessment.update({ where: secondReceipt,
+      data: { auditId, summary: receipt.summary, coverage } })
+    const ownedSpec = { ...executionSpec, outcomes: executionSpec.outcomes.slice(0, 2) }
+    await prisma.runRequest.update({ where: { id: runId }, data: { executionSpec: ownedSpec } })
+    await prisma.audit.update({ where: { id: auditId }, data: { executionSpec: ownedSpec } })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+    expect(await timeline()).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+    await prisma.outcomeAssessment.update({ where: secondReceipt, data: {
+      coverage: { ...completeCoverage, observedBindings: ['http'] },
+    } })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+    expect(await timeline()).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+    await prisma.outcomeAssessment.update({ where: secondReceipt, data: { coverage: completeCoverage } })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+    expect(await timeline()).toMatchObject({ result: 'CLEAR', completionState: 'COMPLETED' })
+
+    await prisma.outcomeAssessment.update({ where: secondReceipt, data: { state: 'FLAG',
+      coverage: { ...completeCoverage, observedBindings: ['http'] }, evidence: { reason: 'http_unavailable' } } })
+    expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'FLAG', completionState: 'PARTIAL',
+      coverage: { gaps: [{ outcomeId: second.id, reason: 'incomplete' }] } })
+    expect(await timeline()).toMatchObject({ result: 'FLAG', completionState: 'PARTIAL' })
   })
 
   it('tightens current freshness after a cadence change while retaining historical assessment facts', async () => {
@@ -697,7 +1228,8 @@ run('current Site evidence publication in PostgreSQL', () => {
       executionSpec: spec, selections: { create: { outcomeId: outcome.id } } } })
     const assessment = await prisma.outcomeAssessment.create({ data: { outcomeId: outcome.id, runRequestId: request.id,
       auditId: observation.id, state: 'CLEAR', summary: 'The page responded successfully.', assessedAt, validUntil: recordedUntil,
-      coverage: { environment: 'production', requiredBindings: [binding.key], observedBindings: [binding.key], bindings: [binding] },
+      coverage: { environment: 'production', requiredBindings: [binding.key], observedBindings: [binding.key],
+        bindings: [{ ...binding, evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] },
       evidence: { reason: 'available' } } })
     await prisma.auditVerificationReceipt.create({ data: { auditId, targetKey: 'projection:flag-comparison', scopeKey: 'product', status: 'COMPLETED',
       source: 'SYSTEM', detail: { kind: 'flag-comparison', version: 1, auditId, parentAuditId: null,

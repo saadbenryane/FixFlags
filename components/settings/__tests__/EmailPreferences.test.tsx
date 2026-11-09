@@ -74,9 +74,11 @@ it('shows real delivery facts without claiming an email was read', () => {
 })
 it('keeps unconfirmed acceptance distinct from a provider-reported delivery failure', () => {
   render(<EmailPreferences {...props} history={[
-    { id: 'uncertain', channel: 'summary', state: 'unconfirmed', at: '2026-10-29T09:00:00Z' },
-    { id: 'rejected', channel: 'summary', state: 'failed', at: '2026-10-28T09:00:00Z' },
+    { id: 'uncertain', channel: 'uptime', state: 'unconfirmed', at: '2026-10-29T09:00:00Z' },
+    { id: 'rejected', channel: 'watch', state: 'failed', at: '2026-10-28T09:00:00Z' },
   ]} />)
+  expect(screen.getByText(C.channels.uptime)).toBeInTheDocument()
+  expect(screen.getByText(C.channels.watch)).toBeInTheDocument()
   expect(screen.getByText('Delivery could not be confirmed, open your websites for updates')).toBeInTheDocument()
   expect(screen.getByText('Could not deliver')).toBeInTheDocument()
 })

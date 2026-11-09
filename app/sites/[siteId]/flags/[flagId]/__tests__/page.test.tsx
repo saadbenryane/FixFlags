@@ -13,6 +13,8 @@ import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 const ATTEMPTED = '2026-09-23T22:57:11.000Z'
 
 const mocks = vi.hoisted(() => ({
+  currentSiteViewer: vi.fn(),
+  requestedPath: vi.fn(),
   requireSiteAccess: vi.fn(),
   loadSiteBoardFlag: vi.fn(),
   loadSiteHome: vi.fn(),
@@ -26,8 +28,19 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/sites/request-access', () => ({
+  currentSiteViewer: mocks.currentSiteViewer,
   requireSiteAccess: mocks.requireSiteAccess,
 }))
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/', useSearchParams: () => new URLSearchParams(),
+  notFound: () => { throw new Error('NEXT_NOT_FOUND') },
+  redirect: (href: string) => { throw new Error('NEXT_REDIRECT:' + href) },
+}))
+
+vi.mock('@/lib/auth/redirect-path', () => ({ getRequestedPath: mocks.requestedPath,
+  signInUrl: (path: string) => '/sign-in?next=' + encodeURIComponent(path) }))
 
 vi.mock('@/lib/sites/application/queries', () => ({
   loadSiteBoardFlag: mocks.loadSiteBoardFlag,
@@ -75,6 +88,9 @@ function attempt(id: string, builder: string, outcome: string | null) {
 describe('Flag verification attempts', () => {
   afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.currentSiteViewer.mockResolvedValue({ userId: 'user-1' })
+    mocks.requestedPath.mockImplementation(async fallback => fallback)
     mocks.recordSiteLifecycleEvent.mockResolvedValue(undefined)
     mocks.requireSiteAccess.mockResolvedValue({
       ok: true,
@@ -113,6 +129,32 @@ describe('Flag verification attempts', () => {
         attempts: [attempt('attempt-site', 'site', 'IMPROVED'), attempt('attempt-copy', 'copy', null), attempt('attempt-unknown', 'custom_signal', 'UNCHANGED')],
       },
     })
+  })
+
+  it.each(['site-1', 'unknown-site'])('preserves an anonymous notification destination for %s before revealing evidence', async siteId => {
+    mocks.requireSiteAccess.mockResolvedValue({ ok: false, status: 404 })
+    mocks.currentSiteViewer.mockResolvedValue({ userId: null })
+    mocks.requestedPath.mockResolvedValue(`/sites/${siteId}/flags/flag-1?source=watch-email`)
+    await expect(SiteFlagPage({ params: Promise.resolve({ siteId, flagId: 'flag-1' }),
+      searchParams: Promise.resolve({ source: 'watch-email' }) })).rejects.toThrow(
+      'NEXT_REDIRECT:/sign-in?next=' + encodeURIComponent(`/sites/${siteId}/flags/flag-1?source=watch-email`))
+    expect(mocks.loadSiteBoardFlag).not.toHaveBeenCalled()
+    expect(mocks.loadSiteHome).not.toHaveBeenCalled()
+  })
+
+  it('keeps a foreign authenticated notification private', async () => {
+    mocks.requireSiteAccess.mockResolvedValue({ ok: false, status: 404 })
+    await expect(SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
+      searchParams: Promise.resolve({ source: 'watch-email' }) })).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mocks.loadSiteBoardFlag).not.toHaveBeenCalled()
+  })
+
+  it('retains an ordinary private link through sign-in', async () => {
+    mocks.requireSiteAccess.mockResolvedValue({ ok: false, status: 404 })
+    mocks.currentSiteViewer.mockResolvedValue({ userId: null })
+    await expect(SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
+      searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_REDIRECT:/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
+    expect(mocks.loadSiteBoardFlag).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -165,7 +207,7 @@ describe('Flag verification attempts', () => {
 
     expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.fixStep })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Copy fix prompt' })).toBeVisible()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Check now' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
     expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-site', 'site-1')
@@ -215,7 +257,7 @@ describe('Flag verification attempts', () => {
     vi.stubGlobal('fetch', fetch)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: reference }), searchParams: Promise.resolve({}) }))
-    fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt' }))
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(`/api/sites/site-1/flags/${reference}/fix`, expect.objectContaining({ body: JSON.stringify({ action: 'copy', promptHash: 'a'.repeat(64) }) })))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Canonical instructions for the requested scope')
     const repairCalls = fetch.mock.calls.filter(([url]) => String(url).endsWith('/fix'))

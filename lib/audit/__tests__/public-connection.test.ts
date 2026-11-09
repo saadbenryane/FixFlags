@@ -7,6 +7,7 @@ vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dn
 import { PublicRequestError, safeFetchDocument } from '../url'
 import { publicHttpCapacity } from '../progressive/capacity'
 import { classifyPublicRequestFailure } from '../http-failure'
+import { probeUptime } from '@/lib/uptime/probe'
 
 describe('public HTTP connection authority', () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetAllMocks() })
@@ -26,6 +27,48 @@ describe('public HTTP connection authority', () => {
     expect(dns.resolve4).toHaveBeenCalledTimes(2)
     expect(failure).toMatchObject({ code: 'DNS_NOT_FOUND' })
     expect(classifyPublicRequestFailure(failure)).toMatchObject({ result: 'FAILED', reason: 'dns_failure' })
+  })
+  it('reports the selected redirect origin when the connection fails before receiving HTTP', async () => {
+    dns.resolve4.mockResolvedValue(['93.184.216.34'])
+    dns.resolve6.mockResolvedValue([])
+    const start = 'https://example.com/'
+    const peer = 'https://edge.example.com:8443'
+    const destination = peer + '/private?token=PRIVATE_VALUE'
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: destination } }))
+      .mockRejectedValueOnce(new TypeError('fetch failed', { cause: { code: 'ECONNREFUSED' } }))
+    vi.stubGlobal('fetch', fetch)
+    expect(await probeUptime(start)).toMatchObject({ result: 'FAILED', reason: 'connection_failed', statusCode: null, finalUrl: peer })
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([start, destination])
+  })
+  it('distinguishes a peer closing before headers from an interrupted successful response', async () => {
+    const server = createServer((request, response) => {
+      if (request.url === '/early-close') {
+        request.socket.end()
+        return
+      }
+      response.writeHead(200, { 'content-type': 'text/html', 'content-length': '1000' })
+      response.flushHeaders()
+      response.write('<h1>Incomplete document</h1>')
+      setTimeout(() => request.socket.end(), 20)
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const origin = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    vi.stubEnv('DEV_ALLOW_LOCALHOST', 'true')
+    // Exercise the native socket while satisfying Uptime's public-only DNS preflight.
+    dns.resolve4.mockResolvedValue(['93.184.216.34'])
+    dns.resolve6.mockResolvedValue([])
+    const nativeFetch = globalThis.fetch
+    vi.stubGlobal('fetch', (input: string, options?: RequestInit) =>
+      nativeFetch(origin + new URL(input).pathname, options))
+    const target = 'http://example.com'
+    try {
+      expect(await probeUptime(target + '/early-close')).toMatchObject({
+        result: 'FAILED', reason: 'connection_failed', statusCode: null, finalUrl: target,
+      })
+      expect(await probeUptime(target + '/after-headers')).toMatchObject({
+        result: 'UNKNOWN', reason: 'probe_unavailable', statusCode: 200, finalUrl: target + '/after-headers',
+      })
+    } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
   })
   it('reuses healthy connections across independently admitted observations', async () => {
     let requests = 0, connections = 0

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { outcomeFlagOwner } from '@/lib/audit/flag-identity'
 import { createRecordedRecoveryReader, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
-import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
+import { readOutcomeIncident, readOutcomeRecovery } from '@/lib/sites/domain/outcome-incident'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 import { loadRecoveryExecutions } from '@/lib/audit/recovery-executions'
 
@@ -24,7 +24,7 @@ export const currentImprovementWhere = { OR: [
 
 type IncidentFlag = RecoveryFlag & { id?: string; auditId?: string | null; fingerprint?: string | null; status?: string | null; resolvedInId?: string | null }
 type RecoveryDatabase = Pick<Prisma.TransactionClient, 'audit' | 'auditVerificationReceipt' | 'outcomeAssessment'>
-type RecoveryCertificate = { outcomeId: string; incidentRunRequestId: string; flagIds: Set<string> }
+type RecoveryCertificate = { outcomeId: string; incidentRunRequestId: string; flagIds: Set<string>; bindingKeys?: Set<string> }
 
 function supersededAssessment(evidence: unknown) {
   return Boolean(evidence && typeof evidence === 'object' && !Array.isArray(evidence) &&
@@ -37,17 +37,18 @@ function supersededAssessment(evidence: unknown) {
 function recoveryCertificates(assessments: Array<{ state: string; outcomeId: string; evidence: unknown }> | undefined): RecoveryCertificate[] {
   const certificates: RecoveryCertificate[] = []
   for (const row of assessments ?? []) {
-    if (row.state !== 'CLEAR' || supersededAssessment(row.evidence)) continue
-    const incident = readOutcomeIncident(row.evidence)
-    if (incident?.transition !== 'recovery' || !incident.incidentRunRequestId) continue
-    certificates.push({ outcomeId: row.outcomeId, incidentRunRequestId: incident.incidentRunRequestId, flagIds: new Set(incident.recoveredFlagIds) })
+    const incident = readOutcomeRecovery(row.evidence, row.state)
+    if (!incident?.incidentRunRequestId) continue
+    certificates.push({ outcomeId: row.outcomeId, incidentRunRequestId: incident.incidentRunRequestId, flagIds: new Set(incident.recoveredFlagIds),
+      bindingKeys: incident.recoveredBindingKeys ? new Set(incident.recoveredBindingKeys) : undefined })
   }
   return certificates
 }
 
 function namedByRecovery(flag: IncidentFlag, certificates: RecoveryCertificate[]) {
   const owner = outcomeFlagOwner(flag.fingerprint)
-  return Boolean(owner && flag.id && certificates.some(certificate => certificate.outcomeId === owner.outcomeId && certificate.flagIds.has(flag.id!)))
+  return Boolean(owner && flag.id && certificates.some(certificate => certificate.outcomeId === owner.outcomeId &&
+    (!certificate.bindingKeys || certificate.bindingKeys.has(owner.bindingKey)) && certificate.flagIds.has(flag.id!)))
 }
 
 /** Batch recovery provenance once for the authorized projects. A pointer to
@@ -102,19 +103,21 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
   }))
   if (pending.length) {
     const membership = await database.outcomeAssessment.findMany({ where: {
-      auditId: { in: [...new Set(pending.map(item => item.flag.auditId!))] }, audit: { projectId: { in: projectIds } } },
+      auditId: { in: [...new Set(pending.map(item => item.flag.auditId!))] }, state: 'FLAG', audit: { projectId: { in: projectIds } } },
       select: { auditId: true, outcomeId: true, evidence: true, audit: { select: { projectId: true } } } })
     const auditsById = new Map(audits.map(audit => [audit.id, audit]))
     const members = new Set(membership.flatMap(row => {
-      const incident = readOutcomeIncident(row.evidence)?.incidentRunRequestId
-      return incident ? [JSON.stringify([row.audit.projectId, row.auditId, row.outcomeId, incident])] : []
+      const incident = readOutcomeIncident(row.evidence)
+      return incident?.incidentRunRequestId && !supersededAssessment(row.evidence) ? incident.flagIds.map(flagId =>
+        JSON.stringify([row.audit.projectId, row.auditId, row.outcomeId, incident.incidentRunRequestId, flagId])) : []
     }))
     for (const item of pending) {
       const audit = auditsById.get(item.flag.resolvedInId!)
       if (!audit?.completedAt || audit.projectId !== item.projectId) continue
       const certificates = audit ? certificatesByAudit.get(audit.id) ?? [] : []
       const member = certificates.some(certificate => certificate.outcomeId === item.owner.outcomeId &&
-        members.has(JSON.stringify([item.projectId, item.flag.auditId, item.owner.outcomeId, certificate.incidentRunRequestId])))
+        (!certificate.bindingKeys || certificate.bindingKeys.has(item.owner.bindingKey)) &&
+        members.has(JSON.stringify([item.projectId, item.flag.auditId, item.owner.outcomeId, certificate.incidentRunRequestId, item.flag.id])))
       if (member) remember(item.projectId, item.flag.id!, audit.id, audit.completedAt)
     }
   }

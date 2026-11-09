@@ -111,6 +111,9 @@ describe('native page observation comparison', () => {
     const missing = make(true)
     missing.assertions[0].targets = []
     expect(scopedAssertionForTarget({ receipt: missing, checkId: flag.checkId, flag: before.flags[0] })).toBeUndefined()
+    const advisory = make(true)
+    advisory.assertions[0].disposition = 'observed'
+    expect(scopedAssertionForTarget({ receipt: advisory, checkId: flag.checkId, flag: before.flags[0] })).toBeUndefined()
     const repeated = { ...before.flags[0], evidenceTargets: [...before.flags[0].evidenceTargets!, ...before.flags[0].evidenceTargets!] }
     expect(scopedAssertionForTarget({ receipt: make(true), checkId: flag.checkId, flag: repeated })).toBeUndefined()
     const enough = make(true)

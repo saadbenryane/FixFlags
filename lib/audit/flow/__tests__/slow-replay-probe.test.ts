@@ -21,7 +21,7 @@ const rect = (top = 0) => ({ width: 200, height: 50, top, bottom: top + 50, left
 function page() {
   const context = { close: vi.fn(async () => undefined), newCDPSession: vi.fn(async () => ({ send: vi.fn() })) }
   const captures: number[] = []
-  const current = { evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg), context: () => context, url: () => 'https://example.com/',
+  const current = { evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg), context: () => context, url: () => 'https://example.com/', on: vi.fn(),
     screenshot: vi.fn(async () => { captures.push(Date.now()); return new Uint8Array([1]) }) } as unknown as Page
   return { current, context, captures }
 }
@@ -82,7 +82,32 @@ describe('slow connection visitor observation', () => {
     expect(result).toMatchObject({ navigationComplete: true, complete: true, timeToFirstTextMs: 6000, timeToCtaMs: 9000,
       observedForMs: 9000, textBlankThroughMs: 5900, ctaAbsentThroughMs: 8900 })
     expect(result.captures?.map(capture => capture.startedAtMs)).toEqual(captures)
+    expect(result.screenshotUrls).toHaveLength(3)
+    expect(result.captures?.every(capture => capture.completedAtMs >= result.observedForMs!)).toBe(true)
     expect(context.close).toHaveBeenCalled()
+  })
+  it('measures the destination independently and withholds screenshots of its predecessor', async () => {
+    const { current, captures } = page(), entry = location.href
+    vi.spyOn(current, 'url').mockImplementation(() => location.href)
+    mocks.session.mockImplementation(async (_browser, _url, options) => {
+      options.onNavigationStart(current, Date.now())
+      return { page: current, httpStatus: 200, disposeNetwork: vi.fn() }
+    })
+    const destination = document.body.innerHTML
+    document.body.innerHTML = '<main><p>Useful content on the entry page.</p><a href="/contact">Contact</a></main>'
+    setTimeout(() => { history.replaceState(null, '', '/slow-destination'); document.body.innerHTML = destination }, 2600)
+    setTimeout(() => { document.querySelector('p')!.style.display = 'block' }, 6000)
+    setTimeout(() => { document.querySelector('button')!.style.display = 'block' }, 9000)
+    try {
+      const pending = runSlowReplay({} as Browser, 'audit', entry, { deadline: 20_000 })
+      await vi.advanceTimersByTimeAsync(10_100)
+      const result = await pending
+      expect(result).toMatchObject({ pageUrl: new URL('/slow-destination', entry).href, complete: true, timeToContentMs: 6000, timeToCtaMs: 9000 })
+      expect(result.actions).toEqual([expect.objectContaining({ label: 'Get started' })])
+      expect(runSlowReplayChecks(result).map(flag => flag.checkId)).toEqual(['slow-3g-blank-screen', 'slow-3g-cta-delayed'])
+      expect(captures).toEqual([2000, 5000, 8000])
+      expect(result.captures?.map(capture => capture.url)).toEqual([null, 'https://example.com/flow-slow-5s.png', 'https://example.com/flow-slow-8s.png'])
+    } finally { history.replaceState(null, '', entry) }
   })
   it('does not count transparent, offscreen, or navigation-only content as visible', async () => {
     const { current } = page()
@@ -109,9 +134,33 @@ describe('slow connection visitor observation', () => {
     await vi.advanceTimersByTimeAsync(30_000)
     expect(captures).toEqual([2000])
   })
+
+  it('discards provisional timings and screenshots when the live page later reaches sign-in', async () => {
+    const { current, captures } = page(), entry = location.href
+    vi.spyOn(current, 'url').mockImplementation(() => location.href)
+    mocks.session.mockImplementation(async (_browser, _url, options) => {
+      options.onNavigationStart(current, Date.now())
+      return { page: current, httpStatus: 200, disposeNetwork: vi.fn() }
+    })
+    setTimeout(() => {
+      history.replaceState(null, '', '/login')
+      document.body.innerHTML = '<main><h1>Sign in to continue</h1><p>Enter your account details.</p><button>Continue</button></main>'
+    }, 3500)
+    try {
+      const pending = runSlowReplay({} as Browser, 'audit', entry, { deadline: 20_000 })
+      await vi.advanceTimersByTimeAsync(10_100)
+      const result = await pending
+      expect(captures).toEqual([2000])
+      expect(mocks.upload).not.toHaveBeenCalled()
+      expect(result).toMatchObject({ reason: 'public_sign_in_redirect', navigationComplete: false,
+        complete: false, captures: [], screenshotUrls: [], observedForMs: 0, pageUrl: entry })
+      expect(runSlowReplayChecks(result)).toEqual([])
+      expect(slowReplayAssertions(result).every(assertion => assertion.complete === false)).toBe(true)
+    } finally { history.replaceState(null, '', entry) }
+  })
   it('counts a decoded main image as content and leaves opaque graphics unclassified', async () => {
     const { current } = page()
-    document.body.innerHTML = '<main><img src="/hero.png" alt="Our product"></main>'
+    document.body.innerHTML = '<main><img class="lazy-loading" src="/hero.png" alt="Our product"></main>'
     const image = document.querySelector('img')!
     Object.defineProperties(image, { complete: { configurable: true, value: true }, naturalWidth: { value: 800 }, naturalHeight: { value: 600 } })
     vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({ ...rect(), height: 200, bottom: 200 } as DOMRect)
@@ -126,6 +175,20 @@ describe('slow connection visitor observation', () => {
     const { current } = page()
     document.body.innerHTML = '<header>Lots of navigation text for visitors.</header><div role="status">Please wait while your content loads.</div>'
     expect(await observeSlowViewport(current)).toMatchObject({ text: false, content: false })
+  })
+  it('ignores placeholder text, images, graphics and actions without hiding ready content', async () => {
+    const { current } = page()
+    document.body.innerHTML = '<main><section class="hero-skeleton"><p>Preparing product information. Please wait.</p>' +
+      '<img src="/placeholder.png"><svg></svg><button>Get started</button></section></main>'
+    const image = document.querySelector('img')!
+    Object.defineProperties(image, { complete: { value: true }, naturalWidth: { value: 200 }, naturalHeight: { value: 200 } })
+    for (const element of [image, document.querySelector('svg')!])
+      vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ ...rect(), height: 200, bottom: 200 } as DOMRect)
+    expect(await observeSlowViewport(current)).toMatchObject({ text: false, content: false, contentComplete: true, cta: false, actions: [] })
+    document.querySelector('main')!.insertAdjacentHTML('beforeend', '<section class="loading-complete" data-loading="false">' +
+      '<p>Useful product information for a visitor.</p><button id="ready">Get started</button></section>')
+    expect(await observeSlowViewport(current)).toMatchObject({ text: true, content: true, contentComplete: true, cta: true,
+      actions: [expect.objectContaining({ selector: '#ready' })] })
   })
   it('keeps measuring the recorded action when a competing action appears early', async () => {
     const { current } = page()

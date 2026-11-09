@@ -1,4 +1,4 @@
-import { hasCurrentCheckoutEvidence } from '../domain/outcome-evaluation'
+import { hasCurrentOutcomeSuccess } from '../domain/outcome-evaluation'
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { projectOutcomeDetail, type SiteOutcomeDetailView } from '@/lib/sites/presentation/outcome-detail-view'
@@ -113,7 +113,7 @@ async function readSiteOutcomeDetails(site: SiteRecord,
     const superseded = evidence && typeof evidence === 'object' && !Array.isArray(evidence) ? evidence.supersededByAssessmentId : null
     // Selection is not a certificate if a late writer superseded it before hydration.
     const lastSuccessful = successful?.state === 'CLEAR' && superseded == null &&
-      (row.kind !== 'CHECKOUT' || hasCurrentCheckoutEvidence(successful.coverage)) ? successful : null
+      hasCurrentOutcomeSuccess(row.kind, successful.coverage) ? successful : null
     return projectOutcomeDetail({ row, view: views[index], revisions: revisions[index],
       executions: row.bindingExecutions, lastSuccessful, improvements: row.improvements }, now)
   })

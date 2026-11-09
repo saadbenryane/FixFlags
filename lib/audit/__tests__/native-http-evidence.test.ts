@@ -10,6 +10,7 @@ import { evaluatorHandlers } from '../progressive/evaluators'
 import { serializeArtifact } from '../progressive/contracts'
 import type { TaskContext } from '../progressive/registry'
 import { CHECK_REGISTRY } from '../check-registry'
+import { readPublicPagePreview } from '../checks/public-page-preview'
 
 vi.mock('../open-check', async original => ({ ...await original<typeof import('../open-check')>(), openCheckDestination: vi.fn() }))
 vi.mock('../url', async original => ({ ...await original<typeof import('../url')>(), safeFetchResource: vi.fn() }))
@@ -32,6 +33,48 @@ describe('private native HTTP evidence', () => {
     expect(replayAssertions).toEqual(assertions)
     expect(replayScope).toEqual(scope)
     expect(replay.snapshot()).toEqual(recorded)
+    expect(openCheckDestination).toHaveBeenCalledTimes(2)
+  })
+
+  it('retains the old action inventory for replay while excluding query-only matches from new evidence', async () => {
+    const help = 'https://example.com/help?next=/checkout'
+    const inventory = { ...metadata, links: [{ href: help, text: 'Help', rel: null }, ...metadata.links] }
+    vi.mocked(openCheckDestination).mockImplementation(async url => ({ url, canonicalUrl: url, outcome: 'not_found',
+      status: 404, finalUrl: url, evidence: 'HTTP 404', shouldFlagDead: true }))
+    const previous = nativeHttpCollection()
+    const oldFlags = await runAuthCheckoutChecks(pageUrl, inventory, { ...previous.options, legacyActionInventory: true })
+    const saved = { ...previous.snapshot(), version: 2 as const }
+    expect(saved.requests).toHaveLength(3)
+
+    vi.mocked(openCheckDestination).mockClear()
+    const replay = nativeHttpCollection(saved)
+    expect(await runAuthCheckoutChecks(pageUrl, inventory, replay.options)).toEqual(oldFlags)
+    expect(replay.snapshot()).toEqual(saved)
+    expect(openCheckDestination).not.toHaveBeenCalled()
+
+    const current = nativeHttpCollection()
+    const flags = await runAuthCheckoutChecks(pageUrl, inventory, current.options)
+    expect(current.snapshot()).toMatchObject({ version: 3, requests: expect.arrayContaining(saved.requests.slice(1)) })
+    expect(current.snapshot().requests).toHaveLength(2)
+    expect(vi.mocked(openCheckDestination).mock.calls.map(([url]) => url)).not.toContain(help)
+    expect(flags.find(flag => flag.checkId === 'checkout-link-dead')?.evidenceTargets).toHaveLength(1)
+  })
+
+  it('separates extended destination observations while replaying older repair receipts at their recorded bound', async () => {
+    vi.mocked(openCheckDestination).mockImplementation(async (url, options) => ({ url, canonicalUrl: url,
+      status: 200, outcome: options?.extendedBody ? 'reachable' : 'unknown', finalUrl: url, evidence: 'Observed response', shouldFlagDead: false }))
+    const routine = nativeHttpCollection()
+    await routine.options.openDestination(pageUrl)
+    const repair = nativeHttpCollection()
+    await repair.options.openDestination(pageUrl, { extendedBody: true })
+    const routineReceipt = routine.snapshot(), repairReceipt = repair.snapshot()
+    expect(routineReceipt.requests[0].key).not.toBe(repairReceipt.requests[0].key)
+    const mismatched = nativeHttpCollection(routineReceipt)
+    await expect(mismatched.options.openDestination(pageUrl, { extendedBody: true })).rejects.toThrow('NATIVE_HTTP_REPLAY_INPUT_MISSING')
+    const legacyReceipt = { ...routineReceipt, version: 1 as const }
+    const legacy = nativeHttpCollection(legacyReceipt)
+    expect(await legacy.options.openDestination(pageUrl, { extendedBody: true })).toMatchObject({ outcome: 'unknown' })
+    expect(legacy.snapshot()).toEqual(legacyReceipt)
     expect(openCheckDestination).toHaveBeenCalledTimes(2)
   })
 
@@ -114,12 +157,14 @@ describe('private native HTTP evidence', () => {
 
   it('persists the secondary inputs in the actual evaluator artifact and replays the complete receipt', async () => {
     vi.mocked(safeFetchResource).mockResolvedValue(response)
+    const document = { url: pageUrl, finalUrl: pageUrl, status: 200, headers: { 'content-type': 'text/html' },
+      body: '<head><meta property="og:image" content="' + imageUrl + '"></head>', complete: true,
+      reason: null, collectedAt: new Date().toISOString(), redirects: [] }
     const context = { audit: { id: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
       environment: 'production', scope: 'SITE', checks: { 'og-image-broken': CHECK_REGISTRY['og-image-broken'].version }, outcomes: [], verificationTarget: null } },
       task: { id: 'task' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module: 'og-image' }, deadline: Date.now() + 12_000,
-      dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
-        pageId: 'page', metadata, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopBase64: null, mobileBase64: null,
-          consoleErrors: [], captureFailures: [], captureStatus: { desktop: 'ok', mobile: 'ok' } },
+      dependencies: new Map([['http', { workKind: 'http', workState: 'COMPLETED', workResult: serializeArtifact('http', {
+        metadata: null, document, publicPreview: readPublicPagePreview(document),
       }) }]]),
     } as unknown as TaskContext
     const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate

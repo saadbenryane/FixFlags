@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { removeSite, saveSiteSettings } from '../settings-commands'
-const db = vi.hoisted(() => ({ lock: vi.fn(), updateMany: vi.fn(), update: vi.fn(), accounts: vi.fn(), messages: vi.fn(), shops: vi.fn(), deleted: vi.fn(), runs: vi.fn(), audits: vi.fn(), cancelRuns: vi.fn() }))
+const db = vi.hoisted(() => ({ lock: vi.fn(), updateMany: vi.fn(), update: vi.fn(), accounts: vi.fn(), messages: vi.fn(), shops: vi.fn(), deleted: vi.fn(), runs: vi.fn(), audits: vi.fn(), cancelRuns: vi.fn(),
+  researchChoice: vi.fn(), researchEvent: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { $transaction: (run: (tx: unknown) => unknown) => run({
   $queryRaw: db.lock, project: { updateMany: db.updateMany, update: db.update },
   siteTestAccount: { findMany: db.accounts, deleteMany: db.deleted }, siteAccountMessage: { deleteMany: db.messages }, shopifyShop: { updateMany: db.shops },
   runRequest: { findMany: db.runs, updateMany: db.cancelRuns }, audit: { findMany: db.audits },
+  siteLifecycleEvent: { findFirst: db.researchChoice, create: db.researchEvent },
 }) } }))
 const owner = { projectId: 'project', userId: 'owner' }
-beforeEach(() => { vi.clearAllMocks(); db.lock.mockResolvedValue([{ id: 'project' }]); db.updateMany.mockResolvedValue({ count: 1 }); db.accounts.mockResolvedValue([]); db.runs.mockResolvedValue([]); db.audits.mockResolvedValue([]) })
+beforeEach(() => { vi.clearAllMocks(); db.lock.mockResolvedValue([{ id: 'project' }]); db.updateMany.mockResolvedValue({ count: 1 }); db.accounts.mockResolvedValue([]); db.runs.mockResolvedValue([]); db.audits.mockResolvedValue([]); db.researchChoice.mockResolvedValue(null) })
 describe('tenant-scoped Site lifecycle commands', () => {
   it('requires the current owner for settings and does not clear messages for a foreign Site', async () => {
     db.updateMany.mockResolvedValue({ count: 0 })
@@ -19,6 +21,7 @@ describe('tenant-scoped Site lifecycle commands', () => {
     db.accounts.mockResolvedValue([{ email: 'checks+1@example.com', state: 'ACTIVE' }])
     await expect(removeSite(owner)).rejects.toMatchObject({ status: 409, code: 'TEST_ACCOUNTS_REMAIN' })
     expect(db.update).not.toHaveBeenCalled(); expect(db.shops).not.toHaveBeenCalled()
+    expect(db.researchChoice).not.toHaveBeenCalled()
   })
   it('refuses a stale acknowledgement when an account changed or was added', async () => {
     db.accounts.mockResolvedValue([{ email: 'checks+1@example.com', state: 'VERIFYING' }])
@@ -34,11 +37,13 @@ describe('tenant-scoped Site lifecycle commands', () => {
       deletedAt: expect.any(Date), accountChecksEnabled: false, accountCheckRevision: { increment: 1 }, watchInterval: null,
     }) }))
     expect(db.deleted).not.toHaveBeenCalled()
+    expect(db.researchEvent).not.toHaveBeenCalled()
     expect(db.messages).toHaveBeenCalledWith({ where: { account: { projectId: 'project' } } })
   })
   it('does not inspect accounts or mutate another owner’s Site', async () => {
     db.lock.mockResolvedValue([])
     await expect(removeSite(owner)).rejects.toMatchObject({ status: 404 })
     expect(db.accounts).not.toHaveBeenCalled(); expect(db.update).not.toHaveBeenCalled()
+    expect(db.researchChoice).not.toHaveBeenCalled()
   })
 })

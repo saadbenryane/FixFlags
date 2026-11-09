@@ -2,9 +2,9 @@ import { captureScreenshot } from './browser/capture-screenshot'
 import { collectRenderedHtml } from './browser/rendered-html'
 import { observeRenderedCopy, type RenderedCopy } from './browser/rendered-copy'
 import { collectRenderedSearchSnapshot, type RenderedSearchSnapshot } from './search/rendered-snapshot'
+import { searchResourceKey } from './search/resource-identity'
 import { readPublicPageSignals, type PublicPageSignals } from './browser/public-page-signals'
 import { type Browser, type Page } from 'playwright'
-import { AxeBuilder } from '@axe-core/playwright'
 import fs from 'fs'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { currentExecutionOwnership } from './execution-ownership'
@@ -16,7 +16,7 @@ import { runFlowScan, type FlowScanResult, type FlowScanStep } from './flow/run-
 import { createAuditPage, settleAuditPage } from './browser/page-session'
 import { auditContextDiagnostics, type AuditContextDiagnostics } from './browser/context-lifetime'
 import { readLoadingUi, loadingUiInDocument, type LoadingUiSnapshot } from './browser/loading-ui'
-import { observeViewport } from './browser/viewport-observation'
+import { observeViewport, sameViewportDocument } from './browser/viewport-observation'
 import { observeMotionWindow, collectReducedMotionWindow, type MotionWindow } from './browser/motion-observation'
 import { applyMotionObservation } from './checks/motion-evidence'
 import { sharedBrowser } from './browser/shared-browser'
@@ -27,8 +27,8 @@ import { actionableConsoleErrors, dedupeConsoleErrors, type ConsoleCoverage } fr
 export { dedupeConsoleErrors } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
 import { documentEvidenceWithheld } from './browser/document-evidence'
-import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from './browser/accessibility-evidence'
-import { ACCESSIBILITY_RUN_OPTIONS, MOBILE_ACCESSIBILITY_RULE_IDS } from './checks/accessibility-rules'
+import { collectAccessibilityEvidence } from './browser/accessibility-capture'
+import type { AccessibilityEvidence } from './browser/accessibility-evidence'
 import type { ConsoleMessage } from './console-evidence'
 import { randomUUID } from 'node:crypto'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
@@ -40,7 +40,9 @@ import {
 } from './capture-metrics'
 import type { RuntimeHeadMetadata } from './metadata'
 import { NATIVE_HEAD_TEXT_LIMIT } from './checks/head-metadata'
+import { FAVICON_HREF_VERSION, FAVICON_LINK_SELECTOR, hasDeclaredFavicon } from './checks/favicon-declaration'
 import {
+  observePublicSignInRedirect,
   pageCaptureFailureFromError,
   type PageCaptureFailure,
 } from './browser/page-capture'
@@ -143,6 +145,9 @@ export interface ScreenshotResult {
   originalDocument?: import('./search/contracts').PublicDocument
   desktopFinalUrl?: string
   desktopHttpStatus?: number | null
+  desktopResponseResourceKey?: string
+  publicSignInRedirect?: true
+  mobileSignInRedirect?: true
   desktopUrl: string | null
   mobileUrl: string | null
   desktopBase64: string | null
@@ -163,6 +168,7 @@ export interface ScreenshotResult {
   runtimeHeadScope?: CaptureObservationScope
   responseHeaders?: Record<string, string> | null
   tracking?: import('./tracking/contracts').TrackingEvidence
+  engagement?: import('./network-engagement-evidence').EngagementEvidence
   networkFailures?: NetworkFailureRecord[]
   technologyResources?: TechnologyResourceRecord[]
   technologyResourcesTruncated?: boolean
@@ -191,6 +197,8 @@ interface ViewportCapture {
   originalDocument?: import('./search/contracts').PublicDocument
   finalUrl?: string
   httpStatus?: number | null
+  responseResourceKey?: string
+  signInRedirect?: true
   base64: string | null
   url: string | null
   initialUrl: string | null
@@ -203,6 +211,7 @@ interface ViewportCapture {
   runtimeHeadScope?: CaptureObservationScope
   responseHeaders?: Record<string, string> | null
   tracking?: import('./tracking/contracts').TrackingEvidence
+  engagement?: import('./network-engagement-evidence').EngagementEvidence
   networkFailures?: NetworkFailureRecord[]
   technologyResources?: TechnologyResourceRecord[]
   technologyResourcesTruncated?: boolean
@@ -231,7 +240,7 @@ async function readTechnologyRuntimeMarkers(page: Page): Promise<string[]> {
 }
 
 async function readRuntimeHeadMetadata(page: Page): Promise<{ metadata: RuntimeHeadMetadata; finalUrl: string }> {
-  return page.evaluate((maximum) => {
+  const observed = await page.evaluate(({ maximum, faviconSelector, maxFaviconLinks }) => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const bounded = (value: string | null | undefined) => value && value.length > maximum ? undefined : value?.trim() || null
     const content = (selector: string) =>
@@ -255,15 +264,23 @@ async function readRuntimeHeadMetadata(page: Page): Promise<{ metadata: RuntimeH
       lang: bounded(document.documentElement.getAttribute('lang')),
       viewport: content('meta[name="viewport"]'),
       robots: content('meta[name="robots"]'),
-      hasFavicon: Boolean(
-        document.querySelector(
-          'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
-        )
-      ),
     }
-    return { finalUrl: location.href, metadata: Object.fromEntries(
-      Object.entries(metadata).filter(([, value]) => value !== undefined)) as RuntimeHeadMetadata }
-  }, NATIVE_HEAD_TEXT_LIMIT)
+    const links = document.querySelectorAll(faviconSelector)
+    const faviconHrefs: string[] = []
+    let faviconComplete = links.length <= maxFaviconLinks, remaining = maximum * 4
+    for (let index = 0; index < Math.min(links.length, maxFaviconLinks); index++) {
+      const href = links[index].getAttribute('href')?.trim()
+      if (!href) continue
+      if (href.length > maximum || href.length > remaining) { faviconComplete = false; continue }
+      faviconHrefs.push(href)
+      remaining -= href.length
+    }
+    return { finalUrl: location.href, baseUrl: document.baseURI, faviconHrefs, faviconComplete,
+      metadata: Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined)) as RuntimeHeadMetadata }
+  }, { maximum: NATIVE_HEAD_TEXT_LIMIT, faviconSelector: FAVICON_LINK_SELECTOR, maxFaviconLinks: 64 })
+  const hasFavicon = hasDeclaredFavicon(observed.faviconHrefs, observed.baseUrl, observed.finalUrl)
+  return { finalUrl: observed.finalUrl, metadata: { ...observed.metadata,
+    ...(hasFavicon || observed.faviconComplete ? { hasFavicon, faviconHrefVersion: FAVICON_HREF_VERSION } : {}) } }
 }
 
 async function waitForFinishedLoadState(
@@ -279,12 +296,13 @@ async function waitForFinishedLoadState(
   const timeout = (maximum: number) => Math.max(1, Math.min(maximum, (deadline ?? Infinity) - Date.now()))
   // Start observing before media, document readiness or metadata can delay us.
   // Without observed loading UI there is no clearance measurement.
-  const clearance = initial.loadingVisible ? page.waitForFunction(loadingUiInDocument, true, { timeout: timeout(10_000) })
+  const { pageUrl, timeOrigin } = initial
+  const clearance = initial.loadingVisible ? page.waitForFunction(loadingUiInDocument, { pageUrl, timeOrigin }, { timeout: timeout(10_000) })
     .then(async observation => {
-      const clearedAt = await observation.jsonValue()
-      return typeof clearedAt === 'number' && Number.isFinite(clearedAt) && clearedAt >= startedAt ? clearedAt - startedAt : null
+      try { return await observation.jsonValue() }
+      finally { await observation.dispose().catch(() => {}) }
     }).catch(() => null) : Promise.resolve(null)
-  const [, , loadingClearedMs] = await Promise.all([
+  const [, , clearedAt] = await Promise.all([
     page.waitForFunction(() => document.readyState === 'complete', undefined, { timeout: timeout(8_000) }).catch(() => {}),
     page.waitForFunction(() => document.title.trim().length > 0, undefined, { timeout: timeout(3_000) }).catch(() => {}),
     clearance,
@@ -293,7 +311,10 @@ async function waitForFinishedLoadState(
   await settleAuditPage(page)
 
   const final = await readLoadingUi(page)
-  const content = await observeViewport(page, { profile: scope.profile, includeActions: false, excludeLoading: true })
+  const content = await observeViewport(page, { profile: scope.profile, includeActions: false })
+  const finalContentMatches = sameViewportDocument(final, content)
+  const interrupted = clearedAt === 'interrupted' || !sameViewportDocument(initial, final) || !finalContentMatches
+  const loadingClearedMs = !interrupted && typeof clearedAt === 'number' && Number.isFinite(clearedAt) && clearedAt >= startedAt ? clearedAt - startedAt : null
   return {
     device,
     initialScreenshotUrl: null,
@@ -305,8 +326,8 @@ async function waitForFinishedLoadState(
     loadingLabel: initial.loadingLabel ?? final.loadingLabel,
     finalReadyState: final.readyState,
     finalTitle: final.title,
-    observation: { version: 1, device, scope: { ...scope, finalUrl: content.pageUrl }, contentVisible: content.content === true,
-      ready: final.readyState === 'complete', restricted: documentEvidenceWithheld(restrictions) },
+    observation: { version: 1, device, scope: { ...scope, finalUrl: final.pageUrl }, contentVisible: finalContentMatches && content.content === true,
+      ready: final.readyState === 'complete', restricted: documentEvidenceWithheld(restrictions), ...(interrupted ? { interrupted: true } : {}) },
   }
 }
 
@@ -375,6 +396,8 @@ export type ScreenshotCaptureOptions = {
   collectMobile?: boolean
   collectAccessibility?: boolean
   collectPublicSignals?: import('./browser/public-page-signals').PublicSignalCollection | false
+  collectEngagement?: boolean
+  collectTracking?: boolean
 }
 type ProfileCaptureOptions = ScreenshotCaptureOptions & { consoleIdentityKey: string }
 
@@ -427,6 +450,8 @@ async function captureDesktopWithFlow(
       journeySafe: true,
       deadline,
       collectSearchEvidence: collectOriginalDocument,
+      // The same library observations also identify the page's tracking tools.
+      collectTrackingLibraries: true,
     })
     page = session.page
     consoleTruncated = session.consoleTruncated
@@ -434,6 +459,7 @@ async function captureDesktopWithFlow(
     const captureStartedAt = session.navigationStartedAt
     disposeNetwork = session.disposeNetwork
     result.responseHeaders = session.responseHeaders
+    if (session.responseUrl) result.responseResourceKey = searchResourceKey(session.responseUrl)
     result.originalDocument = session.originalDocument
     result.finalUrl = page.url()
     result.httpStatus = session.httpStatus
@@ -464,7 +490,17 @@ async function captureDesktopWithFlow(
     }
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
+    if (options.collectEngagement || options.collectTracking) await session.settleNetwork(deadline ?? Date.now() + 4000, {
+      engagement: options.collectEngagement ? 'page_load' : undefined,
+      tracking: options.collectTracking ? 'page_load' : undefined,
+      signal: currentExecutionOwnership()?.signal,
+    })
     result.tracking = session.tracking('page_load')
+    if (options.collectEngagement) {
+      result.engagement = session.engagement('page_load')
+      result.networkFailures = [...session.networkFailures]
+      result.formProbe = session.formProbe
+    }
     // Snapshot after the initial page has settled and before the CTA flow so
     // destination resources cannot contaminate the landing-page stack.
     result.technologyResources = [...session.technologyResources]
@@ -502,17 +538,11 @@ async function captureDesktopWithFlow(
         result.renderedCopy = null
         logger.warn('Rendered copy could not be observed', error)
       }
-    // Run axe-core on the top document + same-origin frames only.
-    // Legacy mode disables cross-origin frame injection (YouTube/Calendly/etc.),
-    // which otherwise flags third-party player DOM as the site's own a11y debt.
     if (collectAccessibility) try {
-      const axeResults = await new AxeBuilder({ page })
-        .options(ACCESSIBILITY_RUN_OPTIONS)
-        .setLegacyMode(true)
-        .analyze()
-      result.axeViolations = recordedAxeViolations(axeResults)
-      result.accessibilityEvidence = summarizeAccessibility(axeResults, { pageUrl: targetUrl, finalUrl: axeResults.url,
-        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) })
+      const { evidence, violations } = await collectAccessibilityEvidence(page, { pageUrl: targetUrl,
+        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }, 'desktop')
+      result.axeViolations = violations
+      result.accessibilityEvidence = evidence
     } catch (err) {
       logger.warn('axe-core scan failed; accessibility evidence is unavailable', err)
       // Undefined means collection failed. An empty array means axe actually ran.
@@ -666,11 +696,18 @@ async function captureMobileViewport(
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
 
+    if (!scanAccess && await observePublicSignInRedirect(page, targetUrl, session.httpStatus)) {
+      result.signInRedirect = true
+      result.loadExperience = null
+      result.networkFailures = []
+      return result
+    }
+
     if (!mediaOnly && collectAccessibility) try {
-      const axeResults = await new AxeBuilder({ page }).withRules([...MOBILE_ACCESSIBILITY_RULE_IDS]).setLegacyMode(true).analyze()
-      result.axeViolations = recordedAxeViolations(axeResults)
-      result.accessibilityEvidence = summarizeAccessibility(axeResults, { pageUrl: targetUrl, finalUrl: axeResults.url,
-        profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) })
+      const { evidence, violations } = await collectAccessibilityEvidence(page, { pageUrl: targetUrl,
+        profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }, 'mobile')
+      result.axeViolations = violations
+      result.accessibilityEvidence = evidence
     } catch (error) {
       logger.warn('Mobile accessibility rule evidence is unavailable', error)
     }
@@ -697,16 +734,17 @@ async function captureMobileViewport(
       logger.error('mobile layout metrics failed', err)
     }
   } finally {
-    if (initialMotion) {
+    if (initialMotion && !result.signInRedirect) {
       const observed = await initialMotion.catch(() => undefined)
       if (observed?.pageUrl) result.motionWindow = { ...observed, restricted: (restrictions?.length ?? 0) > 0,
         contentVisible: result.captureMetrics?.loadingObservation?.scope.finalUrl === observed.pageUrl && result.captureMetrics.loadingObservation.contentVisible === true }
     }
-    result.consoleComplete = !mediaOnly && await consoleWindowComplete(page, consoleTruncated, consoleTiming, consoleErrors, consoleObservationMs, deadline)
+    result.consoleComplete = !mediaOnly && !result.signInRedirect && await consoleWindowComplete(page, consoleTruncated, consoleTiming, consoleErrors, consoleObservationMs, deadline)
     result.consoleObservedMs = consoleTiming?.().observedMs ?? 0
     result.consoleFinalUrl = page?.url()
     disposeNetwork?.()
     await closeSessionPage(page)
+    if (result.signInRedirect) consoleErrors.length = 0
     await finishedLoad?.catch(() => undefined)
     result.consoleMinimumMs = consoleTiming?.().minimumMs ?? 0
     result.consoleMessagesTruncated = consoleTruncated?.() ?? false
@@ -818,6 +856,8 @@ export async function captureScreenshots(
     originalDocument: desktop.originalDocument,
     desktopFinalUrl: desktop.finalUrl,
     desktopHttpStatus: desktop.httpStatus,
+    desktopResponseResourceKey: desktop.responseResourceKey,
+    ...(mobile.signInRedirect ? { mobileSignInRedirect: mobile.signInRedirect } : {}),
     consoleErrors: consoleErrors.slice(0, 500),
     consoleCoverage: {
       phase: runFlow ? 'page_load_and_public_action' : 'page_load',
@@ -851,6 +891,7 @@ export async function captureScreenshots(
     responseHeaders: desktop.responseHeaders ?? null,
     networkFailures: mergedNetworkFailures,
     tracking: desktop.tracking,
+    engagement: desktop.engagement,
     technologyResources: desktop.technologyResources ?? [],
     technologyResourcesTruncated: desktop.technologyResourcesTruncated ?? false,
     technologyRuntimeMarkers: desktop.technologyRuntimeMarkers,

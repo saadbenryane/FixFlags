@@ -53,10 +53,11 @@ export async function runDestinationUXProbes(
   originCtaText: string | null,
   originCtaHref: string | null,
   postClick?: PostClickMetrics,
+  { inspectContent = true } = {},
 ): Promise<DestinationUXQuality> {
   const url = page.url()
   const load = postClick?.version === 2 && postClick.pageUrl !== url ? undefined : postClick
-  const [copy, controls, trust, pageData] = await Promise.all([
+  const [copy, controls, trust, pageData] = inspectContent ? await Promise.all([
     observeRenderedCopy(page).catch(() => null),
     collectRenderedActionInventory(page, true, false).catch(() => null),
     readPublicPageSignals(page, 'trust').catch(() => null),
@@ -64,7 +65,7 @@ export async function runDestinationUXProbes(
       ((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.domContentLoadedEventEnd ?? 0) > 0),
       hasViewportMeta: Boolean(document.querySelector('meta[name="viewport"]')),
       hasFormForValue: Boolean(document.querySelector('form input[type="email"],form textarea,form input[required]')) })).catch(() => null),
-  ])
+  ]) : [null, null, null, null]
   const sameDocument = page.url() === url && pageData?.pageUrl === url && pageData.ready
   const contentComplete = sameDocument && copy?.pageUrl === url && copy.complete
   const controlsComplete = sameDocument && controls?.pageUrl === url && controls.complete

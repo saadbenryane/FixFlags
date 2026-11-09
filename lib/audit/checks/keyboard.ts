@@ -1,10 +1,18 @@
-import type { KeyboardEvidence } from '../browser/keyboard-probe'
+import { KEYBOARD_FOCUS_POLICY, type KeyboardEvidence } from '../browser/keyboard-probe'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { captureObservationKey, capturePageKey } from '../browser/observation-scope'
 
 export const KEYBOARD_CONTEXT_PATTERN = /^keyboard:[a-f0-9]{64}:[a-f0-9]{64}:.+$/
+
+/** Retain v3 through v9 failure targets while requiring fresh evidence under the
+ * current paint policy. Older paint models keep their historical scopes. */
+export function currentKeyboardFocusTarget(context: string) {
+  return KEYBOARD_CONTEXT_PATTERN.test(context)
+    ? context.replace(/:focus:painted-properties-v[3-9]$/, ':focus:' + KEYBOARD_FOCUS_POLICY)
+    : context
+}
 
 /** Each assertion retains its exercised scope. Module completion is only a
  * summary; an unrelated untested popup cannot supply or erase repair evidence. */

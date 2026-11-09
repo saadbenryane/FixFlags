@@ -8,11 +8,13 @@ import { load } from 'cheerio'
 import type { RenderedSearchSnapshot } from '../search/rendered-snapshot'
 import type { DestinationCheckOptions } from './destination-evidence'
 import { documentEvidenceWithheld } from '../browser/document-evidence'
+import { PUBLIC_LINK_LIMITATION } from './public-link-coverage'
 
 export type PageLinkInventory = Pick<PageMetadata, 'links' | 'linkBaseUrl' | 'documentUrl'> & { complete?: boolean }
 type LinkCapture = {
   renderedSearchSnapshot?: { finalUrl?: string | null; documentBaseUrl?: string | null; sections: Pick<RenderedSearchSnapshot['sections'], 'links'> } | null
   collectionRestrictions?: readonly string[] | null
+  publicSignInRedirect?: true
 }
 
 /** Reuse the bounded native link section, independently of whole-page parsing.
@@ -20,6 +22,7 @@ type LinkCapture = {
  * Historical sections without an observed base cannot resolve relative links. */
 export function capturedPageLinks(capture: LinkCapture | null | undefined, metadata: PageMetadata | null,
   options: { requireLabels?: boolean } = {}): PageLinkInventory | null {
+  if (capture?.publicSignInRedirect) return null
   const snapshot = capture?.renderedSearchSnapshot
   const restricted = documentEvidenceWithheld(capture?.collectionRestrictions)
   // Action classification consumes labels as well as hrefs. A restricted
@@ -41,7 +44,6 @@ export function capturedPageLinks(capture: LinkCapture | null | undefined, metad
     linkBaseUrl: snapshot?.documentBaseUrl ?? metadata.linkBaseUrl, complete: !restricted } : null
 }
 
-export const PUBLIC_LINK_LIMITATION = 'Public link GET responses cover the recorded destination inventory. Access restrictions, transport failures, untested links and interactive behavior remain unknown.'
 export const PUBLIC_LINK_INVENTORY_LIMITATION = 'The captured link list was not collected. Public destinations remain unknown.'
 const PUBLIC_DESTINATION_EXPECTED = 'The linked public destination responds without a missing-page or server error'
 
@@ -89,7 +91,8 @@ export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInv
   openDestination?: DestinationCheckOptions['openDestination'], originalContexts?: readonly string[]) {
   const expected = originalContexts ? new Set(originalContexts) : null
   const urls = publicLinkUrls(sourceUrl, inventory).filter(url => !expected || expected.has(publicLinkContext(sourceUrl, url)))
-  const opened = await openCheckDestinations(urls, { origin: sourceUrl, ceiling: 120, deadline: Math.min(deadline, Date.now() + 8000), openDestination })
+  const opened = await openCheckDestinations(urls, { origin: sourceUrl, ceiling: 120, deadline: Math.min(deadline, Date.now() + 8000),
+    extendedBody: Boolean(expected?.size), openDestination })
   const checked = publicLinkObservations(sourceUrl, urls, opened.results, inventory.complete !== false)
   const present = new Set(urls.map(url => publicLinkContext(sourceUrl, url)))
   const missing = [...(expected ?? [])].filter(context => !present.has(context))

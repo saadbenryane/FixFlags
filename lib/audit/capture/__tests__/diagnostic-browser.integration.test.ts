@@ -66,7 +66,9 @@ browserTests('diagnostic observations from Chromium', () => {
     const after = await measureMobileLayout(page)
     const observations: CheckAssertion[] = []
     runMobileUXQualityChecks(after, 'marketing', assertion => observations.push(assertion))
-    expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({
+      passed: true, complete: true, observed: expect.stringContaining('not iOS focus'),
+    })
   })
   it('measures a below-fold action and a changed placement using the actual mobile viewport', async () => {
     await fixture('main{min-height:1800px} #signup{display:block;margin-top:1000px}', '<a id="signup" href="/signup">Get started free</a>')
@@ -78,6 +80,21 @@ browserTests('diagnostic observations from Chromium', () => {
     const observations: CheckAssertion[] = []
     expect(runLayoutChecks(after, 'marketing', assertion => observations.push(assertion))).toEqual([])
     expect(observations[0]).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+  })
+  it('keeps the mobile placement identity on the original search field and submit control', async () => {
+    await fixture('#search{position:absolute;top:24px}', '<form id="search"><label for="query">Find a report</label>' +
+      '<input type="search" id="query" name="query" placeholder="Find a report"><button type="submit">Find reports</button></form>')
+    const original = await measureMobileLayout(page)
+    expect(original.mobilePrimaryCtaContext).toMatch(/^mobile-action:[a-f0-9]{64}$/)
+    await page.addStyleTag({ content: '#search{top:320px}' })
+    const moved = await measureMobileLayout(page)
+    expect(moved.mobilePrimaryCtaTopPx).toBeGreaterThan(300)
+    expect(moved.mobilePrimaryCtaContext).toBe(original.mobilePrimaryCtaContext)
+    await page.locator('button').evaluate(button => { button.textContent = 'Search projects' })
+    expect((await measureMobileLayout(page)).mobilePrimaryCtaContext).not.toBe(original.mobilePrimaryCtaContext)
+    await page.locator('button').evaluate(button => { button.textContent = 'Find reports' })
+    await page.locator('#query').evaluate(input => input.setAttribute('name', 'replacement'))
+    expect((await measureMobileLayout(page)).mobilePrimaryCtaContext).not.toBe(original.mobilePrimaryCtaContext)
   })
   it('compares real input sizing through an oversized document, repair and recurrence without expanding HTML limits', async () => {
     const profile = MOBILE_CAPTURE_PROFILE
@@ -111,9 +128,8 @@ browserTests('diagnostic observations from Chromium', () => {
     expect(recovery(before.receipt)).toBe(false)
     size = 16
     const repaired = await inspect()
-    expect(repaired.receipt.assertions.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
-    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: 'mobile-input-zoom', flag: flag! })).toBeUndefined()
-    expect(recovery(repaired.receipt)).toBe(false)
+    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: 'mobile-input-zoom', flag: flag! })?.assertion.passed).toBe(true)
+    expect(recovery(repaired.receipt)).toBe(true)
     size = 14
     const recurring = await inspect()
     expect(scopedAssertionForTarget({ receipt: recurring.receipt, checkId: 'mobile-input-zoom', flag: flag! })?.assertion.passed).toBe(false)

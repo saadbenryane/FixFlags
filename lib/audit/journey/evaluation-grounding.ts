@@ -11,7 +11,7 @@ const rejectionSchema = z.object({
 }).strict()
 export const journeyAssessmentSchema = z.object({
   version: z.literal(1), journeyType: z.string().max(100), state: z.enum(['COMPLETE', 'INCOMPLETE']),
-  reason: z.enum(['assessed', 'unsupported_candidates', 'provider_failed', 'budget_unavailable', 'walk_incomplete']),
+  reason: z.enum(['assessed', 'unsupported_candidates', 'provider_failed', 'budget_unavailable', 'walk_incomplete', 'public_sign_in_redirect']),
   evaluation: journeyEvaluationSchema.optional(),
   rejections: z.array(rejectionSchema).max(20),
 }).strict()

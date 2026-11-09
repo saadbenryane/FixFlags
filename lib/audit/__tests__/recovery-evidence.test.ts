@@ -52,6 +52,14 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
     const exact = await read(originalUrl, '<title>Useful pricing</title>')
     expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec('title-missing'), flag,
       executions: [{ targetKey: 'module:search-presentation', status: 'COMPLETED', detail: exact }] })).toBe(true)
+    const input = { auditId: 'after', executionSpec: spec('title-missing'), flag: { checkId: 'title-missing', pageUrl: originalUrl } }
+    const misplaced = { targetKey: 'module:search-canonical', status: 'COMPLETED', detail: exact }
+    expect(recordedVerificationVerdict({ ...input, flag, executions: [misplaced] })).toBeNull()
+    expect(recordedVerificationVerdict({ ...input, executions: [misplaced, {
+      targetKey: 'check:title-missing', status: 'COMPLETED', detail: { kind: 'search-verifier', version: 1, auditId: 'after',
+        pageUrl: originalUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
+        observationIds: ['title-missing:rendered-dom'], reason: 'Retained derived verifier' },
+    }] })).toBeNull()
   })
   it('requires every structured original observation and its exact admitted version', () => {
     const peer = 'https://example.com/other'
@@ -81,6 +89,22 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
     expect(assess([failed])).toBe('failed')
     expect(assess([row(), { ...failed, status: 'FAILED' }])).toBeNull()
     expect(assess([row(), row({ pageUrl: peer, failed: true })])).toBeNull()
+  })
+
+  it('uses a comparable lab measurement when another observation of the same page is incomplete', () => {
+    const peer = 'https://example.com/other'
+    const unavailable = row({ applicable: false, complete: false, assertions: [] })
+    const laterFailure = row({ passed: false, assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast',
+      observed: '6000ms', passed: false, complete: true }] })
+    const assess = (executions: RecoveryExecution[], affectedPaths = [url]) => recordedVerificationVerdict({
+      auditId: 'after', executionSpec: spec('lcp-poor'), flag: {
+        ...labFlag(), affectedPaths, evidenceTargets: affectedPaths.flatMap(page => labFlag(page).evidenceTargets!),
+      }, executions,
+    })
+    expect(assess([unavailable, row()])).toBe('passed')
+    expect(assess([row(), unavailable], [url, peer])).toBeNull()
+    expect(assess([unavailable, row(), laterFailure])).toBe('failed')
+    expect(assess([unavailable])).toBeNull()
   })
 
   it('keeps a disappearing finding open when its evaluator did not complete, even on a completed page', () => {
@@ -180,6 +204,10 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
     expect(hasRecordedRecoveryEvidence(target)).toBe(false)
     const healthyInput = evidence()
     const repaired = { ...partial, complete: true, observations: await evaluateSearch(healthyInput) }
-    expect(hasRecordedRecoveryEvidence({ ...target, executions: [{ ...target.executions[0], detail: repaired }] })).toBe(true)
+    const complete = { ...target.executions[0], detail: repaired }
+    expect(hasRecordedRecoveryEvidence({ ...target, executions: [complete] })).toBe(true)
+    expect(recordedVerificationVerdict({ ...target, executions: [...target.executions, complete] })).toBe('passed')
+    expect(recordedVerificationVerdict({ ...target, executions: [...target.executions, complete,
+      { ...complete, detail: { ...repaired, observations: before } }] })).toBe('failed')
   })
 })

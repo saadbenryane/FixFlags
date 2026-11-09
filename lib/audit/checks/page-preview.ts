@@ -4,6 +4,7 @@ import type { ScreenshotResult } from '../screenshot'
 import type { CorridorPageMeta } from './corridor-consistency'
 import type { PageMetadata } from '../metadata'
 import { capturedHeadMetadata, NATIVE_HEAD_TEXT_LIMIT } from './head-metadata'
+import type { PublicPagePreview } from './public-page-preview'
 
 const previewText = z.string().max(NATIVE_HEAD_TEXT_LIMIT).nullable()
 export const pagePreviewSchema = z.object({
@@ -13,9 +14,16 @@ export const pagePreviewSchema = z.object({
 }).strict()
 export type PagePreviewObservation = z.infer<typeof pagePreviewSchema>
 
+export function publicPagePreviewForComparison(page: { url: string; publicPreview?: PublicPagePreview }, role: string): CorridorPageMeta {
+  const preview = page.publicPreview
+  return { url: page.url, role, title: null, ogTitle: preview?.ogTitle ?? null, ogDescription: preview?.ogDescription ?? null,
+    scope: preview?.scope, source: 'public-head-v1', titleComplete: preview?.ogTitle !== undefined,
+    descriptionComplete: preview?.ogDescription !== undefined }
+}
+
 /** Head values belong to their own native observation, independently of DOM
  * parsing. Missing, oversized or restricted fields cannot establish absence. */
-export function capturedPagePreview(capture: Pick<ScreenshotResult, 'runtimeHeadMetadata' | 'runtimeHeadScope' | 'collectionRestrictions'> | null | undefined): PagePreviewObservation | undefined {
+export function capturedPagePreview(capture: Parameters<typeof capturedHeadMetadata>[0]): PagePreviewObservation | undefined {
   const head = capturedHeadMetadata(capture)
   if (!head) return undefined
   const { title, ogTitle, ogDescription } = head.metadata

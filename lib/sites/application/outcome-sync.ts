@@ -1,11 +1,14 @@
-import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
 import { discoverOutcomePages, discoverJourneyOutcomes } from '@/lib/sites/domain/outcome-discovery'
-import { executionTransaction } from '@/lib/audit/execution-ownership'
+import { currentExecutionOwnership, executionTransaction, ExecutionOwnershipLost, lockExecutionScope } from '@/lib/audit/execution-ownership'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { observedPurchaseStart } from '@/lib/sites/checkout-inference'
 import { buildCheckoutJourneyConfig } from './outcome-bindings'
+
+export class SiteAnalysisScopeChanged extends Error {
+  constructor() { super('Analysis no longer belongs to the selected Site'); this.name = 'SiteAnalysisScopeChanged' }
+}
 
 /** Worker projection: only observed pages and browser-planned journeys become Site facts. */
 export async function syncOutcomesFromAudit(input: {
@@ -13,25 +16,30 @@ export async function syncOutcomesFromAudit(input: {
   auditId: string
   url: string
 }): Promise<void> {
-  const audit = await prisma.audit.findUniqueOrThrow({
-    where: { id: input.auditId },
-    select: {
-      projectId: true,
-      pages: { select: { url: true, title: true } },
-      flags: { select: { checkId: true, pageUrl: true } },
-      journeyReviews: {
-        select: {
-          journeyType: true,
-          startUrl: true,
-          steps: { select: { url: true, actionType: true, actionDetail: true, elementDescription: true } },
+  const execution = currentExecutionOwnership()
+  if (execution && execution.auditId !== input.auditId) throw new ExecutionOwnershipLost()
+  const checkoutOutcomeId = await executionTransaction(async tx => {
+    // The worker guard already owns this lock. Direct projection callers must
+    // also serialize their writes with a claim of the source Audit.
+    if (!execution && !await lockExecutionScope(tx, input.auditId)) throw new ExecutionOwnershipLost()
+    const audit = await tx.audit.findUniqueOrThrow({
+      where: { id: input.auditId },
+      select: {
+        projectId: true,
+        userId: true,
+        pages: { select: { url: true, title: true } },
+        flags: { select: { checkId: true, pageUrl: true } },
+        journeyReviews: {
+          select: {
+            journeyType: true,
+            startUrl: true,
+            steps: { select: { url: true, actionType: true, actionDetail: true, elementDescription: true } },
+          },
         },
       },
-    },
-  })
-  if (audit.projectId !== input.site.projectId)
-    throw new Error('Analysis does not belong to this Site')
-  let checkoutOutcomeId: string | null = null
-  await executionTransaction(async (tx) => {
+    })
+    if (audit.projectId !== input.site.projectId || audit.projectId && audit.userId !== input.site.userId)
+      throw new SiteAnalysisScopeChanged()
     const owner = input.site.projectId
       ? { projectId: input.site.projectId }
       : { provisionalSiteId: input.site.provisionalSiteId! }
@@ -144,7 +152,6 @@ export async function syncOutcomesFromAudit(input: {
             confirmedAt: new Date(),
           },
         })
-        checkoutOutcomeId = checkout.id
         const bindingConfig = buildCheckoutJourneyConfig(startUrl, false)
         await tx.outcomeExecutionBinding.upsert({
           where: {
@@ -160,8 +167,10 @@ export async function syncOutcomesFromAudit(input: {
           },
           update: { config: bindingConfig },
         })
+        return checkout.id
       }
     }
+    return null
   })
   if (checkoutOutcomeId && input.site.projectId) {
     await recordSiteLifecycleEvent({

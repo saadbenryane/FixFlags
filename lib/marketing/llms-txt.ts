@@ -1,8 +1,11 @@
 import { WEBSITE_GUIDES } from './copy/guides'
 import { BLOG_POSTS, BRAND, SITE_URL } from './copy'
 import { INDEXABLE_ROUTES, LLMS_SECTIONS, LLMS_TXT_PATH } from './seo-routes'
+import { humanizeCheckId } from './issue-page'
 
-export function buildLlmsTxt(options: { hasReviewedResearch?: boolean } = {}): string {
+const MAX_RESEARCH_LINKS = 20
+
+export function buildLlmsTxt(reviewedIssueCheckIds: readonly string[] = []): string {
   const baseUrl = SITE_URL.replace(/\/$/, '')
   const lines: string[] = [
     `# ${BRAND.name}`,
@@ -12,12 +15,17 @@ export function buildLlmsTxt(options: { hasReviewedResearch?: boolean } = {}): s
   ]
 
   for (const section of LLMS_SECTIONS) {
-    if (section.requiresReviewedResearch && !options.hasReviewedResearch) continue
+    if (section.requiresReviewedResearch && reviewedIssueCheckIds.length === 0) continue
     lines.push(`## ${section.title}`, '')
     for (const link of section.links) {
       const url = `${baseUrl}${link.path}`
       const suffix = link.note ? `: ${link.note}` : ''
       lines.push(`- [${link.label}](${url})${suffix}`)
+    }
+    if (section.requiresReviewedResearch) {
+      for (const checkId of reviewedIssueCheckIds.slice(0, MAX_RESEARCH_LINKS)) {
+        lines.push(`- [${humanizeCheckId(checkId)}](${baseUrl}/issues/${checkId})`)
+      }
     }
     lines.push('')
     if (section.title === 'Updates') {

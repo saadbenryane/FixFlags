@@ -5,7 +5,7 @@ import { resolveLatestAudit } from '@/lib/sites/application/site-execution'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { z } from 'zod'
 import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
-import { RESULT_SELECTION_CHANGED } from '@/lib/sites/check-result-contract'
+import { CheckResultSelectionChanged, RESULT_SELECTION_CHANGED } from '@/lib/sites/check-result-contract'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 const querySchema = z.object({ area: z.enum(SITE_CARD_AREAS).optional(), pageUrl: z.string().max(4096).url()
@@ -26,9 +26,9 @@ export async function GET(request: Request, context: { params: Promise<{ siteId:
     const page = await loadSiteCheckResultPage(site, latest, cursor, undefined, filter.data, true)
     return NextResponse.json(page, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Invalid check history cursor') return apiError(error.message, 400, { code: RESULT_SELECTION_CHANGED })
-    if (error instanceof Error && error.message === 'Check evidence selection changed')
-      return apiError(SITE_ACTION_COPY.resultsUpdated, 409, { code: RESULT_SELECTION_CHANGED })
+    if (error instanceof CheckResultSelectionChanged) return error.reason === 'cursor'
+      ? apiError(error.message, 400, { code: RESULT_SELECTION_CHANGED })
+      : apiError(SITE_ACTION_COPY.resultsUpdated, 409, { code: RESULT_SELECTION_CHANGED })
     return handleRouteError(error, 'Could not load check results')
   }
 }

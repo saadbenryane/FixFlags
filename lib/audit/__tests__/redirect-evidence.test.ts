@@ -17,6 +17,12 @@ const origin = 'https://example.com', requests: string[] = []
 const server = createServer((request, response) => {
   const path = new URL(request.url!, origin)
   requests.push(path.href)
+  if (path.pathname === '/healthy') { response.end('Healthy service'); return }
+  if (path.pathname === '/missing-location') { response.writeHead(302).end(); return }
+  if (path.pathname === '/malformed-location') { response.writeHead(302, { location: 'http://[invalid' }).end(); return }
+  if (path.pathname === '/choices' || path.pathname === '/not-modified') {
+    response.writeHead(path.pathname === '/choices' ? 300 : 304, { location: '/healthy' }).end(); return
+  }
   response.statusCode = 302
   if (path.pathname.startsWith('/nonredirect') || path.pathname === '/mixed-a') response.statusCode = 304
   if (path.pathname.startsWith('/chain/')) response.setHeader('location', '/chain/' + (Number(path.pathname.split('/').at(-1)) + 1))
@@ -73,6 +79,18 @@ describe('observed public redirect failures', () => {
       expect(assessPageResponse(url, page)).toMatchObject({ flags: [], complete: false })
       expect(await probeUptime(url)).toMatchObject({ result: 'UNKNOWN' })
       expect(await openCheckDestination(url)).toMatchObject({ shouldFlagDead: false })
+    })
+  it.each([['/choices', 300], ['/not-modified', 304], ['/missing-location', 302], ['/malformed-location', 302]] as const)(
+    'retains %s as unresolved without opening its advertised destination', async (path, status) => {
+      const url = origin + path, start = requests.length
+      const document = await collectDocument(url, Date.now() + 5000)
+      expect(document).toMatchObject({ status, finalUrl: url, redirects: [], complete: false, reason: 'redirect_unresolved' })
+      expect(assessPageResponse(url, document)).toMatchObject({ complete: false, flags: [] })
+      expect(assessSecurityTransport(url, null, document).assertions.find(assertion => assertion.key === 'tls-certificate'))
+        .toMatchObject({ passed: false, complete: false })
+      expect(await probeUptime(url)).toMatchObject({ result: 'UNKNOWN', reason: 'redirect_unresolved', statusCode: status, finalUrl: url })
+      expect(await openCheckDestination(url)).toMatchObject({ outcome: 'unknown', status, finalUrl: url, shouldFlagDead: false })
+      expect(requests.slice(start)).toEqual([url, url, url])
     })
   it('does not recognize failure from error message text alone', () => {
     expect(classifyPublicRequestFailure(new Error('Redirect loop'))).toMatchObject({ result: 'UNKNOWN' })

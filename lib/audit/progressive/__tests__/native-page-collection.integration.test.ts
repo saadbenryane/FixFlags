@@ -8,8 +8,11 @@ import { clearWorkerHeartbeat, touchWorkerHeartbeat } from '@/lib/queue/worker-h
 import { closeBrowser, getAuditBrowser, getBrowserDiagnostics } from '../../screenshot'
 import { requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
+import { loadSiteHome } from '@/lib/sites/application/queries'
+import { loadSiteNotificationSummaries } from '@/lib/sites/application/list-sites'
 import { executionPageCoverage } from '@/lib/sites/page-coverage'
 import { TASK_QUEUES } from '../queues'
+import { dispatchReadyTasks, reconcileTasks } from '../engine'
 
 vi.mock('../cpu', async original => ({ ...await original<typeof import('../cpu')>(),
   parseMetadataIsolated: async () => {
@@ -21,9 +24,10 @@ vi.mock('../cpu', async original => ({ ...await original<typeof import('../cpu')
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('native page collection without metadata parsing', () => {
   const userId = 'native-collection-' + randomUUID(), projectId = userId + '-site'
-  let url = '', repaired = false
+  let url = '', repaired = false, publicResponseUnavailable = false
   let worker: ReturnType<typeof startWorker> | undefined
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
+    if (publicResponseUnavailable && request.headers['user-agent']?.startsWith('FixFlags/')) response.statusCode = 429
     response.setHeader('content-type', 'text/html')
     response.end('<!doctype html><html lang="en"><head><title>Native page evidence</title>' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
@@ -55,9 +59,19 @@ run('native page collection without metadata parsing', () => {
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()))
     await prisma.user.deleteMany({ where: { id: userId } }); await prisma.$disconnect(); vi.unstubAllEnvs()
   })
+  async function settled(auditId: string, pageResponseOnly = false) {
+    await vi.waitFor(async () => {
+      if (pageResponseOnly) {
+        await prisma.auditExecutionTask.updateMany({ where: { auditId, workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] },
+          OR: [{ workKind: { notIn: ['browser', 'http', 'check', 'discovery', 'finalize'] } },
+            { workKind: 'check', targetKey: { not: { endsWith: ':page-response' } } }] }, data: { workRecoveryUntil: new Date(0) } })
+        await dispatchReadyTasks(await reconcileTasks(auditId))
+      }
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+    }, { timeout: 40_000, interval: 100 })
+  }
   async function complete(auditId: string) {
-    await vi.waitFor(async () => expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } }))
-      .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 40_000, interval: 100 })
+    await settled(auditId)
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, include: { pages: true } })
     expect(executionPageCoverage(audit)).toMatchObject({ pagesReached: 1, pagesExpected: 1, complete: true })
     expect(audit.pages).toMatchObject([{ status: 'COMPLETED' }])
@@ -88,5 +102,32 @@ run('native page collection without metadata parsing', () => {
     const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring, checkId: 'buttons-no-text' } })
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: proven.improvementId })
+  }, 120_000)
+
+  it('keeps a reached page partial until the public response is conclusive across Site readers', async () => {
+    repaired = true
+    try {
+      for (const unavailable of [true, false]) {
+        publicResponseUnavailable = unavailable
+        const run = await requestSiteRun({ projectId, userId, scope: 'SITE', source: 'WEB', outcomeIds: [],
+          idempotencyKey: unavailable ? 'page-response-unavailable' : 'page-response-recovered' })
+        await settled(run.auditId!, true)
+        const [audit, home, summaries] = await Promise.all([
+          prisma.audit.findUniqueOrThrow({ where: { id: run.auditId! }, include: { pages: true,
+            verifierExecutions: { where: { targetKey: { in: ['module:page-response', 'projection:flag-comparison'] } } } } }),
+          loadSiteHome(projectId), loadSiteNotificationSummaries(userId),
+        ])
+        expect(audit.pages).toMatchObject([{ url, status: 'COMPLETED' }])
+        const receipt = audit.verifierExecutions.find(item => item.targetKey === 'module:page-response')
+        expect(receipt).toMatchObject({ pageUrl: url, status: 'COMPLETED', detail: { complete: !unavailable, passed: !unavailable,
+          assertions: [{ observed: expect.stringContaining(unavailable ? 'HTTP 429' : 'HTTP 200') }] } })
+        const coverage = { pagesReached: 1, pagesExpected: 1, complete: !unavailable }
+        expect(home?.presentation.coverage).toMatchObject(coverage)
+        expect(summaries.find(summary => summary.id === projectId)?.presentation.coverage).toMatchObject(coverage)
+        const projection = audit.verifierExecutions.find(item => item.targetKey === 'projection:flag-comparison')?.detail as
+          { siteAssessment?: { assessment: { gaps: Array<{ area: string | null; reason: string }> } } } | null
+        expect(projection?.siteAssessment?.assessment.gaps.some(gap => gap.area === 'site' && gap.reason === 'pages')).toBe(unavailable)
+      }
+    } finally { repaired = false; publicResponseUnavailable = false }
   }, 120_000)
 })

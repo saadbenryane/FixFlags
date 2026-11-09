@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { loadSiteHome } from '@/lib/sites/application/queries'
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSitePageAccess } from '@/lib/sites/page-access'
 import { SiteBoard } from '@/components/sites/SiteBoard'
 import { readWorkspaceLocation } from '@/lib/sites/workspace-location'
 
@@ -13,8 +13,7 @@ export default async function SiteDashboardPage({
 }) {
   const { siteId } = await params
   const { view, category, flag } = await searchParams
-  const access = await requireSiteAccess(siteId)
-  if (!access.ok) notFound()
+  const access = await requireSitePageAccess(siteId, `/sites/${encodeURIComponent(siteId)}`)
 
   // Owner visits use the claimed project. The browser that started the scan
   // stays on the provisional board, which is the only one that visitor can open.

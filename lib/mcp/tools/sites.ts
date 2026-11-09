@@ -9,18 +9,18 @@ import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
 import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
 import { listSiteOutcomes, loadSiteOutcomeDetails } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
-import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
+import { loadSiteRepairContextPage, loadSiteFlags } from '@/lib/sites/flags'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { categoryAreaSchema } from '@/lib/sites/domain/execution-spec'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
+import { CheckResultSelectionChanged, RESULT_SELECTION_CHANGED } from '@/lib/sites/check-result-contract'
 import { resolveLatestAudit } from '@/lib/sites/application/site-execution'
 import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/status'
 import { InvalidUptimeCursorError, loadUptimeHistory, loadUptimeSummary } from '@/lib/uptime/queries'
 import { uptimeCursorSchema, uptimeWindowSchema } from '@/lib/uptime/contracts'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
-import { buildSiteRepairBrief } from '@/lib/sites/repair-brief'
 import { getAppUrl } from '@/lib/get-app-url'
 import { repairBriefSchema, repairBriefDeliverySchema, repairContextHashSchema, repairObservationOffsetSchema, repairDocumentOffsetSchema } from '@/lib/sites/repair-brief-contract'
 import { deliverSiteRepairBrief } from '@/lib/sites/repair-delivery'
@@ -109,6 +109,12 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           outcomes: details.map((outcome) => mcpOutcomePayload(outcome)),
         })
       } catch (error) {
+        if (error instanceof CheckResultSelectionChanged) {
+          const failure = mcpCoreError(error, { code: RESULT_SELECTION_CHANGED, action: 'restart_check_history', message: error.message })
+          return { ...failure, ...mcpStructuredResult({ ...failure.structuredContent,
+            next: { tool: MCP_TOOLS.listOutcomes.name, arguments: { siteId, uptimeWindow, uptimeCursor } },
+          }) }
+        }
         if (error instanceof InvalidUptimeCursorError) {
           const failure = mcpCoreError(error, { code: 'INVALID_UPTIME_CURSOR', action: 'restart_uptime_history' })
           return { ...failure, ...mcpStructuredResult({ ...failure.structuredContent,
@@ -234,10 +240,10 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     async ({ siteId, flagId, expectedContextHash, observationOffset, includeEvidence, documentOffset, expectedDocumentHash }) => {
       try {
         const site = await ownedSite(user.id, siteId)
-        const flag = await loadSiteFlagDetail(site, flagId)
-        if (!flag) throw new Error('Flag not found')
-        const repairBrief = buildSiteRepairBrief(site.siteId, flag, getAppUrl(), flagId, observationOffset, expectedContextHash)
-        const attached = includeEvidence ? await loadSiteRepairEvidence(site, flag, `${repairBrief.links.json}&view=capture`) : null
+        const context = await loadSiteRepairContextPage(site, flagId, getAppUrl(), observationOffset, expectedContextHash)
+        if (!context) throw new Error('Flag not found')
+        const repairBrief = context.brief
+        const attached = includeEvidence ? await loadSiteRepairEvidence(site, repairBrief.flag, `${repairBrief.links.json}&view=capture`) : null
         const complete = attached ? repairBriefSchema.parse({ ...repairBrief, evidence: attached.evidence }) : repairBrief
         const wrapperBytes = Buffer.byteLength(JSON.stringify({ siteId: site.siteId, repairBrief: null, flag: null })) - 4
         const payload = {
@@ -259,8 +265,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
             pageUrl: repairBrief.flag.pageUrl,
             affectedPaths: repairBrief.flag.affectedPaths,
             verificationRule: repairBrief.verification.rule,
-            attempts: flag.attempts,
-            verifying: flag.verifying,
+            attempts: context.attempts,
+            verifying: context.verifying,
           },
         }
         // Compatibility alias only. The canonical brief owns evidence and its

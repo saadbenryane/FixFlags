@@ -6,6 +6,9 @@ import { fromStoredWatchInterval, toStoredWatchInterval } from '@/lib/audit/watc
 import { watchScheduleSchema, type WatchInterval } from '../watch-schedule'
 import { outcomeFreshnessMinutes } from '../evidence-freshness'
 import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
+import { WATCH_MESSAGES } from '../watch-state'
+import { normalizeAuditUrl } from '@/lib/audit/url'
+import { enableUptimeMonitor } from '@/lib/uptime/monitor-target'
 
 export type MonitoringChange = { interval: WatchInterval | null; everyMinutes?: number } | { action: 'pause' | 'resume' }
 type MonitoringResult = { ok: true; interval?: WatchInterval | null; everyMinutes?: number | null }
@@ -16,7 +19,7 @@ export function productWatchReadiness(): { available: boolean; error: string | n
     : { available: false, error: 'WATCH_UNAVAILABLE: Redis is not configured' }
 }
 
-/** Schedule and derived freshness commit under the same current owner and state. */
+/** Schedule, uptime and derived freshness commit under the same current owner and state. */
 export async function setProjectWatch(input: { projectId: string; userId: string } & MonitoringChange,
   dependencies: { clock?: Clock; tx?: Prisma.TransactionClient } = {}): Promise<MonitoringResult> {
   const clock = dependencies.clock ?? systemClock
@@ -30,7 +33,7 @@ export async function setProjectWatch(input: { projectId: string; userId: string
   const apply = async (tx: Prisma.TransactionClient): Promise<MonitoringResult> => {
     const owner = { id: input.projectId, userId: input.userId, deletedAt: null }
     const project = await tx.project.findFirst({ where: owner,
-      select: { id: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true, watchPausedAt: true } })
+      select: { id: true, url: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true, watchPausedAt: true } })
     if (!project) return { ok: false, error: SITE_ERRORS.notFound, code: 'SITE_NOT_FOUND' }
     const previous = fromStoredWatchInterval(project.watchInterval)
     if (action && !previous)
@@ -44,7 +47,7 @@ export async function setProjectWatch(input: { projectId: string; userId: string
     if (enabling) {
       const effective = await loadEffectiveEntitlements(input.userId, tx, clock)
       if (!effective?.available)
-        return { ok: false, error: 'Watching is not available on this account.', code: 'WATCH_UNAVAILABLE' }
+        return { ok: false, error: WATCH_MESSAGES.accountUnavailable, code: 'WATCH_UNAVAILABLE' }
       if (!effective.watchIntervals.includes(interval)) return { ok: false,
         error: interval === 'daily' ? 'Daily watching is available on Pro and Studio. Free Sites watch weekly.'
           : 'That watch interval is not available on your plan.', code: 'INTERVAL_NOT_ALLOWED' }
@@ -53,11 +56,12 @@ export async function setProjectWatch(input: { projectId: string; userId: string
     }
 
     const now = clock.now()
+    const uptimeTarget = enabling ? normalizeAuditUrl(project.url) : null
     const sameCadence = previous === interval && (interval !== 'custom' || project.watchEveryMinutes === everyMinutes)
     let data: Prisma.ProjectUpdateManyMutationInput
     if (action === 'pause') {
       data = { watchPausedAt: project.watchPausedAt ?? now, watchNextRunAt: null, watchLeaseUntil: null,
-        watchLastError: 'Paused. This Site is not on a check schedule.' }
+        watchLastError: WATCH_MESSAGES.paused }
     } else if (interval) {
       data = { watchPausedAt: null, watchInterval: toStoredWatchInterval(interval), watchEveryMinutes: interval === 'custom' ? everyMinutes : null }
       // Changed cadence establishes fresh evidence under its new policy.
@@ -68,13 +72,13 @@ export async function setProjectWatch(input: { projectId: string; userId: string
       })
     } else {
       data = { watchPausedAt: project.watchPausedAt ?? now, watchInterval: null, watchEveryMinutes: null, watchNextRunAt: null, watchLeaseUntil: null,
-        watchLastError: 'Paused. This Site is not on a check schedule.' }
+        watchLastError: WATCH_MESSAGES.paused }
     }
     const changed = await tx.project.updateMany({
       where: { ...owner, watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null,
         watchNextRunAt: project.watchNextRunAt ?? null, watchPausedAt: project.watchPausedAt ?? null,
-        ...(enabling ? { user: { lifecycleStatus: 'ACTIVE' } } : {}) },
-      data,
+        ...(enabling ? { url: project.url, user: { lifecycleStatus: 'ACTIVE' } } : {}) },
+      data: uptimeTarget?.ok ? { ...data, uptimeSetupRetryAt: null } : data,
     })
     if (changed.count !== 1) {
       const current = await tx.project.findFirst({ where: { ...owner, ...(enabling ? { user: { lifecycleStatus: 'ACTIVE' } } : {}) }, select: { id: true } })
@@ -85,6 +89,7 @@ export async function setProjectWatch(input: { projectId: string; userId: string
       enabled: false, state: 'paused', leaseUntil: null, leaseToken: null,
       pendingFailureAt: null, pendingSlotAt: null, confirmationDueAt: null,
     } })
+    else if (uptimeTarget?.ok) await enableUptimeMonitor(tx, project.id, uptimeTarget.url, now)
     if (action !== 'pause') await tx.siteOutcome.updateMany({ where: { projectId: project.id },
       data: { staleAfterMinutes: outcomeFreshnessMinutes(interval, everyMinutes) } })
     return action ? { ok: true, interval, everyMinutes: everyMinutes ?? null } : { ok: true }

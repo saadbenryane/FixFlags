@@ -8,8 +8,8 @@ import { TLS_CERTIFICATE_VERIFICATION_RULE } from './tls-evidence'
 /** Client-safe lookup - no server-only audit imports. */
 export const CHECK_ID_TO_RULE: Record<string, string> = {
   'security-certificate-invalid': TLS_CERTIFICATE_VERIFICATION_RULE,
-  'page-http-error': 'Repeat a public GET to every originally affected page. Each must return a successful response without an access challenge; rendered behavior remains a separate check.',
-  'page-redirect-loop': 'Repeat a public GET to every originally affected page. Each must reach a successful public response without repeating its redirect route; rendering remains a separate check.',
+  'page-http-error': 'Repeat a public GET to every originally affected page. Each must return a successful response without an access challenge or an explicit missing-page response.',
+  'page-redirect-loop': 'Repeat a public GET to every originally affected page. Each must reach a successful public response without repeating its redirect route or returning an explicit missing page.',
   'account-signup-failed': 'A test visitor can complete signup and reach a signed-in page.',
   'account-verification-failed': 'The test visitor can complete the required email verification.',
   'account-signed-in-page': 'The same signed-in page opens successfully without a detected browser or automated accessibility problem.',

@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { prisma } from '@/lib/db'
 import { isAiProviderConfigured, isProdStorageConfigured } from '@/lib/env'
+import { providerBudgetConfiguration } from '@/lib/billing/provider-budget'
 import { validateAuthEnv } from '@/lib/auth/env'
 import { isBillingFullyConfigured } from '@/lib/billing/config'
 import { productWatchReadiness } from '@/lib/sites/application/monitoring-settings'
@@ -226,7 +227,8 @@ function productionDependencies(): ReadinessDependencies {
       await checkR2Connection()
       return { ok: true }
     },
-    ai: () => configured(isAiProviderConfigured(), 'No AI provider is configured'),
+    ai: () => !isAiProviderConfigured() ? configured(false, 'No AI provider is configured')
+      : configured(providerBudgetConfiguration().configured, 'AI spending-control configuration is invalid'),
     pagespeed: () => configured(Boolean(process.env.PAGESPEED_API_KEY), 'PAGESPEED_API_KEY is missing'),
     auth: async () => {
       try {

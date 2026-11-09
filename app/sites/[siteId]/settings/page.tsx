@@ -1,12 +1,11 @@
 import { notFound } from 'next/navigation'
 import { SiteSettingsView } from '@/components/sites/SiteSettingsView'
 import { loadSiteHome } from '@/lib/sites/application/queries'
-import { requireSiteOwner } from '@/lib/sites/request-access'
+import { requireSiteOwnerPage } from '@/lib/sites/page-access'
 
 export default async function SiteSettingsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params
-  const access = await requireSiteOwner(siteId)
-  if (!access.ok) notFound()
+  const access = await requireSiteOwnerPage(siteId, `/sites/${encodeURIComponent(siteId)}/settings`)
   const resolvedId = access.decision.site.siteId
   const home = await loadSiteHome(resolvedId, { ownerEvidence: true, readScope: 'settings', site: access.decision.site })
   if (!home) notFound()

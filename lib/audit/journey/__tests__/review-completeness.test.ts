@@ -17,6 +17,7 @@ vi.mock('../review-persistence', () => ({ recordJourneyResult: fixture.record })
 vi.mock('../review-scope', () => ({ selectJourneyRuns: (...args: unknown[]) => { fixture.scope(...args); return [{ journeyType: 'multi-step-funnel' }] } }))
 import { parseMetadataFromHtml } from '@/lib/audit/metadata'
 import { runJourneyReviewsForAudit } from '../run-journey-reviews'
+import { PageCaptureError, PUBLIC_SIGN_IN_REDIRECT } from '../../browser/page-capture'
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -24,11 +25,23 @@ beforeEach(() => {
   fixture.plan.mockResolvedValue({ plan: { goal: 'Inspect public navigation', steps: [{ stepNumber: 1, action: 'navigate', target: '/pricing', expectedResult: 'Inspect the recorded destination', evidence: [] }, { stepNumber: 2, action: 'evaluate', target: 'Recorded destination', expectedResult: 'Capture actual page facts', evidence: [] }], confidence: 1, estimatedDurationMs: 5000 }, usage: { inputTokens: 10, outputTokens: 2 } })
   fixture.walk.mockResolvedValue({ journeyType: 'multi-step-funnel', startUrl: 'https://example.test/', status: 'COMPLETED',
     goalAchieved: false, steps: [1, 2, 3].map(stepNumber => ({ stepNumber, actionType: 'evaluate', actionDetail: {}, url: 'https://example.test/', accessibilityTree: 'Recorded page' })), findings: [], durationMs: 10 })
-  fixture.record.mockResolvedValue([])
+  fixture.record.mockResolvedValue({ reviewId: 'review-1', findings: [], flagIds: [] })
   fixture.evaluate.mockResolvedValue({ evaluation: { frictionPoints: [], brokenPromises: [], accessibilityBarriers: [] }, usage: { inputTokens: 10, outputTokens: 2, model: 'recorded-model' } })
 })
 const run = (onAssessment: NonNullable<Parameters<typeof runJourneyReviewsForAudit>[2]['onAssessment']>, deadline = Date.now() + 60_000) => runJourneyReviewsForAudit('audit-custody', 'https://example.test/', { included: true, deadline, metadata: null, onAssessment })
 describe('journey assessment completeness', () => {
+  it.each(['plan', 'walk'] as const)('records a diverted %s as unavailable public evidence', async phase => {
+    fixture[phase].mockRejectedValue(new PageCaptureError('Requested entry reached sign-in', {
+      code: PUBLIC_SIGN_IN_REDIRECT, httpStatus: 200, finalUrl: 'https://example.test/login',
+    }))
+    const assessed = vi.fn()
+    await run(assessed)
+    if (phase === 'plan') expect(fixture.walk).not.toHaveBeenCalled()
+    expect(fixture.evaluate).not.toHaveBeenCalled()
+    expect(fixture.record).not.toHaveBeenCalled()
+    expect(assessed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ state: 'INCOMPLETE', reason: PUBLIC_SIGN_IN_REDIRECT }))
+  })
+
   it('retains native observations after planning failure without claiming a completed planned assessment', async () => {
     fixture.plan.mockRejectedValue(Error('Planning response rejected'))
     const assessed = vi.fn()

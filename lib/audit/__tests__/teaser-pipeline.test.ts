@@ -22,7 +22,7 @@ const { prismaMock, queueAddMock, gates } = vi.hoisted(() => ({
     // Anonymous reuse is resolved from the visitor's own board before any scan
     // is considered reusable.
     provisionalSite: { findUnique: vi.fn(async () => null) },
-    $executeRaw: vi.fn(),
+    $executeRaw: vi.fn(async () => 1),
     $queryRaw: vi.fn(async () => []),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === 'function') return (arg as (tx: unknown) => unknown)(prismaMock)
@@ -159,6 +159,8 @@ describe('resolveAuditPipelineMode', () => {
 
 describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
   it('creates an anonymous teaser as a SINGLE-page audit and keeps the anon gates', async () => {
+    prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 'audit-new', dispatchLeaseUntil: new Date(), dispatchAttempts: 1,
+      createdAt: new Date(), recoveryUntil: null }])
     await createAndEnqueueAudit({ admission: { kind: 'new-check' },
     url: 'https://example.com',
     clientId: 'ip-1' })
@@ -172,7 +174,8 @@ describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
     expect(gates.checkAnonymousAuditAllowed).toHaveBeenCalledTimes(1)
     expect(gates.enforceAnonymousIpSoftCeiling).toHaveBeenCalledWith('ip-1')
     expect(gates.trackAnonymousAuditId).toHaveBeenCalledWith('audit-new')
-    expect(queueAddMock).toHaveBeenCalledTimes(1)
+    expect(queueAddMock).toHaveBeenCalledExactlyOnceWith('audit', { auditId: 'audit-new' },
+      expect.objectContaining({ jobId: 'audit-new' }))
   })
 
   it('forces SINGLE even when an anonymous caller requests full capture', async () => {

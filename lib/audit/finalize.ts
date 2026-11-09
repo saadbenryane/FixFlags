@@ -61,18 +61,23 @@ function completenessFromEvidence(evidence: {
 
 export async function persistImprovementCycle(
   auditId: string,
-  parentId: string | null
+  parentId: string | null,
+  options?: { recoverLegacyUsage: boolean },
 ): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
-    select: { improvementProjectedAt: true, executionSpec: true, userId: true },
+    select: { improvementProjectedAt: true, executionSpec: true, userId: true, status: true, usageCountedAt: true },
   })
   if (!audit || audit.improvementProjectedAt) return
 
   try {
+    const spec = readExecutionSpec(audit.executionSpec), scope = spec?.scope
+    // A worker retry can enter after COMPLETED without passing through the
+    // original completion write. Settle usage before publishing the receipt.
+    if (audit.status === 'COMPLETED' && audit.userId && !audit.usageCountedAt &&
+      (scope === 'CATEGORY' || scope === 'SITE' && spec?.engine === 'progressive-v1' || options?.recoverLegacyUsage))
+      await incrementUsageOnCompleteForAudit(auditId, audit.userId)
     await projectSiteAnalysis(auditId)
-    const scope = readExecutionSpec(audit.executionSpec)?.scope
-    if (scope === 'CATEGORY' && audit.userId) await incrementUsageOnCompleteForAudit(auditId, audit.userId)
     if (scope === 'FIXTURE_SETUP') {
       await reconcileOutcomeRunsForAudit(auditId)
       await executionWrite(tx => tx.audit.update({ where: { id: auditId }, data: { improvementProjectedAt: new Date() } }))
@@ -92,10 +97,11 @@ export async function persistImprovementCycle(
     }
     if (scope !== 'DIAGNOSTIC') {
       await persistFlagDiffSummary(parentId, auditId)
+      if (scope === 'SITE' || scope === 'CATEGORY') await reconcileOutcomeRunsForAudit(auditId)
       // Classification consumes the committed diagnostic and Outcome projections.
       // A first Watch still owns an alert without inventing comparison history.
       const { classifyWatchResult } = await import('@/lib/audit/project-watch')
-      await classifyWatchResult(parentId, auditId)
+      await classifyWatchResult(auditId)
     }
     // improvementProjectedAt is a completion receipt, not a lease. Write it
     // only after every idempotent projection step succeeds so a process crash
@@ -130,13 +136,20 @@ async function completeImprovementProjection(
  */
 export async function persistAuditFailedModules(
   auditId: string,
-  pageRuns: Array<{ failedModules: string[] }>
+  pageRuns: Array<{ failedModules: string[] }>,
+  runGaps: readonly string[] = [],
 ): Promise<void> {
-  const modules = [...new Set(pageRuns.flatMap((page) => page.failedModules))].sort()
+  const modules = [...new Set([...runGaps, ...pageRuns.flatMap((page) => page.failedModules)])].sort()
   await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: modules.length > 0 ? { failedModules: modules } : { failedModules: Prisma.JsonNull },
   }))
+}
+
+/** Claim can attach a running Audit after finalization reads its evidence. */
+async function completeMeteredAudit(auditId: string, data: Prisma.AuditUpdateInput) {
+  const { userId } = await executionWrite(tx => tx.audit.update({ where: { id: auditId }, data, select: { userId: true } }))
+  if (userId) await incrementUsageOnCompleteForAudit(auditId, userId)
 }
 
 /** Complete phase-1 triage. Anonymous visitors stop here; signed-up users may enqueue prescription. */
@@ -146,7 +159,6 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     select: {
       id: true,
       status: true,
-      userId: true,
       parentId: true,
       completedAt: true,
       triageAt: true,
@@ -186,26 +198,19 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'triage_completed' })
 
-  await executionWrite(tx => tx.audit.update({
-    where: { id: input.auditId },
-    data: {
-      status: 'COMPLETED',
-      progress: 100,
-      reportCompleteness: completeness,
-      evidenceCoverage: input.evidence,
-      triageAt: new Date(),
-      completedAt: audit.completedAt ?? new Date(),
-      finalizedAt: new Date(),
-      failureCode: null,
-      failureStage: null,
-      failureMetadata: undefined,
-      errorMsg: null,
-    },
-  }))
-
-  if (audit.userId) {
-    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-  }
+  await completeMeteredAudit(input.auditId, {
+    status: 'COMPLETED',
+    progress: 100,
+    reportCompleteness: completeness,
+    evidenceCoverage: input.evidence,
+    triageAt: new Date(),
+    completedAt: audit.completedAt ?? new Date(),
+    finalizedAt: new Date(),
+    failureCode: null,
+    failureStage: null,
+    failureMetadata: undefined,
+    errorMsg: null,
+  })
 
   await completeImprovementProjection(input.auditId, audit.parentId)
 
@@ -291,28 +296,21 @@ export async function finalizeTriageDegraded(
     detail: input.reason,
   })
 
-  await executionWrite(tx => tx.audit.update({
-    where: { id: input.auditId },
-    data: {
-      status: 'COMPLETED',
-      progress: 100,
-      reportCompleteness: 'PARTIAL',
-      evidenceCoverage: {
-        ...input.evidence,
-        aiAssessment: false,
-      },
-      verdict,
-      completedAt: audit.completedAt ?? new Date(),
-      finalizedAt: new Date(),
-      errorMsg: input.errorMsg,
-      failureCode,
-      failureStage: 'judging',
+  await completeMeteredAudit(input.auditId, {
+    status: 'COMPLETED',
+    progress: 100,
+    reportCompleteness: 'PARTIAL',
+    evidenceCoverage: {
+      ...input.evidence,
+      aiAssessment: false,
     },
-  }))
-
-  if (audit.userId) {
-    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-  }
+    verdict,
+    completedAt: audit.completedAt ?? new Date(),
+    finalizedAt: new Date(),
+    errorMsg: input.errorMsg,
+    failureCode,
+    failureStage: 'judging',
+  })
 
   await completeImprovementProjection(input.auditId, audit.parentId)
 
@@ -355,7 +353,6 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
     select: {
       id: true,
       status: true,
-      userId: true,
       parentId: true,
       completedAt: true,
       verdict: true,
@@ -386,28 +383,21 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
     error: input.errorMsg,
   })
 
-  await executionWrite(tx => tx.audit.update({
-    where: { id: input.auditId },
-    data: {
-      status: 'COMPLETED',
-      progress: 100,
-      reportCompleteness: 'PARTIAL',
-      evidenceCoverage: {
-        ...input.evidence,
-        aiAssessment: false,
-      },
-      verdict: stubVerdict,
-      completedAt: audit.completedAt ?? new Date(),
-      finalizedAt: new Date(),
-      errorMsg: input.errorMsg,
-      failureCode: input.failureCode,
-      failureStage: input.failureStage,
+  await completeMeteredAudit(input.auditId, {
+    status: 'COMPLETED',
+    progress: 100,
+    reportCompleteness: 'PARTIAL',
+    evidenceCoverage: {
+      ...input.evidence,
+      aiAssessment: false,
     },
-  }))
-
-  if (audit.userId) {
-    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-  }
+    verdict: stubVerdict,
+    completedAt: audit.completedAt ?? new Date(),
+    finalizedAt: new Date(),
+    errorMsg: input.errorMsg,
+    failureCode: input.failureCode,
+    failureStage: input.failureStage,
+  })
 
   await completeImprovementProjection(input.auditId, audit.parentId)
 

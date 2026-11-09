@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 
 const PATH = /^path-([a-zA-Z0-9]+)-\d+(?:-[a-f0-9]{32})?$/
 const OUTCOME = /^outcome-([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[a-zA-Z0-9]+)-[a-zA-Z0-9_-]+$/
@@ -6,6 +6,11 @@ const OUTCOME = /^outcome-([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0
 export function newPathArtifactNamespace(pathId: string): string {
   if (!/^[a-zA-Z0-9]+$/.test(pathId)) throw new Error('A canonical integrity path ID is required')
   return `path-${pathId}-${Date.now()}-${randomUUID().replaceAll('-', '')}`
+}
+
+export function outcomeArtifactNamespace(input: { runId: string; outcomeId: string; bindingKey: string }, generation: number): string {
+  const binding = createHash('sha256').update(JSON.stringify([input.outcomeId, input.bindingKey])).digest('hex')
+  return `outcome-${input.runId}-${binding}-g${generation}`
 }
 
 /** Readers and cleanup share the producer's ownership protocol, including history. */

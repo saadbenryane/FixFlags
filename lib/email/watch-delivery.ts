@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { watchEmailPayloadSchema, watchEmailSelectionSchema, watchEmailSnapshotSchema } from './watch-payload'
 import { notificationEmailBody } from './notification-delivery'
+import { notificationReceiptTag } from './notification-receipt'
 
 type Selection = z.infer<typeof watchEmailSelectionSchema>
 type Snapshot = z.infer<typeof watchEmailSnapshotSchema>
@@ -26,18 +27,23 @@ export function hasRecordedWatchSelection(recorded: unknown, selection: Selectio
 /** One permitted selection owns one immutable provider body and delivery key.
  * A changed selection is a new intent; earlier uncertain deliveries stay recorded. */
 export function selectWatchEmailDelivery(input: {
-  auditId: string; fresh: Snapshot; recorded: unknown; broadLegacyPermission: boolean;
+  auditId: string; fresh: Snapshot; recorded: unknown; broadLegacyPermission: boolean; receiptOwnerId?: string;
 }) {
   const baseKey = `fixflags-watch-${input.auditId}-v1`
   const fresh = watchEmailSnapshotSchema.parse(input.fresh)
   if (!fresh.selection) throw new Error('Notification selection is required')
-  if (input.recorded == null) return watchEmailPayloadSchema.parse({ ...fresh, deliveryKey: baseKey })
+  const withReceipt = () => input.receiptOwnerId ? { ...fresh, receiptOwnerId: input.receiptOwnerId,
+    tags: [...fresh.tags, notificationReceiptTag()] } : fresh
+  if (input.recorded == null) return watchEmailPayloadSchema.parse({ ...withReceipt(), deliveryKey: baseKey })
   const recorded = watchEmailPayloadSchema.parse(input.recorded)
   if (recorded.to !== fresh.to || !recorded.tags.some(tag => tag.name === 'audit_id' && tag.value === input.auditId))
     throw new Error('Recorded notification no longer matches its recipient or Audit')
+  if (recorded.receiptOwnerId && recorded.receiptOwnerId !== input.receiptOwnerId)
+    throw new Error('Recorded notification no longer matches its owner')
   const { previous = [], ...current } = recorded
   const snapshots = [current, ...previous]
-  const permitted = (snapshot: Snapshot) => snapshot.to === fresh.to && snapshot.tags.some(tag => tag.name === 'audit_id' && tag.value === input.auditId)
+  const permitted = (snapshot: Snapshot) => snapshot.to === fresh.to && (!snapshot.receiptOwnerId || snapshot.receiptOwnerId === input.receiptOwnerId) &&
+    snapshot.tags.some(tag => tag.name === 'audit_id' && tag.value === input.auditId)
   const matched = snapshots.find(snapshot => permitted(snapshot) && snapshot.selection && selectionIdentity(snapshot.selection) === selectionIdentity(fresh.selection!))
   if (matched) {
     const retained = snapshots.filter(snapshot => snapshot !== matched)
@@ -51,7 +57,7 @@ export function selectWatchEmailDelivery(input: {
       return watchEmailPayloadSchema.parse({ ...recorded, deliveryKey: current.deliveryKey ?? baseKey })
   }
   const digest = createHash('sha256').update(selectionIdentity(fresh.selection)).digest('hex')
-  return watchEmailPayloadSchema.parse({ ...fresh, deliveryKey: baseKey + '-' + digest, previous: snapshots })
+  return watchEmailPayloadSchema.parse({ ...withReceipt(), deliveryKey: baseKey + '-' + digest, previous: snapshots })
 }
 
 export { notificationEmailBody as watchEmailProviderBody }

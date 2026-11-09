@@ -26,6 +26,7 @@ run('independent desktop document observations in native Chromium', () => {
       configurePage: async page => {
         await options.configurePage?.(page)
         await page.route('**/*', route => route.request().url() === pageUrl ? route.fulfill({ contentType: 'text/html',
+          headers: { 'authentication-info': 'nextnonce="PRIVATE_BROWSER_AUTH_HEADER_VALUE"' },
           body: '<!doctype html><html lang="en"><head><title>Independent document evidence</title></head>' +
             '<body style="font-family:Arial;color:black;background:white"><main><h1>Useful public service</h1>' +
             '<button id="action"' + (repaired ? ' aria-label="Choose a service"' : '') + '></button></main>' +
@@ -47,9 +48,11 @@ run('independent desktop document observations in native Chromium', () => {
       task: { id: 'native-browser', targetKey: 'task:p0:browser' }, input,
       deadline: Date.now() + 20_000, dependencies: new Map(),
     } as unknown as TaskContext)
+    expect(JSON.stringify(browser)).not.toContain('PRIVATE_BROWSER_AUTH_HEADER_VALUE')
     const { snapshot } = browserArtifactSchema.parse(readArtifact(browser, 'browser').data)
     expect(snapshot.desktopHtml).toBeNull()
     expect(snapshot.desktopHttpStatus).toBe(200)
+    expect(snapshot.responseHeaders).toMatchObject({ 'authentication-info': '[redacted]' })
     expect(snapshot.captureFailures).toEqual([])
     expect(snapshot.consoleErrors).toContainEqual(expect.objectContaining({ text: 'Controlled public script failure' }))
     expect(snapshot.accessibilityEvidence?.rules).toContainEqual(expect.objectContaining({ id: 'button-name', state: repaired ? 'passed' : 'failed' }))

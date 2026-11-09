@@ -1,4 +1,15 @@
 import { searchAttentionSchema, searchPageScopeSchema, type SearchAttention } from './contracts'
+import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
+
+/** Property scopes distinguish monitoring observations within the same
+ * grouped Search check. Legacy policies without page scopes stay unqualified. */
+export function structuredFailureKeys(value: unknown): Set<string> | undefined {
+  const policy = searchAttentionSchema.safeParse(value)
+  const scopes = policy.success ? policy.data.pageScopes : undefined
+  if (!scopes?.length || scopes.some(scope => !scope.markupTargets?.length)) return undefined
+  return new Set(scopes.flatMap(scope => scope.markupTargets!.flatMap(target => target.properties.map(property =>
+    JSON.stringify([normalizeVerifierUrl(scope.pageUrl), target.source, target.entityId, target.entityType, property])))))
+}
 
 /** New producers bind recovery requirements to the page that supplied them. */
 export function pageScopedSearchAttention(policy: SearchAttention, pageUrl: string): SearchAttention {

@@ -11,7 +11,8 @@ const codeSchema = z.enum(Object.keys(certificateReasons) as Array<keyof typeof 
 export const certificateFailureSchema = z.object({ kind: z.literal('tls-certificate'), code: codeSchema }).strict()
 export type CertificateFailure = z.infer<typeof certificateFailureSchema>
 export type CertificateFailureReason = typeof certificateReasons[keyof typeof certificateReasons]
-export const TLS_CERTIFICATE_VERIFICATION_RULE = 'Repeat the original public URL request and observe an HTTPS response with normal certificate and hostname verification. Missing transport evidence or an HTTP downgrade cannot establish recovery.'
+export const TLS_CERTIFICATE_VERIFICATION_RULE = 'Repeat the original public URL request. The HTTPS route must reach the original failing hostname and port with normal certificate and hostname verification and finish over HTTPS.'
+export const LEGACY_TLS_CERTIFICATE_VERIFICATION_RULE = 'Repeat the original public URL request and observe an HTTPS response with normal certificate and hostname verification. Missing transport evidence or an HTTP downgrade cannot establish recovery.'
 
 /** The native transport records the last attempted public hop without copying
  * error text or certificate objects into the observation. */
@@ -27,6 +28,7 @@ export class PublicCertificateError extends Error {
 /** Native error codes establish peer refusal. Unknown issuers, local client
  * configuration and message text alone cannot establish a certificate failure. */
 export function readCertificateFailure(error: unknown): CertificateFailure | null {
+  if (error instanceof PublicCertificateError) return error.failure
   if (!(error instanceof Error)) return null
   const cause = error.cause as { code?: unknown } | undefined
   const code = codeSchema.safeParse(cause?.code ?? (error as Error & { code?: unknown }).code)
@@ -34,4 +36,14 @@ export function readCertificateFailure(error: unknown): CertificateFailure | nul
 }
 export function certificateFailureReason(failure: CertificateFailure): CertificateFailureReason {
   return certificateReasons[failure.code]
+}
+
+export function isCertificateFailureReason(reason: string): reason is CertificateFailureReason {
+  return Object.values(certificateReasons).some(value => value === reason)
+}
+
+/** A TLS failure identifies a peer, independent of the requested path. */
+export function tlsPeerOrigin(value: string | null): string | null {
+  const url = value && URL.canParse(value) ? new URL(value) : null
+  return url?.protocol === 'https:' ? url.origin : null
 }

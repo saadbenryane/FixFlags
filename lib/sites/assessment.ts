@@ -1,10 +1,10 @@
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
-import { readExecutionSpec } from './domain/execution-spec'
+import { readExecutionSpec, readVerificationTarget } from './domain/execution-spec'
 import type { CoverageFact } from './coverage'
 import { SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from './evidence-freshness'
 import type { SiteCardArea } from './card-areas'
-import type { CustomerOutcomeState } from './outcome-state'
-import { FLAG_COMPARISON_TARGET, readFlagComparison, comparisonEvidenceComplete } from '@/lib/audit/flag-comparison'
+import { currentOutcomeState, type CustomerOutcomeState } from './outcome-state'
+import { FLAG_COMPARISON_TARGET, readFlagComparison, comparisonEvidenceComplete, type FlagComparisonAuditScope } from '@/lib/audit/flag-comparison'
 import { isCustomerFlag, hasUnresolvedFlagEvidence, type CustomerFlagInput } from '@/lib/audit/attention'
 import { taskArtifactSchema } from '@/lib/audit/progressive/contracts'
 import { accountResultSchema } from './accounts/contracts'
@@ -16,8 +16,8 @@ export type { SiteAssessment, AssessmentGap } from './assessment-contract'
  * lifecycle state describes current attention, not what an earlier run found.
  * comparisonComplete establishes publication independently of historical
  * inconclusive recoveries, which can later receive an independent repair. */
-export function recordedRunFlags(input: { executionSpec: unknown; audit: {
-  id: string; parentId: string | null; flags: CustomerFlagInput[];
+export function recordedRunFlags(input: { executionSpec: unknown; audit: FlagComparisonAuditScope & {
+  id: string; flags: CustomerFlagInput[];
   verifierExecutions: Array<{ targetKey: string; status: string; detail?: unknown }>;
 } | null }): { flags: CustomerFlagInput[]; complete: boolean; comparisonComplete: boolean; evidenceComplete: boolean } {
   const spec = readExecutionSpec(input.executionSpec)
@@ -28,7 +28,7 @@ export function recordedRunFlags(input: { executionSpec: unknown; audit: {
   const receipt = input.audit?.verifierExecutions.find(record => record.targetKey === FLAG_COMPARISON_TARGET && record.status === 'COMPLETED')
   if (!receipt || !input.audit) return { flags: [], complete: false, comparisonComplete: false, evidenceComplete: false }
   try {
-    const comparison = readFlagComparison(receipt.detail, { auditId: input.audit.id, parentAuditId: input.audit.parentId })
+    const comparison = readFlagComparison(receipt.detail, input.audit)
     const retained = comparison.inconclusive.filter(isCustomerFlag)
     const evidenceComplete = comparisonEvidenceComplete(comparison)
     return { flags: [...comparison.newIssues, ...comparison.unchanged, ...comparison.regressed, ...retained],
@@ -36,28 +36,37 @@ export function recordedRunFlags(input: { executionSpec: unknown; audit: {
   } catch { return { flags: [], complete: false, comparisonComplete: false, evidenceComplete: false } }
 }
 
-export type DiagnosticAttemptReceipt = {
+type RepairAttemptReceipt = {
   id: string; sourceAuditId: string; verificationAuditId: string | null;
   comparable: boolean | null; outcome: string | null; evidenceReference: unknown;
 }
 
-/** A diagnostic conclusion belongs to the admitted attempt and its original
+/** A repair conclusion belongs to the admitted attempt and its original
  * source. Unrelated findings and later attempts cannot certify this repair. */
-export function recordedDiagnosticConclusion(input: { executionSpec: unknown; audit: {
-  id: string; parentId: string | null; verificationAttempts: DiagnosticAttemptReceipt[];
-} | null }): { state: CustomerOutcomeState; complete: boolean } | null {
+export function recordedRepairConclusion(input: { executionSpec: unknown; verificationTarget?: unknown; audit: {
+  id: string; parentId: string | null; status: string; verificationAttempts: RepairAttemptReceipt[];
+} | null }): { state: CustomerOutcomeState; complete: boolean; outcomeId?: string } | null {
   const spec = readExecutionSpec(input.executionSpec)
-  if (spec?.scope !== 'DIAGNOSTIC') return null
-  const target = spec.verificationTarget
-  if (target?.kind !== 'DIAGNOSTIC' || !input.audit || input.audit.parentId !== target.parentAuditId)
-    return { state: 'COULD_NOT_VERIFY', complete: false }
-  const receipt = input.audit.verificationAttempts.find(attempt => attempt.id === target.attemptId &&
-    attempt.sourceAuditId === target.parentAuditId && attempt.verificationAuditId === input.audit!.id)
+  const requested = input.verificationTarget == null ? null : readVerificationTarget(input.verificationTarget)
+  const outcome = requested?.kind === 'OUTCOME' ? requested : null
+  const diagnostic = spec?.scope === 'DIAGNOSTIC'
+  const recordedOutcome = spec?.verificationTarget?.kind === 'OUTCOME' ? spec.verificationTarget : null
+  if (!diagnostic && input.verificationTarget == null && !recordedOutcome) return null
+  const target = outcome ?? (diagnostic && spec.verificationTarget?.kind === 'DIAGNOSTIC' ? spec.verificationTarget : null)
+  const outcomeId = outcome?.outcomeId ?? recordedOutcome?.outcomeId
+  const scope = outcomeId ? { outcomeId } : {}
+  const incomplete = { ...scope, state: 'COULD_NOT_VERIFY', complete: false } as const
+  const audit = input.audit
+  if (!target || audit?.status !== 'COMPLETED' || audit.parentId !== target.parentAuditId ||
+    outcome && recordedOutcome && (recordedOutcome.attemptId !== outcome.attemptId ||
+      recordedOutcome.outcomeId !== outcome.outcomeId || recordedOutcome.parentAuditId !== outcome.parentAuditId)) return incomplete
+  const receipt = audit.verificationAttempts.find(attempt => attempt.id === target.attemptId &&
+    attempt.sourceAuditId === target.parentAuditId && attempt.verificationAuditId === audit.id)
   const reference = receipt?.evidenceReference as { beforeAuditId?: unknown; afterAuditId?: unknown } | null | undefined
   if (!receipt || receipt.comparable !== true || reference?.beforeAuditId !== target.parentAuditId ||
-    reference.afterAuditId !== input.audit.id || !['IMPROVED', 'UNCHANGED', 'REGRESSED'].includes(receipt.outcome ?? ''))
-    return { state: 'COULD_NOT_VERIFY', complete: false }
-  return { state: receipt.outcome === 'IMPROVED' ? 'CLEAR' : 'FLAG', complete: true }
+    reference.afterAuditId !== audit.id || !['IMPROVED', 'UNCHANGED', 'REGRESSED'].includes(receipt.outcome ?? ''))
+    return incomplete
+  return { ...scope, state: receipt.outcome === 'IMPROVED' ? 'CLEAR' : 'FLAG', complete: true }
 }
 
 /** Only a committed account task supplies a run conclusion. Configuration
@@ -103,11 +112,12 @@ export function projectSiteAssessment(input: {
   checkedAt?: Date | null;
   assessmentComplete?: boolean;
   scopedConclusion?: { state: CustomerOutcomeState; complete: boolean; validUntil?: Date | null } | null;
-  outcomes?: Array<{ id?: string; state: CustomerOutcomeState; enabled?: boolean; validUntil?: Date | null }>;
+  outcomes?: Array<{ id?: string; state: CustomerOutcomeState; enabled?: boolean; complete?: boolean; validUntil?: Date | null }>;
   uptime?: ReturnType<typeof uptimeAssessment>;
 }): SiteAssessment {
   const requiredAreas = [...input.requiredAreas ?? requiredAreasForScope(input.executionSpec)]
   const watched = (input.outcomes ?? []).filter(outcome => outcome.enabled !== false)
+    .map(outcome => ({ ...outcome, state: currentOutcomeState(outcome, input.now) }))
   const gaps: AssessmentGap[] = []
   if (input.uptime?.state === 'COULD_NOT_VERIFY' || input.uptime?.observedState === 'unknown' || input.uptime?.observedState === 'checking')
     gaps.push({ area: 'uptime', reason: 'incomplete' })
@@ -123,12 +133,14 @@ export function projectSiteAssessment(input: {
   for (const area of requiredAreas) {
     const fact = input.coverage.find(fact => fact.area === area)
     if (!fact) gaps.push({ area, reason: 'missing' })
-    else if (!fact.evidenced || fact.state === 'unknown' || fact.incompleteReason) gaps.push({ area, reason: fact.stale ? 'stale' : 'incomplete' })
-    else if (siteCoverageIsStale(fact.checkedAt, input.now, input.coverageMaxAgeMs)) gaps.push({ area, reason: 'stale' })
+    else if (!fact.evidenced || fact.incompleteReason || (fact.state === 'unknown' && !fact.stale))
+      gaps.push({ area, reason: 'incomplete' })
+    else if (fact.stale || siteCoverageIsStale(fact.checkedAt, input.now, input.coverageMaxAgeMs)) gaps.push({ area, reason: 'stale' })
   }
   if (input.pagesComplete === false) gaps.push({ area: 'site', reason: 'pages' })
-  for (const outcome of watched) if (outcome.state === 'STALE' || outcome.state === 'COULD_NOT_VERIFY')
-    gaps.push({ area: null, ...(outcome.id ? { outcomeId: outcome.id } : {}), reason: outcome.state === 'STALE' ? 'stale' : 'incomplete' })
+  for (const outcome of watched) if (outcome.state === 'STALE' || outcome.state === 'COULD_NOT_VERIFY' || outcome.complete === false)
+    gaps.push({ area: null, ...(outcome.id ? { outcomeId: outcome.id } : {}),
+      reason: outcome.state === 'STALE' && outcome.complete !== false ? 'stale' : 'incomplete' })
   if (requiredAreas.length === 0 && watched.length === 0 && !input.scopedConclusion) gaps.push({ area: null, reason: 'unassessed' })
   const settled = input.status === 'COMPLETED' || input.status === 'FAILED'
   const incomplete = gaps.some(gap => gap.reason !== 'stale')

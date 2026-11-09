@@ -16,6 +16,7 @@ import { readArtifact } from '../contracts'
 import { httpArtifactSchema } from '../snapshots'
 import { TASK_QUEUES } from '../queues'
 import { dispatchReadyTasks, reconcileTasks } from '../engine'
+import { SEARCH_DOCUMENT_LIMIT } from '@/lib/audit/search/collect'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('public redirect loop through URL admission and installed workers', () => {
@@ -23,9 +24,32 @@ run('public redirect loop through URL admission and installed workers', () => {
   let phase = 'loop', projectId: string, worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
     const path = new URL(request.url!, pageUrl)
-    if (phase === 'repaired' || ['/robots.txt', '/sitemap.xml'].includes(path.pathname)) {
+    if (path.pathname === '/' && phase.startsWith('bounded-')) {
+      response.setHeader('content-type', 'text/html')
+      const start = '<!doctype html><title>Useful service</title><body>'
+      if (phase === 'bounded-heading') {
+        const prefix = start + '<h1><!--', suffix = '-->Page not found'
+        response.end(prefix + 'x'.repeat(SEARCH_DOCUMENT_LIMIT - Buffer.byteLength(prefix + suffix)) + suffix + ' in the troubleshooting guide</h1>')
+      } else {
+        const heading = '<h1>Page not found</h1>', padding = '<!--' + 'x'.repeat(SEARCH_DOCUMENT_LIMIT) + '-->'
+        response.end(start + (phase === 'bounded-closed' ? heading + padding : padding + heading))
+      }
+      return
+    }
+    if (phase === 'repaired' || ['/robots.txt', '/sitemap.xml', '/healthy'].includes(path.pathname)) {
       response.setHeader('content-type', path.pathname === '/robots.txt' ? 'text/plain' : 'text/html')
-      response.end(path.pathname === '/robots.txt' ? 'User-agent: *\nAllow: /' : '<!doctype html><html lang="en"><head><title>Useful service</title></head><body><h1>Useful service</h1></body></html>'); return
+      const padding = path.pathname === '/' ? '<!--' + 'x'.repeat(1_020_000) + '-->' : ''
+      response.end(path.pathname === '/robots.txt' ? 'User-agent: *\nAllow: /' : '<!doctype html><html lang="en"><head><title>Useful service</title></head><body><h1>Useful service</h1>' + padding + '</body></html>'); return
+    }
+    if (phase === 'nonautomatic') { response.writeHead(300, { location: '/healthy' }).end(); return }
+    if (phase === 'partial' || phase === 'interrupted') {
+      response.setHeader('content-type', 'text/html')
+      if (phase === 'partial') {
+        response.writeHead(206, { 'content-range': 'bytes 0-16/100' })
+        response.end('Partial document.'); return
+      }
+      response.write('<html><body>Waiting for the rest of the page')
+      setTimeout(() => response.destroy(), 20); return
     }
     if (phase === 'cookie') response.setHeader('set-cookie', 'visitor=allowed; Path=/')
     response.writeHead(302, { location: phase === 'chain' ? '/chain/' + (Number(path.pathname.split('/').at(-1)) + 1 || 1)
@@ -77,6 +101,7 @@ run('public redirect loop through URL admission and installed workers', () => {
     expect(await prisma.auditExecutionTask.count({ where: { auditId: result.verificationAuditId!, workKind: 'browser' } })).toBe(0)
     const request = await prisma.runRequest.findFirstOrThrow({ where: { auditId: result.verificationAuditId! }, select: { id: true } })
     expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR' : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
+    return result.verificationAuditId!
   }
   it('flags a recorded loop, refuses uncertain endings, independently verifies repair and retains recurrence', async () => {
     const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
@@ -96,8 +121,29 @@ run('public redirect loop through URL admission and installed workers', () => {
     await verify(flag.id, 'loop', 'UNCHANGED')
     await verify(flag.id, 'chain', 'INCONCLUSIVE')
     await verify(flag.id, 'cookie', 'INCONCLUSIVE')
+    await verify(flag.id, 'partial', 'INCONCLUSIVE')
+    await verify(flag.id, 'interrupted', 'INCONCLUSIVE')
+    for (const sample of ['bounded-unread', 'bounded-heading', 'bounded-closed'] as const) {
+      const explicitFailure = sample === 'bounded-closed'
+      const auditId = await verify(flag.id, sample, explicitFailure ? 'UNCHANGED' : 'INCONCLUSIVE')
+      const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, workKind: 'http', pageUrl } })
+      expect(httpArtifactSchema.parse(readArtifact(task.workResult, 'http').data).document)
+        .toMatchObject({ status: 200, complete: false, reason: 'document_truncated' })
+      const receipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'module:page-response' } })
+      expect(receipt.detail).toMatchObject({ passed: false, complete: explicitFailure, assertions: [
+        expect.objectContaining({ passed: false, complete: explicitFailure,
+          observed: expect.stringContaining(explicitFailure ? 'identifies a missing page' : 'before the page title and headings') }),
+      ] })
+    }
+    const nonautomatic = await verify(flag.id, 'nonautomatic', 'INCONCLUSIVE')
+    const stopped = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: nonautomatic, workKind: 'http', pageUrl } })
+    expect(httpArtifactSchema.parse(readArtifact(stopped.workResult, 'http').data).document)
+      .toMatchObject({ status: 300, finalUrl: pageUrl, redirects: [], reason: 'redirect_unresolved' })
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).not.toMatchObject({ status: 'FIXED' })
-    await verify(flag.id, 'repaired', 'IMPROVED')
+    const repaired = await verify(flag.id, 'repaired', 'IMPROVED')
+    const repairedTask = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: repaired, workKind: 'http', pageUrl } })
+    expect(httpArtifactSchema.parse(readArtifact(repairedTask.workResult, 'http').data).document)
+      .toMatchObject({ status: 200, complete: false, reason: 'document_truncated' })
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED' })
     phase = 'loop'
     const recurring = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WATCH', scope: 'SITE', url: pageUrl, idempotencyKey: 'redirect-recurrence' })

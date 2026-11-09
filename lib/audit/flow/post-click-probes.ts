@@ -1,7 +1,7 @@
 import type { Frame, Page } from 'playwright'
 import { z } from 'zod'
 import { sleep } from '@/lib/utils/sleep'
-import { observeViewport } from '../browser/viewport-observation'
+import { observeViewport, sameViewportDocument, type ViewportDocument } from '../browser/viewport-observation'
 import { readLoadingUi } from '../browser/loading-ui'
 
 export const postClickMetricsSchema = z.object({
@@ -25,14 +25,19 @@ export async function measurePostClickLoading(page: Page, windowMs = 8_000,
   result.pageUrl = url
   result.contentAbsentThroughMs = 0
   let loadingSince: number | null = null
+  let sampledDocument: ViewportDocument | null = null
   while (!options.signal?.aborted && Date.now() < until && !page.isClosed()) {
     const [viewport, loading] = await Promise.all([
-      observeViewport(page, { profile: 'post-click-v2', includeActions: false, excludeLoading: true }).catch(() => null),
+      observeViewport(page, { profile: 'post-click-v2', includeActions: false }).catch(() => null),
       readLoadingUi(page).catch(() => null),
     ])
     const sampledAt = Date.now()
     if (page.url() !== url) return { ...unavailable(), pageUrl: page.url() }
     if (options.signal?.aborted || sampledAt > until) break
+    const sample = viewport ?? loading
+    if (sample && (sample.pageUrl !== url || sampledDocument && !sameViewportDocument(sampledDocument, sample) ||
+      viewport && loading && !sameViewportDocument(viewport, loading))) return { ...unavailable(), pageUrl: url }
+    sampledDocument ??= sample
     result.observedForMs = Math.max(0, sampledAt - startedAt)
     if (viewport?.pageUrl === url) {
       if (viewport.content && result.timeToFirstContentMs === null) {
@@ -79,7 +84,12 @@ export function startPostClickObservation(page: Page, options: { expectNavigatio
       void work.catch(() => undefined)
     }
   }
-  const navigated = (frame: Frame) => { if (frame === page.mainFrame()) begin() }
+  const navigated = (frame: Frame) => {
+    if (frame !== page.mainFrame()) return
+    // A second commit invalidates even a completed sample from the first one.
+    if (work) controller.abort()
+    else begin()
+  }
   const cancel = () => {
     controller.abort()
     page.off('framenavigated', navigated)
@@ -94,6 +104,7 @@ export function startPostClickObservation(page: Page, options: { expectNavigatio
       if (!options.expectNavigation) begin()
       try {
         const observed = work ? await work : unavailable()
+        if (controller.signal.aborted) return { ...unavailable(), pageUrl: page.url() }
         // Same-document URL changes do not prove that content was absent before
         // the frame event. Only an actual response supplies this lower bound.
         if (documentNavigation && committedAt !== undefined && observed.pageUrl === committedUrl && page.url() === committedUrl) {

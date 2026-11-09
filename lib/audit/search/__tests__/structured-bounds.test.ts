@@ -78,6 +78,40 @@ describe('bounded structured-data evidence', () => {
     expect(assessSearchRecovery(recurrence, flag.checkId, flag.attentionPolicy).verdict).toBe('failed')
   })
 
+  it('verifies the original property while retaining a different failure on the same entity', async () => {
+    const product = { '@context': 'https://schema.org', '@type': 'Product', '@id': '#product', name: 'Example website' }
+    const source = await inspect(markup({ ...product, offers: { '@type': 'Offer', price: 'invalid' } }))
+    const original = searchFindings(source.observations).find(flag => flag.checkId === 'search-structured-feature')!
+    const after = await inspect(markup({ ...product, url: 'invalid', offers: { '@type': 'Offer', price: '12' } }))
+    const next = searchFindings(after.observations).find(flag => flag.checkId === original.checkId)!
+    expect(next.attentionPolicy?.markupTargets?.flatMap(target => target.properties)).toEqual(['url', 'url'])
+    expect(assessSearchRecovery(after, original.checkId, original.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const incomplete = { ...after, complete: false, observations: [...after.observations, { ...after.observations[0],
+      id: 'incomplete-rendered-markup', source: 'rendered-dom' as const, checkId: 'search-structured-coverage', disposition: 'unknown' as const }] }
+    expect(assessSearchRecovery(incomplete, original.checkId, original.attentionPolicy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const both = await inspect(markup({ ...product, url: 'invalid', offers: { '@type': 'Offer', price: 'invalid' } }))
+    expect(assessSearchRecovery(both, original.checkId, original.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'failed' })
+  })
+
+  it('requires a checked value for the original property on every original source', async () => {
+    const product = { '@context': 'https://schema.org', '@type': 'Product', '@id': '#product', name: 'Example website' }
+    const withPrice = (price: string) => markup({ ...product, offers: { '@type': 'Offer', price } })
+    const withoutPrice = markup({ ...product, offers: { '@type': 'Offer' } })
+    const source = await inspect(withPrice('invalid'))
+    const flag = searchFindings(source.observations).find(item => item.checkId === 'search-structured-feature')!
+    const removed = await inspect(withPrice('12'), withoutPrice)
+    expect(assessSearchRecovery(removed, flag.checkId, flag.attentionPolicy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const repaired = await inspect(withPrice('12'))
+    expect(assessSearchRecovery(repaired, flag.checkId, flag.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const alternate = await inspect(markup({ ...product, offers: { '@type': 'AggregateOffer', lowPrice: '12' } }))
+    expect(assessSearchRecovery(alternate, flag.checkId, flag.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const mixed = { ...repaired, observations: repaired.observations.map(item => item.source === 'rendered-dom'
+      ? { ...item, validatedProperties: undefined } : item) }
+    expect(assessSearchRecovery(mixed, flag.checkId, flag.attentionPolicy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const historical = { ...repaired, observations: repaired.observations.map(item => ({ ...item, validatedProperties: undefined })) }
+    expect(assessSearchRecovery(historical, flag.checkId, flag.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'passed' })
+  })
+
   it('retains late rendered failures when healthy and advisory observations exceed the receipt budget', async () => {
     const body = (broken: boolean) => markup({ '@context': 'https://schema.org', '@graph': Array.from({ length: 200 }, (_, index) => ({
       '@id': '#entity-' + index, '@type': ['Organization', 'WebSite'], name: 'Example website',

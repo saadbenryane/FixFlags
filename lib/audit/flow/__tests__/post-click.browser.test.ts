@@ -1,13 +1,25 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../../screenshot'
 import { runFlowScan } from '../run-flow-scan'
-import { measurePostClickLoading } from '../post-click-probes'
+import { measurePostClickLoading, startPostClickObservation } from '../post-click-probes'
 import { runDestinationUXProbes } from '../destination-ux-probes'
 import { runFlowChecks } from '../../checks/flow'
 
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('native post-click loading observations', () => {
   afterAll(closeBrowser)
+  it('withholds a completed timing sample if the destination reloads at the same URL before proof is read', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage(), url = 'https://example.com/start'
+      await page.route(url, route => route.fulfill({ contentType: 'text/html',
+        body: '<!doctype html><title>Team planning</title><main><h1>Start using our useful service</h1></main>' }))
+      const observation = startPostClickObservation(page, { expectNavigation: true, deadline: Date.now() + 5_000 })
+      await page.goto(url)
+      await page.reload()
+      expect(await observation.finish(true)).toMatchObject({ contentComplete: false, loadingComplete: false, timeToFirstContentMs: null, stuckLoading: null })
+    } finally { await context.close() }
+  })
   it('classifies a bot challenge before spending the destination loading window', async () => {
     const context = await (await getAuditBrowser()).newContext()
     try {
@@ -26,6 +38,25 @@ run('native post-click loading observations', () => {
       expect(result).toMatchObject({ status: 'skipped', actionEvidence: { response: 'challenge', clicked: true } })
       expect(result.postClickMetrics).toBeUndefined()
       expect(Date.now() - started).toBeLessThan(4_000)
+    } finally { await context.close() }
+  }, 15_000)
+
+  it('withholds conversion evidence from an HTTP 206 destination with visible content', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      const partial = '<!doctype html><title>Signup</title><main><h1>Create your account</h1><button>Continue</button></main>'
+      await page.route('**', route => route.request().url().endsWith('/start')
+        ? route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Useful service</title><main><h1>Useful service for teams</h1><a href="/signup">Get started</a></main>' })
+        : route.fulfill({ status: 206, contentType: 'text/html',
+          headers: { 'content-range': `bytes 0-${partial.length - 1}/${partial.length * 2}` }, body: partial }))
+      await page.goto('https://example.com/start')
+      const result = await runFlowScan(page, 'partial-response-fixture', page.url(), {
+        mode: 'destination', captureSteps: false, includeFormValidation: false, includeMobileNavigation: false,
+      })
+      expect(result).toMatchObject({ status: 'skipped', httpStatus: 206, actionEvidence: { response: 'unknown', clicked: true } })
+      expect(result.postClickMetrics).toBeUndefined()
+      expect(result.destinationUX).toBeUndefined()
     } finally { await context.close() }
   }, 15_000)
 

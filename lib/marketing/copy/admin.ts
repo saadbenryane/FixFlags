@@ -2,6 +2,7 @@ export const ADMIN_COPY = {
   operations: {
     uptime: 'Uptime monitoring gaps',
     uptimeInconclusive: 'Observation remains inconclusive',
+    watchAwaitingAssessment: 'Awaiting notification assessment',
     guidance: 'Recorded findings without usable guidance',
     guidanceUnavailable: 'Guidance unavailable. Inspect the original check and its recorded scope.',
   },

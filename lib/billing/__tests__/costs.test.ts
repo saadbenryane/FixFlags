@@ -105,7 +105,7 @@ describe('estimateLlmCostUsd', () => {
 
     it('calculates cost for claude-sonnet-5', () => {
       const cost = estimateLlmCostUsd('claude-sonnet-5', 1_000_000, 1_000_000)
-      expect(cost).toBeCloseTo(18, 10)
+      expect(cost).toBeCloseTo(12, 10)
     })
 
     it('calculates cost for claude-haiku-4-5', () => {
@@ -132,7 +132,7 @@ describe('estimateLlmCostUsd', () => {
   describe('cache-read vs cache-write pricing', () => {
     it('charges 0.1x input rate for Claude cache reads', () => {
       const cost = estimateLlmCostUsd('claude-sonnet-5', 0, 0, 1_000_000)
-      expect(cost).toBeCloseTo(0.3, 10)
+      expect(cost).toBeCloseTo(0.2, 10)
     })
 
     it('charges 0.5x input rate for OpenAI cache reads', () => {
@@ -142,7 +142,7 @@ describe('estimateLlmCostUsd', () => {
 
     it('charges 1.25x input rate for Claude cache writes', () => {
       const cost = estimateLlmCostUsd('claude-sonnet-5', 0, 0, 0, 1_000_000)
-      expect(cost).toBeCloseTo(3.75, 10)
+      expect(cost).toBeCloseTo(2.5, 10)
     })
 
     it('charges nothing for OpenAI cache writes', () => {
@@ -221,7 +221,7 @@ describe('estimateLlmCostUsd', () => {
 
     it('handles very large token counts', () => {
       const cost = estimateLlmCostUsd('claude-sonnet-5', 10_000_000, 10_000_000)
-      expect(cost).toBeCloseTo(180, 10)
+      expect(cost).toBeCloseTo(120, 10)
     })
   })
 })
@@ -359,7 +359,7 @@ describe('persistAuditRunCost', () => {
         llmMeasurements: [{ model: 'gpt-4o-mini', inputTokens: 1_000_000, outputTokens: 0 },
           { model: 'claude-sonnet-5', inputTokens: 1_000_000, outputTokens: 0 }] }
       await persistAuditRunCost('measured', measured)
-      expect(mockUpdate.mock.lastCall?.[0].data.prescriptionCostUsd?.toString()).toBe('3.15')
+      expect(mockUpdate.mock.lastCall?.[0].data.prescriptionCostUsd?.toString()).toBe('2.15')
       await persistAuditRunCost('measured', { ...measured, llmUsageComplete: false })
       expect(mockUpdate.mock.lastCall?.[0].data).toMatchObject({ prescriptionCostUsd: null, llmCostUsd: null, pricingBasis: 'UNPRICED' })
     })

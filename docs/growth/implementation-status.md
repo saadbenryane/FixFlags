@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: operations
-reviewed_at: 2026-10-20
+reviewed_at: 2026-11-09
 supersedes: []
 ---
 
@@ -12,6 +12,24 @@ They have not been deployed as part of this task. Product-foundation work is own
 by the concurrent product agent. Its changing implementation and live acceptance
 remain separate from growth readiness. No external outreach, spend, search-account
 changes, IndexNow notifications, or plugin submissions have occurred.
+
+## November 9 local acceptance
+
+| Part of the system | Demonstrated result | Evidence boundary |
+| --- | --- | --- |
+| Product evidence and verified outcomes | The guide journey replay used the actual analysis admission, Site claim, Flag handoff and verification writers. It recorded a verified public-link repair, a comparable scheduled pass and a repeat failure. Native Outcome recovery was also verified through a separate fixture. | Controlled inputs establish receipt lineage and reporting behavior. Human return and production repair rates require real cohorts. [Study readout](experiments.md#november-9-consent-check-through-the-real-receipt-writers) |
+| Research and product decisions | A reproducible eleven-case study found that HTTP 200 could hide a missing booking page. A working article about HTTP 404 exposed a false positive. A follow-up compared two checks on the same responses and recorded the tradeoff for product engineering. | The cases support specific evaluator findings. Customer prevalence and AI-builder comparisons require independent representative evidence. [Study and replay](destination-study.md) |
+| Research privacy | Release preflight binds the reviewed artifact to exact consented sources and derived evidence. The private recovery draft requires 20 independent recovered groups and withholds scheduled results when a retained receipt in the follow-up window lacks eligible manifest evidence. | The recovery draft is for review. A production research release needs its own authorization. [Research governance](research-governance.md) |
+| Technical discovery | An isolated build served the reviewed study edition, canonical metadata, Article citations, sitemap and `llms.txt` entry. The verifier also checked the path from the guide to the Analyze form and detected the difference between the candidate and live editions. | Publication and indexing of this edition remain unverified. [Discovery replay](experiments.md#november-9-discovery-recheck) |
+| Acquisition and commercial measurement | The fixed 28-day guide readout keeps Search Console and GA4 aggregates separate from consented starts, claims, verified repairs and provider-confirmed invoices. The live provider preflight confirmed reporting scope and Search Console coverage. | The exact guide returned one impression and zero clicks. GA4 had no usable guide metric row, and the loopback snapshot had no qualifying guide cohort. The baseline is inconclusive. Live paid conversion remains unknown. [Provider preflight](experiments.md#november-9-live-reporting-scope-verification) · [Commercial method](measurement-operations.md#commercial-evidence) |
+
+The local foundations and controlled value loop are demonstrated. Measuring
+the study's effect requires authorization to release the reviewed edition,
+then opening and closing discovery receipts and a mature observation window
+with enough qualifying activity. The decision rule and reporting windows are
+recorded in [the guide experiment](experiments.md).
+
+## October 20 implementation
 
 | Priority | Implemented result | Actual evidence and remaining boundary |
 | --- | --- | --- |

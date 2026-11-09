@@ -1,6 +1,8 @@
+import type { Audit } from '@prisma/client'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { watchAlertDelivery } from '@/lib/audit/watch-notification'
 import { prisma } from '@/lib/db'
+import { emailDeliveryState } from '@/lib/email/delivery-state'
 import { isGithubRepoAccessConfigured } from '@/lib/integrations/github'
 import { performanceEvidenceSource } from '@/lib/sites/flag-evidence'
 import { isShopifyConfigured } from '@/lib/shopify/config'
@@ -23,7 +25,7 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { loadUptimeEvents,loadUptimeSummary } from '@/lib/uptime/queries'
 import { loadAccountChecksView } from '../accounts/store'
 import { projectHomePresentation } from '../home-presentation'
-import { watchObservationWhere } from './scheduled-observation'
+import { currentWatchObservationSql } from './scheduled-observation'
 import type { SiteHomeView } from '../site-home'
 import { loadPerformanceEvidence } from './performance-evidence'
 import { loadSiteCaptures, loadSiteCheckedPages } from './captures'
@@ -39,7 +41,7 @@ import { readSiteEvidence } from './site-evidence-read'
 import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
 import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
-import { executionPageCoverage } from '../page-coverage'
+import { executionPageCoverage, recordedPageEvidenceScope } from '../page-coverage'
 import { projectSiteHomeForViewer } from '../viewer-projection'
 
 export type { BoardCardView }
@@ -56,7 +58,7 @@ async function countSitePages(site: SiteRecord): Promise<number> {
   return 0
 }
 
-async function loadLatestWatchAlert(projectId: string | null | undefined) {
+async function loadLatestWatchAlert(projectId: string | null | undefined, ownerUserId?: string | null) {
   // Delivery belongs to the most recent Watch alert, independently of the
   // monitoring schedule. Retrying an older receipt cannot make its incident
   // newest or hide a later delivery failure.
@@ -64,20 +66,22 @@ async function loadLatestWatchAlert(projectId: string | null | undefined) {
   // Guarded on a resolved projectId, like every other tenant-scoped read here. A
   // provisional Site has none, and querying with projectId: null would match
   // other tenants' unscoped Watch alerts.
-  return projectId
-    ? await prisma.audit.findFirst({
-      where: { projectId, ...watchObservationWhere(projectId), watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
-      // Delivery retries change updatedAt, not the incident's chronology.
-      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'desc' }],
-      select: {
-        watchNotificationStatus: true,
-        watchNotificationAttempts: true,
-        watchNotificationAttemptCeiling:true,
-        watchNotificationLeaseUntil: true,
-        completedAt: true,
-      },
-    })
-    : null
+  if (!projectId) return null
+  const [alert] = await prisma.$queryRaw<Array<Pick<Audit, 'id' | 'watchNotificationProviderId' | 'watchNotificationStatus' |
+    'watchNotificationAttempts' | 'watchNotificationAttemptCeiling' | 'watchNotificationLeaseUntil' | 'completedAt'>>>`
+    SELECT a.id, a."watchNotificationProviderId", a."watchNotificationStatus", a."watchNotificationAttempts",
+      a."watchNotificationAttemptCeiling", a."watchNotificationLeaseUntil", a."completedAt"
+    FROM audits a JOIN projects p ON p.id = a."projectId"
+    WHERE p.id = ${projectId} AND a."watchNotificationStatus" <> 'NOT_APPLICABLE' AND ${currentWatchObservationSql}
+      AND (a."userId" = p."userId" OR a."watchNotificationStatus" = 'SENT')
+    ORDER BY a."completedAt" DESC NULLS LAST, a."createdAt" DESC, a.id DESC LIMIT 1`
+  if (!alert) return null
+  const delivery = ownerUserId && alert.watchNotificationStatus === 'SENT' && alert.watchNotificationProviderId
+    ? await prisma.emailDelivery.findUnique({
+      where: { providerId: alert.watchNotificationProviderId, userId: ownerUserId, channel: 'watch', sourceId: alert.id },
+      select: { acceptedAt: true, delayedAt: true, deliveredAt: true, failedAt: true, bouncedAt: true, complainedAt: true },
+    }) : null
+  return { ...alert, providerState: delivery ? emailDeliveryState(delivery) : undefined }
 }
 
 type SiteReadOptions = {
@@ -134,8 +138,9 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
     monitoringHistoryPromise,
   ])
   const inFlight = isAuditInFlight(audit?.status)
-  const { coverage, coverageMaxAgeMs, categoryEvidence, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({
-    audit, prior, flags, categories: categoryRuns, now, evidenceComplete: !recommendations.some(hasUnresolvedFlagEvidence),
+  const { coverage, coverageMaxAgeMs, categoryEvidence, pendingAreas, pageScope, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({
+    audit: audit ? { ...audit, pages: checkedPages } : null, prior, flags, categories: categoryRuns, now,
+    evidenceComplete: !recommendations.some(hasUnresolvedFlagEvidence),
     watchInterval: site.watchInterval, watchEveryMinutes: site.watchEveryMinutes,
   })
 
@@ -153,13 +158,14 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
     audit?.id ? loadTechnologyProfile(audit.id) : null,
     loadActiveSiteRuns(site, now),
     options.connections ?? (site.projectId ? loadSiteConnectionViews(site.projectId) : null),
-    loadLatestWatchAlert(site.projectId),
+    loadLatestWatchAlert(site.projectId, options.ownerEvidence ? site.userId : null),
     loadExecutionProgress(site, audit?.id ?? null),
     settingsEvidence && site.projectId ? loadAccountChecksView(site.projectId) : undefined,
     settingsEvidence && site.userId ? prisma.githubConnection.findUnique({ where: { userId: site.userId }, select: { githubLogin: true, revokedAt: true } }) : null,
   ])
   const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
-  const pageCoverage = executionPageCoverage({ executionSpec: audit?.executionSpec, pages: checkedPages, executions: audit?.verifierExecutions })
+  const pageCoverage = executionPageCoverage({ auditId: audit?.id, executionSpec: audit?.executionSpec, pages: checkedPages,
+    executions: audit?.verifierExecutions, failedModules: audit?.failedModules })
   const health = siteCardHealth({
     inFlight,
     finished,
@@ -190,14 +196,16 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
     captureUrl: capture?.url ?? null,
     checkedAt: (finished ? audit : prior)?.completedAt?.toISOString() ?? null,
   })
-  applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connectionNotes, now, coverageMaxAgeMs })
+  const categoryAreas = new Set<string>(categoryEvidence.keys())
+  applyCardEvidence({ cards: cards.filter(card => !categoryAreas.has(card.id)), audit, summaryResults,
+    inFlight, pageCount, connectionNotes, now, coverageMaxAgeMs, pendingAreas, pageScope })
   for (const [area, categoryAudit] of categoryEvidence) {
     const card = cards.find(card => card.id === area)
     if (!card) continue
     const categoryInFlight = isAuditInFlight(categoryAudit.status)
-    applyCardEvidence({ cards: [card], audit: { ...audit!, ...categoryAudit },
+    applyCardEvidence({ cards: [card], audit: categoryAudit,
       summaryResults: projectCheckResults(categoryAudit.id, categoryAudit.verifierExecutions), inFlight: categoryInFlight,
-      pageCount, connectionNotes, now, coverageMaxAgeMs })
+      pageCount, connectionNotes, now, coverageMaxAgeMs, pageScope: recordedPageEvidenceScope(categoryAudit) })
     if (categoryInFlight) card.activity = 'checking'
   }
 
@@ -210,6 +218,8 @@ async function readSiteHome(site: SiteRecord, options: SiteReadOptions): Promise
     attempts: latestAlert?.watchNotificationAttempts ?? 0,
     attemptCeiling:latestAlert?.watchNotificationAttemptCeiling,
     leaseUntil: latestAlert?.watchNotificationLeaseUntil ?? null,
+    providerState: latestAlert?.providerState,
+    now,
   })
 
   // A completed partial report starts a new check through the existing retry

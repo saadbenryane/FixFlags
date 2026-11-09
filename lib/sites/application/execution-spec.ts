@@ -1,7 +1,6 @@
 import { accountAdmission } from '../accounts/store'
 import type { AccountIntent } from '../accounts/contracts'
 import { createHash } from 'node:crypto'
-import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
 import { initialTaskPlan, publicPageBehaviors } from '@/lib/audit/progressive/graph'
@@ -9,7 +8,7 @@ import type { TaskPlan } from '@/lib/audit/progressive/contracts'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { consoleObservationMinimum } from '@/lib/audit/console-evidence'
 import { capturePageKey } from '@/lib/audit/browser/observation-scope'
-import { validateBindingForOutcome } from './binding-config'
+import { snapshotOutcomeBinding, type StoredOutcomeBinding } from './binding-config'
 import { canonicalIntent, executionSpecSchema, readExecutionSpec, type ExecutionSpec } from '../domain/execution-spec'
 import type { CategoryArea } from '../domain/execution-spec'
 import { analysisEnvironmentWhere, includeLegacySiteAnalyses } from './analysis-scope'
@@ -22,7 +21,7 @@ import { recordedPageUrls } from '../page-coverage'
 import { readRepairSources } from '../domain/repair-source'
 
 type SpecOutcome = { id: string; kind: string; expectation?: string | null; bindingPolicy?: string;
-  bindings: Array<{ key: string; version: number; mechanism: string; required: boolean; config: Prisma.JsonValue; scope?: Prisma.JsonValue | null }> }
+  bindings: StoredOutcomeBinding[] }
 
 export async function buildExecutionSpec(input: { projectId: string; targetUrl: string; environment: string;
   scope: ExecutionSpec['scope']; categoryArea?: CategoryArea; accountMode?: AccountIntent['mode']; outcomes: SpecOutcome[]; verificationTarget?: ExecutionSpec['verificationTarget'] }): Promise<ExecutionSpec> {
@@ -70,12 +69,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   }
   const outcomes = input.outcomes.map(outcome => ({ id: outcome.id, kind: outcome.kind,
     expectation: outcome.expectation ?? null, bindingPolicy: outcome.bindingPolicy ?? 'ALL_REQUIRED',
-    bindings: outcome.bindings.map(binding => {
-      const validated = validateBindingForOutcome(outcome.kind as Parameters<typeof validateBindingForOutcome>[0], binding.mechanism as Parameters<typeof validateBindingForOutcome>[1], binding.config)
-      return { key: binding.key, version: binding.version, mechanism: binding.mechanism,
-        required: binding.required, config: validated.success ? validated.data.config : {},
-        ...(!validated.success ? { configurationError: validated.reason } : {}), scope: binding.scope ?? null }
-    }),
+    bindings: outcome.bindings.map(binding => snapshotOutcomeBinding(outcome.kind, binding)),
   }))
   for (const outcome of outcomes) for (const binding of outcome.bindings) {
     if (binding.mechanism !== 'SAFE_FORM') continue
@@ -130,8 +124,11 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' && diagnosticModule !== 'network' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
       contexts.some(context => context.startsWith((diagnosticModule === 'network' ? 'engagement:' : 'tracking:') + phase + ':') &&
         context.endsWith(':page:' + (diagnosticModule === 'network' ? capturePageKey(pageUrl) : trackingPageKey(pageUrl))))) }))
-    if (diagnosticModule === 'flow' || diagnosticModule === 'form-validation' || diagnosticModule === 'network')
-      verificationScopes = verificationScopes.map(scope => ({ ...scope, actionContexts: originalPageActionContexts(flags, scope.pageUrl) }))
+    if (diagnosticModule === 'flow' || diagnosticModule === 'form-validation' || diagnosticModule === 'network' || diagnosticModule === 'measurement')
+      verificationScopes = verificationScopes.map(scope => {
+        const actionContexts = originalPageActionContexts(flags, scope.pageUrl)
+        return diagnosticModule === 'measurement' && !actionContexts.length ? scope : { ...scope, actionContexts }
+      })
     if (diagnosticModule === 'overlays') {
       const contexts = evidenceTargets.flatMap(value => {
         const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
@@ -157,7 +154,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   }
   let accountChecks = (['SITE', 'ACCOUNT_CHECKS'].includes(input.scope) || category?.area === 'conversion' || input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId.startsWith('account-')) ? await accountAdmission(input.projectId, input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId === 'account-signup-failed' ? 'retest' : input.accountMode) : undefined
   if (accountChecks?.siteUrl && new URL(accountChecks.siteUrl).origin !== new URL(input.targetUrl).origin) accountChecks = undefined
-  const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', browserCollection: 'per-profile-v1', targetUrl, environment: input.environment,
+  const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', browserCollection: 'per-profile-v1', engagementCollection: 'split-v1', targetUrl, environment: input.environment,
     scope: input.scope, ...(category ? { category } : {}), checks: Object.fromEntries(Object.entries(CHECK_REGISTRY)
       .filter(([, definition]) => !category || definition.area === category.area)
       .map(([id, definition]) => [id, definition.version])),
@@ -212,5 +209,5 @@ export function executionIntentHash(spec: ExecutionSpec) {
   return createHash('sha256').update(canonicalIntent({ ...spec, outcomes: spec.scope === 'SITE' || spec.scope === 'CATEGORY' ? [] : canonicalExecutionOutcomes(spec.outcomes),
     targetUrl: spec.category ? undefined : spec.targetUrl,
     category: spec.category ? { area: spec.category.area } : undefined,
-    browserCollection: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, verificationSources: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
+    browserCollection: undefined, engagementCollection: undefined, scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, verificationSources: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
 }

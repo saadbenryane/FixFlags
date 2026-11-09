@@ -130,7 +130,10 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.audit.findUnique.mockReset().mockResolvedValue(null)
     prismaMock.improvementAttempt.findFirst.mockReset().mockResolvedValue(null)
     prismaMock.project.findUnique.mockReset().mockResolvedValue(null)
-    prismaMock.$queryRaw.mockResolvedValue([{ id: 'project-1', url: AUDIT_URL, canonicalHost: 'example.com' }])
+    prismaMock.$queryRaw.mockImplementation(async query => query.sql?.includes('RETURNING a.id, a."dispatchLeaseUntil"')
+      ? [{ id: 'audit-1', dispatchLeaseUntil: new Date(), dispatchAttempts: 1, createdAt: new Date(), recoveryUntil: null }]
+      : [{ id: 'project-1', url: AUDIT_URL, canonicalHost: 'example.com' }])
+    prismaMock.$executeRaw.mockResolvedValue(1)
     prismaMock.flag.findMany.mockReset().mockResolvedValue([])
 
     prismaMock.$transaction.mockImplementation(async (op: (tx: typeof prismaMock) => Promise<{ id: string }>) => {
@@ -515,7 +518,8 @@ describe('createAndEnqueueAudit', () => {
         }),
       select: { id: true, parentId: true },
     })
-    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(prismaMock.$executeRaw.mock.calls.filter(([query]) =>
+      Array.isArray(query) && query.join('').includes('pg_advisory_xact_lock'))).toHaveLength(1)
     expect(trackAnonymousAuditId).not.toHaveBeenCalled()
   })
 
@@ -887,11 +891,8 @@ describe('createAndEnqueueAudit', () => {
 
     await expect(createAndEnqueueAudit({ admission: { kind: 'new-check' },
     url: AUDIT_URL })).resolves.toMatchObject({ auditId: 'audit-1', status: 'QUEUED' })
-    expect(prismaMock.audit.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        dispatchError: 'Queue admission is temporarily unavailable.',
-        dispatchNextAt: expect.any(Date),
-      }),
+    expect(prismaMock.$executeRaw).toHaveBeenCalledWith(expect.objectContaining({
+      sql: expect.stringContaining(`"dispatchError" = 'Queue admission is temporarily unavailable.', "dispatchNextAt" = ?`),
     }))
     expect(prismaMock.audit.update).not.toHaveBeenCalled()
   })
@@ -965,8 +966,9 @@ describe('createAndEnqueueAudit', () => {
     })
   })
 
-  it('attaches the consented journey key only to lifecycle telemetry', async () => {
+  it('attaches the consented journey key and guide label only to lifecycle telemetry', async () => {
     const journeyId = `ffj_${'d'.repeat(32)}`
+    const guideEntry = 'website-online-but-not-working'
     await createAndEnqueueAudit({ admission: { kind: 'new-check' },
     url: AUDIT_URL,
     attribution: {
@@ -979,6 +981,7 @@ describe('createAndEnqueueAudit', () => {
         gclid: null,
         fbclid: null,
         journeyId,
+        guideEntry,
       } })
 
     expect(prismaMock.siteLifecycleEvent.upsert).toHaveBeenCalledWith({
@@ -988,6 +991,7 @@ describe('createAndEnqueueAudit', () => {
         properties: expect.objectContaining({
           anonymous: true,
           journeyId,
+          guideEntry,
         }),
       }),
       update: {},
@@ -996,6 +1000,7 @@ describe('createAndEnqueueAudit', () => {
       data: expect.not.objectContaining({ journeyId }),
       select: { id: true, parentId: true },
     })
+    expect(prismaMock.audit.create.mock.calls[0][0].data).not.toHaveProperty('guideEntry')
   })
 
   it('stores reviewDepth from the owner plan for Pro and Studio', async () => {

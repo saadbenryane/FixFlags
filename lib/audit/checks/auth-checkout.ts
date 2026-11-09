@@ -14,8 +14,7 @@ const AUTH_RE =
 const CHECKOUT_RE =
   /\b(checkout|check-out|subscribe|upgrade|start (free )?trial|billing|purchase|buy now)\b/i
 /** Hosted payment providers (cross-origin, not covered by broken-internal-links). */
-const PAYMENT_HOST_RE =
-  /(buy\.stripe\.com|checkout\.stripe\.com|paypal\.com|paddle\.com|lemonsqueezy\.com|gumroad\.com|chargebee\.com)/i
+const PAYMENT_HOSTS = ['buy.stripe.com', 'checkout.stripe.com', 'paypal.com', 'paddle.com', 'lemonsqueezy.com', 'gumroad.com', 'chargebee.com']
 
 type LinkKind = 'auth' | 'checkout'
 
@@ -29,23 +28,27 @@ export function actionDestinationObservation(sourceUrl: string, url: string, kin
     passed, complete: conclusive, context: destinationContext(sourceUrl, url) }
 }
 
-function classifyLink(link: { href: string; text: string }): LinkKind | null {
-  const haystack = `${link.href} ${link.text}`
-  if (PAYMENT_HOST_RE.test(link.href) || CHECKOUT_RE.test(haystack)) return 'checkout'
+function classifyLink(url: URL, text: string, legacyInventory: boolean): LinkKind | null {
+  const haystack = `${legacyInventory ? url.href : url.pathname} ${text}`
+  const hostname = url.hostname.replace(/\.$/, '')
+  const payment = PAYMENT_HOSTS.some(host => legacyInventory
+    ? url.href.toLowerCase().includes(host)
+    : hostname === host || hostname.endsWith('.' + host))
+  if (payment || CHECKOUT_RE.test(haystack)) return 'checkout'
   if (AUTH_RE.test(haystack)) return 'auth'
   return null
 }
 
 /** Classification and collection planning consume the same active inventory. */
-export function actionDestinations(pageUrl: string, inventory: PageLinkInventory) {
+export function actionDestinations(pageUrl: string, inventory: PageLinkInventory, legacyInventory = false) {
   const seen = new Set<string>(), candidates: Array<{ url: string; kind: LinkKind }> = []
   for (const link of resolvedPageLinks(pageUrl, inventory)) {
     if (!link.href || /^(?:#|mailto:|tel:)/i.test(link.href)) continue
-    const kind = classifyLink(link)
-    if (!kind) continue
     let url: URL
     try { url = new URL(link.href, pageUrl) } catch { continue }
     if (!['http:', 'https:'].includes(url.protocol)) continue
+    const kind = classifyLink(url, link.text, legacyInventory)
+    if (!kind) continue
     url.hash = ''
     if (seen.has(url.toString())) continue
     seen.add(url.toString())
@@ -69,7 +72,8 @@ export async function runAuthCheckoutChecks(
     return []
   }
   const original = options.originalContexts ? new Set(options.originalContexts) : null
-  const candidates = actionDestinations(pageUrl, meta).filter(candidate => !original || original.has(destinationContext(pageUrl, candidate.url)))
+  const candidates = actionDestinations(pageUrl, meta, options.legacyActionInventory)
+    .filter(candidate => !original || original.has(destinationContext(pageUrl, candidate.url)))
   const retained = options.retainedContexts
   if (!original && retained?.size) candidates.sort((left, right) =>
     Number(retained.has(destinationContext(pageUrl, right.url))) - Number(retained.has(destinationContext(pageUrl, left.url))))

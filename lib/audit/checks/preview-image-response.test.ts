@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import sharp from 'sharp'
-import { previewImageResponse, previewImageDecodingSchema } from './preview-image-response'
+import { previewImageResponse, previewImageDecodingSchema, previewImageResponseSchema } from './preview-image-response'
 import { runOgImageUrlCheck } from './metadata-checks'
 import { destinationContext, DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { scopedAssertionForTarget } from './verification'
@@ -16,6 +16,18 @@ const receipt = (assertions: CheckAssertion[]) => ({ kind: 'site-module-check' a
   execution: { auditId: 'after', taskId: 'image-check', checkVersion: 1, source: 'http' as const, collectedAt: new Date().toISOString() } })
 
 describe('bounded preview image decoding', () => {
+  it.each([407, 511])('preserves HTTP %s as a blocked image observation through the receipt contract', async statusCode => {
+    const response = { ...document('Network access is restricted'), statusCode, headers: { 'content-type': 'text/html' } }
+    expect(previewImageResponseSchema.parse(await previewImageResponse(response))).toMatchObject({
+      statusCode, restriction: 'intermediary_authentication_required', decoding: { state: 'unknown' },
+    })
+    const assertions: CheckAssertion[] = []
+    expect(await runOgImageUrlCheck(pageUrl, { ogImage: imageUrl }, {
+      fetchDocument: async () => response, record: value => assertions.push(value),
+    })).toEqual([])
+    expect(assertions).toMatchObject([{ passed: false, complete: false }])
+  })
+
   it('rejects fabricated decoding success without its raster dimensions and policy', () => {
     for (const value of [
       { version: 1, state: 'decoded', reason: 'decoded', format: 'png' },

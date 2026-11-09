@@ -62,6 +62,8 @@ function observed(module: string, keys: string[]) {
   return { targetKey: 'module:' + module, status: 'COMPLETED', detail: {
     kind: 'site-module-check', version: 1, module, pageUrl: 'https://one.example/', passed: true, applicable: true,
     assertions: keys.map(key => ({ key, name: key, expected: 'Present', observed: 'Observed', passed: true })),
+    ...(module === 'security' ? { execution: { auditId: 'audit-1', taskId: 'security', checkVersion: 1,
+      source: 'http', collectedAt: new Date().toISOString() } } : {}),
   } }
 }
 function completedAudit(overrides: Record<string, unknown> = {}) {

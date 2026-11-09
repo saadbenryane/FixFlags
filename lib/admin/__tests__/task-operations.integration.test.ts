@@ -31,8 +31,7 @@ run('persistent operator execution history in PostgreSQL', () => {
   })
   it('keeps old and partial failures inspectable without misclassifying inapplicability or rewriting history', async () => {
     const expected: string[] = [], snapshots: AuditExecutionTask[] = []
-    const samples: Array<{ fix: string; checkId: string | null; agentPrompt?: string; cursorPrompt?: string;
-      attentionPolicy?: Prisma.InputJsonValue; expectedReady?: boolean }> = [
+    const samples = [
       { name: 'old-failure', state: 'EXHAUSTED' as const, status: 'FAILED' as const, auditStatus: 'FAILED' as const, keep: true },
       { name: 'partial-completed', state: 'BLOCKED' as const, status: 'FAILED' as const, auditStatus: 'COMPLETED' as const, keep: true },
       { name: 'intentional-inapplicability', state: 'BLOCKED' as const, status: 'NOT_APPLICABLE' as const, auditStatus: 'COMPLETED' as const, keep: false },
@@ -71,7 +70,9 @@ run('persistent operator execution history in PostgreSQL', () => {
     await expect(loadOperations({ ...actor, sessionId: 'revoked' }, { queue: 'tasks' })).rejects.toThrow('Administrator access is no longer available')
   })
   it('exposes guidance gaps through the authenticated operation queue using the same eligibility as customer actions', async () => {
-    const samples = [
+    const samples: Array<{ fix: string; checkId: string | null; agentPrompt?: string; cursorPrompt?: string;
+      problem?: string; evidence?: string; supportingObservations?: Prisma.InputJsonValue;
+      attentionPolicy?: Prisma.InputJsonValue; expectedReady?: boolean }> = [
       ...['', ' \n\t\u00a0', ...LEGACY_LOCKED_PROMPT_TEXT].map(fix => ({ fix, checkId: 'buttons-no-text' })),
       { fix: 'Replace the recorded phrase.', checkId: 'placeholder-copy-detected' },
       { fix: 'Move the recorded action.', checkId: 'cta-below-fold-mobile::page:original' },
@@ -90,6 +91,12 @@ run('persistent operator execution history in PostgreSQL', () => {
       { fix: 'Reviewé the recorded phrase if it is unintended.', checkId: 'placeholder-copy-detected', expectedReady: true },
       { fix: 'checK the recorded phrase if it is unintended.', checkId: 'placeholder-copy-detected', expectedReady: false },
       { fix: '\ufeff', checkId: 'buttons-no-text', expectedReady: false },
+      { fix: '', checkId: 'buttons-no-text', problem: 'Recorded unlabeled control', expectedReady: true },
+      { fix: '', checkId: 'historical-unregistered', problem: 'Recorded legacy finding', expectedReady: true },
+      { fix: 'Restore the recorded label.', checkId: 'buttons-no-text', evidence: '', expectedReady: false },
+      { fix: 'Restore the recorded label.', checkId: 'buttons-no-text', supportingObservations: { malformed: true }, expectedReady: false },
+      { fix: '', checkId: 'buttons-no-text', problem: 'Recorded but unreadable finding', supportingObservations: { malformed: true }, expectedReady: true },
+      { fix: '', checkId: 'buttons-no-text', problem: '\u00a0\ufeff', expectedReady: false },
     ]
     const project = await prisma.project.create({ data: { userId: ownerId, name: 'Guidance visibility',
       canonicalHost: 'guidance.test', url: 'https://guidance.test/', watchInterval: null } })
@@ -98,24 +105,49 @@ run('persistent operator execution history in PostgreSQL', () => {
     const expected: string[] = [], recorded = []
     for (const [position, sample] of samples.entries()) {
       const { expectedReady, ...input } = sample
-      const flag = await prisma.flag.create({ data: { ...input, auditId: audit.id, position, source: 'DETERMINISTIC', rubric: 'EXPERIENCE',
-        severity: 'IMPORTANT', confidence: 1, problem: 'Controlled guidance observation', evidence: 'Recorded original observation.', whyItMatters: 'Controlled schema proof.' } })
+      const flag = await prisma.flag.create({ data: { problem: '', evidence: 'Recorded original observation.', ...input,
+        auditId: audit.id, position, source: 'DETERMINISTIC', rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT', confidence: 1, whyItMatters: 'Controlled schema proof.' } })
       recorded.push(flag)
       if (expectedReady !== undefined) expect(repairGuidanceState(flag) === 'ready').toBe(expectedReady)
       if (repairGuidanceState(flag) === 'unavailable') expected.push(flag.id)
     }
+    const older = new Date('2026-10-01T00:00:00Z')
+    const retained = Array.from({ length: 70 }, (_, index) => {
+      const available = index % 5 === 0
+      const id = randomUUID()
+      if (!available) expected.push(id)
+      return { id, auditId: audit.id, position: 100 + index, createdAt: older,
+        source: 'DETERMINISTIC' as const, rubric: 'EXPERIENCE', severity: 'IMPORTANT' as const, confidence: 1,
+        problem: '', evidence: 'Recorded source text.', whyItMatters: 'Controlled retained fixture.',
+        fix: available ? 'Restore the recorded control.' : '' }
+    })
+    await prisma.flag.createMany({ data: retained })
     await prisma.flag.create({ data: { auditId: audit.id, position: 99, source: 'DETERMINISTIC', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
-      confidence: 1, problem: 'Resolved fixture', evidence: 'Recorded resolved fixture.', whyItMatters: 'Controlled schema proof.', fix: '', status: 'FIXED' } })
+      confidence: 1, problem: '', evidence: 'Recorded resolved fixture.', whyItMatters: 'Controlled schema proof.', fix: '', status: 'FIXED' } })
+    const enriching = await prisma.audit.create({ data: { userId: ownerId, projectId: project.id, url: project.url,
+      status: 'COMPLETED', completedAt: new Date(), includeAi: true, triageAt: new Date() } })
+    const pending = await prisma.flag.create({ data: { auditId: enriching.id, position: 0, source: 'DETERMINISTIC', rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT', confidence: 1, problem: '', evidence: 'Recorded source text.', whyItMatters: 'Pending guidance.', fix: '' } })
+    expect(repairGuidanceState({ ...pending, audit: enriching })).toBe('pending')
     const actor = { id: ownerId, sessionId, role: 'admin', email: ownerId + '@example.test', authenticatedAt: new Date() }
     const result = await loadOperations(actor, { queue: 'guidance' })
+    const last = await loadOperations(actor, { queue: 'guidance', page: '999' })
+    const rows = [...result.rows, ...last.rows]
     expect(result.total).toBe(expected.length)
     expect(result.counts[OPERATION_QUEUES.findIndex(queue => queue.id === 'guidance')]).toBe(expected.length)
-    expect(result.rows.map(row => row.id).sort()).toEqual(expected.sort())
-    expect(result.rows.every(row => row.action === null && row.auditId === audit.id && row.siteId === project.id)).toBe(true)
-    expect(result.rows.every(row => !('evidence' in row) && !('fix' in row))).toBe(true)
+    expect(result.pagination).toMatchObject({ page: 1, pages: 2 })
+    expect(last.pagination).toMatchObject({ page: 2, pages: 2 })
+    expect(rows.map(row => row.id).sort()).toEqual(expected.sort())
+    expect(rows.every(row => row.action === null && row.auditId === audit.id && row.siteId === project.id)).toBe(true)
+    expect(rows.every(row => !('evidence' in row) && !('fix' in row) && !('supportingObservations' in row))).toBe(true)
     const summary = await loadSiteOperations()
     expect(summary.find(item => item.label === ADMIN_COPY.operations.guidance)?.value).toBe(expected.length)
     for (const original of recorded) expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toEqual(original)
+    await prisma.audit.update({ where: { id: enriching.id }, data: { failureCode: 'GUIDANCE_FIXTURE_EXHAUSTED' } })
+    const afterEnrichment = await loadOperations(actor, { queue: 'guidance' })
+    expect(afterEnrichment.total).toBe(expected.length + 1)
+    expect(afterEnrichment.rows).toEqual(expect.arrayContaining([expect.objectContaining({ id: pending.id })]))
     await expect(loadOperations({ ...actor, sessionId: 'revoked' }, { queue: 'guidance' })).rejects.toThrow('Administrator access is no longer available')
     await prisma.project.update({ where: { id: project.id }, data: { deletedAt: new Date() } })
     expect((await loadOperations(actor, { queue: 'guidance' })).total).toBe(0)

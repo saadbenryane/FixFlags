@@ -7,9 +7,16 @@ import { evaluateSearch } from '../registry'
 import { document, evidence, PAGE } from './fixtures'
 
 const xml = '<urlset><url><loc>https://example.com/pricing</loc></url></urlset>'
+const alternateFormats: Record<string, string> = {
+  '/pages.txt.gz': 'https://example.com/pricing\r\n',
+  '/pages.rss.gz': '<rss version="2.0"><channel><item><link>https://example.com/pricing</link></item></channel></rss>',
+  '/pages.atom.gz': '<feed xmlns="http://www.w3.org/2005/Atom"><entry><link href="https://example.com/pricing"/></entry></feed>',
+}
 let origin = ''
 const server: Server = createServer((request, response) => {
   response.setHeader('content-type', 'application/gzip')
+  const alternate = alternateFormats[request.url ?? '']
+  if (alternate) { response.end(gzipSync(alternate)); return }
   if (request.url === '/transport.xml.gz') {
     response.setHeader('content-encoding', 'gzip'); response.end(gzipSync(xml)); return
   }
@@ -42,6 +49,11 @@ afterAll(async () => {
 })
 
 describe('compressed sitemap collection through native HTTP', () => {
+  it.each(Object.keys(alternateFormats))('recognizes the contents of compressed %s without a format-specific content type', async path => {
+    const collected = await collectDocument(origin + path, Date.now() + 5000)
+    expect(collected).toMatchObject({ status: 200, complete: true, body: alternateFormats[path] })
+    expect(parseSitemap(collected)).toMatchObject({ valid: true, urls: [PAGE + 'pricing'], children: [] })
+  })
   it.each(['/pages.xml.gz', '/transport.xml.gz', '/double.xml.gz', '/plain.xml'])('inspects the XML document from %s without double decoding transport compression', async path => {
     const collected = await collectDocument(origin + path, Date.now() + 5000)
     expect(collected).toMatchObject({ status: 200, complete: true, body: xml })

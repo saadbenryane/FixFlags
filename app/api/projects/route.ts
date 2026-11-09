@@ -14,6 +14,7 @@ import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
+import { reconcileEditedSiteTarget } from '@/lib/sites/application/settings-commands'
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
         deletedAt: null,
       },
     })
+    await reconcileEditedSiteTarget(tx, existing?.url, saved)
     if (existing?.deletedAt) await ensureDefaultMonitoring(tx, saved.id, user.id, undefined, { restored: true })
     else await ensureDefaultMonitoring(tx, saved.id, user.id)
     return tx.project.findUniqueOrThrow({ where: { id: saved.id } })

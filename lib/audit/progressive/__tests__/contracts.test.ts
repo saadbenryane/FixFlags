@@ -22,6 +22,11 @@ describe('durable bounded work contracts', () => {
     expect(graph.filter(task => task.kind === 'flow').map(task => task.input.pageUrl)).toEqual([pageUrl, peer])
     expect(graph.map(task => task.kind).sort()).toEqual(['browser', 'browser', 'finalize', 'flow', 'flow'])
     validateTaskGraph(graph)
+    const split = initialTaskPlan({ ...spec, engagementCollection: 'split-v1',
+      verificationScopes: [{ pageUrl, phases: ['page_load'] }, { pageUrl: peer, phases: ['public_action'] }] })
+    expect(split.map(task => task.key).sort()).toEqual(['finalize', 'p0:browser', 'p0:network', 'p1:flow'])
+    expect(split.find(task => task.key === 'p0:network')?.dependencies).toEqual(['p0:browser'])
+    validateTaskGraph(split)
   })
   it('keeps first PageSpeed attempts ahead of retries within the provider task budget', () => {
     expect(PAGESPEED_REQUEST_TIMEOUT_MS).toBe(130_000)
@@ -222,7 +227,7 @@ describe('durable bounded work contracts', () => {
     expect(graph.some(task => task.kind === 'cross-page')).toBe(true)
     validateTaskGraph(graph)
   })
-  it('collects only the comparable desktop previews for a diagnostic admitted with the full registry', () => {
+  it('collects only the original public page responses for a preview diagnostic admitted with the full registry', () => {
     const pages = [input.pageUrl, 'https://example.com/pricing', 'https://example.com/features']
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', browserCollection: 'per-profile-v1',
       scope: 'DIAGNOSTIC', targetUrl: pages[0], environment: 'production',
@@ -230,8 +235,8 @@ describe('durable bounded work contracts', () => {
       verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: pages[0], checkId: 'corridor-og-title-drift', attemptId: 'repair', parentAuditId: 'source' },
       verificationScopes: pages.map(pageUrl => ({ pageUrl, phases: ['page_load'] })) })
     const graph = initialTaskPlan(spec)
-    expect(graph.filter(task => task.kind === 'browser').map(task => task.input.device)).toEqual(['desktop', 'desktop', 'desktop'])
-    expect(graph.map(task => task.kind).sort()).toEqual(['browser', 'browser', 'browser', 'cross-page', 'finalize'])
+    expect(graph.filter(task => task.kind === 'http').map(task => task.input.pageUrl)).toEqual(pages)
+    expect(graph.map(task => task.kind).sort()).toEqual(['cross-page', 'finalize', 'http', 'http', 'http'])
     validateTaskGraph(graph)
   })
   it('retries transient interruptions within both recovery windows, never customer failures', () => {
@@ -294,6 +299,16 @@ describe('durable bounded work contracts', () => {
     expect(byKey.get('p0:judge')!.dependencies).toContain('p0:captures')
     expect(byKey.get('p0:judge')!.dependencies).toContain('p0:security-headers')
   })
+  it.each([
+    { check: 'lcp-poor', tasks: ['p0:performance', 'p0:pagespeed-desktop'] },
+    { check: 'inp-poor', tasks: ['p0:inp-mobile', 'p0:pagespeed-mobile'] },
+    { check: 'mobile-lcp-poor', tasks: ['p0:mobile', 'p0:pagespeed-mobile'] },
+  ])('collects only the speed observations admitted by a $check category', ({ check, tasks }) => {
+    const graph = initialTaskPlan({ version: 1, targetUrl: input.pageUrl, environment: 'production', scope: 'CATEGORY',
+      checks: { [check]: 1 }, outcomes: [], verificationTarget: null,
+      category: { area: 'performance', sourceAuditId: 'source', pages: [input.pageUrl] } })
+    expect(graph.filter(task => task.kind === 'check' || task.kind === 'pagespeed').map(task => task.key)).toEqual(tasks)
+  })
   it('admits automatic account work only through its explicit snapshot', () => {
     const base = { version: 1 as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
       checks: {}, outcomes: [], verificationTarget: null }
@@ -334,13 +349,17 @@ describe('durable bounded work contracts', () => {
     expect(multiPage.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
     expect(multiPage.find(task => task.kind === 'flow')?.input.pageUrl).toBe('https://example.com/second')
     expect(multiPage.some(task => ['captures', 'pagespeed', 'google', 'search'].includes(task.kind))).toBe(false)
-    for (const checkId of ['checkout-link-dead', 'og-image-broken', 'broken-internal-links']) {
+    for (const checkId of ['checkout-link-dead', 'og-image-broken', 'og-title-missing', 'broken-internal-links']) {
       const destinations = initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId },
         verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'] }, { pageUrl: 'https://example.com/second', phases: ['page_load'] }] })
-      expect(destinations.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
+      const source = checkId.startsWith('og-') ? 'http' : 'browser'
+      expect(destinations.filter(task => task.kind === source).map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
       expect(destinations.filter(task => task.kind === 'check')).toHaveLength(2)
       expect(destinations.some(task => ['captures', 'pagespeed', 'google', 'search', 'flow'].includes(task.kind))).toBe(false)
     }
+    const historicalPreview = initialTaskPlan({ ...spec, checks: { 'og-title-missing': 1 },
+      verificationTarget: { ...spec.verificationTarget, checkId: 'og-title-missing' } })
+    expect(historicalPreview.map(task => task.key)).toEqual(['p0:metadata', 'p0:browser', 'finalize'])
     expect(() => initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'unknown-history' } })).toThrow('not registered')
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'focus-visible-missing' } }).map(task => task.kind))
       .toEqual(['check', 'keyboard', 'finalize'])
@@ -362,6 +381,15 @@ describe('durable bounded work contracts', () => {
     expect(graph[0].input.module).toBe('form-validation')
     expect(graph[0].dependencies).toEqual([])
     validateTaskGraph(graph)
+  })
+
+  it.each(['flow-destination-no-headline', 'flow-destination-no-cta', 'flow-cta-message-mismatch',
+    'flow-destination-cta-overload', 'flow-destination-no-privacy'])('replays destination content without a separate prerequisite visit (%s)', checkId => {
+    const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+      scope: 'DIAGNOSTIC', checks: { [checkId]: 1 }, outcomes: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId, pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+    expect(graph.map(task => task.kind)).toEqual(['flow', 'finalize'])
+    expect(graph.find(task => task.kind === 'flow')!.dependencies).toEqual([])
   })
 
   it('checks every affected primary-action page without adding unrelated provider work', () => {
@@ -398,7 +426,7 @@ describe('durable bounded work contracts', () => {
   })
 
   it('keeps discovery and known control tasks in the ordinary care graph and waits for both before explanation', () => {
-    const contexts = ['form:', 'flow:control:', 'flow:pricing:v1:'].map((prefix, index) => prefix + String(index).repeat(64))
+    const contexts = ['form:', 'flow:control:', 'flow:pricing:v1:', 'flow:pricing:v2:'].map((prefix, index) => prefix + String(index).repeat(64))
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
       scope: 'SITE', checks: { 'flow-form-no-validation': 1, 'flow-cta-404': 1, 'flow-pricing-nav-broken': 1 }, outcomes: [], verificationTarget: null,
       monitoringBehaviors: [{ pageUrl: input.pageUrl, behaviors: ['flow', 'pricing-navigation'], actionContexts: contexts }] })

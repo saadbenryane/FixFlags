@@ -4,21 +4,23 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { readDiagnosticSources } from '@/lib/sites/domain/verification-source'
 import { runAllChecks } from '../checks'
-import { isUnresolvedPublicRedirect } from '../redirect-evidence'
 import { runPerformanceChecks, runInpChecks } from '../checks/performance'
 import { runMobileChecks } from '../checks/mobile'
+import { canonicalProductHost } from '../product-intelligence'
+import { hasCurrentPageSpeedLabMeasurement, PAGESPEED_LAB_UNAVAILABLE } from '../performance-measurement'
 import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION, SECURITY_HEADER_WITHHELD_LIMITATION } from '../checks/security-headers'
 import { recordCheckObservations, recordInpObservation } from '../checks/observations'
 import { runConsoleChecks, consoleObservations } from '../checks/console'
 import { readScreenshotSnapshot, captureArtifactSchema, httpArtifactSchema, hasSettledPageSpeedEvidence, readSettledPageSpeedEvidence, resourceArtifactSchema } from './snapshots'
-import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
+import { serializeArtifact, readArtifact, taskInputSchema, TaskFailure } from './contracts'
 import { checkArtifactSchema, commitFindings, commitCheckReceipt, flagSchema } from './results'
 import type { TaskContext, TaskHandler } from './registry'
-import { runSearchWorkflow, priorSearchReceipt, recordSearchVerifiers, combineSearchReceipts } from '../search/workflow'
+import { runSearchWorkflow, priorSearchPolicyBaseline, recordSearchVerifiers, combineSearchReceipts } from '../search/workflow'
 import { runGoogleSearchForAudit } from '../search/google'
-import { searchReceiptSchema } from '../search/contracts'
+import { readRecordedSearchReceipt, searchReceiptSchema } from '../search/contracts'
+import { hasUncoveredSearchObservations } from '../search/completeness'
 import { searchFindings } from '../search/registry'
-import { collectSearchEvidence, missingDocument } from '../search/collect'
+import { collectSearchEvidence, missingDocument, qualifyRecordedSiteResources } from '../search/collect'
 import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
 import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
@@ -28,23 +30,25 @@ import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
-import { scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
+import { scopeCheckEvidence, summarizeCheckAssertions, uncollectedCheckAssertions, UNCOLLECTED_CHECK_LIMITATION } from '../checks/receipt'
 import { capturedPageLinks, checkPublicLinks, missingPublicLinkEvidence, originalPublicLinkContexts } from '../checks/public-links'
 import { runInteractionChecks, type InteractionEvidence } from '../checks/interaction'
-import { loadingDelayObservation, mobileLoadingDelayFlag } from '../checks/loading-evidence'
+import { loadingDelayObservation, MOBILE_LOADING_DELAY_MS, mobileLoadingDelayFlag } from '../checks/loading-evidence'
 import { applyMotionObservation, motionObservationSchema } from '../checks/motion-evidence'
 import { assessPageResponse } from '../checks/page-response'
-import { publicResponseRestriction } from '../browser/page-capture'
-import { renderedDocumentForSearch } from '../browser/document-evidence'
+import { isBotInterstitialDocument, isPublicSignInRedirect, PUBLIC_SIGN_IN_REDIRECT } from '../browser/page-capture'
+import { renderedDocumentForSearch, renderedResponseHeadersForSearch } from '../browser/document-evidence'
 import { capturedHeadMetadata } from '../checks/head-metadata'
+import { usesPublicPreview } from '../checks/preview-contract'
 import { capturedSectionLinks, capturedSectionScope } from '../checks/section-links'
 import { capturedPublicPageSignals } from '../browser/public-page-signals'
 import { nativeHttpCollection } from '../native-http-evidence'
-import { readBrowserEvidence } from './browser-evidence'
+import { readBrowserEvidence, readBrowserPageCheckEvidence } from './browser-evidence'
 import { originalDestinationContexts, destinationContext, DESTINATION_VERIFICATION_RULE } from '../checks/destination-evidence'
 import { actionDestinations, MAX_ACTION_DESTINATIONS } from '../checks/auth-checkout'
 import { recordedMatchingContexts } from '../recorded-targets'
 import { collectResourceTransportEvidence } from '../resource-transport-collection'
+import { networkEngagementObservations } from '../checks/network-engagement'
 
 function collectedDependencies(context: TaskContext, kind: string) {
   return [...context.dependencies.values()].filter(item => item.workKind === kind &&
@@ -76,7 +80,8 @@ export const evaluatorHandlers: TaskHandler[] = [
     validateResult: artifact => { checkArtifactSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
       const result = checkArtifactSchema.parse(artifact.data)
-      await commitCheckReceipt(context, result.receipt, tx, context.input.device ? ':device:' + context.input.device : '')
+      await commitCheckReceipt(context, result.receipt, tx, result.receipt.module === 'network' ? ':phase:page_load' :
+        context.input.device ? ':device:' + context.input.device : '')
       await commitFindings(context, artifact, tx)
     },
     async evaluate(context) {
@@ -87,7 +92,10 @@ export const evaluatorHandlers: TaskHandler[] = [
       const checkVersions = admittedCheckVersions(context.audit.executionSpec, checkModule)
       const selected = Object.entries(checkVersions)
       if (!selected.length) throw new TaskFailure('CHECK_NOT_ADMITTED', false)
-      const browserSource = readBrowserEvidence(context.dependencies.values())
+      const publicPreview = checkModule === 'og-image' && usesPublicPreview(checkVersions)
+      const sourceKind = checkModule === 'keyboard' ? 'keyboard' : definition.input === 'http' || publicPreview || checkModule === 'security-headers' ? 'http'
+        : checkModule === 'performance' || checkModule === 'mobile' ? 'pagespeed' : 'browser'
+      const { source: browserSource, desktopDiverted, mobileDiverted } = readBrowserPageCheckEvidence(context.dependencies.values())
       const browser = browserSource?.data ?? null, response = httpEvidence(context), speed = speedEvidence(context)
       const nativeHttp = nativeHttpCollection(context.replayHttpEvidence)
       const metadata = definition.input === 'http' ? response?.metadata : browser?.metadata
@@ -102,7 +110,8 @@ export const evaluatorHandlers: TaskHandler[] = [
       const actionContexts = actionRepair ? originalDestinationContexts(actionSources, context.input.pageUrl, DESTINATION_VERIFICATION_RULE) : undefined
       const actionInventory = checkModule === 'auth-checkout' ? capturedPageLinks(snapshot, metadata ?? null, { requireLabels: true }) : undefined
       const actionUrl = snapshot?.desktopFinalUrl ?? context.input.pageUrl
-      const actionCandidates = actionInventory && !actionRepair ? actionDestinations(actionUrl, actionInventory) : []
+      const actionCandidates = actionInventory && !actionRepair
+        ? actionDestinations(actionUrl, actionInventory, nativeHttp.options.legacyActionInventory) : []
       const retainedActionContexts = actionCandidates.length > MAX_ACTION_DESTINATIONS && context.audit.projectId ? await recordedMatchingContexts({
         projectId: context.audit.projectId, environment: spec?.environment ?? 'production', excludeAuditId: context.audit.id,
         verificationRule: DESTINATION_VERIFICATION_RULE,
@@ -111,6 +120,7 @@ export const evaluatorHandlers: TaskHandler[] = [
       let applicable = true, complete: boolean | undefined, limitation: string | undefined
       let collectedAt: string | undefined
       let collectedDestinations = false
+      let pageResponseInterrupted = false
       let pageUrl = context.input.pageUrl
       const publicLinks = checkModule === 'seo' && spec?.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.split('::page:')[0] === 'broken-internal-links'
       if (publicLinks) {
@@ -132,6 +142,12 @@ export const evaluatorHandlers: TaskHandler[] = [
         const checked = assessPageResponse(pageUrl, response?.document)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete
         limitation = checked.limitation; collectedAt = checked.collectedAt
+        pageResponseInterrupted = checked.interrupted
+      } else if (checkModule === 'network') {
+        const observed = networkEngagementObservations({ pageUrl, evidence: snapshot?.engagement,
+          failures: snapshot?.networkFailures?.filter(failure => failure.engagementPhase === 'page_load') ?? [],
+          probe: snapshot?.formProbe, expected: !snapshot?.engagement || spec?.scope === 'DIAGNOSTIC' })
+        ;({ flags, assertions, applicable, complete, limitation } = observed)
       } else if (checkModule === 'console') {
         flags = runConsoleChecks(snapshot?.consoleErrors ?? [], snapshot?.consoleCoverage)
         assertions = consoleObservations(snapshot?.consoleCoverage)
@@ -183,43 +199,46 @@ export const evaluatorHandlers: TaskHandler[] = [
         } else {
           const flag = mobileLoadingDelayFlag(window)
           flags = flag ? [flag] : []
-          assertions = [loadingDelayObservation(window, 4000, 'mobile-loading-delay', true)]
+          assertions = [loadingDelayObservation(window, MOBILE_LOADING_DELAY_MS, 'mobile-loading-delay', true)]
           complete = assertions[0].complete === true
         }
         limitation = 'This targeted execution evaluates the recorded mobile loading window. Other mobile layout responsibilities remain separate.'
       } else if (checkModule === 'performance' || checkModule === 'mobile') {
         const inpOnly = checkModule === 'performance' && context.input.device === 'mobile'
-        const measurement = checkModule === 'mobile' || inpOnly ? speed?.mobile : speed?.desktop
-        if (!measurement) {
-          flags = []
-          applicable = true
-          assertions = inpOnly
-            ? [{ key: 'inp', name: 'Mobile field responsiveness', expected: 'CrUX p75 INP is at most 200ms',
+        const device = checkModule === 'mobile' || inpOnly ? 'mobile' : 'desktop'
+        const recorded = speed?.[device]
+        const measurement = recorded?.strategy === device ? recorded : null
+        // Lab assertions belong to the admitted check IDs. The field result
+        // has no repair assertion and stays with its independent evaluator.
+        assertions = inpOnly ? [measurement ? recordInpObservation(measurement)
+          : { key: 'inp', name: 'Mobile field responsiveness', expected: 'CrUX p75 INP is at most 200ms',
               observed: 'No CrUX INP measurement is available. Current responsiveness remains unknown.',
               passed: false, complete: false, disposition: 'observed' }]
-            : recordCheckObservations(checkModule, { url: context.input.pageUrl, metadata: null, desktop: null, mobile: null })
-          complete = false
-          limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
-        } else {
-          applicable = true
-          flags = inpOnly ? runInpChecks(measurement) : checkModule === 'mobile' ? runMobileChecks(measurement, pageUrl) : runPerformanceChecks(measurement, null, pageUrl)
-          // Each receipt describes only its own device and responsibility.
-          assertions = inpOnly ? [recordInpObservation(measurement)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
-            metadata: null, desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
-          const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope: evidenceScope })
-          flags = admitted.flags; assertions = admitted.assertions
-          complete = assertions.every(assertion => assertion.complete === true)
-          if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
+          : recordCheckObservations(checkModule, { url: pageUrl, metadata: null,
+            desktop: device === 'desktop' ? measurement : null, mobile: device === 'mobile' ? measurement : null })
+        const currentLab = !inpOnly && measurement !== null && hasCurrentPageSpeedLabMeasurement(measurement, pageUrl)
+        flags = []
+        if (measurement && inpOnly && assertions[0].complete) flags = runInpChecks(measurement)
+        if (measurement && currentLab) {
+          flags = device === 'mobile' ? runMobileChecks(measurement, pageUrl) : runPerformanceChecks(measurement, null, pageUrl)
         }
+        const scope = inpOnly ? evidenceScope : evidenceScope && { allowedCheckIds: evidenceScope.allowedCheckIds }
+        const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope })
+        flags = admitted.flags; assertions = admitted.assertions
+        complete = (inpOnly || currentLab) && assertions.length > 0 && assertions.every(assertion => assertion.complete === true)
+        if (!complete) limitation = inpOnly ? assertions[0]?.observed : measurement && !currentLab ? PAGESPEED_LAB_UNAVAILABLE
+          : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
       } else if (checkModule === 'security-headers') {
         const document = response?.document
-        // A challenge, unfinished redirect, or access restriction is not the origin configuration.
-        const withheld = Boolean(document && (isUnresolvedPublicRedirect(document) || document.reason === 'public_access_challenge' ||
-          (document.status !== null && publicResponseRestriction({ body: document.body ?? '', headers: document.headers, status: document.status }))))
-        // A settled fetch with no status was not collected. Keep the check incomplete
-        // instead of aborting it. An empty collected map is a real absence and still flags.
+        // Judge only the requested Site's response. Keep headers already received
+        // if the body read fails, but exclude responses that supply no full document.
+        const withheld = Boolean(document?.status && (document.url !== pageUrl ||
+          canonicalProductHost(document.finalUrl) !== canonicalProductHost(pageUrl) ||
+          document.status < 200 || document.status >= 300 || [204, 205, 206].includes(document.status) ||
+          document.reason === 'public_access_challenge' || document.reason === PUBLIC_SIGN_IN_REDIRECT ||
+          isBotInterstitialDocument({ body: document.body ?? '', headers: document.headers, status: document.status }) ||
+          isPublicSignInRedirect({ requestedUrl: context.input.pageUrl, finalUrl: document.finalUrl, status: document.status, body: document.body ?? '' })))
         if (!document?.status || withheld) {
-          pageUrl = document?.finalUrl ?? context.input.pageUrl
           flags = []
           assertions = recordCheckObservations(checkModule, { url: pageUrl, metadata: null, headers: null, desktop: null, mobile: null })
           complete = false
@@ -233,7 +252,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         }
       } else {
         // A completed capture can omit parsed metadata or browser metrics. Record that gap.
-        const observedUrl = definition.input === 'http' ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
+        const observedUrl = definition.input === 'http' || publicPreview ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
             deadline: context.deadline, destinations: { ...nativeHttp.options, originalContexts: actionContexts?.length ? actionContexts : undefined,
@@ -241,7 +260,7 @@ export const evaluatorHandlers: TaskHandler[] = [
             publicTrustSignals: publicSignals?.signals, publicTrustScope: publicSignals?.scope, publicTrustCopy: publicSignals?.copy,
             sectionLinks: checkModule === 'seo' ? capturedSectionLinks(snapshot, metadata ?? null, sectionScope) : undefined,
             pageLinks: actionInventory,
-            publicDocument: response?.document, resourceTransport, renderedCopy: snapshot?.renderedCopy,
+            publicDocument: response?.document, publicPreview: response?.publicPreview, checkVersions, resourceTransport, renderedCopy: snapshot?.renderedCopy,
             tracking: snapshot?.tracking,
             renderedCopyScope: snapshot?.renderedCopyScope, accessibilityEvidence: snapshot?.accessibilityEvidence, mobileAccessibility: snapshot?.mobileAccessibility, renderedScope: snapshot?.renderedScope,
             ...evidenceScope })
@@ -256,27 +275,33 @@ export const evaluatorHandlers: TaskHandler[] = [
       }
       flags = suppressFlagsForPageRole(flags, context.input.role)
         .map(flag => ({ ...flag, pageUrl }))
-      const sourceKind = checkModule === 'keyboard' ? 'keyboard' : definition.input === 'http' || checkModule === 'security-headers' ? 'http'
-        : checkModule === 'performance' || checkModule === 'mobile' ? 'pagespeed' : 'browser'
       const sourceTask = dependency(context, sourceKind)
       const source = sourceKind === 'browser' ? browserSource : sourceTask?.workResult ? readArtifact(sourceTask.workResult, sourceKind) : null
       // A missing collector result is the observation. Do not publish findings or a collection time for it.
       if (!source) {
         flags = []
+        assertions = uncollectedCheckAssertions(assertions)
         complete = false
         applicable = true
-        limitation ??= 'The evidence for this check was not collected. The result remains unknown.'
+        limitation = UNCOLLECTED_CHECK_LIMITATION
+      }
+      if (sourceKind === 'browser' && (desktopDiverted || mobileDiverted)) {
+        complete = false
+        applicable = true
+        const device = desktopDiverted && mobileDiverted ? 'Desktop and mobile captures' : desktopDiverted ? 'The desktop capture' : 'The mobile capture'
+        limitation = device + ' reached sign-in. Browser evidence for the requested page is incomplete.'
       }
       const summary = summarizeCheckAssertions({ passed: flags.length === 0, complete, assertions })
       complete = summary.complete
       const evidenceCollectedAt = source ? [source.collectedAt, ...(collectedAt ? [collectedAt] : [])]
         .sort((left, right) => Date.parse(left) - Date.parse(right))[0] : undefined
       const device = checkModule === 'mobile' || context.input.device === 'mobile' ? 'mobile' : 'desktop'
-      return serializeArtifact('check', checkArtifactSchema.parse({ flags, httpEvidence: nativeHttp.snapshot(), receipt: {
+      return serializeArtifact('check', checkArtifactSchema.parse({ flags, httpEvidence: nativeHttp.snapshot(),
+        ...(pageResponseInterrupted && evidenceCollectedAt ? { pageResponseInterrupted: true } : {}), receipt: {
         kind: 'site-module-check', version: 1, module: checkModule, passed: summary.passed, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
         ...(evidenceCollectedAt ? { execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version, checkVersions: Object.fromEntries(selected),
-          source: collectedDestinations || definition.input === 'http' ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+          source: collectedDestinations || definition.input === 'http' ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : ['measurement', 'network'].includes(checkModule) ? 'browser-network' : ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom',
           collectedAt: evidenceCollectedAt } } : {}),
       } }))
@@ -287,52 +312,72 @@ export const evaluatorHandlers: TaskHandler[] = [
     async commit(context, artifact, tx) {
       const { receipt } = searchArtifactSchema.parse(artifact.data)
       const receiptModule = !context.input.module || context.input.module === 'summary' ? 'search' : context.input.module
-      if (context.input.module !== 'summary') await tx.auditVerificationReceipt.upsert({
-        where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl } },
-        create: { taskId: context.task.id, auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl,
-          pageUrl: receipt.pageUrl, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
-          evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receiptModule, pageUrl: receipt.pageUrl } }, update: {},
-      })
-      if (context.input.module !== 'summary') await recordSearchVerifiers(receipt, tx)
+      if (context.input.module !== 'summary') {
+        const targetKey = 'module:' + receiptModule
+        const scope = { targetKey, auditId: context.audit.id, pageUrl: context.input.pageUrl }
+        if (!readRecordedSearchReceipt({ ...scope, detail: receipt })) throw new TaskFailure('SEARCH_RECEIPT_SCOPE_MISMATCH', false)
+        const stored = await tx.auditVerificationReceipt.upsert({
+          where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey, scopeKey: 'page:' + receipt.pageUrl } },
+          create: { taskId: context.task.id, auditId: context.audit.id, targetKey, scopeKey: 'page:' + receipt.pageUrl,
+            pageUrl: receipt.pageUrl, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
+            evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receiptModule, pageUrl: receipt.pageUrl } },
+          update: {}, select: { detail: true },
+        })
+        const recorded = readRecordedSearchReceipt({ ...scope, detail: stored.detail })
+        if (!recorded) throw new TaskFailure('SEARCH_RECEIPT_SCOPE_MISMATCH', false)
+        await recordSearchVerifiers(recorded, tx)
+      }
       await commitFindings(context, artifact, tx)
     },
     async evaluate(context) {
       if (context.input.module === 'summary') {
-        const results = [...context.dependencies.values()].filter(task => task.workState === 'COMPLETED' && task.workResult)
-          .map(task => searchArtifactSchema.parse(readArtifact(task.workResult, 'search').data))
+        const results = [...context.dependencies.values()].flatMap(task => {
+          if (task.workState !== 'COMPLETED' || !task.workResult) return []
+          const { module } = taskInputSchema.parse(task.workInput)
+          const { receipt } = searchArtifactSchema.parse(readArtifact(task.workResult, 'search').data)
+          const recorded = readRecordedSearchReceipt({ targetKey: 'module:' + (module ?? 'search'),
+            auditId: context.audit.id, pageUrl: context.input.pageUrl, detail: receipt })
+          return recorded ? [recorded] : []
+        })
         const receipt = combineSearchReceipts({ auditId: context.audit.id, pageUrl: context.input.pageUrl,
-          receipts: results.map(result => result.receipt), expected: context.task.workDependencies.length })
-        return serializeArtifact('search', { receipt, flags: searchFindings(results.flatMap(result => result.receipt.observations)) })
+          receipts: results, expected: context.task.workDependencies.length })
+        return serializeArtifact('search', { receipt, flags: searchFindings(results.flatMap(result => result.observations)) })
       }
       const evaluator = context.input.module?.replace(/^search-/, '')
       if (evaluator && !SEARCH_CHECK_DEFINITIONS.some(definition => definition.id === 'search.' + evaluator))
         throw new TaskFailure('SEARCH_EVALUATOR_NOT_REGISTERED', false)
       const response = httpEvidence(context), browser = browserEvidence(context), snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       const resourceTask = dependency(context, 'search-resources')
+      const origin = new URL(context.input.pageUrl).origin
       const cache = new Map()
-      if (resourceTask?.workResult) cache.set(new URL(context.input.pageUrl).origin,
-        Promise.resolve(resourceArtifactSchema.parse(readArtifact(resourceTask.workResult, 'search-resources').data)))
-      else cache.set(new URL(context.input.pageUrl).origin, Promise.resolve({
-        robots: missingDocument(new URL('/robots.txt', context.input.pageUrl).toString(), 'resource_collection_incomplete'),
+      if (resourceTask?.workResult) {
+        const resources = resourceArtifactSchema.parse(readArtifact(resourceTask.workResult, 'search-resources').data)
+        cache.set(origin, !evaluator || ['indexing', 'discovery'].includes(evaluator)
+          ? qualifyRecordedSiteResources(origin, resources) : Promise.resolve(resources))
+      } else cache.set(origin, Promise.resolve({
+        robots: missingDocument(new URL('/robots.txt', origin).href, 'resource_collection_incomplete'),
         sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [],
       }))
       const rendered = renderedDocumentForSearch(snapshot)
+      const renderedHeaders = renderedResponseHeadersForSearch(snapshot)
       const input = { collectorVersion: 2 as const, auditId: context.audit.id, pageUrl: context.input.pageUrl,
         original: response?.document, renderedHtml: rendered.renderedHtml,
         renderedSearchSnapshot: rendered.renderedSearchSnapshot,
+        renderedSignInRedirect: snapshot?.publicSignInRedirect,
         renderedCollectedAt: dependency(context, 'browser')?.workResult ? readArtifact(dependency(context, 'browser')!.workResult, 'browser').collectedAt : undefined,
-        renderedComplete: rendered.renderedComplete, headers: snapshot?.responseHeaders ?? undefined,
+        renderedComplete: rendered.renderedComplete, headers: renderedHeaders, renderedResponseScoped: renderedHeaders !== undefined,
         finalUrl: snapshot?.desktopFinalUrl, status: snapshot?.desktopHttpStatus, deadline: context.deadline, cache,
-        renderedPrivate: Boolean(context.audit.scanAccessEncrypted), collectCanonicalTargets: !evaluator || evaluator === 'canonical' }
+        renderedPrivate: Boolean(context.audit.scanAccessEncrypted), collectCanonicalTargets: !evaluator || evaluator === 'canonical',
+        collectRedirectRobots: !evaluator || evaluator === 'crawl' }
       if (!evaluator) {
         const result = await runSearchWorkflow({ ...input,
           evaluate: (evidence, previous) => evaluateSearchIsolated(evidence, previous, context.deadline) })
         return serializeArtifact('search', searchArtifactSchema.parse({ receipt: result.receipt, flags: result.findings }))
       }
       const evidence = await collectSearchEvidence(input)
-      const previous = await priorSearchReceipt(context.audit.id, context.input.pageUrl, evaluator)
+      const previous = await priorSearchPolicyBaseline(context.audit, evidence, evaluator)
       const observations = await evaluateSearchIsolated(evidence, previous, context.deadline, [evaluator])
-      const complete = !observations.some(item => item.disposition === 'unknown') &&
+      const complete = !hasUncoveredSearchObservations([{ auditId: context.audit.id, observations }]) &&
         (!['indexing', 'discovery'].includes(evaluator) || evidence.sitemapsComplete)
       const result = { receipt: searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: context.audit.id,
         pageUrl: context.input.pageUrl, collectedAt: evidence.collectedAt, complete, observations }), findings: searchFindings(observations) }

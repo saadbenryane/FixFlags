@@ -7,6 +7,9 @@ import { flagKeyForRow } from './flag-key'
 import { freezePrescriptionScope } from './prescription-scope'
 import { prescriptionTaskPlans } from './prescription-plan'
 import { logger } from '@/lib/logger'
+import { systemClock, type Clock } from '@/lib/time/clock'
+
+const PRESCRIPTION_HANDOFF_RETRY_MS = 60_000
 
 function prescriptionIdentity(index: number | null) {
   const suffix = index === null ? '' : `:${index}`
@@ -21,6 +24,12 @@ export async function enqueuePendingAiReview(auditId: string): Promise<number> {
     return enqueueAiReview(auditId)
   }
   return 0
+}
+
+/** Completed observations stand on their own. The prescription sweep retries a failed handoff. */
+export async function scheduleOptionalAiReview(auditId: string): Promise<void> {
+  try { await enqueuePendingAiReview(auditId) }
+  catch (error) { logger.warn('Optional AI review handoff deferred to recovery', error, { auditId }) }
 }
 
 export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<number> {
@@ -52,7 +61,8 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<num
       await recordProgress(tx, auditId, { taskId: task.id, kind: 'prescription', state: 'admitted' })
     }
     const expiredLegacy = audit.status === 'JUDGING' && (!audit.executionLeaseUntil || audit.executionLeaseUntil <= new Date())
-    await tx.audit.update({ where: { id: auditId }, data: { includeAi: true, ...(expiredLegacy ? { status: 'COMPLETED', progress: 100 } : {}) } })
+    await tx.audit.update({ where: { id: auditId }, data: { includeAi: true, prescriptionHandoffRetryAt: null,
+      ...(expiredLegacy ? { status: 'COMPLETED', progress: 100 } : {}) } })
     return created
   })
   // Redis is a delivery adapter. Its outage cannot erase the committed task or
@@ -64,23 +74,37 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<num
 }
 
 /** Backfill interrupted handoffs and legacy jobs through the same admission. */
-export async function recoverPendingAiReviews(limit = 25): Promise<number> {
+export async function recoverPendingAiReviews(limit = 25, clock: Clock = systemClock): Promise<number> {
+  const now = clock.now()
   // Retained former-owner reports are history, not recoverable execution.
   // Filter them before the batch limit; admission rechecks under the Site lock.
-  const audits = await prisma.$queryRaw<Array<{ id: string }>>`
-    SELECT a.id FROM audits a JOIN users u ON u.id = a."userId"
+  const audits = await prisma.$queryRaw<Array<{ id: string; userId: string }>>`
+    SELECT a.id, a."userId" FROM audits a JOIN users u ON u.id = a."userId"
     LEFT JOIN projects p ON p.id = a."projectId"
     WHERE a."includeAi" = true AND a."aiReviewAt" IS NULL AND a."triageAt" IS NOT NULL
-      AND a."completedAt" IS NOT NULL AND a.status IN ('COMPLETED', 'JUDGING')
+      AND a."completedAt" IS NOT NULL AND a."userId" IS NOT NULL AND a.status IN ('COMPLETED', 'JUDGING')
       AND u."lifecycleStatus" = 'ACTIVE'
       AND (a."projectId" IS NULL OR (p."deletedAt" IS NULL AND ${executionSiteAuthoritySql}))
-      AND (a."executionLeaseUntil" IS NULL OR a."executionLeaseUntil" <= ${new Date()})
+      AND (a."executionLeaseUntil" IS NULL OR a."executionLeaseUntil" <= ${now})
+      AND (a."prescriptionHandoffRetryAt" IS NULL OR a."prescriptionHandoffRetryAt" <= ${now})
       AND NOT EXISTS (SELECT 1 FROM audit_execution_tasks task WHERE task."auditId" = a.id AND task."workKind" = 'prescription')
-    ORDER BY a."completedAt", a.id LIMIT ${Math.max(1, Math.min(100, limit))}`
+    ORDER BY COALESCE(a."prescriptionHandoffRetryAt", a."completedAt"), a.id LIMIT ${Math.max(1, Math.min(100, limit))}`
   let admitted = 0
   for (const audit of audits) {
     try { if (await enqueuePendingAiReview(audit.id) > 0) admitted++ }
-    catch (error) { logger.error('Prescription handoff recovery interrupted', error, { auditId: audit.id }) }
+    catch (error) {
+      logger.error('Prescription handoff recovery interrupted', error, { auditId: audit.id })
+      // Admission rolled back. Save the cooldown separately so a persistent
+      // failure cannot reclaim the head of each bounded batch.
+      await executionTransaction(async tx => {
+        if (!await lockExecutionScope(tx, audit.id)) return
+        await tx.audit.updateMany({ where: { id: audit.id, userId: audit.userId, includeAi: true, aiReviewAt: null,
+          status: { in: ['COMPLETED', 'JUDGING'] }, triageAt: { not: null }, completedAt: { not: null },
+          user: { lifecycleStatus: 'ACTIVE' }, executionTasks: { none: { workKind: 'prescription' } },
+          OR: [{ prescriptionHandoffRetryAt: null }, { prescriptionHandoffRetryAt: { lte: now } }],
+        }, data: { prescriptionHandoffRetryAt: new Date(clock.now().getTime() + PRESCRIPTION_HANDOFF_RETRY_MS) } })
+      }).catch(error => logger.error('Prescription handoff retry time could not be recorded', error, { auditId: audit.id }))
+    }
   }
   return admitted
 }

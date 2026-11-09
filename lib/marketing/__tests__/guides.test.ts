@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES, getWebsiteGuide } from '@/lib/marketing/copy/guides'
 import { PUBLIC_OFFER } from '@/lib/marketing/copy/public-offer'
 import { guideMetadata, guideSchema } from '@/components/marketing/guides/guide-seo'
 import { SITE_URL } from '@/lib/marketing/copy/brand'
+import { buildPublicSitemap as sitemap } from '@/app/sitemap.xml/entries'
+
+vi.mock('@/lib/graph/queries', () => ({ getIndexableIssueCheckIds: async () => [] }))
 
 const primaryHosts = ['developer.mozilla.org', 'docs.lovable.dev', 'help.uptimerobot.com', 'www.checklyhq.com']
 
@@ -63,13 +66,26 @@ describe('buyer guide content and evidence contracts', () => {
   it('gives every guide canonical article metadata and breadcrumb schema', () => {
     for (const guide of WEBSITE_GUIDES) {
       const metadata = guideMetadata(guide)
+      const modifiedTime = guide.slug === 'website-online-but-not-working' ? '2026-11-09' : GUIDE_REVIEWED_AT
       expect(metadata.alternates?.canonical).toBe(`${SITE_URL}/guides/${guide.slug}`)
-      expect(metadata.openGraph).toMatchObject({ type: 'article', publishedTime: GUIDE_REVIEWED_AT, modifiedTime: GUIDE_REVIEWED_AT })
+      expect(metadata.openGraph).toMatchObject({ type: 'article', publishedTime: GUIDE_REVIEWED_AT, modifiedTime })
       const graph = guideSchema(guide)['@graph']
       expect(graph).toEqual(expect.arrayContaining([
-        expect.objectContaining({ '@type': 'Article', headline: guide.title, dateModified: GUIDE_REVIEWED_AT }),
+        expect.objectContaining({ '@type': 'Article', headline: guide.title, dateModified: modifiedTime }),
         expect.objectContaining({ '@type': 'BreadcrumbList', itemListElement: expect.arrayContaining([expect.objectContaining({ position: 2, item: `${SITE_URL}/guides/${guide.slug}` })]) }),
       ]))
+    }
+  })
+
+  it('uses the study revision in local discovery and keeps the previous sitemap date in production', async () => {
+    const path = '/guides/website-online-but-not-working'
+    const findGuide = async () => (await sitemap()).find(entry => new URL(entry.url).pathname === path)
+    expect(await findGuide()).toMatchObject({ lastModified: new Date('2026-11-09') })
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      expect(await findGuide()).toMatchObject({ lastModified: new Date(GUIDE_REVIEWED_AT) })
+    } finally {
+      vi.unstubAllEnvs()
     }
   })
 })

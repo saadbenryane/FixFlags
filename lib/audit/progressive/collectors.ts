@@ -10,7 +10,7 @@ import { fetchPageSpeedData, toStoredPageSpeedResult, PAGESPEED_TASK_TIMEOUT_MS 
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema, screenshotSnapshotSchema } from './snapshots'
 import type { MetadataFailure } from './snapshots'
-import { MAX_TASKS_PER_AUDIT, serializeArtifact, readArtifact, TaskFailure } from './contracts'
+import { MAX_TASKS_PER_AUDIT, serializeArtifact, readArtifact, TaskFailure, taskInputSchema } from './contracts'
 import type { TaskContext, TaskHandler } from './registry'
 import { parseMetadataIsolated, parseHttpNavigationIsolated } from './cpu'
 import { ExecutionOwnershipLost } from '../execution-ownership'
@@ -26,11 +26,18 @@ import type { MetadataMode } from '../metadata'
 import { observeCapturedTechnologies } from '../technology-capture'
 import { persistTechnologyObservations } from '../technology-profile'
 import { capturedPagePreview } from '../checks/page-preview'
+import { readPublicPagePreview } from '../checks/public-page-preview'
+import { corridorEvidenceSource } from '../checks/corridor-contract'
+import { usesPublicPreview } from '../checks/preview-contract'
 import { capturedHeadMetadata } from '../checks/head-metadata'
 import { browserCollectionRequirements, httpCollectionRequirements } from './collection-requirements'
 import { PAGE_COLLECTION_UNAVAILABLE } from '@/lib/marketing/copy/page-evidence'
 import { dedupeConsoleErrors } from '../console-evidence'
 import { hasRecordedDesktopCollection } from './browser-evidence'
+import { displayDestination } from '../checks/destination-evidence'
+import { trackingRequestKey } from '../tracking/identity'
+import { isObservedPageCaptureFailure, isPublicSignInRedirect } from '../browser/page-capture'
+import { isSuccessfulPublicGetStatus } from '../http-evidence'
 
 /** Parsing enriches an already collected document. A bounded local retry can
  * replace a crashed parser without repeating its HTTP or browser observation.
@@ -100,7 +107,7 @@ export const collectionHandlers: TaskHandler[] = [
     async evaluate(context) {
       let refused = 0
       const session = await createAuditPage(await getAuditBrowser(), context.input.pageUrl, {
-        profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, readOnlyInteractions: true, deadline: context.deadline,
+        profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, readOnlyInteractions: true, requirePublicLanding: true, deadline: context.deadline,
         scanAccess: await resolveAuditScanAccess(context.audit.id),
         onSafetyRefusal: () => { refused++ },
       })
@@ -131,9 +138,12 @@ export const collectionHandlers: TaskHandler[] = [
       // A document that never arrives is still the observation. Dependent checks
       // record that gap. Retrying the task would hide it until recovery ends.
       const document = await collectDocument(context.input.pageUrl, context.deadline)
+      const checks = readExecutionSpec(context.audit.executionSpec)?.checks
+      const publicPreview = corridorEvidenceSource(checks) === 'http' || usesPublicPreview(checks)
+        ? readPublicPagePreview(document) : undefined
       let metadata: Awaited<ReturnType<typeof collectMetadata>> = { metadata: null }
       let navigation: Awaited<ReturnType<typeof parseHttpNavigationIsolated>> | undefined
-      if (document.status !== null && document.status >= 200 && document.status < 300 && document.complete && document.body &&
+      if (document.status !== null && isSuccessfulPublicGetStatus(document.status) && document.complete && document.body &&
         /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')) {
         const consumers = await collectionConsumers(context)
         if (httpCollectionRequirements(consumers).collectMetadata)
@@ -146,7 +156,8 @@ export const collectionHandlers: TaskHandler[] = [
           }
         }
       }
-      return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata, ...(navigation ? { navigation } : {}) }))
+      return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata, ...(navigation ? { navigation } : {}),
+        ...(publicPreview ? { publicPreview } : {}) }))
     },
   },
   { kind: 'browser', replay: 'read_only', timeoutMs: (audit, input) => Math.max(90_000,
@@ -166,28 +177,43 @@ export const collectionHandlers: TaskHandler[] = [
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `p${context.input.position}-g${context.task.workGeneration}`, { runFlow: false, scanAccess: access, deadline: context.deadline,
           collectOriginalDocument: false, captureMedia: false, consoleObservationMs, captureMotion: motionRequested(spec), deferMotionComparison: true,
-          ...requirements, device: context.input.device, consoleIdentityKey: context.input.consoleIdentityKey })
+          ...requirements, device: context.input.device, consoleIdentityKey: context.input.consoleIdentityKey,
+          collectTracking: !mobile && consumers.some(consumer => consumer.workKind === 'check' &&
+            taskInputSchema.safeParse(consumer.workInput).data?.module === 'measurement'),
+          collectEngagement: !mobile && spec?.engagementCollection === 'split-v1' && consumers.some(consumer =>
+            consumer.workKind === 'check' && taskInputSchema.safeParse(consumer.workInput).data?.module === 'network') })
       const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= RENDERED_HTML_LIMIT
-      const parsed = htmlWithinBudget ? await collectMetadata(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline, 'rendered') : { metadata: null }
-      const head = capturedHeadMetadata(captured)
+      const { desktopFinalUrl, desktopHttpStatus, renderedSearchSnapshot } = captured
+      const sections = renderedSearchSnapshot?.finalUrl === desktopFinalUrl ? renderedSearchSnapshot?.sections : undefined
+      const signIn = !access && desktopFinalUrl && desktopHttpStatus != null && isPublicSignInRedirect({
+        requestedUrl: pageUrl, finalUrl: desktopFinalUrl, status: desktopHttpStatus, body: captured.desktopHtml,
+        fragments: sections ? [sections.metadata.html, sections.text.html] : undefined,
+      })
+      const snapshot = { ...captured, ...(signIn ? { publicSignInRedirect: true as const } : {}) }
+      const parsed = htmlWithinBudget && !signIn ? await collectMetadata(captured.desktopHtml!, desktopFinalUrl ?? pageUrl, context.deadline, 'rendered') : { metadata: null }
+      const head = capturedHeadMetadata(snapshot)
       const metadata = parsed.metadata ? mergeRuntimeHeadMetadata(parsed.metadata, head?.metadata, captured.renderedCopy) : null
       // Each native observation owns its evidence. Failure to serialize whole
       // HTML cannot discard a completed head, copy, console or Accessibility read.
       const desktopObserved = captured.desktopHtml || captured.desktopHtmlTruncated || captured.runtimeHeadScope ||
         captured.renderedSearchSnapshot || captured.renderedCopyScope || captured.publicTrustSignals?.scope ||
-        captured.accessibilityEvidence?.scope || captured.consoleCoverage?.desktop.complete || hasRecordedDesktopCollection(captured, pageUrl)
+        captured.accessibilityEvidence?.scope || captured.consoleCoverage?.desktop.complete || captured.engagement?.requests.length || hasRecordedDesktopCollection(captured, pageUrl)
       if ((!mobile && !metadata && !desktopObserved ||
         mobile && captured.captureFailures?.some(failure => failure.device === 'mobile')) &&
         !captured.captureFailures?.some(failure => (!context.input.device || failure.device === context.input.device) &&
-          ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))
+          isObservedPageCaptureFailure(failure.code)))
         throw new TaskFailure('BROWSER_COLLECTION_INTERRUPTED', true, undefined, true)
       // Secret-bearing original/rendered HTML never enters the durable public collector snapshot.
-      const snapshot = { ...captured }
       delete snapshot.flowResult
+      if (snapshot.engagement) {
+        snapshot.networkFailures = snapshot.networkFailures?.map(failure => ({ ...failure, url: displayDestination(failure.url) }))
+        const probe = snapshot.formProbe
+        if (probe) snapshot.formProbe = { ...probe, url: displayDestination(probe.url), requestKey: trackingRequestKey(probe.url, probe.method) }
+      }
       if (metadata) delete snapshot.renderedCopy // Parsed metadata owns this observation when available.
       return serializeArtifact('browser', browserArtifactSchema.parse({ pageId: page.id, ...parsed, metadata,
-        preview: capturedPagePreview(captured),
-        ...(context.input.primary && !mobile ? { technologies: observeCapturedTechnologies(captured) } : {}),
+        preview: corridorEvidenceSource(spec?.checks) === 'rendered-dom' ? capturedPagePreview(snapshot) : undefined,
+        ...(context.input.primary && !mobile ? { technologies: observeCapturedTechnologies(snapshot) } : {}),
         snapshot: { ...snapshot, desktopBase64: null, mobileBase64: null,
           ...(!htmlWithinBudget ? { desktopHtml: null } : {}),
           ...(access ? { desktopHtml: null, originalDocument: undefined } : {}) } }))
@@ -200,9 +226,11 @@ export const collectionHandlers: TaskHandler[] = [
         SELECT "workResult"#>'{data,snapshot,consoleErrors}' AS errors FROM audit_execution_tasks
         WHERE "auditId" = ${context.audit.id} AND "pageUrl" = ${context.input.pageUrl}
           AND "workKind" = 'browser' AND "workState" = 'COMPLETED' AND "status" = 'COMPLETED'
+          AND "workResult"#>'{data,snapshot,publicSignInRedirect}' IS DISTINCT FROM 'true'::jsonb
+          AND "workResult"#>'{data,snapshot,desktopHttpStatus}' IS DISTINCT FROM '206'::jsonb
           AND "id" <> ${context.task.id} LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
       if (peers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
-      const consoleErrors = dedupeConsoleErrors([...snapshot.consoleErrors,
+      const consoleErrors = dedupeConsoleErrors([...(snapshot.publicSignInRedirect ? [] : snapshot.consoleErrors),
         ...peers.flatMap(peer => screenshotSnapshotSchema.shape.consoleErrors.parse(peer.errors))]).slice(0, 500)
       const desktop = context.input.device !== 'mobile'
       const collected = Boolean(metadata) || hasRecordedDesktopCollection(snapshot, context.input.pageUrl)

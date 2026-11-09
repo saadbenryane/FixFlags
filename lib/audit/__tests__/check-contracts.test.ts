@@ -61,6 +61,6 @@ describe('registered check and evidence contracts', () => {
   it('validates new receipts and strips malformed historical assertions and private fields', () => {
     expect(checkReceiptSchema.safeParse({ kind: 'site-module-check', version: 1, module: 'metadata', pageUrl: 'https://example.com', passed: true, applicable: true }).success).toBe(true)
     expect(readCheckReceipt({ version: 2, passed: true }).passed).toBeUndefined()
-    expect(readCheckReceipt({ secret: 'never expose', assertions: [{ key: 'bad', passed: true }] })).toEqual({ passed: undefined, assertions: [], legacy: true })
+    expect(readCheckReceipt({ secret: 'never expose', assertions: [{ key: 'bad', passed: true }] })).toEqual({ passed: undefined, assertions: [], legacy: true, unavailable: true })
   })
 })

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ events: vi.fn(), audits: vi.fn(), cycles: vi.fn(), execute: vi.fn(), transaction: vi.fn() }))
+const mocks = vi.hoisted(() => ({ events: vi.fn(), audits: vi.fn(), cycles: vi.fn(), execute: vi.fn(), raw: vi.fn(), transaction: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { $transaction: mocks.transaction } }))
 import { loadAcquisitionValueCohort } from '../acquisition-value-query'
 
@@ -8,9 +8,10 @@ const since = new Date('2026-10-01'); const now = new Date('2026-10-13')
 describe('private acquisition-to-value query', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.transaction.mockImplementation(async (run) => run({ $executeRaw: mocks.execute,
+    mocks.transaction.mockImplementation(async (run) => run({ $executeRaw: mocks.execute, $queryRaw: mocks.raw,
       siteLifecycleEvent: { findMany: mocks.events }, audit: { findMany: mocks.audits }, improvementCycle: { findMany: mocks.cycles } }))
     mocks.events.mockResolvedValue([]); mocks.audits.mockResolvedValue([]); mocks.cycles.mockResolvedValue([])
+    mocks.raw.mockResolvedValue([{ retainedMatureAdmissions: 0, missingStartReceipts: 0, unusableStartReceipts: 0, startReceiptsOutsideWindow: 0 }])
   })
 
   it('reads a bounded, versioned cohort in a consistent read-only snapshot and skips empty lookups', async () => {

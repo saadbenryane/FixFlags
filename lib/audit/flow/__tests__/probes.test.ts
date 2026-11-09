@@ -73,6 +73,8 @@ function makePage(opts: PageMockOptions = {}): Page {
   })
   return {
     evaluate,
+    on: vi.fn(),
+    off: vi.fn(),
     url: vi.fn(() => opts.url ?? 'https://example.com/'),
     click: vi.fn(async () => {
       if (opts.clickError) throw opts.clickError
@@ -239,6 +241,7 @@ describe('probeGhostSections', () => {
 
 describe('measurePostClickLoading', () => {
   const nowSpy = vi.spyOn(Date, 'now')
+  const document = { pageUrl: 'https://example.com/', timeOrigin: 1 }
 
   beforeEach(() => {
     nowSpy.mockReset()
@@ -247,22 +250,33 @@ describe('measurePostClickLoading', () => {
 
   it('records content timing when content appears immediately', async () => {
     const page = makePage({
-      evaluateQueue: [{ pageUrl: 'https://example.com/', content: true, contentComplete: true },
-        { loadingVisible: false, loadingLabel: null }],
+      evaluateQueue: [{ ...document, content: true, contentComplete: true },
+        { ...document, loadingVisible: false, loadingLabel: null }],
     })
     const metrics = await measurePostClickLoading(page, 100)
     assert.equal(metrics.timeToFirstContentMs, 0)
     assert.equal(metrics.blankScreenMs, 0)
     assert.equal(metrics.stuckLoading, false)
   })
+  it('withholds content and loading proof when concurrent samples came from different documents', async () => {
+    const page = makePage({
+      evaluateQueue: [{ ...document, content: true, contentComplete: true },
+        { ...document, timeOrigin: 2, loadingVisible: false, loadingLabel: null }],
+    })
+    const metrics = await measurePostClickLoading(page, 100)
+    assert.equal(metrics.timeToFirstContentMs, null)
+    assert.equal(metrics.stuckLoading, null)
+    assert.equal(metrics.contentComplete, false)
+    assert.equal(metrics.loadingComplete, false)
+  })
 
   it('flags a loading indicator that sticks for over two seconds', async () => {
     const page = makePage({
       evaluateQueue: [
-        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
-        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
-        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
-        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { ...document, content: false, contentComplete: true }, { ...document, loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { ...document, content: false, contentComplete: true }, { ...document, loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { ...document, content: false, contentComplete: true }, { ...document, loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { ...document, content: false, contentComplete: true }, { ...document, loadingVisible: true, loadingLabel: 'Loading spinner' },
       ],
     })
     // Advance the sampled clock without depending on the real polling interval.
@@ -279,7 +293,7 @@ describe('measurePostClickLoading', () => {
   it('keeps content arrival unknown when the observation cannot complete before its deadline', async () => {
     const page = makePage({
       evaluateQueue: [
-        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: false, loadingLabel: null },
+        { ...document, content: false, contentComplete: true }, { ...document, loadingVisible: false, loadingLabel: null },
       ],
     })
     let elapsed = 0

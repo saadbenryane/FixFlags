@@ -136,7 +136,7 @@ The authorized cutover completed after old web and worker writers stopped. Both
 new services succeeded on the same revision, the migration applied, and retained
 task/receipt preservation hashes matched. Mixed-version writers remain
 unsupported, and the previous image alone is not a safe schema rollback. The
-[current completion plan](product-masterplan.md#current-completion-plan-2026-10-28)
+[current completion plan](product-masterplan.md#public-website-validation-completion-ledger)
 owns deployed status, the new idle-context investigation and remaining acceptance
 work. The actual production backup has since been restored and verified in the
 separately authorized private recovery environment, which was then deleted. The

@@ -12,7 +12,7 @@ const { db } = vi.hoisted(() => {
 const handlers = vi.hoisted(() => ({ coordinate: vi.fn(), deliver: vi.fn(), project: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: db }))
 vi.mock('@/lib/audit/progressive/runtime', () => ({ coordinateProgressiveAudit: handlers.coordinate }))
-vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueuePendingAiReview: handlers.deliver }))
+vi.mock('@/lib/audit/enqueue-ai-review', () => ({ scheduleOptionalAiReview: handlers.deliver }))
 vi.mock('@/lib/audit/finalize', () => ({ persistImprovementCycle: handlers.project }))
 import { runAudit } from '../runner'
 
@@ -44,6 +44,7 @@ describe('single audit execution engine', () => {
     await runAudit('audit')
     expect(handlers.deliver).toHaveBeenCalledWith('audit')
     expect(handlers.project).toHaveBeenCalledWith('audit', 'parent')
+    expect(handlers.project.mock.invocationCallOrder[0]).toBeLessThan(handlers.deliver.mock.invocationCallOrder[0])
     expect(handlers.coordinate).not.toHaveBeenCalled()
   })
   it('does not borrow another completion projection lease', async () => {

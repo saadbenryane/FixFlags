@@ -10,7 +10,7 @@ import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy-barrel'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { customerMechanismLabel, outcomeRelatedFlags, outcomeCoverageLabel, outcomeFreshnessDisclosure } from '@/lib/sites/outcome-state'
 import { loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSitePageAccess } from '@/lib/sites/page-access'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
 import { customerFindingLabel } from '@/lib/sites/finding-label'
@@ -25,8 +25,7 @@ export default async function OutcomeDetailPage({ params, searchParams }: {
 }) {
   const { siteId, outcomeId } = await params
   const origin = await searchParams ?? {}
-  const access = await requireSiteAccess(siteId)
-  if (!access.ok) notFound()
+  const access = await requireSitePageAccess(siteId, `/sites/${encodeURIComponent(siteId)}/outcomes/${encodeURIComponent(outcomeId)}`)
   const [home, outcome] = await Promise.all([
     loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated, site: access.decision.site }),
     loadSiteOutcomeDetail(access.decision.site, outcomeId),

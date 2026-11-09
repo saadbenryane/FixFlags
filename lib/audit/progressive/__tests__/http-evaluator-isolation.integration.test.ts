@@ -13,7 +13,7 @@ import { checkArtifactSchema } from '../results'
 import { CHECK_REGISTRY } from '../../check-registry'
 import { readResourceAudits } from '../../pagespeed-opportunities'
 import { readTapTargetAudits } from '../../pagespeed-tap-targets'
-import { performanceMeasurement } from '../../performance-measurement'
+import { pageSpeedMeasurementFixture } from '../../__tests__/check-fixtures'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('resource ownership for destination checks', () => {
@@ -112,8 +112,73 @@ run('independent evaluation through the installed workers', () => {
     }, { timeout: 3000, interval: 20 })
   }, 15_000)
 
-  it.each(['performance', 'conversion', 'conversion-failure'] as const)('commits only admitted %s evidence through the actual evaluation worker', async scenario => {
-    const area = scenario === 'performance' ? 'performance' : 'conversion'
+  it('keeps evaluation workers available while committed work waits on graph publication', async () => {
+    const count = TASK_QUEUES.evaluate.concurrency
+    const sources: Array<{ auditId: string; taskId: string; dependentId: string }> = []
+    const executionSpec = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: input.pageUrl,
+      environment: 'production', checks: { 'page-http-error': CHECK_REGISTRY['page-http-error'].version }, outcomes: [], verificationTarget: null }
+    const observedResponse = () => serializeArtifact('http', { metadata: null, document: {
+      url: input.pageUrl, finalUrl: input.pageUrl, status: 200, headers: { 'content-type': 'text/html' },
+      body: '<title>Controlled public page</title><h1>Useful service</h1>', complete: true,
+      reason: null, redirects: [], collectedAt: new Date().toISOString(),
+    } })
+    for (let index = 0; index < count; index++) {
+      const audit = await prisma.audit.create({ data: { url: input.pageUrl, startedAt: new Date(), executionSpec } })
+      auditIds.push(audit.id)
+      await persistTaskPlan(audit.id, [
+        { key: 'collected', kind: 'http', scope: input.pageUrl, input, dependencies: [] },
+        { key: 'source', kind: 'check', scope: input.pageUrl, input: { ...input, module: 'page-response' }, dependencies: ['collected'] },
+        { key: 'follow-up', kind: 'http', scope: input.pageUrl, input: { ...input,
+          pageUrl: input.pageUrl + 'coordination-follow-up' }, dependencies: ['source'] },
+      ])
+      await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:collected' },
+        data: { workState: 'COMPLETED', status: 'COMPLETED', workResult: observedResponse() } })
+      await reconcileTasks(audit.id)
+      const tasks = await loadTasks(audit.id)
+      sources.push({ auditId: audit.id, taskId: tasks.find(task => task.workKind === 'check')!.id,
+        dependentId: tasks.find(task => task.targetKey === 'task:follow-up')!.id })
+    }
+    const peer = await prisma.audit.create({ data: { url: input.pageUrl, startedAt: new Date(), executionSpec } })
+    auditIds.push(peer.id)
+    await persistTaskPlan(peer.id, [
+      { key: 'collected', kind: 'http', scope: input.pageUrl, input, dependencies: [] },
+      { key: 'peer', kind: 'check', scope: input.pageUrl, input: { ...input, module: 'page-response' }, dependencies: ['collected'] },
+    ])
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: peer.id, targetKey: 'task:collected' },
+      data: { workState: 'COMPLETED', status: 'COMPLETED', workResult: observedResponse() } })
+    const dependentIds = new Set(sources.map(source => source.dependentId))
+    const queue = getAuditTaskQueue('http'), add = queue.add.bind(queue)
+    const publication = Promise.withResolvers<void>()
+    let held = 0
+    const publish = vi.spyOn(queue, 'add').mockImplementation(async (...args) => {
+      if (dependentIds.has(args[1].taskId)) { held++; await publication.promise }
+      return add(...args)
+    })
+    const fetchImplementation = fetch.getMockImplementation()!
+    fetch.mockImplementation((url, ...args) => new URL(String(url)).pathname === '/coordination-follow-up'
+      ? Promise.resolve(new Response('<title>Controlled response</title>', { status: 503 })) : fetchImplementation(url, ...args))
+    try {
+      await dispatchReadyTasks(sources.map(source => source.taskId))
+      await vi.waitFor(() => expect(held).toBe(count), { timeout: 5000, interval: 25 })
+      const observed = await prisma.auditExecutionTask.findMany({ where: { id: { in: sources.map(source => source.taskId) } },
+        select: { workState: true, workErrorCode: true } })
+      expect(observed).toEqual(Array.from({ length: count }, () => ({ workState: 'COMPLETED', workErrorCode: null })))
+      await dispatchReadyTasks(await reconcileTasks(peer.id))
+      await vi.waitFor(async () => expect((await loadTasks(peer.id)).find(task => task.workKind === 'check')).toMatchObject({ workState: 'COMPLETED' }),
+        { timeout: 5000, interval: 25 })
+      for (const source of sources) expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: source.dependentId } }))
+        .toMatchObject({ workState: 'READY', workAttempts: 0 })
+    } finally {
+      publication.resolve()
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.count({ where: {
+        id: { in: [...dependentIds] }, workState: 'COMPLETED' } })).toBe(count), { timeout: 10_000, interval: 25 })
+      publish.mockRestore(); fetch.mockImplementation(fetchImplementation)
+    }
+  }, 25_000)
+
+  it.each(['performance', 'conversion', 'conversion-failure', 'stale-performance', 'stale-conversion'] as const)('commits only admitted %s evidence through the actual evaluation worker', async scenario => {
+    const stale = scenario.startsWith('stale-')
+    const area = scenario.endsWith('performance') ? 'performance' : 'conversion'
     const checks = Object.fromEntries(Object.entries(CHECK_REGISTRY)
       .filter(([, definition]) => definition.module === 'mobile' && definition.area === area)
       .map(([id, definition]) => [id, definition.version]))
@@ -126,16 +191,16 @@ run('independent evaluation through the installed workers', () => {
       { key: 'speed', kind: 'pagespeed', scope: input.pageUrl, input: { ...input, device: 'mobile' }, dependencies: [] },
       { key: 'mobile', kind: 'check', scope: input.pageUrl, input: { ...input, module: 'mobile' }, dependencies: ['speed'] },
     ])
-    const measurement = { strategy: 'mobile', score: area === 'performance' ? 95 : null, lcp: area === 'performance' ? 1000 : null,
+    const measurement = { strategy: 'mobile', score: area === 'performance' ? (stale ? 30 : 95) : null, lcp: area === 'performance' ? 1000 : null,
       cls: area === 'performance' ? 0 : null, fcp: 500, tbt: 0, inp: null, opportunities: [],
       resourceAudits: readResourceAudits({
         'render-blocking-insight': { score: 1, metricSavings: { FCP: 0 } },
         'unused-javascript': { score: 1, details: { overallSavingsBytes: 0 } },
         'unused-css-rules': { score: 1, details: { overallSavingsBytes: 0 } },
         'image-delivery-insight': { score: 1, details: { debugData: { wastedBytes: 0 } } },
-      }), tapTargetAudits: area === 'performance' ? [] : readTapTargetAudits({ 'target-size': { score: scenario === 'conversion-failure' ? 0 : 1 } }),
-      failedAccessibilityAudits: [], diagnostics: { measurement: performanceMeasurement({ requestedUrl: input.pageUrl,
-        finalUrl: input.pageUrl, lighthouseVersion: '13.0.0', configSettings: { formFactor: 'mobile', throttlingMethod: 'simulate' } }, 'mobile') },
+      }), tapTargetAudits: area === 'performance' ? [] : readTapTargetAudits({ 'target-size': { score: stale || scenario === 'conversion-failure' ? 0 : 1 } }),
+      failedAccessibilityAudits: [], diagnostics: { measurement: pageSpeedMeasurementFixture(input.pageUrl, 'mobile',
+        stale ? { fetchTime: new Date(Date.now() - 86_400_000).toISOString() } : {}) },
       raw: {}, crux: null }
     await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:speed' },
       data: { workState: 'COMPLETED', status: 'COMPLETED', workResult: serializeArtifact('pagespeed', { desktop: null, mobile: measurement }) } })
@@ -145,7 +210,7 @@ run('independent evaluation through the installed workers', () => {
       expect((await loadTasks(audit.id)).find(task => task.targetKey === 'task:mobile')).toMatchObject({ workState: 'COMPLETED' })
     }, { timeout: 3000, interval: 20 })
     const receipt = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: audit.id, targetKey: 'module:mobile' } })
-    expect(receipt.detail).toMatchObject({ complete: true, passed: scenario !== 'conversion-failure', execution: { checkVersions: checks } })
+    expect(receipt.detail).toMatchObject({ complete: !stale, passed: !stale && scenario !== 'conversion-failure', execution: { checkVersions: checks } })
     const assertions = (receipt.detail as { assertions: Array<{ key: string }> }).assertions.map(assertion => assertion.key)
     if (area === 'performance') expect(assertions).not.toContain('tap-targets')
     else expect(assertions).toEqual(['tap-targets'])

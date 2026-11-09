@@ -29,6 +29,7 @@ import { runKeyboardChecks } from '../checks/keyboard'
 import { keyboardEvidenceSchema, type KeyboardEvidence } from '../browser/keyboard-probe'
 import { evaluateAccessibility } from '../checks/accessibility-observations'
 import type { AxeViolation } from '../checks/accessibility'
+import { summarizeAccessibility } from '../browser/accessibility-evidence'
 import { runTrackingChecks } from '../checks/tracking'
 import type { TrackingEvidence } from '../tracking/contracts'
 import { recordCheckObservations } from '../checks/observations'
@@ -36,7 +37,9 @@ import { runPerformanceChecks } from '../checks/performance'
 import { performanceMeasurement } from '../performance-measurement'
 import type { PageSpeedResult } from '../pagespeed'
 import type { ResourceAudit } from '../pagespeed-opportunities'
-import { runMetadataChecks, runOgImageUrlCheck } from '../checks/metadata-checks'
+import { runMetadataChecks, runOgImageUrlCheck, runPreviewDeclarationChecks } from '../checks/metadata-checks'
+import { readPublicPagePreview } from '../checks/public-page-preview'
+import sharp from 'sharp'
 import { evaluateCorridorConsistency, type CorridorPageMeta } from '../checks/corridor-consistency'
 import { runAuthCheckoutChecks } from '../checks/auth-checkout'
 import { destinationContentObservations } from '../checks/flow-destination-content'
@@ -87,7 +90,7 @@ function pageHtml(headline = 'Build useful reports for developers', body = PROSE
 }
 function metrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics {
   const nativeLoading = { version: 1 as const, device: 'mobile' as const, scope: { pageUrl: PAGE, finalUrl: PAGE, profile: 'native-mobile', access: 'public' }, contentVisible: true, ready: true, restricted: false }
-  return { mobilePrimaryCtaTopPx: 250, mobilePrimaryCtaText: 'Get started free', competingPrimaryCtaCount: 1,
+  return { mobilePrimaryCtaTopPx: 250, mobilePrimaryCtaText: 'Get started free', mobilePrimaryCtaContext: 'mobile-action:' + 'a'.repeat(64), competingPrimaryCtaCount: 1,
     competingPrimaryCtaLabels: ['Get started free'], mobileViewportHeight: 800, mobileScrollY: 0, mobileDocumentHeight: 1600,
     stuckLoadingIndicator: false, stuckLoadingLabel: null, uniqueFontFamilies: 2, fontFamilySample: ['Inter', 'Inter Tight'],
     buttonBorderRadii: [8], motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true,
@@ -342,7 +345,13 @@ function loadingFacts(): Fact[] {
 function axeCase(rule: string, checkId: string, device: 'desktop' | 'mobile' = 'desktop'): Fact[] {
   const violation = (state: 'passed' | 'failed' | 'incomplete'): AxeViolation[] => state === 'failed' ? [{ id: rule, impact: 'serious', description: rule, help: rule, helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/' + rule, nodes: [{ html: '<button></button>', target: ['button'], failureSummary: 'The recorded element failed this rule.' }] }] : []
   const run = (state: 'passed' | 'failed' | 'incomplete') => {
-    const captured = { scope: device === 'mobile' ? MOBILE_SCOPE : SCOPE, engine: '4.10.0', rules: [{ id: rule, state, nodes: state === 'failed' ? 1 : 0 }] }
+    // Supplied engine outcomes exercise the production normalization contract.
+    // They do not establish browser collection or human accessibility proof.
+    const outcome = { id: rule, nodes: [{ html: '<button></button>', target: ['button'] }] }
+    const captured = summarizeAccessibility({ testEngine: { version: 'catalog-supplied-axe-outcomes' },
+      passes: state === 'passed' ? [outcome] : [], violations: state === 'failed' ? [outcome] : [],
+      incomplete: state === 'incomplete' ? [outcome] : [], inapplicable: [],
+    } as unknown as Parameters<typeof summarizeAccessibility>[0], device === 'mobile' ? MOBILE_SCOPE : SCOPE)
     return evaluateAccessibility({ metadata: parseMetadataFromHtml('<html lang="en"><body><main><h1>Example</h1><button>Start</button></main></body></html>', PAGE),
       scope: SCOPE, ...(device === 'mobile' ? { mobileAccessibility: { evidence: captured, violations: violation(state) } }
         : { evidence: captured, axe: violation(state) }) })
@@ -825,18 +834,20 @@ const handlers: Record<string, Handler> = {
     const sizing = (assertions: CheckAssertion[]) => assertions.find(assertion => assertion.key === key)
     const repairedAssertion = sizing(healthy.assertions)
     const failedAssertion = sizing(failed.assertions)
-    if (later.verdict !== 'observed' || !repairedAssertion?.passed || repairedAssertion.complete === false || repairedAssertion.disposition !== 'observed')
-      throw new Error('16px input sizing was not recorded as an advisory CSS observation')
+    if (later.verdict !== 'passed' || !repairedAssertion?.passed || repairedAssertion.complete !== true ||
+      repairedAssertion.disposition === 'observed' || !repairedAssertion.observed.includes('not iOS focus'))
+      throw new Error('16px input sizing was not recorded with its CSS-only limitation')
     if (failing.verdict !== 'failed' || !failedAssertion || failedAssertion.passed || failedAssertion.complete === false || failedAssertion.disposition === 'observed')
       throw new Error('Measured small input was not recorded')
-    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || mobileRecovers(checkId, failed.flags[0], healthy.assertions) ||
+    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || !mobileRecovers(checkId, failed.flags[0], healthy.assertions) ||
       mobileRecovers(checkId, failed.flags[0], shifted.assertions) || mobileRecovers(checkId, failed.flags[0], missing.assertions))
-      throw new Error('Input sizing recovery certified a non-comparable sample')
+      throw new Error('Input sizing recovery did not stay on the original measured control')
     return [
       { scenario: 'working', ...later },
       { scenario: 'failing', ...failing },
       { scenario: 'incomplete', ...judge(missing.assertions, [], [key]) },
-      { scenario: 'repaired', verdict: 'incomplete', identity: failing.identity },
+      // The advertised zoom behavior remains advisory. The comparable proof above covers CSS sizing.
+      { scenario: 'repaired', verdict: 'observed', identity: failing.identity },
     ]
   },
   'conversion.button-placement': async () => {
@@ -853,9 +864,11 @@ const handlers: Record<string, Handler> = {
     const shifted = await run(metrics({ loadingObservation: { ...metrics().loadingObservation!, scope: { pageUrl: PAGE, finalUrl: PAGE, profile: 'other-mobile', access: 'public' } } }))
     const failing = judge(failed.assertions, failed.flags, [key])
     const flag = failed.flags[0]
-    const certified = certifies(checkId, flag, healthy.assertions, 'mobile-ux-quality', 'rendered-dom')
-    const wrongWindow = certifies(checkId, flag, shifted.assertions, 'mobile-ux-quality', 'rendered-dom')
-    const absent = certifies(checkId, flag, missing.assertions, 'mobile-ux-quality', 'rendered-dom')
+    const certified = mobileRecovers(checkId, flag, healthy.assertions)
+    const wrongWindow = mobileRecovers(checkId, flag, shifted.assertions)
+    const replacement = await run(metrics({ mobilePrimaryCtaContext: 'mobile-action:' + 'b'.repeat(64) }))
+    const wrongControl = mobileRecovers(checkId, flag, replacement.assertions)
+    const absent = mobileRecovers(checkId, flag, missing.assertions)
     const position = (assertions: CheckAssertion[]) => assertions.find(assertion => assertion.key === key)
     const failedAssertion = position(failed.assertions)
     const repairedAssertion = position(healthy.assertions)
@@ -863,8 +876,8 @@ const handlers: Record<string, Handler> = {
       throw new Error('Measured button placement failure was not recorded')
     if (judge(healthy.assertions, [], [key]).verdict !== 'passed' || !repairedAssertion?.passed || repairedAssertion.complete === false || repairedAssertion.disposition === 'observed')
       throw new Error('Measured button placement repair was not recorded')
-    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || !certified || wrongWindow || absent)
-      throw new Error('Button placement recovery did not stay on the original mobile window')
+    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || !certified || wrongWindow || wrongControl || absent)
+      throw new Error('Button placement recovery did not stay on the original control and mobile window')
     return [
       { scenario: 'working', ...judge(healthy.assertions, [], [key]) },
       { scenario: 'failing', ...failing },
@@ -989,11 +1002,11 @@ const handlers: Record<string, Handler> = {
     ]
   },
   'security.mixed-content': () => {
-    const transport = (insecure: Array<{ kind: string; url: string }>, complete = true) => ({ version: 1 as const, complete, inspected: 1, insecure })
-    const good = securityObservations(PAGE, { images: [], resourceTransport: transport([]) })
-    const bad = securityObservations(PAGE, { images: [], resourceTransport: transport([{ kind: 'script', url: 'http://cdn.example/app.js' }]) })
-    const open = securityObservations(PAGE, { images: [], resourceTransport: transport([], false) })
-    const flags = runSecurityBasicsChecks(PAGE, parseMetadataFromHtml('<html><body><script src="http://cdn.example/app.js"></script></body></html>', PAGE))
+    const good = securityObservations(PAGE, parseMetadataFromHtml('<script src="https://127.cdn.example/app.js"></script>', PAGE))
+    const failed = parseMetadataFromHtml('<script src="http://127.cdn.example/app.js"></script>', PAGE)
+    const bad = securityObservations(PAGE, failed)
+    const open = securityObservations(PAGE, parseMetadataFromHtml('<script src="http://[invalid"></script>', PAGE))
+    const flags = runSecurityBasicsChecks(PAGE, failed)
     const failing = judge(bad, flags.filter(flag => flag.checkId === 'security-mixed-content'), ['resource-transport'])
     const certified = certifies('security-mixed-content', flags.find(flag => flag.checkId === 'security-mixed-content') ?? { ...flags[0], checkId: 'security-mixed-content' }, good, 'security', 'http')
     return [
@@ -1145,16 +1158,35 @@ const handlers: Record<string, Handler> = {
       { scenario: 'recurring', verdict: failing.verdict, identity: failing.identity },
     ]
   },
-  'search.open-graph': () => metadataCase(['preview-title-presence', 'preview-description-presence'], { ogTitle: '', ogDescription: '' }, { ogTitle: undefined, ogDescription: undefined }, 'og-title-missing'),
+  'search.open-graph': () => {
+    const keys = ['preview-title-presence', 'preview-description-presence']
+    const read = (body: string | null) => {
+      const preview = readPublicPagePreview(document(body)), recorded: CheckAssertion[] = []
+      const found = runPreviewDeclarationChecks(preview ?? {}, assertion => recorded.push(assertion), preview?.scope)
+      return { recorded, found }
+    }
+    const good = read('<head><meta property="og:title" content="Catalog"><meta property="og:description" content="Browse our catalog."></head>')
+    const bad = read('<head><title>Catalog</title></head>'), open = read(null)
+    const failing = judge(bad.recorded, bad.found, keys)
+    const flag = bad.found.find(item => item.checkId === 'og-title-missing')
+    const certified = certifies('og-title-missing', flag, good.recorded, 'og-image', 'http')
+    return [
+      { scenario: 'working', ...judge(good.recorded, [], keys) },
+      { scenario: 'incomplete', ...judge(open.recorded, [], keys) },
+      ...pair(failing, { verdict: certified ? 'passed' : 'observed', identity: failing.identity, certified }, []),
+    ]
+  },
   'search.favicon': () => metadataCase(['favicon-presence'], { hasFavicon: false }, { hasFavicon: undefined }, 'favicon-missing'),
   'search.preview-image': async () => {
     const imageUrl = 'https://example.com/cover.png'
-    const image = async (status: number, contentType: string, body = 'png') => ({ body, finalUrl: imageUrl, statusCode: status, headers: { 'content-type': contentType }, complete: true, redirects: [] as [] })
+    const png = await sharp({ create: { width: 2, height: 2, channels: 3, background: '#284c63' } }).png().toBuffer()
+    const image = async (status: number, contentType: string, body: string | Buffer = png) => ({ body, finalUrl: imageUrl, statusCode: status, headers: { 'content-type': contentType }, complete: true, redirects: [] as [] })
     const assertions: CheckAssertion[] = []
     const flags: DeterministicFlag[][] = []
-    const run = async (ogImage: string | undefined, fetch?: () => Promise<{ body: string; finalUrl: string; statusCode: number; headers: Record<string, string>; complete: boolean; redirects: [] }>) => {
+    const run = async (ogImage: string | undefined, fetch?: () => ReturnType<typeof image>) => {
       const recorded: CheckAssertion[] = []
-      const found = await runOgImageUrlCheck(PAGE, { ogImage }, { record: assertion => recorded.push(assertion), fetchDocument: fetch })
+      const preview = readPublicPagePreview(document(ogImage ? `<head><meta property="og:image" content="${ogImage}"></head>` : null))
+      const found = await runOgImageUrlCheck(PAGE, preview ?? {}, { record: assertion => recorded.push(assertion), fetchDocument: fetch }, preview?.scope)
       return { recorded, found }
     }
     const good = await run(imageUrl, () => image(200, 'image/png'))
@@ -1209,7 +1241,8 @@ const handlers: Record<string, Handler> = {
   'tracking.absence': () => trackingMarkup(false),
   'tracking.tools': () => {
     const key = 'a'.repeat(64)
-    const evidenceFor = (status: number | null): TrackingEvidence => ({ version: 1, phase: 'page_load', truncated: false, durationMs: 500, consentInteraction: 'none', captureKey: key, requests: status === null ? [] : [{ provider: 'plausible', role: 'library', hostname: 'plausible.io', endpoint: '/js/script.js', method: 'GET', phase: 'page_load', state: status < 400 ? 'completed' : 'failed', status, reason: null, atMs: 20, requestKey: key }] })
+    const evidenceFor = (status: number | null): TrackingEvidence => ({ version: 1, phase: 'page_load', truncated: false, durationMs: 500, consentInteraction: 'none', captureKey: key, requests: status === null ? [] : [{ provider: 'plausible', role: 'library', hostname: 'plausible.io', endpoint: '/js/script.js', method: 'GET', phase: 'page_load', state: status < 400 ? 'completed' : 'failed', status, reason: null, atMs: 20, requestKey: key,
+      ...(status === 200 ? { libraryResponseQualified: true } : {}) }] })
     const meta = parseMetadataFromHtml('<html><head><script src="https://plausible.io/js/script.js"></script></head><body></body></html>', PAGE)
     const good = runTrackingChecks(meta, evidenceFor(200), PAGE)
     const bad = runTrackingChecks(meta, evidenceFor(500), PAGE)
@@ -1327,7 +1360,7 @@ const handlers: Record<string, Handler> = {
   'uptime.schedule': () => transitionFacts('schedule'),
   'uptime.incidents': () => transitionFacts('incidents'),
   'uptime.history': () => {
-    const onlineAt = [-25, -20, -15, -10, -5, -1].map(minutes => uptimeProbe(new Date(NOW.getTime() + minutes * 60_000).toISOString(), 'ONLINE', true))
+    const onlineAt = [-30, -25, -20, -15, -10, -5].map(minutes => uptimeProbe(new Date(NOW.getTime() + minutes * 60_000).toISOString(), 'ONLINE', true))
     const failedAt = uptimeProbe(new Date(NOW.getTime() - 45 * 60_000).toISOString(), 'FAILED', true)
     const online = uptimeTimeline(onlineAt, NOW)
     const offline = uptimeTimeline([failedAt], NOW)
@@ -1418,7 +1451,7 @@ function accepted(entry: AdvertisedCoverage, fact: Fact): Verdict {
 }
 
 describe('advertised catalog evidence', () => {
-  it('records a real observation for every advertised capability', async () => {
+  it('evaluates recorded fixture scenarios for every advertised capability', async () => {
     const problems: string[] = []
     const covered = new Set(Object.keys(handlers))
     for (const entry of ADVERTISED_COVERAGE) {

@@ -4,6 +4,7 @@ import type { CheckAssertion } from '../checks/assertion'
 import type { DeterministicFlag } from '../flag-types'
 import { PRIMARY_ACTION_ASSERTIONS } from '../checks/definitions'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
+import { primaryActionControlKey } from './action-context'
 
 export const PRIMARY_ACTION_VERIFICATION_RULE = 'Public primary action: independently exercise the same observed page and control; missing or changed action scope cannot establish repair.'
 export const PRIMARY_ACTION_CHECKS = Object.values(PRIMARY_ACTION_ASSERTIONS).flat()
@@ -17,6 +18,8 @@ export const primaryActionEvidenceSchema = z.object({
   response: z.enum(['healthy', 'error', 'restricted', 'challenge', 'unknown']),
   responseExpected: z.boolean(),
   httpStatus: z.number().int().min(100).max(599).nullable(),
+  destinationContentObserved: z.boolean().optional(),
+  responseDestinationKey: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional(),
 }).strict()
 export type PrimaryActionEvidence = z.infer<typeof primaryActionEvidenceSchema>
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
@@ -25,6 +28,10 @@ export function primaryPageContext(requested: string, observed: string, viewport
 }
 export function primaryControlContext(input: { pageContext: string; identity: string; label: string; href: string | null; controls: string | null }) {
   return 'flow:control:' + hash([input.pageContext, input.identity, input.label.trim().replace(/\s+/g, ' '), input.href, input.controls])
+}
+
+export function primaryActionResponseDestinationKey(url: string) {
+  return hash(url)
 }
 
 export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefined, actionRequired: boolean | null = true): CheckAssertion[] {
@@ -41,19 +48,31 @@ export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefi
     observed: evidence.clicked ? 'The browser completed the click on this control.' : evidence.clickBlocked ? 'The recorded control was disabled or covered at click time.' : 'The click could not be conclusively observed.',
     passed: evidence.clicked, complete: evidence.clicked || evidence.clickBlocked, context: evidence.controlContext })
   const restricted = evidence.response === 'restricted' || evidence.response === 'challenge'
+  const destinationIncomplete = evidence.destinationContentObserved === false
+  const responseScopeMissing = evidence.responseExpected && evidence.responseDestinationKey === null
+  const responseContext = evidence.responseDestinationKey
+    ? `flow:response:v1:${primaryActionControlKey(evidence.controlContext)}:${evidence.responseDestinationKey}`
+    : evidence.controlContext
+  const navigationIncomplete = destinationIncomplete && evidence.navigation === 'changed' && !evidence.samePageProgress
   assertions.push({ key: 'primary-action-navigation', name: 'Primary action advances',
     expected: 'The original action reaches a page or opens an observed next step',
-    observed: restricted ? 'The action reached an access restriction; its intended destination remains unknown.' : evidence.navigation === 'changed'
+    observed: restricted ? 'The action reached an access restriction; its intended destination remains unknown.'
+      : navigationIncomplete ? 'The browser URL changed, but usable destination content could not be confirmed.' : evidence.navigation === 'changed'
       ? evidence.samePageProgress === 'rendered-route' ? 'The declared browser route rendered different page content and a new heading after the click.'
         : evidence.samePageProgress === 'semantic-panel' ? 'A visible dialog or form with an available next step appeared after the click.'
         : evidence.samePageProgress === 'declared-panel' ? 'The click opened the control’s declared panel.' : 'The click changed the browser URL.' : evidence.navigation === 'same'
         ? 'The declared navigation completed its observation window without advancing.' : 'No conclusive action advancement was recorded.',
-    passed: !restricted && evidence.navigation === 'changed', complete: !restricted && evidence.navigation !== 'unknown', context: evidence.controlContext })
+    passed: !restricted && !navigationIncomplete && evidence.navigation === 'changed',
+    complete: !restricted && !navigationIncomplete && evidence.navigation !== 'unknown', context: evidence.controlContext })
   assertions.push({ key: 'primary-action-response', name: 'Primary action destination response',
     expected: 'The same action reaches a normal successful main-frame response',
-    observed: !evidence.responseExpected ? 'This declared on-page action does not require a main-frame HTTP navigation.' : evidence.httpStatus === null ? 'No comparable main-frame HTTP response was observed.' : `Main-frame HTTP ${evidence.httpStatus}: ${evidence.response}.`,
-    passed: !evidence.responseExpected || evidence.response === 'healthy', complete: !evidence.responseExpected || ['healthy', 'error'].includes(evidence.response),
-    ...(!evidence.responseExpected ? { disposition: 'observed' as const } : {}), context: evidence.controlContext })
+    observed: !evidence.responseExpected ? 'This declared on-page action does not require a main-frame HTTP navigation.'
+      : evidence.httpStatus === null ? 'No comparable main-frame HTTP response was observed.'
+        : destinationIncomplete ? `Main-frame HTTP ${evidence.httpStatus} was observed, but usable destination content could not be confirmed.`
+          : `Main-frame HTTP ${evidence.httpStatus}: ${evidence.response}.`,
+    passed: !evidence.responseExpected || !responseScopeMissing && !destinationIncomplete && evidence.response === 'healthy',
+    complete: !evidence.responseExpected || !responseScopeMissing && !destinationIncomplete && ['healthy', 'error'].includes(evidence.response),
+    ...(!evidence.responseExpected ? { disposition: 'observed' as const } : {}), context: responseContext })
   return assertions
 }
 

@@ -15,11 +15,14 @@ export function releaseContainerBuildArguments(settings, gitSha) {
   }
   const analyticsId = settings.NEXT_PUBLIC_GA_ID ?? ''
   if (analyticsId && !/^G-[A-Z0-9]+$/.test(analyticsId)) throw new Error('Invalid public analytics measurement ID')
+  const pageviewMode = settings.NEXT_PUBLIC_GA_PAGEVIEW_MODE ?? 'automatic'
+  if (!['automatic', 'controlled'].includes(pageviewMode)) throw new Error('Invalid public analytics pageview mode')
   // Only public build settings enter Docker arguments. Provider credentials
   // remain runtime configuration in the designated environment file.
   return ['build', '-t', 'fixflags:release-check',
     '--build-arg', `NEXT_PUBLIC_APP_URL=${app.origin}`,
     '--build-arg', `NEXT_PUBLIC_GA_ID=${analyticsId}`,
+    '--build-arg', `NEXT_PUBLIC_GA_PAGEVIEW_MODE=${pageviewMode}`,
     '--build-arg', `GIT_COMMIT_SHA=${gitSha}`, '.']
 }
 

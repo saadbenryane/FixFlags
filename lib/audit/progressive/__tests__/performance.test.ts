@@ -62,6 +62,21 @@ describe('progressive Performance evidence', () => {
     expect(otherDevice.receipt.execution?.collectedAt).toEqual(expect.any(String))
   })
 
+  it.each(['stale', 'future', 'undated', 'foreign'] as const)('withholds current lab Flags and assurance for %s results', async mode => {
+    const overrides = mode === 'foreign' ? { requestedUrl: pageUrl + '?different=1' } : { fetchTime: mode === 'undated' ? undefined
+      : new Date(Date.now() + (mode === 'stale' ? -86_400_000 : 86_400_000)).toISOString() }
+    for (const strategy of ['desktop', 'mobile'] as const) {
+      const data = measurement({ strategy, score: 30, lcp: 6000, cls: 0.9, tapTargetAudits: readTapTargetAudits({ 'target-size': { score: 0 } }),
+        diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, strategy, overrides) } })
+      const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(data, strategy === 'mobile' ? 'mobile' : 'performance')), 'check').data)
+      expect(result.flags).toEqual([])
+      expect(result.receipt).toMatchObject({ complete: false, passed: false, limitation: expect.stringContaining('current lab measurement') })
+      expect(result.receipt.assertions.length).toBeGreaterThan(0)
+      expect(result.receipt.assertions.every(assertion => assertion.complete === false && !assertion.passed)).toBe(true)
+      expect(result.receipt.assertions.find(assertion => assertion.key === 'score')?.observed).toContain('30')
+    }
+  })
+
   async function categoryMeasurement(data: PageSpeedResult, area: 'performance' | 'conversion') {
     const scoped = context(data, 'mobile')
     scoped.audit.executionSpec = { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: pageUrl,
@@ -78,6 +93,19 @@ describe('progressive Performance evidence', () => {
     expect(scoped.receipt.assertions.some(assertion => assertion.key === 'tap-targets')).toBe(false)
     const broad = checkArtifactSchema.parse(readArtifact(await evaluate(context(data, 'mobile')), 'check').data)
     expect(broad.receipt).toMatchObject({ passed: false, complete: false })
+  })
+
+  it('uses only the admitted metric for a narrowly scoped Performance recheck', async () => {
+    const scoped = context(measurement({ strategy: 'desktop', score: null, cls: null, resourceAudits: [] }))
+    scoped.audit.executionSpec = { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: pageUrl,
+      environment: 'production', category: { area: 'performance', sourceAuditId: 'original', pages: [pageUrl] },
+      checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null }
+    const observed = checkArtifactSchema.parse(readArtifact(await evaluate(scoped), 'check').data)
+    expect(observed.receipt).toMatchObject({ complete: true, passed: true })
+    expect(observed.receipt.assertions.map(assertion => assertion.key)).toEqual(['lcp'])
+    const missing = checkArtifactSchema.parse(readArtifact(await evaluate({ ...scoped, dependencies: new Map() }), 'check').data)
+    expect(missing.receipt).toMatchObject({ complete: false, passed: false })
+    expect(missing.receipt.assertions).toEqual([expect.objectContaining({ key: 'lcp', complete: false })])
   })
 
   it.each(['unavailable', 'failing'] as const)('keeps Conversion independent of %s performance measurements', async scenario => {
@@ -206,7 +234,8 @@ describe('progressive Performance evidence', () => {
   })
 
   it('evaluates mobile INP independently and emits only the field responsibility', async () => {
-    const data = measurement({ lcp: 6000, inp: 650, crux: { lcp: null, cls: null, fcp: null, ttfb: null,
+    const data = measurement({ lcp: 6000, inp: 650, diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, 'mobile', { fetchTime: undefined }) },
+      crux: { lcp: null, cls: null, fcp: null, ttfb: null,
       inp: 650, formFactor: null, effectiveConnectionType: null, source: 'pagespeed-loading-experience',
       scope: 'page', url: pageUrl, reportingWindowDays: 28 } })
     const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(data, 'performance', 'mobile')), 'check').data)
@@ -217,7 +246,7 @@ describe('progressive Performance evidence', () => {
   })
 
   it('cannot pass mobile INP when field evidence is unavailable', async () => {
-    const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement(), 'performance', 'mobile')), 'check').data)
+    const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ inp: 650 }), 'performance', 'mobile')), 'check').data)
     expect(result.flags).toEqual([])
     expect(result.receipt).toMatchObject({ complete: false, passed: false,
       assertions: [{ key: 'inp', complete: false, passed: false, observed: expect.stringContaining('unknown') }] })

@@ -6,7 +6,7 @@ import { siteWideAnalysisAuditWhere } from './analysis-scope'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { prisma } from '@/lib/db'
-import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { readReportComparison } from '@/lib/audit/diff-flags'
 import { loadProjectIntelligence } from '@/lib/audit/ensure-product-project'
 import { loadSiteAgentContext } from './agent-context'
 import {
@@ -16,7 +16,7 @@ import {
   workspaceChatTokenUpperBound,
   type ChatDiffSummary,
 } from '@/lib/workspace/chat'
-import { finalizeChatUsage, releaseChatUsage, reserveChatUsage } from '@/lib/billing/chat-usage'
+import { beginChatProviderUsage, finalizeChatUsage, releaseChatUsage, reserveChatUsage } from '@/lib/billing/chat-usage'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { SITE_AGENT_COPY } from '@/lib/marketing/copy/site-agent'
 import { readSiteEvidence } from './site-evidence-read'
@@ -95,7 +95,7 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
   if (input.flagId && !selectedFlag) throw new SiteAgentError('Flag not found', 404)
   const admitted = await admitAgentMessage({ ...input, projectId: project.id, storedMessage: minimizeStoredMessage(input.message) })
   if (!admitted.created) return replayAgentMessage(admitted.intent, input.userId)
-  let spentUsage: { reservationId: string; usage: { inputTokens: number; outputTokens: number; model?: string } } | null = null
+  let spentUsage: { reservationId: string; usage: { inputTokens: number; outputTokens: number; model?: string } | null } | null = null
   try {
   // Greeting-only messages use authorized context and the same durable receipt path.
   if (/^(?:hi|hello|hey)[\s!.,?]*$/i.test(input.message.trim())) {
@@ -113,11 +113,12 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
   if (contextSite?.userId !== input.userId) throw new SiteAgentError('Site not found', 404)
   const { flags, improvements, findingScope, uptime } = await loadSiteAgentContext(contextSite, selectedFlag).catch(rethrowAgentError)
   const diff: ChatDiffSummary = latest?.parentId
-    ? await getFlagDiffSummary(latest.parentId, latest.id).then((summary) => ({
+    ? await readReportComparison(latest.parentId, latest.id).then((summary) => ({
         hasParent: true,
-        fixed: summary.fixed,
-        regressed: summary.regressed,
-        newIssues: summary.newIssues,
+        comparisonUnavailable: summary === null,
+        fixed: summary?.fixed ?? [],
+        regressed: summary?.regressed ?? [],
+        newIssues: summary?.newIssues ?? [],
       }))
     : { hasParent: false, fixed: [], regressed: [], newIssues: [] }
   const learnings = (await loadProjectIntelligence(project.id))?.verifiedLearnings ?? []
@@ -153,7 +154,7 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
     let reservationId: string | null = reservation.reservationId
     try {
       await recordAgentReservation(admitted.intent.id, input.userId, reservation.reservationId)
-      const result = await runWorkspaceChat(context)
+      const result = await runWorkspaceChat(context, (model, bound) => beginChatProviderUsage(reservation.reservationId!, model, bound, project.id))
       reply = result.reply
       usage = result.usage
       spentUsage = { reservationId: reservation.reservationId, usage: result.usage }

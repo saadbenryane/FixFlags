@@ -5,6 +5,7 @@ import type { RepairGuidanceState } from '@/lib/improvements/repair-guidance'
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import useSWR from 'swr'
 import { ChevronDown, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,29 +16,41 @@ import type { SiteResourceUpdate } from '@/hooks/useSiteResource'
 import { SiteResourceBoundary, useSharedSiteResource } from './SiteResourceBoundary'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { useSiteAction } from '@/hooks/useSiteAction'
-import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
+import { executeSiteAction, fetchSiteActionJson, isSiteRunConflict, refreshAfterVerificationConflict, SiteActionError } from '@/lib/sites/client-actions'
+import { flagVerificationStatusSchema } from '@/lib/sites/flag-panel'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 import styles from './SiteFlagActions.module.css'
 import { readVerificationIntent, startVerificationIntent, completeVerificationIntent } from '@/lib/sites/client-verification-intent'
 
-type SiteFlagActionsProps = { compact?: boolean; siteId: string; flagId: string; referenceFlagId?: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string }
+type SiteFlagActionsProps = { compact?: boolean; siteId: string; flagId: string; referenceFlagId?: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string; onVerificationSettled?: () => Promise<unknown> }
 export function SiteFlagActions(props: SiteFlagActionsProps) {
   const selection = JSON.stringify([props.initial.site.userId, props.siteId, props.flagId, props.referenceFlagId ?? props.flagId, props.sourceAuditId ?? null])
   return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteFlagActionsContent key={selection} {...props} selection={selection} /></SiteResourceBoundary>
 }
 
-function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlagId = flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId, selection }: SiteFlagActionsProps & { selection: string }) {
+function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlagId = flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId, onVerificationSettled, selection }: SiteFlagActionsProps & { selection: string }) {
   const router = useRouter()
   const { busy, message, error, submit, clearFeedback } = useSiteAction({ scope: selection })
-  const { view, refresh, disconnected } = useSharedSiteResource(siteId, refreshHistoricalGuidance)
+  const { view, refresh, disconnected } = useSharedSiteResource(siteId, observeSource)
   const currentFlag = [...view.flags, ...view.recommendations, ...view.resolvedFlags]
     .find(flag => (flag.sourceFlagId ?? flag.id) === flagId)
   const currentGuidance = currentFlag?.repairGuidance ?? repairGuidance
   const guidance = currentFlag?.fix ?? initialFix
-  const [verificationAuditId, setVerificationAuditId] = useState(initialVerificationAuditId)
-  const [verificationRunning, setVerificationRunning] = useState(verifying)
-  const verificationPending = verificationRunning || currentFlag?.verificationState === 'verifying'
+  const [submittedAuditId, setSubmittedAuditId] = useState<string | null>(null)
+  const verificationAuditId = submittedAuditId ?? initialVerificationAuditId
+  const verification = useSWR(verificationAuditId ? ['flag-verification', selection, siteId, flagId, verificationAuditId] as const : null,
+    async ([, , site, flag, audit]) => {
+      const { response, body } = await fetchSiteActionJson(`/api/sites/${encodeURIComponent(site)}/flags/${encodeURIComponent(flag)}?verification=${encodeURIComponent(audit)}`, { cache: 'no-store' })
+      const result = flagVerificationStatusSchema.safeParse(body)
+      if (!response.ok || !result.success || result.data.auditId !== audit) throw new SiteActionError(SITE_ACTION_COPY.updatesDisconnected)
+      return result.data
+    }, { revalidateOnMount: false, refreshInterval: status => status?.verifying === false ? 0 : 2500 })
+  const settledAudit = useRef<string | null>(null)
+  const verificationPending = (verificationAuditId ? verification.data?.verifying !== false : verifying) || currentFlag?.verificationState === 'verifying'
+  const feedbackMessage = !verificationPending && message === SITE_BOARD_COPY.verificationStarted ? null : message
+  const siteCheckInProgress = view.activeRuns.some(run => run.status !== 'INTERRUPTED')
+  const runConflict = isSiteRunConflict(error)
   const [restoredIntent] = useState(() => readVerificationIntent(selection, referenceFlagId))
   const intent = useRef(restoredIntent)
   const [changeSummary, setChangeSummary] = useState(intent.current?.changeSummary ?? '')
@@ -45,7 +58,10 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
   const guidanceActions = useRef<HTMLDivElement | null>(null)
   const guidanceRefreshRequested = useRef(false)
   const lastGuidancePublication = useRef<string | null>(null)
-  function refreshHistoricalGuidance(update: SiteResourceUpdate) {
+  function observeSource(update: SiteResourceUpdate) {
+    if (verificationAuditId && verification.data?.verifying !== false && (update.type === 'reconnected' ||
+      update.notice.auditId === verificationAuditId && update.notice.kind === 'finalize' &&
+      ['COMPLETED', 'BLOCKED', 'EXHAUSTED'].includes(update.notice.state))) void verification.mutate().catch(() => { /* Retry the exact read. */ })
     if (currentFlag || !sourceAuditId || repairGuidance !== 'pending') return
     if (update.type === 'projection') {
       const { notice } = update
@@ -77,16 +93,16 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
 
 
   useEffect(() => {
-    setVerificationRunning(verifying)
-  }, [verifying])
-
-  useEffect(() => {
-    if (!verificationAuditId || !view.monitoringHistory.some(entry => entry.id === verificationAuditId)) return
-    setVerificationRunning(false); setVerificationAuditId(null); router.refresh()
-  }, [verificationAuditId, view.monitoringHistory, router])
+    if (!verificationAuditId || verification.data?.verifying !== false || settledAudit.current === verificationAuditId) return
+    settledAudit.current = verificationAuditId
+    setSubmittedAuditId(null)
+    void refresh().catch(() => { /* Keep the existing Site read failure state. */ })
+    if (onVerificationSettled) void onVerificationSettled().catch(() => { /* The detail read shows its retry control. */ })
+    else router.refresh()
+  }, [verificationAuditId, verification.data, refresh, onVerificationSettled, router])
 
   async function verify() {
-    if (verificationPending) return
+    if (verificationPending || siteCheckInProgress) return
     if (intent.current?.flagId !== referenceFlagId) intent.current = startVerificationIntent(selection, referenceFlagId, changeSummary)
     // Keep the original declaration with its retry key while its result is
     // uncertain, including a selection change within this action surface.
@@ -101,13 +117,12 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
           'Idempotency-Key': submitted.key,
         },
         body: JSON.stringify({ changeSummary: submitted.changeSummary }),
-      }, 'flagVerify')
+      }, 'flagVerify').catch(error => refreshAfterVerificationConflict(error, signal, refresh))
       if (body.siteId !== siteId || body.flagId !== referenceFlagId) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse)
       return body
     }, body => {
       completeVerificationIntent(selection, submitted); intent.current = null
-      setVerificationAuditId(body.verificationAuditId)
-      setVerificationRunning(true)
+      setSubmittedAuditId(body.verificationAuditId)
       setVerifyOpen(false)
       return SITE_BOARD_COPY.verificationStarted
     }, async signal => { await refresh(); if (!signal.aborted) router.refresh() })
@@ -124,7 +139,7 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
           </div>}
         </div>
         <Button variant="outline" disabled={busy || verificationPending} aria-busy={busy || verificationPending || undefined} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
-        {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
+        {!verifyOpen ? <SiteActionFeedback message={feedbackMessage} error={error} siteId={siteId} /> : null}
       </div> : <ol className={styles.steps}>
         <li>
           <span className={styles.number} aria-hidden="true">1</span>
@@ -154,11 +169,11 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
               <ShieldCheck aria-hidden="true" />
               {verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
             </Button>
-            {!verifyOpen ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
+            {!verifyOpen ? <SiteActionFeedback message={feedbackMessage} error={error} siteId={siteId} /> : null}
           </div>
         </li>
       </ol>}
-      {disconnected ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.updatesDisconnected}</p> : null}
+      {disconnected || verification.error ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.updatesDisconnected}</p> : null}
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
         <DialogContent header={<DialogTitle>{SITE_BOARD_COPY.verifyFix}</DialogTitle>}>
           <DialogDescription>{SITE_BOARD_COPY.verifyDescription}</DialogDescription>
@@ -167,10 +182,11 @@ function SiteFlagActionsContent({ compact = false, siteId, flagId, referenceFlag
             <p id="flag-change-summary-hint" className="text-xs text-muted-foreground">{SITE_BOARD_COPY.changeHint}</p>
             <Textarea id="flag-change-summary" className="max-sm:text-base" aria-describedby="flag-change-summary-hint" value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} readOnly={Boolean(intent.current)} maxLength={2000} rows={3} placeholder={SITE_BOARD_COPY.changePlaceholder} />
           </div>
-          <SiteActionFeedback message={message} error={error} siteId={siteId} />
+          {siteCheckInProgress && !verificationPending ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.verificationBlockedByRun}</p> : null}
+          <SiteActionFeedback message={siteCheckInProgress && runConflict ? null : message} error={siteCheckInProgress && runConflict ? null : error} siteId={siteId} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>{SITE_ACTION_COPY.cancel}</Button>
-            <Button type="button" variant="default" loading={busy} disabled={verificationPending} aria-busy={busy || verificationPending || undefined} onClick={() => void verify()}>{busy || verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+            <Button type="button" variant="default" loading={busy} disabled={verificationPending || siteCheckInProgress} aria-busy={busy || verificationPending || undefined} onClick={() => void verify()}>{busy || verificationPending ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

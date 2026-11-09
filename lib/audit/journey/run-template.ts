@@ -158,6 +158,7 @@ export async function runJourneyTemplate(
   const session = await createAuditPage(browser, options.startUrl, {
     profile: DESKTOP_CAPTURE_PROFILE,
     journeySafe: true,
+    requirePublicLanding: true,
     scanAccess: options.scanAccess,
     deadline,
     onSafetyRefusal: reason => {

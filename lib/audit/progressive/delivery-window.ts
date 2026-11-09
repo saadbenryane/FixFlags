@@ -9,11 +9,12 @@ import { deliveryResourceSql, queueForTask, taskDeliveryWindow, TASK_QUEUES, DEL
 const select = { id: true, auditId: true, workKind: true, workInput: true, workState: true, workGeneration: true,
   workDispatchState: true, workDispatchLeaseUntil: true, workRetryAt: true, workAttempts: true, workRecoveryUntil: true, createdAt: true } as const
 
-/** Bounded reservation projection, without transferring task artifacts. */
+/** Keep the canonical task prefix explicit so PostgreSQL can use the partial
+ * reservation index carried over when task and receipt storage separated. */
 export function reservedDeliveryQuery(resource: TaskQueue, taskId: string, now: Date) {
   return Prisma.sql`
     SELECT delivery.id FROM audit_execution_tasks delivery JOIN audits a ON a.id = delivery."auditId"
-    WHERE delivery.id <> ${taskId}
+    WHERE delivery."targetKey" LIKE 'task:%' AND delivery.id <> ${taskId}
       AND (delivery."workState" = 'RUNNING' OR (delivery."workState" = 'READY'
         AND (delivery."workDispatchState" IN ('SENT', 'FAILED') OR delivery."workDispatchLeaseUntil" IS NOT NULL)))
       AND (delivery."workState" = 'RUNNING' OR delivery."workDispatchState" IN ('SENT', 'FAILED') OR delivery."workDispatchLeaseUntil" > ${now})

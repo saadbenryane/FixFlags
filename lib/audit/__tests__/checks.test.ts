@@ -1728,7 +1728,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'security-csp-weak-object-src': () =>
       checkIds(
         runSecurityHeaderChecks('https://example.com', secHeaders({
-          'content-security-policy': "default-src 'self'; script-src 'self'",
+          'content-security-policy': "default-src 'self'; object-src *",
         }))
       ),
     'security-csp-report-only': () =>

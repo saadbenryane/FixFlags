@@ -10,7 +10,8 @@ async function observe(html: string) {
     undefined, true, ['security'], { publicDocument: { url, finalUrl: url, status: 200, headers: {}, body: html,
       complete: true, reason: null, collectedAt: now.toISOString(), redirects: [] } })
   return { targetKey: 'module:security', status: 'COMPLETED', pageUrl: url, detail: {
-    kind: 'site-module-check', version: 1, ...checked.executions[0], pageUrl: url } }
+    kind: 'site-module-check', version: 1, ...checked.executions[0], pageUrl: url,
+    execution: { auditId: 'site-audit', taskId: 'security-check', checkVersion: 1, source: 'http', collectedAt: now.toISOString() } } }
 }
 function fact(receipts: Array<{ targetKey: string; status: string; detail: unknown }>) {
   return buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, evidenceCoverage: {}, flags: [], verifierExecutions: receipts })
@@ -50,6 +51,15 @@ describe('Site Security coverage from recorded transport evidence', () => {
       expect(fact([variant]).state).toBe('unknown')
     }
     expect(fact([]).state).toBe('unknown')
+  })
+  it('keeps a confirmed transport Flag actionable and separately records a missing linked observation', async () => {
+    const observed = await observe('<main><img src="http://assets.example/image.png"></main>')
+    const coverage = (pages: string[]) => buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: {}, verifierExecutions: [observed], pageScope: { auditId: 'site-audit', pages, search: false, securityTransport: true },
+      flags: [{ checkId: 'security-mixed-content', rubric: 'REACH', impactTag: 'TRUST', severity: 'CRITICAL', status: 'OPEN' }],
+    }).find(fact => fact.area === 'security')
+    expect(coverage([url])).toMatchObject({ state: 'problem', openFlagCount: 1, incompleteReason: null })
+    expect(coverage([url, url + 'about'])).toMatchObject({ state: 'problem', openFlagCount: 1, incompleteReason: expect.any(String) })
   })
   it.each(['OPEN', 'UNCHANGED', 'REGRESSED', 'UNVERIFIED'])('retains an active %s Flag despite passing evidence', async status => {
     const observed = await observe('<main><h1>Useful service</h1></main>')

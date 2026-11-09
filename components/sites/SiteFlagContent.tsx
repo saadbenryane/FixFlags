@@ -26,6 +26,8 @@ export function SiteFlagContent({ siteId, flagId, view, seed, resource }: {
   const resolved = current?.status === 'FIXED' || current?.status === 'VERIFIED'
   const dismissed = current?.status === 'DISMISSED' || current?.status === 'IGNORED'
   const verifying = stale && seed ? seed.verificationState === 'verifying' : flag?.verifying
+  const sourceFlagId = current?.sourceFlagId ?? current?.id
+  const activeVerificationAuditId = verifying && sourceFlagId === (flag?.sourceFlagId ?? flag?.id) ? flag?.activeVerificationAuditId : null
   const otherPaths = [...new Set(flag?.affectedPaths ?? [])].filter(path => path !== flag?.pageUrl)
   return <>
     {flag && failed ? <div role="status" className="flex flex-wrap items-center gap-3 rounded-control bg-muted/30 p-3 text-sm"><p>{C.flagRefreshFailed}</p><Button variant="outline" size="sm" loading={refreshing} loadingLabel={SITE_ACTION_COPY.loading} onClick={() => void retry()}>{SITE_ACTION_COPY.retryResults}</Button></div>
@@ -40,8 +42,9 @@ export function SiteFlagContent({ siteId, flagId, view, seed, resource }: {
           supportingObservations={flag.supportingObservations.map(item => ({ ...item, references: item.references.map(reference => ({ ...reference, selector: reference.selector })) }))} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
       </section>
       {view.actions.copy === 'available' && !resolved && !dismissed ? <SiteFlagActions compact key={key}
-        siteId={siteId} flagId={current?.sourceFlagId ?? current?.id ?? flag.id} referenceFlagId={flagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
-        initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={verifying} /> :
+        siteId={siteId} flagId={sourceFlagId ?? flag.id} referenceFlagId={flagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
+        initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={verifying}
+        initialVerificationAuditId={activeVerificationAuditId} onVerificationSettled={retry} /> :
         view.actions.copy !== 'available' ? <SitePromptAccessActions availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
       <details className="text-sm"><summary className="flex min-h-11 cursor-pointer items-center font-medium">{C.evidenceDetails}</summary>
         <div className="mt-3 space-y-4">

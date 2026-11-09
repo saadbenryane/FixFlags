@@ -45,6 +45,25 @@ describe('automated accessibility responsibilities', () => {
     expect(verificationRuleForCheckId('buttons-no-text')).toContain('aria-labelledby')
     expect(flag.fix).toContain('aria-labelledby')
   })
+  it('keeps all failed rules and the highest severity when one Flag covers several rules', () => {
+    const shared = { ...violation.nodes[0], target: ['#frame', '#shared'] }
+    const first = { ...violation, id: 'frame-title', impact: 'moderate' as const, help: 'Name each frame',
+      nodes: [{ ...shared, failureSummary: 'Give the shared frame a title' }] }
+    const second = { ...violation, id: 'frame-title-unique', impact: 'critical' as const, help: 'Use distinct frame names',
+      nodes: [{ ...shared, failureSummary: 'Distinguish the shared frame' },
+        { ...shared, target: ['#other'], failureSummary: 'Distinguish the other frame' }] }
+    const flags = runAccessibilityChecks(null, null, [first, second], true)
+    expect(flags).toHaveLength(1)
+    expect(flags[0]).toMatchObject({ checkId: 'iframe-no-title', severity: 'CRITICAL',
+      problem: 'Use distinct frame names and related failures (2 elements)' })
+    expect(flags[0].evidence).toContain('Affected elements: 2')
+    expect(flags[0].evidence).toContain('Rule: frame-title\n#frame ::frame #shared')
+    expect(flags[0].evidence).toContain('Rule: frame-title-unique')
+    expect(flags[0].evidence).toContain('#other')
+    expect(flags[0].fix).toContain('Give the shared frame a title')
+    expect(flags[0].fix).toContain('Distinguish the other frame')
+    expect(runAccessibilityChecks(null, null, [second, first], true)).toEqual(flags)
+  })
   it('keeps a mobile-only native observation applicable without inventing desktop coverage', async () => {
     for (const state of ['failed', 'passed', 'incomplete'] as const) {
       const checked = await runAllChecks(pageUrl, null, null, null, [], undefined, null, undefined, undefined, true, ['accessibility'], {
@@ -118,6 +137,27 @@ describe('automated accessibility responsibilities', () => {
     expect(proof(evidence('passed', { rules: [{ id: 'image-alt', state: 'passed', nodes: 1 }] }))).toBeUndefined()
     expect(scopedAssertionForTarget({ receipt: receipt(evidence('passed')), checkId: original.checkId, flag: { ...original, evidenceTargets: undefined } })).toBeUndefined()
   })
+  it('requires matching embedded rule coverage even when the affected node is beyond the displayed sample', () => {
+    const child = { ...violation.nodes[0], target: ['#frame', '#embedded-submit'] }
+    const source = { ...violation, nodes: [
+      ...Array.from({ length: 20 }, (_, index) => ({ ...violation.nodes[0], target: [`#submit-${index}`] })), child,
+    ] }
+    const embeddedScopes = { 'buttons-no-text': 'a'.repeat(64) }
+    const before = evaluateAccessibility({ metadata, scope, evidence: evidence('failed', { embeddedScopes }), axe: [source] })
+    const flag = before.flags.find(item => item.checkId === 'buttons-no-text')!
+    expect(flag.evidenceTargets).toHaveLength(20)
+    expect(flag.evidenceTargets?.every(target => target.context?.endsWith(embeddedScopes['buttons-no-text']))).toBe(true)
+    const inspect = (value: AccessibilityEvidence, previous = flag) =>
+      scopedAssertionForTarget({ receipt: receipt(value), checkId: previous.checkId, flag: previous })?.assertion
+    expect(inspect(evidence('passed'))).toBeUndefined()
+    expect(inspect(evidence('passed', { embeddedScopes: { 'buttons-no-text': 'b'.repeat(64) } }))).toBeUndefined()
+    expect(inspect(evidence('incomplete', { embeddedScopes }))).toBeUndefined()
+    expect(inspect(evidence('failed', { embeddedScopes }))).toMatchObject({ passed: false, complete: true })
+    expect(inspect(evidence('passed', { embeddedScopes }))).toMatchObject({ passed: true, complete: true })
+    const historical = { ...original, evidenceTargets: [{ ...original.evidenceTargets![0], selector: '#frame ::frame #embedded-submit' }] }
+    expect(inspect(evidence('passed', { embeddedScopes }), historical)).toBeUndefined()
+    expect(proof(evidence('passed', { embeddedScopes }))).toMatchObject({ passed: true, complete: true })
+  })
   it('persists real failure details while excluding transient engine internals that cannot enter a JSON snapshot', () => {
     const raw = { violations: [{ ...violation, nodes: [{ ...violation.nodes[0], any: [{ data: { colorParse: undefined } }] }] }] } as unknown as AxeResults
     const recorded = recordedAxeViolations(raw)
@@ -169,6 +209,25 @@ describe('automated accessibility responsibilities', () => {
     const after = { ...receipt(evidence('passed')), assertions }
     expect(scopedAssertionForTarget({ receipt: after, checkId: flag.checkId, flag })?.assertion.passed).toBe(true)
     expect(assertions.find(item => item.key === 'automated-accessibility')).toMatchObject({ passed: false, complete: false })
+  })
+  it('withholds HTML recovery when native evidence for the same responsibility is unresolved on the same capture', () => {
+    const broken = parseMetadataFromHtml('<button id="submit"></button>', pageUrl)
+    const key = 'dom:buttons-no-text'
+    const flag = scopeAccessibilityFlags(runAccessibilityChecks(broken, null), accessibilityObservations({ metadata: broken, scope }))
+      .find(item => item.checkId === 'buttons-no-text')!
+    const current = receipt(evidence('incomplete'))
+    expect(current.assertions.find(item => item.key === key)).toMatchObject({ passed: false, complete: false })
+    expect(scopedAssertionForTarget({ receipt: current, checkId: flag.checkId, flag })).toBeUndefined()
+
+    const earlierPositive = accessibilityObservations({ metadata, scope }).find(item => item.key === key)!
+    const retained = { ...current, assertions: current.assertions.map(item => item.key === key ? earlierPositive : item) }
+    expect(readCheckReceipt(retained).assertions.find(item => item.key === key)).toMatchObject({ complete: false })
+    expect(scopedAssertionForTarget({ receipt: retained, checkId: flag.checkId, flag })).toBeUndefined()
+
+    const independent = receipt(evidence('incomplete', { rules: [{ id: 'color-contrast', state: 'incomplete', nodes: 1 }] }))
+    expect(scopedAssertionForTarget({ receipt: independent, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: true })
+    const failure = accessibilityObservations({ metadata: broken, scope, evidence: evidence('incomplete') }).find(item => item.key === key)
+    expect(failure).toMatchObject({ passed: false, complete: true })
   })
   it('does not turn removed navigation into a positive skip-link repair', () => {
     const broken = parseMetadataFromHtml('<nav>Navigation</nav><main>Content</main>', pageUrl)

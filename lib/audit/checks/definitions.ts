@@ -20,24 +20,29 @@ function define(evaluator: keyof typeof CHECK_MODULE_AREAS, name: string, input:
       : evaluator === 'security' ? ['public-transport', 'resource-declarations-when-html'] : input === 'headers' || input === 'http' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
       : input === 'mobile' ? ['pagespeed-mobile']
       : input === 'console' ? ['desktop-console', 'mobile-console'] : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe']
-        : evaluator === 'og-image' ? ['rendered-head', 'public-destination-response']
+        : evaluator === 'og-image' ? ['public-html-head', 'public-destination-response']
           : evaluator === 'auth-checkout' ? ['rendered-action-links', 'public-destination-response'] : ['rendered-html'] }
 }
 
 /** Portable contracts. Server registration supplies the declared evaluator. */
+const previewAssertions = {
+  'preview-image-presence': assertion('search', ['og-image-missing']),
+  'preview-title-presence': assertion('search', ['og-title-missing']),
+  'preview-description-presence': assertion('search', ['og-description-missing']),
+}
+
 export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
   'page-response': define('page-response', 'Public page response', 'http', {
     'page-response': assertion('site', ['page-http-error', 'page-redirect-loop']),
   }),
   metadata: define('metadata', 'Page metadata', 'metadata', {
     'title-presence': assertion('search'), 'description-presence': assertion('search'),
-    'preview-image-presence': assertion('search', ['og-image-missing']),
-    'preview-title-presence': assertion('search', ['og-title-missing']),
-    'preview-description-presence': assertion('search', ['og-description-missing']),
+    ...previewAssertions, // Historical rendered preview receipts remain readable.
     'favicon-presence': assertion('search', ['favicon-missing']),
     'viewport-presence': assertion('accessibility', ['viewport-missing']), 'language-presence': assertion('accessibility', ['lang-missing']),
   }),
-  'og-image': define('og-image', 'Link preview image', 'metadata', {
+  'og-image': define('og-image', 'Link previews', 'metadata', {
+    ...previewAssertions,
     'preview-image-response': assertion('search', ['og-image-broken']),
     'preview-image-decoding': assertion('search', ['og-image-broken']),
   }),
@@ -211,7 +216,7 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
     'form-submit-feedback': assertion('conversion', ['form-submit-silent-failure']),
     'engagement-observation': assertion('conversion'),
   }), requiredEvidence: ['native-engagement-request-responses'] },
-  corridor: { ...define('corridor', 'Cross-page previews', 'browser', {
+  corridor: { ...define('corridor', 'Cross-page previews', 'http', {
     'preview-titles': assertion('search', ['corridor-og-title-drift']),
     'preview-descriptions': assertion('search', ['corridor-og-description-drift']),
   }), version: 2, requiredEvidence: ['compared-rendered-pages'] },
@@ -253,15 +258,32 @@ export const CHECK_MODULES: Readonly<Record<string, Pick<PageCheckDefinition, 'v
   search: { version: 1, area: 'search' as const, name: 'Public Search evidence', source: 'DETERMINISTIC' as const, input: 'metadata' as const } }
 export const CHECK_ASSERTIONS = Object.fromEntries(Object.entries(MODULE_CHECK_DEFINITIONS).map(([id, definition]) => [id, definition.assertions]))
 
+const historicalAssertionAreas: Readonly<Record<string, Record<number, Record<string, SiteCardArea>>>> = {
+  'mobile-ux-quality': {
+    1: {
+      'mobile-input-fonts': 'accessibility',
+      'mobile-cta-position': 'conversion',
+      'mobile-cta-label': 'conversion',
+      'mobile-loading-delay': 'conversion',
+    },
+  },
+}
+
 /** Historical module receipts retain the category responsibilities they recorded. */
 export function checkAssertionsForVersion(module: string, version?: number) {
   const assertions = CHECK_ASSERTIONS[module] ?? {}
-  if (module !== 'mobile-ux-quality' || version !== 1) return assertions
-  return {
-    ...assertions,
-    'mobile-input-fonts': { ...assertions['mobile-input-fonts'], area: 'accessibility' as const },
-    'mobile-cta-position': { ...assertions['mobile-cta-position'], area: 'conversion' as const },
-    'mobile-cta-label': { ...assertions['mobile-cta-label'], area: 'conversion' as const },
-    'mobile-loading-delay': { ...assertions['mobile-loading-delay'], area: 'conversion' as const },
-  }
+  const areas = version === undefined ? undefined : historicalAssertionAreas[module]?.[version]
+  if (!areas) return assertions
+  return Object.fromEntries(Object.entries(assertions).map(([key, definition]) =>
+    [key, areas[key] ? { ...definition, area: areas[key] } : definition]))
 }
+
+export function checkModuleHasAssertionsInArea(module: string, area: SiteCardArea) {
+  return Object.values(CHECK_ASSERTIONS[module] ?? {}).some(assertion => assertion.area === area) ||
+    Object.values(historicalAssertionAreas[module] ?? {}).some(areas => Object.values(areas).includes(area))
+}
+
+export const REASSIGNED_CHECK_ASSERTION_AREAS: ReadonlySet<SiteCardArea> = new Set(
+  Object.entries(historicalAssertionAreas).flatMap(([module, versions]) => Object.values(versions).flatMap(areas =>
+    Object.entries(areas).flatMap(([key, historicalArea]) => [historicalArea, CHECK_ASSERTIONS[module][key].area]))),
+)

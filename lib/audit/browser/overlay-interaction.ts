@@ -47,7 +47,7 @@ export function createOverlayInteractionRecorder(page: Page, options: { deadline
         const frame = await readOverlayControls(page, [selector], [selector], kind)
         const control = frame.controls[0]
         if (!control || !frame.complete || frame.pageUrl !== source.scope.finalUrl) return { blocker: null, matchesExpected: false }
-        const content = await observeViewport(page, { profile: 'overlay-interaction', includeActions: false, excludeLoading: true })
+        const content = await observeViewport(page, { profile: 'overlay-interaction', includeActions: false })
         const context = overlayControlContext(source.scope, kind, control.identity, phase)
         const expected = options.expectedTargets?.filter(target => target.kind === kind && [phase, phase + '_after'].includes(target.context.split(':')[3]))
         const matchesExpected = !expected?.length || expected.some(target => {

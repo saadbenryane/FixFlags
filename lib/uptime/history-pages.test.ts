@@ -12,13 +12,20 @@ function page(probes: UptimeProbeView[], nextCursor: string | null = 'more'): Up
 }
 
 it('keeps loaded older checks, updates duplicate facts from the latest page, and preserves the oldest continuation', () => {
-  const previous = page([probe('overlap', 10), probe('older', 9)], 'older')
+  const previous = page([probe('overlap', 10), probe('older', 9)], 'cursor-for-older')
   const confirmed = { ...probe('overlap', 10), confirmed: true, result: 'FAILED' as const }
-  const next = page([probe('new', 11), confirmed], 'overlap')
+  const next = page([probe('new', 11), confirmed], 'cursor-for-overlap')
   const result = refreshUptimeHistory(previous, next)
   expect(result.probes.map(probe => probe.id)).toEqual(['new', 'overlap', 'older'])
   expect(result.probes[1]).toEqual(confirmed)
-  expect(result.nextCursor).toBe('older')
+  expect(result.nextCursor).toBe('cursor-for-older')
+})
+
+it('uses the new first-page continuation when the previous continuation expires', () => {
+  const previous = page([probe('overlap', 10), probe('expired', 9)], 'cursor-for-expired')
+  const next = page([probe('new', 11), probe('overlap', 10)], 'cursor-for-overlap')
+  next.historyScope!.from = '2026-11-03T09:30:00.000Z'
+  expect(refreshUptimeHistory(previous, next)).toEqual(next)
 })
 
 it('prunes retained checks outside the server window while keeping a previously complete tail complete', () => {

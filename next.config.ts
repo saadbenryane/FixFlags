@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
   // racing a developer's active `.next` process.
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   output: 'standalone',
+  // Local captures and integrity media are runtime data, outside the package.
+  outputFileTracingExcludes: {
+    '/*': ['./.data/**/*'],
+  },
   // Sharp loads its platform libvips payload dynamically, so Next's static
   // tracer cannot discover the native files from imports alone.
   outputFileTracingIncludes: {

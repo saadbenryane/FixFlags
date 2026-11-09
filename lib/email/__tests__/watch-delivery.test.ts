@@ -14,6 +14,24 @@ const select = (message: ReturnType<typeof fresh>, recorded: unknown = null, bro
   selectWatchEmailDelivery({ auditId, fresh: message, recorded, broadLegacyPermission })
 
 describe('Watch delivery selections', () => {
+  it('gives each new provider body its own receipt and reuses it only with that body', () => {
+    const choose = (message: ReturnType<typeof fresh>, recorded: unknown) => selectWatchEmailDelivery({
+      auditId, fresh: message, recorded, broadLegacyPermission: false, receiptOwnerId: 'original-owner',
+    })
+    const first = choose(fresh(), null)
+    const restricted = choose(fresh([critical], []), first)
+    const replayed = choose(fresh(), restricted)
+    const receipt = (message: typeof first) => message.tags.find(tag => tag.name === 'fixflags_receipt')?.value
+    expect(receipt(first)).toMatch(/^[a-f0-9]{32}$/)
+    expect(receipt(restricted)).toMatch(/^[a-f0-9]{32}$/)
+    expect(receipt(restricted)).not.toBe(receipt(first))
+    expect(watchEmailProviderBody(replayed)).toEqual(watchEmailProviderBody(first))
+    expect(replayed.receiptOwnerId).toBe('original-owner')
+    expect(watchEmailProviderBody(replayed)).not.toHaveProperty('receiptOwnerId')
+    expect(() => selectWatchEmailDelivery({ auditId, fresh: fresh(), recorded: replayed,
+      broadLegacyPermission: false, receiptOwnerId: 'other-owner' })).toThrow('owner')
+  })
+
   it('retains attachment content and inline prompts exactly on a retry', () => {
     const attachments = [{ filename: 'fixflags-fix-1.txt', content: Buffer.from('The complete original prompt').toString('base64'), contentType: 'text/plain' as const }]
     const first = select({ ...fresh(), attachments })

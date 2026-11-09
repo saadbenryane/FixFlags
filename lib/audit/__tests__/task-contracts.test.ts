@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   createAndEnqueueAudit: vi.fn(),
   startMonitoringAudit: vi.fn(),
   pollAuditUntilDone: vi.fn(),
-  getFlagDiffSummary: vi.fn(),
+  readReportComparisonWithRecovery: vi.fn(),
   occurrenceFindMany: vi.fn(),
   attemptFindMany: vi.fn(),
 }))
@@ -29,7 +29,7 @@ vi.mock('@/lib/audit/poll-audit', () => ({
 }))
 vi.mock('@/lib/audit/diff-flags', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/audit/diff-flags')>()),
-  getFlagDiffSummary: mocks.getFlagDiffSummary,
+  readReportComparisonWithRecovery: mocks.readReportComparisonWithRecovery,
 }))
 vi.mock('@/lib/audit/technology-profile', () => ({
   loadTechnologyProfile: vi.fn().mockResolvedValue({
@@ -99,6 +99,8 @@ function completedAudit() {
 }
 
 describe('task contracts', () => {
+  const cleared = { id: 'source-flag', checkId: 'cta-specificity', problem: 'The CTA is vague', rubric: 'MESSAGE',
+    severity: 'IMPORTANT', status: 'FIXED' }
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.createAndEnqueueAudit.mockResolvedValue({
@@ -122,19 +124,9 @@ describe('task contracts', () => {
     })
     mocks.occurrenceFindMany.mockResolvedValue([])
     mocks.attemptFindMany.mockResolvedValue([])
-    mocks.getFlagDiffSummary.mockResolvedValue({
-      fixed: [{
-        checkId: 'cta-specificity',
-        problem: 'The CTA is vague',
-        rubric: 'MESSAGE',
-        severity: 'IMPORTANT',
-        status: 'FIXED',
-      }],
-      inconclusive: [],
-      unchanged: [],
-      newIssues: [],
-      regressed: [],
-    })
+    mocks.readReportComparisonWithRecovery.mockResolvedValue({ summary: {
+      fixed: [cleared], inconclusive: [], unchanged: [], newIssues: [], regressed: [],
+    } })
   })
 
   it('returns one complete check-to-plan outcome', async () => {
@@ -280,13 +272,7 @@ describe('task contracts', () => {
       regressed: 0,
       flags: {
         cleared: [],
-        noLongerObserved: [{
-          checkId: 'cta-specificity',
-          problem: 'The CTA is vague',
-          rubric: 'MESSAGE',
-          severity: 'IMPORTANT',
-          status: 'FIXED',
-        }],
+        noLongerObserved: [cleared],
         inconclusive: [],
         remaining: [],
         new: [],
@@ -304,7 +290,21 @@ describe('task contracts', () => {
     })
   })
 
+  it('keeps the completed report and fix plan when comparison evidence is unavailable', async () => {
+    mocks.readReportComparisonWithRecovery.mockResolvedValue(null)
+    const polled = await loadCompletedTaskOutcome('report-1')
+    const waited = await recheckAndCompare({ parentReportId: 'parent-1', user, waitForCompletion: true })
+    for (const result of [polled, waited]) expect(result).toMatchObject({
+      status: 'COMPLETED', parentReportId: 'parent-1', diff: null, nextFixList: { totalCount: 1 },
+    })
+    expect(mocks.attemptFindMany).not.toHaveBeenCalled()
+  })
+
   it('returns the same verification receipts as the completed report poll', async () => {
+    const sibling = { ...cleared, id: 'sibling-flag', pageUrl: 'https://example.com/other' }
+    mocks.readReportComparisonWithRecovery.mockResolvedValue({ summary: {
+      fixed: [cleared, sibling], inconclusive: [], unchanged: [], newIssues: [], regressed: [],
+    } })
     mocks.attemptFindMany.mockResolvedValue([{
       id: 'attempt-1',
       builder: 'Codex',
@@ -314,18 +314,12 @@ describe('task contracts', () => {
       comparable: true,
       verificationCoverage: { verifierExecuted: true },
       verificationReason: 'The exact verifier completed.',
-      evidenceReference: { afterAuditId: 'report-1' },
+      sourceAuditId: 'parent-1', sourceFlagIds: [], handoffReference: null,
+      evidenceReference: { beforeAuditId: 'parent-1', beforeFlagId: cleared.id, afterAuditId: 'report-1' },
       remainingRisk: null,
       improvement: {
         id: 'improvement-1',
         title: 'The CTA is vague',
-        occurrences: [{
-          flag: {
-            checkId: 'cta-specificity',
-            problem: 'The CTA is vague',
-            rubric: 'MESSAGE',
-          },
-        }],
       },
     }])
 
@@ -341,7 +335,16 @@ describe('task contracts', () => {
     expect(synchronous.nextFinishPlan).toEqual(polled.nextFinishPlan)
     expect(synchronous.technologyProfile).toEqual(polled.technologyProfile)
     expect(synchronous.verificationReceipts).toEqual(polled.verificationReceipts)
-    expect(synchronous.diff).toMatchObject({ fixed: 1, noLongerObserved: 0 })
+    expect(synchronous.diff).toMatchObject({ fixed: 1, noLongerObserved: 1, flags: { cleared: [cleared], noLongerObserved: [sibling] } })
+  })
+
+  it('credits recorded recovery without an attempt and does not substitute a sibling', async () => {
+    const sibling = { ...cleared, id: 'sibling-flag' }
+    mocks.readReportComparisonWithRecovery.mockResolvedValue({ verifiedRecoveryIds: [cleared.id], summary: {
+      fixed: [cleared, sibling], inconclusive: [], unchanged: [], newIssues: [], regressed: [],
+    } })
+    expect(await loadCompletedTaskOutcome('report-1')).toMatchObject({ diff: { fixed: 1, noLongerObserved: 1,
+      flags: { cleared: [cleared], noLongerObserved: [sibling] } }, verificationReceipts: [] })
   })
 
   it('uses the returned Review parent when an active update Review is reused', async () => {
@@ -368,8 +371,8 @@ describe('task contracts', () => {
 
     expect(outcome.parentReportId).toBe('actual-parent')
     expect(outcome.reused).toBe(true)
-    expect(mocks.getFlagDiffSummary).toHaveBeenCalledWith('actual-parent', 'report-1')
-    expect(mocks.getFlagDiffSummary).not.toHaveBeenCalledWith('requested-parent', 'report-1')
+    expect(mocks.readReportComparisonWithRecovery).toHaveBeenCalledWith('actual-parent', 'report-1')
+    expect(mocks.readReportComparisonWithRecovery).not.toHaveBeenCalledWith('requested-parent', 'report-1')
   })
 
   it('resumes an active first Review without fabricating a comparison', async () => {
@@ -400,7 +403,7 @@ describe('task contracts', () => {
       reused: true,
       diff: null,
     })
-    expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
+    expect(mocks.readReportComparisonWithRecovery).not.toHaveBeenCalled()
   })
 
   it('exposes no prompts or plan prompt to anonymous callers', async () => {

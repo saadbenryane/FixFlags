@@ -23,6 +23,8 @@ describe('public research release validation', () => {
     ['duplicate framework', (d: ReturnType<typeof researchFixture>) => { d.issues[0].topFrameworks.push(d.issues[0].topFrameworks[0]) }],
     ['unknown check', (d: ReturnType<typeof researchFixture>) => { d.issues[0].checkId = 'customer-invented-check' }],
     ['wrong check version', (d: ReturnType<typeof researchFixture>) => { d.issues[0].checkVersion = 999 }],
+    ['legacy connected-provider finding', (d: ReturnType<typeof researchFixture>) => { d.issues[0].checkId = 'low-ctr' }],
+    ['automatic account finding', (d: ReturnType<typeof researchFixture>) => { d.issues[0].checkId = 'account-signed-in-page' }],
     ['markup in public copy', (d: ReturnType<typeof researchFixture>) => { d.issues[0].problemTemplate = '</script><script>private</script>' }],
   ])('rejects %s', (_name, mutate) => {
     const dataset = researchFixture()

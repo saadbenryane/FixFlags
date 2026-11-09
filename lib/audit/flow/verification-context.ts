@@ -7,6 +7,8 @@ import { POST_CLICK_VERIFICATION_RULE, postClickActionContext } from '../checks/
 import { DESTINATION_TRUST_VERIFICATION_RULE, destinationTrustActionContext } from '../checks/flow-destination-trust'
 import { DESTINATION_CONTENT_VERIFICATION_RULE, destinationContentActionContext } from '../checks/flow-destination-content'
 import { ENGAGEMENT_VERIFICATION_RULE, engagementActionContext } from '../network-engagement-evidence'
+import { TRACKING_VERIFICATION_RULE, trackingActionContext } from '../tracking/identity'
+import { primaryActionResponseControl } from './action-context'
 
 type Source = { pageUrl: string | null; verificationRule: string | null; evidenceTargets: unknown; supportingObservations?: unknown }
 
@@ -22,12 +24,18 @@ export function originalPageActionTargets(sources: Source[], pageUrl: string) {
 export function originalPageActionContexts(sources: Source[], pageUrl: string): string[] {
   const contexts = originalPageActionTargets(sources, pageUrl).flatMap(({ verificationRule, target }) => {
     if (verificationRule === ENGAGEMENT_VERIFICATION_RULE) return engagementActionContext(target) ?? []
+    if (verificationRule === TRACKING_VERIFICATION_RULE)
+      return typeof target?.context === 'string' ? trackingActionContext(target.context) ?? [] : []
     if (verificationRule === POST_CLICK_VERIFICATION_RULE) return postClickActionContext(target) ?? []
     if (verificationRule === DESTINATION_TRUST_VERIFICATION_RULE) return destinationTrustActionContext(target) ?? []
     if (verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE) return destinationContentActionContext(target) ?? []
     if (verificationRule === PRICING_NAVIGATION_RULE) {
       const parsed = pricingNavigationTargetSchema.safeParse(target)
       return parsed.success ? [parsed.data.context] : []
+    }
+    if (verificationRule === PRIMARY_ACTION_VERIFICATION_RULE && typeof target?.context === 'string') {
+      const control = primaryActionResponseControl(target.context)
+      if (control) return [control]
     }
     const parsed = z.object({ context: z.string().regex(verificationRule === FORM_VERIFICATION_RULE
       ? /^form:[a-f0-9]{64}$/ : /^flow:control:[a-f0-9]{64}$/) }).safeParse(target)

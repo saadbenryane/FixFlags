@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   runGoalProbe: vi.fn(),
   runPathProbe: vi.fn(),
   persistJourneyResult: vi.fn(),
-  flagUpdateMany: vi.fn(), flagFindFirst: vi.fn(),
+  flagUpdateMany: vi.fn(),
   flagCreate: vi.fn(), safeForm: vi.fn(),
 }))
 
@@ -30,7 +30,7 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.runUpdateMany,
     },
     journeyReview: { findFirst: mocks.journeyFindFirst },
-    flag: { updateMany: mocks.flagUpdateMany, findFirst: mocks.flagFindFirst },
+    flag: { updateMany: mocks.flagUpdateMany },
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
       create: mocks.executionCreate,
@@ -86,9 +86,8 @@ describe('bound Checkout execution', () => {
     mocks.attemptCreateMany.mockResolvedValue({ count: 1 })
     mocks.attemptUpdateMany.mockResolvedValue({ count: 0 })
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
-    mocks.persistJourneyResult.mockResolvedValue([])
+    mocks.persistJourneyResult.mockResolvedValue({ reviewId: 'checkout-review', findings: [], flagIds: ['checkout-flag'] })
     mocks.flagUpdateMany.mockResolvedValue({ count: 1 })
-    mocks.flagFindFirst.mockResolvedValue({ id: 'checkout-flag' })
     mocks.flagCreate.mockResolvedValue({ id: 'signup-flag' })
   })
 
@@ -174,8 +173,9 @@ describe('bound Checkout execution', () => {
       }),
       { outcomeId: 'outcome-1', bindingKey: 'checkout-browser-v1' },
     )
-    expect(mocks.flagFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { auditId: 'audit-1', fingerprint: 'outcome:v1:outcome-1:checkout-browser-v1' } }))
-    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ detail: expect.objectContaining({ failureFlagId: 'checkout-flag' }) }) }))
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      detail: expect.objectContaining({ failureFlagId: 'checkout-flag', journeyReviewId: 'checkout-review' }),
+    }) }))
   })
 
   it('persists blocked execution as inconclusive evidence without a Flag', async () => {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 const key = z.string().regex(/^[a-f0-9]{64}$/)
-const measurementScopeSchema = z.object({ requestedKey: key, finalKey: key, profileKey: key }).strict()
+const measurementScopeSchema = z.object({ requestedKey: key, finalKey: key, profileKey: key, mainDocumentKey: key.optional() }).strict()
 
 /** Recorded provider facts. Scope calculation and recovery stay server-side. */
 export const performanceMeasurementSchema = z.object({

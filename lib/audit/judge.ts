@@ -7,7 +7,7 @@
  * classifier remains, imported by both phases.
  */
 export type JudgeProviderFailure = 'authentication_rejected' | 'permission_denied' | 'quota_exhausted'
-  | 'rate_limited' | 'provider_limit' | 'provider_unavailable'
+  | 'rate_limited' | 'provider_limit' | 'provider_unavailable' | 'budget_unavailable'
 
 /** Preserve the last provider cause and whether any configured provider still
  * has a recoverable failure after the complete bounded attempt sequence. */
@@ -29,6 +29,7 @@ export function classifyJudgeProviderFailure(error: unknown): JudgeProviderFailu
   const status = 'status' in error ? error.status : undefined
   const code = 'code' in error ? error.code : undefined
   const type = 'type' in error ? error.type : undefined
+  if (code === 'PROVIDER_BUDGET_UNAVAILABLE') return 'budget_unavailable'
   if (status === 401) return 'authentication_rejected'
   if (status === 403) return 'permission_denied'
   if (typeof code === 'string' && quotaCodes.has(code) || type === 'insufficient_quota') return 'quota_exhausted'
@@ -40,7 +41,7 @@ export function isRetryableJudgeError(err: unknown): boolean {
   if (err instanceof JudgeProviderError) return err.retryable
   if (!(err instanceof Error)) return false
   const failure = classifyJudgeProviderFailure(err)
-  if (failure === 'authentication_rejected' || failure === 'permission_denied' || failure === 'quota_exhausted') return false
+  if (failure === 'authentication_rejected' || failure === 'permission_denied' || failure === 'quota_exhausted' || failure === 'budget_unavailable') return false
   if (failure) return true
   if (err.name === 'AbortError') return true
   const message = err.message.toLowerCase()

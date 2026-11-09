@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "fixflags.guide-discovery-baseline.v1",
+  "source": "Read-only aggregate Google reporting through the configured FixFlags worker",
+  "observationWindow": {
+    "startDate": "2026-10-09",
+    "endDate": "2026-11-05"
+  },
+  "propertyContext": {
+    "fetchedAt": "2026-11-09T13:00:03.626Z",
+    "ga4": {
+      "status": "report-read-succeeded",
+      "property": "541892062",
+      "reportingTimeZone": "Africa/Casablanca",
+      "providerLimited": false,
+      "metrics": {
+        "totalUsers": 4,
+        "sessions": 6,
+        "screenPageViews": 11,
+        "engagementRate": 0.6666666666666666
+      },
+      "limitations": [
+        "Reported GA users and sessions may omit unconsented activity. No Site or revenue attribution established."
+      ]
+    },
+    "searchConsole": {
+      "status": "report-read-succeeded",
+      "property": "sc-domain:fixflags.com",
+      "metrics": {
+        "clicks": 23,
+        "impressions": 231,
+        "ctr": 0.09956709956709957,
+        "averagePosition": 7.6103896103896105
+      },
+      "limitations": [
+        "Web search, finalized data only. Recent days may not yet be available. Average position is not a live rank."
+      ]
+    }
+  },
+  "guide": {
+    "fetchedAt": "2026-11-09T13:02:09.237Z",
+    "path": "/guides/website-online-but-not-working",
+    "canonicalUrl": "https://fixflags.com/guides/website-online-but-not-working",
+    "ga4": {
+      "status": "report-read-succeeded",
+      "property": "541892062",
+      "reportingTimeZone": "Africa/Casablanca",
+      "providerLimited": false,
+      "metrics": {},
+      "limitations": [
+        "Exact host and page path. Pageviews include repeats and may omit unconsented visits. Analyze counts use the dedicated consented click event.",
+        "These aggregates are separate from guide-attributed starts, exact claims, and repairs. They do not establish a conversion rate."
+      ]
+    },
+    "searchConsole": {
+      "status": "report-read-succeeded",
+      "property": "sc-domain:fixflags.com",
+      "pageAggregationConfirmed": true,
+      "metrics": {
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "averagePosition": 99
+      },
+      "limitations": [
+        "Web search, finalized data only. Recent days may not yet be available. Average position is not a live rank."
+      ]
+    },
+    "analyzeClicks": {
+      "eventName": "guide_analyze_clicked",
+      "status": "report-read-succeeded",
+      "reportingTimeZone": "Africa/Casablanca",
+      "providerLimited": false,
+      "count": null
+    }
+  },
+  "legacyAnalyzeReport": {
+    "fetchedAt": "2026-11-09T12:59:59.556Z",
+    "status": "report-read-failed",
+    "registeredEventDimensions": {
+      "target": false,
+      "action": false,
+      "journeyId": true
+    }
+  },
+  "databaseWritten": false,
+  "limitations": [
+    "The same requested calendar dates do not align the providers’ timezones or denominators.",
+    "The guide pageview and dedicated Analyze event reports returned no metric row. This is unavailable data.",
+    "The dedicated Analyze event and study were local at the time of observation. This is pre-release evidence."
+  ]
+}

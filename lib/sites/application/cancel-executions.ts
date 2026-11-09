@@ -8,33 +8,42 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 export async function cancelSiteExecutions(tx: Prisma.TransactionClient, projectId: string, now: Date, interruption?: { code: string; message: string }, scope?: { auditIds: readonly string[]; stage?: string }) {
   const errorCode = interruption?.code ?? 'SITE_REMOVED', errorMessage = interruption?.message ?? SITE_ACTION_COPY.removedDuringCheck
   const runs = await tx.runRequest.findMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] }, ...(scope ? { auditId: { in: [...scope.auditIds] } } : {}) },
-    select: { id: true, auditId: true, environment: true, executionSpec: true, selections: { select: { outcomeId: true } } } })
+    select: { id: true, auditId: true, environment: true, executionSpec: true, audit: { select: { projectId: true } },
+      selections: { where: { outcome: { projectId } }, select: { outcomeId: true } } } })
   const audits = await tx.audit.findMany({ where: { projectId, status: { notIn: ['COMPLETED', 'FAILED'] }, ...(scope ? { id: { in: [...scope.auditIds] } } : {}) }, select: { id: true } })
-  const auditIds = [...new Set([...audits.map(audit => audit.id), ...runs.flatMap(run => run.auditId ?? [])])]
+  const attached = runs.filter(run => run.audit?.projectId === projectId)
+  const auditIds = [...new Set([...audits.map(audit => audit.id), ...attached.flatMap(run => run.auditId ?? [])])]
   if (auditIds.length) {
     await tx.audit.updateMany({ where: { id: { in: auditIds }, projectId },
       data: { executionToken: null, executionLeaseUntil: null, executionGeneration: { increment: 1 } } })
     await tx.audit.updateMany({ where: { id: { in: auditIds }, projectId, status: { notIn: ['COMPLETED', 'FAILED'] } },
       data: { status: 'FAILED', completedAt: now, failureCode: errorCode, failureStage: scope?.stage ?? 'site-removal', errorMsg: errorMessage } })
-    await tx.auditExecutionTask.updateMany({ where: { auditId: { in: auditIds }, workState: { in: ['WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'] } },
+    await tx.auditExecutionTask.updateMany({ where: { auditId: { in: auditIds }, audit: { projectId },
+      workState: { in: ['WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'] } },
       data: { workState: 'BLOCKED', status: 'FAILED', workToken: null, workLeaseUntil: null, workGeneration: { increment: 1 },
         workDispatchLeaseUntil: null, workRetryAt: null, workErrorCode: errorCode } })
-    const attempts = await tx.improvementAttempt.findMany({ where: { verificationAuditId: { in: auditIds }, outcome: null, improvement: { projectId } },
+    const attempts = await tx.improvementAttempt.findMany({ where: { verificationAuditId: { in: auditIds }, outcome: null,
+      verificationAudit: { projectId }, improvement: { projectId } },
       select: { id: true, sourceAuditId: true, verificationAuditId: true } })
     for (const attempt of attempts) await tx.improvementAttempt.updateMany({
-      where: { id: attempt.id, verificationAuditId: attempt.verificationAuditId, outcome: null },
+      where: { id: attempt.id, verificationAuditId: attempt.verificationAuditId, verificationAudit: { projectId }, outcome: null },
       data: { outcome: 'INCONCLUSIVE', comparable: false, verificationReason: errorMessage,
         evidenceReference: { beforeAuditId: attempt.sourceAuditId, afterAuditId: attempt.verificationAuditId, reason: errorCode } },
     })
   }
-  for (const run of runs) {
+  for (const run of attached) {
     const spec = readExecutionSpec(run.executionSpec)
-    if (run.auditId) for (const selection of run.selections) await tx.outcomeAssessment.upsert({
-      where: { runRequestId_outcomeId: { runRequestId: run.id, outcomeId: selection.outcomeId } }, update: {},
-      create: { runRequestId: run.id, outcomeId: selection.outcomeId, auditId: run.auditId, state: 'COULD_NOT_VERIFY', summary: errorMessage,
-        assessedAt: now, validUntil: now, evidence: { reason: errorCode }, coverage: { environment: run.environment,
-          requiredBindings: spec?.outcomes.find(outcome => outcome.id === selection.outcomeId)?.bindings.filter(binding => binding.required).map(binding => binding.key) ?? [], observedBindings: [] } },
-    })
+    if (!run.auditId) continue
+    for (const selection of run.selections) {
+      const admitted = spec?.outcomes.find(outcome => outcome.id === selection.outcomeId)
+      if (run.executionSpec != null && !admitted) continue
+      await tx.outcomeAssessment.upsert({
+        where: { runRequestId_outcomeId: { runRequestId: run.id, outcomeId: selection.outcomeId } }, update: {},
+        create: { runRequestId: run.id, outcomeId: selection.outcomeId, auditId: run.auditId, state: 'COULD_NOT_VERIFY', summary: errorMessage,
+          assessedAt: now, validUntil: now, evidence: { reason: errorCode }, coverage: { environment: run.environment,
+            requiredBindings: admitted?.bindings.filter(binding => binding.required).map(binding => binding.key) ?? [], observedBindings: [] } },
+      })
+    }
   }
   await tx.runRequest.updateMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] }, ...(scope ? { id: { in: runs.map(run => run.id) } } : {}) },
     data: { status: 'FAILED', errorCode, errorMessage, completedAt: now, leaseUntil: null } })

@@ -29,24 +29,15 @@ const CHECKOUT_SELECTORS = [
 
 export interface BuyControl {
   selector: string
-  text: string
-  href: string | null
+  identity: [page: string, path: string[], name: string | null] | null
 }
 
-export async function discoverBuyControl(page: Page): Promise<BuyControl | null> {
-  return findControl(page, BUY_SELECTORS, (text, href) => {
-    if (BUY_CONTROL_TEXT.test(text)) return true
-    if (href && /\/cart\/add/i.test(href)) return true
-    return false
-  })
+export async function discoverBuyControl(page: Page, matchesIdentity?: (identity: NonNullable<BuyControl['identity']>) => boolean): Promise<BuyControl | null> {
+  return findControl(page, BUY_SELECTORS, BUY_CONTROL_TEXT, /\/cart\/add/i, matchesIdentity)
 }
 
 export async function discoverCheckoutControl(page: Page): Promise<BuyControl | null> {
-  return findControl(page, CHECKOUT_SELECTORS, (text, href) => {
-    if (CHECKOUT_CONTROL_TEXT.test(text)) return true
-    if (href && /\/checkouts?(?:\/|$|\?)/i.test(href)) return true
-    return false
-  })
+  return findControl(page, CHECKOUT_SELECTORS, CHECKOUT_CONTROL_TEXT, /\/checkouts?(?:\/|$|\?)/i)
 }
 
 export function isCheckoutUrl(url: string): boolean {
@@ -143,15 +134,20 @@ export async function selectFirstAvailableVariant(page: Page): Promise<boolean> 
 async function findControl(
   page: Page,
   selectors: string,
-  match: (text: string, href: string | null) => boolean
+  textPattern: RegExp,
+  hrefPattern: RegExp,
+  matchesIdentity?: (identity: NonNullable<BuyControl['identity']>) => boolean
 ): Promise<BuyControl | null> {
-  const marked = await page
+  const candidates = await page
     .evaluate(
-      ({ selectors: sel, attr }: { selectors: string; attr: string }) => {
+      ({ selectors, attr, textPattern, hrefPattern, targeted }): BuyControl[] => {
         document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
-        const elements = Array.from(document.querySelectorAll(sel))
-        const hits: Array<{ index: number; text: string; href: string | null }> = []
-        for (const [index, el] of elements.entries()) {
+        const labelMatches = new RegExp(textPattern, 'i')
+        const hrefMatches = new RegExp(hrefPattern, 'i')
+        const candidates: BuyControl[] = []
+        let scanned = 0
+        for (const el of document.querySelectorAll(selectors)) {
+          if (targeted && ++scanned > 2_000) break
           if (el.closest('nav, header, [role="navigation"], footer')) continue
           const rect = el.getBoundingClientRect()
           if (rect.width < 8 || rect.height < 8) continue
@@ -164,20 +160,35 @@ async function findControl(
             el instanceof HTMLAnchorElement
               ? el.getAttribute('href')
               : el.closest('a')?.getAttribute('href') ?? null
+          if (!labelMatches.test(text) && !(href && hrefMatches.test(href))) continue
+
+          const path: string[] = []
+          let node: Element | null = el
+          while (node && path.length < 40) {
+            if (node.id && document.querySelectorAll('#' + CSS.escape(node.id)).length === 1) {
+              path.unshift(node.tagName.toLowerCase() + '#' + CSS.escape(node.id))
+              node = null
+              break
+            }
+            let position = 1
+            for (let sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+              if (sibling.localName === node.localName) position++
+            }
+            path.unshift(node.localName + ':nth-of-type(' + position + ')')
+            node = node.parentElement
+          }
+          // A unique control ID survives copy and layout repairs. Anonymous
+          // controls need a structural address and matching purchase label.
+          const name = path.length === 1 && el.id ? null : text.trim().replace(/\s+/g, ' ')
+          const index = candidates.length
           el.setAttribute(attr, String(index))
-          hits.push({ index, text, href })
+          candidates.push({ selector: `[${attr}="${index}"]`, identity: node ? null : [location.href, path, name] })
+          if (!targeted || candidates.length === 100) break
         }
-        return hits
+        return candidates
       },
-      { selectors, attr: 'data-fixflags-buy' }
+      { selectors, attr: 'data-fixflags-buy', textPattern: textPattern.source, hrefPattern: hrefPattern.source, targeted: Boolean(matchesIdentity) }
     )
     .catch(() => [])
-
-  const hit = (marked ?? []).find((entry) => match(entry.text, entry.href))
-  if (!hit) return null
-  return {
-    selector: `[data-fixflags-buy="${hit.index}"]`,
-    text: hit.text,
-    href: hit.href,
-  }
+  return (matchesIdentity ? candidates.find(control => control.identity && matchesIdentity(control.identity)) : candidates[0]) ?? null
 }

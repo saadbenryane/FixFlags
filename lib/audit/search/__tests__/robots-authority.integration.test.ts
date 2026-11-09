@@ -12,6 +12,7 @@ import { requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { getOwnedRun } from '@/lib/sites/application/run-queries'
+import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { TASK_QUEUES } from '@/lib/audit/progressive/queues'
 import { dispatchReadyTasks, reconcileTasks } from '@/lib/audit/progressive/engine'
@@ -21,28 +22,41 @@ import { searchReceiptSchema } from '../contracts'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('redirected robots authority through URL admission and installed workers', () => {
-  const userId = 'robots-authority-' + randomUUID(), pageUrl = 'https://example.com/'
+  const ownerPrefix = 'robots-authority-' + randomUUID(), pageUrl = 'https://example.com/'
+  const pageOrigin = new URL(pageUrl).origin, targetOrigin = 'https://example.net'
+  const targetUrl = targetOrigin + '/destination'
   const rulesUrl = 'https://example.net/shared-rules.txt?site=example.com'
   const requests: string[] = []
-  let phase = 'baseline', projectId: string, worker: ReturnType<typeof startWorker> | undefined
+  let phase = 'baseline', redirectPage = false, userId: string, projectId: string, worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
+    const requestedOrigin = request.headers['x-fixture-origin']
+    if (redirectPage && request.url === '/' && requestedOrigin === pageOrigin) {
+      response.writeHead(301, { location: phase === 'changed' ? targetOrigin + '/other-destination' : targetUrl }); response.end(); return
+    }
     if (request.url === '/robots.txt') {
-      if (phase === 'baseline') { response.setHeader('content-type', 'text/plain'); response.end('User-agent: *\nAllow: /'); return }
+      if (phase === 'source-blocked' && requestedOrigin === pageOrigin) {
+        response.setHeader('content-type', 'text/plain'); response.end('User-agent: *\nDisallow: /'); return
+      }
+      if (phase === 'baseline' || phase.startsWith('index-') || redirectPage && requestedOrigin === pageOrigin) {
+        response.setHeader('content-type', 'text/plain'); response.end('User-agent: *\nAllow: /'); return
+      }
       response.writeHead(302, { location: rulesUrl }); response.end(); return
     }
     if (request.url?.startsWith('/shared-rules.txt')) {
       response.setHeader('content-type', 'text/plain')
       response.statusCode = phase === 'unavailable' ? 503 : 200
-      response.end(phase === 'unavailable' ? 'Resource unavailable' : 'User-agent: *\n' + (phase === 'allowed' ? 'Allow: /' : 'Disallow: /')); return
+      response.end(phase === 'unavailable' ? 'Resource unavailable' : 'User-agent: *\n' + (['allowed', 'changed', 'source-blocked'].includes(phase) ? 'Allow: /' : 'Disallow: /')); return
     }
     if (request.url === '/sitemap.xml') {
       response.setHeader('content-type', 'application/xml')
-      response.end('<urlset><url><loc>' + pageUrl + '</loc></url></urlset>'); return
+      response.end(phase.startsWith('index-') ? '<urlset></urlset>' : '<urlset><url><loc>' + pageUrl + '</loc></url></urlset>'); return
     }
     response.setHeader('content-type', 'text/html')
+    if (phase === 'index-gap') response.statusCode = 503
     response.end('<!doctype html><html lang="en"><head><title>Useful public service</title>' +
-      '<meta name="description" content="Explore a useful public service for your business."></head>' +
-      '<body><main><h1>Useful public service</h1><p>The public service is available.</p></main></body></html>')
+      '<meta name="description" content="Explore a useful public service for your business.">' +
+      (phase === 'index-blocked' ? '<meta name="robots" content="noindex">' : '') +
+      '</head><body><main><h1>Useful public service</h1><p>The public service is available.</p></main></body></html>')
   })
   beforeAll(async () => {
     const database = new URL(process.env.DATABASE_URL!)
@@ -52,9 +66,11 @@ run('redirected robots authority through URL admission and installed workers', (
     const nativeFetch = globalThis.fetch, transport = 'http://127.0.0.1:' + (server.address() as { port: number }).port
     vi.stubGlobal('fetch', async (input: string | URL | Request, options?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
-      if (![new URL(pageUrl).origin, new URL(rulesUrl).origin].includes(url.origin)) throw new Error('External transport unavailable in this fixture')
+      if (![pageOrigin, targetOrigin].includes(url.origin)) throw new Error('External transport unavailable in this fixture')
       requests.push(url.href)
-      return nativeFetch(transport + url.pathname + url.search, options)
+      const headers = new Headers(options?.headers)
+      headers.set('x-fixture-origin', url.origin)
+      return nativeFetch(transport + url.pathname + url.search, { ...options, headers })
     })
     const original = pageSessions.createAuditPage
     vi.spyOn(pageSessions, 'createAuditPage').mockImplementation((browser, url, options) => original(browser, url, { ...options,
@@ -62,20 +78,20 @@ run('redirected robots authority through URL admission and installed workers', (
         await options.configurePage?.(page)
         await page.route('**', async route => {
           const resource = new URL(route.request().url())
-          if (resource.origin !== new URL(pageUrl).origin) { await route.abort('blockedbyclient'); return }
-          const response = await nativeFetch(transport + resource.pathname + resource.search)
+          if (![pageOrigin, targetOrigin].includes(resource.origin)) { await route.abort('blockedbyclient'); return }
+          const response = await nativeFetch(transport + resource.pathname + resource.search,
+            { redirect: 'manual', headers: { 'x-fixture-origin': resource.origin } })
           await route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() })
         })
       },
     }))
-    await prisma.user.create({ data: { id: userId, email: userId + '@example.test', role: 'admin', auditsLimit: 100 } })
     await getAuditBrowser(); worker = startWorker(); await worker.waitUntilReady()
     const browser = getBrowserDiagnostics()
     await touchWorkerHeartbeat({ browserOk: browser.connected, activeBrowserContexts: browser.activeContexts })
   })
   afterAll(async () => {
     await worker?.close(); await clearWorkerHeartbeat(); await closeBrowser()
-    await prisma.user.deleteMany({ where: { id: userId } })
+    await prisma.user.deleteMany({ where: { id: { startsWith: ownerPrefix } } })
     for (const queue of [getAuditQueue(), ...Object.keys(TASK_QUEUES).map(getAuditTaskQueue)]) {
       const client = await queue.client; await queue.close(); client.disconnect()
     }
@@ -111,28 +127,50 @@ run('redirected robots authority through URL admission and installed workers', (
     const request = await prisma.runRequest.findFirstOrThrow({ where: { auditId: result.verificationAuditId! }, select: { id: true } })
     expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR' : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
   }
-  it('detects redirected crawl regression, refuses unchanged and unavailable rules, verifies repair and retains recurrence', async () => {
+  it.each(['rules file', 'page and rules file'] as const)('retains crawl detection, independent repair and recurrence when redirecting the %s', async redirect => {
+    redirectPage = redirect === 'page and rules file'; phase = 'baseline'; requests.length = 0
+    userId = ownerPrefix + (redirectPage ? '-page' : '-rules')
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.test', role: 'admin', auditsLimit: 100 } })
     const baseline = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
     url: pageUrl,
     userId })
     await complete(baseline.auditId)
     projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: baseline.auditId } })).projectId!
     expect((await crawl(baseline.auditId)).receipt.observations).toContainEqual(expect.objectContaining({ reason: 'crawl_allowed', disposition: 'passed' }))
+    if (redirectPage) expect((await crawl(baseline.auditId)).receipt.observations).toContainEqual(expect.objectContaining({
+      checkId: 'search-crawl-access', disposition: 'passed', evidence: [expect.objectContaining({ url: targetOrigin + '/robots.txt' })],
+    }))
+    phase = 'unavailable'
+    const gap = await category('robots-redirected-gap')
+    expect((await crawl(gap.auditId!)).receipt.observations).toContainEqual(expect.objectContaining({
+      checkId: 'search-crawl-access', disposition: 'unknown',
+    }))
     phase = 'blocked'
     const source = await category('robots-redirected-source')
     const recorded = await crawl(source.auditId!)
     expect(recorded.receipt.observations).toContainEqual(expect.objectContaining({ checkId: 'search-crawl-access', reason: 'crawl_policy_regressed',
       disposition: 'failed', evidence: [expect.objectContaining({ url: rulesUrl })] }))
     const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId!, workKind: 'search-resources', workInput: { path: ['module'], equals: 'robots' } } })
-    expect(resourceArtifactSchema.parse(readArtifact(task.workResult, 'search-resources').data).robots)
-      .toMatchObject({ url: pageUrl + 'robots.txt', finalUrl: rulesUrl, redirects: [pageUrl + 'robots.txt'], status: 200, complete: true })
+    expect(resourceArtifactSchema.parse(readArtifact(task.workResult, 'search-resources').data).robots).toMatchObject({
+      url: pageUrl + 'robots.txt', finalUrl: redirectPage ? pageUrl + 'robots.txt' : rulesUrl,
+      redirects: redirectPage ? [] : [pageUrl + 'robots.txt'], status: 200, complete: true,
+    })
     expect(requests).toContain(rulesUrl)
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId!, checkId: 'search-crawl-access' } })
+    if (redirectPage) expect(flag.evidence).toContain(targetUrl)
     expect(flag.fix).toMatch(/crawl|robots/i)
     expect((await loadSiteHome(projectId))?.flags).toContainEqual(expect.objectContaining({ sourceFlagId: flag.id }))
     const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+    phase = 'unavailable'
+    await category('robots-redirected-gap-during-incident')
+    expect((await loadSiteHome(projectId))?.flags).toContainEqual(expect.objectContaining({ sourceFlagId: flag.id }))
+    phase = 'blocked'
+    const persists = await category('robots-redirected-still-blocked')
+    const unchanged = await prisma.flag.findFirstOrThrow({ where: { auditId: persists.auditId!, checkId: flag.checkId } })
+    expect(unchanged).toMatchObject({ status: 'OPEN', fingerprint: flag.fingerprint })
     await verify(flag.id, 'blocked', 'UNCHANGED')
     await verify(flag.id, 'unavailable', 'INCONCLUSIVE')
+    if (redirectPage) await verify(flag.id, 'changed', 'INCONCLUSIVE')
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).not.toMatchObject({ status: 'FIXED' })
     await verify(flag.id, 'allowed', 'IMPROVED')
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED' })
@@ -142,6 +180,53 @@ run('redirected robots authority through URL admission and installed workers', (
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
     expect(await getOwnedRun(userId, recurring.runId)).toMatchObject({ result: 'FLAG' })
-    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: recorded.row.id } })).toEqual(recorded.row)
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: recorded.row.id } })).toEqual(recorded.row)
   }, 180_000)
+
+  it('recognizes a newly published noindex after a run could not read indexing directives', async () => {
+    redirectPage = false; phase = 'index-healthy'; userId = ownerPrefix + '-indexing'
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.test', role: 'admin', auditsLimit: 100 } })
+    const baseline = await createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: pageUrl, userId })
+    await complete(baseline.auditId)
+    projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: baseline.auditId } })).projectId!
+    async function indexing(auditId: string) {
+      const row = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId, targetKey: 'module:search-indexing' } })
+      return searchReceiptSchema.parse(row.detail).observations.find(item => item.checkId === 'robots-blocks-indexing')
+    }
+    expect(await indexing(baseline.auditId)).toMatchObject({ disposition: 'passed', reason: 'no_index_restrictions' })
+    phase = 'index-gap'
+    const gap = await category('indexing-gap')
+    expect(await indexing(gap.auditId!)).toMatchObject({ disposition: 'unknown' })
+    phase = 'index-blocked'
+    const blocked = await category('indexing-regression-after-gap')
+    expect(await indexing(blocked.auditId!)).toMatchObject({ disposition: 'failed', reason: 'indexing_policy_regressed' })
+    expect(await prisma.flag.findFirst({ where: { auditId: blocked.auditId!, checkId: 'robots-blocks-indexing' } })).toMatchObject({ status: 'OPEN' })
+  }, 90_000)
+
+  it('distinguishes crawl failures when one redirect hop recovers and another starts blocking', async () => {
+    redirectPage = true; phase = 'baseline'; userId = ownerPrefix + '-independent-hops'
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.test', role: 'admin', auditsLimit: 100 } })
+    const baseline = await createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: pageUrl, userId })
+    await complete(baseline.auditId)
+    projectId = (await prisma.audit.findUniqueOrThrow({ where: { id: baseline.auditId } })).projectId!
+    async function compare(key: string, next: string) {
+      phase = next
+      const run = await category(key)
+      const audit = await prisma.audit.findUniqueOrThrow({ where: { id: run.auditId! } })
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'search-crawl-access' } })
+      const diff = await getFlagDiffSummary(audit.parentId, audit.id)
+      return { audit, flag, diff }
+    }
+    const target = await compare('target-blocked', 'blocked')
+    expect(target.diff.newIssues).toContainEqual(expect.objectContaining({ id: target.flag.id }))
+    const source = await compare('source-blocked', 'source-blocked')
+    expect(source.diff.fixed).toContainEqual(expect.objectContaining({ id: target.flag.id }))
+    expect(source.diff.newIssues).toContainEqual(expect.objectContaining({ id: source.flag.id }))
+    expect(source.diff.unchanged).not.toContainEqual(expect.objectContaining({ id: source.flag.id }))
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: target.flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: source.audit.id })
+    const returned = await compare('target-blocked-again', 'blocked')
+    expect(returned.flag).toMatchObject({ status: 'REGRESSED', fingerprint: target.flag.fingerprint })
+    expect(returned.diff.regressed).toContainEqual(expect.objectContaining({ id: returned.flag.id }))
+    expect(returned.diff.fixed).toContainEqual(expect.objectContaining({ id: source.flag.id }))
+  }, 120_000)
 })

@@ -2,6 +2,10 @@ import { Prisma } from '@prisma/client'
 import { checkReceiptSchema } from './receipt'
 import { readConsoleContext } from '../console-evidence'
 import { slowActionContextSchema } from '../flow/slow-replay-contract'
+import { currentSecurityHeaderTarget } from './security-headers'
+import { currentKeyboardFocusTarget } from './keyboard'
+import { currentTrackingRequestTarget } from '../tracking/identity'
+import { matchesRecordedVerifierPage } from '@/lib/improvements/verifier-scope'
 
 type Receipt = ReturnType<typeof checkReceiptSchema.parse>
 
@@ -13,7 +17,7 @@ export function verificationContexts(targets: readonly unknown[]) {
     if (!Array.isArray(value)) continue
     for (const target of value) {
       if (!target || typeof target !== 'object' || typeof target.context !== 'string') continue
-      exact.add(target.context)
+      exact.add(currentTrackingRequestTarget(currentKeyboardFocusTarget(currentSecurityHeaderTarget(target.context))))
       const window = readConsoleContext(target.context)
       if (window) consoleWindows.add(window.key)
       try {
@@ -39,8 +43,8 @@ export async function verificationEvidence(input: {
   let after = ''
   const size = 128
   for (;;) {
-    const rows = await tx.$queryRaw<Array<{ id: string; detail: unknown }>>(Prisma.sql`
-      SELECT source."id", (SELECT jsonb_object_agg(field.key, field.value)
+    const rows = await tx.$queryRaw<Array<{ id: string; pageUrl: string | null; detail: unknown }>>(Prisma.sql`
+      SELECT source."id", source."pageUrl", (SELECT jsonb_object_agg(field.key, field.value)
         FROM jsonb_each(CASE WHEN jsonb_typeof(source.detail) = 'object' THEN source.detail ELSE '{}'::jsonb END) AS field
         WHERE field.key IN ('kind', 'version', 'module', 'passed', 'applicable', 'failed', 'complete', 'limitation', 'pageUrl', 'execution'))
         || jsonb_build_object('assertions', selected.assertions) AS detail
@@ -61,12 +65,13 @@ export async function verificationEvidence(input: {
         AND source.status = 'COMPLETED' AND source."id" > ${after} AND selected.assertions IS NOT NULL
         AND source.detail->>'module' = ${receipt.module}
         AND source.detail->'execution'->>'auditId' = ${receipt.execution.auditId}
+        AND (source."taskId" IS NULL OR source."taskId" = source.detail->'execution'->>'taskId')
         AND source.detail->'execution'->>'source' = ${receipt.execution.source}
         AND source.detail->'execution'->>'checkVersion' = ${String(receipt.execution.checkVersion)}
       ORDER BY source."id" LIMIT ${size}`)
     for (const row of rows) {
       const parsed = checkReceiptSchema.safeParse(row.detail)
-      if (parsed.success) sources.push(parsed.data)
+      if (parsed.success && matchesRecordedVerifierPage(row.pageUrl, parsed.data.pageUrl)) sources.push(parsed.data)
     }
     if (rows.length < size) return sources
     after = rows.at(-1)!.id

@@ -39,6 +39,15 @@ it('does not turn unknown form evidence or the absence of a Flag into repair', (
   }
 })
 
+it('records an incomplete inventory without identifying a form', () => {
+  const checked = checkFormValidation(undefined, true)
+  expect(checked).toMatchObject({ applicable: true, complete: false, flags: [],
+    assertions: [{ key: 'empty-form-validation', passed: false, complete: false }, { key: 'form-feedback', passed: false, complete: false }] })
+  expect(checked.assertions.every(assertion => !('context' in assertion))).toBe(true)
+  expect(scopedAssertionForTarget({ receipt: { ...receipt, ...checked, passed: false },
+    checkId: flag.checkId, flag })).toBeUndefined()
+})
+
 it('can verify rejection of empty fields while retaining an independently observed feedback delay', () => {
   const checked = checkFormValidation({ ...evidence, feedbackMs: 1400 })
   expect(checked.flags.map(flag => flag.checkId)).toEqual(['flow-form-slow-feedback'])

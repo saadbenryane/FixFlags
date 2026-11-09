@@ -11,23 +11,26 @@ export function currentFormFeedbackObservation(assertion: Pick<CheckAssertion, '
 }
 
 /** Findings and repair assertions consume the same scoped browser observation. */
-export function checkFormValidation(evidence: FormEvidence | undefined) {
+export function checkFormValidation(evidence: FormEvidence | undefined, inventoryIncomplete = false) {
   const flags: DeterministicFlag[] = [], assertions: CheckAssertion[] = []
-  if (!evidence) return { flags, assertions, applicable: false, complete: true }
-  const validationComplete = evidence.disposition !== 'unknown', passed = evidence.disposition === 'passed'
-  const observed = evidence.reason === 'native_validation' ? NATIVE_CONSTRAINT_OBSERVATION
-    : evidence.reason === 'native_feedback' ? `The trusted empty-field action invoked uncanceled native validation on a visible focused field after ${evidence.feedbackMs}ms. No submission was transmitted.`
-    : evidence.reason === 'client_feedback' ? `New visible validation feedback appeared after ${evidence.feedbackMs}ms. No submission was transmitted.`
-    : evidence.reason === 'missing_submit' ? 'The visible required-field form has no visible submit control.'
-    : evidence.reason === 'missing_feedback' ? 'No new visible validation feedback appeared within 2000ms of the empty-field action.'
-    : `Validation remains unknown (${evidence.reason.replaceAll('_', ' ')}).`
+  if (!evidence && !inventoryIncomplete) return { flags, assertions, applicable: false, complete: true }
+  const { disposition, reason, feedbackMs } = evidence ?? { disposition: 'unknown', reason: 'observation_incomplete', feedbackMs: null }
+  const validationComplete = disposition !== 'unknown', passed = disposition === 'passed'
+  const scope = evidence ? { context: evidence.context } : {}
+  const observed = reason === 'native_validation' ? NATIVE_CONSTRAINT_OBSERVATION
+    : reason === 'native_feedback' ? `The trusted empty-field action invoked uncanceled native validation on a visible focused field after ${feedbackMs}ms. No submission was transmitted.`
+    : reason === 'client_feedback' ? `New visible validation feedback appeared after ${feedbackMs}ms. No submission was transmitted.`
+    : reason === 'missing_submit' ? 'The visible required-field form has no visible submit control.'
+    : reason === 'missing_feedback' ? 'No new visible validation feedback appeared within 2000ms of the empty-field action.'
+    : `Validation remains unknown (${reason.replaceAll('_', ' ')}).`
   assertions.push({ key: 'empty-form-validation', name: 'Empty-field form validation',
     expected: 'The same form rejects empty required fields with native validation or new visible feedback',
-    observed, passed, complete: validationComplete, context: evidence.context })
-  const timed = passed && ['native_feedback', 'client_feedback'].includes(evidence.reason) && evidence.feedbackMs !== null
+    observed, passed, complete: validationComplete, ...scope })
+  const timed = passed && ['native_feedback', 'client_feedback'].includes(reason) && feedbackMs !== null
   assertions.push({ key: 'form-feedback', name: 'Form validation feedback time',
     expected: 'The same form provides validation feedback within 1000ms', observed,
-    passed: timed && evidence.feedbackMs! <= 1000, complete: timed || evidence.disposition === 'failed' && evidence.reason === 'missing_feedback', context: evidence.context })
+    passed: timed && feedbackMs! <= 1000, complete: timed || disposition === 'failed' && reason === 'missing_feedback', ...scope })
+  if (!evidence) return { flags, assertions, applicable: true, complete: false }
   const base = { rubric: 'EXPERIENCE' as const, impactTag: 'CONVERSION' as const, confidence: 0.95,
     source: 'DETERMINISTIC' as const, pageUrl: evidence.pageUrl, verificationRule: FORM_VERIFICATION_RULE,
     evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const,

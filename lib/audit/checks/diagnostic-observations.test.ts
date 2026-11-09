@@ -17,7 +17,7 @@ function html(headline = 'Build useful reports for developers', body = prose.rep
   return `<!doctype html><html lang="en"><head><title>Acme reports</title></head><body><main><h1>${headline}</h1>${sections}<p>${body}</p>${links}</main></body></html>`
 }
 function metrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics {
-  return { mobilePrimaryCtaTopPx: 250, mobilePrimaryCtaText: 'Get started free', competingPrimaryCtaCount: 1,
+  return { mobilePrimaryCtaTopPx: 250, mobilePrimaryCtaText: 'Get started free', mobilePrimaryCtaContext: 'mobile-action:' + 'a'.repeat(64), competingPrimaryCtaCount: 1,
     competingPrimaryCtaLabels: ['Get started free'], mobileViewportHeight: 800, mobileScrollY: 0, mobileDocumentHeight: 1600,
     stuckLoadingIndicator: false, stuckLoadingLabel: null, uniqueFontFamilies: 2, fontFamilySample: ['Inter', 'Inter Tight'],
     buttonBorderRadii: [8], motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true,
@@ -89,7 +89,7 @@ describe('registered diagnostic observations', () => {
     expect(observation(after.assertions, key)).toMatchObject({ passed: true, complete: true })
     if (!['reduced-motion', 'blocking-loading-ui'].includes(key) && checkId !== 'mobile-cta-thumb-zone') expect(assertionForTarget(after.receipt, checkId)).toBeUndefined()
   })
-  it('certifies a later button position only on the same mobile window', async () => {
+  it('certifies a later button position only for the same control in the same mobile window', async () => {
     const source = html()
     const metadata = parseMetadataFromHtml(source, url)
     const run = async (captured: CaptureMetrics | null) => {
@@ -119,6 +119,10 @@ describe('registered diagnostic observations', () => {
     const recover = (detail: typeof after.receipt) => hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec, flag,
       executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail }] })
     expect(recover(after.receipt)).toBe(true)
+    const replaced = await run(metrics({ mobilePrimaryCtaContext: 'mobile-action:' + 'b'.repeat(64) }))
+    expect(recover(replaced.receipt)).toBe(false)
+    const unbound = await run(metrics({ mobilePrimaryCtaContext: undefined }))
+    expect(recover(unbound.receipt)).toBe(false)
     const shifted = await run(metrics({ loadingObservation: { ...nativeLoading, scope: { ...nativeLoading.scope, profile: 'other-mobile' } } }))
     expect(scopedAssertionForTarget({ receipt: shifted.receipt, checkId: flag.checkId, flag })).toBeUndefined()
     expect(recover(shifted.receipt)).toBe(false)

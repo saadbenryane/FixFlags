@@ -23,6 +23,7 @@ export function useSiteFlagDetail(siteId: string, flagId: string | null, revisio
         // Session changes cannot put owner instructions into a visitor cache.
         // Retained evidence is reusable only within this viewer's permission.
         const projected = { ...data, flag: { ...data.flag, ...viewerRepairGuidance(data.flag, owner),
+          activeVerificationAuditId: owner ? data.flag.activeVerificationAuditId ?? null : null,
           verificationFeedback: owner ? data.flag.verificationFeedback ?? null : null } }
         return { identity: JSON.stringify([requestedSite, requestedFlag, owner]), revision: requestedRevision, data: projected }
       } finally { clearTimeout(timer) }

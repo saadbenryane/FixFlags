@@ -1,6 +1,5 @@
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import type { CoverageFact } from '@/lib/sites/coverage'
-import { siteCoverageIsStale } from './evidence-freshness'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { CustomerOutcomeState } from '@/lib/sites/outcome-state'
 import { LEGACY_BROAD_REQUIRED_AREAS, projectSiteAssessment, type SiteAssessment } from './assessment'
@@ -46,7 +45,6 @@ function presentSiteHealth(input: {
 }, assessment: SiteAssessment, uptime: ReturnType<typeof uptimeAssessment>): { state: CardHealthState; answer: string; statusLabel: string } {
   const open = input.flags.length
   const critical = input.flags.some((f) => f.severity === 'CRITICAL')
-  const requiredAreas = assessment.requiredAreas
 
   if (uptime?.state === 'FLAG') {
     const label = uptime.observedState === 'offline' ? UPTIME_COPY.states.offline : SITE_BOARD_COPY.needsAttention
@@ -99,7 +97,7 @@ function presentSiteHealth(input: {
     state: 'attention', answer: 'A watched result needs a fix.', statusLabel: SITE_BOARD_COPY.flagStatus,
   }
 
-  if (input.coverage.some((fact) => requiredAreas.includes(fact.area) && fact.evidenced && siteCoverageIsStale(fact.checkedAt, input.now, input.coverageMaxAgeMs))) {
+  if (assessment.gaps.some(gap => gap.area !== null && gap.reason === 'stale')) {
     return {
       state: 'unknown',
       answer: SITE_BOARD_COPY.siteCheckOutOfDate,
@@ -115,15 +113,14 @@ function presentSiteHealth(input: {
     }
   }
 
-  const watched = (input.outcomes ?? []).filter((outcome) => outcome.enabled !== false)
-  if (watched.some((outcome) => outcome.state === 'STALE')) {
+  if (assessment.result === 'STALE') {
     return {
       state: 'unknown',
       answer: 'A watched result is out of date.',
       statusLabel: 'Stale',
     }
   }
-  if (watched.some((outcome) => outcome.state === 'COULD_NOT_VERIFY')) {
+  if (input.outcomes?.some(outcome => outcome.enabled !== false && outcome.state === 'COULD_NOT_VERIFY')) {
     return {
       state: 'unknown',
       answer: 'A watched result could not be verified.',
@@ -131,7 +128,7 @@ function presentSiteHealth(input: {
     }
   }
 
-  if (assessment.result === 'COULD_NOT_VERIFY') return {
+  if (assessment.result !== 'CLEAR') return {
     state: 'unknown', answer: 'Checked some areas. Others are not verified yet.', statusLabel: 'Coverage incomplete',
   }
 

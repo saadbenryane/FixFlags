@@ -4,7 +4,8 @@ import { prisma } from '@/lib/db'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
 import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domain-actor'
-import { SiteRunRefusal } from './run-refusal'
+import { RUN_AUDIT_SCOPE_CHANGED, SiteRunRefusal } from './run-refusal'
+import { sameSiteRunAuditWhere } from './analysis-scope'
 
 type RequestKey = { projectId: string; source: RunRequestSource; idempotencyKey: string }
 type KeyOwner = { projectId: string; userId: string; operator?: AdminDomainActor; cleanup: boolean; scheduled?: boolean }
@@ -17,6 +18,9 @@ export async function loadRunRequestByKey(key: RequestKey, db: Pick<Prisma.Trans
   const { projectId, source, idempotencyKey } = key
   const binding = await db.runRequestKey.findUnique({ where: { projectId_source_idempotencyKey: { projectId, source, idempotencyKey } },
     include: { runRequest: { include: replayInclude } } })
+  const audit = binding?.runRequest.audit
+  if (audit && audit.projectId !== projectId)
+    throw new SiteRunRefusal(RUN_AUDIT_SCOPE_CHANGED.message, 409, RUN_AUDIT_SCOPE_CHANGED.code)
   return binding ? { ...binding.runRequest, keyRequestedByUserId: binding.requestedByUserId } : null
 }
 
@@ -58,7 +62,8 @@ export async function retainSharedRunKey(input: RequestKey & KeyOwner & { runReq
         throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
       return existing
     }
-    const run = await tx.runRequest.findFirst({ where: { id: input.runRequestId, projectId: input.projectId }, include: replayInclude })
+    const run = await tx.runRequest.findFirst({ where: { id: input.runRequestId, projectId: input.projectId,
+      ...sameSiteRunAuditWhere(input.projectId) }, include: replayInclude })
     const candidate = run ? { ...run, keyRequestedByUserId: input.operator?.actorId ?? input.userId } : null
     if (!candidate || !accepts(candidate, false))
       throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')

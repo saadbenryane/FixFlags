@@ -4,6 +4,7 @@ import type { AdminActor } from '@/lib/auth/require-admin'
 import { assertAdminActor } from './security'
 import { adminPagination, readAdminListQuery } from './list-query'
 import { resolveEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
+import { watchErrorMessage } from '@/lib/sites/watch-state'
 
 export function adminRead<T>(
   actor: AdminActor,
@@ -119,8 +120,8 @@ export async function loadAdminCustomer(actor: AdminActor, id: string) {
   })
 }
 export async function loadAdminSite(actor: AdminActor, id: string) {
-  return adminRead(actor, (db) =>
-    db.project.findUnique({
+  return adminRead(actor, async db => {
+    const site = await db.project.findUnique({
       where: { id },
       select: {
         id: true,
@@ -147,8 +148,9 @@ export async function loadAdminSite(actor: AdminActor, id: string) {
         },
         shopifyShops: { select: { id: true, shopDomain: true } },
       },
-    }),
-  )
+    })
+    return site && { ...site, watchLastError: watchErrorMessage(site.watchLastError) }
+  })
 }
 export async function loadAdminBilling(actor: AdminActor, params: { page?: string; q?: string }) {
   return adminRead(actor, async (db) => {

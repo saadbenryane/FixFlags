@@ -8,6 +8,7 @@ import type { CaptureMetrics } from '../../capture-metrics'
 import { CHECK_REGISTRY } from '../../check-registry'
 import { parseMetadataFromHtml } from '../../metadata'
 import { scopedAssertionForTarget } from '../../checks/verification'
+import { FAVICON_HREF_VERSION } from '../../checks/favicon-declaration'
 
 const pageUrl = 'https://example.com/'
 const scope = { pageUrl, finalUrl: pageUrl, profile: 'desktop', access: 'public' }
@@ -31,8 +32,11 @@ function metrics(repaired = false): CaptureMetrics {
 }
 async function observed(module: keyof typeof checks, repaired = false, renderedCopy?: RenderedCopy,
   head?: Record<string, unknown>, copyScopes?: { renderedScope?: typeof scope; renderedCopyScope?: typeof scope | null }) {
+  const admitted = module === 'metadata'
+    ? [checks.metadata, 'og-image-missing', 'og-title-missing', 'og-description-missing', 'favicon-missing', 'viewport-missing', 'lang-missing']
+    : [checks[module]]
   const context = { audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
-    environment: 'production', scope: 'SITE', checks: { [checks[module]]: CHECK_REGISTRY[checks[module]].version }, outcomes: [], verificationTarget: null } },
+    environment: 'production', scope: 'SITE', checks: Object.fromEntries(admitted.map(id => [id, id.startsWith('og-') ? 1 : CHECK_REGISTRY[id].version])), outcomes: [], verificationTarget: null } },
     task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module }, deadline: Date.now() + 10_000,
     dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
       pageId: 'page', metadata: null, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopHtmlTruncated: true,
@@ -75,9 +79,9 @@ describe('independent native metric evaluation', () => {
         expect(result.receipt.complete).toBe(false)
       }
     })
-  it('retains native head observations when whole-document parsing is unavailable', async () => {
+  it('retains native and historically admitted preview observations when whole-document parsing is unavailable', async () => {
     const head = { title: null, description: null, ogTitle: null, ogDescription: null, ogImage: null,
-      viewport: null, lang: null, canonical: null, robots: null, hasFavicon: false }
+      viewport: null, lang: null, canonical: null, robots: null, hasFavicon: false, faviconHrefVersion: FAVICON_HREF_VERSION }
     const failure = await observed('metadata', false, undefined, head)
     expect(failure.flags.map(flag => flag.checkId)).toEqual(expect.arrayContaining([
       'og-image-missing', 'og-title-missing', 'og-description-missing', 'favicon-missing', 'viewport-missing', 'lang-missing',
@@ -97,11 +101,20 @@ describe('independent native metric evaluation', () => {
   })
 
   it('keeps missing and oversized native fields unknown alongside independent observations', async () => {
-    const result = await observed('metadata', false, undefined, { title: 'x'.repeat(9000), hasFavicon: false })
+    const result = await observed('metadata', false, undefined, {
+      title: 'x'.repeat(9000), hasFavicon: false, faviconHrefVersion: FAVICON_HREF_VERSION,
+    })
     expect(result.flags.map(flag => flag.checkId)).toEqual(['favicon-missing'])
     expect(result.receipt.assertions.find(assertion => assertion.key === 'title-presence')).toMatchObject({ complete: false, passed: false })
     expect(result.receipt.assertions.find(assertion => assertion.key === 'favicon-presence')).toMatchObject({ complete: true, passed: false })
     expect(result.receipt.complete).toBe(false)
+  })
+
+  it('cannot certify an icon address from a historical tag count', async () => {
+    const result = await observed('metadata', false, undefined, { title: 'Useful reports for your team', hasFavicon: true })
+    expect(result.flags).toEqual([])
+    expect(result.receipt.assertions.find(assertion => assertion.key === 'title-presence')).toMatchObject({ complete: true, passed: true })
+    expect(result.receipt.assertions.find(assertion => assertion.key === 'favicon-presence')).toMatchObject({ complete: false, passed: false })
   })
 
   it('keeps an unavailable native image declaration unknown without inventing a destination', async () => {
@@ -135,11 +148,12 @@ describe('independent native metric evaluation', () => {
     expect(incomplete.receipt.assertions.find(assertion => assertion.key === 'headline-presence')).toMatchObject({ passed: false, complete: false })
     expect(incomplete.receipt.complete).toBe(false)
   })
-  it('records a 16px input sample without certifying recovery while page purpose and HTML remain unavailable', async () => {
+  it('verifies measured input sizing while page purpose and HTML remain unavailable', async () => {
     const before = await observed('mobile-ux-quality'), flag = before.flags.find(flag => flag.checkId === 'mobile-input-zoom')!
     const after = await observed('mobile-ux-quality', true)
-    expect(after.receipt.assertions.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ complete: true, passed: true, disposition: 'observed' })
-    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })?.assertion).toMatchObject({
+      complete: true, passed: true, observed: expect.stringContaining('not iOS focus'),
+    })
     expect(after.receipt.assertions.filter(assertion => ['mobile-cta-position', 'mobile-cta-label'].includes(assertion.key)))
       .toEqual([expect.objectContaining({ complete: false, passed: false }), expect.objectContaining({ complete: false, passed: false })])
   })

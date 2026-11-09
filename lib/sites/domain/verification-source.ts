@@ -27,6 +27,22 @@ export async function readDiagnosticSources(db: Pick<Prisma.TransactionClient, '
   return spec.verificationSources.flags
 }
 
+/** Receipt writers may compare frozen facts only while their declared attempt
+ * still owns this Run and every original capture belongs to the Site. */
+export async function readPendingFrozenRepairSources(db: Pick<Prisma.TransactionClient, 'flag'>,
+  audit: { id: string; parentId: string | null; projectId?: string | null }, spec: ExecutionSpec | null | undefined) {
+  const target = spec?.verificationTarget, sources = spec?.verificationSources
+  if (!sources || target?.kind !== 'DIAGNOSTIC' || target.parentAuditId !== audit.parentId || !audit.projectId) return null
+  const live = await db.flag.findMany({
+    where: { ...diagnosticSourceWhere(spec, audit.projectId), improvementOccurrence: { improvement: { attempts: { some: {
+      id: target.attemptId, sourceAuditId: target.parentAuditId, outcome: null, verificationAuditId: audit.id,
+    } } } } },
+    take: sources.flags.length, select: { id: true, auditId: true },
+  })
+  const membership = new Map(live.map(flag => [flag.id, flag.auditId]))
+  return sources.flags.every(flag => membership.get(flag.id) === flag.auditId) ? sources.flags : null
+}
+
 /** Locate the immutable source receipt for this page without borrowing a later
  * observation. Multiple captures on the same page retain their own Flag rules. */
 export async function verificationSourceAuditId(db: Pick<Prisma.TransactionClient, 'flag'>,

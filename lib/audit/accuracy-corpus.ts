@@ -63,10 +63,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://fixflags.com',
     tier: 'gold',
     maxImportantFalseBlockers: 0,
-    // Approved Search correction: absent optional markup is not a universal failure.
-    expectedTop3: ['cookie-consent-absent', 'description-too-long'],
-    knownFalsePositives: ['form-missing-validation'],
-    expectedPresent: ['cookie-consent-absent', 'security-headers-missing'],
+    expectedTop3: ['description-too-long', 'measurement-ga-gtm-posthog-missing'],
+    knownFalsePositives: ['form-missing-validation', 'cookie-consent-absent'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'security-headers-missing'],
   },
   {
     file: 'nextjs-org.html',
@@ -171,8 +170,8 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     tier: 'structural',
     maxImportantFalseBlockers: 99,
     expectedTop3: [],
-    knownFalsePositives: [],
-    expectedPresent: ['cookie-consent-absent'],
+    knownFalsePositives: ['cookie-consent-absent'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing'],
   },
   {
     file: 'v0-dev.html',
@@ -197,9 +196,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://shopify.com',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['buttons-no-text', 'title-too-long', 'cookie-consent-absent'],
-    knownFalsePositives: [],
-    expectedPresent: ['cookie-consent-absent'],
+    expectedTop3: ['buttons-no-text', 'title-too-long', 'no-contact-info'],
+    knownFalsePositives: ['cookie-consent-absent'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing'],
   },
   // ── E-commerce fixture ──────────────────────────────────────────────────────
   // Product listing page with prices, add-to-cart buttons, reviews, newsletter

@@ -16,7 +16,7 @@ import { activeRunWhere,reclaimExpiredRuns,RUN_LEASE_MS } from './run-leases'
 import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
 import { resolveRunExecution,validateRunSelection } from './run-selection'
 import { requireActiveAccount } from '@/lib/auth/account-availability'
-import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
+import { assertAdminDomainActor, type AdminSiteOperationScope } from '@/lib/admin/domain-actor'
 import { loadOwnedRunRequestByKey, loadRunRequestByKey, retainSharedRunKey } from './run-request-keys'
 export { getOwnedRun } from './run-queries'
 export { markOutcomeRunsCouldNotVerify,reconcileOutcomeRunsForAudit } from './run-reconciliation'
@@ -26,8 +26,8 @@ const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
 export type { RunInput,SiteRunVerificationTarget } from './run-intent'
 export { OUTCOME_RUN_LEASE_MS } from './run-leases'
 
-export function reclaimExpiredOutcomeRuns(projectId: string): Promise<number> {
-  return reclaimExpiredRuns(projectId, reconcileOutcomeRunsForAudit)
+export function reclaimExpiredOutcomeRuns(projectId: string, authority?: AdminSiteOperationScope): Promise<number> {
+  return reclaimExpiredRuns(projectId, reconcileOutcomeRunsForAudit, authority)
 }
 
 function auditSource(source: RunRequestSource) {
@@ -37,6 +37,8 @@ function auditSource(source: RunRequestSource) {
 }
 
 import { safeContext,sameExecutionScope,sameSelection,sameRecordedRunCommand,type RunInput,type SiteRunVerificationTarget } from './run-intent'
+import { recordedWatchTargetRevision } from './scheduled-observation'
+import { admittedOutcomeAuthorization } from '../domain/outcome-authorization'
 /**
  * Which Site runs count against the plan's scan allowance.
  *
@@ -57,7 +59,7 @@ import { safeContext,sameExecutionScope,sameSelection,sameRecordedRunCommand,typ
  * was unmetered, so the allowance only applied to the legacy new-URL path and a
  * Free Site could be re-checked without limit.
  */
-export async function requestSiteRun(input: RunInput): Promise<{
+export async function requestSiteRun(input: RunInput, options: { reuseOnly?: true } = {}): Promise<{
   runId: string
   auditId: string | null
   outcomeIds: string[]
@@ -107,8 +109,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
   }
   const replaySelection = (run: { selections?: Array<{ outcomeId: string }> }) => scope === 'SITE' || scope === 'CATEGORY'
     ? (run.selections ?? []).map(selection => selection.outcomeId).sort() : selectedIds
-  const compatibleActive = (run: Parameters<typeof matchesIntent>[0] & { executionSpec?: unknown }) => {
+  const compatibleActive = (run: Parameters<typeof matchesIntent>[0] & { executionSpec?: unknown; context?: unknown }) => {
     if (!matchesIntent(run)) return false
+    if (input.scheduledClaim && recordedWatchTargetRevision(run.context) !== (input.scheduledClaim.targetRevision ?? 1)) return false
     const admitted = readExecutionSpec(run.executionSpec)
     if (scope === 'CATEGORY' && (admitted?.category?.sourceAuditId !== executionSpec.category?.sourceAuditId ||
       canonicalIntent(admitted?.category?.pages) !== canonicalIntent(executionSpec.category?.pages))) return false
@@ -117,7 +120,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
       (admitted?.consoleObservationScopes?.find(prior => prior.pageUrl === scope.pageUrl)?.minimumMs ?? admitted?.consoleObservationMs ?? 2000))) return false
     if (scope !== 'SITE' && scope !== 'CATEGORY') return true
     return admitted?.scope === scope && monitoringExecutionCovers(admitted, executionSpec) &&
-      canonicalIntent(canonicalExecutionOutcomes(admitted.outcomes)) === canonicalIntent(canonicalExecutionOutcomes(executionSpec.outcomes))
+      canonicalIntent(canonicalExecutionOutcomes(admitted.outcomes)) === canonicalIntent(canonicalExecutionOutcomes(executionSpec.outcomes)) &&
+      outcomeAuthorization.outcomes.every(({ id, revision }) => admittedOutcomeAuthorization(run.context, id) === revision)
   }
 
   const retainShared = (run: { id: string; auditId: string | null; selections?: Array<{ outcomeId: string }> }) => input.idempotencyKey?.trim()
@@ -129,7 +133,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
   // Clear any run that no worker still owns before deciding whether this Site is
   // busy. Without this the abandoned row keeps failing the partial unique index
   // below, and the customer gets an error instead of a verification.
-  await reclaimExpiredOutcomeRuns(input.projectId)
+  await reclaimExpiredOutcomeRuns(input.projectId, input.operator ? { actor: input.operator, projectId: input.projectId,
+    userId: input.userId, cleanup: keyOwner.cleanup } : undefined)
 
   const active = await prisma.runRequest.findFirst({
     where: activeRunWhere(input.projectId, new Date()),
@@ -143,6 +148,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
     const shared = await retainShared(active)
     return { runId: shared.id, auditId: shared.auditId, outcomeIds: replaySelection(shared), reused: true }
   }
+  if (options.reuseOnly) throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
 
 
   if (!OPEN_BETA_ACCESS && (input.source === 'WEB' || input.source === 'MCP' || input.source === 'API')) {
@@ -212,6 +218,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       admission: {
         kind: 'site-run', parentId: parent?.id, request: runAdmission, executionSpec,
         scheduledClaim: input.scheduledClaim, operator: input.operator,
+        ...(input.expectedResponsibilityHash ? { preservePreparedScope: true } : {}),
         verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
       },
       url: executionSpec.targetUrl,
@@ -223,6 +230,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
         source: auditSource(input.source),
       }),
     })
+    const outcomeIds = started.admittedOutcomeIds ?? selectedIds
     await recordSiteLifecycleEvent({
       name: 'outcome_run_requested',
       idempotencyKey: `outcome-run-requested:${run.id}`,
@@ -231,16 +239,18 @@ export async function requestSiteRun(input: RunInput): Promise<{
       properties: {
         source: input.source.toLowerCase(),
         kind: first?.kind ?? 'diagnostic',
-        outcomeCount: selectedIds.length,
+        outcomeCount: outcomeIds.length,
         reused: started.reused,
       },
     }).catch((error) => {
       logger.error('Outcome run request telemetry failed', { runId: run.id, error })
     })
-    return { runId: run.id, auditId: started.auditId, outcomeIds: selectedIds, reused: started.reused }
+    return { runId: run.id, auditId: started.auditId, outcomeIds, reused: started.reused }
   } catch (error) {
-    if (error instanceof RunAdmissionReplay)
+    if (error instanceof RunAdmissionReplay) {
+      assertResponsibility(readExecutionSpec(error.executionSpec))
       return { runId: error.runId, auditId: error.auditId, outcomeIds: scope === 'SITE' || scope === 'CATEGORY' ? error.outcomeIds : selectedIds, reused: true }
+    }
     // Admission can commit before its response is lost. Recover its immutable
     // receipt through the same authority and command checks as an ordinary retry.
     const replay = await replayRecorded()
@@ -248,10 +258,11 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const concurrent = await prisma.runRequest.findFirst({
         where: { projectId: input.projectId, status: { in: ['QUEUED', 'RUNNING'] } },
-        include: { selections: { select: { outcomeId: true } } },
+        include: { selections: { select: { outcomeId: true } }, audit: { select: { projectId: true } } },
       })
       if (concurrent) {
-        if (concurrent.environment !== environment || !compatibleActive(concurrent))
+        if (concurrent.audit && concurrent.audit.projectId !== input.projectId ||
+          concurrent.environment !== environment || !compatibleActive(concurrent))
           throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
         const shared = await retainShared(concurrent)
         return { runId: shared.id, auditId: shared.auditId, outcomeIds: replaySelection(shared), reused: true }

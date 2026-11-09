@@ -1,16 +1,14 @@
 import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
-import { observedInsecureResources, RESOURCE_TRANSPORT_SCOPE, type ResourceTransport } from '../resource-transport'
+import { observedInsecureResources, RESOURCE_TRANSPORT_CONTEXT, RESOURCE_TRANSPORT_SCOPE,
+  RESOURCE_TRANSPORT_VERIFICATION_RULE, RESOURCE_TRANSPORT_VERSION, type ResourceTransport } from '../resource-transport'
 import type { CheckAssertion } from './assertion'
-import { destinationContext, displayDestination } from './destination-evidence'
+import { displayDestination } from './destination-evidence'
 import type { PublicDocument } from '../search/contracts'
 import { certificateFailureReason, TLS_CERTIFICATE_VERIFICATION_RULE } from '../tls-evidence'
 import { TLS_CERTIFICATE_COPY } from '@/lib/marketing/copy/tls'
 import { isUnresolvedPublicRedirect } from '../redirect-evidence'
-
-export function certificateRequestContext(pageUrl: string) {
-  return 'tls-certificate:v1:' + destinationContext(pageUrl, pageUrl)
-}
+import { certificatePeerContext } from './certificate-scope'
 
 /** One recorded public transport owns protocol, peer-certificate and HTML
  * resource interpretation for both progressive and compatibility adapters. */
@@ -32,22 +30,27 @@ export function assessSecurityTransport(pageUrl: string, metadata: PageMetadata 
     const failure = matched?.transportFailure
     const trustedResponse = responseObserved && new URL(reachedUrl).protocol === 'https:'
     const noTlsResponse = responseObserved && new URL(pageUrl).protocol === 'http:' && new URL(reachedUrl).protocol === 'http:'
-    const context = certificateRequestContext(pageUrl)
     const observed = failure ? `${TLS_CERTIFICATE_COPY[certificateFailureReason(failure)].label} at ${displayDestination(reachedUrl)} (${failure.code}). No HTTP response was obtained.`
       : trustedResponse ? `The public request reached ${displayDestination(reachedUrl)} over HTTPS with normal certificate and hostname verification.`
         : noTlsResponse ? 'The public request completed over HTTP. No HTTPS certificate was observed.'
           : 'No verified HTTPS response or recognized peer-certificate refusal was recorded for this public request.'
+    const failureContext = failure ? certificatePeerContext(pageUrl, reachedUrl) : null
+    const verifiedPeers = matched && trustedResponse ? [...new Set([...matched.redirects, reachedUrl]
+      .map(url => new URL(url)).filter(url => url.protocol === 'https:').map(url => url.origin))] : []
+    const measurements = failureContext ? [{ context: failureContext, passed: false, observed }]
+      : verifiedPeers.map(origin => ({ context: certificatePeerContext(pageUrl, origin), passed: true,
+        observed: `The public request reached ${origin} with normal certificate and hostname verification.` }))
     assertions.push({ key: 'tls-certificate', name: 'HTTPS certificate',
       expected: 'The original public request completes over HTTPS with normal certificate and hostname verification',
-      observed, passed: trustedResponse, complete: Boolean(failure || trustedResponse || noTlsResponse), context,
+      observed, passed: trustedResponse, complete: Boolean(failure || trustedResponse || noTlsResponse), measurements,
       ...(noTlsResponse ? { disposition: 'observed' as const } : {}) })
-    if (failure) {
+    if (failure && failureContext) {
       const copy = TLS_CERTIFICATE_COPY[certificateFailureReason(failure)]
       flags.push({ checkId: 'security-certificate-invalid', rubric: 'REACH', impactTag: 'TRUST', severity: 'CRITICAL',
         confidence: 1, source: 'DETERMINISTIC', pageUrl, problem: copy.problem, evidence: observed,
         fix: copy.fix,
         verificationRule: TLS_CERTIFICATE_VERIFICATION_RULE,
-        evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'HTTPS certificate', context }] })
+        evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'HTTPS certificate', context: failureContext }] })
     }
   }
   return { flags, assertions, complete: assertions.every(assertion => assertion.complete === true),
@@ -61,10 +64,12 @@ export function securityObservations(url: string, meta: Pick<PageMetadata, 'imag
     observed: https ? 'HTTPS URL' : 'HTTP URL', passed: https, complete: true }]
   if (https) {
     const insecure = resources?.insecure.length ?? (meta ? observedInsecureResources(meta, url).length : 0)
-    const complete = (resources ?? meta?.resourceTransport)?.complete === true
+    const inventory = resources ?? meta?.resourceTransport
+    const current = inventory?.version === RESOURCE_TRANSPORT_VERSION
+    const complete = current && inventory.complete
     assertions.push({ key: 'resource-transport', name: 'Declared resource transport', expected: 'Inspected HTML resource references do not use untrustworthy HTTP URLs',
       observed: `${insecure} HTTP resource references recorded. ${complete ? '' : 'Resource collection is incomplete. '}${RESOURCE_TRANSPORT_SCOPE}`,
-      passed: complete && insecure === 0, complete })
+      passed: complete && insecure === 0, complete, ...(current ? { context: RESOURCE_TRANSPORT_CONTEXT } : {}) })
   }
   return assertions
 }
@@ -78,13 +83,12 @@ export function runSecurityBasicsChecks(url: string, meta: PageMetadata | null, 
     fix: '1. Enable HTTPS on your hosting provider (Railway, Vercel, Netlify offer free SSL)\n2. Set up a 301 redirect from HTTP to HTTPS\n3. Update all internal links to use https:// URLs',
     confidence: 1.0, source: 'DETERMINISTIC',
   })
-  const resources = !isHttps ? [] : resourceTransport?.insecure ?? (meta ? observedInsecureResources(meta, url) : [])
+  const inventory = resourceTransport ?? meta?.resourceTransport
+  const resources = !isHttps || inventory?.version === 1 ? [] : inventory?.insecure ?? (meta ? observedInsecureResources(meta, url) : [])
   const mixedContentUrls = [...new Set(resources.map(resource => resource.url))]
 
   if (mixedContentUrls.length > 0) {
-    const sample = mixedContentUrls.slice(0, 3).map((u) => {
-      try { return new URL(u).pathname } catch { return u }
-    }).join(', ')
+    const sample = mixedContentUrls.slice(0, 3).map(displayDestination).join(', ')
     const remaining = mixedContentUrls.length - 3
 
     findings.push({
@@ -97,6 +101,10 @@ export function runSecurityBasicsChecks(url: string, meta: PageMetadata | null, 
       fix: '1. Serve the affected resources over HTTPS\n2. Update HTTP script, stylesheet, image, frame and media URLs, including responsive candidates and the document base URL\n3. Confirm the secure resources still work after the change',
       confidence: 1.0,
       source: 'DETERMINISTIC',
+      ...(inventory ? { verificationRule: RESOURCE_TRANSPORT_VERIFICATION_RULE } : {}),
+      ...(inventory?.version === RESOURCE_TRANSPORT_VERSION ? { evidenceTargets: [
+        { kind: 'page', source: 'measured', device: 'desktop', label: 'Declared resource transport', context: RESOURCE_TRANSPORT_CONTEXT },
+      ] } : {}),
     })
   }
 

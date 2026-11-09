@@ -1,5 +1,11 @@
-import { existsSync } from 'node:fs'
+import { existsSync, lstatSync } from 'node:fs'
 import { join } from 'node:path'
+
+export function assertNoPackagedRuntimeData(standaloneRoot) {
+  if (lstatSync(join(standaloneRoot, '.data'), { throwIfNoEntry: false })) {
+    throw new Error('Standalone package contains local runtime data. Rebuild in a clean output directory.')
+  }
+}
 
 export function runtimeEntry(mode, root = process.cwd(), env = process.env) {
   if (!['web', 'worker'].includes(mode)) throw new Error('Usage: node scripts/runtime-start.mjs <web|worker>')

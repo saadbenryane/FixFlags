@@ -45,6 +45,35 @@ beforeEach(() => {
 })
 
 describe('runWorkspaceChat', () => {
+  it.each([undefined, { prompt_tokens: -1, completion_tokens: 18 }])('retains unknown consumption when provider usage is absent or invalid: %j', async usage => {
+    fakeCreate.mockResolvedValue({ choices: [{ message: { content: 'Recorded evidence only.' } }], usage })
+    const { runWorkspaceChat } = await loadWorkspaceChat({ openai: { chat: { completions: { create: fakeCreate } } } })
+    const record = vi.fn(), admit = vi.fn(async () => record)
+    const result = await runWorkspaceChat({ message: 'Explain', url: 'https://example.com', status: 'COMPLETED', flags }, admit)
+    expect(result.usage).toBeNull()
+    expect(record).toHaveBeenCalledWith(null)
+    expect(admit).toHaveBeenCalledBefore(fakeCreate)
+  })
+
+  it('records normalized cache and tier usage while preserving the full input allowance', async () => {
+    fakeCreate.mockResolvedValue({ model: 'gpt-4o-mini', service_tier: 'default', id: 'response-1',
+      choices: [{ message: { content: 'Recorded evidence only.' } }],
+      usage: { prompt_tokens: 120, completion_tokens: 18, prompt_tokens_details: { cached_tokens: 80 } } })
+    const { runWorkspaceChat } = await loadWorkspaceChat({ openai: { chat: { completions: { create: fakeCreate } } } })
+    const record = vi.fn()
+    const result = await runWorkspaceChat({ message: 'Explain', url: 'https://example.com', status: 'COMPLETED', flags }, async () => record)
+    expect(result.usage).toEqual({ inputTokens: 120, outputTokens: 18, model: 'gpt-4o-mini' })
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ inputTokens: 40, cacheReadTokens: 80,
+      outputTokens: 18, provider: 'openai', api: 'chat.completions', serviceTier: 'default', providerResponseId: 'response-1' }))
+  })
+
+  it('does not dispatch when durable admission fails', async () => {
+    const { runWorkspaceChat } = await loadWorkspaceChat({ openai: { chat: { completions: { create: fakeCreate } } } })
+    await expect(runWorkspaceChat({ message: 'Explain', url: 'https://example.com', status: 'COMPLETED', flags },
+      async () => { throw new Error('Reservation expired') })).rejects.toThrow('Workspace chat is unavailable')
+    expect(fakeCreate).not.toHaveBeenCalled()
+  })
+
   it('retains provider-reported cost evidence when the reply is empty', async () => {
     fakeCreate.mockResolvedValue({ model: 'gpt-4o-mini', choices: [{ message: { content: '' } }], usage: { prompt_tokens: 123, completion_tokens: 45 } })
     const { runWorkspaceChat } = await loadWorkspaceChat({ openai: { chat: { completions: { create: fakeCreate } } } })

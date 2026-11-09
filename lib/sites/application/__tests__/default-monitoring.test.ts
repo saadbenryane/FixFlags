@@ -7,12 +7,14 @@ const project = { id: 'site', url: 'http://example.com:8080', watchInterval: nul
   watchEveryMinutes: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null,
   user: { id: 'owner', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE', lifecycleStatus: 'ACTIVE',
     auditsLimit: 3, deepReviewsLimit: 1, licensedSiteQuantity: 0, entitlementGrants: [] } }
-const tx = { project: { findFirst: vi.fn(), updateMany: vi.fn() }, siteOutcome: { upsert: vi.fn() } }
+const tx = { project: { findFirst: vi.fn(), updateMany: vi.fn() }, siteOutcome: { upsert: vi.fn() },
+  outcomeExecutionBinding: { findFirst: vi.fn() }, uptimeMonitor: { createMany: vi.fn() } }
 
 beforeEach(() => {
   vi.clearAllMocks()
   tx.project.findFirst.mockResolvedValue(project)
   tx.project.updateMany.mockResolvedValue({ count: 1 })
+  tx.outcomeExecutionBinding.findFirst.mockResolvedValue(null)
 })
 const ensure = () => ensureDefaultMonitoring(tx as unknown as Prisma.TransactionClient, 'site', 'owner', now)
 const grant = { id: 'grant', userId: 'owner', operationId: 'grant-operation', grantedBy: 'operator', plan: 'TEAM',
@@ -25,6 +27,7 @@ describe('automatic public monitoring defaults', () => {
     expect(await ensure()).toBe(false)
     expect(tx.project.updateMany).not.toHaveBeenCalled()
     expect(tx.siteOutcome.upsert).not.toHaveBeenCalled()
+    expect(tx.uptimeMonitor.createMany).not.toHaveBeenCalled()
   })
   it('restarts a permitted policy-halted cadence without changing its history or custom timing', async () => {
     tx.project.findFirst.mockResolvedValue({ ...project, watchInterval: 'CUSTOM', watchEveryMinutes: 180,
@@ -44,7 +47,7 @@ describe('automatic public monitoring defaults', () => {
     { watchLastError: 'Unknown operational failure' },
   ])('does not restart a halted clock with changed authority or an unrelated reason: %j', async changed => {
     tx.project.findFirst.mockResolvedValue({ ...project, watchInterval: 'DAILY',
-      watchLastError: MONITORING_SCHEDULE_UNAVAILABLE, ...changed })
+      uptimeMonitor: { id: 'existing-monitor' }, watchLastError: MONITORING_SCHEDULE_UNAVAILABLE, ...changed })
     await ensure()
     expect(tx.project.updateMany).not.toHaveBeenCalled()
   })
@@ -58,6 +61,9 @@ describe('automatic public monitoring defaults', () => {
           config: { startUrl: 'http://example.com:8080', expectedSelector: 'body' } } } }),
     }))
     expect(tx.project.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { watchInterval: 'WEEKLY', watchNextRunAt: now, watchPausedAt: null } }))
+    expect(tx.uptimeMonitor.createMany).toHaveBeenCalledWith({
+      data: { projectId: 'site', targetUrl: 'http://example.com:8080/', nextProbeAt: now }, skipDuplicates: true,
+    })
   })
 
   it('uses the paid cadence without changing subscriptions or exceeding the available policy', async () => {
@@ -71,11 +77,13 @@ describe('automatic public monitoring defaults', () => {
 
   it('keeps an existing cadence, next check, lease and Outcome intact while adding missing default coverage', async () => {
     tx.project.findFirst.mockResolvedValue({ ...project, watchInterval: 'CUSTOM', watchEveryMinutes: 180, watchNextRunAt: now,
+      uptimeMonitor: { id: 'existing-monitor' },
       user: { ...project.user, entitlementGrants: [{ ...grant, plan: null, allowedWatchIntervals: ['custom'] }] } })
     await ensure()
     expect(tx.siteOutcome.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: {},
       create: expect.objectContaining({ staleAfterMinutes: 900 }) }))
     expect(tx.project.updateMany).not.toHaveBeenCalled()
+    expect(tx.uptimeMonitor.createMany).not.toHaveBeenCalled()
   })
   it('uses an active granted plan for its automatic cadence without changing the subscription', async () => {
     tx.project.findFirst.mockResolvedValue({ ...project, user: { ...project.user, entitlementGrants: [grant] } })

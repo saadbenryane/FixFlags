@@ -39,7 +39,7 @@ export const REASON_COPY: Record<string, string> = {
   bot_wall: 'A bot check blocked the walk.',
   password_gate: 'The storefront is password gated.',
   timeout: 'The walk timed out before checkout.',
-  flaky: 'One walk failed and the retry recovered. Marked unclear.',
+  flaky: 'The checkout attempts disagreed. Run the check again.',
   probe_error: 'The walk hit an internal error.',
 }
 

@@ -7,25 +7,35 @@ import type { DeterministicFlag } from '../flag-types'
 
 export const LOADING_VERIFICATION_RULE = 'Loading UI observation v1'
 export const LOADING_CHECKS = ['loading-indicator-stuck', 'loading-state-slow', 'mobile-load-delay-content'] as const
+export const LOADING_DELAY_MS = 3000
+export const MOBILE_LOADING_DELAY_MS = 4000
 export const loadingObservationSchema = z.object({ version: z.literal(1), device: z.enum(['desktop', 'mobile']), scope: captureObservationScopeSchema,
-  contentVisible: z.boolean(), ready: z.boolean(), restricted: z.boolean() }).strict()
+  contentVisible: z.boolean(), ready: z.boolean(), restricted: z.boolean(), interrupted: z.literal(true).optional() }).strict()
 
 export function loadingContext(value: LoadingObservation | undefined): string | undefined {
   const observation = loadingObservationSchema.safeParse(value)
-  if (!observation.success || observation.data.restricted) return undefined
+  if (!observation.success || observation.data.restricted || observation.data.interrupted) return undefined
   const key = captureObservationKey(observation.data.scope)
   return key === 'unknown' ? undefined : 'loading:' + observation.data.device + ':' + key
 }
+
+export function delayedLoadingClearance(window: PageLoadExperience | null | undefined, threshold: number): number | null {
+  if (!window?.loadingVisibleAtInitial || window.loadingVisibleAtFinal || window.observation?.restricted || window.observation?.interrupted) return null
+  const elapsed = window.loadingClearedMs
+  return elapsed != null && elapsed > threshold ? elapsed : null
+}
+
 export function loadingDelayObservation(window: PageLoadExperience, threshold: number, key = 'loading-delay', advisoryPass = false): CheckAssertion {
   const context = window.observation?.device === window.device ? loadingContext(window.observation) : undefined
-  const failed = window.loadingVisibleAtInitial && !window.loadingVisibleAtFinal && window.loadingClearedMs !== null && window.loadingClearedMs > threshold
+  const failed = delayedLoadingClearance(window, threshold) !== null
   const passed = !window.loadingVisibleAtFinal && (!window.loadingVisibleAtInitial || window.loadingClearedMs !== null && window.loadingClearedMs <= threshold)
   const comparablePass = passed && window.observation?.ready === true && window.observation.contentVisible === true
   const recordedPass = Boolean(context && comparablePass)
   // A cleared advisory window stays measured. It cannot certify recovery.
   const advisory = advisoryPass && recordedPass || !context && !window.observation
   return { key, name: 'Initial loading UI (' + window.device + ')', expected: `Blocking initial loading UI clears within ${threshold}ms and page content is visible`,
-    observed: `${window.device}: initial loading ${window.loadingVisibleAtInitial}, final loading ${window.loadingVisibleAtFinal}, cleared at ${window.loadingClearedMs ?? 'unknown'}ms. ` +
+    observed: window.observation?.interrupted ? `The ${window.device} page changed documents or routes during the loading observation.` :
+      `${window.device}: initial loading ${window.loadingVisibleAtInitial}, final loading ${window.loadingVisibleAtFinal}, cleared at ${window.loadingClearedMs ?? 'unknown'}ms. ` +
       (window.observation?.contentVisible ? 'Viewport content was observed.' : 'Viewport content is unproven.'),
     passed: recordedPass, complete: Boolean(context && (failed || comparablePass)),
     ...(context ? { context } : {}),
@@ -36,7 +46,8 @@ export function blockingLoadingObservation(metrics: Partial<Pick<CaptureMetrics,
   const failed = metrics?.stuckLoadingIndicator === true
   const passed = metrics?.stuckLoadingIndicator === false && metrics.loadingObservation?.ready === true && metrics.loadingObservation.contentVisible === true
   return { key: 'blocking-loading-ui', name: 'Captured loading UI', expected: 'Blocking mobile loading UI is absent and page content is visible',
-    observed: typeof metrics?.stuckLoadingIndicator === 'boolean' ? `Blocking loading UI ${failed ? 'remained' : 'was absent'} at capture time. ` +
+    observed: metrics?.loadingObservation?.interrupted ? 'The mobile page changed documents or routes during the capture.' :
+      typeof metrics?.stuckLoadingIndicator === 'boolean' ? `Blocking loading UI ${failed ? 'remained' : 'was absent'} at capture time. ` +
       (metrics.loadingObservation?.contentVisible ? 'Viewport content was observed.' : 'Viewport content is unproven.') : 'Loading UI was not observed.',
     passed: Boolean(context && passed), complete: Boolean(context && (failed || passed)),
     ...(context ? { context } : metrics?.loadingObservation ? {} : { disposition: 'observed' as const }) }
@@ -50,9 +61,10 @@ export function scopeLoadingFlag(flag: DeterministicFlag, observations: Array<Lo
 }
 
 export function mobileLoadingDelayFlag(load: PageLoadExperience | null | undefined): DeterministicFlag | null {
-  if (load?.device === 'mobile' && load.observation?.restricted !== true && load.loadingVisibleAtInitial &&
-    load.loadingClearedMs != null && load.loadingClearedMs > 4000) {
-    const seconds = (load.loadingClearedMs / 1000).toFixed(1)
+  if (load?.device === 'mobile') {
+    const clearance = delayedLoadingClearance(load, MOBILE_LOADING_DELAY_MS)
+    if (clearance === null) return null
+    const seconds = (clearance / 1000).toFixed(1)
     return scopeLoadingFlag({
       checkId: 'mobile-load-delay-content',
       rubric: 'EXPERIENCE',

@@ -16,8 +16,9 @@ describe('private Uptime history', () => {
     expect(mocks.history).not.toHaveBeenCalled()
   })
   it('uses the authorized project and canonical identity for history', async () => {
-    const response = await GET(request('?window=7d&cursor=probe_1'), context)
-    expect(mocks.history).toHaveBeenCalledWith(site, '7d', 'probe_1')
+    const cursor = 'u1.probe_1.' + 'a'.repeat(43)
+    const response = await GET(request('?window=7d&cursor=' + cursor), context)
+    expect(mocks.history).toHaveBeenCalledWith(site, '7d', cursor)
     expect(await response.json()).toMatchObject({ siteId: 'owned-project' })
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
   })

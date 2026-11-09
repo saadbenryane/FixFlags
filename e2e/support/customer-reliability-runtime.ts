@@ -4,12 +4,15 @@ import { createServer } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
+import { isAbsolute } from 'node:path'
 import Redis from 'ioredis'
 import { chromium } from 'playwright'
 
 async function main() {
 loadEnvConfig(process.cwd())
 if (process.env.FIXFLAGS_LOCAL_RELIABILITY_PROOF !== '1') throw new Error('Explicit opt-in required')
+const webEntry = process.env.FIXFLAGS_LOCAL_STANDALONE_SERVER
+if (!webEntry || !isAbsolute(webEntry)) throw new Error('An isolated standalone server entry is required')
 for (const key of ['DATABASE_URL', 'REDIS_URL']) {
   if (!process.env[key] || !['localhost', '127.0.0.1'].includes(new URL(process.env[key]!).hostname)) throw new Error(`Local ${key} required`)
 }
@@ -21,7 +24,8 @@ const token = randomBytes(20).toString('hex')
 const prefix = `/fixflags-reliability-${randomBytes(6).toString('hex')}`
 const objects = new Map<string, Buffer>()
 const messages: Array<Record<string, unknown>> = []
-let broken = false, missingTitle = false, rejectNextEmail = false, fixtureEnabled = false
+let broken = false, missingTitle = false, fixtureEnabled = false, checkoutForm = false
+let rejectCheckoutOutcomeId: string | null = null
 const requests: Array<{ method: string; path: string; status: number }> = []
 const server = createServer(async (req, res) => {
   const chunks = []; for await (const chunk of req) chunks.push(Buffer.from(chunk))
@@ -53,19 +57,32 @@ const server = createServer(async (req, res) => {
       const update = JSON.parse(body.toString())
       if (typeof update.broken === 'boolean') broken = update.broken
       if (typeof update.missingTitle === 'boolean') missingTitle = update.missingTitle
-      if (typeof update.rejectNextEmail === 'boolean') rejectNextEmail = update.rejectNextEmail
+      if (typeof update.rejectCheckoutOutcomeId === 'string') rejectCheckoutOutcomeId = update.rejectCheckoutOutcomeId
       if (typeof update.fixtureEnabled === 'boolean') fixtureEnabled = update.fixtureEnabled
+      if (typeof update.checkoutForm === 'boolean') checkoutForm = update.checkoutForm
     }
     res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ messages, requests, objects: [...objects.keys()], broken, prefix })); return
   }
   if (url.pathname === '/emails') {
     if (req.headers.authorization !== 'Bearer re_local_transport_fixture') { res.writeHead(403); res.end(); return }
     res.setHeader('Content-Type', 'application/json')
-    if (rejectNextEmail) { rejectNextEmail = false; res.writeHead(429); res.end(JSON.stringify({ name: 'rate_limit_exceeded', message: 'Controlled retryable delivery failure' })); return }
     const key = req.headers['idempotency-key']
-    const existing = messages.find(message => message.key === key)
+    const existing = key ? messages.find(message => message.key === key) : undefined
     if (existing) { res.end(JSON.stringify({ id: existing.id })); return }
-    const message = { ...JSON.parse(body.toString()), key, id: `local-message-${messages.length + 1}` }; messages.push(message)
+    const payload = JSON.parse(body.toString()) as { tags?: { name: string; value: string }[] }
+    const auditId = payload.tags?.find(tag => tag.name === 'audit_id')?.value
+    const outcomeId = rejectCheckoutOutcomeId
+    if (outcomeId && auditId && payload.tags?.some(tag => tag.name === 'purpose' && tag.value === 'watch')) {
+      const { prisma } = await import('../../lib/db')
+      const failure = await prisma.outcomeAssessment.findFirst({ where: { outcomeId, state: 'FLAG',
+        runRequest: { auditId, source: 'WATCH' } }, select: { id: true } })
+      // An earlier Watch can still deliver while the checkout failure is in flight.
+      if (failure && rejectCheckoutOutcomeId === outcomeId) {
+        rejectCheckoutOutcomeId = null
+        res.writeHead(429); res.end(JSON.stringify({ name: 'rate_limit_exceeded', message: 'Controlled retryable delivery failure' })); return
+      }
+    }
+    const message = { ...payload, key, id: `local-message-${messages.length + 1}` }; messages.push(message)
     res.end(JSON.stringify({ id: message.id })); return
   }
   if (url.pathname.startsWith('/evidence/')) {
@@ -81,7 +98,9 @@ const server = createServer(async (req, res) => {
   res.writeHead(status, { 'Content-Type': 'text/html', 'X-Content-Type-Options': 'nosniff' })
   const title = missingTitle ? '' : '<title>Trail Supply — outdoor equipment for your next trip</title>'
   const checkout = url.pathname.endsWith('/checkout')
-  res.end(`<!doctype html><html lang="en"><head>${title}<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Find thoughtfully selected outdoor equipment for hiking and camping. Review your cart and continue to checkout safely."><style>body{margin:0;font:18px system-ui;color:#18232c;background:#fafaf8}main{max-width:760px;margin:70px auto;padding:24px}a,button{display:inline-block;padding:16px;background:#163b2f;color:white;border-radius:8px}h1{font-size:40px}</style></head><body><main>${checkout ? `<h1>${broken ? 'Checkout is temporarily unavailable' : 'Checkout'}</h1><p>${broken ? 'Please try again later.' : 'Review your order. This controlled fixture never places an order.'}</p>` : `<h1>Equipment for your next outdoor adventure</h1><p>Choose your hiking pack and continue to checkout. Free shipping on orders over $50.</p><p>Trail Pack — $75</p><a href="${prefix}/checkout">Buy now</a><p>Contact: help@example.invalid</p>`}</main></body></html>`)
+  const checkoutFields = checkoutForm && !broken
+    ? '<form onsubmit="return false"><label for="checkout-email">Email</label><input id="checkout-email" name="email" type="email" autocomplete="email"><label for="checkout-address">Shipping address</label><input id="checkout-address" name="address" autocomplete="shipping street-address"><p>This controlled entry form never submits an order or payment.</p></form>' : ''
+  res.end(`<!doctype html><html lang="en"><head>${title}<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Find thoughtfully selected outdoor equipment for hiking and camping. Review your cart and continue to checkout safely."><style>body{margin:0;font:18px system-ui;color:#18232c;background:#fafaf8}main{max-width:760px;margin:70px auto;padding:24px}a,button{display:inline-block;padding:16px;background:#163b2f;color:white;border-radius:8px}h1{font-size:40px}</style></head><body><main>${checkout ? `<h1>${broken ? 'Checkout is temporarily unavailable' : 'Checkout'}</h1><p>${broken ? 'Please try again later.' : 'Review your order. This controlled fixture never places an order.'}</p>${checkoutFields}` : `<h1>Equipment for your next outdoor adventure</h1><p>Choose your hiking pack and continue to checkout. Free shipping on orders over $50.</p><p>Trail Pack — $75</p><a href="${prefix}/checkout">Buy now</a><p>Contact: help@example.invalid</p>`}</main></body></html>`)
 })
 const appPort = Number(process.env.FIXFLAGS_LOCAL_APP_PORT ?? 3145)
 const fixturePort = Number(process.env.FIXFLAGS_LOCAL_FIXTURE_PORT ?? 3146)
@@ -91,7 +110,6 @@ const nativeFetch = globalThis.fetch
 // Only this worker process maps controlled transports. DNS/SSRF checks remain intact.
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input))
-  if (url.hostname === 'api.resend.com') return nativeFetch(`${fixtureOrigin}${url.pathname}`, init)
   if (fixtureEnabled && url.hostname === 'example.com') return nativeFetch(`${fixtureOrigin}${url.pathname}${url.search}`, init)
   if (url.hostname === 'www.googleapis.com') return new Response('{}', {
     status: process.env.FIXFLAGS_LOCAL_PROVIDER_REFUSAL === '1' ? 403 : 503,
@@ -137,7 +155,7 @@ chromium.launch = async (options) => {
 }
 Object.assign(process.env, {
   NODE_ENV: 'production', NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${appPort}`, BETTER_AUTH_URL: `http://127.0.0.1:${appPort}`,
-  RESEND_API_KEY: 're_local_transport_fixture', RESEND_FROM_EMAIL: 'FixFlags <watch@example.invalid>',
+  RESEND_API_KEY: 're_local_transport_fixture', RESEND_BASE_URL: fixtureOrigin, RESEND_FROM_EMAIL: 'FixFlags <watch@example.invalid>',
   R2_ACCOUNT_ID: 'local-fixture', R2_ACCESS_KEY_ID: 'local-fixture', R2_SECRET_ACCESS_KEY: 'local-fixture', R2_BUCKET_NAME: 'evidence', R2_PUBLIC_URL: fixtureOrigin,
   R2_S3_ENDPOINT: fixtureOrigin, R2_FORCE_PATH_STYLE: 'true', FIXFLAGS_ALLOW_DEGRADED_LOCAL: 'true',
   PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: chromium.executablePath(),
@@ -147,6 +165,23 @@ Object.assign(process.env, {
 const database = new URL(process.env.DATABASE_URL ?? '')
 if (!['127.0.0.1', 'localhost'].includes(database.hostname) || !database.pathname.startsWith('/fixflags_category_journey_'))
   throw new Error('The reliability scheduler requires its own disposable category database')
+// Keep the actual cause of controlled fixture failures, rather than only the
+// engine's bounded retry classification. This runtime never uses real access.
+const [{ collectionHandlers }, { evaluatorHandlers }, { actionHandlers }, { lifecycleHandlers }, { accountHandlers }] = await Promise.all([
+  import('../../lib/audit/progressive/collectors'), import('../../lib/audit/progressive/evaluators'),
+  import('../../lib/audit/progressive/actions'), import('../../lib/audit/progressive/lifecycle'),
+  import('../../lib/audit/progressive/accounts'),
+])
+for (const handler of [...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers, ...accountHandlers]) {
+  const evaluate = handler.evaluate
+  handler.evaluate = async context => {
+    try { return await evaluate(context) } catch (error) {
+      console.error(JSON.stringify({ event: 'controlled_task_failure', kind: handler.kind,
+        error: String(error).slice(0, 2000) }))
+      throw error
+    }
+  }
+}
 const { startRecoveryScheduler } = await import('../../lib/queue/recovery-scheduler')
 startRecoveryScheduler()
 const { startWorker } = await import('../../lib/queue/worker')
@@ -156,7 +191,7 @@ const { getAuditBrowser, getBrowserDiagnostics } = await import('../../lib/audit
 const { touchWorkerHeartbeat } = await import('../../lib/queue/worker-heartbeat')
 await getAuditBrowser()
 await touchWorkerHeartbeat({ browserOk: getBrowserDiagnostics().connected, queueState: 'idle' })
-const web = spawn(process.execPath, ['.next-e2e/standalone/server.js'], { env: { ...process.env, PORT: String(appPort), HOSTNAME: '127.0.0.1', FIXFLAGS_PROCESS_ROLE: 'web' }, stdio: 'inherit' })
+const web = spawn(process.execPath, [webEntry], { env: { ...process.env, PORT: String(appPort), HOSTNAME: '127.0.0.1', FIXFLAGS_PROCESS_ROLE: 'web' }, stdio: 'inherit' })
 await mkdir('.cache', { recursive: true })
 await writeFile('.cache/customer-reliability-runtime.json', JSON.stringify({ token, prefix, redisUrl: redisUrl.toString(), fixtureOrigin }))
 console.log(`LOCAL RELIABILITY FIXTURE READY: app ${appPort}, transport ${fixturePort}; no external email or storage`)

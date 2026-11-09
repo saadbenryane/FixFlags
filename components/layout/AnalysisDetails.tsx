@@ -40,25 +40,33 @@ export function SiteAnalysisDetails({ view, disconnected, readUnavailable = fals
       }
     }
   }
-  const active = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
+  const { run, freshness } = view.presentation
+  const active = run.state === 'queued' || run.state === 'running'
   const retryNeeded = readUnavailable || Boolean(view.recoveryUnavailable)
   const offline = disconnected || retryNeeded
-  if (!active && !offline) return view.presentation.freshness.checkedAt
-    ? <p className={styles.status}>{SITE_BOARD_COPY.lastChecked} <SiteEvidenceTime checkedAt={view.presentation.freshness.checkedAt} label={view.presentation.freshness.label} /></p> : null
-  const label = offline ? SITE_WORKSPACE_COPY.disconnected : view.presentation.run.state === 'queued' ? SITE_WORKSPACE_COPY.queued : SITE_WORKSPACE_COPY.analyzing
-  const status = <AnalysisDetails statusLabel={label} active={active} disconnected={offline} />
-  return retryNeeded && onRetry ? <div className="flex flex-wrap items-center gap-x-3">{status}<Button key={siteId} ref={button} type="button" variant="ghost" size="xs" loading={busy} aria-busy={busy || undefined} onClick={() => void retry()}>{SITE_WORKSPACE_COPY.retryUpdates}</Button></div> : status
+  const checkedAt = !active && !offline ? freshness.checkedAt : null
+  const label = offline ? SITE_WORKSPACE_COPY.disconnected : run.state === 'queued' ? SITE_WORKSPACE_COPY.queued : SITE_WORKSPACE_COPY.analyzing
+  const settledLabel = run.state === 'idle'
+    ? view.audit.status === 'COMPLETED' ? SITE_WORKSPACE_COPY.analysisFinished : ''
+    : run.label
+  return <div key={siteId} className={active || offline || checkedAt ? 'flex flex-wrap items-center gap-x-3' : 'sr-only'}>
+    <AnalysisDetails statusLabel={label} active={active} disconnected={offline} settledLabel={settledLabel} />
+    {checkedAt ? <p className={styles.status}>{SITE_BOARD_COPY.lastChecked} <SiteEvidenceTime checkedAt={checkedAt} label={freshness.label} /></p> : null}
+    {retryNeeded && onRetry ? <Button ref={button} type="button" variant="ghost" size="xs" loading={busy} aria-busy={busy || undefined} onClick={() => void retry()}>{SITE_WORKSPACE_COPY.retryUpdates}</Button> : null}
+  </div>
 }
 
-/** A live or disconnected run keeps one short status. A finished run does not narrate the pipeline. */
-export function AnalysisDetails({ statusLabel, active, disconnected }: {
+/** Keep a Site's live region mounted through settlement so its next message can be announced. */
+export function AnalysisDetails({ statusLabel, active, disconnected, settledLabel }: {
   statusLabel: string
   active: boolean
   disconnected: boolean
+  settledLabel?: string
 }) {
-  if (!active && !disconnected) return null
-  return <p role="status" aria-live="polite" aria-atomic="true" className={styles.status}>
+  const visible = active || disconnected
+  if (!visible && settledLabel === undefined) return null
+  return <p role="status" aria-atomic="true" className={visible ? styles.status : 'sr-only'}>
     {active && !disconnected ? <Loader2 className="h-3.5 w-3.5 shrink-0 text-brand motion-safe:animate-spin" aria-hidden /> : null}
-    {statusLabel}
+    {visible ? statusLabel : settledLabel}
   </p>
 }

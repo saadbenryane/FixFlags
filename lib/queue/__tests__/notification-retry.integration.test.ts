@@ -78,7 +78,7 @@ run('Watch retry backlog through the installed scheduler', () => {
         return result
       })
     }
-    await watches.notifyWatchRegression(null, id)
+    await watches.notifyWatchRegression(id)
     expect(provider.send).not.toHaveBeenCalled()
     vi.restoreAllMocks()
     // A rejected stale claim is cancelled by the next permission-aware pass.
@@ -89,14 +89,95 @@ run('Watch retry backlog through the installed scheduler', () => {
     expect(await prisma.flag.count({ where: { auditId: id } })).toBe(1)
   })
 
+  it.each([2, 3])('records a later Site alert while the first provider request is still in flight with batch size %s', async limit => {
+    const { ids: [first, sameSite, later], now } = await cohort(3)
+    await prisma.audit.update({ where: { id: first }, data: { updatedAt: new Date(now.getTime() - 60_000) } })
+    await prisma.audit.update({ where: { id: sameSite }, data: {
+      projectId: 'site-' + first, url: 'https://' + first + '.example.test/', updatedAt: new Date(now.getTime() - 30_000),
+    } })
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    provider.send.mockReset().mockImplementation(async (message: { tags: Array<{ name: string; value: string }> }) => {
+      const id = message.tags.find(tag => tag.name === 'audit_id')!.value
+      if (id === first) await held
+      return { data: { id: 'accepted-' + id }, error: null }
+    })
+    const sweep = retryPendingWatchNotifications(limit)
+    try {
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUniqueOrThrow({ where: { id: first } })).toMatchObject({
+          watchNotificationStatus: 'SENDING', watchNotificationAttempts: 1, watchNotificationProviderId: null,
+        })
+        expect(await prisma.audit.findUniqueOrThrow({ where: { id: later } })).toMatchObject({
+          watchNotificationStatus: 'SENT', watchNotificationAttempts: 1, watchNotificationProviderId: 'accepted-' + later,
+        })
+      }, { timeout: 1500 })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: sameSite } })).toMatchObject({
+        watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0,
+      })
+      expect(provider.send).toHaveBeenCalledTimes(2)
+    } finally {
+      release()
+      await sweep
+    }
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: first } })).toMatchObject({
+      watchNotificationStatus: 'SENT', watchNotificationAttempts: 1, watchNotificationProviderId: 'accepted-' + first,
+    })
+    if (limit === 2) {
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: sameSite } })).toMatchObject({
+        watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0,
+      })
+      expect(await retryPendingWatchNotifications(2)).toBe(1)
+    }
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: sameSite } })).toMatchObject({
+      watchNotificationStatus: 'SENT', watchNotificationAttempts: 1, watchNotificationProviderId: 'accepted-' + sameSite,
+    })
+    expect(provider.send).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives a waiting Site its turn before returning to a selected Site’s backlog', async () => {
+    const { ids: [first, sameSite, slowSite, waitingSite], now } = await cohort(4)
+    await prisma.$transaction([
+      prisma.audit.update({ where: { id: first }, data: { updatedAt: new Date(now.getTime() - 60_000) } }),
+      prisma.audit.update({ where: { id: sameSite }, data: {
+        projectId: 'site-' + first, url: 'https://' + first + '.example.test/', updatedAt: new Date(now.getTime() - 50_000),
+      } }),
+      prisma.audit.update({ where: { id: slowSite }, data: { updatedAt: new Date(now.getTime() - 40_000) } }),
+    ])
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const started: string[] = []
+    provider.send.mockReset().mockImplementation(async (message: { tags: Array<{ name: string; value: string }> }) => {
+      const id = message.tags.find(tag => tag.name === 'audit_id')!.value
+      started.push(id)
+      if (id === slowSite || id === sameSite) await held
+      return { data: { id: 'accepted-' + id }, error: null }
+    })
+    const sweep = retryPendingWatchNotifications(4)
+    try {
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUniqueOrThrow({ where: { id: waitingSite } })).toMatchObject({
+          watchNotificationStatus: 'SENT', watchNotificationAttempts: 1,
+        })
+      }, { timeout: 1500 })
+      expect(started.indexOf(waitingSite)).toBeGreaterThan(started.indexOf(first))
+      if (started.includes(sameSite)) expect(started.indexOf(sameSite)).toBeGreaterThan(started.indexOf(waitingSite))
+    } finally {
+      release()
+      await sweep
+    }
+    expect(started.indexOf(sameSite)).toBeGreaterThan(started.indexOf(waitingSite))
+    expect(provider.send).toHaveBeenCalledTimes(4)
+  })
+
   it('recovers more than one batch without consuming failed retries or duplicating accepted alerts', async () => {
     const { ids, now } = await cohort(61)
-    provider.send.mockReset().mockResolvedValue({ data: { id: 'fixture-accepted' }, error: null })
     const failed = ids[0]
-    provider.send.mockImplementation(async (message: { tags: Array<{ name: string; value: string }> }) =>
-      message.tags.some(tag => tag.name === 'audit_id' && tag.value === failed)
-        ? { data: null, error: { message: 'Controlled temporary outage' } }
-        : { data: { id: 'fixture-accepted' }, error: null })
+    provider.send.mockReset().mockImplementation(async (message: { tags: Array<{ name: string; value: string }> }) => {
+      const id = message.tags.find(tag => tag.name === 'audit_id')!.value
+      return id === failed ? { data: null, error: { message: 'Controlled temporary outage' } }
+        : { data: { id: 'fixture-accepted-' + id }, error: null }
+    })
     vi.useFakeTimers({ now, toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     const retries = vi.spyOn(watches, 'retryPendingWatchNotifications')
     const scheduler = startRecoveryScheduler()

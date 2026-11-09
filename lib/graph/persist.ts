@@ -1,12 +1,12 @@
-import { executionTransaction, executionWrite } from '@/lib/audit/execution-ownership'
+import { currentExecutionOwnership, ExecutionOwnershipLost, executionTransaction, lockExecutionScope } from '@/lib/audit/execution-ownership'
 import type { Prisma } from '@prisma/client'
 import { includeLegacySiteAnalyses } from '@/lib/sites/application/analysis-scope'
 /**
  * Knowledge-graph persistence layer.
  *
  * `persistAuditToGraph()` is called once per audit when it transitions to
- * COMPLETED. It is **idempotent** - running it twice on the same audit produces
- * the same graph state. Backfill scripts and the live hook both call it.
+ * COMPLETED. Replaying an audit can refresh its links without counting it
+ * twice. Backfill scripts and the live hook both call it.
  *
  * The function upserts a graph:Site, the audit's graph:Pages, and the
  * graph:Issue rows for every flag. Crucially, **it does not** recompute the
@@ -16,7 +16,6 @@ import { includeLegacySiteAnalyses } from '@/lib/sites/application/analysis-scop
  *
  * See docs/growth/architecture.md for the data flow.
  */
-import { prisma } from '@/lib/db'
 import type { SiteSnapshot, FlagSnapshot, PersistResult } from './types'
 import { parseSiteHostname } from '@/lib/utils/url-helpers'
 
@@ -55,8 +54,10 @@ export function classifyPageRole(pageUrls: string[], url: string): string {
  * and the page ids in visit order matching `snapshot.pageUrls`.
  */
 async function upsertSite(
+  tx: Prisma.TransactionClient,
   auditId: string,
-  snapshot: SiteSnapshot
+  snapshot: SiteSnapshot,
+  linkedSiteId: string | null,
 ): Promise<{ siteId: string; pageIds: string[] }> {
   const hostname = hostnameOf(snapshot.rootUrl)
   if (!hostname) {
@@ -65,7 +66,7 @@ async function upsertSite(
     )
   }
 
-  const site = await executionWrite(tx => tx.site.upsert({
+  const site = await tx.site.upsert({
     where: { hostname },
     create: {
       hostname,
@@ -76,12 +77,13 @@ async function upsertSite(
     },
     update: {
       lastAuditedAt: new Date(),
-      auditCount: { increment: 1 },
+      ...(linkedSiteId === null ? { auditCount: { increment: 1 } } : {}),
       // Only overwrite a guess if we had none; never downgrade in-place.
       industryGuess:
         snapshot.industryGuess !== null ? snapshot.industryGuess : undefined,
     },
-  }))
+  })
+  if (linkedSiteId && linkedSiteId !== site.id) throw new Error('The Audit already belongs to a different graph Site')
 
   const pageIds: string[] = []
   for (const url of snapshot.pageUrls) {
@@ -89,7 +91,7 @@ async function upsertSite(
     const role =
       snapshot.pageRoles[url] ?? classifyPageRole(snapshot.pageUrls, url)
 
-    const page = await executionWrite(tx => tx.page.upsert({
+    const page = await tx.page.upsert({
       where: {
         siteId_url: { siteId: site.id, url },
       },
@@ -104,34 +106,30 @@ async function upsertSite(
         lastSeenAt: new Date(),
         role,
       },
-    }))
+    })
     pageIds.push(page.id)
   }
 
   // Link the audit row to the site. Nullable per schema - existing audits
   // before this migration get filled by the backfill script.
-  await executionWrite(tx => tx.audit.update({
+  if (!linkedSiteId) await tx.audit.update({
     where: { id: auditId },
     data: { siteId: site.id },
-  }))
+  })
 
   // Link each AuditPage to its graph:Page by url match.
-  const auditPages = await prisma.auditPage.findMany({
+  const auditPages = await tx.auditPage.findMany({
     where: { auditId },
-    select: { id: true, url: true },
+    select: { id: true, url: true, pageId: true },
   })
   const pageByUrl = new Map(snapshot.pageUrls.map((u, i) => [u, pageIds[i]]))
   for (const ap of auditPages) {
     const gid = pageByUrl.get(ap.url)
-    if (
-      gid &&
-      (await prisma.auditPage.findUnique({ where: { id: ap.id } }))?.pageId !==
-        gid
-    ) {
-      await executionWrite(tx => tx.auditPage.update({
+    if (gid && ap.pageId !== gid) {
+      await tx.auditPage.update({
         where: { id: ap.id },
         data: { pageId: gid },
-      }))
+      })
     }
   }
 
@@ -143,6 +141,8 @@ async function upsertSite(
  * given site. Returns the issue id.
  */
 async function upsertIssue(
+  tx: Prisma.TransactionClient,
+  auditId: string,
   flag: FlagSnapshot,
   siteId: string
 ): Promise<string | null> {
@@ -154,7 +154,7 @@ async function upsertIssue(
 
   const fingerprint = flag.fingerprint
   const checkId = flag.checkId
-  const issue = await executionWrite(tx => tx.issue.upsert({
+  const issue = await tx.issue.upsert({
     where: { fingerprint },
     create: {
       fingerprint,
@@ -166,29 +166,16 @@ async function upsertIssue(
     update: {
       lastSeenAt: new Date(),
     },
-  }))
+  })
 
   // One occurrence per flag. unique on flagId guards idempotency.
-  try {
-    await executionWrite(tx => tx.issueOccurrence.create({
-      data: {
-        issueId: issue.id,
-        siteId,
-        flagId: flag.flagId,
-      },
-    }))
-  } catch (err: unknown) {
-    // P2002 = unique violation on flagId: this flag already had an occurrence
-    // recorded. That's the expected outcome on a re-run.
-    const code = (err as { code?: string }).code
-    if (code !== 'P2002') throw err
-  }
+  await tx.issueOccurrence.createMany({ data: { issueId: issue.id, siteId, flagId: flag.flagId }, skipDuplicates: true })
 
   // Link the Flag row to the Issue for read-model joins.
-  await executionWrite(tx => tx.flag.update({
-    where: { id: flag.flagId },
+  await tx.flag.update({
+    where: { id: flag.flagId, auditId },
     data: { issueId: issue.id },
-  }))
+  })
 
   return issue.id
 }
@@ -198,6 +185,7 @@ async function upsertIssue(
  * Best-effort: missing prompts are simply skipped.
  */
 async function upsertFixPrompts(
+  tx: Prisma.TransactionClient,
   issueId: string,
   flag: FlagSnapshot
 ): Promise<void> {
@@ -211,11 +199,11 @@ async function upsertFixPrompts(
 
   for (const [tool, template] of candidates) {
     if (!template) continue
-    await executionWrite(tx => tx.fixPrompt.upsert({
+    await tx.fixPrompt.upsert({
       where: { issueId_tool: { issueId, tool } },
       create: { issueId, tool, template, usageCount: 1 },
       update: { template }, // refresh wording if upstream changed
-    }))
+    })
   }
 }
 
@@ -238,7 +226,7 @@ export async function reconcileSiteTechnologies(
     if (reconcileCurrent) await tx.siteTechnology.updateMany({
       where: { siteId, isCurrent: true }, data: { isCurrent: false },
     })
-    for (const tech of detectedTech) {
+    for (const tech of detectedTech.toSorted((a, b) => a.name.localeCompare(b.name))) {
       const technology = await tx.technology.upsert({
         where: { name: tech.name }, create: { name: tech.name, kind: tech.kind }, update: {},
       })
@@ -264,13 +252,16 @@ export async function persistAuditToGraph(
   snapshot: SiteSnapshot,
   flags: FlagSnapshot[]
 ): Promise<PersistResult> {
-  const { siteId, pageIds } = await upsertSite(auditId, snapshot)
+  const owner = currentExecutionOwnership()
+  if (owner && owner.auditId !== auditId) throw new ExecutionOwnershipLost()
+  return executionTransaction(async tx => {
+    if (!owner && !await lockExecutionScope(tx, auditId)) throw new ExecutionOwnershipLost()
+    const audit = await tx.audit.findUniqueOrThrow({ where: { id: auditId }, select: { siteId: true, status: true, url: true } })
+    if (audit.status !== 'COMPLETED' || audit.url !== snapshot.rootUrl) throw new ExecutionOwnershipLost()
+    const { siteId, pageIds } = await upsertSite(tx, auditId, snapshot, audit.siteId)
 
-  if (snapshot.detectedTech.length > 0 || snapshot.technologyDetectionComplete) {
-    await executionTransaction(async tx => {
-      // Serialize publication for this host. A retry or a slower older writer
-      // cannot interleave deactivation with another snapshot's positive facts.
-      await lockSiteTechnologies(tx, siteId)
+    if (snapshot.detectedTech.length > 0 || snapshot.technologyDetectionComplete) {
+      // The Site upsert already holds the graph host lock through publication.
       const legacy = await tx.$queryRaw<Array<{ primaryAuditId: string }>>`
         SELECT DISTINCT p."primaryAuditId" FROM "provisional_sites" p
         JOIN "audits" a ON a."id" = p."primaryAuditId"
@@ -281,21 +272,17 @@ export async function persistAuditToGraph(
         orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }], select: { id: true },
       })
       if (latest?.id === auditId) await reconcileSiteTechnologies(siteId, snapshot.detectedTech, snapshot.technologyDetectionComplete, tx)
-    })
-  }
+    }
 
-  const issueIds: string[] = []
-  for (const flag of flags) {
-    const issueId = await upsertIssue(flag, siteId)
-    if (!issueId) continue
-    issueIds.push(issueId)
-    await upsertFixPrompts(issueId, flag)
-  }
-
-  return {
-    siteId,
-    pageIds,
-    issueIds,
-    occurrenceCount: issueIds.length,
-  }
+    // Different hosts can share Issues. Acquire their rows in a stable order.
+    const byFlag = new Map<string, string>()
+    for (const flag of flags.toSorted((a, b) => (a.fingerprint ?? '').localeCompare(b.fingerprint ?? ''))) {
+      const issueId = await upsertIssue(tx, auditId, flag, siteId)
+      if (!issueId) continue
+      byFlag.set(flag.flagId, issueId)
+      await upsertFixPrompts(tx, issueId, flag)
+    }
+    const issueIds = flags.flatMap(flag => byFlag.get(flag.flagId) ?? [])
+    return { siteId, pageIds, issueIds, occurrenceCount: issueIds.length }
+  }, { timeout: 15_000 })
 }

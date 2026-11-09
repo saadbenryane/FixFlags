@@ -1,6 +1,6 @@
 import { analysisRecoveryEndsAt } from './recovery-window'
 import { randomUUID } from 'node:crypto'
-import { Prisma } from '@prisma/client'
+import { Prisma, type AuditExecutionTask } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { ScanAccessUnavailable } from '../scan-access-grants'
@@ -11,13 +11,15 @@ import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettled
 import { executionTransaction, lockExecutionScope, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
-  retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind, type TaskArtifact } from './contracts'
+  retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, SETTLED_TASK_STATES, runsAfterCompletion,
+  type TaskPlan, type TaskKind, type TaskArtifact } from './contracts'
 import { taskAuditSelect, type TaskHandler, type TaskContext, type TaskDependency } from './registry'
 import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
-import { PageCaptureError } from '../browser/page-capture'
+import { isObservedPageCaptureFailure, PageCaptureError } from '../browser/page-capture'
 import { claimTaskDelivery, retireObsoleteTaskDeliveries } from './delivery-window'
+import { claimProgressiveRecovery, selectProgressiveRecovery } from './recovery-claim'
 import { isBrowserEvidenceKey } from './collection-requirements'
 import { classifyJudgeProviderFailure, isRetryableJudgeError, JudgeProviderError } from '../judge'
 
@@ -141,7 +143,8 @@ export async function recoverInterruptedTaskDelivery(job: { id?: string; data: u
   return changed.count === 1
 }
 
-export async function dispatchTask(taskId: string): Promise<boolean> {
+export async function dispatchTask(taskId: string, canPublish?: () => boolean): Promise<boolean> {
+  if (canPublish?.() === false) return false
   const delivery = await claimTaskDelivery(taskId)
   if (!delivery) return false
   const { task, input, resource, lease } = delivery
@@ -156,6 +159,13 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
             workRecoveryUntil: task.workRecoveryUntil ?? new Date(Date.now() + 30 * 60_000) } })
         if (updated.count) await recordProgress(tx, task.auditId, { taskId, kind: task.workKind!, state: 'RETRY_WAIT' })
       })
+      return false
+    }
+    if (canPublish?.() === false) {
+      // No broker call occurred. Release this reservation without replacing
+      // the last known delivery state or manufacturing a failed attempt.
+      await prisma.auditExecutionTask.updateMany({ where: dispatchOwner,
+        data: { workDispatchState: task.workDispatchState, workDispatchLeaseUntil: null } })
       return false
     }
     const queue = getAuditTaskQueue(resource)
@@ -187,47 +197,83 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
   }
 }
 
+type ReconciliationTask = Pick<AuditExecutionTask, 'id' | 'auditId' | 'targetKey' | 'createdAt' | 'workKind' | 'workState' |
+  'workInput' | 'workDependencies' | 'workGeneration' | 'workAttempts' | 'workToken' | 'workRecoveryUntil' |
+  'workLeaseUntil' | 'workRetryAt' | 'workDispatchLeaseUntil'>
+
+/** Settled tasks still satisfy dependencies and contribute progress. Their
+ * retained execution inputs are only needed when reading the admitted plan. */
+async function loadReconciliationGraph(auditId: string) {
+  const tasks = await prisma.$queryRaw<ReconciliationTask[]>`
+    SELECT id, "auditId", "targetKey", "createdAt", "workKind", "workState", "workGeneration", "workAttempts",
+      "workToken", "workRecoveryUntil", "workLeaseUntil", "workRetryAt", "workDispatchLeaseUntil",
+      CASE WHEN "workState"::text IN (${Prisma.join([...SETTLED_TASK_STATES])}) THEN NULL ELSE "workInput" END AS "workInput",
+      CASE WHEN "workState" = 'WAITING' THEN "workDependencies" ELSE ARRAY[]::text[] END AS "workDependencies"
+    FROM audit_execution_tasks WHERE "auditId" = ${auditId}
+    ORDER BY "createdAt", id LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
+  if (tasks.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
+  return tasks
+}
+
+const TASKS_PER_EXPIRY_SETTLEMENT = 16
+
 export async function reconcileTasks(auditId: string) {
-  const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { createdAt: true, status: true, recoveryUntil: true, improvementProjectedAt: true } })
+  const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { createdAt: true, status: true, recoveryUntil: true } })
   if (!audit || audit.status === 'FAILED') return []
   const until = analysisRecoveryEndsAt(audit)
-  const tasks = await loadTaskGraph(auditId), byKey = new Map(tasks.map(task => [task.targetKey.slice(5), task]))
-  const ready: string[] = []
+  const tasks = await loadReconciliationGraph(auditId), byKey = new Map(tasks.map(task => [task.targetKey.slice(5), task]))
+  const ready = new Set<string>()
+  const expiredAt = new Date()
+  const expired = tasks.filter(task => {
+    if (taskIsSettled(task.workState) || task.workKind === 'finalize' ||
+      audit.status === 'COMPLETED' && !runsAfterCompletion(task.workKind)) return false
+    const taskUntil = task.workKind === 'prescription' ? task.createdAt.getTime() + ANALYSIS_RECOVERY_MS : until
+    return expiredAt.getTime() >= taskUntil || Boolean(task.workRecoveryUntil && expiredAt >= task.workRecoveryUntil)
+  })
+  const expiredIds = new Set(expired.map(task => task.id))
+  let prescriptionSettled = false
+  // Bound lock duration and settle each cohort once. Concurrent completion
+  // callbacks must not open a transaction for every already-expired task.
+  for (let offset = 0; offset < expired.length; offset += TASKS_PER_EXPIRY_SETTLEMENT) {
+    const cohort = expired.slice(offset, offset + TASKS_PER_EXPIRY_SETTLEMENT)
+    const settled = await executionTransaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
+      const updated = await tx.auditExecutionTask.updateManyAndReturn({
+        where: { auditId, workState: { notIn: [...SETTLED_TASK_STATES] }, OR: cohort.map(task => ({
+          id: task.id, workGeneration: task.workGeneration, workRecoveryUntil: task.workRecoveryUntil,
+        })) },
+        data: { workState: 'EXHAUSTED', status: 'FAILED', workToken: null, workLeaseUntil: null, workErrorCode: 'RECOVERY_EXHAUSTED' },
+        select: { id: true },
+      })
+      const ids = new Set(updated.map(task => task.id))
+      for (const task of cohort) if (ids.has(task.id)) {
+        await publishUnfinishedCoverage(tx, task, 'RECOVERY_EXHAUSTED')
+        await recordProgress(tx, auditId, { taskId: task.id, kind: task.workKind!, state: 'EXHAUSTED' })
+      }
+      return ids
+    })
+    for (const task of cohort) if (settled.has(task.id)) {
+      task.workState = 'EXHAUSTED'
+      prescriptionSettled ||= task.workKind === 'prescription'
+    }
+  }
+  if (prescriptionSettled) await recordSettledPrescriptionCost(auditId).catch(error => logUnrecordedPrescriptionCost(auditId, error))
   for (const task of tasks) {
     const now = new Date()
     const admittedAt = task.workKind === 'prescription' ? task.createdAt.getTime() : audit.createdAt.getTime()
-    const taskUntil = task.workKind === 'prescription' ? admittedAt + ANALYSIS_RECOVERY_MS : until
-    if (taskIsSettled(task.workState)) continue
+    if (taskIsSettled(task.workState) || expiredIds.has(task.id)) continue
     if (audit.status === 'COMPLETED' && !runsAfterCompletion(task.workKind)) continue
-    if ((now.getTime() >= taskUntil || task.workRecoveryUntil && now >= task.workRecoveryUntil) && task.workKind !== 'finalize') {
-      const settled = await executionTransaction(async tx => {
-        await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
-        const updated = await tx.auditExecutionTask.updateMany({
-          where: { id: task.id, workGeneration: task.workGeneration, workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } },
-          data: { workState: 'EXHAUSTED', status: 'FAILED', workToken: null, workLeaseUntil: null, workErrorCode: 'RECOVERY_EXHAUSTED' },
-        })
-        if (updated.count) {
-          await publishUnfinishedCoverage(tx, task, 'RECOVERY_EXHAUSTED')
-          await recordProgress(tx, auditId, { taskId: task.id, kind: task.workKind!, state: 'EXHAUSTED' })
-        }
-        return updated.count
-      })
-      if (settled) {
-        task.workState = 'EXHAUSTED'
-        if (task.workKind === 'prescription') await recordSettledPrescriptionCost(auditId).catch(error => logUnrecordedPrescriptionCost(auditId, error))
-      }
-      continue
-    }
     if (task.workState === 'RUNNING' && task.workLeaseUntil && task.workLeaseUntil <= now) {
       const decision = retryDecision({ now: now.getTime(), admittedAt,
         firstFailureAt: task.workRecoveryUntil ? task.workRecoveryUntil.getTime() - 30 * 60_000 : undefined,
         attempts: task.workAttempts, crash: true, retryable: true })
+      const recoveryUntil = new Date(decision.until), retryAt = new Date(decision.nextAt)
       const settled = await executionTransaction(async tx => {
         await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
         const updated = await tx.auditExecutionTask.updateMany({
           where: { id: task.id, workToken: task.workToken, workGeneration: task.workGeneration, workState: 'RUNNING', workLeaseUntil: { lte: now } },
           data: { workState: decision.retry ? 'RETRY_WAIT' : 'EXHAUSTED', status: 'FAILED', workToken: null,
-            workLeaseUntil: null, workRecoveryUntil: new Date(decision.until), workRetryAt: new Date(decision.nextAt),
+            workLeaseUntil: null, workRecoveryUntil: recoveryUntil, workRetryAt: retryAt,
             workErrorCode: 'WORKER_INTERRUPTED', workDispatchState: 'PENDING' },
         })
         if (updated.count) {
@@ -241,7 +287,8 @@ export async function reconcileTasks(auditId: string) {
       })
       if (settled) {
         task.workState = decision.retry ? 'RETRY_WAIT' : 'EXHAUSTED'
-        task.workRetryAt = new Date(decision.nextAt)
+        task.workRecoveryUntil = recoveryUntil
+        task.workRetryAt = retryAt
         if (!decision.retry && task.workKind === 'prescription') await recordSettledPrescriptionCost(auditId).catch(error => logUnrecordedPrescriptionCost(auditId, error))
       }
       continue
@@ -249,32 +296,47 @@ export async function reconcileTasks(auditId: string) {
   }
   // Settle every expired obligation before evaluating readiness. A dependent
   // may precede its inputs in persisted order after discovery expands a graph.
+  const now = new Date()
+  const releases: Prisma.AuditExecutionTaskWhereInput[] = []
   for (const task of tasks) {
-    const now = new Date()
     if (taskIsSettled(task.workState)) continue
     if (audit.status === 'COMPLETED' && !runsAfterCompletion(task.workKind)) continue
-    const dependenciesSettled = task.workDependencies.every(key => taskIsSettled(byKey.get(key)?.workState ?? null))
-    if (task.workState === 'WAITING' && dependenciesSettled || task.workState === 'RETRY_WAIT' && task.workRetryAt && task.workRetryAt <= now) {
-      const changed = await prisma.auditExecutionTask.updateMany({
-        where: { id: task.id, workGeneration: task.workGeneration, workState: task.workState },
-        data: { workState: 'READY', status: 'PENDING', workRetryAt: now, workDispatchState: 'PENDING' },
-      })
-      if (changed.count) ready.push(task.id)
+    const fence = { id: task.id, workGeneration: task.workGeneration, workRecoveryUntil: task.workRecoveryUntil }
+    if (task.workState === 'WAITING' && task.workDependencies.every(key => taskIsSettled(byKey.get(key)?.workState ?? null))) {
+      releases.push({ ...fence, workState: 'WAITING', workDependencies: { equals: task.workDependencies } })
+    } else if (task.workState === 'RETRY_WAIT' && task.workRetryAt && task.workRetryAt <= now) {
+      releases.push({ ...fence, workState: 'RETRY_WAIT', workRetryAt: task.workRetryAt })
     } else if (task.workState === 'READY' && (!task.workRetryAt || task.workRetryAt <= now) &&
-      (!task.workDispatchLeaseUntil || task.workDispatchLeaseUntil <= now)) ready.push(task.id)
+      (!task.workDispatchLeaseUntil || task.workDispatchLeaseUntil <= now)) ready.add(task.id)
+  }
+  if (releases.length) {
+    // Use the graph writer's lock order and compare the saved dependencies and
+    // retry time. Discovery or recovery can change either after the graph read.
+    const released = await executionTransaction(async tx => {
+      if (!await lockExecutionScope(tx, auditId)) return []
+      return tx.auditExecutionTask.updateManyAndReturn({
+        where: { auditId, audit: { status: { not: 'FAILED' } }, AND: [
+          { OR: releases },
+          { OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: { in: [...COMPLETION_TASK_KINDS] } }] },
+        ] },
+        data: { workState: 'READY', status: 'PENDING', workRetryAt: now, workDispatchState: 'PENDING' },
+        select: { id: true },
+      })
+    })
+    for (const { id } of released) ready.add(id)
   }
   if (tasks.some(task => ['check', 'search'].includes(task.workKind ?? '') && task.workState === 'COMPLETED'))
     await prisma.audit.updateMany({ where: { id: auditId, status: { in: ['QUEUED', 'CAPTURING'] } }, data: { status: 'CHECKING' } })
   // Old, due deliveries rotate behind undispatched work after each queue check.
   // Graph insertion order must not let a blocked resource starve other queues.
   const dueAt = new Map(tasks.map(task => [task.id, task.workRetryAt?.getTime() ?? 0]))
-  const ordered = ready.sort((left, right) => dueAt.get(left)! - dueAt.get(right)!)
+  const ordered = tasks.filter(task => ready.has(task.id)).map(task => task.id)
+    .sort((left, right) => dueAt.get(left)! - dueAt.get(right)!)
   // Reorder within resource slots, preserving other resources' opportunities
   // when either browser or PageSpeed dispatch is unavailable.
-  const readyIds = new Set(ordered)
   const replacements = new Map<string, string>()
   for (const resource of ['browser', 'pagespeed'] as const) {
-    const members = tasks.filter(task => readyIds.has(task.id)).flatMap(task => {
+    const members = tasks.filter(task => ready.has(task.id)).flatMap(task => {
       const input = taskInputSchema.safeParse(task.workInput)
       return input.success && queueForTask(task.workKind as TaskKind, input.data) === resource
         ? [{ id: task.id, priority: priorityForTask(task.workKind as TaskKind, input.data, task.workAttempts,
@@ -309,7 +371,35 @@ async function commitTaskObservation(context: TaskContext, handler: TaskHandler,
   return result
 }
 
-export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>) {
+const completionPasses = new Map<string, { started: boolean; result: Promise<string[]> }>()
+
+/** A settlement after a pass starts needs a fresh read. Other settlements
+ * can join that pending pass. Only its first caller takes the dispatch cohort. */
+function reconcileAfterTask(auditId: string): Promise<string[]> {
+  const previous = completionPasses.get(auditId)
+  if (previous && !previous.started) return previous.result.then(() => [])
+
+  const pass = { started: false, result: previous ? previous.result.then(run, run) : Promise.resolve().then(run) }
+  completionPasses.set(auditId, pass)
+  return pass.result
+
+  async function run(): Promise<string[]> {
+    pass.started = true
+    try { return await reconcileTasks(auditId) }
+    finally {
+      // Publication may still be waiting on Redis. Later database passes can
+      // release independent work without waiting for that publication.
+      if (completionPasses.get(auditId) === pass) completionPasses.delete(auditId)
+    }
+  }
+}
+
+export async function continueTaskGraph(auditId: string) {
+  await dispatchReadyTasks(await reconcileAfterTask(auditId))
+}
+
+export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>,
+  continueExecution: (auditId: string) => void | Promise<void> = continueTaskGraph) {
   const job = taskJobSchema.parse(rawJob)
   const original = await prisma.auditExecutionTask.findFirst({
     where: { id: job.taskId, auditId: job.auditId }, include: { audit: { select: taskAuditSelect } },
@@ -320,15 +410,17 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
     original.audit.status === 'COMPLETED' && !runsAfterCompletion(original.workKind)) return
   const handler = handlers.get(original.workKind)
   if (!handler) throw new Error('Unregistered execution task')
-  const token = randomUUID(), now = new Date()
+  const token = randomUUID()
   const input = taskInputSchema.parse(original.workInput)
   const claimed = await executionTransaction(async tx => {
     if (!await lockExecutionScope(tx, job.auditId)) return { count: 0 }
     await tx.$queryRaw`SELECT "id" FROM "audit_execution_tasks" WHERE "id" = ${original.id} FOR UPDATE`
-    if (original.workKind === 'prescription') {
+    const now = new Date()
+    if (original.workKind === 'finalize' || original.workKind === 'prescription') {
       const audit = await tx.audit.findUniqueOrThrow({ where: { id: job.auditId },
         select: { executionLeaseUntil: true, status: true, triageAt: true, completedAt: true } })
-      if (audit.executionLeaseUntil && audit.executionLeaseUntil > now) {
+      const canOverlapCoordinator = original.workKind === 'finalize' && audit.status !== 'COMPLETED'
+      if (!canOverlapCoordinator && audit.executionLeaseUntil && audit.executionLeaseUntil > now) {
         await tx.auditExecutionTask.updateMany({ where: { id: original.id, workState: 'READY', workGeneration: job.generation - 1 },
           data: { workState: 'RETRY_WAIT', workRetryAt: new Date(Math.min(audit.executionLeaseUntil.getTime(), now.getTime() + 5000)),
             workErrorCode: 'EXECUTION_BUSY', workDispatchState: 'PENDING', workDispatchLeaseUntil: null } })
@@ -336,7 +428,8 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       }
       // Restore legacy prescription's recorded terminal state only after the
       // original writer's lease expires. Its expired token remains fenced.
-      if (audit.status === 'JUDGING' && audit.triageAt && audit.completedAt) await tx.audit.update({ where: { id: job.auditId }, data: { status: 'COMPLETED', progress: 100 } })
+      if (original.workKind === 'prescription' && audit.status === 'JUDGING' && audit.triageAt && audit.completedAt)
+        await tx.audit.update({ where: { id: job.auditId }, data: { status: 'COMPLETED', progress: 100 } })
     }
     if (input.fixtureId) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'fixture:' + input.fixtureId}))`
@@ -460,8 +553,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
     }
   })
   if (original.workKind === 'prescription') await recordSettledPrescriptionCost(job.auditId).catch(error => logUnrecordedPrescriptionCost(job.auditId, error))
-  const ready = await reconcileTasks(job.auditId)
-  await dispatchReadyTasks(ready)
+  await continueExecution(job.auditId)
 }
 
 export function classifyTaskFailure(error: unknown, kind?: TaskKind): TaskFailure {
@@ -471,7 +563,8 @@ export function classifyTaskFailure(error: unknown, kind?: TaskKind): TaskFailur
     const providerFailure = classifyJudgeProviderFailure(error)
     if (providerFailure || error instanceof JudgeProviderError) {
       const retryable = isRetryableJudgeError(error)
-      const code = !retryable && providerFailure === 'quota_exhausted' ? 'AI_PROVIDER_QUOTA_EXHAUSTED'
+      const code = providerFailure === 'budget_unavailable' ? 'AI_BUDGET_UNAVAILABLE'
+        : !retryable && providerFailure === 'quota_exhausted' ? 'AI_PROVIDER_QUOTA_EXHAUSTED'
         : !retryable && providerFailure === 'authentication_rejected' ? 'AI_PROVIDER_AUTH_REJECTED'
           : !retryable && providerFailure === 'permission_denied' ? 'AI_PROVIDER_PERMISSION_DENIED' : 'AI_PROVIDER_UNAVAILABLE'
       return new TaskFailure(code, retryable)
@@ -480,8 +573,8 @@ export function classifyTaskFailure(error: unknown, kind?: TaskKind): TaskFailur
   // A refused navigation is a completed observation of unavailable scope. A
   // fresh scheduled run can observe recovery; repeating secondary browser work
   // inside this run cannot replace its already recorded page capture evidence.
-  if (error instanceof PageCaptureError && ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(error.code))
-    return new TaskFailure('PAGE_' + error.code, false)
+  if (error instanceof PageCaptureError && isObservedPageCaptureFailure(error.code))
+    return new TaskFailure('PAGE_' + error.code.toUpperCase(), false)
   if (error instanceof StorageNotConfiguredError) return new TaskFailure('STORAGE_NOT_CONFIGURED', false)
   if (error instanceof StorageUploadError) return new TaskFailure('STORAGE_UPLOAD_INTERRUPTED', true)
   if (error instanceof Prisma.PrismaClientInitializationError || error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -493,45 +586,52 @@ export function classifyTaskFailure(error: unknown, kind?: TaskKind): TaskFailur
   return new TaskFailure('TASK_INTERRUPTED', true, undefined, true)
 }
 
-/** Small fair dispatch batches prevent one Site, or a down queue, from occupying a recovery pass. */
-export async function dispatchReadyTasks(ids: string[]) {
-  let sent = 0
-  for (let offset = 0; offset < Math.min(ids.length, 8); offset += 4) {
-    const batch = ids.slice(offset, offset + 4)
-    const results = await Promise.allSettled(batch.map(dispatchTask))
-    for (const [index, result] of results.entries()) {
-      if (result.status === 'fulfilled') { if (result.value) sent++ }
-      else logger.error('Task dispatch interrupted; retained ledger will be retried', result.reason, { taskId: batch[index] })
+const TASKS_PER_GRAPH_DISPATCH = 8
+const TASK_DISPATCH_CONCURRENCY = 4
+
+async function dispatchTaskCohort(ids: string[], canPublish?: () => boolean) {
+  const pending = ids.values()
+  const lanes = Math.min(ids.length, TASK_DISPATCH_CONCURRENCY)
+  const counts = await Promise.all(Array.from({ length: lanes }, async () => {
+    let sent = 0
+    for (const taskId of pending) {
+      if (canPublish?.() === false) break
+      try { if (await dispatchTask(taskId, canPublish)) sent++ }
+      catch (error) { logger.error('Task dispatch interrupted; retained ledger will be retried', error, { taskId }) }
     }
-  }
-  return sent
+    return sent
+  }))
+  return counts.reduce((total, sent) => total + sent, 0)
 }
 
-async function recoverActiveTaskGraphs(limit: number) {
-  const audits = await prisma.audit.findMany({
-    where: { status: { not: 'FAILED' },
-      startedAt: { not: null },
-      OR: [{ executionSpec: { path: ['engine'], equals: 'progressive-v1' }, OR: [{ status: { not: 'COMPLETED' } },
-        { executionTasks: { some: { workKind: 'finalize', workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } } } }] },
-        { executionTasks: { some: { workKind: 'prescription', workState: { notIn: ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] } } } }],
-      dispatchNextAt: { lte: new Date() } },
-    orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.min(100, Math.max(1, limit)),
-    select: { id: true },
-  })
-  let dispatched = 0
+/** Keep normal admission and continuation dispatch bounded per graph. */
+export function dispatchReadyTasks(ids: string[], canPublish?: () => boolean) {
+  return dispatchTaskCohort(ids.slice(0, TASKS_PER_GRAPH_DISPATCH), canPublish)
+}
+
+export async function recoverActiveTaskGraphs(limit = 25, canPublish?: () => boolean) {
+  const dueAt = new Date()
+  const audits = await selectProgressiveRecovery('graph', dueAt, limit)
   const deadline = Date.now() + 10_000
-  for (const audit of audits) {
+  const ready: string[][] = []
+  for (const { id: auditId } of audits) {
     if (Date.now() >= deadline) break
-    // Round-robin durable dispatch scheduling. Sleeping older analyses cannot
-    // monopolize a bounded recovery batch while younger Sites await service.
     try {
-      const admitted = await prisma.audit.updateMany({ where: { id: audit.id, dispatchNextAt: { lte: new Date() } },
-        data: { dispatchNextAt: new Date(Date.now() + 10_000) } })
-      if (!admitted.count) continue
-      dispatched += await dispatchReadyTasks(await reconcileTasks(audit.id))
-    } catch (error) { logger.error('Audit task recovery interrupted; retained graph will be retried', error, { auditId: audit.id }) }
+      if (!await claimProgressiveRecovery('graph', dueAt, auditId)) continue
+      const ids = await reconcileTasks(auditId)
+      if (ids.length) ready.push(ids.slice(0, TASKS_PER_GRAPH_DISPATCH))
+    }
+    catch (error) { logger.error('Audit task recovery interrupted; retained graph will be retried', error, { auditId }) }
   }
-  return dispatched
+  // First settle the admitted graphs in PostgreSQL. Broker delays must not
+  // prevent another graph in the same cohort from recording interrupted work.
+  // Give each graph a turn before publishing another task from the same graph.
+  const deliveries: string[] = []
+  for (let position = 0; position < TASKS_PER_GRAPH_DISPATCH; position++) {
+    for (const ids of ready) if (position < ids.length) deliveries.push(ids[position])
+  }
+  const deliveryDeadline = Date.now() + 10_000
+  return dispatchTaskCohort(deliveries, () => Date.now() < deliveryDeadline && canPublish?.() !== false)
 }
 
 export async function recoverProgressiveTasks(limit = 25) {

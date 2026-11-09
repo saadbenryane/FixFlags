@@ -1,7 +1,7 @@
 import { auditCache } from './cache'
 import { readBoundedJson } from '@/lib/http/read-json'
 import { z } from 'zod'
-import { performanceMeasurement, performancePageKey } from './performance-measurement'
+import { pageSpeedReachedSignIn, pageSpeedScopeMatches, performanceMeasurement } from './performance-measurement'
 import { readResourceAudits, projectResourceOpportunities, type ResourceAudit } from './pagespeed-opportunities'
 import { readTapTargetAudits, type TapTargetAudit } from './pagespeed-tap-targets'
 import { collectCruxEvidence, readCruxMetric, type CruxEvidence } from './crux'
@@ -9,7 +9,7 @@ import { lighthouseMetric, lighthouseRecord, lighthouseScore } from './lighthous
 export type { CruxMetrics } from './crux'
 
 export const pageSpeedFailureSchema = z.object({
-  code: z.enum(['PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE', 'PROVIDER_REFUSED', 'PROVIDER_RESPONSE_INVALID', 'MEASUREMENT_INCOMPLETE']),
+  code: z.enum(['PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE', 'PROVIDER_REFUSED', 'PROVIDER_RESPONSE_INVALID', 'MEASUREMENT_INCOMPLETE', 'MEASUREMENT_AUTHENTICATION_REDIRECT']),
   retryable: z.boolean(), retryAfterMs: z.number().finite().nonnegative().optional(),
 }).strict()
 type PageSpeedFailure = z.infer<typeof pageSpeedFailureSchema>
@@ -149,38 +149,39 @@ async function runPageSpeed(
     const data = parsed.data
     const lighthouse = lighthouseRecord(data.lighthouseResult) ?? {}
     const lab = lighthousePayloadSchema.safeParse(lighthouse)
+    const foreignScope = !pageSpeedScopeMatches(lighthouse, url, strategy)
+    const authenticationRedirect = !foreignScope && pageSpeedReachedSignIn(lighthouse, url)
     const measurement = performanceMeasurement(lighthouse, strategy, requestedAt)
-    const reportedFactor = measurement.formFactor
-    const foreignScope = (lighthouse.requestedUrl !== undefined && performancePageKey(String(lighthouse.requestedUrl)) !== performancePageKey(url)) ||
-      (['desktop', 'mobile'].includes(reportedFactor ?? '') && reportedFactor !== strategy)
     // Field records validate their own page/origin. A refused lab scope cannot
     // authorize field evidence for its reported redirect destination.
-    const crux = collectCruxEvidence(foreignScope ? { ...data, lighthouseResult: undefined } : data, url)
+    const crux = collectCruxEvidence(foreignScope || authenticationRedirect ? { ...data, lighthouseResult: undefined } : data, url)
     const runtimeError = z.object({ code: z.string() }).safeParse(lighthouse.runtimeError)
     const failedRuntime = runtimeError.success && runtimeError.data.code !== 'NO_ERROR'
-    if (foreignScope || failedRuntime || !lab.success) {
-      const failure: PageSpeedFailure = failedRuntime && !foreignScope ? {
+    if (foreignScope || authenticationRedirect || failedRuntime || !lab.success) {
+      const failure: PageSpeedFailure = authenticationRedirect ? { code: 'MEASUREMENT_AUTHENTICATION_REDIRECT', retryable: false }
+        : failedRuntime && !foreignScope ? {
         code: 'MEASUREMENT_INCOMPLETE', retryable: ['PROTOCOL_TIMEOUT', 'READ_FAILED', 'PARSING_PROBLEM', 'UNKNOWN_ERROR'].includes(runtimeError.data.code),
       } : { code: 'PROVIDER_RESPONSE_INVALID', retryable: false }
       throw new PageSpeedError(foreignScope ? 'PageSpeed returned a different requested scope'
+        : authenticationRedirect ? 'PageSpeed reached an authentication route. Performance of the requested page is unknown.'
         : failedRuntime ? 'PageSpeed did not complete its measurement' : 'PageSpeed returned an invalid measurement payload', failure,
       crux ? { strategy, score: null, lcp: null, cls: null, fcp: null, tbt: null,
         inp: readCruxMetric(crux, 'inp')?.value ?? null, opportunities: [], resourceAudits: [], tapTargetAudits: [],
-        failedAccessibilityAudits: [], diagnostics: { measurement }, raw: data, crux } : undefined)
+        failedAccessibilityAudits: [], diagnostics: { measurement: authenticationRedirect ? { ...measurement, scope: null } : measurement }, raw: data, crux } : undefined)
     }
 
     const audits = lab.data.audits
     const categoryScores = lab.data.categories
 
-    const perfScore = lighthouseScore(categoryScores.performance)
-    const lcp = lighthouseMetric(audits['largest-contentful-paint'])
-    const cls = lighthouseMetric(audits['cumulative-layout-shift'])
-    const fcp = lighthouseMetric(audits['first-contentful-paint'])
-    const tbt = lighthouseMetric(audits['total-blocking-time'])
+    const perfScore = lighthouseScore(categoryScores.performance, 'performance')
+    const lcp = lighthouseMetric(audits['largest-contentful-paint'], 'largest-contentful-paint', 'millisecond')
+    const cls = lighthouseMetric(audits['cumulative-layout-shift'], 'cumulative-layout-shift', 'unitless')
+    const fcp = lighthouseMetric(audits['first-contentful-paint'], 'first-contentful-paint', 'millisecond')
+    const tbt = lighthouseMetric(audits['total-blocking-time'], 'total-blocking-time', 'millisecond')
 
     const failedAccessibilityAudits: LighthouseAuditSummary[] = []
     for (const id of ACCESSIBILITY_AUDIT_IDS) {
-      const audit = lighthouseRecord(audits[id]), score = lighthouseScore(audit)
+      const audit = lighthouseRecord(audits[id]), score = lighthouseScore(audit, id)
       if (audit && score !== null && score < 1) {
         failedAccessibilityAudits.push({
           id,

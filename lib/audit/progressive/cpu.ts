@@ -3,7 +3,7 @@ import path from 'node:path'
 import { BoundedSemaphore } from './capacity'
 import { TaskFailure } from './contracts'
 import { pageMetadataSchema, httpNavigationSchema } from './snapshots'
-import { searchObservationSchema, type SearchPageEvidence, type SearchReceipt } from '../search/contracts'
+import { searchObservationSchema, type SearchPageEvidence, type SearchComparisonBaseline } from '../search/contracts'
 import type { MetadataMode } from '../metadata'
 import { resourceTransportSchema } from '../resource-transport'
 import { currentExecutionOwnership, ExecutionOwnershipLost } from '../execution-ownership'
@@ -95,7 +95,7 @@ export async function parseHttpNavigationIsolated(html: string, url: string, dea
   if (Buffer.byteLength(html) > 1_000_000) throw new TaskFailure('HTML_BODY_LIMIT', false)
   return httpNavigationSchema.parse(await isolated({ operation: 'http-navigation', html, url }, deadline))
 }
-export async function evaluateSearchIsolated(evidence: SearchPageEvidence, previous: SearchReceipt | null | undefined, deadline: number, evaluators?: readonly string[]) {
+export async function evaluateSearchIsolated(evidence: SearchPageEvidence, previous: SearchComparisonBaseline | null | undefined, deadline: number, evaluators?: readonly string[]) {
   const observations = await isolated({ operation: 'search', evidence, previous, evaluators }, deadline)
   return searchObservationSchema.array().parse(observations)
 }

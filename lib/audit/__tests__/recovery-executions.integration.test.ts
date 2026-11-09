@@ -56,14 +56,15 @@ run('shared recorded recovery selection', () => {
       await prisma.user.delete({ where: { id: owner.id } })
     }
   })
-  it('retains a matching failure beyond the first receipt batch and refuses another Site’s recovery', async () => {
+  it('retains a late matching failure and resolves past incomplete observations of the same page', async () => {
     const owner = await prisma.user.create({ data: { email: randomUUID() + '@example.test' } })
     const project = await prisma.project.create({ data: { userId: owner.id, name: 'Complete recovery evidence', url: pageUrl, canonicalHost: 'example.com' } })
     const audit = await prisma.audit.create({ data: { userId: owner.id, projectId: project.id, url: pageUrl, status: 'COMPLETED', completedAt: new Date(), executionSpec: spec } })
     try {
       await prisma.auditVerificationReceipt.createMany({ data: Array.from({ length: 601 }, (_, index) => ({
         id: audit.id + '-' + String(index).padStart(4, '0'), auditId: audit.id, targetKey: 'module:performance', scopeKey: 'scope-' + index,
-        source: 'DETERMINISTIC', status: 'COMPLETED' as const, pageUrl, detail: receipt(audit.id, index !== 600),
+        source: 'DETERMINISTIC', status: 'COMPLETED' as const, pageUrl,
+        detail: index === 0 ? { ...receipt(audit.id), applicable: false, complete: false, assertions: [] } : receipt(audit.id, index !== 600),
       })) })
       const flags = [{ ...original, id: 'original-condition', status: 'FIXED', resolvedInId: audit.id }]
       const evidence = (await loadRecoveryExecutions([{ auditId: audit.id, flags }])).get(audit.id)!

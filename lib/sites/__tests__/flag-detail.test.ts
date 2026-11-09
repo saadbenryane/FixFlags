@@ -81,6 +81,8 @@ it('shows only the recorded expectation from the same owned Site', async () => {
 it('shows a committed outcome recovery as proven for the owned checkout flag', async () => {
   const captured = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...captured, status: 'FIXED', resolvedInId: 'recovery', fingerprint: 'outcome:v1:outcome-1:browser' })
+  mocks.current.mockImplementation(async (parts: TemplateStringsArray) => parts.join('').includes('FROM improvement_occurrences member')
+    ? [{ id: captured.id }] : [])
   mocks.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'project-1', completedAt: new Date('2026-10-12T12:00:00Z'),
     executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: 'https://shop.test/checkout', environment: 'production', scope: 'OUTCOMES',
       checks: {}, outcomes: [], verificationTarget: null }, verifierExecutions: [],

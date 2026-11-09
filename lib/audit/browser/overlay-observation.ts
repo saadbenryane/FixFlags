@@ -69,7 +69,9 @@ export async function collectOverlayObservation(browser: Browser, pageUrl: strin
   const unknown = (): OverlayObservation => ({ version: 1, device: options.device, scope, complete: false, restricted: true, contentVisible: false,
     controls: expected.map(target => ({ ...target, disposition: 'unknown', reason: 'unavailable', blocker: null })) })
   try {
-    const session = await createAuditPage(browser, pageUrl, { profile, deadline: options.deadline, journeySafe: true, scanAccess: options.scanAccess })
+    const session = await createAuditPage(browser, pageUrl, {
+      profile, deadline: options.deadline, journeySafe: true, requirePublicLanding: true, scanAccess: options.scanAccess,
+    })
     page = session.page; scope.finalUrl = page.url()
     try {
       const discovered = await discoverFlowCtasWithFallback(page, pageUrl)
@@ -85,7 +87,7 @@ export async function collectOverlayObservation(browser: Browser, pageUrl: strin
       if (Date.now() + OVERLAY_PERSIST_MS >= options.deadline) return unknown()
       await page.waitForTimeout(OVERLAY_PERSIST_MS)
       const last = await readOverlayControls(page, ctaSelectors, selected.map(control => control.selector))
-      const content = await observeViewport(page, { profile: 'overlays', includeActions: false, excludeLoading: true })
+      const content = await observeViewport(page, { profile: 'overlays', includeActions: false })
       const after = await Promise.all(selected.map(control => probeCoverAtPoint(page!, control.selector, true)))
       const stable = first.pageUrl === scope.finalUrl && last.pageUrl === scope.finalUrl && content.pageUrl === scope.finalUrl && page.url() === scope.finalUrl && last.ready
       const controls: OverlayObservation['controls'] = selected.map((control, index) => {

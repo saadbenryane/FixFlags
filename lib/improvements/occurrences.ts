@@ -1,6 +1,6 @@
 import { isCustomerFlag,isResolvedFlagStatus } from '@/lib/audit/attention'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
-import { flagFingerprint } from '@/lib/audit/flag-identity'
+import { flagFingerprint, outcomeFlagOwner } from '@/lib/audit/flag-identity'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import { prisma } from '@/lib/db'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
@@ -10,12 +10,12 @@ import type { ImprovementOccurrenceKind } from '@prisma/client'
 import type { ImprovementFlag } from './service-types'
 import { lockImprovementLedger } from './ledger-lock'
 
-function proposalData(flag: ImprovementFlag, priority: number) {
+export function improvementProposal(flag: Pick<ImprovementFlag, 'problem' | 'whyItMatters' | 'fix' | 'pageUrl' | 'verificationRule'>) {
   return {
     title: flag.problem, judgment: flag.whyItMatters || flag.problem,
     expectedBenefit: flag.whyItMatters || 'Remove the observed product friction.',
     recommendedChange: flag.fix, protectedScope: flag.pageUrl,
-    successCondition: flag.verificationRule || 'Recovery criteria have not been established.', priority,
+    successCondition: flag.verificationRule || 'Recovery criteria have not been established.',
   }
 }
 
@@ -85,7 +85,7 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
       await adoptLegacyOutcomeIdentity(tx, { projectId, fingerprint, executionSpec: audit.executionSpec })
       // Initialize identity without changing an existing row before its ledger
       // lock. An upsert here would take its row lock ahead of verification.
-      const initialized = await tx.improvement.createMany({ data: { projectId, fingerprint, ...proposalData(flag, priority) }, skipDuplicates: true })
+      const initialized = await tx.improvement.createMany({ data: { projectId, fingerprint, ...improvementProposal(flag), priority }, skipDuplicates: true })
       const identity = await tx.improvement.findUniqueOrThrow({
         where: { projectId_fingerprint: { projectId, fingerprint } },
         select: { id: true },
@@ -104,29 +104,32 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
         if (initialized.count) await tx.improvement.delete({ where: { id: identity.id } })
         return
       }
-      const improvement = await tx.improvement.update({ where: { id: identity.id }, data: proposalData(current, priority) })
-      if (improvement.status === 'VERIFIED') await tx.improvement.update({
-        where: { id: improvement.id },
-        data: { status: 'PROPOSED' },
-      })
+      // A bound Flag supplies an occurrence for settlement. Its Outcome
+      // assessment decides whether this failure can change current attention.
+      if (!outcomeFlagOwner(fingerprint)) {
+        const improvement = await tx.improvement.update({ where: { id: identity.id }, data: { ...improvementProposal(current), priority } })
+        if (improvement.status === 'VERIFIED') await tx.improvement.update({
+          where: { id: improvement.id }, data: { status: 'PROPOSED' },
+        })
+      }
       for (const observedFlag of observations) {
         const occurrence = await tx.improvementOccurrence.upsert({
           where: { flagId: observedFlag.id },
           create: {
-            improvementId: improvement.id,
+            improvementId: identity.id,
             auditId,
             flagId: observedFlag.id,
             kind: occurrenceKind(observedFlag.status),
           },
           update: {
-            improvementId: improvement.id,
+            improvementId: identity.id,
             auditId,
             kind: occurrenceKind(observedFlag.status),
           },
         })
         await appendImprovementCycleEvent({
           projectId,
-          improvementId: improvement.id,
+          improvementId: identity.id,
           occurrenceId: occurrence.id,
           sourceAuditId: auditId,
           idempotencyKey: `generated:${observedFlag.id}`,

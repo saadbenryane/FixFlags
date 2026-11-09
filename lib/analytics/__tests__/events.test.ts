@@ -10,10 +10,38 @@ import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 describe('analytics gtag bootstrap', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
+    window.history.replaceState({}, '', '/')
     delete (window as { dataLayer?: unknown[] }).dataLayer
     delete (window as { gtag?: (...args: unknown[]) => void }).gtag
+    delete window.fbq
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=; Max-Age=0; Path=/`
     sessionStorage.clear()
+  })
+
+  it.each(['/share/test-token', '/report/test-report', '/sites/test-site'])('drops explicit report views on %s even with analytics consent', pathname => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    window.history.replaceState({}, '', pathname)
+    const pixel = vi.fn()
+    window.fbq = pixel
+
+    trackEvent('viewed_report', { audit_id: 'test-audit', surface: 'shared' })
+
+    expect(window.dataLayer).toBeUndefined()
+    expect(pixel).not.toHaveBeenCalled()
+  })
+
+  it('drops optional signup conversions on a credential continuation even with consent', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    window.history.replaceState({}, '', '/post-login?next=%2Fcli%2Fauthorize%3Fuser_code%3DFIXTURE&signup=1')
+    const pixel = vi.fn()
+    window.fbq = pixel
+
+    trackEvent('signed_up', { method: 'oauth', user_id: 'private-account' })
+
+    expect(window.dataLayer).toBeUndefined()
+    expect(pixel).not.toHaveBeenCalled()
   })
 
   it('queues events on dataLayer before gtag.js config runs', () => {
@@ -81,13 +109,34 @@ describe('analytics gtag bootstrap', () => {
     expect(sessionStorage.length).toBe(0)
   })
 
-  it('does not send signup email to GA4', () => {
+  it('keeps signup email and account identity out of GA4 while preserving Meta deduplication', () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', '')
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
-    trackEvent('signed_up', { email: 'private@example.com', method: 'email' })
+    const pixel = vi.fn()
+    window.fbq = pixel
+    trackEvent('signed_up', { email: 'private@example.com', method: 'email', user_id: 'private-account' })
     const command = Array.from(window.dataLayer!.at(-1) as IArguments)
     expect(command).toEqual(['event', 'signed_up', expect.objectContaining({ method: 'email', send_to: 'G-TEST12345' })])
     expect(command[2]).not.toHaveProperty('email')
+    expect(command[2]).not.toHaveProperty('user_id')
+    expect(pixel).toHaveBeenCalledWith('track', 'CompleteRegistration', {}, { eventID: 'signup_private-account' })
+  })
+
+  it('sends report behavior without exact record IDs and reduces a page-scoped check to its product identity', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    const pixel = vi.fn()
+    window.fbq = pixel
+    trackEvent('viewed_report', { audit_id: 'private-audit', surface: 'focused', is_owner: true })
+    trackEvent('flag_detail_viewed', { audit_id: 'private-audit', flag_id: 'private-flag',
+      check_id: 'broken-internal-links::page:private-page', surface: 'focused' })
+    const events = window.dataLayer!.map(command => Array.from(command as IArguments)).filter(([verb]) => verb === 'event')
+    expect(events).toEqual([
+      ['event', 'viewed_report', expect.objectContaining({ surface: 'focused', is_owner: true })],
+      ['event', 'flag_detail_viewed', expect.objectContaining({ check_id: 'broken-internal-links', surface: 'focused' })],
+    ])
+    expect(pixel).toHaveBeenCalledWith('track', 'ViewContent', expect.objectContaining({ surface: 'focused', is_owner: true }))
+    expect(JSON.stringify([events, pixel.mock.calls])).not.toMatch(/private-audit|private-flag|private-page/)
   })
 })

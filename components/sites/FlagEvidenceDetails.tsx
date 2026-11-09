@@ -34,7 +34,7 @@ function ObservedFact({ text, diagnosis }: { text: string; diagnosis?: string })
     <ul className="space-y-3">{visible.map((page, index) => <ObservedPageRow key={`${page.url}:${index}`} page={page} />)}</ul>
     {presented.trailing ? <p className="text-xs text-muted-foreground">{presented.trailing}</p> : null}
     {rest.length ? <details>
-      <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">View all {presented.pages.length} pages</summary>
+      <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.viewAllPages(presented.pages.length)}</summary>
       <ul className="mt-2 space-y-2">{rest.map((page, index) => <ObservedPageRow key={`${page.url}:${index}`} page={page} />)}</ul>
     </details> : null}
   </div>

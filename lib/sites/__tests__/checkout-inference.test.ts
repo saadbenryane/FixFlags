@@ -17,6 +17,7 @@ vi.mock('@/lib/db', () => ({
     audit: { findUniqueOrThrow: mocks.auditFindUniqueOrThrow },
     $transaction: async (fn: (tx: unknown) => Promise<void>) =>
       fn({
+        audit: { findUniqueOrThrow: mocks.auditFindUniqueOrThrow },
         sitePage: { upsert: mocks.sitePageUpsert },
         siteOutcome: { upsert: mocks.siteOutcomeUpsert, findUnique: mocks.siteOutcomeFindUnique },
         siteOutcomePage: { upsert: mocks.siteOutcomePageUpsert },
@@ -24,6 +25,11 @@ vi.mock('@/lib/db', () => ({
         outcomeExecutionBinding: { upsert: mocks.bindingUpsert },
       }),
   },
+}))
+
+vi.mock('@/lib/audit/execution-ownership', async original => ({
+  ...await original<typeof import('@/lib/audit/execution-ownership')>(),
+  lockExecutionScope: async () => true,
 }))
 
 vi.mock('@/lib/analytics/site-events', () => ({
@@ -61,6 +67,7 @@ function projectSite(overrides: Partial<SiteRecord> = {}): SiteRecord {
 function prime(audit: Record<string, unknown>) {
   mocks.auditFindUniqueOrThrow.mockResolvedValue({
     projectId: 'project-1',
+    userId: 'user-1',
     pages: [],
     flags: [],
     journeyReviews: [],

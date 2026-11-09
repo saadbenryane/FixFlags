@@ -3,9 +3,19 @@ import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { syncOutcomesFromAudit } from '@/lib/sites/outcomes'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { SiteAnalysisScopeChanged } from './outcome-sync'
 
 /** Runs before the durable finalization receipt; failure is retried by finalization recovery. */
 export async function projectSiteAnalysis(auditId: string): Promise<void> {
+  try {
+    await projectCurrentSiteAnalysis(auditId)
+  } catch (error) {
+    if (!(error instanceof SiteAnalysisScopeChanged)) throw error
+    await projectCurrentSiteAnalysis(auditId)
+  }
+}
+
+async function projectCurrentSiteAnalysis(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUniqueOrThrow({
     where: { id: auditId },
     select: { projectId: true, userId: true, url: true, executionSpec: true },

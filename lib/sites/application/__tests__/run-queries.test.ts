@@ -13,7 +13,9 @@ const now = new Date('2026-10-12T12:00:00Z')
 function observed(module: string, keys: string[]) {
   return { targetKey: 'module:' + module, status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module,
     pageUrl: 'https://acme.fixture.test/', passed: true, applicable: true,
-    assertions: keys.map(key => ({ key, name: key, expected: 'Observed', observed: 'Recorded fixture input', passed: true, complete: true })) } }
+    assertions: keys.map(key => ({ key, name: key, expected: 'Observed', observed: 'Recorded fixture input', passed: true, complete: true })),
+    ...(module === 'security' ? { execution: { auditId: 'audit-1', taskId: 'security', checkVersion: 1, source: 'http', collectedAt: now.toISOString() } } : {}),
+  } }
 }
 function comparison(newIssues: FlagDiffSummary['newIssues'] = []) {
   return { targetKey: 'projection:flag-comparison', status: 'COMPLETED', detail: {
@@ -74,6 +76,28 @@ describe('owned run assessment', () => {
     mocks.findFirst.mockResolvedValue(source)
     expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ result: 'COULD_NOT_VERIFY' })
   })
+  it.each(['DIAGNOSTIC', 'OUTCOMES'] as const)('keeps %s repair running while its exact comparison is finalizing', async scope => {
+    const source = diagnostic()
+    if (scope === 'OUTCOMES') {
+      const target = { kind: 'OUTCOME', attemptId: 'attempt', parentAuditId: 'before', outcomeId: 'checkout' }
+      source.executionSpec = { ...source.executionSpec, scope, checks: {}, verificationTarget: target } as never
+      source.verificationTarget = target as never
+    }
+    const audit = source.audit as unknown as { verificationAttempts: Array<Record<string, unknown>>;
+      verifierExecutions: Array<Record<string, unknown>> }
+    Object.assign(audit.verificationAttempts[0], { outcome: null, comparable: null, evidenceReference: null })
+    audit.verifierExecutions = [{ workKind: 'finalize', workState: 'RUNNING' }]
+    mocks.findFirst.mockResolvedValue(source)
+    expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ status: 'RUNNING', result: null,
+      summary: null, completionState: 'PENDING', completedAt: null })
+    audit.verifierExecutions[0].workState = 'RETRY_WAIT'
+    expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ status: 'RUNNING', result: null, completionState: 'PENDING' })
+    audit.verifierExecutions[0].workState = 'COMPLETED'
+    expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ status: 'COMPLETED', result: 'COULD_NOT_VERIFY' })
+    Object.assign(audit.verificationAttempts[0], { outcome: 'IMPROVED', comparable: true,
+      evidenceReference: { beforeAuditId: 'before', afterAuditId: 'audit-1' } })
+    expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ status: 'COMPLETED', result: 'CLEAR', completionState: 'FULL' })
+  })
   it('uses only committed account observations, retaining failure alongside incomplete behavior', async () => {
     const source = run()
     source.executionSpec = { ...source.executionSpec, scope: 'ACCOUNT_CHECKS', accountChecks: { revision: 2, mode: 'routine' } } as never
@@ -128,7 +152,7 @@ describe('owned run assessment', () => {
     source.executionSpec = { ...source.executionSpec, monitoringPages: [source.executionSpec.targetUrl, peer] } as never
     mocks.findFirst.mockResolvedValue(source)
     expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL',
-      coverage: { gaps: [{ area: 'site', reason: 'pages' }] } })
+      coverage: { gaps: [{ area: 'security', reason: 'incomplete' }, { area: 'site', reason: 'pages' }] } })
     source.executionSpec = { ...source.executionSpec, monitoringPages: undefined } as never
     source.audit.verifierExecutions.push({ targetKey: 'task:p1:browser', workKind: 'browser', status: 'FAILED', pageUrl: peer } as never)
     expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })

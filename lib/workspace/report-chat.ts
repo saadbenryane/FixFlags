@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { readReportComparison } from '@/lib/audit/diff-flags'
 import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
 import { loadProjectIntelligence } from '@/lib/audit/ensure-product-project'
 import { productNameFromUrl } from '@/lib/audit/product-intelligence'
@@ -18,6 +18,7 @@ import {
 } from '@/lib/workspace/chat'
 import { synthesizeProductSignals, type SynthesizedSignalContext } from '@/lib/signals/judgment'
 import {
+  beginChatProviderUsage,
   finalizeChatUsage,
   getChatAllowance,
   releaseChatUsage,
@@ -179,11 +180,12 @@ async function loadObservationContext(observation: AuditRow): Promise<{
   const [flags, diff, learnings, productContext] = await Promise.all([
     loadFlagContext(observation.id),
     observation.parentId
-      ? getFlagDiffSummary(observation.parentId, observation.id).then((summary) => ({
+      ? readReportComparison(observation.parentId, observation.id).then((summary) => ({
           hasParent: true,
-          fixed: summary.fixed.map(toChatDiffItem),
-          regressed: summary.regressed.map(toChatDiffItem),
-          newIssues: summary.newIssues.map(toChatDiffItem),
+          comparisonUnavailable: summary === null,
+          fixed: summary?.fixed.map(toChatDiffItem) ?? [],
+          regressed: summary?.regressed.map(toChatDiffItem) ?? [],
+          newIssues: summary?.newIssues.map(toChatDiffItem) ?? [],
         }))
       : Promise.resolve<ChatDiffSummary>({
           hasParent: false,
@@ -333,7 +335,8 @@ export async function sendReportChatMessage(input: {
       )
     }
     try {
-      const result = await runWorkspaceChat(chatInput)
+      const admittedId = reservationId
+      const result = await runWorkspaceChat(chatInput, (model, bound) => beginChatProviderUsage(admittedId, model, bound, observation.projectId))
       reply = result.reply
       mode = result.mode
       allowance = await finalizeChatUsage(reservationId, result.usage)

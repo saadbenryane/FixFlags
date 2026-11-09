@@ -50,7 +50,8 @@
   .note a svg, .productIntro a svg { transition: transform var(--motion-fast) var(--ease-out); }
   .note a:is(:hover, :focus-visible) svg, .productIntro a:is(:hover, :focus-visible) svg { transform: translateX(3px); }
 }
+/* Keep copy and controls legible throughout the entrance motion. */
 @keyframes hero-copy-arrive {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(8px); }
+  to { transform: translateY(0); }
 }

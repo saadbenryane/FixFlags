@@ -1,9 +1,11 @@
 import { checkExecution } from './check-execution'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
+import { Prisma } from '@prisma/client'
 import { getAuditBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
 import { documentEvidenceWithheld } from '../browser/document-evidence'
+import { PUBLIC_SIGN_IN_REDIRECT } from '../browser/page-capture'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { resolveAuditScanAccess } from '../scan-access-store'
 import { runFlowScan, type FlowScanResult } from '../flow/run-flow-scan'
@@ -22,13 +24,13 @@ import { loadRecordedSlowActions, originalSlowActions } from '../flow/recorded-s
 import { browserEvidence } from './evaluators'
 import { serializeArtifact, TaskFailure } from './contracts'
 import { flagSchema, commitFindings, commitCheckReceipt } from './results'
-import { executionWrite } from '../execution-ownership'
 import { serializeFlowData } from '../flow/flow-url'
 import type { TaskContext, TaskHandler } from './registry'
 import { controlProgressSchema, nextControlProgress } from './control-progress'
 import { commitObservation, nextObservationBatch, observationArtifact, observationBatchStart, observationProgressSchema } from './observation-progress'
 import { runTrackingChecks } from '../checks/tracking'
 import { trackingEvidenceSchema } from '../tracking/contracts'
+import { primaryActionControlKey } from '../flow/action-context'
 import { checkReceiptSchema } from '../checks/receipt'
 import { resolveAuditPipelineMode } from '../pipeline/mode'
 import { probeFormValidation } from '../flow/form-probes'
@@ -92,7 +94,7 @@ export const actionHandlers: TaskHandler[] = [
   { kind: 'flow', replay: 'read_only', timeoutMs: 40_000, continuation: true,
     validateResult: artifact => { flowSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
-      const { receipt, networkReceipt, formReceipt, flowReceipt, overlayReceipts, navigationReceipt, controlProgress } = flowSchema.parse(artifact.data)
+      const { receipt, networkReceipt, formReceipt, flowReceipt, overlayReceipts, navigationReceipt, controlProgress, result } = flowSchema.parse(artifact.data)
       if (context.input.verificationContexts) {
         const expected = nextControlProgress(context)
         if (!expected || !controlProgress || controlProgress.completed !== expected.completed || controlProgress.total !== expected.total ||
@@ -108,6 +110,14 @@ export const actionHandlers: TaskHandler[] = [
       if (navigationReceipt) await commitCheckReceipt(context, navigationReceipt, tx)
       for (const observed of overlayReceipts ?? []) await commitCheckReceipt(context, observed, tx, overlayReceiptScope(observed))
       await commitFindings(context, artifact, tx)
+      if (context.input.primary && !context.input.module) {
+        // Current discovery owns the summary when it reaches a control.
+        // Retained controls can fill an empty summary in observation order.
+        const fallback = result.ctaText === null ? { equals: Prisma.AnyNull }
+          : { path: ['ctaText'], equals: Prisma.AnyNull }
+        await tx.audit.updateMany({ where: { id: context.audit.id,
+          ...(context.input.verificationContext ? { flowData: fallback } : {}) }, data: { flowData: result } })
+      }
     },
     async evaluate(context) {
       const progress = nextControlProgress(context)
@@ -140,7 +150,8 @@ export const actionHandlers: TaskHandler[] = [
       const result = await runSlowReplay(await getAuditBrowser(), context.audit.id, context.input.pageUrl,
         { deadline: context.deadline, expectedActions: batch.members, pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, scanAccess: await resolveAuditScanAccess(context.audit.id) })
       // A page that never loaded has no timing to judge. An interruption can still be retried.
-      if (result.reason !== 'navigation_unavailable' && (!result.navigationComplete || result.reason === 'interrupted'))
+      if (result.reason !== 'navigation_unavailable' && result.reason !== PUBLIC_SIGN_IN_REDIRECT &&
+        (!result.navigationComplete || result.reason === 'interrupted'))
         throw new TaskFailure('SLOW_REPLAY_INTERRUPTED', true, undefined, true)
       const assertions = slowReplayAssertions(result), pageUrl = context.input.pageUrl
       const complete = assertions.every(assertion => assertion.complete === true)
@@ -148,10 +159,10 @@ export const actionHandlers: TaskHandler[] = [
       return observationArtifact('slow-replay', slowSchema.parse({ result, flags: runSlowReplayChecks(result).map(flag => ({ ...flag, pageUrl })),
         receipt: { kind: 'site-module-check', version: 1, module: 'slow-replay', pageUrl, applicable: true, complete,
           passed: complete && assertions.every(assertion => assertion.passed), assertions,
-          limitation: collected
+          limitation: result.reason === PUBLIC_SIGN_IN_REDIRECT ? 'The slow connection reached sign-in. Timing for the requested page remains unknown.' : collected
             ? 'Bounded top-level mobile viewport text, decoded main image and recognized-action timing on simulated 3G. Unclassified graphics, sampling gaps, missing controls and other devices remain separate or unknown.'
             : 'The slow connection page was not collected. Timing remains unknown.',
-          execution: checkExecution(context, 'mobile-navigation', 'rendered-dom'),
+          execution: checkExecution(context, 'slow-replay', 'rendered-dom'),
         } }), batch.progress)
     },
   },
@@ -168,7 +179,7 @@ async function evaluateFlowObservation(context: TaskContext) {
       ? flag.evidenceTargets.flatMap(value => { const target = readMobileNavigationTarget(value); return target ? [target] : [] }) : [])
     const deadline = Math.min(context.deadline, Date.now() + 15_000)
     const session = await createAuditPage(await getAuditBrowser(), context.input.pageUrl, { profile: MOBILE_CAPTURE_PROFILE,
-      journeySafe: true, scanAccess: await resolveAuditScanAccess(context.audit.id), deadline })
+      journeySafe: true, requirePublicLanding: true, scanAccess: await resolveAuditScanAccess(context.audit.id), deadline })
     try {
       const observed = await collectMobileNavigation(session.page, deadline,
         { ...(diagnostic?.kind === 'DIAGNOSTIC' ? { selectors: [...new Set(targets.map(target => target.selector))] } : {}),
@@ -180,7 +191,7 @@ async function evaluateFlowObservation(context: TaskContext) {
         navigationReceipt: { kind: 'site-module-check', version: 1, module: 'mobile-navigation', pageUrl: context.input.pageUrl,
           applicable: observed.applicable, complete: observed.complete, passed: observed.complete && assertions.every(assertion => assertion.passed), assertions,
           limitation: 'Bounded 375px navigation panels and local menu opening. Links are observed for visibility, never followed; unsupported controls, embedded documents and unobserved original links remain unknown.',
-          execution: checkExecution(context, 'form-validation', 'rendered-dom') } }))
+          execution: checkExecution(context, 'mobile-navigation', 'rendered-dom') } }))
     } finally { session.disposeNetwork(); await session.page.context().close() }
   }
   const overlayDiagnostic = diagnostic?.kind === 'DIAGNOSTIC' && Object.values(OVERLAY_CHECKS).some(id => id === diagnostic.checkId.split('::page:')[0])
@@ -204,7 +215,7 @@ async function evaluateFlowObservation(context: TaskContext) {
     })
     let active = false, safetyRefused = false
     const session = await createAuditPage(await getAuditBrowser(), context.input.pageUrl, {
-      profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, localFormValidationToken: token,
+      profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, requirePublicLanding: true, localFormValidationToken: token,
       scanAccess: await resolveAuditScanAccess(context.audit.id), deadline,
       allowLocalhost: process.env.NODE_ENV !== 'production' && process.env.DEV_ALLOW_LOCALHOST === 'true',
       onSafetyRefusal: () => { if (active) safetyRefused = true },
@@ -215,7 +226,7 @@ async function evaluateFlowObservation(context: TaskContext) {
         restricted: () => safetyRefused || documentEvidenceWithheld(session.safetyRestrictions) })
       const probe = await probeFormValidation(session.page, { isolated: true, localValidationToken: token, deadline,
         safetyRefused: () => safetyRefused, expectedTargets, excludedContexts, unavailableDependencies: session.safetyRestrictions.length > 0, overlayRecorder: recorder, overlayOnly: overlayDiagnostic })
-      const checked = checkFormValidation(probe.evidence)
+      const checked = checkFormValidation(probe.evidence, probe.inventoryIncomplete)
       const overlays = scopedOverlayResult('form', probe.formOverlay, probe.formLabel, probe.formOverlayObservation).map(flag => ({ ...flag, pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl }))
       return serializeArtifact('flow', flowSchema.parse({ flags: [...checked.flags, ...overlays], formEvidence: probe.evidence,
         overlayReceipts: overlayCheckReceipts(recorder.observations(), checkExecution(context, 'overlays', 'rendered-dom')),
@@ -223,7 +234,7 @@ async function evaluateFlowObservation(context: TaskContext) {
         formReceipt: overlayDiagnostic ? undefined : { kind: 'site-module-check', version: 1, module: 'form-validation', pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl,
           applicable: checked.applicable, complete: checked.complete, passed: checked.complete && checked.flags.length === 0,
           assertions: checked.assertions, ...(!checked.complete ? { limitation: 'Empty-field form validation could not be observed safely.' } : {}),
-          execution: checkExecution(context, 'slow-replay', 'rendered-dom'),
+          execution: checkExecution(context, 'form-validation', 'rendered-dom'),
         } }))
     } finally { session.disposeNetwork(); await session.page.context().close() }
   }
@@ -233,12 +244,14 @@ async function evaluateFlowObservation(context: TaskContext) {
   const targetedLoading = target?.kind === 'DIAGNOSTIC' && POST_CLICK_CHECKS.includes(target.checkId.split('::page:')[0])
   const checkIdentity = target?.kind === 'DIAGNOSTIC' ? target.checkId.split('::page:')[0] : ''
   const targetedNetwork = CHECK_REGISTRY[checkIdentity]?.module === 'network'
+  const targetedTracking = CHECK_REGISTRY[checkIdentity]?.module === 'measurement' && checkIdentity.startsWith('tracking-')
+  const engagementPhase = frozen?.engagementCollection === 'split-v1' ? 'public_action' : undefined
   const targetedTrust = checkIdentity === 'flow-cta-destination-no-trust'
   const targetedContent = DESTINATION_CONTENT_CHECKS.includes(checkIdentity)
   const targetedPricing = target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] === 'flow-pricing-nav-broken'
   const pricingOnly = targetedPricing || context.input.module === 'pricing-navigation'
   let expectedActionContexts: string[] | undefined = context.input.verificationContext ? [context.input.verificationContext] : undefined
-  if ((targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedPricing || targetedNetwork) && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
+  if ((targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedPricing || targetedNetwork || targetedTracking) && target?.kind === 'DIAGNOSTIC' && checkIdentity !== 'flow-no-cta-found') {
     const scoped = frozen?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.actionContexts
     const flags = scoped ? [] : await readDiagnosticSources(prisma, frozen, context.audit.projectId)
     expectedActionContexts = context.input.verificationContext ? [context.input.verificationContext]
@@ -247,28 +260,43 @@ async function evaluateFlowObservation(context: TaskContext) {
   const access = await resolveAuditScanAccess(context.audit.id)
   let protectedActionRefused = false
   const session = await createAuditPage(await getAuditBrowser(), context.input.pageUrl, {
-    profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, scanAccess: access, deadline: context.deadline,
+    profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, requirePublicLanding: true, scanAccess: access, deadline: context.deadline,
+    collectTrackingLibraries: true,
     allowLocalhost: process.env.NODE_ENV !== 'production' && process.env.DEV_ALLOW_LOCALHOST === 'true',
     onSafetyRefusal: reason => { if (reason === 'protected_action_requires_fixture') protectedActionRefused = true },
   })
   try {
+    const initialFormProbe = session.formProbe
     session.setTrackingPhase('public_action')
     const result: FlowScanResult = await runFlowScan(session.page,
       context.audit.id, context.input.pageUrl,
       { pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, deadlineMs: Math.max(1, context.deadline - Date.now()),
         scanAccess: access, includeFormValidation: false, includeMobileNavigation: false, includePricingNavigation: false,
+        onPrimaryActionWindow: session.setPublicActionControl,
+        onNavigationChallenge: session.markNavigationChallenge,
         ...(careContexts ? { expectedActionContexts, excludedActionContexts: excludedContexts } : {}),
         ...(overlayDiagnostic ? { captureSteps: false, overlayOnly: true, expectedOverlayTargets: originalOverlays.filter(target => ['primary_action', 'pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))),
           includeFormValidation: originalOverlays.some(target => target.context.split(':')[3].startsWith('flow_form_validation')),
           mode: !originalOverlays.some(target => ['pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))) ? 'primary' : undefined } : {}),
-        ...(targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedNetwork ? { mode: targetedLoading || targetedTrust || targetedContent ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
+        ...(targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedNetwork ? {
+          mode: targetedLoading || targetedTrust || targetedContent ? 'destination' : 'primary', captureSteps: false, expectedActionContexts,
+          observePostClickLoading: targetedNetwork,
+        } : {}),
+        ...(targetedTracking ? { captureSteps: false, expectedActionContexts: expectedActionContexts?.length ? expectedActionContexts : undefined } : {}),
         ...(pricingOnly ? { mode: 'pricing', captureSteps: false, expectedPricingContexts: expectedActionContexts } : {}) })
-    await session.settleEngagement(context.deadline, context.signal)
-    const network = networkEngagementObservations({ pageUrl: context.input.pageUrl, failures: session.networkFailures,
-      probe: session.formProbe, evidence: session.engagement(), actionContext: result.actionEvidence?.controlContext ?? undefined, expected: targetedNetwork })
+    session.setPublicActionControl(null)
+    await session.settleNetwork(context.deadline, { signal: context.signal, engagement: engagementPhase ?? 'all', tracking: 'public_action' })
+    const engagement = session.engagement(engagementPhase), tracking = session.tracking('public_action')
+    const actionKey = primaryActionControlKey(result.actionEvidence?.clicked ? result.actionEvidence.controlContext : null)
+    for (const request of [...engagement.requests, ...(tracking?.requests ?? [])]) {
+      if (request.actionKey !== actionKey) delete request.actionKey
+    }
+    const network = networkEngagementObservations({ pageUrl: context.input.pageUrl,
+      failures: engagementPhase ? session.networkFailures.filter(failure => failure.engagementPhase === engagementPhase) : session.networkFailures,
+      probe: !engagementPhase || session.formProbe !== initialFormProbe ? session.formProbe : undefined,
+      evidence: engagement, expected: targetedNetwork })
     if (!protectedActionRefused && result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence &&
-      !network.assertions.length && !targetedNetwork) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
-    const tracking = session.tracking('public_action')
+      !network.assertions.length && !targetedNetwork && !tracking?.requests.length) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
     const measured = runTrackingChecks(metadata ?? null, tracking, context.input.pageUrl)
     const purpose = metadata ? detectPagePurpose(metadata, context.input.pageUrl).purpose : null
     const actionRequired = purpose === null ? null : needsFirstStep(purpose)
@@ -278,11 +306,6 @@ async function evaluateFlowObservation(context: TaskContext) {
       flag.checkId === 'flow-cta-404' && result.actionEvidence?.response === 'error')
     const flags = [...measured.flags, ...actionFlags,
       ...network.flags].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
-    const displayContext = (careContexts ?? frozen?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.actionContexts)?.find(value => value.startsWith('flow:control:'))
-    const ownsDisplay = careContexts && displayContext ? context.input.verificationContext === displayContext
-      : !context.input.verificationContext || context.input.verificationContext === displayContext
-    if (context.input.primary && !pricingOnly && ownsDisplay)
-      await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
     const flowCheck = assembleFlowModuleCheck({ result, actionRequired, actionFlags, pricingOnly, targetedPricing, protectedActionRefused,
       delegatedDiscovery: Boolean(excludedContexts?.length) })
     return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking,

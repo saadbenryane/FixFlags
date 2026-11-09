@@ -59,6 +59,7 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
           : row.provider === 'SEARCH_CONSOLE' && fact.kind === 'search_query'
             ? readSearchFactScope(fact.reportScope, row.propertyId, row.project.canonicalHost) : null
         if (!reportScope || fact.kind === 'analytics_page' && (!('pagePath' in reportScope) || reportScope.pagePath !== fact.pagePath)) return []
+        const retained = row.provider === 'ANALYTICS' && row.lastSyncedAt && fact.observedAt < row.lastSyncedAt
         return [{
           kind: fact.kind === 'analytics_page' ? 'analytics_page' as const : fact.kind === 'analytics_site' ? 'analytics_site' as const : 'search_query' as const,
           pagePath: fact.pagePath,
@@ -75,7 +76,7 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
           periodStart: fact.periodStart?.toISOString() ?? null,
           periodEnd: fact.periodEnd?.toISOString() ?? null,
           contextState: row.status !== 'CONNECTED' || !configured ? 'unavailable' as const
-            : Date.now() - fact.observedAt.getTime() >= 24 * 60 * 60 * 1000 ? 'stale' as const : 'current' as const,
+            : retained || Date.now() - fact.observedAt.getTime() >= 24 * 60 * 60 * 1000 ? 'stale' as const : 'current' as const,
         }]
       })
       : []),

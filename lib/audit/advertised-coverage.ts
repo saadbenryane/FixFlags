@@ -16,6 +16,20 @@ export type AdvertisedCoverage = {
     proofEnvironments: readonly ('local_worker' | 'live_provider' | 'live_schedule')[];
   };
 }
+
+/** The existing catalog owns identity and wording. This is an acceptance
+ * inventory, with every obligation unproven until a source-bound receipt exists. */
+export function advertisedCoverageObligations() {
+  const registry = validateAdvertisedCoverage()
+  return HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items.map(item => {
+    const coverage = registry.get(item.id)!
+    return { ...coverage, area: area.id, label: item.label,
+      obligations: coverage.acceptance.proofEnvironments.flatMap(environment => coverage.acceptance.scenarios.map(scenario => ({
+        environment, scenario, status: 'evidence_required' as const, receipt: null,
+      }))),
+    }
+  })))
+}
 const scope = 'Applies only to the checked pages and recorded execution, not the entire website.'
 const heuristic = 'Observed content or layout signals, not proof of visitor behavior or business impact.'
 const lab = 'Requires available PageSpeed evidence. Lab measurements are separate from field data; unavailable metrics remain unknown. Repairs require the original page, destination, engine and measurement profile. Resource repairs also retain the original provider audits, device, units and thresholds. Changed or unrecorded conditions remain unverified.'
@@ -63,7 +77,8 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['pages.internal-links'], ['task:discovery', 'page:seo']),
   ...entries(['pages.section-links'], ['page:seo'], 'public', 'checked_scope',
     'Exact fragment targets in the active captured document, excluding template and noscript descendants. Inactive links cannot invent failures or certify repair. Historical detector scopes remain distinct; custom routing, text fragments, later states and click or scroll behavior remain separate or unknown.'),
-  ...entries(['pages.responses'], ['page:page-response']),
+  ...entries(['pages.responses'], ['page:page-response'], 'public', 'checked_scope',
+    'Records the original public response and explicit missing-page labels. A bounded HTTP 200 HTML sample requires a readable main heading and closed observed labels before it can verify recovery. Rendering and content beyond the sample are separate.'),
   ...entries(['pages.pricing-contact'], ['task:flow'], 'public', 'checked_scope',
     'Public primary-action navigation and an independent rendered header pricing observation. Pricing repair and Watch recovery retain the original control, page, capture and access identity. Hidden copies are excluded; missing or changed controls, restrictions, blank destinations, pending responses and unclassified redirects cannot certify repair. This does not establish purchase or contact submission.'),
   ...entries(['pages.action-destinations', 'pages.blank-dead-end', 'pages.loading', 'pages.destination-content', 'pages.promise-consistency'], ['task:flow']),
@@ -79,9 +94,11 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
     'Persistent-cover observations on a bounded initial viewport cohort on desktop and mobile, plus recorded flow, pricing navigation, form validation and journey interactions. Repair requires the original control, page, browser conditions and phase. After-action recovery requires completed activation. Legacy findings without original scope and unsupported controls remain unverified.'),
   ...entries(['conversion.reduced-motion'], ['page:interaction', 'task:motion'], 'public', 'checked_scope',
     'Paired initial normal and reduced-preference observations cover changing CSS, transition and Animation API effects in the top document. Each moving element counts once per family. Canvas, SVG SMIL, requestAnimationFrame drawing, embedded documents and later interactions remain separate or unverified.'),
-  ...entries(['conversion.loading-feedback', 'conversion.input-zoom'], ['page:mobile-ux-quality'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.loading-feedback'], ['page:mobile-ux-quality'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.input-zoom'], ['page:mobile-ux-quality'], 'public', 'heuristic',
+    'Measures CSS text size on visible mobile inputs. A complete repeat measurement can verify CSS sizing on the original identified controls. Actual iOS focus and zoom behavior requires separate device evidence.'),
   ...entries(['conversion.button-placement'], ['page:mobile-ux-quality'], 'public', 'checked_scope',
-    'The sampled primary action position is compared on the same mobile capture window, the top 20 percent of the initial viewport. A missing or different window stays unknown. This does not prove one-handed reach or visitor behavior.'),
+    'Compares the original sampled action in the same mobile capture conditions against the top 20 percent of the viewport. A missing or different action or window leaves repair unverified. This does not prove one-handed reach or visitor behavior.'),
   ...entries(['conversion.cta-focus'], ['page:cta-focus'], 'public', 'heuristic', heuristic),
   ...entries(['conversion.value-proposition', 'conversion.audience-language'], ['page:messaging-clarity'], 'public', 'heuristic', heuristic),
   ...entries(['conversion.placeholder-copy'], ['page:slop'], 'public', 'heuristic', heuristic),
@@ -103,22 +120,27 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
     'Bounded native desktop observations measure content delay and persistent blocking loading UI after the original public action. Independent repair and Watch recovery compare the same control, reached URL, capture/access identity and detector. Blank recovery, changed routes, restrictions, incomplete samples and unscoped historical findings remain unknown; this does not establish business completion or later interaction states.'),
   ...entries(['search.presentation', 'search.headings'], ['search:presentation']),
   ...entries(['search.canonicals'], ['search:canonical'], 'public', 'checked_scope',
-    'HTML canonical declarations use the active document base, while HTTP Link headers use the response URL. Collection and evaluation share the same parser and bounded rendered sections retain the native base. Historical detector corrections cannot certify repair; missing target responses and incomplete declarations remain unknown.'),
+    'HTML canonical declarations use eligible links in the document head and resolve against the active document base. HTTP Link headers resolve against the response URL. Syntax repair requires fresh evidence from every originally failing source. Historical detector corrections cannot certify repair. Missing target responses and incomplete declarations remain unknown.'),
   ...entries(['search.indexing'], ['search:indexing']),
   ...entries(['search.robots'], ['search:crawl']),
-  ...entries(['search.sitemaps'], ['search:discovery']),
+  ...entries(['search.sitemaps'], ['search:discovery'], 'public', 'checked_scope',
+    'Reads XML page lists and indexes, plain-text URL lists, RSS 2.0 item links and Atom 1.0 alternate links within the public collection limits. Repair compares the original declared files. Membership describes the inspected files. Google submission and indexing have separate evidence.'),
   ...entries(['search.links'], ['page:seo']),
   ...entries(['search.structured-data'], ['search:structured-data'], 'public', 'checked_scope', 'Detected entities and supported feature requirements do not promise Google eligibility or rich-result appearance.'),
-  ...entries(['search.open-graph', 'search.favicon'], ['page:metadata']),
+  ...entries(['search.open-graph'], ['page:og-image'], 'public', 'checked_scope',
+    'Checks the first Open Graph declarations in a qualified public HTML head. A title or description repair compares the original page and final response URL.'),
+  ...entries(['search.favicon'], ['page:metadata'], 'public', 'checked_scope',
+    'Checks for an eligible icon address in the active page head. Empty, malformed and same-document addresses leave the Flag open. Resource loading, decoding, browser icon selection and the default favicon path are separate.'),
   ...entries(['search.preview-image'], ['page:og-image'], 'public', 'checked_scope',
-    'Public GET facts and bounded first-frame PNG, JPEG, WebP and GIF pixel decoding. Original bytes are collected once through the public request boundary and discarded after deriving private response and decoding facts. Decode repair requires the same image destination and decoder policy. Unsupported formats, incomplete bytes and resource or execution limits remain unknown. Platform rendering, caches and later animation frames are separate.'),
-  ...entries(['search.preview-consistency'], ['task:cross-page']),
+    'Uses the first image declaration in the public HTML head and verifies bounded first-frame PNG, JPEG, WebP and GIF decoding. Original bytes are discarded after deriving response and decoding facts. Repair requires the same page, image destination and decoder policy. Unsupported formats, incomplete bytes and resource or execution limits remain unknown. Platform rendering, caches and later animation frames are separate.'),
+  ...entries(['search.preview-consistency'], ['task:cross-page'], 'public', 'checked_scope',
+    'Compares the first declared Open Graph title and description in each inspected public HTML head. Repair reopens the original page pairs and compares the same final destinations. A shared destination or unread head remains inconclusive for the original comparison. Sharing-platform rendering and caches have separate evidence.'),
   ...entries(['search.google-indexing', 'search.google-soft404', 'search.google-declarations', 'search.google-ctr'], ['task:google'], 'search_console', 'checked_scope', provider),
   ...entries(['tracking.page-tags', 'tracking.markup', 'tracking.absence', 'tracking.tools'], ['page:measurement'], 'public', 'checked_scope', 'Markup detection does not verify delivery or provider recording. Captured markup and recognized top-level library transfers and event attempts are observed during page loading and existing public action walks. Request URL, method, page, phase and capture identities constrain repair without retaining raw project keys or query values. Historical unscoped evidence cannot certify repair. Recognized event requests are suppressed to avoid audit traffic. Consent, unsupported proxies, later behavior and provider recording remain separate or unknown.'),
   ...entries(['tracking.audience', 'tracking.page-traffic'], ['provider:analytics'], 'analytics', 'checked_scope', provider),
   ...entries(['accessibility.names', 'accessibility.labels', 'accessibility.skip-links', 'accessibility.targets', 'accessibility.alt', 'accessibility.contrast', 'accessibility.language', 'accessibility.structure', 'accessibility.aria', 'accessibility.identifiers', 'accessibility.landmarks', 'accessibility.viewport'], ['page:accessibility'], 'public', 'checked_scope', 'Automated rendered evidence uses the selected WCAG policy, registered heading and landmark best-practice rules, and a legacy control-identifier diagnostic. Native rule findings and comparable repairs survive unavailable whole-document metadata; HTML fallback signals remain unknown. Unresolved results stay unknown; manual and assistive-technology review remain separate.'),
   ...entries(['accessibility.traps'], ['page:keyboard'], 'public', 'checked_scope', 'Bounded page navigation and safely declared menu/dialog opening, arrow navigation, modal boundaries, Escape and restoration are exercised, including inspectable open shadow roots and assigned slots. Closed roots, embedded frames, unopened nested interactions and unresolved workflows remain explicit limits.'),
-  ...entries(['accessibility.focus'], ['page:keyboard'], 'public', 'partial', 'Actual keyboard focus on the page, inspectable open shadow roots and safely opened popups is inspected for a focus-specific computed style change. An outline matching a uniform surrounding background is not accepted. Patterned, clipped and unresolved backgrounds remain unknown. This does not establish pixel contrast, every custom focus effect, closed roots, embedded frames, or unopened states.'),
+  ...entries(['accessibility.focus'], ['page:keyboard'], 'public', 'partial', 'Actual keyboard focus on the page, inspectable open shadow roots and safely opened popups is inspected for a focus-specific computed style change. This includes outlines and sharp outer shadow layers on the control or its dedicated direct wrapper. Translucent layers are composited where the surrounding background and paint geometry are known. Shared rings and unresolved clips, masks and backgrounds remain unknown, including rings crossing a rounded background corner. A border-box clip can establish that an outside ring is absent. Pixel contrast, other custom focus effects, closed roots, embedded frames and unopened states remain outside this evidence.'),
   ...entries(['accessibility.tab-order'], ['page:keyboard'], 'public', 'heuristic', 'Records the exercised Tab sequence and detects positive-tabindex backward jumps. Intended reading order and unopened interaction states require separate review.'),
   ...entries(['uptime.response', 'uptime.errors', 'uptime.provenance'], ['task:bindings', 'projection:uptime'], 'uptime_probes', 'checked_scope', 'Recorded public HTTP observations remain separate from configured rendered-page verification.'),
   ...entries(['uptime.console'], ['page:console']),

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const research = await getIndexableIssueCheckIds().catch(() => [])
-  return new Response(buildLlmsTxt({ hasReviewedResearch: research.length > 0 }), {
+  return new Response(buildLlmsTxt(research.map(issue => issue.checkId)), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
   })
 }

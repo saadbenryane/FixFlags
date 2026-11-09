@@ -12,8 +12,8 @@ type ReportPerformance = { id: string; url: string; executionSpec?: unknown; per
 export async function loadRecordedPageSpeedCoverage(audit: ReportPerformance, db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma) {
   const routes = audit.pages.length ? audit.pages : [{ url: audit.url, performanceData: audit.performanceData }]
   if (readExecutionSpec(audit.executionSpec)?.engine !== 'progressive-v1') return derivePageSpeedCoverage(routes)
-  // Coverage needs scalar measurements, never provider traces, resource tables,
-  // diagnostics or raw payloads. Preserve exact Audit and page attribution.
+  // Coverage needs scalar measurements and their timing, never raw provider
+  // traces or resource tables. Preserve exact Audit and page attribution.
   const rows = await db.$queryRaw<Array<{ pageUrl: string; device: string; observation: unknown }>>`
     SELECT task."pageUrl", device.value AS device, jsonb_build_object(
       'strategy', task."workResult"->'data'->device.value->'strategy',
@@ -23,6 +23,7 @@ export async function loadRecordedPageSpeedCoverage(audit: ReportPerformance, db
       'fcp', task."workResult"->'data'->device.value->'fcp',
       'tbt', task."workResult"->'data'->device.value->'tbt',
       'inp', task."workResult"->'data'->device.value->'inp',
+      'measurement', task."workResult"->'data'->device.value->'diagnostics'->'measurement',
       'crux', task."workResult"->'data'->device.value->'crux') AS observation
     FROM audit_execution_tasks task CROSS JOIN (VALUES ('desktop'), ('mobile')) device(value)
     WHERE task."auditId" = ${audit.id} AND task."targetKey" LIKE 'task:%' AND task."workKind" = 'pagespeed'
@@ -38,5 +39,5 @@ export async function loadRecordedPageSpeedCoverage(audit: ReportPerformance, db
     observed[row.device] ??= row.observation
     byPage.set(row.pageUrl, observed)
   }
-  return derivePageSpeedCoverage(routes.map(route => ({ url: route.url, performanceData: byPage.get(route.url) ?? null })))
+  return derivePageSpeedCoverage(routes.map(route => ({ url: route.url, performanceData: byPage.get(route.url) ?? null })), { requireCurrentLab: true })
 }

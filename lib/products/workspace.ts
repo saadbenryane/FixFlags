@@ -1,4 +1,5 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
+import { watchErrorMessage } from '@/lib/sites/watch-state'
 import type {
   AuditStatus,
   ImprovementStatus,
@@ -32,7 +33,7 @@ import {
 } from '@/lib/audit/persist-visual-evidence'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { parseReviewCoverage } from '@/lib/audit/review-depth'
-import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { readReportComparison } from '@/lib/audit/diff-flags'
 import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
@@ -199,7 +200,7 @@ export type ProductOverviewProjection = {
   technologyProfile: TechnologyProfile | null
   reviewHistory: ProductReviewSummaryDTO[]
   /** Latest completed parented Review diff. */
-  latestUpdateDiff: Awaited<ReturnType<typeof getFlagDiffSummary>> | null
+  latestUpdateDiff: Awaited<ReturnType<typeof readReportComparison>>
   latestUpdateDiffPartial: boolean
   rubrics: ProductRubricScoreDTO[]
 }
@@ -453,12 +454,15 @@ const attemptSelect = {
  */
 export async function loadVerificationReceiptsForReview(
   reviewId: string,
-  userId: string
+  userId: string,
+  projectId: string | null,
 ): Promise<ProductAttemptDTO[]> {
+  const improvementScope = { project: { userId }, ...(projectId ? { projectId } : {}) }
   const attempts = await prisma.improvementAttempt.findMany({
     where: {
       verificationAuditId: reviewId,
-      improvement: { project: { userId } },
+      improvement: improvementScope,
+      ...(projectId ? { sourceAudit: { projectId }, verificationAudit: { projectId } } : {}),
     },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: attemptSelect,
@@ -471,7 +475,8 @@ export async function loadVerificationReceiptsForReview(
   ]
   const sourceOccurrences = await prisma.improvementOccurrence.findMany({
     where: {
-      improvement: { project: { userId } },
+      improvement: improvementScope,
+      ...(projectId ? { audit: { projectId } } : {}),
       auditId: { in: sourceReviewIds },
       improvementId: { in: attempts.map((attempt) => attempt.improvementId) },
     },
@@ -878,7 +883,7 @@ export async function loadProductWorkspace(
 
   const latestUpdateDiff =
     latestParentedCompleted?.parentId
-      ? await getFlagDiffSummary(
+      ? await readReportComparison(
           latestParentedCompleted.parentId,
           latestParentedCompleted.id,
         )
@@ -1050,7 +1055,7 @@ export async function loadProductWorkspace(
       lastRunAt: product.watchLastRunAt?.toISOString() ?? null,
       lastAttemptAt: product.watchLastAttemptAt?.toISOString() ?? null,
       consecutiveFailures: product.watchConsecutiveFailures,
-      lastError: product.watchLastError,
+      lastError: watchErrorMessage(product.watchLastError),
     },
     attention,
     attentionEvidence,

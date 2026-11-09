@@ -11,21 +11,25 @@ export type BrowserRequestPolicy = (request: BrowserRequest) => Promise<boolean>
  * overrides. Native interception scopes headers per hop and gives redirects
  * the same admission policy without replaying their physical requests. */
 export async function installRequestBoundary(page: Page, targetUrl: string,
-  headers: Record<string, string> | undefined, guard: (route: Route) => Promise<void>, policy?: BrowserRequestPolicy) {
+  headers: Record<string, string> | undefined, guard: (route: Route) => Promise<void>,
+  observeLibraries?: (channel: NativeSession, mainFrameId: string) => Promise<void>) {
   const connection = await page.context().newCDPSession(page)
   const mainFrameId = (await connection.send('Page.getFrameTree')).frameTree.frame.id as string
   const origin = new URL(targetUrl).origin
   const configured = Object.fromEntries(Object.entries(headers ?? {}).map(([name, value]) => [name.toLowerCase(), value]))
   const scopedHeaders = (url: string, values: Record<string, string>) => {
     if (!Object.keys(configured).length) return undefined
-    const approved = new URL(url).origin === origin
-    const retained = Object.fromEntries(Object.entries(values).map(([name, value]) => [name.toLowerCase(), value])
-      .filter(([name]) => approved || !Object.hasOwn(configured, name)))
-    return approved ? { ...retained, ...configured } : retained
+    const native = Object.entries(values).map(([name, value]) => [name.toLowerCase(), value] as const)
+    if (new URL(url).origin === origin) return { ...Object.fromEntries(native), ...configured }
+    // Keep the browser's media negotiation while discarding the configured
+    // preview value and all other configured header names at a foreign origin.
+    const retained = native.filter(([name, value]) => !Object.hasOwn(configured, name) ||
+      name === 'accept' && value.trim().toLowerCase() !== configured.accept.trim().toLowerCase())
+    return retained.length === native.length ? undefined : Object.fromEntries(retained)
   }
   // CDP emits outside the worker's async context. Keep its admitted execution
   // ownership so request-time transactions retain the normal lease fences.
-  const admittedPolicy = policy ? AsyncResource.bind(policy) : undefined
+  const admit = AsyncResource.bind(guard)
   let disposed = false
   const cleanups = new Set<() => void>()
   const handle = async (event: PausedRequest, channel: NativeSession) => {
@@ -35,20 +39,16 @@ export async function installRequestBoundary(page: Page, targetUrl: string,
     const abort = async () => { await channel.send('Fetch.failRequest', { requestId: event.requestId, errorReason: 'BlockedByClient' }) }
     // Shared routing owns first requests. Native interception owns redirects,
     // which Playwright can omit, without consuming either policy twice.
-    if (event.redirectedRequestId && admittedPolicy && !await admittedPolicy({ url: event.request.url, method: event.request.method,
-      navigation: event.resourceType === 'Document', postData: event.request.postData ?? null, resourceType: event.resourceType.toLowerCase() })) {
-      await abort(); return
-    }
     if (event.redirectedRequestId) {
       // Only the request fields used by the shared admission policy are exposed.
       // A redirected POST still needs that policy's explicit mutation authority.
-      const route = { request: () => ({ url: () => event.request.url, method: () => event.request.method,
+      const request = { url: () => event.request.url, method: () => event.request.method,
         isNavigationRequest: () => event.resourceType === 'Document', postData: () => event.request.postData ?? null,
         resourceType: () => event.resourceType.toLowerCase(), frame: () => {
           if (event.frameId === mainFrameId) return page.mainFrame()
           throw new Error('Redirected request is outside the top-document observation scope')
-        } }), fallback: resume, abort }
-      await guard(route as unknown as Route)
+        } }
+      await admit({ request: () => request, fallback: resume, abort } as unknown as Route)
     } else await resume()
   }
   const initialize = async (channel: NativeSession, closed = () => disposed, interceptsNetwork = true) => {
@@ -133,16 +133,16 @@ export async function installRequestBoundary(page: Page, targetUrl: string,
           await browserConnection.send('Target.getTargets')
           await Promise.all([...pendingAuxiliary])
         }
-        if (admittedPolicy && !await admittedPolicy({ url: request.url(), method: request.method(), navigation: request.isNavigationRequest(),
-          postData: request.postData(), resourceType: request.resourceType() })) return await route.abort('blockedbyclient')
-        await guard(route)
+        await admit(route)
       } catch { await route.abort('blockedbyclient').catch(() => undefined) }
     }
     await page.context().route('**', firstHop)
     // Keep the owner guard ahead of configured page routes. The same Request
     // can fall through both entrypoints but receives one policy decision.
     await page.route('**', firstHop)
-    await initialize(nativeSession(connection))
+    const channel = nativeSession(connection)
+    await observeLibraries?.(channel, mainFrameId)
+    await initialize(channel)
   }
   catch (error) { dispose(); await connection.detach().catch(() => undefined); throw error }
 }

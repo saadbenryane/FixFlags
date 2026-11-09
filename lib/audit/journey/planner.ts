@@ -43,21 +43,20 @@ async function runOpenAIPlanner(
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = {
+      model: cfg.model,
+      max_tokens: cfg.maxTokens,
+      messages: [
+        { role: 'system', content: buildPlannerSystemPrompt() },
+        { role: 'user', content: buildPlannerUserPrompt(input) },
+      ],
+      tools: [JOURNEY_PLAN_TOOL_OPENAI],
+      tool_choice: { type: 'function', function: { name: 'plan_journey' } },
+    } satisfies Parameters<typeof client.chat.completions.create>[0]
     const { response, usage } = await measuredProviderRequest({
+      api: 'chat.completions', requestBody,
       model: cfg.model, onAttempt,
-      request: () => client.chat.completions.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        messages: [
-          { role: 'system', content: buildPlannerSystemPrompt() },
-          { role: 'user', content: buildPlannerUserPrompt(input) },
-        ],
-        tools: [JOURNEY_PLAN_TOOL_OPENAI],
-        tool_choice: { type: 'function', function: { name: 'plan_journey' } },
-      },
-      { signal: controller.signal }
-      ),
+      request: () => client.chat.completions.create(requestBody, { signal: controller.signal }),
       usage: response => openAIResponseUsage(response, cfg.model),
     })
 
@@ -89,36 +88,35 @@ async function runAnthropicPlanner(
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = {
+      model: cfg.model,
+      max_tokens: cfg.maxTokens,
+      system: [
+        {
+          type: 'text',
+          text: buildPlannerSystemPrompt(),
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      tools: [
+        {
+          name: 'plan_journey',
+          description: 'Plan a multi-step user journey to evaluate a website experience',
+          input_schema: JOURNEY_PLAN_PARAMETERS as import('@anthropic-ai/sdk/resources/messages').Tool.InputSchema,
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'plan_journey' },
+      messages: [
+        {
+          role: 'user',
+          content: buildPlannerUserPrompt(input),
+        },
+      ],
+    } satisfies Parameters<typeof client.messages.create>[0]
     const { response, usage } = await measuredProviderRequest({
+      api: 'messages', requestBody,
       model: cfg.model, onAttempt,
-      request: () => client.messages.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        system: [
-          {
-            type: 'text',
-            text: buildPlannerSystemPrompt(),
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        tools: [
-          {
-            name: 'plan_journey',
-            description: 'Plan a multi-step user journey to evaluate a website experience',
-            input_schema: JOURNEY_PLAN_PARAMETERS as import('@anthropic-ai/sdk/resources/messages').Tool.InputSchema,
-          },
-        ],
-        tool_choice: { type: 'tool', name: 'plan_journey' },
-        messages: [
-          {
-            role: 'user',
-            content: buildPlannerUserPrompt(input),
-          },
-        ],
-      },
-      { signal: controller.signal }
-      ),
+      request: () => client.messages.create(requestBody, { signal: controller.signal }),
       usage: response => anthropicResponseUsage(response, cfg.model),
     })
 

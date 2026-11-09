@@ -10,7 +10,7 @@ const requestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('destination'), key: z.string(), result: destinationSchema }).strict(),
   z.object({ kind: z.literal('document'), key: z.string(), result: previewImageResponseSchema.nullable() }).strict(),
 ])
-export const nativeHttpEvidenceSchema = z.object({ version: z.literal(1), evaluatedAt: z.string().datetime(),
+export const nativeHttpEvidenceSchema = z.object({ version: z.union([z.literal(1), z.literal(2), z.literal(3)]), evaluatedAt: z.string().datetime(),
   requests: z.array(requestSchema).max(128) }).strict()
 export type NativeHttpEvidence = z.infer<typeof nativeHttpEvidenceSchema>
 type Request = z.infer<typeof requestSchema>
@@ -33,7 +33,9 @@ export function nativeHttpCollection(recorded?: NativeHttpEvidence) {
     return evaluatedAt
   }
   const openDestination: NonNullable<DestinationCheckOptions['openDestination']> = async (url, options = {}) => {
-    const key = identity('destination', url, [options.origin ?? null, options.httpErrorsOnly ?? false])
+    const scope = [options.origin ?? null, options.httpErrorsOnly ?? false]
+    // Earlier repair receipts used the routine bound and retain their original observation.
+    const key = identity('destination', url, options.extendedBody && replay?.version !== 1 ? [...scope, 'extended-body'] : scope)
     if (replay) return { url: new URL(url, options.origin).toString(), ...(read('destination', key) as Extract<Request, { kind: 'destination' }>).result }
     const result = await openCheckDestination(url, options)
     requests.push({ kind: 'destination', key, result: { outcome: result.outcome, status: result.status, shouldFlagDead: result.shouldFlagDead } })
@@ -52,8 +54,8 @@ export function nativeHttpCollection(recorded?: NativeHttpEvidence) {
       return result
     } finally { requests.push({ kind: 'document', key, result }) }
   }
-  return { options: { openDestination, observeImage, collectedAt }, snapshot(): NativeHttpEvidence {
+  return { options: { openDestination, observeImage, collectedAt, legacyActionInventory: replay !== null && replay.version < 3 }, snapshot(): NativeHttpEvidence {
     if (replay && (mismatch || consumed.size !== replay.requests.length)) throw new Error('NATIVE_HTTP_REPLAY_INPUT_MISMATCH')
-    return nativeHttpEvidenceSchema.parse(replay ?? { version: 1, evaluatedAt, requests })
+    return nativeHttpEvidenceSchema.parse(replay ?? { version: 3, evaluatedAt, requests })
   } }
 }

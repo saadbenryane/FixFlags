@@ -16,11 +16,6 @@ vi.mock('@/lib/audit/judge-runner', () => ({
   runLlmWithRetry: mocks.runLlmWithRetry,
 }))
 
-vi.mock('@/lib/prompts/system-prompt', () => ({
-  buildTriageSystemPrompt: () => 'system prompt',
-  buildTriageUserPrompt: () => 'user prompt',
-}))
-
 vi.mock('@/lib/audit/judge', () => ({
   isRetryableJudgeError: mocks.isRetryableJudgeError,
 }))
@@ -29,8 +24,16 @@ import {
   isTriageProviderConfigured,
   normalizeTriageRawOutput,
   runTriageWithRetry,
+  revalidateTriageInterpretation,
+  buildTriageContext,
+  reusableTriageInterpretation,
+  triageInterpretationRequestDigests,
 } from '../judge-triage'
 import { triageOutputSchema } from '../judge-triage-schema'
+import { assessTriageRecommendations } from '../triage-grounding'
+import { pageSpeedMeasurementFixture } from './check-fixtures'
+import { observationsForFlag } from '../flag-observations'
+import { getTriageProviderConfig } from '../judge-config'
 
 const VALID_OUTPUT = {
   pageJob: 'Sell the product to first-time visitors',
@@ -261,7 +264,7 @@ describe('runTriageWithRetry provider paths', () => {
     assert.equal(result.usage.inputTokens, 10)
     assert.equal(result.usage.outputTokens, 5)
     const createArgs = mocks.openaiCreate.mock.calls[0][0]
-    assert.equal(createArgs.model, 'gpt-4o-mini')
+    assert.equal(createArgs.model, 'gpt-4o-mini-2024-07-18')
     assert.equal(createArgs.messages[1].content[0].type, 'image_url')
   })
 
@@ -363,9 +366,45 @@ describe('runTriageWithRetry provider paths', () => {
 })
 
 describe('triage output schema', () => {
+  it('keys the actual semantic requests independently of unused provider timestamps and native receipt identity', () => {
+    const url = 'https://example.com', desktop = pageSpeedMeasurementFixture(url)
+    const flags = (auditId: string) => FLAGS.map(flag => ({ ...flag, supportingObservations: observationsForFlag(flag,
+      { auditId, taskId: auditId + '-task', checkVersion: 1, collectedAt: '2026-11-05T10:00:00.000Z' }) }))
+    const before = buildTriageContext(url, METADATA, desktop, null, flags('first-observation'))
+    const after = buildTriageContext(url, METADATA, { ...desktop,
+      raw: { ...desktop.raw, fetchTime: 'a later provider observation' }, diagnostics: { differentUnusedDiagnostic: true } }, null, flags('fresh-observation'))
+    const configurations = [{ provider: 'openai', ...getTriageProviderConfig('openai') }]
+    const digest = (context: typeof before, image = 'exact-captured-pixels') => triageInterpretationRequestDigests(context, image, null, configurations)
+    assert.deepEqual(digest(before), digest(after))
+    assert.notDeepEqual(digest(before), digest({ ...after, pageText: 'A newly observed proposition.' }))
+    assert.notDeepEqual(digest(before), digest(after, 'changed-captured-pixels'))
+    assert.notDeepEqual(digest(before), triageInterpretationRequestDigests(after, 'exact-captured-pixels', null,
+      configurations.map(config => ({ ...config, maxTokens: config.maxTokens + 1 }))))
+  })
   it('accepts the valid output fixture', () => {
     const parsed = triageOutputSchema.safeParse(VALID_OUTPUT)
     assert.equal(parsed.success, true)
+  })
+  it('revalidates captured references and native policy without replaying original provider consumption', () => {
+    const context = buildTriageContext('https://example.com', { ...METADATA,
+      pageText: 'Product teams coordinate releases and review their recorded work together. '.repeat(10) }, null, null, FLAGS)
+    const output = triageOutputSchema.parse(VALID_OUTPUT)
+    const source = { output, assessment: assessTriageRecommendations(output.newFlags, context).assessment,
+      usage: { model: 'gpt-4o-mini-2024-07-18', inputTokens: 100, outputTokens: 50 } }
+    const accepted = revalidateTriageInterpretation(source, context, FLAGS)
+    assert.equal(accepted?.output.newFlags.length, 1)
+    assert.deepEqual(accepted?.usage, { model: source.usage.model, inputTokens: 0, outputTokens: 0 })
+    assert.equal(accepted?.output.launchChecklist.find(item => item.id === 'https')?.passed, false)
+    assert.equal(source.usage.inputTokens, 100)
+    assert.equal(revalidateTriageInterpretation(source, { ...context, metadata: { ...context.metadata, h1s: ['Changed captured headline'] } }, FLAGS), null)
+    assert.equal(revalidateTriageInterpretation({ ...source, assessment: { ...source.assessment, status: 'PARTIAL' } }, context, FLAGS), null)
+    assert.equal(revalidateTriageInterpretation(source, { ...context, pagePurpose: { purpose: 'placeholder', reasons: ['Minimal captured page'] } }, FLAGS), null)
+    const complete = { ...source, output: { ...source.output, rubrics: source.output.rubrics.map(rubric => ({ ...rubric,
+      assessmentState: 'ASSESSED' as const, score: 70 })) }, usage: { ...source.usage, provider: 'openai' as const } }
+    const configurations = [{ provider: 'openai', model: source.usage.model }]
+    assert.equal(reusableTriageInterpretation(complete, configurations), true)
+    assert.equal(reusableTriageInterpretation({ ...complete, usage: { ...complete.usage, model: 'different-snapshot' } }, configurations), false)
+    assert.equal(reusableTriageInterpretation({ ...complete, usage: { ...source.usage } }, configurations), false)
   })
 })
 

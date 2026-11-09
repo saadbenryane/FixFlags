@@ -29,6 +29,8 @@ run('Google indexed-version worker observations', () => {
   let providerRequests = 0
   let tokenRenewals = 0
   let tokenUnavailable = false
+  let performanceMode: 'empty' | 'low' | 'limited' | 'foreign' | 'healthy' = 'empty'
+  let googleDirectiveMode: 'allowed' | 'restricted' | 'unknown' = 'allowed'
   let worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
     if (request.url === '/robots.txt') { response.setHeader('content-type', 'text/plain'); response.end('User-agent: *\nAllow: /\nSitemap: ' + origin + '/sitemap.xml'); return }
@@ -55,14 +57,26 @@ run('Google indexed-version worker observations', () => {
         expect([pageUrl, peerUrl]).toContain(requested.inspectionUrl)
         expect(requested.siteUrl).toBe(currentProperty)
         expect(new Headers(options?.headers).get('authorization')).toBe('Bearer fixture-search-access')
+        const directives = requested.inspectionUrl === pageUrl ? googleDirectiveMode : 'allowed'
         return new Response(JSON.stringify({ inspectionResult: { indexStatusResult: { verdict, lastCrawlTime: requested.inspectionUrl === peerUrl ? peerCrawl : crawl, pageFetchState: fetchState,
-          robotsTxtState: 'ALLOWED', indexingState: 'INDEXING_ALLOWED', ...(verdict === 'PASS' ? { googleCanonical: requested.inspectionUrl } : {}), userCanonical: requested.inspectionUrl } } }))
+          ...(directives === 'unknown' ? {} : { robotsTxtState: directives === 'restricted' ? 'DISALLOWED' : 'ALLOWED',
+            indexingState: directives === 'restricted' ? 'BLOCKED_BY_META_TAG' : 'INDEXING_ALLOWED' }),
+          ...(verdict === 'PASS' ? { googleCanonical: requested.inspectionUrl } : {}), userCanonical: requested.inspectionUrl } } }))
       }
       if (url.hostname === 'www.googleapis.com' && url.pathname.endsWith('/searchAnalytics/query')) {
         providerRequests++
-        const filter = JSON.parse(String(options?.body)).dimensionFilterGroups[0].filters[0]
+        const query = JSON.parse(String(options?.body))
+        const filter = query.dimensionFilterGroups[0].filters[0]
         expect(filter).toMatchObject({ dimension: 'page', operator: 'equals' })
         expect([pageUrl, peerUrl]).toContain(filter.expression)
+        expect(query).toMatchObject({ aggregationType: 'byPage', dataState: 'final' })
+        if (performanceMode !== 'empty') {
+          const affected = filter.expression === pageUrl
+          const low = affected && performanceMode !== 'healthy'
+          return Response.json({ responseAggregationType: affected && performanceMode === 'limited' ? 'byProperty' : 'byPage',
+            rows: [{ keys: ['useful service', affected && performanceMode === 'foreign' ? peerUrl : filter.expression, 'DESKTOP', 'usa'],
+              clicks: low ? 1 : 10, impressions: 200, ctr: low ? 0.005 : 0.05, position: 4 }] })
+        }
         return new Response(JSON.stringify({ rows: [] }))
       }
       if (url.origin !== origin) throw new Error('External service unavailable in this fixture')
@@ -137,6 +151,10 @@ run('Google indexed-version worker observations', () => {
         reportCompleteness: 'PARTIAL', failedModules: expect.arrayContaining(['search-google-index', 'search-google-performance']) })
       const unavailable = await prisma.auditVerificationReceipt.findMany({ where: { auditId: revoked.auditId!, targetKey: { startsWith: 'module:search-google' } } })
       expect(unavailable.every(item => item.status === 'COMPLETED')).toBe(true)
+      for (const receipt of unavailable) expect(searchReceiptSchema.parse(receipt.detail)).toMatchObject({ complete: false,
+        observations: [expect.objectContaining({ disposition: 'unknown' })] })
+      expect((await getOwnedRun(userId, revoked.runId))?.completionState).toBe('FULL')
+      expect((await loadSiteHome(projectId))!.cards.find(item => item.id === 'search')).toMatchObject({ evidenced: true, incompleteReason: null })
       expect(providerRequests).toBe(before)
     } finally {
       await prisma.siteConnection.deleteMany({ where: { projectId, provider: 'SEARCH_CONSOLE' } })
@@ -220,4 +238,48 @@ run('Google indexed-version worker observations', () => {
     expect((await loadMonitoringHistory(site)).timeline.find(entry => entry.id === recurring.auditId))
       .toMatchObject({ result: 'FLAG', flagCount: 1, flags: [{ id: recurrence.id, title: recurrence.problem }] })
   }, 240_000)
+
+  it('keeps indexed directives and finalized CTR recommendations independent through gaps and reassessment', async () => {
+    verdict = 'PASS'
+    fetchState = 'SUCCESSFUL'
+    try {
+      for (const [index, phase] of (['low', 'limited', 'foreign', 'healthy', 'low'] as const).entries()) {
+        performanceMode = phase
+        googleDirectiveMode = phase === 'limited' || index === 4 ? 'restricted' : phase === 'foreign' ? 'unknown' : 'allowed'
+        verdict = googleDirectiveMode === 'restricted' ? 'NEUTRAL' : 'PASS'
+        const { auditId } = await category('google-ctr-' + index)
+        async function receipt(module: string, url: string) {
+          const saved = await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { auditId_targetKey_scopeKey: {
+            auditId: auditId!, targetKey: 'module:' + module, scopeKey: 'page:' + url,
+          } } })
+          return searchReceiptSchema.parse(saved.detail)
+        }
+        const performance = await receipt('search-google-performance', pageUrl)
+        const indexReceipt = await receipt('search-google-index', pageUrl)
+        const invalid = phase === 'limited' || phase === 'foreign'
+        expect(performance.complete).toBe(!invalid)
+        expect(indexReceipt.complete).toBe(googleDirectiveMode !== 'unknown')
+        expect(indexReceipt.observations.find(item => item.checkId === 'search-google-directives')).toMatchObject({
+          reason: googleDirectiveMode === 'restricted' ? 'google_indexing_restriction_recorded' : 'google_indexing_rules_assessment',
+          disposition: googleDirectiveMode === 'restricted' ? 'observed' : googleDirectiveMode === 'unknown' ? 'unknown' : 'passed',
+          google: { property },
+        })
+        const stored = await prisma.searchPerformance.findMany({ where: { auditId: auditId!, url: pageUrl } })
+        if (invalid) {
+          expect(stored).toEqual([])
+          expect(performance.observations).toMatchObject([{ disposition: 'unknown', reason: 'MALFORMED_PROVIDER_RESPONSE' }])
+        } else expect(stored).toMatchObject([{ impressions: 200, clicks: phase === 'low' ? 1 : 10, dateRange: expect.any(String) }])
+        const recommendation = performance.observations.find(item => item.checkId === 'low-ctr')
+        if (phase === 'low') expect(recommendation).toMatchObject({
+          disposition: 'observed', attention: { kind: 'recommendation' }, google: { property, dateRange: stored[0].dateRange },
+        })
+        else expect(recommendation).toBeUndefined()
+        expect((await receipt('search-google-performance', peerUrl)).observations.map(item => item.checkId)).not.toContain('low-ctr')
+      }
+    } finally {
+      performanceMode = 'empty'
+      googleDirectiveMode = 'allowed'
+      verdict = 'PASS'
+    }
+  }, 180_000)
 })

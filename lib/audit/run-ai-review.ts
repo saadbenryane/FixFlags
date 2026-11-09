@@ -150,7 +150,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
         metadata,
         techStack,
         existingFlags,
-        onAttempt: model => beginPrescriptionUsage(auditId, model),
+        onAttempt: (model, bound) => beginPrescriptionUsage(auditId, model, bound),
         rubrics: audit.rubrics.map((r) => ({
           name: r.name,
           grade: r.grade,

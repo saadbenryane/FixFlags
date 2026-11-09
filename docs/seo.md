@@ -11,7 +11,7 @@ All indexable marketing routes live in one registry:
 
 The registry drives:
 
-- [`app/sitemap.ts`](../app/sitemap.ts) — static routes + help articles + blog + graph-driven issue pages
+- [Sitemap route](../app/sitemap.xml/route.ts) serves marketing, help, blog, and eligible issue URLs with a no-store response.
 - [`app/llms.txt/route.ts`](../app/llms.txt/route.ts) — AI crawler discovery
 - [`scripts/seo-guard.mjs`](../scripts/seo-guard.mjs) — registry ↔ copy ↔ llms.txt sync
 - [`scripts/metadata-route-guard.mjs`](../scripts/metadata-route-guard.mjs) — every indexable route uses an approved metadata helper

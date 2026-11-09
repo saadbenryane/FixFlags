@@ -2,14 +2,16 @@ import type { Prisma } from '@prisma/client'
 import type { Response } from 'playwright'
 import { normalizeAuditNavigationUrl, safeFetchDocument } from '@/lib/audit/url'
 import { classifyPublicRequestFailure } from '@/lib/audit/http-failure'
-import { PublicResponseBodyError } from '@/lib/audit/http-evidence'
+import { isSuccessfulPublicGetStatus, PublicResponseBodyError } from '@/lib/audit/http-evidence'
 import { PublicCertificateError } from '@/lib/audit/tls-evidence'
 import { PublicRedirectError } from '@/lib/audit/redirect-evidence'
 import { getBrowser } from '@/lib/audit/screenshot'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
-import { PageCaptureError, publicResponseRestriction } from '@/lib/audit/browser/page-capture'
+import { isPublicSignInRedirect, PageCaptureError, PARTIAL_PAGE_RESPONSE, publicResponseRestriction, type PublicResponseContent } from '@/lib/audit/browser/page-capture'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
+import { isExplicitMissingPageLabel, supportsPageHeadingEvidence } from '@/lib/audit/soft-404'
+import { bindingEvaluator, usesDefaultAvailabilitySurface } from '../domain/outcome-evaluation'
 import type { AvailabilityBindingConfig } from './binding-config'
 import { availabilityFlagCopy } from './binding-assessment'
 import { recordBindingEvidence, recordExecution, type BindingObservation } from './binding-evidence'
@@ -18,13 +20,19 @@ import { recordBindingEvidence, recordExecution, type BindingObservation } from 
 const CONFIRMATION_ATTEMPTS = 2
 
 /** Both public clients apply the same response policy before inspecting content. */
-function availabilityResponseIssue(input: { status: number | null; body: string; headers: Record<string, string> }): BindingObservation | null {
+function availabilityResponseIssue(input: { status: number | null; headers: Record<string, string>;
+  requestedUrl: string; finalUrl: string } & PublicResponseContent, defaultSurface: boolean): BindingObservation | null {
   const status = input.status
   if (status === null) return { disposition: 'BLOCKED', reason: 'response_unavailable' }
-  if (status >= 300 && status < 400) return { disposition: 'BLOCKED', reason: 'redirect_unfollowed' }
   const restriction = publicResponseRestriction({ ...input, status })
   if (restriction) return { disposition: 'BLOCKED', reason: restriction === 'bot_challenge' ? 'bot_wall' : 'access_restricted', detail: { restriction } }
-  return status < 200 || status >= 300 ? { disposition: 'FAILED', reason: 'http_unavailable' } : null
+  if (status >= 300 && status < 400) return { disposition: 'BLOCKED', reason: 'redirect_unfollowed' }
+  if (!isSuccessfulPublicGetStatus(status)) return status === 206
+    ? { disposition: 'BLOCKED', reason: 'response_unavailable' }
+    : { disposition: 'FAILED', reason: 'http_unavailable' }
+  return defaultSurface && isPublicSignInRedirect({ ...input, status })
+    ? { disposition: 'BLOCKED', reason: 'access_restricted', detail: { restriction: 'authentication_required' } }
+    : null
 }
 
 /** One availability observation. A 200 alone is never enough: the rendered surface must match. */
@@ -33,21 +41,29 @@ async function probeAvailabilityOnce(input: {
   url: string
   config: AvailabilityBindingConfig
 }): Promise<BindingObservation> {
+  const defaultSurface = usesDefaultAvailabilitySurface(input.config)
+  let attemptedOrigin: string | null = null
   let response: Awaited<ReturnType<typeof safeFetchDocument>>
-  try { response = await safeFetchDocument(input.url, { timeoutMs: 8_000, deadline: Date.now() + 8000, maxBytes: 64_000 }) }
+  try { response = await safeFetchDocument(input.url, { timeoutMs: 8_000, deadline: Date.now() + 8000, maxBytes: 64_000,
+    onHopStart: origin => { attemptedOrigin = origin } }) }
   catch (error) {
     const failure = classifyPublicRequestFailure(error)
     const partial = error instanceof PublicResponseBodyError || error instanceof PublicRedirectError ? error.response : null
     const detail = {
       status: partial?.statusCode ?? null, url: input.url,
-      finalUrl: error instanceof PublicCertificateError ? error.url : partial?.finalUrl ?? input.url,
+      finalUrl: error instanceof PublicCertificateError ? error.url : partial?.finalUrl ?? attemptedOrigin ?? input.url,
       source: 'public-http', collectedAt: new Date().toISOString(),
+    }
+    if (error instanceof PublicResponseBodyError) {
+      const issue = availabilityResponseIssue({ ...error.response, status: error.response.statusCode,
+        body: error.response.body ?? '', requestedUrl: input.url }, defaultSurface)
+      if (issue) return { ...issue, detail: { ...detail, ...issue.detail } }
     }
     if (failure.result !== 'FAILED') return { disposition: 'BLOCKED', reason: 'request_failed', ...(partial ? { detail } : {}) }
     return { disposition: 'FAILED', reason: failure.reason, detail }
   }
   const status = response.statusCode
-  const issue = availabilityResponseIssue({ body: response.body, headers: response.headers, status })
+  const issue = availabilityResponseIssue({ ...response, status, requestedUrl: input.url }, defaultSurface)
   if (issue) return { ...issue,
     detail: { ...issue.detail, status, url: input.url, finalUrl: response.finalUrl, source: 'public-http', collectedAt: new Date().toISOString() } }
   let session: Awaited<ReturnType<typeof createAuditPage>> | undefined
@@ -67,15 +83,61 @@ async function probeAvailabilityOnce(input: {
     const observedNavigation = navigation
     const renderedDetail = { status: observedNavigation?.status ?? null, publicHttpStatus: status, publicHttpFinalUrl: response.finalUrl,
       url: input.url, finalUrl: session.page.url(), source: 'rendered-navigation', collectedAt: new Date().toISOString() }
-    const surface = await session.page.evaluate(() => ({ text: document.body?.innerText.slice(0, 64_000) ?? '',
-      html: document.documentElement?.outerHTML.slice(0, 64_000) ?? '', url: location.href }))
+    const surface = await session.page.evaluate(collectMissingLabels => {
+      const inactive = 'script,style,svg,template,noscript'
+      const excluded = inactive + ',[hidden],[inert]'
+      const text = document.body?.innerText.slice(0, 64_000) ?? ''
+      const cues = { titles: [] as string[], headings: [] as string[], text }
+      const missingPageLabels: string[] = []
+      const labels = document.querySelectorAll('head > title, body h1')
+      const limit = 100
+      let labelsComplete = labels.length <= limit
+      // Method syntax keeps this serialized browser callback self-contained
+      // when the worker's TypeScript loader preserves function names.
+      const labelReader = {
+        read(label: Element, omit: string): string | null {
+          const walker = document.createTreeWalker(label, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+              return node instanceof Element && node.matches(omit) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+            },
+          })
+          let text = '', visited = 0
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (++visited > 1024) return null
+            if (node.nodeType !== Node.TEXT_NODE) continue
+            const value = node.nodeValue ?? ''
+            if (text.length + value.length > 512) return null
+            text += value
+          }
+          return text
+        },
+      }
+      for (let index = 0; index < Math.min(labels.length, limit); index++) {
+        const label = labels[index]
+        if (label.closest(inactive)) continue
+        const cue = labelReader.read(label, inactive)
+        if (cue === null) labelsComplete = false
+        const group = label.localName === 'title' ? cues.titles : cues.headings
+        group.push(cue ?? '')
+        if (!collectMissingLabels || label.closest(excluded)) continue
+        const visible = label.querySelector('[hidden],[inert]') ? labelReader.read(label, excluded) : cue
+        if (visible === null) labelsComplete = false
+        else missingPageLabels.push(visible)
+      }
+      return { cues, missingPageLabels, labelsComplete, url: location.href }
+    }, defaultSurface)
     const reached = new URL(surface.url), received = observedNavigation ? new URL(observedNavigation.url) : null
     reached.hash = ''; if (received) received.hash = ''
     if (!observedNavigation || navigation !== observedNavigation || !received || received.href !== reached.href || surface.url !== session.page.url() || surface.url !== renderedDetail.finalUrl)
       return { disposition: 'BLOCKED', reason: 'response_unavailable', detail: renderedDetail }
-    const browserIssue = availabilityResponseIssue({ status: observedNavigation.status, body: surface.html, headers: observedNavigation.headers })
+    const browserIssue = availabilityResponseIssue({ status: observedNavigation.status, cues: surface.cues, headers: observedNavigation.headers,
+      requestedUrl: input.url, finalUrl: surface.url }, defaultSurface)
     if (browserIssue) return { ...browserIssue, detail: { ...renderedDetail, ...browserIssue.detail } }
-    const pageText = surface.text
+    if (defaultSurface && observedNavigation.status === 200 && supportsPageHeadingEvidence(observedNavigation.headers['content-type'])) {
+      if (surface.missingPageLabels.some(isExplicitMissingPageLabel)) return { disposition: 'FAILED', reason: 'missing_page', detail: renderedDetail }
+      if (!surface.labelsComplete) return { disposition: 'BLOCKED', reason: 'response_unavailable', detail: renderedDetail }
+    }
+    const pageText = surface.cues.text
     const rendered = input.config.expectedText ? pageText.toLowerCase().includes(input.config.expectedText.toLowerCase())
       : input.config.expectedSelector === 'body' ? pageText.trim().length > 0
       : await session.page.locator(input.config.expectedSelector).first().isVisible()
@@ -91,6 +153,8 @@ async function probeAvailabilityOnce(input: {
       source: 'rendered-navigation', collectedAt: new Date().toISOString() }
     if (error instanceof PageCaptureError && ['HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT'].includes(error.code))
       return { disposition: 'BLOCKED', reason: 'bot_wall', detail }
+    if (error instanceof PageCaptureError && error.code === PARTIAL_PAGE_RESPONSE)
+      return { disposition: 'BLOCKED', reason: 'response_unavailable', detail }
     return { disposition: 'BLOCKED', reason: 'rendered_surface_unavailable', detail }
   } finally {
     stopObserving?.()
@@ -123,11 +187,16 @@ export async function runAvailabilityBinding(input: {
 
   // Confirm observed failure before a Flag. An uncertain attempt stops this
   // confirmation sequence; execution recovery separately owns interruptions.
+  const evaluator = bindingEvaluator('AVAILABILITY', 'HTTP_AVAILABILITY', input.config)
+  const probe = async (): Promise<BindingObservation> => {
+    const observation = await probeAvailabilityOnce({ auditId: input.auditId, url: safe.url, config: input.config })
+    return evaluator ? { ...observation, detail: { ...observation.detail, evaluator } } : observation
+  }
   const attempts: BindingObservation[] = []
-  let conclusive = await probeAvailabilityOnce({ auditId: input.auditId, url: safe.url, config: input.config })
+  let conclusive = await probe()
   attempts.push(conclusive)
   while (conclusive.disposition === 'FAILED' && attempts.length < CONFIRMATION_ATTEMPTS) {
-    conclusive = await probeAvailabilityOnce({ auditId: input.auditId, url: safe.url, config: input.config })
+    conclusive = await probe()
     attempts.push(conclusive)
   }
 

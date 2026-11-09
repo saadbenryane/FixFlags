@@ -1,4 +1,5 @@
-import { GUIDE_REVIEWED_AT, WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
+import { WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
+import { guideContentModifiedAt } from '@/lib/marketing/copy/destination-study'
 import type { MetadataRoute } from 'next'
 import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy-barrel'
 import { INDEXABLE_ROUTES, LLMS_TXT_PATH } from '@/lib/marketing/seo-routes'
@@ -8,14 +9,14 @@ import { helpArticlePath } from '@/lib/help/types'
 
 const baseUrl = SITE_URL.replace(/\/$/, '')
 
-export const dynamic = 'force-dynamic'
+export type SitemapEntry = Pick<MetadataRoute.Sitemap[number], 'url' | 'lastModified' | 'changeFrequency' | 'priority'>
 
 function blogLastModified(post: { date: string; updatedAt?: string; publishedAt?: string }): Date {
   return new Date(post.updatedAt ?? post.publishedAt ?? post.date)
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const pages: MetadataRoute.Sitemap = INDEXABLE_ROUTES.filter(route => route.path !== '/issues').map((route) => ({
+export async function buildPublicSitemap(): Promise<SitemapEntry[]> {
+  const pages: SitemapEntry[] = INDEXABLE_ROUTES.filter(route => route.path !== '/issues').map((route) => ({
     url: route.path === '/' ? baseUrl : `${baseUrl}${route.path}`,
     changeFrequency: route.changeFrequency,
     priority: route.priority,
@@ -48,18 +49,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const guide of WEBSITE_GUIDES) {
-    pages.push({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(GUIDE_REVIEWED_AT), changeFrequency: 'monthly', priority: 0.7 })
+    pages.push({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(guideContentModifiedAt(guide.slug)), changeFrequency: 'monthly', priority: 0.7 })
   }
 
   const issues = await getIndexableIssueCheckIds().catch(() => {
     console.warn('[sitemap] Issue discovery unavailable; serving public content only')
     return []
   })
-  if (issues.length > 0) pages.push({ url: `${baseUrl}/issues`, changeFrequency: 'weekly', priority: 0.6 })
+  if (issues.length > 0) pages.push({
+    url: `${baseUrl}/issues`, lastModified: issues[0].reviewedAt, changeFrequency: 'weekly', priority: 0.6,
+  })
   for (const issue of issues) {
     pages.push({
       url: `${baseUrl}/issues/${issue.checkId}`,
-      lastModified: issue.lastSeenAt,
+      lastModified: issue.reviewedAt,
       changeFrequency: 'weekly',
       priority: 0.7,
     })

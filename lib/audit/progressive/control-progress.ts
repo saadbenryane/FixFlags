@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { actionContextSchema, readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { actionContextSchema } from '../flow/action-context'
 import { readArtifact, TaskFailure } from './contracts'
 import type { TaskContext } from './registry'
 

@@ -155,6 +155,10 @@ run('native response policy interpretation', () => {
     { name: 'hash compatibility keyword', csp: "script-src 'self' 'unsafe-inline' 'sha256-" + scriptHash + "'", inline: false, handler: false, eval: false },
     { name: 'strict dynamic', csp: "script-src 'self' 'unsafe-inline' 'nonce-YWJj' 'strict-dynamic'", inline: false, handler: false, eval: false },
     { name: 'intersecting policies', csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval', script-src 'self'", inline: false, handler: false, eval: false },
+    { name: 'sandbox blocks scripts', csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval', sandbox allow-forms", inline: false, handler: false, eval: false },
+    { name: 'sandbox allows scripts', csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval'; sandbox ALLOW-SCRIPTS allow-same-origin; sandbox", inline: true, handler: true, eval: true },
+    { name: 'conflicting sandboxes', csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval'; sandbox, sandbox allow-scripts", inline: false, handler: false, eval: false, complete: false },
+    { name: 'invalid sandbox', csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval'; sandbox é", inline: true, handler: true, eval: true, complete: false },
     { name: 'first duplicate directive', csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self'", inline: true, handler: true, eval: true },
     { name: 'element override', csp: "script-src 'self'; script-src-elem 'self' 'unsafe-inline'; script-src-attr 'none'", inline: true, handler: false, eval: false },
     { name: 'attribute override', csp: "script-src 'self'; script-src-attr 'unsafe-inline'", inline: false, handler: true, eval: false },
@@ -171,12 +175,87 @@ run('native response policy interpretation', () => {
           '<script nonce="YWJj" src="/bootstrap.js"></script><main><h1>Public security fixture</h1><button onclick="window.handlerRan=true">Continue</button></main><script>window.inlineRan=true</script>' }))
       await page.goto('https://example.test/')
       await page.locator('button').click()
-      expect(await page.evaluate(() => ({ inline: (window as unknown as { inlineRan: boolean }).inlineRan,
-        handler: (window as unknown as { handlerRan: boolean }).handlerRan, eval: (window as unknown as { evalRan: boolean }).evalRan })))
+      expect(await page.evaluate(() => {
+        const state = window as unknown as { inlineRan?: boolean; handlerRan?: boolean; evalRan?: boolean }
+        return { inline: Boolean(state.inlineRan), handler: Boolean(state.handlerRan), eval: Boolean(state.evalRan) }
+      }))
         .toEqual({ inline: scenario.inline, handler: scenario.handler, eval: scenario.eval })
       const observations = securityHeaderObservations(page.url(), { 'content-security-policy': scenario.csp })
-      expect(observations.find(item => item.key === 'csp-inline-scripts')).toMatchObject({ complete: true, passed: !scenario.inline && !scenario.handler })
-      expect(observations.find(item => item.key === 'csp-eval')).toMatchObject({ complete: true, passed: !scenario.eval })
+      const complete = scenario.complete ?? true
+      expect(observations.find(item => item.key === 'csp-inline-scripts')).toMatchObject({ complete, passed: complete && !scenario.inline && !scenario.handler })
+      expect(observations.find(item => item.key === 'csp-eval')).toMatchObject({ complete, passed: complete && !scenario.eval })
+    } finally { await context.close() }
+  })
+
+  it.each([
+    { csp: 'object-src https:', allowed: ['media.assets.test', 'other.test'], restricted: false },
+    { csp: "default-src 'none'", allowed: [], restricted: true },
+    { csp: 'object-src https://*.assets.test:*', allowed: ['media.assets.test'], restricted: true },
+    { csp: 'object-src *, default-src https://media.assets.test', allowed: ['media.assets.test'], restricted: true },
+  ])('matches Chromium object resource requests for $csp', async scenario => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage(), reached: string[] = []
+      const headers = { 'content-type': 'text/html', 'content-security-policy': scenario.csp }
+      await page.route('**', route => {
+        const host = new URL(route.request().url()).hostname
+        if (host === 'example.test') return route.fulfill({ headers,
+          body: '<!doctype html><object data="https://media.assets.test/"></object><object data="https://other.test/"></object>' })
+        reached.push(host)
+        return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Object fixture</title>' })
+      })
+      await page.goto('https://example.test/')
+      expect(reached.sort()).toEqual(scenario.allowed)
+      expect(securityHeaderObservations(page.url(), headers).find(item => item.key === 'csp-objects'))
+        .toMatchObject({ complete: true, passed: scenario.restricted })
+    } finally { await context.close() }
+  })
+
+  it.each([
+    { value: 'report-to diagnostics', loaded: true, enforcing: false },
+    { value: 'unrecognized-extension on', loaded: true, enforcing: undefined },
+    { value: 'report-to diagnostics, script-src', loaded: false, enforcing: true },
+    { value: "script-src 'none'", loaded: false, enforcing: true },
+  ])('distinguishes header presence from script enforcement in Chromium: $value', async scenario => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      let loaded = false
+      const headers = { 'content-type': 'text/html', 'content-security-policy': scenario.value }
+      await page.route('**', route => {
+        if (new URL(route.request().url()).pathname === '/script.js') {
+          loaded = true
+          return route.fulfill({ contentType: 'text/javascript', body: 'window.fixtureRan = true' })
+        }
+        return route.fulfill({ headers, body: '<!doctype html><title>Enforcement fixture</title><script src="https://other.test/script.js"></script>' })
+      })
+      await page.goto('https://example.test/')
+      expect(loaded).toBe(scenario.loaded)
+      expect(securityHeaderObservations(page.url(), headers).find(item => item.key === 'content-security-policy'))
+        .toMatchObject({ complete: scenario.enforcing !== undefined, passed: scenario.enforcing === true })
+    } finally { await context.close() }
+  })
+
+  it.each([
+    { value: 'DENY, deny', loaded: [], passed: true },
+    { value: 'SAMEORIGIN, sameorigin', loaded: ['parent.test'], passed: true },
+    { value: 'DENY, SAMEORIGIN', loaded: [], passed: true, conflict: true },
+    { value: 'ALLOWALL, unknown', loaded: [], passed: true, conflict: true },
+    { value: 'SAMEORIGIN,', loaded: [], passed: true, conflict: true },
+    { value: 'unknown, invalid', loaded: ['child.test', 'parent.test'], passed: false },
+  ])('matches frame loading with X-Frame-Options $value', async scenario => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      const headers = { 'content-type': 'text/html', 'x-frame-options': scenario.value }
+      await page.route('**', route => new URL(route.request().url()).pathname === '/'
+        ? route.fulfill({ contentType: 'text/html', body: '<!doctype html><script>window.loadedFrames=[];addEventListener("message",event=>window.loadedFrames.push(event.origin))</script><iframe src="https://parent.test/child"></iframe><iframe src="https://child.test/child"></iframe>' })
+        : route.fulfill({ headers, body: '<!doctype html><script>parent.postMessage("loaded","*")</script>' }))
+      await page.goto('https://parent.test/')
+      expect(await page.evaluate(() => (window as unknown as { loadedFrames: string[] }).loadedFrames.sort()))
+        .toEqual(scenario.loaded.map(host => 'https://' + host))
+      expect(securityHeaderObservations('https://child.test/child', headers).find(item => item.key === 'frame-protection'))
+        .toMatchObject({ complete: true, passed: scenario.passed, ...(scenario.conflict ? { disposition: 'observed' } : {}) })
     } finally { await context.close() }
   })
 

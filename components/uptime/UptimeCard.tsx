@@ -56,7 +56,8 @@ export function UptimeCard({ siteId, summary, summaryReadAt, verification, histo
   // Explicit preview sources retain their authored states and reference clock.
   const state = historySource ? summary?.state ?? 'unknown' : stateAt(current, now)
   const data = validHistory ?? (window === '24h' ? summary : null)
-  const detailState = historySource ? data?.state ?? state : stateAt(ordered ? current : data ?? summary, now)
+  const detailStatus = ordered ? current : data ?? summary
+  const detailState = historySource ? data?.state ?? state : stateAt(detailStatus, now)
   const summaryRevision = statusRevision(summary)
   const historyRevision = statusRevision(latest)
   const requestedStatus = useRef<string | null>(null)
@@ -118,16 +119,22 @@ export function UptimeCard({ siteId, summary, summaryReadAt, verification, histo
             {incident.recoveredAt ? <span className={styles.duration} title={C.observedDuration(Math.max(0, Math.round((Date.parse(incident.recoveredAt) - Date.parse(incident.startedAt)) / 60_000)))}>{C.incidentDuration(Math.max(0, Math.round((Date.parse(incident.recoveredAt) - Date.parse(incident.startedAt)) / 60_000)))}</span> : null}
             <dl className={styles.incidentTimes}><div><dt>{C.confirmed}</dt><dd><time dateTime={incident.confirmedAt}>{formatEvidenceTimestamp(incident.confirmedAt)}</time></dd></div>
               {incident.recoveredAt ? <div><dt>{C.recovered}</dt><dd><time dateTime={incident.recoveredAt}>{formatEvidenceTimestamp(incident.recoveredAt)}</time></dd></div> : null}</dl>
-            <details className={styles.probeDetails}><summary>{C.probeDetails}</summary><p>{incident.targetUrl}</p><p>{C.reasons[incident.reason as keyof typeof C.reasons] ?? C.states.unknown}</p></details>
+            <details className={styles.probeDetails}><summary>{C.probeDetails}</summary><p>{incident.targetUrl}</p>
+              <p>{C.reasons[incident.reason as keyof typeof C.reasons] ?? C.states.unknown}{incident.failureOrigin ? ` · ${incident.failureOrigin}` : ''}</p>
+            </details>
           </li>)}</ul> : <p className="text-sm text-muted-foreground">{C.noIncidents}</p>}
         </section>
         <details className={styles.periods}><summary>{C.history}<ChevronDown size={15} aria-hidden /></summary>
-          <ul ref={probeList} className={styles.probes}>{validHistory.probes.map(probe => <li key={probe.id} tabIndex={-1}>
-            <time dateTime={probe.observedAt}>{formatEvidenceTimestamp(probe.observedAt)}</time>
-            <span>{C.results[probe.result]}{probe.result === 'FAILED' && !probe.confirmed ? ` · ${C.confirmationPending}` : ''}</span>
-            <small>{C.reasons[probe.reason as keyof typeof C.reasons] ?? C.states.unknown}{probe.statusCode ? ` · HTTP ${probe.statusCode}` : ''} · {probe.durationMs} ms</small>
-            <small>{probe.finalUrl ?? probe.targetUrl}</small><small>{C.scheduled} {formatEvidenceTimestamp(probe.scheduledAt)}</small>
-          </li>)}</ul>
+          <ul ref={probeList} className={styles.probes}>{validHistory.probes.map(probe => {
+            const pending = detailState === 'checking' && probe.result === 'FAILED' && probe.attempt === 1 && !probe.confirmed &&
+              probe.targetUrl === detailStatus?.targetUrl && probe.observedAt === detailStatus.lastCheckedAt
+            return <li key={probe.id} tabIndex={-1}>
+              <time dateTime={probe.observedAt}>{formatEvidenceTimestamp(probe.observedAt)}</time>
+              <span>{C.results[probe.result]}{pending ? ` · ${C.confirmationPending}` : ''}</span>
+              <small>{C.reasons[probe.reason as keyof typeof C.reasons] ?? C.states.unknown}{probe.statusCode ? ` · HTTP ${probe.statusCode}` : ''} · {probe.durationMs} ms</small>
+              <small>{probe.finalUrl ?? probe.targetUrl}</small><small>{C.scheduled} {formatEvidenceTimestamp(probe.scheduledAt)}</small>
+            </li>
+          })}</ul>
           {validHistory.nextCursor ? <Button variant="outline" size="sm" className="mt-3" loading={loading} onClick={event => readHistory(event.currentTarget, loadMore)}>{C.loadMore}</Button> : null}
         </details>
       </> : null}

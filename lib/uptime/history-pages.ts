@@ -15,14 +15,20 @@ function probesInRange(history: UptimeHistory, probes: UptimeProbeView[]) {
 /** Retain only continuous, comparable loaded evidence inside the new server window. */
 export function refreshUptimeHistory(previous: UptimeHistory | null, next: UptimeHistory): UptimeHistory {
   if (!previous?.historyScope || !next.historyScope || previous.historyScope.key !== next.historyScope.key ||
-    previous.window !== next.window || previous.targetUrl !== next.targetUrl || !next.nextCursor) return next
+    previous.window !== next.window || previous.targetUrl !== next.targetUrl || !next.nextCursor ||
+    Date.parse(next.historyScope.from) < Date.parse(previous.historyScope.from)) return next
   const retained = probesInRange(next, previous.probes)
   const ids = new Set(next.probes.map(probe => probe.id))
   // A missing overlap can hide an unread gap or a changed target generation.
   // Restart from the new page rather than skipping that missing evidence.
   if (!retained.some(probe => ids.has(probe.id))) return next
   const probes = probesInRange(next, [...next.probes, ...retained])
-  return { ...next, probes, nextCursor: previous.nextCursor ? probes.at(-1)?.id ?? next.nextCursor : null }
+  if (!previous.nextCursor) return { ...next, probes, nextCursor: null }
+  const oldest = probes.at(-1)?.id
+  // Continuations belong to the last probe returned with them by the server.
+  if (oldest === previous.probes.at(-1)?.id) return { ...next, probes, nextCursor: previous.nextCursor }
+  if (oldest === next.probes.at(-1)?.id) return { ...next, probes }
+  return next
 }
 
 export function appendUptimeHistory(previous: UptimeHistory, next: UptimeHistory): UptimeHistory {

@@ -1,15 +1,87 @@
 import { uptimeReadSite } from './__tests__/read-site'
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { systemClock } from '@/lib/time/clock'
+import { fixedClock, systemClock } from '@/lib/time/clock'
+import * as heartbeat from '@/lib/queue/worker-heartbeat'
 import * as service from './service'
+import * as queue from './queue'
 import { startUptimeRuntime } from './runtime'
 import { probeUptime } from './probe'
 import { loadUptimeSummary } from './queries'
+import { createOwnedQueue } from '@/lib/queue/bullmq-ownership'
 
 const run = process.env.UPTIME_TEST_DATABASE_URL && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
 run('independent due Uptime dispatch with the installed runtime', () => {
+  afterAll(heartbeat.clearWorkerHeartbeat)
+
+  it('reports a paused broker queue during an empty sweep and recovers on the same worker', async () => {
+    const broker = createOwnedQueue('uptime-probes')
+    const dispatch = service.dispatchDueUptimeProbes
+    const scheduling = vi.spyOn(service, 'dispatchDueUptimeProbes').mockImplementation(() =>
+      dispatch(systemClock, 1, 'no-due-uptime-fixture-' + randomUUID()))
+    let runtime: ReturnType<typeof startUptimeRuntime> | undefined
+    try {
+      await broker.pause()
+      runtime = startUptimeRuntime()
+      await runtime.waitUntilReady()
+      await vi.waitFor(async () => {
+        expect(scheduling).toHaveBeenCalledOnce()
+        expect(await heartbeat.readWorkerHeartbeat()).toMatchObject({ alive: true, uptimeReady: false })
+      }, { timeout: 5000 })
+      await broker.resume()
+      await vi.waitFor(async () => {
+        expect(await heartbeat.readWorkerHeartbeat()).toMatchObject({ alive: true, uptimeReady: true })
+      }, { timeout: 35_000, interval: 200 })
+    } finally {
+      scheduling.mockRestore()
+      await runtime?.close()
+      try { await broker.resume() } finally { await broker.close() }
+    }
+  }, 45_000)
+
+  it('reports failed publication and restores readiness when the persisted probe runs', async () => {
+    const database = new URL(process.env.DATABASE_URL!)
+    if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_uptime_test_[a-f0-9]{32}$/.test(database.pathname))
+      throw new Error('Use the disposable uptime execution verifier')
+    const user = await prisma.user.create({ data: { email: `uptime-readiness-${randomUUID()}@example.test` } })
+    const now = new Date(), clock = fixedClock(now)
+    let runtime: ReturnType<typeof startUptimeRuntime> | undefined
+    const publish = vi.spyOn(queue, 'enqueueUptimeProbe').mockRejectedValueOnce(new Error('Controlled broker publication failure'))
+    const touch = vi.spyOn(heartbeat, 'touchWorkerHeartbeat')
+    const execute = service.executeUptimeProbe
+    const worker = vi.spyOn(service, 'executeUptimeProbe').mockImplementation(job => execute(job, async url => ({
+      result: 'ONLINE', reason: 'response_received', statusCode: 200, durationMs: 20, finalUrl: url,
+    }), clock))
+    const dispatch = service.dispatchDueUptimeProbes
+    const scheduling = vi.spyOn(service, 'dispatchDueUptimeProbes')
+    try {
+      const site = await prisma.project.create({ data: { userId: user.id, name: 'Readiness fixture', url: 'https://readiness.example.com/',
+        canonicalHost: 'readiness.example.com', watchInterval: 'WEEKLY', watchNextRunAt: now } })
+      const monitor = await prisma.uptimeMonitor.create({ data: { projectId: site.id, targetUrl: site.url, nextProbeAt: now } })
+      scheduling.mockImplementation(() => dispatch(clock, 1, site.id))
+      runtime = startUptimeRuntime()
+      await runtime.waitUntilReady()
+      await vi.waitFor(async () => {
+        expect(touch).toHaveBeenCalledWith({ uptimeReady: false })
+        expect(await heartbeat.readWorkerHeartbeat()).toMatchObject({ alive: true, uptimeReady: false })
+      }, { timeout: 5000 })
+      expect(publish).toHaveBeenCalledOnce()
+      expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } }))
+        .toMatchObject({ nextProbeAt: now, lastCheckedAt: null })
+      await runtime.close()
+      runtime = startUptimeRuntime()
+      await runtime.waitUntilReady()
+      await vi.waitFor(async () => {
+        expect(await heartbeat.readWorkerHeartbeat()).toMatchObject({ alive: true, uptimeReady: true })
+        expect(await prisma.uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(1)
+      }, { timeout: 5000 })
+    } finally {
+      await runtime?.close(); worker.mockRestore(); publish.mockRestore(); touch.mockRestore(); scheduling.mockRestore()
+      await prisma.user.delete({ where: { id: user.id } }); await prisma.$disconnect()
+    }
+  })
+
   it.each([false, true])('executes another Site while a due monitor is locked, then resumes its original intent (retarget: %s)', async retarget => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_uptime_test_[a-f0-9]{32}$/.test(database.pathname))

@@ -17,7 +17,7 @@ import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
 import { reconcileTasks, dispatchReadyTasks } from '../engine'
-import { recordedWorkComplete } from '../recorded-completeness'
+import { interruptedAnalysisWorkWhere, recordedWorkComplete } from '../recorded-completeness'
 import { categoryCoverageExecutionSelect } from '@/lib/sites/application/site-execution'
 import { getOwnedRun } from '@/lib/sites/application/run-queries'
 import { loadSiteHome } from '@/lib/sites/application/queries'
@@ -29,6 +29,7 @@ run('Observed Site page monitoring continuity', () => {
   const userId = 'pages-' + randomUUID(), projectId = 'pages-' + randomUUID()
   const origin = 'https://example.com', peer = origin + '/pricing'
   let linked = true, repaired = false, oversizedEntry = false, pauseDiscoveredCollection = false
+  let entrySignIn: 'both' | 'browser' | null = null
   let performance: 'failed' | 'partial' | 'missing-peer' | 'healthy' | null = null
   let representativePath = '/'
   let pageResponse: 'failed' | 'challenge' | 'healthy' = 'healthy'
@@ -45,6 +46,7 @@ run('Observed Site page monitoring continuity', () => {
       }
       const slow = performance === 'failed' || performance === 'partial' && !representative
       response.end(JSON.stringify({ lighthouseResult: { requestedUrl: input.searchParams.get('url'), finalUrl: input.searchParams.get('url'), lighthouseVersion: '13.0.0',
+        fetchTime: new Date().toISOString(),
         configSettings: { formFactor: input.searchParams.get('strategy') ?? 'desktop', throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } },
         categories: { performance: { score: 0.95 } }, audits: {
         'largest-contentful-paint': { numericValue: slow ? 3500 : 1000 }, 'cumulative-layout-shift': { numericValue: 0 },
@@ -59,6 +61,16 @@ run('Observed Site page monitoring continuity', () => {
     if (request.url === '/sitemap.xml') {
       response.setHeader('content-type', 'application/xml')
       response.end('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' + origin + '/</loc></url></urlset>'); return
+    }
+    if (request.url === '/' && entrySignIn === 'both') {
+      response.writeHead(302, { location: '/login?discovery-fixture' }); response.end(); return
+    }
+    if (request.url === '/login?discovery-fixture') {
+      response.setHeader('content-type', 'text/html')
+      response.end('<!doctype html><title>Sign in to continue</title><h1>Sign in</h1><a href="#missing">Sign-in help</a>' +
+        '<form method="post"><label>Email <input type="email" required></label><button>Continue</button></form>' +
+        '<footer><a href="/sign-in-help" hidden>Documentation</a></footer>')
+      return
     }
     const pricing = request.url === '/pricing'
     response.setHeader('content-type', 'text/html')
@@ -98,6 +110,11 @@ run('Observed Site page monitoring continuity', () => {
         await page.route('**', async route => {
           const resource = new URL(route.request().url())
           if (resource.origin !== origin) { await route.abort('blockedbyclient'); return }
+          if (resource.href === origin + '/' && (entrySignIn === 'both' || entrySignIn === 'browser' && page.viewportSize()!.width > 600)) {
+            await route.fulfill({ status: 200, contentType: 'text/html',
+              body: '<!doctype html><title>Redirecting</title><script>addEventListener("DOMContentLoaded",()=>setTimeout(()=>location.replace("/login?discovery-fixture"),180))</script>' })
+            return
+          }
           const response = await nativeFetch(transport + resource.pathname + resource.search)
           await route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() })
         })
@@ -115,7 +132,12 @@ run('Observed Site page monitoring continuity', () => {
       const client = await queue.client; await queue.close(); client.disconnect()
     }
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()))
-    vi.restoreAllMocks(); vi.unstubAllGlobals(); await prisma.$disconnect()
+    vi.restoreAllMocks(); vi.unstubAllGlobals()
+    const fixtureUsers = [userId, userId + '-http-fallback', userId + '-discovered-gap', userId + '-category-gap']
+    try {
+      await prisma.audit.deleteMany({ where: { userId: { in: fixtureUsers } } })
+      await prisma.user.deleteMany({ where: { id: { in: fixtureUsers } } })
+    } finally { await prisma.$disconnect() }
   })
   async function complete(auditId: string) {
     try {
@@ -149,24 +171,51 @@ run('Observed Site page monitoring continuity', () => {
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! }, select: { failedModules: true } })).failedModules)
       .not.toEqual(expect.arrayContaining(['corridor']))
     expect(await prisma.auditPage.findFirst({ where: { auditId: first.auditId!, url: peer } })).not.toBeNull()
-    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: first.auditId!, workKind: 'browser', pageUrl: origin + '/' } }))
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: first.auditId!, targetKey: 'task:p0:browser' } }))
       .toMatchObject({ workResult: { data: { metadata: null, snapshot: { desktopHtmlTruncated: true,
         renderedSearchSnapshot: { sections: { links: { complete: true } } } } } } })
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! } }))
       .toMatchObject({ evidenceCoverage: { metadata: false }, reportCompleteness: 'PARTIAL' })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: first.auditId!, checkId: 'title-missing', pageUrl: peer } })
-    linked = false; repaired = true; requests.length = 0
+    linked = false; repaired = true; entrySignIn = 'both'; requests.length = 0
     const tick = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)
     const watch = await requestScheduledSiteRun({ projectId, userId, interval: 'weekly', scheduledAt: tick, now: tick })
     const admitted = await prisma.audit.findUniqueOrThrow({ where: { id: watch.auditId! } })
     expect(readExecutionSpec(admitted.executionSpec)).toMatchObject({ scope: 'SITE', monitoringPages: [origin + '/', peer] })
     expect(await requestScheduledSiteRun({ projectId, userId, interval: 'weekly', scheduledAt: tick, now: tick })).toMatchObject({ auditId: watch.auditId, reused: true })
     await complete(watch.auditId!)
-    expect((await prisma.audit.findUniqueOrThrow({ where: { id: watch.auditId! }, select: { failedModules: true } })).failedModules)
-      .not.toEqual(expect.arrayContaining(['corridor']))
+    entrySignIn = null
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: watch.auditId! }, select: { reportCompleteness: true } }))
       .toMatchObject({ reportCompleteness: 'PARTIAL' })
     expect(requests).toContain('/pricing')
+    expect(requests).toContain('/login?discovery-fixture')
+    expect(await prisma.auditExecutionTask.count({ where: { auditId: watch.auditId!, pageUrl: origin + '/sign-in-help' } })).toBe(0)
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: watch.auditId!, targetKey: 'task:p0:http' } }))
+      .toMatchObject({ workResult: { data: { metadata: null, document: { reason: 'public_sign_in_redirect', status: 200, complete: false } } } })
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: watch.auditId!, targetKey: 'task:p0:browser' } }))
+      .toMatchObject({ workResult: { data: { metadata: null, snapshot: { publicSignInRedirect: true, desktopFinalUrl: origin + '/login?discovery-fixture' } } } })
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: watch.auditId!, targetKey: 'task:p0:browser-mobile' } }))
+      .toMatchObject({ workResult: { data: { snapshot: { mobileSignInRedirect: true, captureMetrics: null } } } })
+    expect(await prisma.auditPage.findFirstOrThrow({ where: { auditId: watch.auditId!, url: origin + '/' } }))
+      .toMatchObject({ status: 'FAILED', failureCode: 'BROWSER_SCOPE_UNAVAILABLE' })
+    expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: watch.auditId!, scopeKey: 'page:' + origin + '/', targetKey: 'module:seo' } }))
+      .toMatchObject({ detail: { complete: false, passed: false, limitation: expect.stringContaining('reached sign-in') } })
+    expect(await prisma.flag.count({ where: { auditId: watch.auditId!, pageUrl: origin + '/', checkId: 'broken-page-anchors' } })).toBe(0)
+    for (const taskKey of ['keyboard-evidence', 'form-validation', 'mobile-navigation', 'flow']) {
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: watch.auditId!, targetKey: 'task:p0:' + taskKey } }))
+        .toMatchObject({ workState: 'BLOCKED', workAttempts: 1, workErrorCode: 'PAGE_PUBLIC_SIGN_IN_REDIRECT', workResult: null })
+    }
+    expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: watch.auditId!, pageUrl: origin + '/',
+      targetKey: 'module:form-validation' } })).toMatchObject({ detail: { complete: false, passed: false, limitation: expect.stringContaining('reached sign-in') } })
+    expect(await prisma.auditPipelineEvent.findFirstOrThrow({ where: { auditId: watch.auditId!, event: 'page_response_unavailable' } }))
+      .toMatchObject({ detail: { code: 'public_sign_in_redirect', httpStatus: 200, finalUrl: origin + '/login' } })
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: watch.auditId!, targetKey: 'task:p0:slow-replay' } }))
+      .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: { data: { flags: [],
+        result: { reason: 'public_sign_in_redirect', navigationComplete: false, captures: [], screenshotUrls: [] },
+        receipt: { complete: false, passed: false } } } })
+    expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: watch.auditId!, targetKey: 'task:p0:journeys' } }))
+      .toMatchObject({ workState: 'COMPLETED', workResult: { data: { flags: [], findingCount: 0,
+        assessments: expect.arrayContaining([expect.objectContaining({ state: 'INCOMPLETE', reason: 'public_sign_in_redirect' })]) } } })
     const summary = await getFlagDiffSummary(admitted.parentId, watch.auditId!)
     expect(summary.fixed.map(item => item.id)).toContain(flag.id)
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: watch.auditId })
@@ -181,6 +230,56 @@ run('Observed Site page monitoring continuity', () => {
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: source.improvementId })
     oversizedEntry = false
   }, 360_000)
+
+  it('discovers public HTTP links and retries scheduled browser evidence when only the browser reaches sign-in', async () => {
+    const owner = userId + '-http-fallback', siteId = projectId + '-http-fallback'
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'HTTP discovery fallback', canonicalHost: 'example.com', url: origin + '/',
+      watchInterval: 'WEEKLY', watchNextRunAt: new Date(Date.now() - 60_000), notificationLevel: 'OFF' } })
+    entrySignIn = 'browser'; linked = true; oversizedEntry = false; requests.length = 0
+    try {
+      expect(await processDueProjectWatches(1, { onlyProjectId: siteId })).toMatchObject({ enqueued: 1, errors: 0 })
+      const run = await prisma.runRequest.findFirstOrThrow({ where: { projectId: siteId, source: 'WATCH' } })
+      await complete(run.auditId!)
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: run.auditId!, targetKey: 'task:p0:browser' } }))
+        .toMatchObject({ workResult: { data: { metadata: null, snapshot: { publicSignInRedirect: true,
+          renderedSearchSnapshot: { sections: { links: { html: expect.stringContaining('/sign-in-help') } } } } } } })
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: run.auditId!, targetKey: 'task:p0:browser-mobile' } }))
+        .toMatchObject({ workResult: { data: { snapshot: { consoleCoverage: { mobile: { finalUrl: origin + '/' } },
+          captureMetrics: { loadingObservation: { scope: { finalUrl: origin + '/' } } } } } } })
+      expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: run.auditId!, targetKey: 'task:p0:mobile-navigation' } }))
+        .toMatchObject({ workState: 'COMPLETED', workResult: { data: { result: { finalUrl: origin + '/' } } } })
+      expect(await prisma.auditPage.findFirst({ where: { auditId: run.auditId!, url: peer } })).not.toBeNull()
+      expect(requests).toContain('/pricing')
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: run.auditId!, pageUrl: origin + '/sign-in-help' } })).toBe(0)
+      expect(await prisma.auditPage.findFirstOrThrow({ where: { auditId: run.auditId!, url: origin + '/' } }))
+        .toMatchObject({ status: 'COMPLETED', failureCode: 'BROWSER_SCOPE_UNAVAILABLE' })
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: run.auditId!, ...interruptedAnalysisWorkWhere } })).toBe(0)
+      await vi.waitFor(async () => expect(await prisma.project.findUniqueOrThrow({ where: { id: siteId } }))
+        .toMatchObject({ watchConsecutiveFailures: 1 }), { timeout: 10_000 })
+      const retry = await prisma.project.findUniqueOrThrow({ where: { id: siteId } })
+      const observation = await prisma.audit.findUniqueOrThrow({ where: { id: run.auditId! } })
+      expect(observation).toMatchObject({ status: 'COMPLETED', reportCompleteness: 'PARTIAL' })
+      expect(retry.watchNextRunAt).toEqual(new Date(observation.completedAt!.getTime() + 15 * 60_000))
+      entrySignIn = null
+      await getAuditQueue().pause()
+      vi.useFakeTimers({ toFake: ['Date'] })
+      try {
+        vi.setSystemTime(retry.watchNextRunAt!.getTime() + 1000)
+        await vi.waitFor(async () => {
+          expect(await processDueProjectWatches(1, { onlyProjectId: siteId })).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+        }, { timeout: 8000, interval: 200 })
+      } finally { vi.useRealTimers(); await getAuditQueue().resume() }
+      const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId: siteId, source: 'WATCH', id: { not: run.id } } })
+      expect(watch.executionSpec).toMatchObject({ scope: 'SITE', monitoringPages: [origin + '/', peer] })
+      await complete(watch.auditId!)
+      expect(await prisma.auditPage.findFirstOrThrow({ where: { auditId: watch.auditId!, url: origin + '/' } }))
+        .toMatchObject({ status: 'COMPLETED', failureCode: null })
+      expect(await prisma.auditPage.findFirst({ where: { auditId: watch.auditId!, url: peer } })).not.toBeNull()
+      await vi.waitFor(async () => expect(await prisma.project.findUniqueOrThrow({ where: { id: siteId } }))
+        .toMatchObject({ watchConsecutiveFailures: 0, watchLastError: null }), { timeout: 10_000 })
+    } finally { entrySignIn = null }
+  }, 260_000)
 
   it('retains a newly discovered page after all collectors stop before creating its first row', async () => {
     const owner = userId + '-discovered-gap', siteId = projectId + '-discovered-gap'
@@ -213,7 +312,11 @@ run('Observed Site page monitoring continuity', () => {
       vi.useFakeTimers({ toFake: ['Date'] })
       try {
         vi.setSystemTime(retry.watchNextRunAt!.getTime() + 1000)
-        expect(await processDueProjectWatches(1, { onlyProjectId: siteId })).toMatchObject({ enqueued: 1, errors: 0 })
+        // Finishing worker activity can briefly hold the Site row. Let a later
+        // sweep pick up the saved retry once the row becomes available.
+        await vi.waitFor(async () => {
+          expect(await processDueProjectWatches(1, { onlyProjectId: siteId })).toMatchObject({ enqueued: 1, errors: 0 })
+        }, { timeout: 5000, interval: 100 })
       } finally { vi.useRealTimers(); await getAuditQueue().resume() }
       const next = await prisma.runRequest.findFirstOrThrow({ where: { projectId: siteId, id: { not: first.id } } })
       expect(readExecutionSpec((await prisma.audit.findUniqueOrThrow({ where: { id: next.auditId! } })).executionSpec))
@@ -301,17 +404,18 @@ run('Observed Site page monitoring continuity', () => {
         if (!verification?.ok || !('verificationAuditId' in verification)) throw new Error('Fixture verification was not admitted')
         const auditId = verification.verificationAuditId!
         await complete(auditId)
-        const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, include: { verifierExecutions: true } })
+        const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, include: { verificationReceipts: true } })
         // This exact representative-page proof is successful in every phase.
         // It cannot replace missing or failed evidence from the original peer.
-        const representative = audit.verifierExecutions.find(row => row.targetKey === 'check:lcp-poor')!
-        expect(checkVerifierSchema.parse(representative.detail)).toMatchObject({ verdict: 'passed', pageUrl: flag.pageUrl })
+        const representative = audit.verificationReceipts.find(row => row.targetKey === 'check:lcp-poor')
+        expect(representative, `Missing representative proof in ${phase}`).toBeDefined()
+        expect(checkVerifierSchema.parse(representative?.detail)).toMatchObject({ verdict: 'passed', pageUrl: flag.pageUrl })
         expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({
           outcome: phase === 'partial' ? 'UNCHANGED' : phase === 'missing-peer' ? 'INCONCLUSIVE' : 'IMPROVED',
           comparable: phase !== 'missing-peer', verificationAuditId: auditId })
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({
           status: phase === 'healthy' ? 'FIXED' : 'OPEN', resolvedInId: phase === 'healthy' ? auditId : null })
-        expect(hasRecordedRecoveryEvidence({ auditId, executionSpec: audit.executionSpec, flag, executions: audit.verifierExecutions }))
+        expect(hasRecordedRecoveryEvidence({ auditId, executionSpec: audit.executionSpec, flag, executions: audit.verificationReceipts }))
           .toBe(phase === 'healthy')
       }
       performance = 'failed'

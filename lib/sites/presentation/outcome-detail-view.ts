@@ -34,7 +34,7 @@ export type SiteOutcomeDetailView = Omit<SiteOutcomeView, 'bindings'> & {
 
 export type OutcomeDetailFacts = {
   row: Pick<OutcomeViewSource, 'id' | 'environment'> & {
-    assessments: Array<OutcomeViewSource['assessments'][number] & { id: string; auditId: string }>
+    assessments: Array<OutcomeViewSource['assessments'][number] & { id: string; auditId: string; evidence: Prisma.JsonValue | null }>
     runSelections: Array<{ runRequest: { id: string; status: string; requestedAt: Date; errorMessage: string | null; auditId: string | null } }>
     bindingAttempts: Array<{ id: string; bindingKey: string; disposition: string; reason: string; createdAt: Date; auditId: string }>
   }
@@ -65,7 +65,7 @@ export function projectOutcomeDetail({ row, view, revisions, executions, lastSuc
     const bindings = spec?.outcomes.find(outcome => outcome.id === row.id)?.bindings
     const coverage = bindings?.some(binding => binding.key === current.key) ? { environment: spec!.environment, requiredBindings: [], bindings: bindings.map(binding => ({ ...binding, evaluator: recordedBindingEvaluator(execution.detail) })) }
       : row.assessments.find(assessment => assessment.auditId === execution.auditId)?.coverage
-    if (bindingEvidenceIsComparable(coverage, current, row.environment, execution.disposition !== 'FAILED') && !latestByKey.has(execution.bindingKey))
+    if (bindingEvidenceIsComparable(coverage, current, row.environment, execution.disposition === 'SUCCEEDED') && !latestByKey.has(execution.bindingKey))
       latestByKey.set(execution.bindingKey, execution)
   }
   const timeline = [
@@ -131,8 +131,13 @@ export function projectOutcomeDetail({ row, view, revisions, executions, lastSuc
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
 
   const requiredBindings = view.bindings.filter((binding) => binding.required)
-  const checkoutBinding = requiredBindings.find((binding) => binding.key.includes('checkout'))
+  const checkoutBinding = requiredBindings.find((binding) => binding.mechanism === 'BROWSER_JOURNEY')
   const availabilityBinding = requiredBindings.find((binding) => binding.mechanism === 'HTTP_AVAILABILITY')
+  const latestEvidence = row.assessments[0]?.evidence
+  const assessmentReason = latestEvidence && typeof latestEvidence === 'object' && !Array.isArray(latestEvidence)
+    ? latestEvidence.reason : null
+  const checkoutReason = assessmentReason === 'checkout_destination_changed' || assessmentReason === 'checkout_purchase_control_changed'
+    ? assessmentReason : checkoutBinding ? latestByKey.get(checkoutBinding.key)?.reason : null
   const limitation = !view.enabled
     ? 'This Outcome is paused. Its last evidence is preserved, but FixFlags will not schedule or start another verification.'
     : requiredBindings.length === 0
@@ -148,7 +153,7 @@ export function projectOutcomeDetail({ row, view, revisions, executions, lastSuc
         ? staleOutcomeRecovery()
         : view.state === 'COULD_NOT_VERIFY'
           ? view.kind === 'CHECKOUT'
-            ? checkoutCouldNotVerifyRecovery(checkoutBinding ? latestByKey.get(checkoutBinding.key)?.reason : null)
+            ? checkoutCouldNotVerifyRecovery(checkoutReason)
             : view.kind === 'AVAILABILITY'
               ? availabilityCouldNotVerifyRecovery(availabilityBinding ? latestByKey.get(availabilityBinding.key)?.reason : null)
               : 'Review the method or fixture, then verify again.'

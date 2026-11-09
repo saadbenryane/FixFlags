@@ -688,3 +688,424 @@ push was performed. The research choice remains off by default. The deployment p
 block is resolved; an eligible consented dataset and measured business outcomes
 remain unavailable. Broader analytics changes in the original checkout were not
 included in this publication release.
+
+## [2026-11-09] Diagnose acquisition completion before testing growth
+
+The read-only loopback report covered recorded starts from September 10 through
+November 9 with seven days of follow-up. Of 46 mature anonymous starts, 21
+had an in-window completion receipt, 18 had a retained audit without dated
+completion, and seven had no retained source audit. An aggregate status check
+found that all 18 retained audits in that group currently report `FAILED`.
+The retained failure codes were 17 `SITE_UNREACHABLE` and one
+`AUDIT_PIPELINE_FAILED`.
+There were no dated completions without a qualifying receipt. The report now
+keeps those evidence categories separate and continues to withhold conversion
+shares for the partial cohort. The loopback sample has unverified production
+representativeness and does not establish the timing or causes of failures.
+
+The seven-day Site report had one mature first recorded claim. The 28-day
+report had no mature Sites. The cycle report found no recorded fix attempts or
+issued outcomes. Isolated PostgreSQL fixtures exercised an independent repair
+result followed by a scheduled check and kept the same evidence out of the
+initial-analysis cohort when it came from a later source. A defensible research
+cohort still requires comparable retained fix outcomes and appropriate permission.
+
+Product-engineering handoff. Check the reachability classifications and the
+pipeline failure against existing private execution history, then compare them
+to an authorized current operational sample. Keep missing source records
+separate. The current data supports diagnosing completion before interpreting
+the claim count as acquisition friction.
+
+Public HTTP verification covered 66 HTML pages and 67 sitemap URLs. After the
+verifier learned to exclude SVG titles, 962 of 972 technical checks passed. Ten
+docs routes still returned extra loading H1s. The local loading state uses a
+named status instead of a heading. The live Flag Library returned noindex, with
+no issue URLs in the sitemap or research links in llms.txt. This confirms the
+public discovery surfaces at observation time. Search indexing, traffic,
+conversion and citation impact remain unmeasured. The reporting environment
+lacks GA4 and Search Console prerequisites. The November changes are local.
+
+## [2026-11-09] Link recorded Outcome recovery to comparable monitoring
+
+The private `outcomes` inspector now joins an original bound Flag to the
+native recovery receipt that resolved it. It follows the recovered binding
+through its first comparable scheduled result in the next seven days. A
+changed binding, changed evaluator, or mismatched checkout path cannot
+qualify. Missing scheduled evidence stays separate from a recorded failure.
+The report uses a bounded read-only snapshot and returns aggregate counts.
+See [measurement operations](measurement-operations.md).
+
+The 60-day loopback run found 27 retained assessments with matching current
+owner, Site, selection, request, and completed audit. No receipt named a
+recovery. The database also held zero research consent events and zero
+reviewed public issue artifacts. An isolated PostgreSQL fixture demonstrated
+the original failure, recovery, and both comparable follow-up results.
+It also withheld unrelated, superseded, or mismatched evidence. The fixture
+demonstrates the report contract. The observed local records cannot estimate
+recovery, recurrence, or public research coverage.
+
+## [2026-11-09] Controlled destination study with a reproducible false positive
+
+The [study draft](destination-study.md) compares a 2xx-only signal with the
+existing public destination evaluator across eleven hand-authored responses.
+An explicit missing-page message, its repair, and its recurrence at the same
+booking URL all returned 200. The evaluator recorded missing, reachable, then
+missing. It also incorrectly treated a working article that discusses a 404
+error as dead. The wrong-page and unresolved loading-shell cases returned
+reachable, and the access challenge and oversized body withheld successful
+GET evidence. Product engineering can use the same command to reproduce the
+false positive alongside the explicit missing-page control.
+
+The proposed public use is an evidence section for the existing guide on
+websites that are online but broken. If approved for publication, use that
+guide's existing consented page-view and Analyze CTA events, and its own
+Search Console landing-page data. Compare aligned pre- and post-release
+windows and report the counts with consent and processing coverage. A CTA
+click measures expressed intent. Claim and verified repair require an
+independently supported join. There is no new public route or live measurement
+result for this study.
+
+## [2026-11-09] Measure guide starts and their retained outcomes
+
+The existing Analyze link now adds a finite guide label after analytics
+consent. The check endpoint verifies the consent cookie, exact public Analyze
+referrer, and opaque tab key, then places the label only on the existing new
+anonymous start receipt. It strips the marker before storing the referrer.
+Campaign fields and the recorded Audit source keep their definitions. The
+live Analyze page currently sends the referrer policy that preserves the
+path on same-origin submissions.
+
+The acquisition inspector now reports per-guide subsets of the Homepage
+cohort with the same seven-day maturity and exact claim and repair lineage.
+The 60-day loopback sample had 46 mature starts and no retained guide cohort.
+An isolated PostgreSQL fixture followed a guide-labeled start through
+completion, claim, attempt, and independently issued improvement, without
+exporting the tab key or any customer identity. Actual guide performance
+requires new observations after authorized release.
+
+## [2026-11-09] Live discovery baseline for the destination-study guide
+
+The existing reporting worker returned read-only aggregates for October 9
+through November 5. Search Console recorded 23 clicks and 231 impressions
+across the property and one impression with zero clicks for the exact
+`/guides/website-online-but-not-working` canonical URL. GA4 returned six
+sessions and 11 pageviews at the property level. It returned no pageview row
+for the exact guide. The date labels, timezone, and denominators differ by
+provider. [Baseline receipt](metrics/guide-discovery-baseline-2026-11-09.json).
+
+The old Analyze report failed. GA4 metadata confirmed that the property's
+generic marketing event has neither `target` nor `action` as a reportable
+dimension. Locally, a single consented `guide_analyze_clicked` event now
+replaces the generic guide Analyze event. The provider accepted the exact
+new event-name report and returned no metric row for the pre-release window.
+Pricing and other navigation retain the generic event. No GA4 configuration,
+production database, or deployment was changed.
+
+The guide has too little observed search traffic to evaluate a conversion
+lift from this baseline. After an authorized release, verify that the study
+and event are live before starting a comparable 28-day observation window.
+Read the same page filters and wait seven more days for all attributed
+starts in that window to mature. Keep the new event series, search metrics,
+and retained product outcomes separate. Changes in these counts alone
+cannot isolate the study's effect.
+
+## [2026-11-09] Review the study in the existing guide
+
+The development guide now renders all eleven recorded cases on the existing
+canonical route. It includes the wrong-page result, observation gaps, and the
+false positive alongside the booking sequence. The same section carries the
+study date, source links, and limits. Production withholds the draft section,
+citations and revised discovery dates behind the explicit publication flag.
+The preview emits no raw receipt or Dataset markup.
+
+A fresh public GET found the live canonical guide and no study section. A
+local replay on the current worktree matched all eleven original results
+after a shared source file changed. The original evidence receipt remains
+intact. The existing guide attribution and baseline apply once publication
+and release are authorized.
+
+## [2026-11-09] Confirm the commercial measurement boundary
+
+The production web service and worker both report billing as required and
+use Stripe test credentials. A read-only Stripe balance request from the
+worker succeeded with `livemode=false`. No amounts, keys, or payment
+identifiers were retrieved into the report. The 60-day loopback ledger
+inspection contained zero retained rows. Neither observation establishes
+whether any live customer has paid.
+
+The [commercial inspector](measurement-operations.md#commercial-evidence)
+now separates ledger candidates from provider-confirmed captures. Its
+isolated PostgreSQL fixture matched live-mode provider responses by payment
+reference, capture, customer, invoice, amount, and currency. Test, conflicting,
+uncaptured, and duplicate records were withheld. The inspector leaves gross
+capture totals unavailable without confirmed evidence and does not change the
+ledger, billing settings, or account state.
+
+A paid-conversion cohort still needs an authorized live source, settlement
+timing and payment-history coverage. An observed captured charge alone cannot
+establish the first paid conversion after a Site claim.
+
+## [2026-11-09] Preflight consented research and withhold legacy provider findings
+
+A read-only production count found zero research-consent receipts and zero
+reviewed issue records. The 60-day loopback readiness run found zero active
+scoped grants and did not load findings. There is no retained cohort to turn
+into public customer research at either observed source.
+
+The new [readiness inspector](research-governance.md#preparing-evidence)
+counts only findings eligible under the current owner's prospective grant.
+It shares scope rules with the public release validator and withholds
+small issue cohorts. An isolated PostgreSQL fixture counted 21 valid
+observations across 20 distinct sites. A later withdrawal reduced the
+eligible cohort to 19 sites. Regranting did not reinstate pre-grant evidence.
+The report omitted Site identities and produced no release or manifest.
+
+The existing public guard excluded the current Search module but could
+admit legacy Search Performance identities that also come from connected
+Google data. The local schema, readiness report, and release guard now
+withhold both groups. Scope and counts do not establish source-version
+comparability or permission to publish.
+
+## [2026-11-09] Separate findings with corroborated evaluator versions
+
+The readiness report now checks supporting observation metadata against the
+completed module receipt for the same audit and task. It reads no finding
+text into the report. The normal consent and site-count candidate includes
+eligible legacy observations, while each corroborated version has its own
+20-site floor. A current registry entry cannot supply missing provenance.
+
+The isolated fixture retained 21 eligible observations across 20 sites. Only
+the 20 observations whose Flag and receipt agreed on version 1 formed a
+reported version cohort. The one-site version 2 cohort stayed withheld.
+Supporting metadata alone, mixed version records, and mismatched task IDs
+all left version coverage unproven. This separates method evidence from
+sample eligibility and release approval.
+
+## [2026-11-09] Check the proposed release against its private sources
+
+The [local release preflight](research-governance.md#local-validation-and-release)
+checks a release and its private manifest in one read-only database snapshot.
+The isolated 20-site proposal passed. Swapping in a same-site audit with a
+different evaluator version preserved the counts but failed version validation.
+A receipt completed after review and a withdrawn grant also failed validation.
+The report identifies the inputs by digest and omits source identities.
+This establishes the preflight behavior on fixtures. A customer release still
+requires eligible sources, human review, and publication authorization.
+
+## [2026-11-09] Observe recurrence after a passing scheduled check
+
+The [private recovery report](measurement-operations.md) now counts comparable
+failures anywhere in the seven-day window, including a failure requested after
+a comparable scheduled pass completed. The first-result counts are preserved.
+An overlapping request and a different Checkout path cannot establish that
+sequence.
+
+On a disposable PostgreSQL database with the repository migrations applied,
+the native run reconciler turned four controlled binding results into a Flag,
+a recovery, a scheduled pass, and a later scheduled failure. The report
+counted one mature recovery, one first pass, and one failure after a pass.
+The 60-day local operational snapshot still had 27 linked assessments and
+zero recovery receipts, leaving customer recurrence unmeasured.
+
+## [2026-11-09] Follow guide-attributed claims through continued Site use
+
+The private Site cohort reports use the guide label on the exact first-claimed
+anonymous analysis. The claim must occur within seven days of its recorded
+start. Seven- and 28-day follow-up then begin at claim. The existing later
+repair, monitoring, and owner-request evidence rules apply to the same Site.
+Only finite guide labels and aggregate counts are returned.
+
+The isolated PostgreSQL fixture joined the guide start to a verified
+improvement from a later monitoring audit and a subsequent completed check.
+Moving the label to another analysis of the same Site removed guide credit.
+The 60-day local snapshot showed one first retained claim on a pre-existing
+Site. It was mature at seven days and immature at 28 days. Neither report had
+a qualifying guide entry. There is no measured guide retention result.
+
+## [2026-11-09] Fix the guide observation window before waiting for follow-up
+
+The local acquisition and Site inspectors now accept the same closed UTC
+start window. The Site report admits a timely first claim after the cutoff
+when the exact consented guide start was inside the window. Later starts
+cannot enter the cohort. Each mode prints its full maturity date and
+withholds shares until then. This provides a repeatable measurement window
+for a release using the evidence that is still retained at read time.
+
+The October 9 through November 5 local acquisition sample contained 19
+retained anonymous start receipts. Seven lacked a source audit. Neither
+report found a qualifying guide entry. At the November 9 read, the full
+acquisition window matures November 13 UTC and the 28-day Site window
+matures December 11 UTC. The empty guide rows are pre-release evidence,
+with no customer acquisition effect measured.
+
+## [2026-11-09] Recheck release versions on each public read
+
+The library, detail lookup, related links and discovery listings use the
+same public research reader. It now checks the approved release, private
+manifest, current grants, counts and version receipts in one read-only
+snapshot. The local preflight uses the same bounded source and version
+checks. Missing or mismatched evidence withholds the whole release.
+
+The isolated 20-site release became visible to the public projection only
+after its matching version receipts were present. A post-review receipt,
+a mismatched task and a consent withdrawal each withheld it. The output
+omitted private references and source identities. This test used synthetic
+sources on loopback PostgreSQL.
+
+## [2026-11-09] Bind research review to the exact release and sources
+
+The existing preflight now produces the same digest before and after the
+authorized reviewer records it in the private manifest. The public reader
+withholds a release whose recorded digest is missing or no longer matches.
+The digest binds the review to the validated contents while the reader
+continues checking current consent and evaluator receipts.
+
+An isolated 20-site release was withheld after an edit to repair copy.
+An alternate audit from the same Site preserved counts and evaluator version
+and passed its own preflight, but could not reuse the original review.
+The original pair remained eligible when restored. No production artifact
+was installed.
+
+## [2026-11-09] Compare two missing-page checks on the same responses
+
+The [paired study](destination-study.md#follow-up-comparison-of-two-fixflags-checks)
+ran the existing link-destination and page-response evaluators on the same
+ten complete synthetic HTTP 200 documents. The link check marked all five
+missing templates and four of five working pages. The page-response check
+flagged two missing templates and none of the working pages. Branded labels,
+a bare 404 label and body-only error wording distinguish the missed cases.
+The saved receipt makes both kinds of error replayable for product review.
+These are controlled case outcomes, with no customer accuracy estimate.
+
+## [2026-11-09] Verify the guide discovery path through the Analyze link
+
+The [public discovery verifier](acquisition-evaluation.md#technical-public-discovery)
+now checks the guide index and six details in the sitemap and `llms.txt`,
+the homepage and index links, and each article's Analyze link. It labels
+links delivered directly or in recognized React stream segments. Arbitrary
+hidden links, unfinished segments and anchors outside the article cannot
+stand in for the required destinations.
+
+A live public HTTP run at 13:59 UTC passed all 27 guide-specific checks.
+The homepage link arrived directly. All six index-to-article links and six
+article-to-Analyze links arrived in streamed HTML. The full report passed
+988 of 998 checks across 66 HTML pages and 67 sitemap URLs. Ten docs routes
+still returned an extra loading H1. The verifier used public GETs only.
+Clicks, indexing and customer conversions require their separate evidence.
+
+## [2026-11-09] Connect guide-attributed Sites to native Outcome recovery
+
+The private [28-day Site report](measurement-operations.md) now uses the same
+native Outcome evidence as the recovery inspector. The original failed
+request and verified recovery must belong to the claimed Site and fit
+inside the post-claim window. A separate count requires seven full days
+of follow-up after recovery inside that same window.
+
+On disposable PostgreSQL, the report joined an exact guide start and claim to
+the native reconciler's failure, verified recovery, scheduled pass, and later
+failure. Moving the claim after the failed request removed recovery credit.
+A shorter follow-up counted the recovery but withheld recurrence. The
+private report and CLI emitted Site counts and the finite guide label only.
+The 60-day local run still contained one immature 28-day claim and no mature
+Site cohort.
+
+## [2026-11-09] Check consented research readiness for native recovery
+
+The private [research inspector](research-governance.md#preparing-evidence)
+can now check the default public availability method through failure,
+verified recovery, and scheduled follow-up. Every source remains inside the
+current grant's Site scope and the same observation window. Only cohorts with
+at least 20 distinct recovered hostnames are reported. Smaller follow-up
+and recurrence cells are withheld as exact counts.
+
+The isolated PostgreSQL fixture qualified 20 recovered Sites and withheld the
+single recurrence count. An early request, an off-Site binding, and a later
+withdrawal each removed the candidate. The 60-day local operational snapshot
+contained zero active grants, so the inspector skipped the recovery evidence
+read. This is a research readiness check without a customer release.
+
+## [2026-11-09] Verify paid invoices after a retained Site claim
+
+The [commercial inspector](measurement-operations.md#commercial-evidence)
+can now link an exact live paid invoice to the current billing owner's
+earliest retained claim receipt. The claim and its initial audit must
+match the same active Site and owner. The invoice's paid timestamp must
+match the ledger and fall within a mature 28-day follow-up. The report
+counts verified invoices and distinct owners separately.
+
+In isolated PostgreSQL with supplied Stripe responses, two invoices
+counted for one owner. An older claim, an invoice outside follow-up,
+an inconsistent paid timestamp and an out-of-band payment were withheld.
+The 60-day local snapshot contained zero ledger entries and lacked a live
+Stripe credential. No provider request occurred. First-ever paid conversion
+still requires payment-history coverage and a defined eligible denominator.
+
+## [2026-11-09] Require public scan evidence for customer research
+
+The public issue reader, release preflight, and private issue and recovery
+readiness reports now require an explicitly public production scan without
+a stored scan credential. Query-bearing targets, preview runs, account
+checks, fixture setup, and older audits without public access metadata
+cannot supply this evidence.
+
+The isolated 20-site issue release was withheld from the index, details and
+discovery projection when one source failed the access check. A protected
+recovery audit also removed its Site from the 20-site recovery candidate.
+The current 60-day loopback report had zero scoped grants and no eligible
+audits. [Research source rules](research-governance.md#private-source-manifest)
+
+## [2026-11-09] Measure page-response coverage separately from findings
+
+The optional private readiness report and page-response release preflight
+count distinct hosts with a conclusive current-version HTTP observation of
+an eligible audit entry page. Both pass and failure can establish coverage.
+Legacy status-only passes, incomplete receipts, ambiguous assertion lists,
+and evidence outside the audit or review window remain unobserved. The
+report withholds counts below 20 and does not split the sample by verdict.
+
+The isolated PostgreSQL fixture used assertions produced by the actual
+page-response evaluator and counted 20 covered hosts from 21 receipts.
+The page-response release preflight matched that coverage. The 14:57 UTC
+loopback read had zero scoped grants, leaving customer coverage unavailable.
+
+## [2026-11-09] Check for admissions missing start telemetry
+
+The private acquisition report compares recorded starts with mature
+anonymous admissions that still have a provisional Site pointer or an
+exact claim receipt. It distinguishes a missing or unusable receipt
+from a valid receipt logged after the fixed cutoff. These gaps make the
+operational readout partial without assigning missing starts to a guide.
+
+In the October 9 through November 5 local window, all nine independently
+corroborated admissions had a usable receipt inside the window. The
+separate start-to-audit check still found 19 recorded starts, seven
+without source audits, and no qualifying guide cohort. The two checks
+cover different retained records. [Coverage definitions](measurement-operations.md#configuration-and-reporting-readiness)
+
+## [2026-11-09] Separate processing failure classifications from timing
+
+The 15:23 UTC 60-day loopback snapshot had 46 mature anonymous starts,
+21 completion receipts, seven missing source audits, and 18 retained
+failed audits without a usable terminal time. An independent aggregate
+check found that all 18 lacked a terminal timestamp and retained
+execution tasks. The failure codes were 17 `SITE_UNREACHABLE` and one
+`AUDIT_PIPELINE_FAILED`. None can establish failure during follow-up.
+The October 9 through November 5 baseline had 12 completion receipts
+and seven missing source audits, with no retained failure observations.
+
+The report now separates known failure timing from missing timestamps
+and nonterminal states. For product engineering, use a current authorized
+sample with dated execution evidence to diagnose the reachability codes.
+The older loopback rows do not establish current causes or production
+failure frequency. [Processing evidence](measurement-operations.md#configuration-and-reporting-readiness)
+
+## [2026-11-09] Use mature GA4 landing cohorts for conversion shares
+
+The routine GA4 landing export now leaves seven days of follow-up before
+the admin report evaluates exact analysis completion and claim receipts.
+Partial provider exports still show observed tab counts, with shares
+withheld. Focused fixtures cover late and missing receipts, partial
+provider rows, and the date cutoff. The 15:33 UTC loopback admin query
+found two start receipts with journey keys and no retained GA4 landing
+export, so landing shares remained unavailable.
+[Reporting method](measurement-operations.md#configuration-and-reporting-readiness)

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { VerifyOutcomeButton } from '../VerifyOutcomeButton'
 
@@ -75,6 +75,27 @@ describe('VerifyOutcomeButton', () => {
     render(<VerifyOutcomeButton siteId="site-1" outcomeId="outcome-1" />)
     fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
     await screen.findByRole('alert')
+    fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
+    expect(await screen.findByText('Check started')).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1][1].headers['Idempotency-Key']).toBe(fetchMock.mock.calls[0][1].headers['Idempotency-Key'])
+  })
+
+  it('refreshes after a competing run refuses admission and preserves the retry key', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({ code: 'SITE_RUN_IN_PROGRESS' }, { status: 409 }))
+      .mockResolvedValueOnce(Response.json({ runId: 'run-1', auditId: 'audit-1', outcomeIds: ['outcome-1'], reused: false }, { status: 202 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const onRefresh = vi.fn(async () => undefined)
+    const props = { siteId: 'site-1', outcomeId: 'outcome-1', onRefresh }
+    const rendered = render(<VerifyOutcomeButton {...props} />)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Check now' })) })
+    expect(onRefresh).toHaveBeenCalledOnce()
+    expect(screen.getByRole('alert')).toHaveTextContent('Verification did not start. You can try again.')
+    rendered.rerender(<VerifyOutcomeButton {...props} siteCheckInProgress />)
+    expect(screen.getByRole('button', { name: 'Check now' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Wait for the current Site check to finish.')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    rendered.rerender(<VerifyOutcomeButton {...props} />)
     fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
     expect(await screen.findByText('Check started')).toBeVisible()
     expect(fetchMock).toHaveBeenCalledTimes(2)

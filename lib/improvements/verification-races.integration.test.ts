@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { Prisma } from '@prisma/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
@@ -6,6 +7,11 @@ import { reconcileImprovementVerification } from './verification'
 import { materializeAttentionForAudit } from './occurrences'
 import * as execution from '@/lib/audit/execution-ownership'
 import { lockImprovementLedger } from './ledger-lock'
+import { requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
+import { getOwnedRun } from '@/lib/sites/application/run-queries'
+import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
+import { DEFAULT_AVAILABILITY_EVALUATOR } from '@/lib/sites/domain/outcome-evaluation'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('verification result custody under concurrent reconciliation', () => {
@@ -95,6 +101,202 @@ run('verification result custody under concurrent reconciliation', () => {
       expect(rows[0].waiting).toBe(true)
     }, { timeout: 3000 })
   }
+
+  async function sameAuditPeer() {
+    const original = await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })
+    const peer = await prisma.flag.create({ data: {
+      auditId: sourceId, source: original.source, checkId: original.checkId, rubric: original.rubric, severity: original.severity,
+      confidence: 1, position: 1, pageUrl: url + 'other', problem: original.problem, evidence: 'Independent second capture',
+      whyItMatters: original.whyItMatters, fix: original.fix,
+    } })
+    await prisma.improvementOccurrence.create({ data: { auditId: sourceId, improvementId, flagId: peer.id, kind: 'CONFIRMED' } })
+    const read = prisma.improvementOccurrence.findMany.bind(prisma.improvementOccurrence)
+    vi.spyOn(prisma.improvementOccurrence, 'findMany').mockImplementation(args => read({ ...args, orderBy: { flag: { position: 'asc' } } }))
+    return peer
+  }
+
+  async function recordCaptureAttempt(handoffReference: string | null, sourceFlagIds: string[] = []) {
+    const attempt = await prisma.improvementAttempt.create({ data: { improvementId, sourceAuditId: sourceId, builder: 'fixture',
+      handoffReference, sourceFlagIds, frozen: true, createdAt: new Date(Date.now() - 30_000) } })
+    attemptId = attempt.id
+    return attempt
+  }
+
+  async function freshFinding(position: number, options: { pageUrl?: string; context?: string; regressed?: boolean } = {}) {
+    const original = await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })
+    return prisma.flag.create({ data: { auditId: freshId, checkId: original.checkId, source: original.source,
+      rubric: original.rubric, impactTag: original.impactTag, severity: original.severity, confidence: 1,
+      problem: original.problem, evidence: 'Fresh observation', whyItMatters: original.whyItMatters, fix: original.fix,
+      pageUrl: options.pageUrl ?? url, position, status: options.regressed ? 'REGRESSED' : 'OPEN',
+      ...(options.context ? { evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Page', context: options.context }] } : {}),
+    } })
+  }
+
+  it.each(['exact', 'different page', 'different condition', 'ambiguous', 'changed before settlement'] as const)(
+    'keeps failed-verifier evidence scoped when the fresh Flag is %s', async scenario => {
+      await targetedRecovery('still-failing')
+      const existing = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: freshId, targetKey: 'module:metadata' } })
+      await prisma.auditVerificationReceipt.update({ where: { id: existing.id }, data: { detail: {
+        kind: 'site-module-check', version: 1, module: 'metadata', pageUrl: url, applicable: true, passed: false, complete: true,
+        assertions: [{ key: 'viewport-presence', name: 'Viewport', expected: 'Present', observed: 'Still absent', passed: false, complete: true }],
+        execution: { auditId: freshId, taskId: 'controlled-viewport', checkVersion: spec.checks['viewport-missing'],
+          source: 'rendered-dom', collectedAt: new Date().toISOString() },
+      } } })
+      const exact = scenario === 'exact' || scenario === 'ambiguous' ? await freshFinding(0) : null
+      const other = await freshFinding(1, {
+        pageUrl: scenario === 'different page' || scenario === 'exact' ? url + 'other' : url,
+        context: scenario === 'different condition' ? 'observed-after-another-interaction' : undefined, regressed: true,
+      })
+      const read = prisma.flag.findMany.bind(prisma.flag)
+      vi.spyOn(prisma.flag, 'findMany').mockImplementation(args => read(args?.where?.auditId === freshId ? { ...args, orderBy: { position: 'asc' } } : args))
+      if (scenario === 'changed before settlement') {
+        const transaction = execution.executionTransaction
+        vi.spyOn(execution, 'executionTransaction').mockImplementationOnce((work, options) => transaction(async tx => {
+          await tx.flag.update({ where: { id: other.id }, data: { pageUrl: url + 'other' } })
+          return work(tx)
+        }, options))
+      }
+
+      expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId }))
+        .toEqual([expect.objectContaining({ attemptId, outcome: 'UNCHANGED', comparable: true })])
+      const expected = scenario === 'exact' ? exact!.id : null
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })).toMatchObject({
+        evidenceReference: { beforeFlagId: flagId, afterAuditId: freshId, afterFlagId: expected },
+      })
+      expect(await prisma.improvementOccurrence.findUnique({ where: { flagId: other.id } })).toBeNull()
+      if (expected) expect(await prisma.improvementOccurrence.findUnique({ where: { flagId: expected } }))
+        .toMatchObject({ improvementId, kind: 'CONFIRMED' })
+    },
+  )
+
+  it('keeps a historical verification without a verdict inconclusive when only a sibling page is flagged', async () => {
+    await targetedRecovery('legacy-sibling-failure')
+    await prisma.audit.update({ where: { id: freshId }, data: { executionSpec: Prisma.DbNull, reportCompleteness: 'FULL',
+      evidenceCoverage: { desktopScreenshot: true, metadata: true } } })
+    await prisma.auditPage.create({ data: { auditId: freshId, url, normalizedUrl: url, role: 'primary', position: 0, status: 'COMPLETED' } })
+    await prisma.auditVerificationReceipt.create({ data: { auditId: freshId, targetKey: 'check:viewport-missing',
+      scopeKey: 'page:https://example.com', source: 'DETERMINISTIC', status: 'COMPLETED', evidenceReference: { historical: true } } })
+    const sibling = await freshFinding(0, { pageUrl: url + 'other', regressed: true })
+    expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId }))
+      .toEqual([expect.objectContaining({ attemptId, outcome: 'INCONCLUSIVE', comparable: false })])
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })).toMatchObject({
+      verificationCoverage: { evidenceComparable: false, verifierExecuted: true }, evidenceReference: { afterFlagId: null },
+    })
+    expect(await prisma.improvementOccurrence.findUnique({ where: { flagId: sibling.id } })).toBeNull()
+  })
+
+  it('keeps a second capture inconclusive when the same Audit only proved its sibling page', async () => {
+    const peer = await sameAuditPeer()
+    await recordCaptureAttempt('flag:' + peer.id)
+    const target = { kind: 'DIAGNOSTIC', pageUrl: peer.pageUrl!, checkId: peer.checkId!, parentAuditId: sourceId, attemptId }
+    const executionSpec = { ...spec, scope: 'DIAGNOSTIC', verificationTarget: target }
+    await prisma.audit.update({ where: { id: freshId }, data: { executionSpec } })
+    await prisma.runRequest.create({ data: { projectId, auditId: freshId, source: 'WEB', idempotencyKey: 'second-diagnostic-capture',
+      status: 'COMPLETED', verificationTarget: target, executionSpec } })
+
+    expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId }))
+      .toEqual([expect.objectContaining({ attemptId, outcome: 'INCONCLUSIVE', comparable: false })])
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })).toMatchObject({
+      evidenceReference: { beforeAuditId: sourceId, beforeFlagId: peer.id, afterAuditId: freshId, afterFlagId: null },
+    })
+    for (const id of [flagId, peer.id]) expect(await prisma.flag.findUniqueOrThrow({ where: { id } }))
+      .toMatchObject({ status: 'OPEN', resolvedInId: null })
+  })
+
+  it.each([
+    { state: 'CLEAR', source: 'original', comparable: true, verdict: 'IMPROVED', result: 'CLEAR' },
+    { state: 'FLAG', source: 'original', comparable: true, verdict: 'UNCHANGED', result: 'FLAG' },
+    { state: 'CLEAR', source: 'changed-scope', comparable: false, verdict: 'INCONCLUSIVE', result: 'COULD_NOT_VERIFY' },
+    { state: 'CLEAR', source: 'different-flag', comparable: false, verdict: 'INCONCLUSIVE', result: 'COULD_NOT_VERIFY' },
+  ] as const)('projects the recorded repair verdict $verdict alongside a $state observation and $source source', async ({ state, source, comparable, verdict, result }) => {
+    const peer = await sameAuditPeer()
+    const outcome = await prisma.siteOutcome.create({ data: { projectId, name: 'Page responds', slug: 'page-responds', kind: 'AVAILABILITY' } })
+    await prisma.improvement.update({ where: { id: improvementId }, data: { outcomeId: outcome.id } })
+    await recordCaptureAttempt('flag:' + peer.id, [peer.id])
+    const target = { kind: 'OUTCOME', outcomeId: outcome.id, parentAuditId: sourceId, attemptId }
+    const binding = { key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: url }, required: true }
+    const executionSpec = { ...spec, scope: 'OUTCOMES', checks: {}, verificationTarget: target,
+      outcomes: [{ id: outcome.id, kind: 'AVAILABILITY', expectation: null, bindingPolicy: 'ALL_REQUIRED', bindings: [binding] }] }
+    await prisma.audit.update({ where: { id: freshId }, data: { executionSpec } })
+    const before = await prisma.runRequest.create({ data: { projectId, auditId: sourceId, source: 'WATCH',
+      idempotencyKey: 'original-outcome', status: 'COMPLETED', selections: { create: { outcomeId: outcome.id } } } })
+    const after = await prisma.runRequest.create({ data: { projectId, auditId: freshId, source: 'WEB', idempotencyKey: 'second-outcome-capture',
+      status: 'COMPLETED', verificationTarget: target, executionSpec, selections: { create: { outcomeId: outcome.id } } } })
+    const coverage = { environment: 'production', requiredBindings: ['http'], observedBindings: ['http'],
+      bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: url }, evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] }
+    const originalCoverage = source !== 'changed-scope' ? coverage : { ...coverage, bindings: [
+      { ...coverage.bindings[0], config: { startUrl: url + 'original' } },
+    ] }
+    const validUntil = new Date(Date.now() + 60_000)
+    const matching = await freshFinding(0)
+    const unrelated = await freshFinding(1, { regressed: true })
+    const recordedSourceId = source === 'different-flag' ? flagId : peer.id
+    await prisma.outcomeAssessment.createMany({ data: [
+      { outcomeId: outcome.id, runRequestId: before.id, auditId: sourceId, state: 'FLAG',
+        summary: 'Unavailable', coverage: originalCoverage, evidence: { reason: 'http_unavailable',
+          incident: { version: 1, transition: 'failure', incidentRunRequestId: before.id, rootFlagIds: [recordedSourceId],
+            flagIds: [recordedSourceId], recoveredFlagIds: [], previousAssessmentId: null } }, validUntil },
+      { outcomeId: outcome.id, runRequestId: after.id, auditId: freshId, state,
+        summary: 'Recorded result', coverage, evidence: state === 'CLEAR' ? { reason: 'available' } : { reason: 'http_unavailable',
+          incident: { version: 1, transition: 'failure', incidentRunRequestId: after.id, rootFlagIds: [matching.id],
+            flagIds: [matching.id], recoveredFlagIds: [], previousAssessmentId: null } }, validUntil },
+    ] })
+
+    const site = (await loadSiteRecord(projectId))!
+    expect(await getOwnedRun(userId, after.id)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL',
+      outcomes: [{ outcomeId: outcome.id, result: state }] })
+    expect((await loadMonitoringHistory(site)).timeline.find(item => item.id === freshId)).toMatchObject({
+      afterFix: true, result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL',
+    })
+    expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId }))
+      .toEqual([expect.objectContaining({ attemptId, outcome: verdict,
+        comparable, status: verdict === 'IMPROVED' ? 'PROPOSED' : 'UNVERIFIED' })])
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })).toMatchObject({
+      evidenceReference: { beforeAuditId: sourceId, beforeFlagId: peer.id, beforeFlagIds: [peer.id],
+        afterAuditId: freshId, afterFlagId: state === 'FLAG' ? matching.id : null },
+    })
+    expect(await getOwnedRun(userId, after.id)).toMatchObject({ result, validUntil: validUntil.toISOString(),
+      completionState: comparable ? 'FULL' : 'PARTIAL', outcomes: [{ outcomeId: outcome.id, result: state }] })
+    expect((await loadMonitoringHistory(site)).timeline.find(item => item.id === freshId)).toMatchObject({
+      afterFix: true, result, completionState: comparable ? 'COMPLETED' : 'PARTIAL',
+    })
+    if (comparable) {
+      await prisma.outcomeAssessment.update({ where: { runRequestId_outcomeId: { runRequestId: after.id, outcomeId: outcome.id } },
+        data: { validUntil: new Date(Date.now() - 60_000) } })
+      expect(await getOwnedRun(userId, after.id)).toMatchObject({ result: 'STALE', completionState: 'FULL' })
+      expect((await loadMonitoringHistory(site)).timeline.find(item => item.id === freshId)).toMatchObject({ result })
+    }
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: peer.id } })).toMatchObject(verdict === 'IMPROVED'
+      ? { status: 'FIXED', resolvedInId: freshId } : { status: 'OPEN', resolvedInId: null })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+    expect(await prisma.improvementOccurrence.findUnique({ where: { flagId: unrelated.id } })).toBeNull()
+  })
+
+  it('keeps an ambiguous legacy attempt without a source reference unresolved', async () => {
+    const original = await recordCaptureAttempt(null)
+    const request = { siteId: projectId, flagId, userId, attemptId }
+    await expect(requireSiteFlagAttempt(request)).resolves.toMatchObject({ attemptId })
+    await sameAuditPeer()
+    await expect(requireSiteFlagAttempt(request)).rejects.toMatchObject({ status: 409 })
+    await targetedRecovery('ambiguous-legacy-source')
+    expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId })).toEqual([])
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })).toEqual(original)
+  })
+
+  it('drops an assessed source when a mutable repair draft changes its Flag before settlement', async () => {
+    const peer = await sameAuditPeer()
+    const draft = await prisma.improvementAttempt.create({ data: { improvementId, sourceAuditId: sourceId, builder: 'fixture',
+      handoffReference: 'flag:' + flagId, frozen: false, createdAt: new Date(Date.now() - 30_000) } })
+    const stale = await pauseReconciliation()
+    let revised, results
+    try {
+      revised = await prisma.improvementAttempt.update({ where: { id: draft.id }, data: {
+        handoffReference: 'flag:' + peer.id, sourceFlagIds: [peer.id],
+      } })
+    } finally { stale.release(); results = await stale.result }
+    expect(results.some(result => result.attemptId === draft.id)).toBe(false)
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: draft.id } })).toEqual(revised)
+  })
 
   it('preserves independent recovery when an older source projection resumes', async () => {
     await targetedRecovery('projection-recovery-race')
@@ -243,5 +445,19 @@ run('verification result custody under concurrent reconciliation', () => {
     if (change === 'rejected' || change === 'superseded') expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvementId } }))
       .toMatchObject({ status: change === 'rejected' ? 'REJECTED' : 'SUPERSEDED' })
     expect(await prisma.improvementCycleEvent.count({ where: { verificationAuditId: staleId } })).toBe(0)
+  })
+
+  it('keeps repair evidence within its Site during selection and commit', async () => {
+    const before = await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })
+    const foreign = await prisma.project.create({ data: { userId, name: 'Separate Site',
+      canonicalHost: 'other.example.com', url: 'https://other.example.com/' } })
+    const stale = await pauseReconciliation()
+    try {
+      await prisma.audit.update({ where: { id: sourceId }, data: { projectId: foreign.id } })
+      expect(await reconcileImprovementVerification({ parentAuditId: sourceId, verificationAuditId: freshId })).toEqual([])
+    } finally { stale.release(); await stale.result }
+    expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attemptId } })).toEqual(before)
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flagId } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+    expect(await prisma.improvementCycleEvent.count({ where: { attemptId } })).toBe(0)
   })
 })

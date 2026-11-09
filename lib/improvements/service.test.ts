@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
   attemptFindUnique: vi.fn(),
   attemptFindUniqueOrThrow: vi.fn(), attemptUpdateMany: vi.fn(),
   attemptFindFirst: vi.fn(),
-  attemptFindMany: vi.fn(), assessmentFindFirst: vi.fn(),
+  attemptFindMany: vi.fn(), assessmentSource: vi.fn(),
   attemptUpdate: vi.fn(),
   cycleUpsert: vi.fn(),
   cycleEventUpsert: vi.fn(),
@@ -70,7 +70,7 @@ vi.mock('@/lib/db', () => ({
       update: mocks.attemptUpdate,
       findMany: mocks.attemptFindMany,
     },
-    outcomeAssessment: { findFirst: mocks.assessmentFindFirst },
+    $queryRaw: mocks.assessmentSource,
     improvementCycle: { upsert: mocks.cycleUpsert, createMany: mocks.cycleCreateMany, findMany: mocks.cycleFindMany },
     improvementCycleEvent: { upsert: mocks.cycleEventUpsert, createMany: mocks.cycleEventCreateMany },
     project: { findFirst: mocks.projectFindFirst },
@@ -795,8 +795,8 @@ describe('reconcileImprovementVerification', () => {
       })
       mocks.occurrenceFindMany.mockResolvedValue([])
       mocks.flagFindMany.mockResolvedValue([])
-      mocks.assessmentFindFirst.mockResolvedValue({ state: 'FLAG', coverage: scenario === 'changed-scope'
-        ? { ...coverage, bindings: [{ ...coverage.bindings[0], version: 2 }] } : coverage })
+      mocks.assessmentSource.mockResolvedValue([{ state: 'FLAG', kind: 'SIGNUP', coverage: scenario === 'changed-scope'
+        ? { ...coverage, bindings: [{ ...coverage.bindings[0], version: 2 }] } : coverage }])
       mocks.attemptFindMany.mockResolvedValue([{ id: 'attempt-1', improvementId: 'improvement-1', sourceAuditId: 'source',
         outcome: 'INCONCLUSIVE', createdAt: new Date('2026-10-11T11:00:00Z'),
         improvement: { id: 'improvement-1', status: scenario === 'rejected' ? 'REJECTED' : 'VERIFIED', outcomeId: 'signup-1',
@@ -807,7 +807,7 @@ describe('reconcileImprovementVerification', () => {
       const results = await reconcileImprovementVerification({ parentAuditId: 'gap', verificationAuditId: 'after' })
       if (scenario === 'recovery' || scenario === 'changed-scope') {
         expect(results[0]).toMatchObject({ outcome: scenario === 'recovery' ? 'IMPROVED' : 'INCONCLUSIVE' })
-        expect(mocks.assessmentFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { auditId: 'source', outcomeId: 'signup-1' } }))
+        expect(mocks.assessmentSource.mock.calls[0]).toEqual(expect.arrayContaining(['source', 'signup-1', 'flag-1', 'improvement-1']))
         expect(mocks.attemptFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
           createdAt: { lte: startedAt }, sourceAudit: { projectId: 'product-1', flags: { some: { status: 'FIXED', resolvedInId: 'after' } } },
         }) }))

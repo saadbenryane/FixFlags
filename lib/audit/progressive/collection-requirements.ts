@@ -11,11 +11,12 @@ const complete = { collectMobile: true, collectAccessibility: true, collectPubli
 export function httpCollectionRequirements(consumers: readonly Consumer[]) {
   if (!consumers.length) return { collectMetadata: true }
   for (const consumer of consumers) {
-    if (consumer.workKind === 'finalize') continue
+    if (consumer.workKind === 'finalize' || consumer.workKind === 'cross-page') continue
     const input = taskInputSchema.safeParse(consumer.workInput)
     const checkModule = input.success ? input.data.module : undefined
     const definition = checkModule ? PAGE_CHECK_DEFINITIONS[checkModule] : undefined
-    if (consumer.workKind === 'check' && (definition?.input === 'headers' || checkModule === 'page-response' || checkModule === 'security')) continue
+    if (consumer.workKind === 'check' && (definition?.input === 'headers' || checkModule === 'page-response' || checkModule === 'security' ||
+      checkModule === 'og-image')) continue
     if (consumer.workKind === 'search' && (checkModule === 'summary' || SEARCH_DEFINITIONS.some(definition => checkModule === 'search-' + definition.evaluator))) continue
     return { collectMetadata: true }
   }
@@ -59,6 +60,7 @@ export function browserCollectionRequirements(consumers: readonly Consumer[], ch
     if (['judge', 'finalize', 'flow', 'journeys', 'search', 'discovery', 'cross-page'].includes(consumer.workKind ?? '')) continue
     if (consumer.workKind !== 'check') return { ...complete }
     const input = taskInputSchema.safeParse(consumer.workInput)
+    if (input.success && input.data.module === 'network') continue
     const definition = input.success && input.data.module ? PAGE_CHECK_DEFINITIONS[input.data.module] : null
     if (!definition) return { ...complete }
     if (input.success && input.data.module === 'trust') result.collectPublicSignals = 'all'

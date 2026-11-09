@@ -19,6 +19,28 @@ run('Site removal with real execution and persistence', () => {
   })
   afterAll(async () => { await prisma.user.delete({ where: { id: userId } }); await prisma.$disconnect() })
 
+  it('releases a removed Site request whose retained Audit belongs to another Site', async () => {
+    const project = await prisma.project.create({ data: { userId, name: 'Removed Site', url: 'https://removed.example/',
+      canonicalHost: 'removed.example' } })
+    const other = await prisma.project.create({ data: { userId, name: 'Other Site', url: 'https://other.example/',
+      canonicalHost: 'other.example' } })
+    const audit = await prisma.audit.create({ data: { userId, projectId: other.id, url: other.url, status: 'CHECKING' } })
+    const outcome = await prisma.siteOutcome.create({ data: { projectId: other.id, name: 'Other availability', slug: 'availability' } })
+    const request = await prisma.runRequest.create({ data: { projectId: project.id, auditId: audit.id,
+      source: 'WEB', idempotencyKey: 'mismatched-retained-audit', status: 'RUNNING', selections: { create: { outcomeId: outcome.id } } } })
+    await persistTaskPlan(audit.id, [{ kind: 'http', key: 'p0:http', scope: 'page:0',
+      input: { pageUrl: other.url, position: 0, primary: true, role: 'primary' }, dependencies: [] }])
+    const tasks = await loadTaskGraph(audit.id)
+    expect(tasks).toHaveLength(1)
+
+    await removeSite({ projectId: project.id, userId })
+
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'FAILED', errorCode: 'SITE_REMOVED' })
+    expect(await loadTaskGraph(audit.id)).toEqual(tasks)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toEqual(audit)
+    expect(await prisma.outcomeAssessment.count({ where: { runRequestId: request.id } })).toBe(0)
+  })
+
   it('fences an in-flight writer and duplicate deliveries while preserving completed history', async () => {
     const project = await prisma.project.create({ data: { userId, name: 'Controlled removal', url: 'https://example.com/', canonicalHost: 'example.com' } })
     const owner = { projectId: project.id, userId }

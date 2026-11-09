@@ -7,28 +7,48 @@ import { logger } from '@/lib/logger'
 import { uptimeNotificationEmail } from '@/lib/email/uptime-notification'
 import { notificationRecipientAllowed, projectEmailAcceptance } from '@/lib/email/delivery-events'
 import { Prisma } from '@prisma/client'
-import { z } from 'zod'
-import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationEmailBody, notificationEmailSnapshotSchema, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
+import type { z } from 'zod'
+import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, deliverNotificationBatch, prepareNotificationReplay,
+  notificationEmailBody, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
+import { notificationReceiptTag } from '@/lib/email/notification-receipt'
+import { uptimeEmailSchema } from '@/lib/email/uptime-payload'
+import { currentUptimeNotificationTargetSql } from './monitor-target'
 
-const uptimeEmailSchema = notificationEmailSnapshotSchema.extend({
-  ownerId: z.string().min(1), projectId: z.string().min(1), incidentId: z.string().min(1),
-  kind: z.enum(['DOWN', 'RECOVERED']), targetVersion: z.number().int().positive(),
-}).strict()
+function liveOutageDelivery(at: Date): Prisma.UptimeNotificationWhereInput {
+  return { kind: 'DOWN', status: 'SENDING', leaseUntil: { gte: at } }
+}
 
 /** Receipt identity is also the provider idempotency key. Preferences are rechecked at delivery. */
-export async function deliverUptimeNotifications(now = new Date(), limit = 20, onlyReceiptId?: string) {
+export async function deliverUptimeNotifications(now = new Date(), limit = 20, scope?: string | { receiptId: string; ownerId: string }) {
+  const onlyReceiptId = typeof scope === 'string' ? scope : scope?.receiptId
+  const ownerId = typeof scope === 'object' ? scope.ownerId : undefined
   const startedAt = Date.now()
   // Preserve the caller's due-time reference while advancing across slow sends.
   const currentTime = () => new Date(now.getTime() + Math.max(0, Date.now() - startedAt))
-  const receipts = await prisma.uptimeNotification.findMany({ where: {
-    incident: { monitor: { project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE', emailVerified: true } } } },
-    ...(onlyReceiptId ? { id: onlyReceiptId } : {}),
-    status: { in: ['PENDING', 'FAILED', 'SENDING'] }, nextAttemptAt: { lte: now },
-    AND: [{ OR: [{ attempts: { lt: prisma.uptimeNotification.fields.maxAttempts } }, { status: 'SENDING' }] }],
-    OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
-  }, include: { incident: { include: { monitor: { include: { project: { include: uptimeProjectInclude } } } } } },
-  orderBy: { nextAttemptAt: 'asc' }, take: limit })
-  for (const receipt of receipts) {
+  const selected = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT n.id FROM uptime_notifications n
+    JOIN uptime_incidents i ON i.id = n."incidentId" JOIN uptime_monitors m ON m.id = i."monitorId"
+    JOIN projects p ON p.id = m."projectId" JOIN users u ON u.id = p."userId"
+    CROSS JOIN LATERAL (SELECT (${currentUptimeNotificationTargetSql}) AS is_current) target
+    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND u."emailVerified" = true
+      ${onlyReceiptId ? Prisma.sql`AND n.id = ${onlyReceiptId}` : Prisma.empty}
+      ${ownerId ? Prisma.sql`AND p."userId" = ${ownerId}` : Prisma.empty}
+      AND n.status IN ('PENDING', 'FAILED', 'SENDING') AND n."nextAttemptAt" <= ${now}
+      AND (n.attempts < n."maxAttempts" OR n.status = 'SENDING')
+      AND (n."leaseUntil" IS NULL OR n."leaseUntil" < ${now})
+      AND (n.kind <> 'RECOVERED' OR NOT EXISTS (SELECT 1 FROM uptime_notifications outage
+        WHERE outage."incidentId" = i.id AND outage.kind = 'DOWN' AND outage.status = 'SENDING' AND outage."leaseUntil" >= ${now}))
+    ORDER BY target.is_current DESC,
+      ROW_NUMBER() OVER (PARTITION BY target.is_current, p.id ORDER BY n."nextAttemptAt", n.id), n."nextAttemptAt", n.id
+    LIMIT ${limit}`
+  if (!selected.length) return
+  const receipts = await prisma.uptimeNotification.findMany({ where: { id: { in: selected.map(item => item.id) },
+    status: { in: ['PENDING', 'FAILED', 'SENDING'] },
+    incident: { monitor: { project: { userId: ownerId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE', emailVerified: true } } } },
+  }, include: { incident: { include: { monitor: { include: { project: { include: uptimeProjectInclude } } } } } } })
+  const byId = new Map(receipts.map(receipt => [receipt.id, receipt]))
+  async function deliver(receipt: (typeof receipts)[number]) {
+    if (receipt.attempts >= receipt.maxAttempts && receipt.status !== 'SENDING') return
     const attemptAt = currentTime()
     const { incident } = receipt, { monitor } = incident, { project } = monitor
     const available = { id: receipt.id, attempts: receipt.attempts, maxAttempts: receipt.maxAttempts,
@@ -57,13 +77,13 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
         (receipt.kind === 'RECOVERED' && (!project.notifyOnRecovery || !incident.recoveredAt)) ||
         incident.supersededAt || incident.version !== monitor.version || !await notificationRecipientAllowed(project.user.email)) {
         await prisma.uptimeNotification.updateMany({ where: { ...available, ...permission }, data: { status: 'SKIPPED', leaseUntil: null } })
-        continue
+        return
       }
       if (receipt.attempts >= receipt.maxAttempts) {
         // A crashed final sender leaves uncertainty, not an indefinitely active delivery.
         await prisma.uptimeNotification.updateMany({ where: available, data: { status: 'FAILED',
           lastError: 'Delivery confirmation expired after the final attempt', leaseUntil: null } })
-        continue
+        return
       }
       let preparation: { payload: z.infer<typeof uptimeEmailSchema> } | { error: unknown }
       try {
@@ -81,25 +101,43 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           payload = uptimeEmailSchema.parse({ version: 1, ...scope,
             firstAttemptAt: receipt.attempts === 0 ? currentTime().toISOString() : undefined,
             from: process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`,
-            to: project.user.email, ...message, tags: [{ name: 'type', value: 'uptime' }] })
+            to: project.user.email, ...message, tags: [{ name: 'type', value: 'uptime' }, ...(receipt.attempts === 0
+              ? [{ name: 'purpose', value: 'uptime' }, { name: 'notification_id', value: receipt.id }, notificationReceiptTag()] : [])] })
         }
         preparation = { payload: prepareNotificationReplay(payload, currentTime(), receipt.kind === 'RECOVERED'
           ? incident.recoveredAt ?? incident.confirmedAt : incident.confirmedAt) }
       } catch (error) { preparation = { error } }
-      const leaseUntil = new Date(currentTime().getTime() + 60_000)
+      const claimAt = currentTime()
+      const leaseUntil = new Date(claimAt.getTime() + 60_000)
+      const deliveryPermission = receipt.kind === 'RECOVERED' ? { incident: { ...permission.incident,
+        notifications: { none: liveOutageDelivery(claimAt) },
+        monitor: { ...permission.incident.monitor, incidents: { none: laterIncident } } } } : permission
       // Freeze the exact body in the same conditional write as permission and
       // attempt ownership. No later payload write can bypass a changed recipient.
       const claimed = await prisma.uptimeNotification.updateMany({ where: {
-        ...available, ...permission, deliveryPayload: { equals: receipt.deliveryPayload ?? Prisma.DbNull },
-        ...(receipt.kind === 'RECOVERED' ? { incident: { ...permission.incident,
-          monitor: { ...permission.incident.monitor, incidents: { none: laterIncident } } } } : {}),
+        ...available, ...deliveryPermission, deliveryPayload: { equals: receipt.deliveryPayload ?? Prisma.DbNull },
       }, data: { status: 'SENDING', attempts: { increment: 1 }, leaseUntil,
         ...('payload' in preparation ? { deliveryPayload: preparation.payload } : {}) } })
-      if (!claimed.count) continue
+      if (!claimed.count) return
       const ownedClaim = { id: receipt.id, status: 'SENDING', attempts: receipt.attempts + 1, leaseUntil }
       try {
+        const recipientAllowed = 'payload' in preparation ? await notificationRecipientAllowed(preparation.payload.to) : true
+        // Permission can change while the claim waits on the receipt row.
+        if (!await prisma.uptimeNotification.findFirst({ where: { ...deliveryPermission, ...ownedClaim }, select: { id: true } })) {
+          await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {
+            status: receipt.status, attempts: { decrement: 1 }, leaseUntil: receipt.leaseUntil,
+            deliveryPayload: (receipt.deliveryPayload as Prisma.InputJsonValue | null) ?? Prisma.DbNull,
+          } })
+          return
+        }
         if ('error' in preparation) throw preparation.error
         if (!resend) throw new Error('Uptime email delivery is not configured')
+        if (!recipientAllowed) {
+          await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {
+            status: 'SKIPPED', attempts: { decrement: 1 }, leaseUntil: null,
+          } })
+          return
+        }
         // A slow database response must not start a request that can outlive its claim.
         if (leaseUntil.getTime() - currentTime().getTime() <= NOTIFICATION_REQUEST_TIMEOUT_MS)
           throw new Error('Notification claim has insufficient time for provider delivery')
@@ -135,4 +173,5 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
       }
     }
   }
+  await deliverNotificationBatch(selected.flatMap(item => byId.get(item.id) ?? []), receipt => receipt.incident.monitor.projectId, deliver)
 }

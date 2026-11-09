@@ -26,9 +26,9 @@ export function validateRunSelection(input: RunInput) {
   }
   if (
     input.verificationTarget?.kind === 'OUTCOME' &&
-    !selectedIds.includes(input.verificationTarget.outcomeId)
+    (selectedIds.length !== 1 || selectedIds[0] !== input.verificationTarget.outcomeId)
   ) {
-    throw new SiteRunRefusal('Verification target must be included in the Outcome selection', 400)
+    throw new SiteRunRefusal('A repair recheck must select its original Outcome only.', 400)
   }
   return { scope, environment, selectedIds }
 }

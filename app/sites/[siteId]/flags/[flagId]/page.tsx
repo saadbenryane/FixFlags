@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, History } from 'lucide-react'
 import { RecordedPageLink } from '@/components/sites/RecordedPageLink'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSitePageAccess } from '@/lib/sites/page-access'
 import { Button } from '@/components/ui/button'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
@@ -56,8 +56,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const { siteId, flagId } = await params
   const origin = await searchParams
   const { source } = origin
-  const access = await requireSiteAccess(siteId)
-  if (!access.ok) notFound()
+  const access = await requireSitePageAccess(siteId, `/sites/${encodeURIComponent(siteId)}/flags/${encodeURIComponent(flagId)}`)
 
   const resolvedId = access.decision.site.siteId
   const ownsSite = access.decision.role === 'owner'
@@ -260,7 +259,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   {SITE_BOARD_COPY.fixAndVerify}
                 </h2>
                 <div className="mt-6">
-                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
+                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.activeVerificationAuditId} verifying={flag.verifying} />
                 </div>
               </aside>
             ) : null}

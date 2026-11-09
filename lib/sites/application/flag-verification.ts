@@ -105,10 +105,21 @@ export async function requireSiteFlagAttempt(input: {
   // Monitoring may advance the durable incident while a repair is being made.
   // Verification belongs to the repair's recorded source, not the current inbox.
   const recordedFlagId = attempt.handoffReference?.startsWith('flag:') ? attempt.handoffReference.slice(5) : null
-  if (!recordedFlagId) {
+  if (recordedFlagId === null) {
     if (attempt.sourceAuditId !== flag.sourceAuditId) throw new SiteRunRefusal('Fix attempt has no matching source Flag', 409)
+    if (!options.allowSettled) {
+      const occurrences = await prisma.improvementOccurrence.findMany({
+        where: { auditId: attempt.sourceAuditId, improvementId: flag.improvementId, audit: { projectId: site.projectId },
+          ...(attempt.sourceFlagIds?.length ? { flagId: { in: attempt.sourceFlagIds } } : {}) },
+        select: { flagId: true }, take: 2,
+      })
+      if (occurrences.length !== 1 || occurrences[0].flagId !== (flag.sourceFlagId ?? flag.id))
+        throw new SiteRunRefusal('Fix attempt has no matching source Flag', 409)
+    }
     return { site, flag, attemptId: attempt.id, attempt }
   }
+  if (!recordedFlagId || attempt.sourceFlagIds?.length && !attempt.sourceFlagIds.includes(recordedFlagId))
+    throw new SiteRunRefusal('Fix attempt has no matching source Flag', 409)
   if (input.flagId !== flag.improvementId && recordedFlagId !== (flag.sourceFlagId ?? flag.id)) {
     throw new SiteRunRefusal('Fix attempt belongs to a different source Flag', 409)
   }

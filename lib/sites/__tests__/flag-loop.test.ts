@@ -7,7 +7,7 @@ describe('Monitor. Flag. Fix. loop contract', () => {
   it('locks the website check action, the core loop, Copy fix prompt, and independent Verify', () => {
     expect(ANALYZE_CTA).toBe('Check website')
     expect(CORE_LOOP_LABEL).toBe('Monitor. Flag. Fix.')
-    expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix prompt')
+    expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix instructions')
     expect(SITE_BOARD_COPY.verifyFix).toBe('Check now')
     expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Verified')
     expect(FLAG_STATUS_LABELS.FIXED.description).toMatch(/Independent check/)

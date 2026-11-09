@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { loadSiteRecord } from '../ensure-site'
-import { loadSiteFlagDetail, loadSiteFindings, loadSiteResolvedFlags } from '../flags'
+import { loadSiteFlagDetail, loadSiteFindings, loadSiteResolvedFlags, loadSiteRepairBriefPage } from '../flags'
 import { buildSiteRepairBrief } from '../repair-brief'
 import { deliverSiteRepairBrief } from '../repair-delivery'
 import { MAX_REPAIR_BRIEF_BYTES } from '../repair-budgets'
@@ -80,6 +80,7 @@ run('persisted repair context scope', () => {
     try {
       await prisma.project.update({ where: { id: siteId }, data: { userId: replacement.id } })
       for (const read of [() => loadSiteFlagDetail(site, captures[0].id), () => loadSiteFindings(site),
+        () => loadSiteRepairBriefPage(site, captures[0].id, 'https://fixflags.test'),
         () => loadSiteResolvedFlags(site), () => loadSiteFixBundle(site),
         () => loadSiteRepairEvidence(site, flag, 'https://fixflags.test/private-capture')]) {
         await expect(read()).rejects.toMatchObject({ status: 404 })
@@ -212,6 +213,58 @@ run('persisted repair context scope', () => {
     }
     await expect(verificationSourceAuditId(prisma, { parentId: fixed.sourceAuditId, projectId: 'another-site', executionSpec: spec }, incident.pageUrl!))
       .rejects.toThrow('The recorded repair source is no longer available')
+  })
+
+  it('delivers the same complete multi-Audit incident through indexed pages and full source reads', async () => {
+    const site = (await loadSiteRecord(siteId))!
+    const full = buildSiteRepairBrief(siteId, (await loadSiteFlagDetail(site, incidentId))!, 'https://fixflags.test', incidentId)
+    let page = (await loadSiteRepairBriefPage(site, incidentId, 'https://fixflags.test'))!
+    expect(page).toEqual(full)
+    const received = [...page.flag.supportingObservations!]
+    while (page.retrieval.next) {
+      const args = page.retrieval.next.arguments
+      page = (await loadSiteRepairBriefPage(site, incidentId, 'https://fixflags.test', args.observationOffset, args.expectedContextHash))!
+      expect(page.contextHash).toBe(full.contextHash)
+      received.push(...page.flag.supportingObservations!)
+    }
+    expect(received).toHaveLength(70)
+    expect(new Set(received.map(item => item.sourceAuditId))).toEqual(new Set(captures.map(source => source.auditId)))
+    expect(JSON.stringify(received)).not.toContain('private comparison input')
+    const rows = await prisma.flag.findMany({ where: { id: { in: captures.map(source => source.id) } } })
+    expect(rows.every(row => row.supportingObservationIndex !== null)).toBe(true)
+  })
+
+  it('fences retained writers, workflow-only changes and mutations beyond the requested window', async () => {
+    const original = await prisma.flag.findUniqueOrThrow({ where: { id: captures[0].id } })
+    const stored = original.supportingObservations as { version: number; items: Array<Record<string, unknown>> }
+    const observations = { version: 1, items: Array.from({ length: 65 }, (_, index) => ({ ...stored.items[0], evidence: 'Original control ' + index })) }
+    const source = await prisma.flag.create({ data: { auditId: original.auditId, source: 'DETERMINISTIC', checkId: 'buttons-no-text',
+      rubric: 'EXPERIENCE', severity: 'IMPORTANT', position: 50, confidence: 1, pageUrl: original.pageUrl,
+      problem: 'Recorded unnamed controls', evidence: 'Original observations', whyItMatters: 'Control purpose', fix: 'Name the original controls',
+      verificationRule: 'Original controls have names', supportingObservations: observations } })
+    const site = (await loadSiteRecord(siteId))!
+    const first = (await loadSiteRepairBriefPage(site, source.id, 'https://fixflags.test'))!
+    const indexed = await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })
+    expect(indexed.supportingObservationIndex).toMatchObject({ sourceVersion: 0, count: 65, kind: 'recorded' })
+    expect(JSON.stringify(indexed.supportingObservationIndex)).not.toMatch(/Original control|items|private comparison input/)
+    await prisma.flag.update({ where: { id: source.id }, data: { status: 'IGNORED' } })
+    expect((await loadSiteRepairBriefPage(site, source.id, 'https://fixflags.test', 25, first.contextHash))!.contextHash).toBe(first.contextHash)
+    expect((await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).supportingObservationIndex).toEqual(indexed.supportingObservationIndex)
+    // A retained writer does not know the index. The database still invalidates it.
+    await prisma.$executeRaw`UPDATE flags SET "supportingObservations" = jsonb_set("supportingObservations", '{items,64,evidence}', '"Changed final observation"'::jsonb)
+      WHERE id = ${source.id}`
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).toMatchObject({ supportingObservationVersion: 1, supportingObservationIndex: null })
+    await expect(loadSiteRepairBriefPage(site, source.id, 'https://fixflags.test', 25, first.contextHash)).rejects.toMatchObject({ code: 'REPAIR_CONTEXT_CHANGED' })
+    const fresh = (await loadSiteRepairBriefPage(site, source.id, 'https://fixflags.test'))!
+    const last = (await loadSiteRepairBriefPage(site, source.id, 'https://fixflags.test', 50, fresh.contextHash))!
+    expect(last.flag.supportingObservations!.at(-1)!.evidence).toBe('Changed final observation')
+    const broken = { ...observations, items: observations.items.map((item, index) => index === 64 ? { ...item, checkVersion: 0 } : item) }
+    await prisma.flag.update({ where: { id: source.id }, data: { supportingObservations: broken, supportingObservationVersion: 0 } })
+    expect((await prisma.flag.findUniqueOrThrow({ where: { id: source.id } })).supportingObservationVersion).toBe(2)
+    const unavailable = (await loadSiteRepairBriefPage(site, source.id, 'https://fixflags.test'))!
+    expect(unavailable.observationPage).toMatchObject({ total: null, complete: false })
+    expect(unavailable.flag.supportingObservations).toBeNull()
+    expect(unavailable.repair).toMatchObject({ definition: { kind: 'evidence-recovery' } })
   })
   it('keeps an exact historical Flag repair separate from the grouped attempt', async () => {
     const site = (await loadSiteRecord(siteId))!

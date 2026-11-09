@@ -1,4 +1,4 @@
-import { CHECK_REGISTRY } from '../check-registry'
+import { CHECK_REGISTRY, executionCheckModule } from '../check-registry'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { validateTaskGraph, type TaskPlan, type TaskInput, type TaskKind } from './contracts'
 import { SEARCH_CHECK_REGISTRY } from '../search/definitions'
@@ -6,6 +6,11 @@ import { ACTION_CHECK_DEFINITIONS, CHECK_MODULES } from '../checks/definitions'
 import { motionRequested } from '../checks/motion-evidence'
 import { monitoringReviewUrls } from '../review-depth'
 import { browserDevicesForCheck } from './collection-requirements'
+import { corridorEvidenceSource } from '../checks/corridor-contract'
+import { usesPublicPreview } from '../checks/preview-contract'
+import { DESTINATION_CONTENT_CHECKS } from '../checks/flow-destination-content'
+
+const isFieldInpCheck = (id: string) => id === 'inp-critical' || id === 'inp-poor'
 
 /** Admission and execution share public behavior policy. Frozen scope retains
  * responsibility even when a queued category has not created task rows yet. */
@@ -34,8 +39,10 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     ? spec.verificationTarget.checkId.split('::page:')[0] : undefined
   const browserChecks = diagnosticCheck && spec.checks[diagnosticCheck]
     ? { [diagnosticCheck]: spec.checks[diagnosticCheck] } : spec.checks
-  const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
-  const browserModules = new Set(Object.keys(browserChecks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
+  const moduleForCheck = ([id, version]: [string, number]) => executionCheckModule(id, version)
+  const admittedChecks = Object.entries(spec.checks)
+  const modules = new Set(admittedChecks.map(moduleForCheck))
+  const browserModules = new Set(Object.entries(browserChecks).map(moduleForCheck).filter((module): module is string => module !== undefined))
   const mobile = independentProfiles && (motionRequested(spec) || [...browserModules].some(module => browserDevicesForCheck(module, browserChecks).includes('mobile')))
   const plans = [make('http'), { ...make('browser'), input: { ...input, ...(independentProfiles ? { device: 'desktop' as const } : {}) } },
     ...(mobile ? [{ ...make('browser', [], 'browser-mobile'), input: { ...input, device: 'mobile' as const } }] : []), make('captures'),
@@ -45,17 +52,22 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   if (modules.has('overlays')) plans.push({ ...make('overlays'), input: { ...input, device: 'desktop' } },
     { ...make('overlays', [], 'overlays-mobile'), input: { ...input, device: 'mobile' } })
   if (modules.has('keyboard')) plans.push(make('keyboard', [], 'keyboard-evidence'))
+  if (spec.engagementCollection === 'split-v1' && modules.has('network')) plans.push(make('check', [prefix + ':browser'], 'network'))
   if (modules.has('mobile-navigation')) plans.push(make('flow', [], 'mobile-navigation'))
   for (const [module, definition] of Object.entries(CHECK_MODULES)) {
     if (module === 'automatic-accounts' || module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
-    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : definition.input === 'headers' || definition.input === 'http' ? 'http'
+    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : definition.input === 'headers' || definition.input === 'http' ||
+      module === 'og-image' && usesPublicPreview(browserChecks) ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     const dependencies = inputKind === 'browser' && independentProfiles
       ? browserDevicesForCheck(module, browserChecks).map(device => prefix + (device === 'mobile' ? ':browser-mobile' : ':browser'))
       : [prefix + ':' + inputKind]
-    plans.push(make('check', [...dependencies, ...(module === 'interaction' && motionRequested(spec) ? [prefix + ':motion'] : [])], module))
-    if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'),
-      input: { ...input, module: 'performance', device: 'mobile' } })
+    if (module !== 'performance' || admittedChecks.some(check => moduleForCheck(check) === 'performance' && !isFieldInpCheck(check[0]))) {
+      plans.push(make('check', [...dependencies, ...(module === 'interaction' && motionRequested(spec) ? [prefix + ':motion'] : [])], module))
+    }
+    if (module === 'performance' && admittedChecks.some(([id]) => isFieldInpCheck(id))) {
+      plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'), input: { ...input, module, device: 'mobile' } })
+    }
   }
   if (modules.has('form-validation') || modules.has('overlays') && spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl &&
     scope.overlayPhases?.some(phase => phase.startsWith('form_validation')))) plans.push(make('flow', [], 'form-validation'))
@@ -72,7 +84,11 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   plans.push(make('google', [prefix + ':search-indexing'], 'google-index'))
   plans.push(make('google', [], 'google-performance'))
   const behaviors = new Set(publicPageBehaviors(input, spec))
-  if (behaviors.has('flow')) plans.push(make('flow', [prefix + ':browser']))
+  const engagementRepair = spec.engagementCollection === 'split-v1' && diagnosticCheck && CHECK_REGISTRY[diagnosticCheck]?.module === 'network'
+  // The destination replay owns its original control, browser visit and content
+  // observations. A separate page capture supplies no repair evidence for it.
+  const destinationRepair = diagnosticCheck && DESTINATION_CONTENT_CHECKS.includes(diagnosticCheck)
+  if (behaviors.has('flow')) plans.push(make('flow', engagementRepair || destinationRepair ? [] : [prefix + ':browser']))
   if (behaviors.has('pricing-navigation')) plans.push(make('flow', [], 'pricing-navigation'))
   if (behaviors.has('slow-replay')) plans.push(make('slow-replay'))
   if (behaviors.has('journeys')) plans.push(make('journeys', [prefix + ':browser']))
@@ -146,14 +162,16 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       area === 'conversion' && ['bindings', 'journeys', 'overlays'].includes(task.kind)) include(task.key)
     for (const task of accounts) include(task.key)
     const crossPage = area === 'search' || Object.keys(spec.checks).some(id => CHECK_REGISTRY[id]?.module === 'corridor')
-    if (crossPage) for (const task of pages.filter(task => task.kind === 'browser' && task.input.device !== 'mobile')) include(task.key)
+    const publicPreviews = corridorEvidenceSource(spec.checks) === 'http'
+    const previewCollector = (task: TaskPlan) => publicPreviews ? task.kind === 'http' : task.kind === 'browser' && task.input.device !== 'mobile'
+    if (crossPage) for (const task of pages.filter(previewCollector)) include(task.key)
     const plans = [...selected].map(key => available.get(key)!)
     if (area === 'search' && spec.checks['broken-internal-links'])
       plans.push({ kind: 'discovery', key: 'discovery', scope: 'category:search', input,
         dependencies: plans.filter(task => task.kind === 'http' || task.kind === 'browser').map(task => task.key) })
     if (crossPage)
       plans.push({ kind: 'cross-page', key: 'cross-page', scope: 'category:' + area, input,
-        dependencies: plans.filter(task => task.kind === 'browser' && task.input.device !== 'mobile' ||
+        dependencies: plans.filter(task => previewCollector(task) ||
           area === 'search' && task.kind === 'search' && task.input.module === 'summary').map(task => task.key) })
     plans.push({ kind: 'finalize', key: 'finalize', scope: 'category:' + area, input, dependencies: plans.map(task => task.key) })
     validateTaskGraph(plans)
@@ -164,13 +182,13 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
   if (spec.scope === 'DIAGNOSTIC' && spec.verificationTarget?.kind === 'DIAGNOSTIC') {
     const checkId = spec.verificationTarget.checkId.split('::page:')[0]
     const search = SEARCH_CHECK_REGISTRY[checkId as keyof typeof SEARCH_CHECK_REGISTRY]
-    const checkModule = CHECK_REGISTRY[checkId]?.module
+    const checkModule = executionCheckModule(checkId, spec.checks[checkId])
     const scopes = spec.verificationScopes ?? []
     const extraPages = scopes.filter(scope => scope.pageUrl !== input.pageUrl)
     const pages = [ ...pageTaskPlan(input, spec), ...extraPages.flatMap((scope, index) =>
       pageTaskPlan({ ...input, pageUrl: scope.pageUrl, position: index + 1, primary: false, role: 'linked' }, spec)) ]
     if (checkModule === 'corridor') {
-      const collectors = pages.filter(task => task.kind === 'browser')
+      const collectors = pages.filter(task => task.kind === (corridorEvidenceSource(spec.checks) === 'http' ? 'http' : 'browser'))
       const plans: TaskPlan[] = [...collectors,
         { kind: 'cross-page', key: 'cross-page', scope: 'diagnostic', input, dependencies: collectors.map(task => task.key) },
         { kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: [...collectors.map(task => task.key), 'cross-page'] }]
@@ -179,7 +197,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     }
     const resources = siteResourcePlans(input)
     const available = new Map([...resources, ...pages].map(task => [task.key, task]))
-    const target = checkModule === 'network' ? 'p0:flow' : checkId === 'flow-pricing-nav-broken' ? 'p0:pricing-navigation' : checkId === 'inp-critical' || checkId === 'inp-poor' ? 'p0:inp-mobile'
+    const target = checkModule === 'network' ? 'p0:flow' : checkId === 'flow-pricing-nav-broken' ? 'p0:pricing-navigation' : isFieldInpCheck(checkId) ? 'p0:inp-mobile'
       : search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
       : search.evaluator === 'cross-page' ? null : 'p0:search-' + search.evaluator : checkModule && available.has('p0:' + checkModule) ? 'p0:' + checkModule : null
     // Unknown historical targets remain an explicit limitation, not a made-up
@@ -192,7 +210,14 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       if (!task) throw new Error('Diagnostic dependency is unavailable: ' + key)
       selected.add(key); task.dependencies.forEach(include)
     }
-    if (checkModule === 'overlays') {
+    const splitEngagement = checkModule === 'network' && spec.engagementCollection === 'split-v1'
+    if (splitEngagement) {
+      for (const [index, pageUrl] of [input.pageUrl, ...extraPages.map(scope => scope.pageUrl)].entries()) {
+        const phases = scopes.find(scope => scope.pageUrl === pageUrl)?.phases
+        if (!phases?.length || phases.includes('page_load')) include('p' + index + ':network')
+        if (!phases?.length || phases.includes('public_action')) include('p' + index + ':flow')
+      }
+    } else if (checkModule === 'overlays') {
       for (const [index, pageUrl] of [input.pageUrl, ...extraPages.map(scope => scope.pageUrl)].entries()) {
         const prefix = 'p' + index, phases = scopes.find(scope => scope.pageUrl === pageUrl)?.overlayPhases
         if (!phases?.length || phases.includes('page_load')) { include(prefix + ':overlays'); include(prefix + ':overlays-mobile') }
@@ -202,7 +227,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
         if (phases?.some(phase => phase.startsWith('journey_'))) include(prefix + ':journeys')
       }
     } else include(target)
-    if (scopes.length && checkModule !== 'overlays') {
+    if (scopes.length && checkModule !== 'overlays' && !splitEngagement) {
       if (checkId !== 'flow-pricing-nav-broken' && scopes.find(scope => scope.pageUrl === input.pageUrl)?.phases.includes('public_action')) include('p0:flow')
       for (const [index, scope] of extraPages.entries()) {
         include(target.replace(/^p0:/, 'p' + (index + 1) + ':'))

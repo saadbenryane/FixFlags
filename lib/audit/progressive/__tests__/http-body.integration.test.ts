@@ -29,12 +29,23 @@ run('interrupted body evidence through URL admission and installed workers', () 
   const server = createServer((request, response) => {
     requests++
     if (phase === 'missing') { response.destroy(); return }
+    if (phase === 'sign-in') {
+      if (request.url === '/login') {
+        response.setHeader('content-type', 'text/html')
+        response.end('<!doctype html><title>Sign in to continue</title><h1>Sign in</h1>')
+      } else { response.writeHead(302, { location: '/login' }); response.end() }
+      return
+    }
+    const sandbox = phase === 'sandboxed' ? ', sandbox allow-forms' : phase === 'sandbox-conflict' ? ', sandbox, sandbox allow-scripts' : ''
     for (const [key, value] of Object.entries({
-      'content-security-policy': "default-src 'self'; script-src 'self'" + (['safe', 'challenge'].includes(phase) ? '' : " 'unsafe-inline'") + "; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      'content-security-policy': "default-src 'self'; script-src 'self'" + (phase === 'challenge' ? '' : " 'unsafe-inline'") +
+        "; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" + sandbox,
       'x-frame-options': 'DENY', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin',
       'cross-origin-opener-policy': 'same-origin', 'cross-origin-resource-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp',
       'permissions-policy': 'camera=(), microphone=(), geolocation=()', 'x-permitted-cross-domain-policies': 'none',
       'content-type': 'text/html',
+      'set-cookie': 'fixture=PRIVATE_COOKIE_HEADER_VALUE; Path=/; HttpOnly',
+      'authentication-info': 'nextnonce="PRIVATE_AUTH_HEADER_VALUE"',
     })) response.setHeader(key, value)
     if (phase === 'navigation') {
       if (request.url === '/navigation') response.end('<!doctype html><base href="/services/">' +
@@ -45,6 +56,7 @@ run('interrupted body evidence through URL admission and installed workers', () 
       return
     }
     if (phase === 'response-ok') { response.end('<!doctype html><title>Restored public page</title><h1>Useful service</h1>'); return }
+    if (phase === 'response-soft-404') { response.end('<!doctype html><title>404: Page Not Found</title><h1>Page not found</h1>'); return }
     if (phase === 'response-error') response.statusCode = 503
     if (phase === 'challenge') {
       response.statusCode = 503
@@ -104,6 +116,7 @@ run('interrupted body evidence through URL admission and installed workers', () 
     const run = await prisma.runRequest.findFirstOrThrow({ where: { auditId: check.verificationAuditId! }, select: { id: true } })
     expect(await getOwnedRun(userId, run.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR'
       : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
+    return check.verificationAuditId!
   }
   it('flags actual header evidence without certifying incomplete content, verifies repair and preserves recurrence', async () => {
     const source = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
@@ -113,18 +126,32 @@ run('interrupted body evidence through URL admission and installed workers', () 
     const audit = await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId } }); projectId = audit.projectId!
     const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: source.auditId, workKind: 'http', pageUrl } })
     expect(task).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
+    expect(JSON.stringify(task.workResult)).not.toMatch(/PRIVATE_(COOKIE|AUTH)_HEADER_VALUE/)
     expect(httpArtifactSchema.parse(readArtifact(task.workResult, 'http').data)).toMatchObject({ metadata: null,
-      document: { status: 200, complete: false, reason: 'response_body_unavailable', body: expect.stringContaining('Partial service page') } })
+      document: { status: 200, complete: false, reason: 'response_body_unavailable', body: expect.stringContaining('Partial service page'),
+        headers: { 'set-cookie': '[redacted]', 'authentication-info': '[redacted]' } } })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId, checkId: 'security-csp-unsafe-inline' } })
     expect((await loadSiteHome(projectId))?.flags).toContainEqual(expect.objectContaining({ sourceFlagId: flag.id }))
     expect(await prisma.flag.count({ where: { auditId: source.auditId, checkId: 'page-http-error' } })).toBe(0)
     const page = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: source.auditId, targetKey: 'module:page-response' } })
     expect(page.detail).toMatchObject({ complete: false, passed: false })
+    const checked = await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: page.taskId! } })
+    expect(checked).toMatchObject({ status: 'COMPLETED', workState: 'COMPLETED',
+      workResult: { data: { pageResponseInterrupted: true } } })
     const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
     await verify(flag.id, 'unsafe', 'UNCHANGED')
     await verify(flag.id, 'missing', 'INCONCLUSIVE')
     await verify(flag.id, 'challenge', 'INCONCLUSIVE')
-    await verify(flag.id, 'safe', 'IMPROVED')
+    await verify(flag.id, 'sandbox-conflict', 'INCONCLUSIVE')
+    const signIn = await verify(flag.id, 'sign-in', 'INCONCLUSIVE')
+    expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: signIn, targetKey: 'module:security-headers' } }))
+      .toMatchObject({ pageUrl, detail: { complete: false, passed: false } })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
+    const verified = await verify(flag.id, 'sandboxed', 'IMPROVED')
+    expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: { auditId: verified, targetKey: 'module:security-headers' } }))
+      .toMatchObject({ pageUrl, detail: { assertions: expect.arrayContaining([expect.objectContaining({
+        key: 'csp-inline-scripts', complete: true, passed: true, observed: 'The enforced CSP sandbox disables scripting.',
+      })]) } })
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED' })
     phase = 'unsafe'
     const recurring = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'body-recurrence' })
@@ -160,7 +187,7 @@ run('interrupted body evidence through URL admission and installed workers', () 
     expect(flag.evidence).toContain('HTTP 503')
     const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
     for (const [next, outcome] of [['response-error', 'UNCHANGED'], ['unsafe', 'INCONCLUSIVE'],
-      ['challenge', 'INCONCLUSIVE'], ['response-ok', 'IMPROVED']] as const) {
+      ['challenge', 'INCONCLUSIVE'], ['sign-in', 'INCONCLUSIVE'], ['response-soft-404', 'UNCHANGED'], ['response-ok', 'IMPROVED']] as const) {
       phase = next; requests = 0
       const fix = await recordSiteFlagFix({ siteId: projectId, userId, flagId: flag.id, idempotencyKey: 'page-body-fix-' + next,
         changeSummary: 'Restore the original public page response' })
@@ -173,13 +200,19 @@ run('interrupted body evidence through URL admission and installed workers', () 
       const request = await prisma.runRequest.findFirstOrThrow({ where: { auditId: verified.verificationAuditId! } })
       expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: outcome === 'IMPROVED' ? 'CLEAR'
         : outcome === 'UNCHANGED' ? 'FLAG' : 'COULD_NOT_VERIFY' })
+      if (next === 'sign-in') {
+        expect(await prisma.auditVerificationReceipt.findFirstOrThrow({ where: {
+          auditId: verified.verificationAuditId!, targetKey: 'module:page-response', pageUrl,
+        } })).toMatchObject({ detail: { complete: false, passed: false } })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
+      }
     }
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED' })
-    phase = 'response-error'; requests = 0
+    phase = 'response-soft-404'; requests = 0
     const recurring = await requestSiteRun({ projectId, userId, scope: 'SITE', source: 'WATCH', outcomeIds: [], idempotencyKey: 'page-body-recurrence' })
     await complete(recurring.auditId!)
     const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: 'page-http-error' } })
-    expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
+    expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint, evidence: expect.stringContaining('HTTP 200') })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
   }, 180_000)
 })

@@ -6,6 +6,7 @@ import { SiteRunRefusal } from './run-refusal'
 /** Internal scheduler authority. Never part of a public run request or its evidence. */
 export type ScheduledRunClaim = {
   targetUrl: string
+  targetRevision?: number
   interval: WatchInterval
   everyMinutes: number | null
   scheduledAt: Date
@@ -14,7 +15,7 @@ export type ScheduledRunClaim = {
 }
 
 export type ScheduledClaimProject = Pick<Project, 'url' | 'watchInterval' | 'watchEveryMinutes' |
-  'watchNextRunAt' | 'watchLastAttemptAt' | 'watchLeaseUntil' | 'watchPausedAt'>
+  'watchNextRunAt' | 'watchLastAttemptAt' | 'watchLeaseUntil' | 'watchPausedAt' | 'watchTargetRevision'>
 
 export function staleScheduledClaim(): SiteRunRefusal {
   return new SiteRunRefusal('The monitoring schedule changed before this check could start.', 409, 'WATCH_CLAIM_CHANGED')
@@ -24,6 +25,7 @@ export function staleScheduledClaim(): SiteRunRefusal {
 export function assertScheduledClaim(project: ScheduledClaimProject, claim: ScheduledRunClaim): void {
   const now = new Date()
   if (project.watchPausedAt || claim.scheduledAt > now || project.url !== claim.targetUrl ||
+    (project.watchTargetRevision ?? 1) !== (claim.targetRevision ?? 1) ||
     project.watchInterval !== toStoredWatchInterval(claim.interval) || project.watchEveryMinutes !== claim.everyMinutes ||
     project.watchNextRunAt?.getTime() !== claim.scheduledAt.getTime() ||
     project.watchLastAttemptAt?.getTime() !== claim.attemptedAt.getTime() ||

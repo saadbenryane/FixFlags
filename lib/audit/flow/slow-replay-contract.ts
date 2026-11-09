@@ -39,7 +39,7 @@ export const slowReplayResultSchema = z.object({
   timeToFirstTextMs: milliseconds, timeToCtaMs: milliseconds,
   screenshotUrls: z.array(z.string().url()).max(10), complete: z.boolean().optional(),
   profile: z.string().max(800).optional(), pageUrl: z.string().url().optional(),
-  navigationComplete: z.boolean().optional(), reason: z.enum(['navigation_unavailable', 'interrupted', 'observation_incomplete']).optional(),
+  navigationComplete: z.boolean().optional(), reason: z.enum(['navigation_unavailable', 'interrupted', 'observation_incomplete', 'public_sign_in_redirect']).optional(),
   restricted: z.boolean().optional(),
   scope: captureObservationScopeSchema.optional(),
   observedForMs: milliseconds.optional(), textBlankThroughMs: milliseconds.optional(), ctaAbsentThroughMs: milliseconds.optional(),

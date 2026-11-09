@@ -23,7 +23,7 @@ export function readTapTargetAudits(audits: Record<string, unknown>): TapTargetA
     const audit = lighthouseRecord(audits[id])
     const details = lighthouseRecord(audit?.details)
     return [{ id, title: (typeof audit?.title === 'string' ? audit.title : id).slice(0, 1000),
-      score: lighthouseScore(audit),
+      score: lighthouseScore(audit, id),
       ...(Array.isArray(details?.items) && details.items.length <= 100_000 ? { itemsCount: details.items.length } : {}) }]
   })
 }

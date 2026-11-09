@@ -18,6 +18,7 @@ import { startWorker } from '@/lib/queue/worker'
 import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
 import { clearWorkerHeartbeat, touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { closeBrowser, getAuditBrowser, getBrowserDiagnostics } from '@/lib/audit/screenshot'
+import { searchReceiptSchema } from '@/lib/audit/search/contracts'
 import * as pageSessions from '@/lib/audit/browser/page-session'
 import { TASK_QUEUES } from '../queues'
 import { dispatchReadyTasks, reconcileTasks } from '../engine'
@@ -427,6 +428,10 @@ run('original entry responsibility after URL-first claim and monitoring admissio
     await complete(anonymous.auditId)
     const original = await prisma.flag.findFirstOrThrow({ where: { auditId: anonymous.auditId, checkId: 'broken-internal-links', pageUrl: source } })
     expect(requests).toContain(destination)
+    const search = await prisma.auditVerificationReceipt.findFirstOrThrow({ where: {
+      auditId: anonymous.auditId, pageUrl: source, targetKey: 'module:search-discovery' } })
+    const links = searchReceiptSchema.parse(search.detail).observations.find(observation => observation.checkId === 'search-discovery-links')
+    expect(links?.evidence).toContainEqual(expect.objectContaining({ excerpt: expect.stringContaining(destination + '#plans') }))
     expect(await claimAnonymousAudits(owner)).toBe(1)
     const site = (await loadSiteRecord(anonymous.siteId!))!
     for (const outcome of ['UNCHANGED', 'IMPROVED'] as const) {

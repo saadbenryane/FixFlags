@@ -8,7 +8,7 @@ import {
   type AnalyticsConsent,
 } from '@/lib/analytics/consent'
 
-/** Fires once per homepage mount for funnel attribution. */
+/** Fires once per consented period on the mounted homepage. */
 export function LandingViewTracker() {
   useEffect(() => {
     let sent = false
@@ -18,9 +18,9 @@ export function LandingViewTracker() {
       trackLandingView()
     }
     const onConsent = (event: Event) => {
-      if ((event as CustomEvent<AnalyticsConsent>).detail === 'granted') {
-        sendWhenGranted()
-      }
+      const choice = (event as CustomEvent<AnalyticsConsent>).detail
+      if (choice === 'denied') sent = false
+      if (choice === 'granted') sendWhenGranted()
     }
 
     sendWhenGranted()

@@ -533,8 +533,9 @@ export default async function AdminAnalyticsPage() {
         {firstValueFunnel.landing.landingSessions === null ? (
           <Card>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-              No comparable GA4 journey export is available yet. The export needs a valid
-              observation window and reporting timezone. Configure the <code>journey_id</code> event
+              No comparable GA4 journey export is available yet. The export needs the FixFlags
+              production property, stream, and homepage, plus a valid observation window and reporting
+              timezone. Configure the <code>journey_id</code> event
               dimension, deploy the instrumentation, and run the GA pull. Missing telemetry is not
               counted as zero.
               {firstValueFunnel.landing.instrumentedStarts > 0
@@ -556,7 +557,7 @@ export default async function AdminAnalyticsPage() {
                 detail={
                   <span className="text-xs text-muted-foreground">
                     {firstValueFunnel.landing.startRate === null
-                      ? 'No observed landing journeys'
+                      ? firstValueFunnel.landing.status === 'partial' ? 'Landing evidence incomplete' : 'No observed landing journeys'
                       : `${firstValueFunnel.landing.startRate}% of landing journeys`}
                   </span>
                 }
@@ -568,7 +569,7 @@ export default async function AdminAnalyticsPage() {
                 detail={
                   <span className="text-xs text-muted-foreground">
                     {firstValueFunnel.landing.resultRate === null
-                      ? 'No observed landing journeys'
+                      ? firstValueFunnel.landing.landingSessions ? 'Completion rate unavailable' : 'No observed landing journeys'
                       : `${firstValueFunnel.landing.resultRate}% of landing journeys`}
                   </span>
                 }
@@ -580,7 +581,7 @@ export default async function AdminAnalyticsPage() {
                 detail={
                   <span className="text-xs text-muted-foreground">
                     {firstValueFunnel.landing.claimRate === null
-                      ? 'No observed landing journeys'
+                      ? firstValueFunnel.landing.landingSessions ? 'Claim rate unavailable' : 'No observed landing journeys'
                       : `${firstValueFunnel.landing.claimRate}% of landing journeys`}
                   </span>
                 }
@@ -590,11 +591,13 @@ export default async function AdminAnalyticsPage() {
             <p className="max-w-4xl text-xs text-muted-foreground">
               GA window {firstValueFunnel.landing.startDate} to {firstValueFunnel.landing.endDate};
               fetched {firstValueFunnel.landing.fetchedAt}.{' '}
+              {firstValueFunnel.landing.computedAt && `Joined to retained evidence as of ${firstValueFunnel.landing.computedAt}. `}
               {firstValueFunnel.landing.instrumentedStarts} recent anonymous starts carry a journey
-              key. Joined starts use the GA observation dates and export cutoff; subsequent results
-              and claims follow those exact starts.
+              key. Joined starts use the GA observation dates and export cutoff. Completion
+              receipts and exact claims use seven days of follow-up per start.{' '}
+              {!firstValueFunnel.landing.followupComplete && 'The reporting window still has starts eligible for follow-up. '}
               {firstValueFunnel.landing.status === 'partial'
-                ? ` This cohort is partial${firstValueFunnel.landing.unattributedEventCount > 0 ? ` because GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key` : ''}${firstValueFunnel.landing.rowLimitReached ? ' because the journey export reached its row limit' : ''}${firstValueFunnel.landing.providerLimited ? ' because GA4 reports thresholding, sampling, or grouped-row data loss' : ''}.`
+                ? ` This cohort is partial${firstValueFunnel.landing.unattributedEventCount > 0 ? ` because GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key` : ''}${firstValueFunnel.landing.rowLimitReached ? ' because the journey export reached its row limit' : ''}${firstValueFunnel.landing.providerLimited ? ' because the GA4 response indicates a coverage limit' : ''}.`
                 : ''}
             </p>
           </>
@@ -630,7 +633,9 @@ export default async function AdminAnalyticsPage() {
             value={firstValueFunnel.claimed.toLocaleString()}
             detail={
               <span className="text-xs text-muted-foreground">
-                {firstValueFunnel.claimRate}% of starts
+                {firstValueFunnel.claimRate === null
+                  ? firstValueFunnel.started ? 'Claim evidence incomplete' : 'No observed starts'
+                  : `${firstValueFunnel.claimRate}% of starts`}
               </span>
             }
             variant="subtle"

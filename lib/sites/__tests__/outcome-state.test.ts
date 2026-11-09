@@ -32,6 +32,12 @@ describe('Outcome state', () => {
     expect(checkoutResultCopy('add_to_cart_noop').problem).toMatch(/Cart did not contain/i)
   })
 
+  it('describes checkout entry without claiming a cart item was confirmed', () => {
+    expect(checkoutResultCopy('checkout_reached').evidence).toBe(
+      'FixFlags used a purchase control and reached checkout. The check stopped before payment or order submission.',
+    )
+  })
+
   it('names required coverage in customer language', () => {
     expect(outcomeCoverageLabel('production', [
       { key: 'checkout-browser-v1', required: true },

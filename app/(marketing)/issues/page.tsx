@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { cache } from 'react'
 import type { Metadata, Route } from 'next'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -15,17 +14,15 @@ import { rubricBadgeClasses } from '@/lib/rubric-icons'
 import { FLAG_LIBRARY } from '@/lib/marketing/copy/library'
 import { withCampaignTags, type CampaignQuery } from '@/lib/analytics/entry-surface'
 
-const indexableIssues = cache(getPublicIssueLibrary)
-
 export async function generateMetadata(): Promise<Metadata> {
-  const issues = await indexableIssues()
+  const issues = await getPublicIssueLibrary()
   return { ...buildPageMetadata('issues', '/issues'), robots: { index: issues.length > 0, follow: true } }
 }
 // This library is a projection of a reviewed public research release.
 export const dynamic = 'force-dynamic'
 
 export default async function IssuesIndexPage({ searchParams }: { searchParams?: Promise<CampaignQuery> }) {
-  const issuesWithMeta = await indexableIssues()
+  const issuesWithMeta = await getPublicIssueLibrary()
   const campaign = await searchParams ?? {}
 
   const issueIndexJsonLd = issueIndexStructuredData(

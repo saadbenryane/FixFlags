@@ -16,35 +16,42 @@ beforeEach(() => {
 })
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
+const currentDocument = () => ({ pageUrl: location.href, timeOrigin: performance.timeOrigin })
+
 describe('shared blocking loading observation', () => {
   it('uses the loader computed visibility instead of rejecting an overridden ancestor value', () => {
     document.body.innerHTML = '<main style="visibility:hidden"><div class="spinner" style="visibility:visible"></div></main>'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: true })
-    expect(loadingUiInDocument(true)).toBe(false)
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: true })
+    expect(loadingUiInDocument(currentDocument())).toBe(false)
     document.querySelector<HTMLElement>('.spinner')!.style.visibility = 'hidden'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: false })
-    expect(loadingUiInDocument(true)).toBe(1000)
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: false })
+    expect(loadingUiInDocument(currentDocument())).toBe(1000)
   })
 
   it('uses the same viewport predicate for the snapshot and browser clearance timestamp', () => {
     document.body.innerHTML = '<main><div class="hero-skeleton" aria-label="Loading content"></div></main><footer><div class="spinner" data-width="12" data-height="12"></div></footer>'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: true, loadingLabel: 'Loading content' })
-    expect(loadingUiInDocument(true)).toBe(false)
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: true, loadingLabel: 'Loading content' })
+    expect(loadingUiInDocument(currentDocument())).toBe(false)
     document.querySelector<HTMLElement>('.hero-skeleton')!.style.display = 'none'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: false })
-    expect(loadingUiInDocument(true)).toBe(1000)
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: false })
+    expect(loadingUiInDocument(currentDocument())).toBe(1000)
+  })
+  it('stops waiting when a new document or route replaces the initial loading sample', () => {
+    const initial = currentDocument()
+    expect(loadingUiInDocument({ ...initial, timeOrigin: initial.timeOrigin - 1 })).toBe('interrupted')
+    expect(loadingUiInDocument({ ...initial, pageUrl: initial.pageUrl + '#replacement' })).toBe('interrupted')
   })
   it('excludes offscreen loading UI, clipped overlays and transparent ancestors', () => {
     document.body.innerHTML = '<main><div class="skeleton" data-top="1000"></div><div style="opacity:0"><div class="spinner"></div></div></main>' +
       '<div class="loading" data-left="-200" data-width="200" data-height="800"></div>'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: false })
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: false })
   })
   it('recognizes a visible main loader and a large overlay while ignoring a false loading attribute', () => {
     document.body.innerHTML = '<main><div data-loading="false"></div></main>'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: false })
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: false })
     document.querySelector('div')!.setAttribute('data-loading', 'true')
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: true })
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: true })
     document.body.innerHTML = '<div aria-busy="true" data-width="390" data-height="400"></div>'
-    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: true })
+    expect(loadingUiInDocument(null)).toMatchObject({ loadingVisible: true })
   })
 })

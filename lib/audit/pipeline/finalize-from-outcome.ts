@@ -9,7 +9,7 @@ import {
 } from '@/lib/audit/finalize'
 import { runTriageStep } from '@/lib/audit/pipeline/triage-step'
 import { accumulateTriageUsage } from '@/lib/audit/pipeline/context'
-import { productScoresFromFlags, buildCombinedTriageOutput, collapsedPageFlags } from '@/lib/audit/pipeline/combine-pages'
+import { productScoresFromFlags, buildCombinedTriageOutput, collapsedPageFlags, currentPageSpeedLab } from '@/lib/audit/pipeline/combine-pages'
 import {
   primaryPageRun,
   resolveAuditOutcome,
@@ -27,6 +27,7 @@ interface FinalizeFromOutcomeInput {
   startedAt: Date
   captureAdditionalEvidence?: boolean
   recordedFlags?: DeterministicFlag[]
+  failedModules?: readonly string[]
 }
 
 function buildEvidence(pageRuns: PageEvidence[], aiAssessment: boolean) {
@@ -35,8 +36,8 @@ function buildEvidence(pageRuns: PageEvidence[], aiAssessment: boolean) {
     mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
     metadata: pageRuns.every((page) => Boolean(page.metadata)),
     aiAssessment,
-    desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
-    mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+    desktopPageSpeed: pageRuns.every(page => currentPageSpeedLab(page, 'desktop') !== null),
+    mobilePageSpeed: pageRuns.every(page => currentPageSpeedLab(page, 'mobile') !== null),
     flowScan: pageRuns.some((page) => page.flowScan),
   }
 }
@@ -86,7 +87,7 @@ async function persistEvidenceAnchors(
 
   const primary = pageRuns[0]
   const metrics = {
-    perfScore: primary?.mobile?.score ?? primary?.desktop?.score ?? null,
+    perfScore: primary ? currentPageSpeedLab(primary, 'mobile')?.score ?? currentPageSpeedLab(primary, 'desktop')?.score ?? null : null,
   }
   await tryCaptureVisualEvidenceForAudit(
     auditId,
@@ -183,8 +184,8 @@ export async function retryPrimaryTriage(
     const triageResult = await runTriageStep(ctx, {
       url: primary.url,
       metadata: primary.metadata,
-      desktop: primary.desktop,
-      mobile: primary.mobile,
+      desktop: currentPageSpeedLab(primary, 'desktop'),
+      mobile: currentPageSpeedLab(primary, 'mobile'),
       flags: primary.flags,
       desktopBase64: primary.desktopBase64,
       mobileBase64: primary.mobileBase64,
@@ -222,7 +223,7 @@ export async function finalizeFromOutcome(input: FinalizeFromOutcomeInput): Prom
 
   // Surface failed and incomplete check modules before the report completes, so
   // "all fixes" never silently loses an entire check area.
-  await persistAuditFailedModules(input.auditId, input.pageRuns)
+  await persistAuditFailedModules(input.auditId, input.pageRuns, input.failedModules)
 
   if (outcome.kind === 'triage_complete') {
     try {

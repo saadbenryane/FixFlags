@@ -6,7 +6,7 @@ import { Queue, Worker } from 'bullmq'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { createQueueRedis, createWorkerRedis } from '@/lib/queue/redis'
-import { dispatchReadyTasks, dispatchTask, executeTask, loadTaskGraph, persistTaskPlan, reconcileTasks, recoverProgressiveTasks, recoverInterruptedTaskDelivery } from '../engine'
+import { dispatchReadyTasks, dispatchTask, executeTask, loadTaskGraph, persistTaskPlan, reconcileTasks, recoverActiveTaskGraphs, recoverProgressiveTasks, recoverInterruptedTaskDelivery } from '../engine'
 import { dispatchAudit, dispatchPendingAudits } from '@/lib/audit/dispatch'
 import { serializeArtifact, TaskFailure, TASK_CRASH_LIMIT, MAX_TASKS_PER_AUDIT, type TaskKind, type TaskPlan } from '../contracts'
 import { claimExecution, executionWrite, executionTransaction, withExecutionOwnership, currentExecutionOwnership, ExecutionOwnershipLost } from '@/lib/audit/execution-ownership'
@@ -34,6 +34,9 @@ import { browserArtifactSchema } from '../snapshots'
 import { actionHandlers } from '../actions'
 import { nextControlProgress } from '../control-progress'
 import { JudgeProviderError } from '@/lib/audit/judge'
+import { searchEvidence } from '@/lib/sites/search-evidence'
+import { searchReceiptSchema } from '@/lib/audit/search/contracts'
+import { buildCoverageFacts } from '@/lib/sites/coverage'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -137,6 +140,53 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     } finally { await worker.close() }
   })
 
+  it('reconciles ready dependencies without transferring settled control cohorts', async () => {
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/', startedAt: new Date() } })
+    auditIds.push(audit.id)
+    const input = { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }
+    const contexts = Array.from({ length: 5000 }, (_, index) => 'form:' + index.toString(16).padStart(64, '0'))
+    const states = ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] as const
+    await persistTaskPlan(audit.id, [
+      ...states.map(state => ({ kind: 'flow' as const, key: state, scope: 'page:0',
+        input: { ...input, verificationContexts: contexts }, dependencies: [] })),
+      { kind: 'http', key: 'ongoing', scope: 'page:0', input, dependencies: [] },
+      { kind: 'check', key: 'available', scope: 'page:0', input, dependencies: [...states] },
+      { kind: 'check', key: 'waiting', scope: 'page:0', input, dependencies: ['ongoing'] },
+    ])
+    for (const state of states) await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:' + state },
+      data: { workState: state, status: state === 'COMPLETED' ? 'COMPLETED' : 'FAILED' } })
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:ongoing' },
+      data: { workState: 'RETRY_WAIT', status: 'FAILED', workRetryAt: new Date(Date.now() + 60_000) } })
+    const baseline = await loadTaskGraph(audit.id)
+    const graphBytes = Buffer.byteLength(JSON.stringify(baseline))
+    const available = baseline.find(task => task.targetKey === 'task:available')!
+    const findMany = prisma.auditExecutionTask.findMany.bind(prisma.auditExecutionTask)
+    const queryRaw = prisma.$queryRaw.bind(prisma)
+    const reads: number[] = []
+    const orm = vi.spyOn(prisma.auditExecutionTask, 'findMany').mockImplementation(async args => {
+      const rows = await findMany(args)
+      if (args?.where?.auditId === audit.id) reads.push(Buffer.byteLength(JSON.stringify(rows)))
+      return rows
+    })
+    const sql = vi.spyOn(prisma, '$queryRaw').mockImplementation(async (query, ...values) => {
+      const rows = await queryRaw(query, ...values)
+      if (Array.isArray(rows) && rows.some(row => row?.targetKey === available.targetKey))
+        reads.push(Buffer.byteLength(JSON.stringify(rows)))
+      return rows
+    })
+    try {
+      expect(await reconcileTasks(audit.id)).toEqual([available.id])
+      expect(reads).toHaveLength(1)
+      expect(graphBytes).toBeGreaterThan(1_000_000)
+      expect(reads[0]).toBeLessThan(10_000)
+      console.info('Local task reconciliation bytes', { graphBytes, reconciliationBytes: reads[0] })
+    } finally { orm.mockRestore(); sql.mockRestore() }
+    const retained = await loadTaskGraph(audit.id)
+    expect(retained.find(task => task.targetKey === 'task:waiting')?.workState).toBe('WAITING')
+    expect(retained.filter(task => states.some(state => task.targetKey === 'task:' + state)))
+      .toEqual(baseline.filter(task => states.some(state => task.targetKey === 'task:' + state)))
+  })
+
   it('keeps retained browser markup for Search without copying it into other dependency consumers', async () => {
     const audit = await prisma.audit.create({ data: { url: 'https://example.com/', startedAt: new Date() } })
     auditIds.push(audit.id)
@@ -219,6 +269,46 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(receipts).toHaveLength(1)
     expect(receipts[0]).toMatchObject({ targetKey: 'module:retired-check', status: 'FAILED', detail: { kind: 'unavailable-check', failed: true } })
     expect(projectCheckResults(audit.id, receipts)).toMatchObject([{ status: 'unknown', historical: true }])
+  })
+
+  it('keeps a terminal linked-page Search gap beside the completed primary receipt through real queue delivery', async () => {
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/', startedAt: new Date() } })
+    auditIds.push(audit.id)
+    const linkedUrl = audit.url + 'about', collectedAt = new Date().toISOString()
+    await persistTaskPlan(audit.id, [{ kind: 'search', key: 'p1:search-canonical', scope: 'page:' + linkedUrl,
+      input: { pageUrl: linkedUrl, position: 1, primary: false, role: 'linked', module: 'search-canonical' }, dependencies: [] }])
+    const task = (await loadTaskGraph(audit.id))[0]
+    const primaryDetail = searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: audit.id,
+      pageUrl: audit.url, collectedAt, complete: true, observations: [{ id: 'primary-crawl', checkId: 'search-crawl-access',
+        checkVersion: 2, responsibility: 'crawl', name: 'Crawl rules', disposition: 'passed', reason: 'crawl_allowed',
+        expected: 'The public crawl rules allow this page', observed: 'The recorded rules allow the primary page.',
+        source: 'robots-txt', collectedAt, pageUrl: audit.url,
+        attention: { policy: 'search', version: 1, kind: 'observation', reason: 'crawl_allowed' },
+        evidence: [], limitation: 'Controlled primary-page observation for the delivery-isolation fixture.', guidance: '',
+      }] })
+    expect(searchEvidence([{ targetKey: 'module:search', auditId: audit.id, pageUrl: audit.url, status: 'COMPLETED',
+      detail: { ...primaryDetail, observations: [] } }])).toMatchObject({ complete: false, evidenced: false })
+    const primary = await prisma.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: 'module:search',
+      scopeKey: 'page:' + audit.url, pageUrl: audit.url, source: 'SEARCH', status: 'COMPLETED',
+      detail: primaryDetail } })
+    expect(searchEvidence([primary])).toMatchObject({ complete: true })
+    const worker = await startHttpWorker(new Map([['search', { kind: 'search', replay: 'read_only', timeoutMs: 1000,
+      validateResult: () => {}, evaluate: async () => { throw new TaskFailure('CONTROLLED_SEARCH_UNAVAILABLE', false) } }]]))
+    try {
+      await dispatchReadyTasks(await reconcileTasks(audit.id))
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
+        .toMatchObject({ workState: 'BLOCKED', workErrorCode: 'CONTROLLED_SEARCH_UNAVAILABLE' }), { timeout: 10_000, interval: 25 })
+      const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: audit.id } })
+      expect(receipts).toHaveLength(2)
+      expect(receipts).toContainEqual(expect.objectContaining({ taskId: task.id, targetKey: 'module:search-canonical',
+        pageUrl: linkedUrl, status: 'FAILED', detail: { kind: 'unavailable-check', version: 1, module: 'search-canonical', failed: true } }))
+      expect(searchEvidence(receipts)).toMatchObject({ complete: false, receipts: [primary.detail] })
+      expect(projectCheckResults(audit.id, receipts)).toEqual(expect.arrayContaining([
+        expect.objectContaining({ pageUrl: audit.url, area: 'search', status: 'passed' }),
+        expect.objectContaining({ pageUrl: linkedUrl, area: 'search', status: 'failed' }),
+      ]))
+      expect(projectCheckResults(audit.id, receipts)).toHaveLength(2)
+    } finally { await worker.close() }
   })
 
   it('publishes a terminal journey gap beside its committed observation through real queue delivery', async () => {
@@ -357,6 +447,30 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(await prisma.auditVerificationReceipt.findMany({ where: { id: { in: discovery.map(receipt => receipt.id) } }, orderBy: { id: 'asc' } })).toEqual(discovery)
     expect((await recordedTaskFindings(audit.id, prisma)).map(flag => flag.checkId).sort()).toEqual(cases.map(item => item.checkId).sort())
     expect((await recordedPageEvidence(audit.id))[0].flags.map(flag => flag.checkId).sort()).toEqual(cases.map(item => item.checkId).sort())
+  })
+
+  it.each(['Current action', null])('preserves the primary action summary across retained controls when discovery sees %s', async current => {
+    const { audit, tasks: [task] } = await admission(['flow'])
+    const contexts = ['a', 'b', 'c'].map(value => 'flow:control:' + value.repeat(64))
+    await prisma.audit.update({ where: { id: audit.id }, data: { executionSpec: { version: 1, engine: 'progressive-v1',
+      scope: 'SITE', environment: 'production', targetUrl: audit.url, outcomes: [], verificationTarget: null, checks: {} } } })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workInput: {
+      pageUrl: audit.url, position: 0, primary: true, role: 'primary', verificationContexts: contexts,
+    } } })
+    const flow = actionHandlers.find(handler => handler.kind === 'flow')!
+    const observed = [current, null, 'First observed retained action', 'Later retained action']
+    const selected = new Map([['flow', { ...flow, async evaluate(context) {
+      const progress = nextControlProgress(context)!, ctaText = observed[progress.completed - 1]
+      return { ...serializeArtifact('flow', { flags: [], controlProgress: progress, result: {
+        status: ctaText ? 'success' : 'skipped', steps: [], finalUrl: audit.url, ctaText, ctaHref: null,
+      } }), ...(progress.completed < progress.total ? { continuation: true as const } : {}) }
+    } } satisfies TaskHandler]])
+    for (const index of observed.keys()) {
+      await executeTask({ auditId: audit.id, taskId: task.id, generation: index + 1 }, selected)
+      const expected = index < 2 ? current : current ?? observed[2]
+      expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).flowData).toMatchObject({ ctaText: expected })
+      expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id, targetKey: OBSERVATION_TARGET } })).toBe(index + 1)
+    }
   })
 
   it.each([true, false])('preserves a historical observation key without assigning it to another task (owner recorded: %s)', async owned => {
@@ -922,12 +1036,14 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     const worker = new Worker(queue.name, job => executeTask(job.data, selected), { connection, concurrency: 1 })
     try {
       await worker.waitUntilReady(); await queue.resume()
-      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id,
-        workState: { not: 'COMPLETED' } } })).toBe(0), { timeout: 10_000, interval: 25 })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id,
+          workState: { not: 'COMPLETED' } } })).toBe(0)
+        for (const task of tasks) expect(await (await queue.getJob(task.id + '-g1'))?.getState()).toBe('completed')
+      }, { timeout: 10_000, interval: 25 })
       expect(sequence).toEqual([older.id, firstPrimary.id, secondPrimary.id, young.id])
       expect(queued?.priority).toBe(1)
       expect(youngQueued?.priority).toBe(3)
-      for (const task of tasks) expect(await (await queue.getJob(task.id + '-g1'))?.getState()).toBe('completed')
       for (const task of tasks) expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workAttempts: 1, workGeneration: 1 })
     } finally { await queue.pause(); await worker.close() }
@@ -1087,6 +1203,148 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       handler.validateResult(artifact)
       expect((await loadTaskGraph(audit.id)).map(task => task.id)).toEqual(expanded.map(task => task.id))
     } finally { collect.mockRestore() }
+  })
+
+  it('admits deeper pages within the depth-three allowance and replays only its frozen source inventory', async () => {
+    const root = 'https://example.com/', retained = root + 'tracked', deeper = root + 'deeper', outside = root + 'third-hop'
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root,
+      environment: 'production', reviewDepth: 3, monitoringPages: [root, retained], checks: {}, outcomes: [], verificationTarget: null })
+    const audit = await prisma.audit.create({ data: { url: root, reviewDepth: 3, executionSpec: spec } })
+    auditIds.push(audit.id)
+    await persistTaskPlan(audit.id, initialTaskPlan(spec))
+    async function seed(url: string, links: string[]) {
+      const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'browser', pageUrl: url } })
+      const page = await prisma.auditPage.create({ data: { auditId: audit.id, url, normalizedUrl: url,
+        position: (task.workInput as { position: number }).position, role: url === root ? 'primary' : 'linked' } })
+      const metadata = parseMetadataFromHtml('<html><body>' + links.map(link => `<a href="${link}">More details</a>`).join('') + '</body></html>', url)
+      await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState: 'COMPLETED', status: 'COMPLETED',
+        workResult: serializeArtifact('browser', browserArtifactSchema.parse({ pageId: page.id, metadata,
+          snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopBase64: null, mobileBase64: null,
+            consoleErrors: [], captureFailures: [], captureStatus: { desktop: 'pending', mobile: 'pending' } } })) } })
+    }
+    const direct = Array.from({ length: 30 }, (_, index) => root + 'direct-' + String(index).padStart(2, '0'))
+    await seed(root, direct)
+    await seed(retained, [deeper])
+    const handler = lifecycleHandlers.find(item => item.kind === 'discovery')!
+    const collect = vi.spyOn(openChecks, 'openCheckDestinations').mockResolvedValue({ results: [], truncated: false })
+    const readGraph = () => loadTaskGraph(audit.id)
+    const browserUrls = async () => (await readGraph()).filter(task => task.workKind === 'browser').map(task => task.pageUrl)
+    const input = { pageUrl: root, position: 0, primary: true, role: 'primary' }
+    async function evaluate(second: boolean) {
+      const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, targetKey: second ? 'task:discovery:second' : 'task:discovery' } })
+      return handler.evaluate({ audit, task, input: second ? { ...input, module: 'second' } : input, deadline: Date.now() + 45_000, dependencies: new Map() })
+    }
+    try {
+      await evaluate(false)
+      const first = await browserUrls()
+      expect(first).toHaveLength(13)
+      expect(first).toEqual(expect.arrayContaining([root, retained]))
+      const before = (await readGraph()).find(task => task.targetKey === 'task:discovery:second')!
+      const expansion = await evaluate(true)
+      expect(expansion.data.pages).toEqual(expect.arrayContaining([...first, deeper]))
+      expect(await browserUrls()).toHaveLength(24)
+      expect(await browserUrls()).toContain(deeper)
+      const after = await readGraph()
+      expect(after.find(task => task.targetKey === 'task:discovery:second')?.workDependencies).toEqual(before.workDependencies)
+      expect(after.find(task => task.targetKey === 'task:finalize')?.workDependencies).toContain(after.find(task => task.workKind === 'browser' && task.pageUrl === deeper)!.targetKey.slice(5))
+
+      await seed(deeper, [outside])
+      const replay = await evaluate(true)
+      expect(replay.data.pages).toEqual(expansion.data.pages)
+      expect(JSON.stringify(replay.data.observationProgress)).not.toContain(outside)
+      expect(await browserUrls()).not.toContain(outside)
+    } finally { collect.mockRestore() }
+  })
+
+  it.each(['single', 'batched', 'exhausted', 'saturated'] as const)('reuses conclusive first-pass destinations and retries unavailable evidence (%s)', async mode => {
+    const requests = { first: [] as string[], second: [] as string[] }
+    let phase: keyof typeof requests = 'first'
+    const server = createServer((request, response) => {
+      requests[phase].push(new URL(request.url!, root).href)
+      response.statusCode = request.url === '/shared?plan=a' ? 404 : request.url === '/unavailable' && phase === 'first' ? 429 : 200
+      response.setHeader('content-type', 'text/html')
+      response.end('<html><head><title>Public destination details</title></head><body><main><h1>Public destination details</h1></main></body></html>')
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const root = 'http://127.0.0.1:' + (server.address() as { port: number }).port + '/'
+    vi.stubEnv('DEV_ALLOW_LOCALHOST', 'true')
+    try {
+      const peer = root + 'peer', shared = root + 'shared?plan=a', variant = root + 'shared?plan=b'
+      const unavailable = root + 'unavailable'
+      const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: root,
+        environment: 'production', reviewDepth: 3, checks: { 'broken-internal-links': 1 }, outcomes: [], verificationTarget: null })
+      const audit = await prisma.audit.create({ data: { url: root, reviewDepth: 3, executionSpec: spec } })
+      auditIds.push(audit.id)
+      await persistTaskPlan(audit.id, initialTaskPlan(spec))
+      const input = { pageUrl: root, position: 0, primary: true, role: 'primary' }
+      const seed = async (url: string, urls: string[]) => {
+        const browser = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'browser', pageUrl: url } })
+        const page = await prisma.auditPage.create({ data: { auditId: audit.id, url, normalizedUrl: url,
+          position: (browser.workInput as { position: number }).position, role: url === root ? 'primary' : 'linked' } })
+        const metadata = parseMetadataFromHtml('<html><body>' + urls.map(link => `<a href="${link}">More details</a>`).join('') + '</body></html>', url)
+        await prisma.auditExecutionTask.update({ where: { id: browser.id }, data: { workState: 'COMPLETED', status: 'COMPLETED',
+          workResult: serializeArtifact('browser', browserArtifactSchema.parse({ pageId: page.id, metadata,
+            snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopBase64: null, mobileBase64: null,
+              consoleErrors: [], captureFailures: [], captureStatus: { desktop: 'pending', mobile: 'pending' } } })) } })
+      }
+      const extraCount = { single: 0, batched: 6, exhausted: 6, saturated: 117 }[mode]
+      const extras = Array.from({ length: extraCount }, (_, index) => root + 'zz-extra-' + index)
+      await seed(root, [peer, shared, unavailable, ...extras])
+      const handler = lifecycleHandlers.find(handler => handler.kind === 'discovery')!
+      async function evaluate(selected: keyof typeof requests) {
+        phase = selected
+        const second = selected === 'second', stopEarly = !second && mode === 'exhausted'
+        for (;;) {
+          const task = await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId: audit.id, targetKey: second ? 'task:discovery:second' : 'task:discovery' } })
+          const context = { audit, task, input: second ? { ...input, module: 'second' } : input, deadline: Date.now() + 45_000, dependencies: new Map() }
+          const result = await handler.evaluate(context)
+          const artifact = (await prisma.$transaction(tx => handler.commit!(context, result, tx))) ?? result
+          await prisma.auditExecutionTask.update({ where: { id: task.id }, data: {
+            status: stopEarly ? 'FAILED' : artifact.continuation ? 'PENDING' : 'COMPLETED',
+            workState: stopEarly ? 'EXHAUSTED' : artifact.continuation ? 'READY' : 'COMPLETED', workResult: artifact,
+          } })
+          if (stopEarly || !artifact.continuation) return { task, artifact }
+        }
+      }
+      const first = await evaluate('first')
+      if (mode === 'single') {
+        expect((await recordedPageEvidence(audit.id, root))[0].failedModules).toContain('seo')
+        await seed(shared, [])
+        await seed(unavailable, [])
+      }
+      await seed(peer, [shared, variant, unavailable])
+      const second = await evaluate('second')
+      expect(requests.first).toEqual(expect.arrayContaining([peer, shared, unavailable]))
+      expect(requests.second).toEqual(expect.arrayContaining([variant, unavailable]))
+      expect(requests.second).not.toContain(shared)
+      expect(requests.second).not.toContain(peer)
+      expect(requests.second).toHaveLength(2 + extras.filter(url => !requests.first.includes(url)).length)
+      expect(second.artifact.data.openCheckCount).toBe(requests.second.length)
+      const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: audit.id, targetKey: 'module:seo', taskId: second.task.id } })
+      if (mode === 'saturated') expect(first.artifact.data.openCheckCount).toBe(120)
+      expect(receipts).toEqual(expect.arrayContaining([expect.objectContaining({ pageUrl: peer,
+        detail: expect.objectContaining({ assertions: expect.arrayContaining([
+          expect.objectContaining({ key: 'public-destination', observed: expect.stringContaining('GET HTTP 404'), complete: true, passed: false }),
+        ]) }) })]))
+      if (mode === 'single') {
+        const executions = await prisma.auditVerificationReceipt.findMany({ where: { auditId: audit.id, targetKey: 'module:seo' } })
+        expect(executions).toEqual(expect.arrayContaining([expect.objectContaining({ taskId: first.task.id, pageUrl: root,
+          detail: expect.objectContaining({ complete: false, assertions: expect.arrayContaining([
+            expect.objectContaining({ observed: expect.stringContaining('GET HTTP 429'), complete: false }),
+          ]) }) })]))
+        const flags = await prisma.flag.findMany({ where: { auditId: audit.id } })
+        const now = new Date()
+        const coverage = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, evidenceCoverage: { metadata: true },
+          flags, verifierExecutions: executions })
+        expect((await recordedPageEvidence(audit.id, root))[0].failedModules).not.toContain('seo')
+        expect(coverage.find(fact => fact.area === 'search')).toMatchObject({ state: 'problem', incompleteReason: null })
+      }
+      expect((await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: first.task.id } })).workResult).toEqual(first.artifact)
+    } finally {
+      server.closeAllConnections()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      vi.unstubAllEnvs()
+    }
   })
 
   it('discovers the full page allowance independently of the number of browser profiles and retains it on replay', async () => {
@@ -1497,31 +1755,154 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     } finally { failure.mockRestore(); await worker.close() }
   })
 
-  it('keeps active Audit leases out of the bounded batch and continues after a metadata read fails', async () => {
+  it('releases an unsent task reservation if the transport disconnects during the claim', async () => {
+    const { tasks: [task] } = await admission(['http'])
+    const broker = vi.fn().mockReturnValueOnce(true).mockReturnValue(false)
+    expect(await dispatchTask(task.id, broker)).toBe(false)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+      workState: 'READY', workDispatchState: 'PENDING', workDispatchLeaseUntil: null, workAttempts: 0, workErrorCode: null,
+    })
+    expect(await dispatch.queues.get('http')!.getJob(task.id + '-g1')).toBeUndefined()
+    expect(await dispatchTask(task.id)).toBe(true)
+  })
+
+  it('recovers an independent active graph while an older graph is locked', async () => {
+    const earlier = await admission(['http']), independent = await admission(['http'])
+    for (const [index, { audit }] of [earlier, independent].entries()) await prisma.audit.update({ where: { id: audit.id },
+      data: { executionSpec: { engine: 'progressive-v1' }, dispatchNextAt: new Date(index) } })
+    let locked!: () => void, release!: () => void
+    const ready = new Promise<void>(resolve => { locked = resolve })
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const holder = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM audits WHERE id = ${earlier.audit.id} FOR NO KEY UPDATE`
+      locked()
+      await gate
+    }, { timeout: 10_000 })
+    let recovery: Promise<number> | undefined
+    const queue = dispatch.queues.get('http')!
+    try {
+      await ready
+      recovery = recoverActiveTaskGraphs(1)
+      await vi.waitFor(async () => expect(await queue.getJob(independent.tasks[0].id + '-g1')).toBeDefined(),
+        { timeout: 2_000, interval: 25 })
+      expect(await recovery).toBe(1)
+      expect(await queue.getJob(earlier.tasks[0].id + '-g1')).toBeUndefined()
+    } finally { release(); await holder; await recovery }
+    expect(await recoverActiveTaskGraphs(1)).toBe(1)
+    expect(await queue.getJob(earlier.tasks[0].id + '-g1')).toBeDefined()
+  })
+
+  it('runs a later graph while all ready deliveries from an older graph wait on the broker', async () => {
+    const earlier = await admission(Array<TaskKind>(4).fill('http'))
+    const independent = await admission(['http'])
+    for (const [index, { audit }] of [earlier, independent].entries()) await prisma.audit.update({ where: { id: audit.id },
+      data: { executionSpec: { engine: 'progressive-v1' }, dispatchNextAt: new Date(index) } })
+    const queue = dispatch.queues.get('http')!
+    const getJob = queue.getJob.bind(queue)
+    const delayedIds = new Set(earlier.tasks.map(task => task.id + '-g1'))
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const delayed = vi.spyOn(queue, 'getJob').mockImplementation(async id => {
+      if (delayedIds.has(id)) await gate
+      return getJob(id)
+    })
+    const worker = await startHttpWorker()
+    const recovery = recoverActiveTaskGraphs(2)
+    try {
+      await vi.waitFor(async () => {
+        expect(delayed.mock.calls.some(([id]) => delayedIds.has(id))).toBe(true)
+        expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: independent.tasks[0].id } }))
+          .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
+      }, { timeout: 2_000, interval: 25 })
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: earlier.audit.id, workAttempts: 0 } })).toBe(4)
+      release()
+      expect(await recovery).toBe(5)
+      for (const task of earlier.tasks) await completed(task.id)
+    } finally { release(); await recovery; delayed.mockRestore(); await worker.close() }
+  })
+
+  it('skips leased and physically locked Audits before the limit and recovers the locked Audit later', async () => {
     const audits: Audit[] = []
     for (let index = 0; index < 3; index++) {
       const audit = await prisma.audit.create({ data: { url: 'https://example.com/', dispatchNextAt: new Date(index),
         ...(index === 0 ? { dispatchLeaseUntil: new Date(Date.now() + 30_000) } : {}) } })
       auditIds.push(audit.id); audits.push(audit)
     }
-    const read = prisma.audit.findUniqueOrThrow.bind(prisma.audit)
-    const failure = vi.spyOn(prisma.audit, 'findUniqueOrThrow').mockImplementation(args => {
-      if (args.where.id === audits[1].id) throw new Error('Controlled Audit metadata read failure')
-      return read(args)
-    })
+    let ready!: () => void, release!: () => void
+    const locked = new Promise<void>(resolve => { ready = resolve })
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const holder = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM audits WHERE id = ${audits[1].id} FOR NO KEY UPDATE`
+      ready()
+      await gate
+    }, { timeout: 10_000 })
+    let sweeps: Promise<number[]> | undefined
     try {
-      expect(await dispatchPendingAudits(2)).toBe(1)
+      await locked
+      sweeps = Promise.all([dispatchPendingAudits(1), dispatchPendingAudits(1)])
+      await vi.waitFor(async () => expect(await dispatch.queues.get('audit')!.getJob(audits[2].id)).toBeDefined(),
+        { timeout: 2_000, interval: 25 })
+      expect((await sweeps).sort()).toEqual([0, 1])
       expect(await dispatch.queues.get('audit')!.getJob(audits[0].id)).toBeUndefined()
       expect(await dispatch.queues.get('audit')!.getJob(audits[2].id)).toMatchObject({ data: { auditId: audits[2].id } })
-      expect(await prisma.audit.findUnique({ where: { id: audits[1].id } })).toMatchObject({ status: 'QUEUED', dispatchState: 'PENDING', dispatchAttempts: 1 })
-      failure.mockRestore()
-      await prisma.audit.update({ where: { id: audits[1].id }, data: { dispatchLeaseUntil: new Date(0) } })
-      expect(await dispatchPendingAudits(1)).toBe(1)
-      expect(await dispatch.queues.get('audit')!.getJob(audits[1].id)).toMatchObject({ data: { auditId: audits[1].id } })
-    } finally { failure.mockRestore() }
+      expect(await prisma.audit.findUnique({ where: { id: audits[1].id } })).toMatchObject({ status: 'QUEUED', dispatchState: 'PENDING', dispatchAttempts: 0 })
+    } finally { release(); await holder; await sweeps }
+    expect(await dispatchPendingAudits(1)).toBe(1)
+    expect(await dispatch.queues.get('audit')!.getJob(audits[1].id)).toMatchObject({ data: { auditId: audits[1].id } })
   })
 
-  it.each(['not-delivered', 'started', 'superseded'] as const)('settles expired Audit dispatch only while it still owns admission: %s', async phase => {
+  it('retains confirmed broker delivery when its acknowledgement is interrupted', async () => {
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/', dispatchNextAt: new Date(0), recoveryUntil: new Date(0) } })
+    auditIds.push(audit.id)
+    const queue = dispatch.queues.get('audit')!
+    const acknowledgement = vi.spyOn(prisma, '$executeRaw').mockRejectedValueOnce(new Error('Controlled acknowledgement write interruption'))
+    try {
+      expect(await dispatchAudit(audit.id)).toBe(true)
+      const job = await queue.getJob(audit.id)
+      expect(job).toMatchObject({ data: { auditId: audit.id } })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
+        .toMatchObject({ status: 'QUEUED', dispatchState: 'PENDING', dispatchAttempts: 1, failureCode: null })
+      await prisma.audit.update({ where: { id: audit.id }, data: { dispatchLeaseUntil: new Date(0) } })
+      expect(await dispatchPendingAudits(1)).toBe(1)
+      expect(await queue.getJob(audit.id)).toMatchObject({ timestamp: job!.timestamp, data: { auditId: audit.id } })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
+        .toMatchObject({ status: 'QUEUED', dispatchState: 'SENT', dispatchAttempts: 2, failureCode: null })
+    } finally { acknowledgement.mockRestore() }
+  })
+
+  it('publishes an independent Audit while another publication is waiting on the broker', async () => {
+    const audits = await Promise.all([0, 1].map(index => prisma.audit.create({
+      data: { url: 'https://example.com/', dispatchNextAt: new Date(index) },
+    })))
+    auditIds.push(...audits.map(audit => audit.id))
+    let started!: (id: string) => void, release!: () => void
+    const firstPublication = new Promise<string>(resolve => { started = resolve })
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const queue = dispatch.queues.get('audit')!
+    const paused = vi.spyOn(queue, 'add').mockImplementationOnce(async (_name, data) => {
+      started(data.auditId)
+      await gate
+      throw new Error('Controlled broker failure')
+    })
+    const sweep = dispatchPendingAudits(2)
+    let delayed: string
+    try {
+      delayed = await firstPublication
+      const peer = audits.find(audit => audit.id !== delayed)!
+      await vi.waitFor(async () => expect(await queue.getJob(peer.id)).toMatchObject({ data: { auditId: peer.id } }),
+        { timeout: 2_000, interval: 25 })
+      expect(await queue.getJob(delayed)).toBeUndefined()
+    } finally { release(); await sweep; paused.mockRestore() }
+    expect(await sweep).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: delayed } })).toMatchObject({
+      dispatchState: 'PENDING', dispatchAttempts: 1, dispatchLeaseUntil: null, status: 'QUEUED',
+      dispatchError: 'Queue admission is temporarily unavailable.',
+    })
+    await prisma.audit.update({ where: { id: delayed }, data: { dispatchNextAt: new Date(0) } })
+    expect(await dispatchPendingAudits(1)).toBe(1)
+  })
+
+  it.each(['not-delivered', 'claimed', 'started', 'superseded'] as const)('settles expired Audit dispatch only while it still owns admission: %s', async phase => {
     const userId = 'dispatch-owner-' + randomUUID()
     await prisma.user.create({ data: { id: userId, email: userId + '@example.test' } })
     const project = await prisma.project.create({ data: { userId, name: 'Dispatch ownership fixture', url: 'https://example.com/', canonicalHost: 'example.com' } })
@@ -1554,6 +1935,9 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       if (phase === 'started') {
         await add(...args)
         await vi.waitFor(() => expect(claimedAudit).not.toBeNull(), { timeout: 10_000, interval: 25 })
+      } else if (phase === 'claimed') {
+        expect(await claimExecution(audit.id, { resume: true })).toBeTruthy()
+        claimedAudit = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
       } else if (phase === 'superseded') {
         await prisma.audit.update({ where: { id: audit.id }, data: { dispatchLeaseUntil: new Date(Date.now() + 120_000) } })
       }
@@ -1569,7 +1953,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       } else {
         expect(saved).toMatchObject({ status: phase === 'started' ? 'CAPTURING' : 'QUEUED', failureCode: null, dispatchState: 'PENDING' })
         expect(request).toEqual(run)
-        if (phase === 'started') expect(saved).toEqual(claimedAudit)
+        if (phase === 'started' || phase === 'claimed') expect(saved).toEqual(claimedAudit)
       }
       expect(await prisma.outcomeAssessment.count({ where: { runRequestId: run.id } })).toBe(0)
     } finally {
@@ -1578,6 +1962,204 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       await prisma.audit.deleteMany({ where: { id: audit.id } })
       await prisma.user.deleteMany({ where: { id: userId } })
     }
+  })
+
+  it.each([false, true])('shares a fresh reconciliation for overlapping completions (earlier read failed: %s)', async failEarlierRead => {
+    const sourceCount = 6
+    const { audit, tasks } = await admission([...Array<TaskKind>(sourceCount + 1).fill('http'), 'check'])
+    const sources = tasks.slice(0, sourceCount), first = sources[0]
+    const [httpDependent, evaluationDependent] = tasks.slice(sourceCount)
+    await prisma.auditExecutionTask.update({ where: { id: httpDependent.id },
+      data: { workState: 'WAITING', workDependencies: [first.targetKey.slice(5)] } })
+    await prisma.auditExecutionTask.update({ where: { id: evaluationDependent.id },
+      data: { workState: 'WAITING', workDependencies: sources.map(task => task.targetKey.slice(5)) } })
+
+    const finishFirst = Promise.withResolvers<void>(), finishOthers = Promise.withResolvers<void>()
+    const releaseRead = Promise.withResolvers<void>(), releaseBroker = Promise.withResolvers<void>()
+    const started = new Set<string>()
+    const sourceIds = sources.map(task => task.id)
+    const selected = new Map<string, TaskHandler>([['http', { ...handlers.get('http')!, timeoutMs: 10_000,
+      async evaluate(context) {
+        started.add(context.task.id)
+        await (context.task.id === first.id ? finishFirst.promise : finishOthers.promise)
+        return serializeArtifact('http', { observed: true })
+      },
+    }]])
+    let graphReads = 0, brokerEntered = false
+    const queryRaw = prisma.$queryRaw
+    const read = vi.spyOn(prisma, '$queryRaw').mockImplementation(async function(this: typeof prisma, query, ...values) {
+      const rows = await queryRaw.call(this, query, ...values)
+      if (Array.isArray(rows) && rows.some(row => row?.id === first.id && 'workDependencies' in row) && ++graphReads === 1) {
+        await releaseRead.promise
+        if (failEarlierRead) throw new Error('Controlled completion reconciliation failure')
+      }
+      return rows
+    })
+    const queue = dispatch.queues.get('http')!, add = queue.add.bind(queue)
+    const publish = vi.spyOn(queue, 'add').mockImplementation(async (...args) => {
+      if (args[1].taskId === httpDependent.id) {
+        brokerEntered = true
+        await releaseBroker.promise
+      }
+      return add(...args)
+    })
+    const executions = sources.map(task => executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, selected))
+    const finished = Promise.allSettled(executions)
+    try {
+      await vi.waitFor(() => expect(started.size).toBe(sourceCount), { timeout: 5000, interval: 25 })
+      finishFirst.resolve()
+      await vi.waitFor(() => expect(graphReads).toBe(1), { timeout: 3000, interval: 25 })
+      finishOthers.resolve()
+      await vi.waitFor(async () => expect(await prisma.auditExecutionTask.count({
+        where: { id: { in: sourceIds }, workState: 'COMPLETED', workLeaseUntil: new Date(0) },
+      })).toBe(sourceCount), { timeout: 5000, interval: 25 })
+      // Let every scope's lease cleanup return while the first graph read is held.
+      await new Promise<void>(resolve => setImmediate(resolve))
+      releaseRead.resolve()
+      await vi.waitFor(() => expect(brokerEntered).toBe(true), { timeout: 3000, interval: 25 })
+      await vi.waitFor(async () => expect(await dispatch.queues.get('evaluate')!.getJob(evaluationDependent.id + '-g1'))
+        .toMatchObject({ data: { auditId: audit.id, taskId: evaluationDependent.id, generation: 1 } }), { timeout: 3000, interval: 25 })
+      expect(await queue.getJob(httpDependent.id + '-g1')).toBeUndefined()
+      releaseBroker.resolve()
+      const [firstResult, ...peers] = await finished
+      if (failEarlierRead) expect(firstResult).toMatchObject({ status: 'rejected', reason: new Error('Controlled completion reconciliation failure') })
+      else expect(firstResult.status).toBe('fulfilled')
+      expect(peers.every(result => result.status === 'fulfilled')).toBe(true)
+      expect(await queue.getJob(httpDependent.id + '-g1')).toBeDefined()
+      console.info('Local completion reconciliation reads', { settledTasks: sourceCount, graphReads })
+      expect(graphReads).toBe(2)
+    } finally {
+      finishFirst.resolve(); finishOthers.resolve(); releaseRead.resolve(); releaseBroker.resolve()
+      await finished
+      read.mockRestore(); publish.mockRestore()
+    }
+  }, 15_000)
+
+  it('releases a ready cohort without per-task readiness writes', async () => {
+    const width = 64
+    const { audit, tasks } = await admission(['http', ...Array<TaskKind>(width).fill('check')])
+    const [dependency, ...cohort] = tasks
+    await prisma.auditExecutionTask.update({ where: { id: dependency.id }, data: { workState: 'COMPLETED', status: 'COMPLETED' } })
+    await prisma.auditExecutionTask.updateMany({ where: { id: { in: cohort.map(task => task.id) } },
+      data: { workState: 'WAITING', workDependencies: [dependency.targetKey.slice(5)] } })
+    const individualWrites = vi.spyOn(prisma.auditExecutionTask, 'updateMany')
+    const transactions = vi.spyOn(prisma, '$transaction')
+    try {
+      expect(await reconcileTasks(audit.id)).toEqual(cohort.map(task => task.id))
+      expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workState: 'READY', workAttempts: 0 } })).toBe(width)
+      console.info('Local cohort readiness writes', { tasks: width, individualWrites: individualWrites.mock.calls.length,
+        readinessTransactions: transactions.mock.calls.length })
+      expect(individualWrites).not.toHaveBeenCalled()
+      expect(transactions).toHaveBeenCalledOnce()
+    } finally { individualWrites.mockRestore(); transactions.mockRestore() }
+  })
+
+  it('settles expired coverage once under concurrent reconciliation without one transaction per task', async () => {
+    const width = 64
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/', status: 'CHECKING', startedAt: new Date() } })
+    auditIds.push(audit.id)
+    const input = { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }
+    const keys = Array.from({ length: width }, (_, index) => 'expired-' + index)
+    await persistTaskPlan(audit.id, [
+      ...keys.map((key, position) => ({ key, kind: 'check' as const, scope: 'page:' + position,
+        input: { ...input, pageUrl: audit.url + position, module: 'metadata' }, dependencies: [] })),
+      { key: 'independent', kind: 'http', scope: 'page:independent', input, dependencies: [] },
+      { key: 'finalize', kind: 'finalize', scope: 'site', input, dependencies: keys },
+    ])
+    await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, workKind: 'check' }, data: { workRecoveryUntil: new Date(0) } })
+    const transactions = vi.spyOn(prisma, '$transaction')
+    const startedAt = Date.now()
+    try {
+      await Promise.all(Array.from({ length: 4 }, () => reconcileTasks(audit.id)))
+      const ready = await reconcileTasks(audit.id)
+      const tasks = await loadTaskGraph(audit.id)
+      expect(tasks.filter(task => task.workKind === 'check')).toHaveLength(width)
+      expect(tasks.filter(task => task.workKind === 'check').every(task => task.workState === 'EXHAUSTED' &&
+        task.workErrorCode === 'RECOVERY_EXHAUSTED' && task.workAttempts === 0 && task.workToken === null)).toBe(true)
+      expect(ready).toEqual(expect.arrayContaining(tasks.filter(task => task.workKind !== 'check').map(task => task.id)))
+      const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: audit.id } })
+      expect(receipts).toHaveLength(width)
+      expect(new Set(receipts.map(receipt => receipt.taskId)).size).toBe(width)
+      for (const receipt of receipts) expect(receipt).toMatchObject({ status: 'FAILED',
+        detail: { module: 'metadata', complete: false, passed: false, failed: true },
+        evidenceReference: { reason: 'RECOVERY_EXHAUSTED' } })
+      expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'projection_changed',
+        detail: { path: ['state'], equals: 'EXHAUSTED' } } })).toBe(width)
+      console.info('Local expired-cohort reconciliation', { tasks: width, callers: 4,
+        transactions: transactions.mock.calls.length, elapsedMs: Date.now() - startedAt })
+      expect(transactions.mock.calls.length).toBeLessThanOrEqual(24)
+    } finally { transactions.mockRestore() }
+  })
+
+  it.each(['renewed', 'replaced', 'completed'] as const)('preserves %s work committed after an expired graph snapshot', async phase => {
+    const { audit, tasks } = await admission(['check', 'http'])
+    const [expired, independent] = tasks
+    await prisma.auditExecutionTask.update({ where: { id: expired.id }, data: { workRecoveryUntil: new Date(0),
+      workInput: { pageUrl: audit.url, position: 0, primary: true, role: 'primary', module: 'metadata' } } })
+    const future = new Date(Date.now() + 60_000)
+    const update = phase === 'renewed' ? { workRecoveryUntil: future }
+      : phase === 'replaced' ? { workGeneration: 1, workState: 'RUNNING' as const, workToken: 'replacement', workLeaseUntil: future }
+        : { workState: 'COMPLETED' as const, status: 'COMPLETED' as const }
+    const queryRaw = prisma.$queryRaw.bind(prisma)
+    let changed = false
+    const read = vi.spyOn(prisma, '$queryRaw').mockImplementation(async (query, ...values) => {
+      const rows = await queryRaw(query, ...values)
+      if (!changed && Array.isArray(rows) && rows.some(row => row?.id === expired.id && row?.targetKey === expired.targetKey)) {
+        changed = true
+        await prisma.auditExecutionTask.update({ where: { id: expired.id }, data: update })
+      }
+      return rows
+    })
+    try {
+      expect(await reconcileTasks(audit.id)).toContain(independent.id)
+      expect(changed).toBe(true)
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: expired.id } })).toMatchObject(update)
+      expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id } })).toBe(0)
+      expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id,
+        detail: { path: ['state'], equals: 'EXHAUSTED' } } })).toBe(0)
+    } finally {
+      read.mockRestore()
+      // The replacement lease is synthetic and has no worker to drain it.
+      await prisma.auditExecutionTask.deleteMany({ where: { id: expired.id, workToken: 'replacement' } })
+    }
+  })
+
+  it('defers releases whose dependencies or retry time changed after the graph read', async () => {
+    const { audit, tasks } = await admission(['http', 'check', 'http', 'finalize'])
+    const [dependency, independent, retry, finalizer] = tasks
+    const key = (task: (typeof tasks)[number]) => task.targetKey.slice(5)
+    await prisma.auditExecutionTask.update({ where: { id: dependency.id }, data: { workState: 'COMPLETED', status: 'COMPLETED' } })
+    await prisma.auditExecutionTask.updateMany({ where: { id: { in: [independent.id, finalizer.id] } },
+      data: { workState: 'WAITING', workDependencies: [key(dependency)] } })
+    await prisma.auditExecutionTask.update({ where: { id: retry.id }, data: { workState: 'RETRY_WAIT', workRetryAt: new Date(0) } })
+    const input = { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }
+    const lateKey = 'p4:http'
+    const retryAt = new Date(Date.now() + 60_000)
+    const queryRaw = prisma.$queryRaw.bind(prisma)
+    let expanded = false
+    const read = vi.spyOn(prisma, '$queryRaw').mockImplementation(async (query, ...values) => {
+      const rows = await queryRaw(query, ...values)
+      if (!expanded && Array.isArray(rows) && rows.some(row => row?.id === finalizer.id && row?.workState === 'WAITING')) {
+        expanded = true
+        await persistTaskPlan(audit.id, [
+          { kind: 'http', key: lateKey, scope: 'page:4', input, dependencies: [] },
+          { kind: 'finalize', key: key(finalizer), scope: finalizer.scopeKey, input, dependencies: [lateKey] },
+        ])
+        await prisma.auditExecutionTask.update({ where: { id: retry.id }, data: { workRetryAt: retryAt } })
+      }
+      return rows
+    })
+    try {
+      expect(await reconcileTasks(audit.id)).toEqual([independent.id])
+      expect(expanded).toBe(true)
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: retry.id } }))
+        .toMatchObject({ workState: 'RETRY_WAIT', workRetryAt: retryAt })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: finalizer.id } }))
+        .toMatchObject({ workState: 'WAITING', workDependencies: [key(dependency), lateKey] })
+      await prisma.auditExecutionTask.updateMany({ where: { auditId: audit.id, targetKey: 'task:' + lateKey },
+        data: { workState: 'COMPLETED', status: 'COMPLETED' } })
+      expect(await reconcileTasks(audit.id)).toContain(finalizer.id)
+    } finally { read.mockRestore() }
   })
 
   it.each(['expired', 'crashed', 'retryable-crash'] as const)('reconciles %s dependencies before releasing a dependent that precedes them in stored order', async phase => {
@@ -1601,6 +2183,43 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
         .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: phase === 'expired' ? 'RECOVERY_EXHAUSTED' : 'WORKER_INTERRUPTED' })
       expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'READY' })
     }
+  })
+
+  it.each(['known page', 'unreadable page'] as const)('recovers independent work when an expired legacy task has %s scope', async scope => {
+    const { audit, tasks } = await admission(['check', 'http', 'finalize'])
+    const [legacy, independent, finalization] = tasks
+    await prisma.audit.update({ where: { id: audit.id }, data: { executionSpec: executionSpecSchema.parse({
+      engine: 'progressive-v1', version: 1, targetUrl: audit.url, scope: 'DIAGNOSTIC', environment: 'production',
+      checks: { 'broken-internal-links': 1 }, outcomes: [], verificationTarget: null,
+    }) } })
+    await prisma.auditExecutionTask.update({ where: { id: legacy.id }, data: {
+      workInput: { module: 'seo', ...(scope === 'known page' ? { pageUrl: audit.url } : {}) },
+      workRecoveryUntil: new Date(0),
+    } })
+    await prisma.auditExecutionTask.update({ where: { id: finalization.id }, data: {
+      workState: 'WAITING', workDependencies: [legacy.targetKey.slice(5), independent.targetKey.slice(5)],
+    } })
+    const worker = await startHttpWorker()
+    const connection = createWorkerRedis()
+    connections.push(connection)
+    const lifecycle = new Map(lifecycleHandlers.map(handler => [handler.kind, handler]))
+    const finalizer = new Worker(dispatch.queues.get('evaluate')!.name, job => executeTask(job.data, lifecycle), { connection })
+    workers.push(finalizer)
+    try {
+      await finalizer.waitUntilReady()
+      expect(await reconcileTasks(audit.id)).toEqual([independent.id])
+      expect(await dispatchTask(independent.id)).toBe(true)
+      await completed(independent.id)
+      await completed(finalization.id)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
+        .toMatchObject({ status: 'COMPLETED', reportCompleteness: 'PARTIAL', failedModules: expect.arrayContaining(['check']) })
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: legacy.id } }))
+        .toMatchObject({ workState: 'EXHAUSTED', workAttempts: 0, workErrorCode: 'RECOVERY_EXHAUSTED' })
+      const receipts = await prisma.auditVerificationReceipt.findMany({ where: { auditId: audit.id } })
+      if (scope === 'unreadable page') expect(receipts).toEqual([])
+      else expect(receipts).toMatchObject([{ taskId: legacy.id, targetKey: 'module:seo', pageUrl: audit.url,
+        status: 'FAILED', detail: { complete: false, passed: false, failed: true, assertions: [] } }])
+    } finally { await Promise.all([worker.close(), finalizer.close()]) }
   })
 
   it.each(['acknowledged', 'uncertain'] as const)('preserves a fast worker retry after an %s producer response', async response => {

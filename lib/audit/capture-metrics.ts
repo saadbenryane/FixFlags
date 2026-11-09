@@ -1,8 +1,9 @@
 import type { Page } from 'playwright'
 import { collectRenderedActionInventory, flowCtaSelector } from './flow/discover-cta'
+import { primaryControlContext } from './flow/primary-action-evidence'
 import { createHash } from 'node:crypto'
 import { readLoadingUi, type LoadingObservation } from './browser/loading-ui'
-import { observeViewport } from './browser/viewport-observation'
+import { observeViewport, sameViewportDocument } from './browser/viewport-observation'
 import type { CaptureObservationScope } from './browser/observation-scope'
 import { documentEvidenceWithheld } from './browser/document-evidence'
 import { measureCurrentMotion } from './browser/motion-observation'
@@ -14,6 +15,7 @@ export type CtaStyleSample = { label: string; surface: 'filled' | 'outlined' | '
 export interface CaptureMetrics {
   mobilePrimaryCtaTopPx: number | null
   mobilePrimaryCtaText: string | null
+  mobilePrimaryCtaContext?: string
   /** Distinct high-intent actions in the strongest comparable mobile style cohort. */
   competingPrimaryCtaCount: number
   competingPrimaryCtaLabels: string[]
@@ -61,11 +63,12 @@ export interface PageLoadExperience {
 export async function measureMobileLayout(page: Page, scope?: CaptureObservationScope, restrictions: string[] = []): Promise<CaptureMetrics> {
   const motion = scope ? { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: false } : await measureCurrentMotion(page)
   const loading = await readLoadingUi(page)
-  const content = scope ? await observeViewport(page, { profile: scope.profile, includeActions: false, excludeLoading: true }) : null
+  const content = scope ? await observeViewport(page, { profile: scope.profile, includeActions: false }) : null
+  const contentMatchesLoading = content && sameViewportDocument(loading, content)
 
   const inventory = await collectRenderedActionInventory(page, true, false)
   const actions = inventory.controls.map(({ idx, tag, role, inputType, text, href, labelComplete, inNavigation }) =>
-    ({ tag, role, inputType, text, href, labelComplete, inNavigation, selector: flowCtaSelector(idx) }))
+    ({ idx, tag, role, inputType, text, href, labelComplete, inNavigation, selector: flowCtaSelector(idx) }))
   const base = await page.evaluate(({ actions, complete, pageUrl }) => {
     // tsx/esbuild dev runs (npm run worker, scripts/*) inject `__name(...)` wrapper calls into
     // compiled functions; that reference doesn't exist inside Playwright's isolated browser
@@ -150,7 +153,7 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
     const MOBILE_FOLD_RATIO = 0.85
     const foldLine = Math.round(window.innerHeight * MOBILE_FOLD_RATIO)
 
-    type CtaCandidate = { score: number; top: number; text: string }
+    type CtaCandidate = { score: number; top: number; text: string; actionIndex?: number; fieldSelector?: string }
 
     function scoreCtaElement(action: typeof renderedActions[number]): CtaCandidate | null {
       const el = action.element, tag = action.tag, href = action.href ?? '', text = action.text
@@ -195,7 +198,7 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
       if (score === 0) return null
 
       const rect = el.getBoundingClientRect()
-      return { score, top: Math.round(rect.top), text: text.slice(0, 80) || tag }
+      return { score, top: Math.round(rect.top), text: text.slice(0, 80) || tag, actionIndex: action.idx }
     }
 
     function shouldSkipNavHeader(el: Element): boolean {
@@ -306,13 +309,15 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
 
       const form = el.closest('form')
       let submitBtnText = ''
+      let actionIndex: number | undefined
       if (form) {
         const submitBtn = form.querySelector(
           'button[type="submit"], input[type="submit"], button:not([type])'
         )
         if (submitBtn && visibleInDocument(submitBtn)) {
-          submitBtnText =
-            renderedActions.find(action => action.element === submitBtn)?.text ?? ''
+          const action = renderedActions.find(action => action.element === submitBtn)
+          submitBtnText = action?.text ?? ''
+          actionIndex = action?.idx
         }
       }
 
@@ -320,6 +325,8 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
         score: submitBtnText ? 92 : 90,
         top: Math.round(rect.top),
         text: submitBtnText || placeholder || 'Search input',
+        actionIndex,
+        fieldSelector: inputSelector(el),
       }
       break
     }
@@ -371,13 +378,15 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
 
         const form = el.closest('form')
         let submitBtnText = ''
+        let actionIndex: number | undefined
         if (form) {
           const submitBtn = form.querySelector(
             'button[type="submit"], input[type="submit"], button:not([type])'
           )
           if (submitBtn && visibleInDocument(submitBtn)) {
-            submitBtnText =
-              renderedActions.find(action => action.element === submitBtn)?.text ?? ''
+            const action = renderedActions.find(action => action.element === submitBtn)
+            submitBtnText = action?.text ?? ''
+            actionIndex = action?.idx
           }
         }
 
@@ -385,6 +394,8 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
           score: submitBtnText ? 90 : 85,
           top: Math.round(rect.top),
           text: submitBtnText || placeholder || 'Search input',
+          actionIndex,
+          fieldSelector: inputSelector(el),
         }
         break
       }
@@ -412,6 +423,8 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
     return {
       mobilePrimaryCtaTopPx: absoluteBestTop,
       mobilePrimaryCtaText: bestText,
+      actionIndex: actionsComplete ? selected?.actionIndex : undefined,
+      fieldSelector: actionsComplete ? selected?.fieldSelector : undefined,
       competingPrimaryCtaCount: competingLabels.length,
       competingPrimaryCtaLabels: competingLabels.slice(0, 6),
       competingPrimaryCtaSamples: styleSamples,
@@ -431,18 +444,32 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
 
   const identities = new Map<string, number>()
   for (const sample of base.inputFontSamples) identities.set(sample.identity, (identities.get(sample.identity) ?? 0) + 1)
+  const { actionIndex, fieldSelector, ...measurements } = base
+  // Raw control identity, field labels and link destinations stay out of the snapshot.
+  const inputFontSamples = base.inputFontSamples.map(({ selector, fontSize, identity, formScope }) => ({ selector, fontSize,
+    context: identities.get(identity) === 1 ? 'mobile-input:' + createHash('sha256')
+      .update(JSON.stringify(['input-control-v1', selector, identity, formScope])).digest('hex') : 'mobile-input:unknown' }))
+  const action = inventory.controls.find(item => item.idx === actionIndex)
+  const actionContext = action && inventory.controls.filter(item => item.identity === action.identity).length === 1
+    ? primaryControlContext({ pageContext: 'mobile-placement-v1', identity: action.identity, label: action.text,
+      href: action.resolvedHref, controls: action.controls }) : undefined
+  const fieldContext = fieldSelector && inputFontSamples.find(sample => sample.selector === fieldSelector)?.context
+  const identified = fieldSelector ? fieldContext && fieldContext !== 'mobile-input:unknown' && (actionIndex === undefined || actionContext)
+    : actionContext
+  const mobilePrimaryCtaContext = identified ? 'mobile-action:' + createHash('sha256')
+    .update(JSON.stringify([fieldContext, actionContext, base.mobileViewportHeight, base.mobileScrollY])).digest('hex') : undefined
   return {
-    ...base,
+    ...measurements,
     // Font changes are the repair. Ambiguous controls cannot borrow another
     // field's recovery, and values and raw identities never enter the snapshot.
-    inputFontSamples: base.inputFontSamples.map(({ selector, fontSize, identity, formScope }) => ({ selector, fontSize,
-      context: identities.get(identity) === 1 ? 'mobile-input:' + createHash('sha256')
-        .update(JSON.stringify(['input-control-v1', selector, identity, formScope])).digest('hex') : 'mobile-input:unknown' })),
+    inputFontSamples,
+    ...(mobilePrimaryCtaContext ? { mobilePrimaryCtaContext } : {}),
     stuckLoadingIndicator: loading.loadingVisible,
     stuckLoadingLabel: loading.loadingLabel,
     ...(scope && content ? { loadingObservation: { version: 1 as const, device: 'mobile' as const,
-      scope: { ...scope, finalUrl: content.pageUrl }, contentVisible: content.content === true,
-      ready: loading.readyState === 'complete', restricted: documentEvidenceWithheld(restrictions) } } : {}),
+      scope: { ...scope, finalUrl: loading.pageUrl }, contentVisible: contentMatchesLoading === true && content.content === true,
+      ready: loading.readyState === 'complete', restricted: documentEvidenceWithheld(restrictions),
+      ...(!contentMatchesLoading ? { interrupted: true as const } : {}) } } : {}),
     motionIgnoresReducedPreference: motion.motionIgnoresReducedPreference,
     motionSampleLabel: motion.motionSampleLabel,
     motionComplete: motion.motionComplete,

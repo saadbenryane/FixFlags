@@ -13,10 +13,12 @@ import { probeUptime } from '@/lib/uptime/probe'
 import { gzipSync } from 'node:zlib'
 import { PublicResponseBodyError } from '../http-evidence'
 import { parseMetadataIsolated, parseHttpNavigationIsolated } from '../progressive/cpu'
-import { openCheckDestination } from '../open-check'
+import { openCheckDestination, openCheckDestinations } from '../open-check'
 import { nativeHttpCollection } from '../native-http-evidence'
 import { runAuthCheckoutChecks } from '../checks/auth-checkout'
 import { runOgImageUrlCheck } from '../checks/metadata-checks'
+import { checkPublicLinks } from '../checks/public-links'
+import { publicLinkContext } from '../checks/destination-evidence'
 
 vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(({ resolve4: async () => ['203.0.114.1'], resolve6: async () => [] })))
 vi.mock('@/lib/db', () => ({ prisma: { auditExecutionTask: { findMany: async () => [{ workKind: 'discovery', workInput: null }] } } }))
@@ -32,6 +34,24 @@ const server = createServer((request, response) => {
   if (request.url === '/') { response.writeHead(302, { location: url + 'body' }); response.end(); return }
   response.setHeader('content-type', 'text/html')
   response.setHeader('content-security-policy', "default-src 'self'; script-src 'self' 'unsafe-inline'")
+  if (request.url === '/partial-content') {
+    response.writeHead(206, { 'content-range': 'bytes 0-16/100' })
+    response.end('Partial document.'); return
+  }
+  if (request.url === '/large-page') {
+    response.end(prefix + '<h1>Useful service</h1>' + 'x'.repeat(1_020_000) + '</body></html>'); return
+  }
+  if (request.url?.startsWith('/bounded-')) {
+    const mode = request.url.slice('/bounded-'.length)
+    response.statusCode = mode === 'missing' ? 404 : 200
+    if (mode === 'binary') {
+      response.setHeader('content-type', 'application/octet-stream')
+      response.end(Buffer.alloc(21_000)); return
+    }
+    const early = mode === 'visible-error' ? '<h1>Page not found</h1>' : ''
+    const title = mode === 'restored' ? 'Useful details' : 'Page not found'
+    response.end(prefix + early + '<script>/*' + 'x'.repeat(21_000) + '*/</script><h1>' + title + '</h1></body></html>'); return
+  }
   if (request.url === '/navigation') { navigationRequests++; response.end(navigationHtml); return }
   if (request.url === '/reset') {
     response.write(prefix)
@@ -67,6 +87,22 @@ afterAll(async () => {
 })
 
 describe('native HTTP body interruption evidence', () => {
+  it('distinguishes deliberate sampling, a server partial response and a failed body read', async () => {
+    const large = url + 'large-page'
+    const bounded = await collectDocument(large, Date.now() + 5000)
+    expect(bounded).toMatchObject({ status: 200, complete: false, reason: 'document_truncated' })
+    expect(assessPageResponse(large, bounded)).toMatchObject({ complete: true, flags: [],
+      assertions: [{ passed: true, observed: expect.stringContaining('body sample reached the collection limit') }] })
+    expect(await probeUptime(large)).toMatchObject({ result: 'ONLINE', statusCode: 200 })
+    for (const [path, status, reason] of [['partial-content', 206, null], ['body', 200, 'response_body_unavailable']] as const) {
+      const target = url + path, response = await collectDocument(target, Date.now() + 5000)
+      expect(response).toMatchObject({ status, reason })
+      expect(assessPageResponse(target, response)).toMatchObject({ complete: false, flags: [], assertions: [{ passed: false }] })
+      expect(await probeUptime(target)).toMatchObject({ result: 'UNKNOWN', statusCode: status })
+      expect(await openCheckDestination(target)).toMatchObject({ outcome: 'unknown', status, shouldFlagDead: false })
+    }
+  })
+
   it.each([404, 503])('retains a known HTTP %s failure across uptime, page and destination interpretation', async status => {
     const target = url + 'status-' + status
     const collected = await collectDocument(target, Date.now() + 1500)
@@ -80,6 +116,40 @@ describe('native HTTP body interruption evidence', () => {
   it.each([url + 'body', url + 'login'])('never certifies an interrupted successful destination at %s', async target => {
     expect(await openCheckDestination(target)).toMatchObject({ outcome: 'unknown', status: 200, shouldFlagDead: false })
   })
+  it.each([
+    ['unread-page', 200, 'unknown', false],
+    ['visible-error', 200, 'render_error', true],
+    ['missing', 404, 'not_found', true],
+    ['binary', 200, 'reachable', false],
+  ] as const)('retains the available evidence after a destination reaches its byte limit: %s', async (mode, status, outcome, shouldFlagDead) => {
+    const target = url + 'bounded-' + mode
+    expect(await openCheckDestination(target)).toMatchObject({ outcome, status, shouldFlagDead })
+  })
+  it('uses a wider read only for the selected original destination in a mixed batch', async () => {
+    const original = url + 'bounded-restored', fresh = url + 'bounded-unread-page'
+    const before = responseRequests
+    const batch = await openCheckDestinations([original, fresh, original], { origin: url, extendedBody: new Set([original]) })
+    expect(batch.results).toMatchObject([{ url: original, outcome: 'reachable' }, { url: fresh, outcome: 'unknown' }])
+    expect(responseRequests - before).toBe(2)
+  })
+  it.each([['restored', true], ['unread-page', false]] as const)(
+    'reads more of the original destination in a single targeted repair request: %s', async (mode, passed) => {
+      const target = url + 'bounded-' + mode
+      const inventory = { links: [{ href: target, text: 'Original link', rel: null },
+        { href: url + 'unrelated', text: 'New link', rel: null }], complete: true }
+      const scope = [publicLinkContext(url, target)]
+      expect(await openCheckDestination(target)).toMatchObject({ outcome: 'unknown' })
+      const before = responseRequests
+      const collector = nativeHttpCollection()
+      const check = (open: typeof collector.options.openDestination) => checkPublicLinks(url, inventory, Date.now() + 5000, open, scope)
+      const observed = await check(collector.options.openDestination)
+      expect(observed.assertions).toMatchObject([{ context: scope[0], complete: true, passed }])
+      expect(responseRequests - before).toBe(1)
+      const snapshot = collector.snapshot(), replay = nativeHttpCollection(snapshot)
+      expect(await check(replay.options.openDestination)).toEqual(observed)
+      expect(replay.snapshot()).toEqual(snapshot)
+      expect(responseRequests - before).toBe(1)
+    })
   it.each([200, 503])('retains an interrupted HTTP %s challenge as unknown for destinations and uptime', async status => {
     const target = url + 'challenge-' + status
     expect(await openCheckDestination(target)).toMatchObject({ outcome: 'blocked', status, shouldFlagDead: false })
@@ -148,7 +218,7 @@ describe('native HTTP body interruption evidence', () => {
   })
   it('completes the HTTP task with existing response facts instead of retrying missing evidence', async () => {
     const artifact = await collectionHandlers.find(handler => handler.kind === 'http')!.evaluate({
-      input: { pageUrl: url }, deadline: Date.now() + 1500,
+      audit: { executionSpec: null }, input: { pageUrl: url }, deadline: Date.now() + 1500,
     } as TaskContext)
     expect(httpArtifactSchema.parse(readArtifact(artifact, 'http').data)).toMatchObject({ metadata: null,
       document: { status: 200, complete: false, reason: 'response_body_unavailable' } })

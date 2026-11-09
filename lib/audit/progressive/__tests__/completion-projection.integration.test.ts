@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { parseMetadataFromHtml } from '../../metadata'
 import { serializeArtifact } from '../contracts'
 import { siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
-import { recordedPages, recordedPageEvidence } from '../lifecycle'
+import { lifecycleHandlers, recordedPages, recordedPageEvidence } from '../lifecycle'
 import { checkArtifactSchema, commitFindings, recordedTaskFindings } from '../results'
 import { actionHandlers } from '../actions'
 import type { TaskContext } from '../registry'
@@ -13,6 +13,9 @@ import { evaluatorHandlers } from '../evaluators'
 import { finalizeDeterministicOnly } from '../../finalize'
 import { reconcileImprovementVerification } from '@/lib/improvements/verification'
 import { loadRecordedPageSpeedCoverage } from '../../recorded-performance'
+import { pageSpeedMeasurementFixture } from '../../__tests__/check-fixtures'
+import { discoveryObservations, DISCOVERY_BATCH_SIZE } from '../discovery'
+import { observationArtifact } from '../observation-progress'
 
 const localDatabase = process.env.PROGRESSIVE_PROJECTION_DB_REQUIRED === 'true' ? describe : describe.skip
 localDatabase('bounded PostgreSQL completion projection', () => {
@@ -75,15 +78,93 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       }
     } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
   })
+  it('summarizes only page gaps whose recorded provenance matches the current Run ledger', async () => {
+    const url = 'https://example.com/', otherPage = url + 'pricing'
+    const audit = await prisma.audit.create({ data: { url, status: 'CHECKING' } })
+    try {
+      const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: url, targetKey: 'task:p0:check',
+        source: 'EXECUTION', workKind: 'check', workState: 'COMPLETED', status: 'COMPLETED',
+        workInput: { pageUrl: url, position: 0, primary: true, role: 'primary' } } })
+      const rows = [
+        { module: 'security', pageUrl: url, auditId: audit.id, targetKey: 'module:security' },
+        { module: 'keyboard', pageUrl: url, auditId: null, targetKey: 'module:keyboard' },
+        { module: 'performance', pageUrl: url, auditId: 'another-audit', targetKey: 'module:performance' },
+        { module: 'accessibility', pageUrl: otherPage, auditId: audit.id, targetKey: 'module:accessibility' },
+        { module: 'security', pageUrl: url, auditId: audit.id, targetKey: 'module:mobile' },
+      ]
+      await prisma.auditVerificationReceipt.createMany({ data: rows.map(row => ({ auditId: audit.id, taskId: task.id,
+        targetKey: row.targetKey, scopeKey: 'page:' + url, pageUrl: url, source: 'DETERMINISTIC', status: 'COMPLETED',
+        detail: { kind: 'site-module-check', version: 1, module: row.module, pageUrl: row.pageUrl, complete: false,
+          applicable: true, passed: false, assertions: [], ...(row.auditId ? { execution: { auditId: row.auditId, taskId: task.id, checkVersion: 1,
+            source: 'http', collectedAt: new Date().toISOString() } } : { failed: true }) } })) })
+      const searchRows = [
+        { targetKey: 'module:search-presentation', pageUrl: url, auditId: 'another-audit' },
+        { targetKey: 'module:search-indexing', pageUrl: otherPage, auditId: audit.id },
+        { targetKey: 'module:search-crawl', pageUrl: url, auditId: audit.id },
+      ]
+      await prisma.auditVerificationReceipt.createMany({ data: searchRows.map(row => ({ auditId: audit.id, taskId: task.id,
+        targetKey: row.targetKey, scopeKey: 'page:' + url, pageUrl: url, source: 'SEARCH', status: 'COMPLETED',
+        detail: { kind: 'search-checks', version: 1, auditId: row.auditId, pageUrl: row.pageUrl,
+          collectedAt: new Date().toISOString(), complete: false, observations: [] } })) })
+      const [page] = await recordedPageEvidence(audit.id, url)
+      expect([...page.failedModules].sort()).toEqual(['keyboard', 'search-crawl', 'security'])
+      expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id } })).toBe(rows.length + searchRows.length)
+    } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
+  })
+
+  it.each([false, true])('projects discovery findings and gaps onto their declaring page (checkpoint: %s)', async checkpoint => {
+    const url = 'https://example.com/', peer = url + 'pricing?plan=team', missing = url + 'missing', unavailable = url + 'unavailable'
+    const audit = await prisma.audit.create({ data: { url, status: 'CHECKING' } })
+    try {
+      const input = { pageUrl: url, position: 0, primary: true, role: 'primary' }
+      const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: url, targetKey: 'task:discovery',
+        source: 'EXECUTION', workKind: 'discovery', workState: 'READY', status: 'PENDING', workInput: input } })
+      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: peer, targetKey: 'task:p1:http',
+        source: 'EXECUTION', workKind: 'http', workState: 'COMPLETED', status: 'COMPLETED',
+        workInput: { pageUrl: peer, position: 1, primary: false, role: 'linked' },
+        workResult: serializeArtifact('http', { metadata: null }) } })
+      const healthy = checkpoint ? Array.from({ length: DISCOVERY_BATCH_SIZE - 2 }, (_, index) => url + 'healthy-' + index) : []
+      const members = [missing, unavailable, ...healthy].map(url => ({ kind: 'destination' as const, url, sources: [peer] }))
+      const observations = discoveryObservations(members, [
+        { url: missing, outcome: 'not_found', status: 404, shouldFlagDead: true },
+        { url: unavailable, outcome: 'blocked', status: 429, shouldFlagDead: false },
+        ...healthy.map(url => ({ url, outcome: 'reachable' as const, status: 200, shouldFlagDead: false })),
+      ], { auditId: audit.id, taskId: task.id, collectedAt: new Date().toISOString() })
+      const progress = checkpoint ? { version: 1 as const, batchSize: DISCOVERY_BATCH_SIZE, completed: DISCOVERY_BATCH_SIZE,
+        members: [...members, { kind: 'destination' as const, url: url + 'pending', sources: [peer] }] } : undefined
+      const artifact = observationArtifact('discovery', { openCheckCount: members.length, truncated: false, pages: [url, peer],
+        flags: observations.flatMap(result => result.flags), receipts: observations.map(result => result.receipt) }, progress)
+      const handler = lifecycleHandlers.find(handler => handler.kind === 'discovery')!
+      const context: TaskContext = { audit, task, input, deadline: Date.now() + 1000, dependencies: new Map() }
+      await prisma.$transaction(async tx => {
+        const committed = (await handler.commit!(context, artifact, tx)) ?? artifact
+        await tx.auditExecutionTask.update({ where: { id: task.id }, data: { workResult: committed,
+          ...(checkpoint ? {} : { workState: 'COMPLETED', status: 'COMPLETED' }) } })
+      })
+
+      const expected = [expect.objectContaining({ checkId: 'broken-internal-links', pageUrl: peer })]
+      const pages = await recordedPageEvidence(audit.id)
+      expect(pages).toMatchObject([{ url, flags: [], failedModules: [] }, { url: peer, flags: expected, failedModules: ['seo'] }])
+      const rootRead = vi.fn(prisma.$queryRaw.bind(prisma))
+      expect(await recordedPageEvidence(audit.id, url, { $queryRaw: rootRead })).toEqual([pages[0]])
+      expect(JSON.stringify(await Promise.all(rootRead.mock.results.map(result => result.value)))).not.toContain(missing)
+      expect(await recordedPageEvidence(audit.id, peer)).toEqual([pages[1]])
+      expect(await recordedTaskFindings(audit.id, prisma)).toEqual(expected)
+    } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
+  })
+
   it('projects actual page measurements and retained field data without legacy summaries or raw provider payloads', async () => {
     const url = 'https://example.com/', peer = url + 'pricing'
     const spec = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: url, environment: 'production', checks: {}, outcomes: [], verificationTarget: null }
     const audit = await prisma.audit.create({ data: { url, executionSpec: spec, pages: { create: [url, peer].map((pageUrl, position) => ({
       url: pageUrl, normalizedUrl: pageUrl, role: position ? 'linked' : 'primary', position,
     })) } }, include: { pages: true } })
-    const measured = (strategy: 'desktop' | 'mobile') => ({ strategy, score: 90, lcp: 1200, cls: 0.01, fcp: 800, tbt: 30,
-      inp: null, opportunities: [], failedAccessibilityAudits: [], diagnostics: {}, raw: { privateTrace: 'x'.repeat(2_000_000) }, crux: null })
-    const mobile = { ...measured('mobile'), score: null, lcp: null, cls: null, fcp: null, tbt: null, inp: 900 }
+    const measured = (strategy: 'desktop' | 'mobile', pageUrl = url, overrides: Record<string, unknown> = {}) => ({
+      strategy, score: 90, lcp: 1200, cls: 0.01, fcp: 800, tbt: 30, inp: null, opportunities: [], failedAccessibilityAudits: [],
+      diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, strategy, overrides) }, raw: { privateTrace: 'x'.repeat(2_000_000) }, crux: null })
+    const mobile = { ...measured('mobile'), score: null, lcp: null, cls: null, fcp: null, tbt: null, inp: 900,
+      crux: { lcp: null, cls: null, fcp: null, ttfb: null, inp: 900, formFactor: null, effectiveConnectionType: null,
+        source: 'pagespeed-loading-experience', scope: 'page', url, reportingWindowDays: 28 } }
     const field = serializeArtifact('pagespeed', { desktop: null, mobile, mobileError: 'Lab collection unavailable' })
     try {
       const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: url, targetKey: 'task:p0:pagespeed-mobile',
@@ -97,7 +178,9 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       const observed = await loadRecordedPageSpeedCoverage(audit, { $queryRaw: read } as Pick<typeof prisma, '$queryRaw'>)
       expect(observed).toEqual({ status: 'partial', totalRoutes: 2, observedRoutes: 1,
         missingRoutes: [{ url, missing: ['mobile'] }, { url: peer, missing: ['desktop', 'mobile'] }] })
-      expect(Buffer.byteLength(JSON.stringify(await read.mock.results[0].value))).toBeLessThan(1500)
+      const projected = JSON.stringify(await read.mock.results[0].value)
+      expect(Buffer.byteLength(projected)).toBeLessThan(1800)
+      expect(projected).not.toContain('privateTrace')
       const pageEvidence = await recordedPageEvidence(audit.id, url)
       expect(pageEvidence[0]).toMatchObject({ mobile: { score: null, inp: 900 },
         mobileError: 'Lab collection unavailable', failedModules: ['pagespeed'] })
@@ -107,11 +190,17 @@ localDatabase('bounded PostgreSQL completion projection', () => {
         workResult: serializeArtifact('pagespeed', { desktop: null, mobile: measured('mobile') }) } })
       expect(await loadRecordedPageSpeedCoverage(audit)).toMatchObject({ status: 'partial', observedRoutes: 1,
         missingRoutes: [{ url: peer, missing: ['desktop', 'mobile'] }] })
-      await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: peer, targetKey: 'task:p1:pagespeed',
+      const peerTask = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, pageUrl: peer, targetKey: 'task:p1:pagespeed',
         source: 'EXECUTION', workKind: 'pagespeed', workState: 'COMPLETED', status: 'COMPLETED',
         workInput: { pageUrl: peer, position: 1, primary: false, role: 'linked' },
-        workResult: serializeArtifact('pagespeed', { desktop: measured('desktop'), mobile: measured('mobile') }) } })
+        workResult: serializeArtifact('pagespeed', { desktop: measured('desktop', peer), mobile: measured('mobile', peer) }) } })
       expect(await loadRecordedPageSpeedCoverage(audit)).toMatchObject({ status: 'complete', observedRoutes: 2, missingRoutes: [] })
+      const stale = { fetchTime: new Date(Date.now() - 86_400_000).toISOString() }
+      await prisma.auditExecutionTask.update({ where: { id: peerTask.id }, data: { workResult: serializeArtifact('pagespeed', {
+        desktop: measured('desktop', peer, stale), mobile: measured('mobile', peer, stale),
+      }) } })
+      expect(await loadRecordedPageSpeedCoverage(audit)).toMatchObject({ status: 'partial', observedRoutes: 1,
+        missingRoutes: [{ url: peer, missing: ['desktop', 'mobile'] }] })
       expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id }, include: { pages: true } })).pages.every(page => page.performanceData === null)).toBe(true)
     } finally { await prisma.audit.delete({ where: { id: audit.id } }) }
   })
@@ -312,12 +401,12 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       // applies pending migrations nor mutates existing customer records.
       await tx.$executeRaw`CREATE TEMP TABLE audit_execution_tasks (
         "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "workKind" text,
-        "workState" text, "status" text, "workInput" jsonb, "workResult" jsonb, "createdAt" timestamp,
+        "workState" "AuditWorkState", "status" "VerifierExecutionStatus", "workInput" jsonb, "workResult" jsonb, "createdAt" timestamp(3),
         "detail" jsonb, "evidenceReference" jsonb
       ) ON COMMIT DROP`
       await tx.$executeRaw`CREATE TEMP TABLE audit_verifier_executions (
-        "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "status" text,
-        "taskId" text, "detail" jsonb, "evidenceReference" jsonb, "createdAt" timestamp DEFAULT now()
+        "id" text, "auditId" text, "pageUrl" text, "targetKey" text, "scopeKey" text, "status" "VerifierExecutionStatus",
+        "taskId" text, "detail" jsonb, "evidenceReference" jsonb, "createdAt" timestamp(3) DEFAULT now()
       ) ON COMMIT DROP`
       const input = JSON.stringify({ position: 0, pageUrl: url, primary: true, role: 'primary' })
       const browser = JSON.stringify(serializeArtifact('browser', { pageId: 'page', metadata,

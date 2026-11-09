@@ -43,6 +43,125 @@ function proof(flag: ReturnType<typeof runSecurityHeaderChecks>[number], headers
 
 describe('public response header repair evidence', () => {
   it.each([
+    ['', false], [' ; , ; ', false], ['report-uri /csp; report-to diagnostics', false],
+    ['unrecognized-extension on', undefined], ['script-src "none"', undefined],
+    ["unknown-extension on, default-src 'self'", true], ['script-src', true],
+    ["base-uri 'none'", true], ["frame-ancestors 'self'", true], ['sandbox', true], ['sandbox é', undefined], ['upgrade-insecure-requests', true],
+    ["require-trusted-types-for 'script'", true], ['require-trusted-types-for unrecognized', undefined],
+    ['trusted-types app', true], ["trusted-types * 'allow-duplicates'", false],
+  ] as const)('distinguishes recognized enforcement from header text: %s', (value, expected) => {
+    const headers = { ...healthy, 'content-security-policy': value }
+    expect(securityHeaderObservations(pageUrl, headers).find(item => item.key === 'content-security-policy'))
+      .toMatchObject({ passed: expected === true, complete: expected !== undefined })
+    expect(runSecurityHeaderChecks(pageUrl, headers).map(item => item.checkId).includes('security-csp-missing')).toBe(expected === false)
+  })
+
+  it('uses current enforcement evidence to resolve a historically missing CSP', () => {
+    const missing = { ...healthy, 'content-security-policy': '' }
+    const flag = { ...runSecurityHeaderChecks(pageUrl, missing).find(item => item.checkId === 'security-csp-missing')!, pageUrl }
+    const reportOnly = { ...healthy, 'content-security-policy': 'report-to diagnostics', 'content-security-policy-report-only': "default-src 'self'" }
+    expect(runSecurityHeaderChecks(pageUrl, reportOnly).map(item => item.checkId)).toContain('security-csp-report-only')
+    expect(proof(flag, reportOnly)).toMatchObject({ passed: false, complete: true })
+    expect(proof(flag, { ...healthy, 'content-security-policy': 'unrecognized-extension on' })).toBeUndefined()
+    const old = { ...flag, evidenceTargets: flag.evidenceTargets!.map(target => ({ ...target, context: target.context!.replace(':v2:', ':') })) }
+    expect(old.evidenceTargets).not.toEqual(flag.evidenceTargets)
+    expect(proof(old, healthy)).toMatchObject({ passed: true, complete: true })
+    const oldReceipt = receipt(healthy)
+    oldReceipt.assertions = oldReceipt.assertions.map(item => item.key === 'content-security-policy'
+      ? { ...item, context: item.context?.replace(':v2:', ':') } : item)
+    expect(scopedAssertionForTarget({ receipt: oldReceipt, checkId: flag.checkId, flag: old })).toBeUndefined()
+    const input = { auditId: 'after', flag: old, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+      environment: 'production', scope: 'SITE', outcomes: [], verificationTarget: null, checks: { [flag.checkId]: CHECK_REGISTRY[flag.checkId].version } } }
+    const recovery = (detail: ReturnType<typeof receipt>) => hasRecordedRecoveryEvidence({ ...input,
+      executions: [{ targetKey: 'module:security-headers', status: 'COMPLETED', detail }] })
+    expect(recovery(oldReceipt)).toBe(false)
+    expect(recovery(receipt(reportOnly))).toBe(false)
+    expect(recovery(receipt(healthy))).toBe(true)
+  })
+
+  it('uses enforced sandbox restrictions as comparable evidence for script findings', () => {
+    const csp = "script-src 'unsafe-inline' 'unsafe-eval'; object-src 'none'"
+    const broken = { ...healthy, 'content-security-policy': csp }
+    const flags = runSecurityHeaderChecks(pageUrl, broken)
+    expect(flags.map(flag => flag.checkId)).toEqual(['security-csp-unsafe-inline', 'security-csp-unsafe-eval'])
+    const sandboxed = { ...broken, 'content-security-policy': csp + ', sandbox allow-forms' }
+    const conflicting = { ...broken, 'content-security-policy': csp + '; sandbox, sandbox allow-scripts' }
+    const malformed = { ...broken, 'content-security-policy': csp + '; sandbox é' }
+    const independentlyRestricted = { ...conflicting, 'content-security-policy': conflicting['content-security-policy'] + ", script-src 'none'" }
+    const reportOnly = { ...broken, 'content-security-policy-report-only': 'sandbox' }
+    expect(runSecurityHeaderChecks(pageUrl, sandboxed)).toEqual([])
+    expect(runSecurityHeaderChecks(pageUrl, conflicting)).toEqual([])
+    for (const flag of flags) {
+      expect(proof(flag, sandboxed)).toMatchObject({ passed: true, complete: true })
+      expect(proof(flag, conflicting)).toBeUndefined()
+      expect(proof(flag, malformed)).toBeUndefined()
+      expect(proof(flag, independentlyRestricted)).toMatchObject({ passed: true, complete: true })
+      expect(proof(flag, reportOnly)).toMatchObject({ passed: false, complete: true })
+    }
+  })
+
+  it.each([
+    ["script-src 'self'", false], ['object-src *', false], ['object-src https:', false], ['object-src data:', false],
+    ['object-src https://*:*', false], ["object-src 'none' https:", false], ['object-src *, object-src https:', false],
+    ["default-src 'none'", true], ["default-src 'self' 'unsafe-inline'", true],
+    ["default-src *; object-src 'none'", true], ["default-src 'none'; object-src *", false],
+    ['object-src https://*.assets.test:*', true], ["object-src *, default-src 'self'", true],
+    ['object-src https:, object-src data:', undefined], ['object-src "none"', undefined], ['object-src https://*:99999', undefined],
+  ] as const)('evaluates effective object source scope: %s', (csp, passed) => {
+    const headers = { ...healthy, 'content-security-policy': csp }
+    expect(securityHeaderObservations(pageUrl, headers).find(item => item.key === 'csp-objects'))
+      .toMatchObject({ passed: passed === true, complete: passed !== undefined })
+    expect(runSecurityHeaderChecks(pageUrl, headers).some(item => item.checkId === 'security-csp-weak-object-src')).toBe(passed === false)
+  })
+
+  it('requires comparable, restricted object sources for repair and monitoring recovery', () => {
+    const broken = { ...healthy, 'content-security-policy': 'object-src *' }
+    const flag = { ...runSecurityHeaderChecks(pageUrl, broken).find(item => item.checkId === 'security-csp-weak-object-src')!, pageUrl }
+    const input = { auditId: 'after', flag, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+      environment: 'production', scope: 'SITE', outcomes: [], verificationTarget: null, checks: { [flag.checkId]: CHECK_REGISTRY[flag.checkId].version } } }
+    const recovery = (headers: Record<string, string>) => hasRecordedRecoveryEvidence({ ...input,
+      executions: [{ targetKey: 'module:security-headers', status: 'COMPLETED', detail: receipt(headers) }] })
+    const broad = { ...healthy, 'content-security-policy': 'object-src https:' }
+    expect(proof(flag, broad)).toMatchObject({ passed: false, complete: true })
+    expect(recovery(broad)).toBe(false)
+    const repaired = { ...healthy, 'content-security-policy': "default-src 'none'" }
+    expect(proof(flag, repaired)).toMatchObject({ passed: true, complete: true })
+    expect(recovery(repaired)).toBe(true)
+    const old = { ...flag, evidenceTargets: flag.evidenceTargets!.map(target => ({ ...target, context: target.context!.replace(':v3:', ':v2:') })) }
+    expect(proof(old, repaired)).toBeUndefined()
+  })
+
+  it('distinguishes repeated, conflicting and ignored frame policy declarations', () => {
+    const broken = { ...healthy, 'x-frame-options': 'unknown, invalid' }
+    const flag = { ...runSecurityHeaderChecks(pageUrl, broken).find(item => item.checkId === 'security-frame-options-too-permissive')!, pageUrl }
+    expect(proof(flag, broken)).toMatchObject({ passed: false, complete: true })
+    const repeated = { ...healthy, 'x-frame-options': 'SAMEORIGIN, sameorigin', 'content-security-policy-report-only': 'frame-ancestors *' }
+    expect(runSecurityHeaderChecks(pageUrl, repeated)).toEqual([])
+    expect(proof(flag, repeated)).toMatchObject({ passed: true, complete: true })
+    const conflict = { ...healthy, 'x-frame-options': 'DENY, SAMEORIGIN' }
+    expect(runSecurityHeaderChecks(pageUrl, conflict)).toEqual([])
+    expect(proof(flag, conflict)).toBeUndefined()
+    expect(runSecurityHeaderChecks(pageUrl, { ...conflict, 'content-security-policy': healthy['content-security-policy'] + '; frame-ancestors *' })
+      .map(item => item.checkId)).toEqual(['security-csp-frame-ancestors-permissive'])
+    const oldFlag = { ...flag, evidenceTargets: flag.evidenceTargets!.map(target => ({ ...target, context: target.context!.replace(':v3:', ':v2:') })) }
+    expect(proof(oldFlag, repeated)).toBeUndefined()
+    const oldReceipt = receipt(repeated)
+    oldReceipt.assertions = oldReceipt.assertions.map(item => item.key === 'frame-protection'
+      ? { ...item, context: item.context?.replace(':v3:', ':v2:') } : item)
+    expect(scopedAssertionForTarget({ receipt: oldReceipt, checkId: flag.checkId, flag: oldFlag })).toBeUndefined()
+  })
+
+  it.each([
+    ['security-frame-options-missing', { ...healthy, 'x-frame-options': '' }],
+    ['security-csp-frame-ancestors-permissive', { ...healthy, 'content-security-policy': healthy['content-security-policy'] + '; frame-ancestors *' }],
+  ] as const)('verifies the historical %s diagnosis with fresh frame evidence', (id, headers) => {
+    const flag = runSecurityHeaderChecks(pageUrl, headers).find(item => item.checkId === id)!
+    const historical = { ...flag, evidenceTargets: flag.evidenceTargets!.map(target => ({ ...target, context: target.context!.replace(':v3:', ':v2:') })) }
+    expect(proof(historical, headers)).toMatchObject({ passed: false, complete: true })
+    expect(proof(historical, { ...healthy, 'x-frame-options': 'SAMEORIGIN, sameorigin' })).toMatchObject({ passed: true, complete: true })
+  })
+
+  it.each([
     ['security-coop-missing', 'cross-origin-opener-policy', 'same-origin', 'unsafe-none'],
     ['security-coep-missing', 'cross-origin-embedder-policy', 'require-corp', 'unsafe-none'],
     ['security-corp-missing', 'cross-origin-resource-policy', 'same-origin', 'cross-origin'],

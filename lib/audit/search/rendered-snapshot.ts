@@ -1,12 +1,15 @@
 import { z } from 'zod'
 import type { Page } from 'playwright'
 import type { PublicDocument } from './contracts'
+import { isSuccessfulPublicGetStatus } from '../http-evidence'
+import { CANONICAL_HEAD_SELECTOR } from './definitions'
 
 const sectionSchema = z.object({ html: z.string().max(260_000), complete: z.boolean(),
   reason: z.string().nullable(), observed: z.number().int().nonnegative(), limit: z.number().int().positive() }).strict()
 export const renderedSearchSnapshotSchema = z.object({
   version: z.literal(1), contract: z.literal('rendered-search-v1'), finalUrl: z.string().url(),
   documentBaseUrl: z.string().url().optional(),
+  canonicalHeadScoped: z.literal(true).optional(),
   collectedAt: z.string().datetime(), language: z.string().max(128),
   sectionLinks: z.object({ complete: z.boolean(),
     links: z.array(z.object({ href: z.string().max(8192), text: z.string().max(256) }).strict()).max(2000),
@@ -20,7 +23,7 @@ export type SearchSection = keyof RenderedSearchSnapshot['sections']
 
 /** Each section has its own resource budget. Hydration scripts are never collected. */
 export async function collectRenderedSearchSnapshot(page: Page): Promise<RenderedSearchSnapshot> {
-  return renderedSearchSnapshotSchema.parse(await page.evaluate(() => {
+  return renderedSearchSnapshotSchema.parse(await page.evaluate(canonicalSelector => {
     const sections = {} as Record<string, { html: string; complete: boolean; reason: string | null; observed: number; limit: number; labelsComplete?: boolean }>
     const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const collect = (key: string, selector: string, limit: number, bytes: number, serialize: (node: Element) => string | { html: string; complete: boolean }) => {
@@ -39,7 +42,7 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
     }
     collect('metadata', 'head title, head meta', 256, 32_000, node => node.outerHTML)
     collect('indexing', 'meta[name="robots" i], meta[name="googlebot" i]', 64, 16_000, node => node.outerHTML)
-    collect('canonical', 'link[rel~="canonical" i]', 64, 16_000, node => node.outerHTML)
+    collect('canonical', canonicalSelector, 64, 16_000, node => node.outerHTML)
     collect('structured', 'script[type="application/ld+json" i], [itemscope], [typeof], [vocab]', 100, 250_000, node => {
       // Embedded markup needs its descendants. Nested roots are already included.
       if (node.parentElement?.closest('[itemscope], [typeof], [vocab]')) return ''
@@ -90,21 +93,23 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
       const html = node.matches('article h2') ? `<article>${content}</article>` : node.hasAttribute('aria-label') ? `<nav aria-label="breadcrumb">${Array.from(node.querySelectorAll('a[href]')).slice(0, 100).map(item => `<a href="${escape(item.getAttribute('href') ?? '')}">${escape(item.textContent ?? '')}</a>`).join('')}</nav>` : content
       return { html, complete: text.length <= 8000 && node.querySelectorAll('a[href]').length <= 100 }
     })
-    return { version: 1, contract: 'rendered-search-v1', finalUrl: location.href, documentBaseUrl: document.baseURI, collectedAt: new Date().toISOString(),
+    return { version: 1, contract: 'rendered-search-v1', finalUrl: location.href, documentBaseUrl: document.baseURI, canonicalHeadScoped: true, collectedAt: new Date().toISOString(),
       language: (document.documentElement.lang ?? '').slice(0, 128), sections, sectionLinks }
-  }))
+  }, CANONICAL_HEAD_SELECTOR))
 }
 
 /** A bounded section is never promoted to a complete whole-document capture. */
 export function searchSectionBody(document: PublicDocument, section: SearchSection): string | null {
-  if (document.status == null || document.status < 200 || document.status >= 300) return null
+  if (document.status == null || !isSuccessfulPublicGetStatus(document.status)) return null
   if (!document.searchSnapshot) return document.complete ? document.body : null
   const snapshot = document.searchSnapshot, selected = snapshot.sections[section]
   // A section limit does not erase a complete document already collected in
   // this same observation. Partial document bytes still cannot cover the gap.
   if (!selected.complete) return document.complete ? document.body : null
-  // Historical isolated canonical sections did not retain the base required for relative declarations.
-  if (section === 'canonical' && !snapshot.documentBaseUrl) return document.complete ? document.body : null
+  // Earlier isolated sections combined head and body links without recording placement.
+  if (section === 'canonical' && !snapshot.canonicalHeadScoped) return document.complete ? document.body : null
+  // Older isolated sections may lack the base needed to resolve relative URLs.
+  if ((section === 'canonical' || section === 'links') && !snapshot.documentBaseUrl) return document.complete ? document.body : null
   const language = snapshot.language.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
   const base = snapshot.documentBaseUrl ? '<base href="' + snapshot.documentBaseUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">' : ''
   return ['metadata', 'indexing', 'canonical'].includes(section)

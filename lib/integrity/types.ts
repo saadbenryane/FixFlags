@@ -10,6 +10,7 @@ export type PathReasonCode =
   | 'checkout_error'
   | 'checkout_surface_unavailable'
   | 'no_buy_control'
+  | 'original_purchase_control_unavailable'
   | 'bot_wall'
   | 'password_gate'
   | 'timeout'
@@ -40,6 +41,8 @@ export interface WalkOutcome {
   failedStep: PathStepLabel | null
   safetyRefused?: boolean
   checkoutSurfaceUnavailable?: boolean
+  purchaseControlKey?: string
+  originalPurchaseControlUnavailable?: boolean
 }
 
 export interface PathProbeAttempt {
@@ -60,4 +63,5 @@ export interface PathProbeResult {
   gifUrl: string | null
   failedStep: PathStepLabel | null
   finalUrl: string
+  purchaseControlKey?: string
 }

@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, Page } from 'playwright'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../screenshot'
-import { collectKeyboardEvidence, KEYBOARD_STEP_LIMIT } from './keyboard-probe'
+import { collectKeyboardEvidence, KEYBOARD_FOCUS_POLICY, KEYBOARD_STEP_LIMIT } from './keyboard-probe'
 import { runKeyboardChecks } from '../checks/keyboard'
 import { scopedAssertionForTarget } from '../checks/verification'
 import { bindAuditPageObservation } from './observation-scope'
@@ -13,7 +13,7 @@ runBrowser('keyboard collector in Chromium', () => {
   let browser: Browser, context: BrowserContext, page: Page
   beforeAll(async () => { browser = await getAuditBrowser() })
   afterEach(async () => { await context?.close() })
-  afterAll(closeBrowser)
+  afterAll(closeBrowser, 60_000)
 
   async function fixture(html: string, profile: CaptureProfile = DESKTOP_CAPTURE_PROFILE, access?: ScanAccessConfig) {
     context = await browser.newContext({ viewport: { width: profile.width, height: profile.height }, userAgent: profile.userAgent,
@@ -75,12 +75,49 @@ runBrowser('keyboard collector in Chromium', () => {
     expect(await collect()).toMatchObject({ complete: true, candidateCount: 1, steps: [{ selector: '#component >>> #action' }] })
   })
 
-  it('keeps focus inside a closed root unverified', async () => {
-    await fixture('<x-controls id="component"></x-controls><script>' +
+  it('keeps focus inside a closed root unverified and checks later page controls', async () => {
+    await fixture('<style>button:focus{outline:none;box-shadow:none}</style><x-controls id="component"></x-controls><button id="after">After</button><script>' +
       'document.getElementById("component").attachShadow({mode:"closed"}).innerHTML="<button>Hidden implementation</button>"</script>')
     const evidence = await collect()
-    expect(evidence).toMatchObject({ complete: false, navigationComplete: false, reason: 'focus_scope_changed', steps: [] })
+    expect(evidence).toMatchObject({ complete: false, navigationComplete: false, reason: 'focus_scope_changed',
+      steps: [{ selector: '#after', indicator: 'missing' }] })
     expect(runKeyboardChecks(evidence).assertions.some(assertion => assertion.passed)).toBe(false)
+  })
+
+  it('verifies the same page control beyond an iframe without certifying the full sequence', async () => {
+    const content = '<button id="before">Before</button><iframe srcdoc="<button>Inside one</button><button>Inside two</button>"></iframe><button id="after">After</button>'
+    await fixture('<style>#after:focus{outline:none;box-shadow:none}</style>' + content)
+    const original = runKeyboardChecks(await collect()).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original?.evidenceTargets?.map(target => target.selector)).toEqual(['#after'])
+
+    await context.close()
+    await fixture('<style>#after:focus{outline:3px solid blue}</style>' + content)
+    const current = await collect(), checked = runKeyboardChecks(current)
+    expect(current).toMatchObject({ complete: false, navigationComplete: false, trap: 'not_observed',
+      reason: 'focus_scope_changed', limitations: ['embedded_frame_uninspected'] })
+    expect(current.steps.map(step => step.selector)).toEqual(['#before', '#after'])
+    expect(checked.assertions.find(item => item.key === 'keyboard-exit')).toMatchObject({ complete: false, passed: false })
+    expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt: {
+      kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: current.pageUrl, applicable: true,
+      complete: current.complete, passed: checked.flags.length === 0, assertions: checked.assertions,
+      execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: current.collectedAt },
+    } })?.assertion.passed).toBe(true)
+  })
+
+  it('does not diagnose a focus cycle across an uninspected frame', async () => {
+    await fixture('<button id="before">Before</button><iframe srcdoc="<button>Inside</button>"></iframe><button id="after">After</button>' +
+      '<script>document.querySelector("#after").addEventListener("keydown", event=>{if(event.key==="Tab"){event.preventDefault();document.querySelector("#before").focus()}})</script>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ complete: false, navigationComplete: false, trap: 'unknown' })
+    expect(evidence.steps.map(step => step.selector)).toEqual(['#before', '#after'])
+    expect(runKeyboardChecks(evidence).flags.some(flag => flag.checkId === 'keyboard-nav-trap')).toBe(false)
+  })
+
+  it('counts uninspected frame traversal against the same Tab budget', async () => {
+    const embedded = '<button>Embedded control</button>'.repeat(KEYBOARD_STEP_LIMIT)
+    await fixture('<button id="before">Before</button><iframe srcdoc="' + embedded + '"></iframe><button id="after">After</button>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ complete: false, navigationComplete: false, reason: 'step_limit', steps: [{ selector: '#before' }] })
   })
 
   it('finds an actual trap inside a component through Tab, reverse Tab and Escape', async () => {
@@ -204,14 +241,34 @@ runBrowser('keyboard collector in Chromium', () => {
     expect(runKeyboardChecks(evidence).flags[0]).toMatchObject({ checkId: 'focus-visible-missing',
       evidenceTargets: [{ selector: '#one' }, { selector: '#two' }] })
   })
+  it('separates idle transition declarations from active focus transitions', async () => {
+    await fixture(`<style>
+      button{outline:none;box-shadow:none;transition:box-shadow 10s}
+      #styled:focus-visible{outline:3px solid blue}
+      #moving:focus-visible{box-shadow:0 0 0 5px red}
+      #pseudo::after{content:"";display:block;width:20px;height:3px;transition:background-color 10s}
+      #pseudo:focus-visible::after{background-color:blue}
+    </style><button id="missing">Missing</button><button id="styled">Styled</button><button id="moving">Moving</button><button id="pseudo">Pseudo</button>`)
+    const evidence = await collect(), checked = runKeyboardChecks(evidence)
+    expect(evidence.steps).toMatchObject([
+      { selector: '#missing', indicator: 'missing' },
+      { selector: '#styled', indicator: 'styled' },
+      { selector: '#moving', indicator: 'unknown' },
+      { selector: '#pseudo', indicator: 'unknown' },
+    ])
+    expect(evidence).toMatchObject({ complete: false, navigationComplete: true, reason: 'focus_indicator_unresolved' })
+    expect(checked.flags).toMatchObject([{ checkId: 'focus-visible-missing', evidenceTargets: [{ selector: '#missing' }] }])
+    expect(checked.assertions.find(assertion => assertion.key === 'focus-styles' && assertion.complete === false))
+      .toMatchObject({ passed: false, targets: [{ selector: '#moving' }, { selector: '#pseudo' }] })
+  })
   it('does not count permanent decoration as a cue identifying the focused control', async () => {
-    await fixture('<style>button{outline:3px solid blue;box-shadow:none}button:focus-visible{outline:3px solid blue;box-shadow:none}</style><button id="one">First</button><button id="two">Second</button>')
+    await fixture('<style>button{outline:3px solid blue;box-shadow:none;transition:box-shadow 150ms}button:focus-visible{outline:3px solid blue;box-shadow:none}</style><button id="one">First</button><button id="two">Second</button>')
     const observed = await collect()
     expect(observed.steps.map(step => step.indicator)).toEqual(['missing', 'missing'])
     const original = runKeyboardChecks(observed).flags.find(flag => flag.checkId === 'focus-visible-missing')!
     expect(original.evidenceTargets).toMatchObject([{ selector: '#one' }, { selector: '#two' }])
     await context.close()
-    await fixture('<style>button{outline:3px solid blue;box-shadow:none}button:focus-visible{outline:3px solid red}</style><button id="one">First</button><button id="two">Second</button>')
+    await fixture('<style>button{outline:3px solid blue;box-shadow:none;transition:box-shadow 150ms}button:focus-visible{outline:3px solid red}</style><button id="one">First</button><button id="two">Second</button>')
     const repaired = await collect(), checked = runKeyboardChecks(repaired)
     expect(repaired.steps.map(step => step.indicator)).toEqual(['styled', 'styled'])
     expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt: {
@@ -268,6 +325,35 @@ runBrowser('keyboard collector in Chromium', () => {
     } })?.assertion.passed).toBe(true)
   })
 
+  it('verifies a focus ring on the wrapper of one control against the original missing indicator', async () => {
+    const render = (ring: string) => `<style>body{padding:20px;background:white}
+      .field{display:inline-block;padding:8px}button{outline:none;box-shadow:none}
+      .field:focus-within{outline:${ring}}</style><div class="field"><button id="action">Action</button></div>`
+    await fixture(render('3px solid white'))
+    const original = runKeyboardChecks(await collect()).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original).toBeDefined()
+    await context.close()
+    await fixture(render('3px solid blue'))
+    const repaired = await collect(), checked = runKeyboardChecks(repaired)
+    expect(repaired.steps).toMatchObject([{ selector: '#action', indicator: 'styled' }])
+    expect(checked.flags.some(flag => flag.checkId === 'focus-visible-missing')).toBe(false)
+    expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt: {
+      kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: repaired.pageUrl,
+      applicable: true, complete: repaired.complete, passed: true, assertions: checked.assertions,
+      execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: repaired.collectedAt },
+    } })?.assertion.passed).toBe(true)
+  })
+
+  it('keeps a ring shared by several controls inconclusive for each control', async () => {
+    await fixture(`<style>body{padding:20px;background:white}.field{display:inline-block;padding:8px}
+      button{outline:none;box-shadow:none}.field:focus-within{outline:3px solid blue}</style>
+      <div class="field"><button id="first">First</button><button id="second">Second</button></div>`)
+    const observed = await collect(), checked = runKeyboardChecks(observed)
+    expect(observed.steps).toMatchObject([{ selector: '#first', indicator: 'unknown' }, { selector: '#second', indicator: 'unknown' }])
+    expect(checked.flags.some(flag => flag.checkId === 'focus-visible-missing')).toBe(false)
+    expect(checked.assertions.find(assertion => assertion.key === 'focus-styles')).toMatchObject({ complete: false, passed: false })
+  })
+
   it('keeps an outline over a patterned background inconclusive', async () => {
     await fixture('<style>body{padding:20px;background:linear-gradient(white,blue)}button{outline:none;box-shadow:none}button:focus-visible{outline:3px solid white;outline-offset:2px}</style><button id="action">Action</button>')
     const evidence = await collect(), checked = runKeyboardChecks(evidence)
@@ -275,11 +361,210 @@ runBrowser('keyboard collector in Chromium', () => {
     expect(checked.assertions.find(assertion => assertion.key === 'focus-styles')).toMatchObject({ complete: false, passed: false })
     expect(checked.flags.some(flag => flag.checkId === 'focus-visible-missing')).toBe(false)
   })
+
+  it('requires a distinguishable outer shadow ring before certifying keyboard focus repair', async () => {
+    const render = (ring: string, background: string) => `<style>body{padding:20px;background:${background}}
+      button{outline:none;box-shadow:none}button:focus-visible{box-shadow:${ring}}</style><button id="action">Action</button>`
+    await fixture(render('0 0 0 3px white', 'white'))
+    const before = await collect()
+    expect(before.steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+    const original = runKeyboardChecks(before).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original).toBeDefined()
+    for (const [ring, background, indicator] of [
+      ['0 0 0 0 blue', 'white', 'missing'],
+      ['0 0 0 3px white', 'linear-gradient(white,blue)', 'unknown'],
+      ['0 0 0 0 transparent, 0 0 0 3px blue', 'white', 'styled'],
+    ] as const) {
+      await context.close()
+      await fixture(render(ring, background))
+      const after = await collect(), checked = runKeyboardChecks(after)
+      expect(after.steps).toMatchObject([{ selector: '#action', indicator }])
+      const receipt = { kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: after.pageUrl,
+        applicable: true, complete: after.complete, passed: checked.flags.length === 0, assertions: checked.assertions,
+        execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: after.collectedAt } } as const
+      expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt })?.assertion.passed)
+        .toBe(indicator === 'unknown' ? undefined : indicator === 'styled')
+    }
+  })
+
+  it('ignores transparent-layer changes around a permanent outer shadow ring', async () => {
+    await fixture(`<style>body{background:white;padding:20px}
+      button{outline:none;box-shadow:0 0 0 1px transparent,0 0 0 3px blue}
+      button:focus-visible{box-shadow:0 0 0 5px transparent,0 0 0 3px blue}</style><button id="action">Action</button>`)
+    expect((await collect()).steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+  })
+
+  it.each(['control', 'wrapper'] as const)('compares the exposed layers of a focus ring on the %s', async scope => {
+    const selector = scope === 'control' ? 'button:focus-visible' : '.field:focus-within'
+    const render = (layers: string, background = 'white') => `<style>body{padding:20px;background:${background}}
+      button{outline:none;box-shadow:none}.field{display:inline-block;padding:8px}
+      ${selector}{box-shadow:${layers}}</style><div class="field"><button id="action">Action</button></div>`
+    async function paintChanged() {
+      await page.reload()
+      const clip = { x: 0, y: 0, width: 200, height: 100 }
+      const unfocused = await page.screenshot({ clip })
+      await page.keyboard.press('Tab')
+      expect(await page.locator('#action').evaluate(button => button.matches(':focus-visible'))).toBe(true)
+      return !(await page.screenshot({ clip })).equals(unfocused)
+    }
+    await fixture(render('0 0 0 4px white, 0 0 0 3px blue'))
+    const before = await collect()
+    expect(before.steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+    expect(await paintChanged()).toBe(false)
+    const original = runKeyboardChecks(before).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original).toBeDefined()
+    for (const [layers, background, indicator] of [
+      ['0 0 0 2px white, 0 0 0 4px white', 'white', 'missing'],
+      ['0 0 0 2px white, 0 0 0 4px blue', 'linear-gradient(white,blue)', 'unknown'],
+      ['0 0 0 2px white, 0 0 0 4px blue', 'white', 'styled'],
+    ] as const) {
+      await context.close()
+      await fixture(render(layers, background))
+      const after = await collect(), checked = runKeyboardChecks(after)
+      expect(after.steps).toMatchObject([{ selector: '#action', indicator }])
+      if (indicator === 'styled') expect(await paintChanged()).toBe(true)
+      const receipt = { kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: after.pageUrl,
+        applicable: true, complete: after.complete, passed: checked.flags.length === 0, assertions: checked.assertions,
+        execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: after.collectedAt } } as const
+      expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt })?.assertion.passed)
+        .toBe(indicator === 'unknown' ? undefined : indicator === 'styled')
+    }
+  })
+
+  it('ignores equivalent or hidden layer changes around a permanent ring', async () => {
+    await fixture(`<style>body{background:white;padding:20px}
+      button{outline:none;box-shadow:0 0 0 4px blue}
+      button:focus-visible{box-shadow:0 0 0 2px blue,0 0 0 4px blue,0 0 0 5px white}</style><button id="action">Action</button>`)
+    expect((await collect()).steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+  })
+
+  it.each([
+    ['translucent outline', 'outline:3px solid rgba(0,0,255,.65);outline-offset:2px', 'white', 'styled'],
+    ['matching translucent outline', 'outline:3px solid rgba(255,255,255,.65);outline-offset:2px', 'white', 'missing'],
+    ['translucent outer ring', 'box-shadow:0 0 0 4px rgba(0,0,255,.65)', 'white', 'styled'],
+    ['matching translucent ring', 'box-shadow:0 0 0 4px rgba(255,255,255,.65)', 'white', 'missing'],
+    ['translucent ring over another ring', 'box-shadow:0 0 0 4px rgba(255,255,255,.4), 0 0 0 4px blue', 'white', 'styled'],
+    ['translucent ring behind an opaque ring', 'box-shadow:0 0 0 4px white, 0 0 0 4px rgba(0,0,255,.65)', 'white', 'missing'],
+    ['translucent ring over a patterned backdrop', 'box-shadow:0 0 0 4px rgba(0,0,255,.65)', 'linear-gradient(white,blue)', 'unknown'],
+  ] as const)('checks effective paint for a %s', async (_label, ring, background, indicator) => {
+    await fixture(`<style>body{background:${background};padding:20px}button{outline:none;box-shadow:none}
+      button:focus-visible{${ring}}</style><button id="action">Action</button>`)
+    const evidence = await collect()
+    expect(evidence.steps).toMatchObject([{ selector: '#action', indicator }])
+    if (indicator === 'unknown') return
+    await page.reload()
+    const clip = { x: 0, y: 0, width: 180, height: 90 }
+    const before = await page.screenshot({ clip })
+    await page.keyboard.press('Tab')
+    expect(await page.locator('#action').evaluate(control => control.matches(':focus-visible'))).toBe(true)
+    expect((await page.screenshot({ clip })).equals(before)).toBe(indicator === 'missing')
+  })
+
+  it.each(['outline:3px solid COLOR', 'box-shadow:0 0 0 3px COLOR'])('keeps an unchanged effective %s from qualifying as focus paint', async ring => {
+    await fixture(`<style>body{background:white;min-height:120px;margin:0}button{appearance:none;position:absolute;left:40px;top:40px;width:100px;height:30px;
+      outline:none;box-shadow:none;border-radius:0;${ring.replace('COLOR', '#777')}}
+      button:focus-visible{${ring.replace('COLOR', '#0008')}}</style><button id="action">Action</button>`)
+    expect((await collect()).steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+    await page.reload()
+    const clip = { x: 0, y: 0, width: 180, height: 90 }
+    const before = await page.screenshot({ clip })
+    await page.keyboard.press('Tab')
+    expect((await page.screenshot({ clip })).equals(before)).toBe(true)
+  })
+
+  it.each(['outline:3px solid blue;outline-offset:2px', 'box-shadow:0 0 0 3px blue', 'box-shadow:0 0 2px blue,0 0 0 3px blue'])('does not certify paint clipped to the control border box (%s)', async ring => {
+    const render = (clip: string) => `<style>body{padding:20px;background:white}
+      button{outline:none;box-shadow:none;clip-path:${clip}}button:focus-visible{${ring}}</style><button id="action">Action</button>`
+    await fixture(render('inset(0)'))
+    const clipped = await collect()
+    expect(clipped.steps).toMatchObject([{ selector: '#action', indicator: 'missing' }])
+    const original = runKeyboardChecks(clipped).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original).toBeDefined()
+    await context.close()
+    await fixture(render('none'))
+    const repaired = await collect(), checked = runKeyboardChecks(repaired)
+    expect(repaired.steps).toMatchObject([{ selector: '#action', indicator: 'styled' }])
+    const receipt = { kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: repaired.pageUrl,
+      applicable: true, complete: repaired.complete, passed: true, assertions: checked.assertions,
+      execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: repaired.collectedAt } } as const
+    expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt })?.assertion.passed).toBe(true)
+  })
+
+  it('retains an inset shadow while ignoring a clipped outer layer', async () => {
+    await fixture(`<style>button{outline:none;clip-path:inset(0);box-shadow:inset 0 0 0 2px blue}
+      #unchanged:focus-visible{box-shadow:inset 0 0 0 2px blue,0 0 0 3px red}
+      #changed:focus-visible{box-shadow:inset 0 0 0 2px red,0 0 0 3px blue}</style>
+      <button id="unchanged">Unchanged</button><button id="changed">Changed</button>`)
+    expect((await collect()).steps).toMatchObject([{ selector: '#unchanged', indicator: 'missing' }, { selector: '#changed', indicator: 'styled' }])
+  })
+
+  it.each(['page', 'component'] as const)('requires an inspectable focus repair behind a %s overlay', async scope => {
+    const render = (outline: string, covered: boolean) => {
+      const markup = `<style>button{outline:none}button:focus-visible{outline:${outline}}</style><button id="action"><span>Action</span></button>`
+      const cover = covered ? '<div style="position:fixed;inset:0;z-index:10;background:white"></div>' : ''
+      return scope === 'page' ? markup + cover : '<x-action id="component"></x-action><script>' +
+        'document.querySelector("#component").attachShadow({mode:"open"}).innerHTML=' + JSON.stringify(markup + cover) + '</script>'
+    }
+    await fixture(render('none', false))
+    const original = runKeyboardChecks(await collect()).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original).toBeDefined()
+    const historicalPolicies = ['painted-properties-v3', 'painted-properties-v4', 'painted-properties-v5', 'painted-properties-v6',
+      'painted-properties-v7', 'painted-properties-v8', 'painted-properties-v9'] as const
+    const historical = historicalPolicies.map(policy => ({
+      ...original, evidenceTargets: original.evidenceTargets!.map(target => ({
+        ...target, context: target.context!.replace(KEYBOARD_FOCUS_POLICY, policy),
+      })),
+    }))
+    for (const covered of [true, false]) {
+      await context.close()
+      await fixture(render('3px solid blue', covered))
+      const current = await collect(), checked = runKeyboardChecks(current)
+      expect(current.steps).toMatchObject([{ indicator: covered ? 'unknown' : 'styled' }])
+      expect(checked.assertions.find(item => item.key === 'focus-styles')).toMatchObject({ complete: !covered, passed: !covered })
+      const receipt = {
+        kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: current.pageUrl, applicable: true,
+        complete: current.complete, passed: checked.flags.length === 0, assertions: checked.assertions,
+        execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: current.collectedAt },
+      } as const
+      for (const flag of [original, ...historical]) {
+        expect(scopedAssertionForTarget({ checkId: flag.checkId, flag, receipt })?.assertion.passed).toBe(covered ? undefined : true)
+      }
+      for (const [index, focusPolicy] of historicalPolicies.entries()) {
+        const olderAssertions = runKeyboardChecks({ ...current, focusPolicy }).assertions
+        expect(scopedAssertionForTarget({ checkId: historical[index].checkId, flag: historical[index],
+          receipt: { ...receipt, assertions: olderAssertions } })).toBeUndefined()
+      }
+    }
+  })
+
+  it('samples exposed parts of a control when its center is covered', async () => {
+    await fixture('<style>button{position:absolute;left:40px;top:40px;width:160px;height:40px;outline:none}button:focus-visible{outline:3px solid blue}' +
+      '#cover{position:fixed;left:110px;top:0;width:20px;height:100px;background:white}</style><button id="action">Action</button><div id="cover"></div>')
+    expect((await collect()).steps).toMatchObject([{ selector: '#action', indicator: 'styled' }])
+  })
+
+  it('qualifies focus paint against the actual background of a rounded panel', async () => {
+    await fixture(`<style>body{background:black;margin:0}
+      section{position:relative;width:400px;height:120px;background:white;border-radius:60px}
+      button{position:absolute;top:10px;width:60px;height:30px;outline:none}
+      #corner{left:20px}#interior{left:160px}#contrast{left:260px}
+      button:focus-visible{outline:3px solid white}#contrast:focus-visible{outline-color:blue}</style>
+      <section><button id="corner">Corner</button><button id="interior">Interior</button><button id="contrast">Contrast</button></section>`)
+    const evidence = await collect()
+    expect(evidence.steps).toMatchObject([{ selector: '#corner', indicator: 'unknown' },
+      { selector: '#interior', indicator: 'missing' }, { selector: '#contrast', indicator: 'styled' }])
+    expect(runKeyboardChecks(evidence).flags.find(flag => flag.checkId === 'focus-visible-missing')?.evidenceTargets)
+      .toMatchObject([{ selector: '#interior' }])
+  })
   it.each([
     ['clipped', '<div style="display:inline-block;overflow:hidden"><button id="action">Action</button></div>', ''],
+    ['paint-contained', '<div style="display:inline-block;contain:paint"><button id="action">Action</button></div>', ''],
+    ['masked', '<div style="padding:20px;mask-image:linear-gradient(black,transparent)"><button id="action">Action</button></div>', ''],
+    ['shaped clip', '<button id="action">Action</button>', 'button{clip-path:ellipse(60% 70%)}'],
+    ['rounded control with a rectangular clip', '<button id="action">Action</button>', 'button{border-radius:12px;clip-path:inset(0)}'],
     ['dark canvas', '<button id="action">Action</button>', 'html{color-scheme:dark}'],
   ])('keeps a %s outline inconclusive', async (_label, markup, additionalStyle) => {
-    await fixture(`<style>button{outline:none;box-shadow:none}button:focus-visible{outline:3px solid white;outline-offset:2px}${additionalStyle}</style>${markup}`)
+    await fixture(`<style>button{outline:none;box-shadow:none}button:focus-visible{outline:3px solid blue;outline-offset:2px}${additionalStyle}</style>${markup}`)
     const evidence = await collect()
     expect(evidence.steps).toMatchObject([{ selector: '#action', indicator: 'unknown' }])
     expect(runKeyboardChecks(evidence).flags.some(flag => flag.checkId === 'focus-visible-missing')).toBe(false)
@@ -331,7 +616,7 @@ runBrowser('keyboard collector in Chromium', () => {
     ['generated background', 'button::after{content:"";display:block;width:0;height:3px}button:focus-visible::after{width:20px;background:blue}'],
   ])('retains a painted %s as a focus-specific style', async (_name, style) => {
     await fixture(`<style>button{outline:none;box-shadow:none}${style}</style><button id="action">Action</button>`)
-    expect(await collect()).toMatchObject({ focusPolicy: 'painted-properties-v3', steps: [{ indicator: 'styled' }] })
+    expect(await collect()).toMatchObject({ focusPolicy: KEYBOARD_FOCUS_POLICY, steps: [{ indicator: 'styled' }] })
   })
 
   it('observes a persistent trap using forward, reverse, and Escape keys', async () => {

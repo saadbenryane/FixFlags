@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { config as loadEnv } from 'dotenv'
 import { runGaPull } from '@/lib/growth/ga-pull'
 import { parseGrowthPullCliArgs } from '@/lib/growth/pull-options'
+import { FIXFLAGS_GA_PROPERTY } from '@/lib/growth/reporting-targets'
 import { prisma } from '@/lib/db'
 
 loadEnv({ path: process.env.DOTENV_CONFIG_PATH ?? '.env.local' })
@@ -17,6 +18,9 @@ async function save(filename: string, payload: unknown): Promise<void> {
 
 async function main(): Promise<void> {
   const options = parseGrowthPullCliArgs(process.argv.slice(2))
+  if (process.env.GA4_PROPERTY_ID?.trim().replace(/^properties\//, '') !== FIXFLAGS_GA_PROPERTY) {
+    throw new Error('FixFlags reporting property required')
+  }
   const result = await runGaPull(options)
   if (!result) throw new Error('GSC_SERVICE_ACCOUNT_KEY is required for the GA export')
   await Promise.all([
@@ -30,8 +34,8 @@ async function main(): Promise<void> {
 
 main()
   .then(() => prisma.$disconnect())
-  .catch(async (error) => {
-    console.error('[pull-ga] fatal:', error)
+  .catch(async () => {
+    console.error('[pull-ga] Export failed. Check the FixFlags property, reporting credential, and local arguments.')
     await prisma.$disconnect()
     process.exit(1)
   })

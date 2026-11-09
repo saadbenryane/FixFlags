@@ -6,6 +6,7 @@ import { Container } from '@/components/ui/container'
 import { GuideActions } from '@/components/marketing/guides/GuideActions'
 import { guideMetadata, guideSchema } from '@/components/marketing/guides/guide-seo'
 import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES, getWebsiteGuide } from '@/lib/marketing/copy/guides'
+import { guideDestinationStudy } from '@/lib/marketing/copy/destination-study'
 import s from '@/components/marketing/guides/Guide.module.css'
 
 type Props = { params: Promise<{ slug: string }> }
@@ -23,6 +24,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function GuidePage({ params }: Props) {
   const guide = getWebsiteGuide((await params).slug)
   if (!guide) notFound()
+  const study = guideDestinationStudy(guide.slug)
 
   return <div className={s.page}>
     <MarketingPageViewTracker page={`/guides/${guide.slug}`} />
@@ -38,7 +40,10 @@ export default async function GuidePage({ params }: Props) {
       <div className={s.layout}>
         <nav className={s.contents} aria-label={GUIDES_PAGE.contents}>
           <p>{GUIDES_PAGE.contents}</p>
-          <ul>{guide.sections.map(section => <li key={section.id}><a className={s.link} href={`#${section.id}`}>{section.title}</a></li>)}</ul>
+          <ul>
+            {guide.sections.map(section => <li key={section.id}><a className={s.link} href={`#${section.id}`}>{section.title}</a></li>)}
+            {study && <li><a className={s.link} href={`#${study.id}`}>{study.title}</a></li>}
+          </ul>
         </nav>
         <article className={s.article}>
           {guide.sections.map(section => <section className={s.section} id={section.id} key={section.id}>
@@ -49,6 +54,31 @@ export default async function GuidePage({ params }: Props) {
               return <a className={s.link} href={source.href} key={id}>{source.title}</a>
             })}</div> : null}
           </section>)}
+          {study && <section className={s.section} id={study.id}>
+            <h2>{study.title}</h2>
+            <p>{study.introduction}</p>
+            <table className="mt-6 w-full table-fixed text-left text-sm leading-relaxed">
+              <caption className="mb-3 text-left font-medium">{study.caption}</caption>
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th scope="col" className="w-1/2 pb-2 pr-3 font-medium">{study.columns[0]}</th>
+                  <th scope="col" className="w-16 pb-2 pr-3 font-medium">{study.columns[1]}</th>
+                  <th scope="col" className="pb-2 font-medium">{study.columns[2]}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {study.rows.map(row => <tr key={row.id}>
+                  <th scope="row" className="py-2 pr-3 align-top font-normal">{row.label}</th>
+                  <td className="py-2 pr-3 align-top tabular-nums">{row.status}</td>
+                  <td className="py-2 align-top">{row.observation}</td>
+                </tr>)}
+              </tbody>
+            </table>
+            {study.interpretation.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
+            <p className="text-sm text-muted-foreground">{study.dateLabel} <time dateTime={study.date}>{study.date}</time>.</p>
+            <div className={s.sourceLinks}>{study.sources.map(source =>
+              <a key={source.href} className={s.link} href={source.href}>{source.title}</a>)}</div>
+          </section>}
           <section className={s.example} aria-labelledby="controlled-example">
             <p className={s.label}>{GUIDES_PAGE.exampleLabel}</p>
             <h2 id="controlled-example">{guide.example.title}</h2>

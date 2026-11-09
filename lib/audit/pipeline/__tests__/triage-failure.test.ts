@@ -3,8 +3,14 @@ import { describe, it } from 'vitest'
 import { AuditDeadlineError } from '../../pipeline-errors'
 import { JudgeContractError } from '../../validate-judge-output'
 import { parseTriageFailure, triageFailureCode } from '../triage-failure'
+import { ProviderBudgetError } from '@/lib/billing/provider-budget'
 
 describe('parseTriageFailure', () => {
+  it('preserves local dollar admission as distinct and nonretryable', () => {
+    const error = new ProviderBudgetError('The operational inference budget is fully reserved or consumed')
+    assert.deepEqual(parseTriageFailure(error), { reason: 'budget_unavailable', message: error.message, retryable: false })
+    assert.equal(triageFailureCode('budget_unavailable'), 'AI_BUDGET_UNAVAILABLE')
+  })
   it('maps deadline errors to deadline_exhausted, non-retryable', () => {
     const failure = parseTriageFailure(new AuditDeadlineError('ran out of time'))
     assert.equal(failure.reason, 'deadline_exhausted')

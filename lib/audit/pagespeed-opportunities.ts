@@ -69,7 +69,7 @@ export function readResourceAudits(audits: Record<string, unknown>): ResourceAud
     const details = lighthouseRecord(audit?.details)
     const debug = lighthouseRecord(details?.debugData)
     const metrics = lighthouseRecord(audit?.metricSavings)
-    const score = lighthouseScore(audit)
+    const score = lighthouseScore(audit, providerAuditId)
     let savings = score === null ? null : unit === 'ms'
       ? nonnegativeNumber(metrics?.FCP) ?? nonnegativeNumber(details?.overallSavingsMs)
       : nonnegativeNumber(details?.overallSavingsBytes) ?? nonnegativeNumber(debug?.wastedBytes)

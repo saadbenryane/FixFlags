@@ -1,5 +1,9 @@
+import type { CheckAssertion } from './assertion'
+
 export type AxeTarget = Array<string | string[]>
 export const AXE_DOCUMENT_SCOPE_CONTEXT = 'same-origin-v2'
+export const AXE_EMBEDDED_SCOPE_CONTEXT = ':embedded-v1:'
+export const AXE_FRAME_SELECTOR_SEPARATOR = ' ::frame '
 
 /** Outer entries cross frame documents; nested entries cross shadow roots.
  * The iframe element itself still belongs to the top document. */
@@ -8,7 +12,7 @@ export function isIframeAxeTarget(target: ReadonlyArray<string | readonly string
 }
 
 export function axeTargetSelector(target: ReadonlyArray<string | readonly string[]>): string {
-  return target.map(part => typeof part === 'string' ? part : part.join(' >>> ')).join(' ::frame ')
+  return target.map(part => typeof part === 'string' ? part : part.join(' >>> ')).join(AXE_FRAME_SELECTOR_SEPARATOR)
 }
 
 /** Portable inventory of the installed axe WCAG policy. Runtime results retain actual rule outcomes. */
@@ -32,6 +36,21 @@ export const HTML_CONTROL_NAMES_CONTEXT = ':html-control-names-v' + HTML_CONTROL
 export function currentControlNameObservation(assertion: { key: string; passed: boolean; context?: string }): boolean {
   return !HTML_CONTROL_NAME_CHECK_IDS.some(id => assertion.key === 'dom:' + id) || !assertion.passed ||
     assertion.context?.endsWith(HTML_CONTROL_NAMES_CONTEXT) === true
+}
+
+type AccessibilityAssertion = Pick<CheckAssertion, 'key' | 'passed' | 'complete' | 'context'>
+
+/** A positive HTML count cannot settle a native result for the same
+ * responsibility and capture. Other devices and rules remain independent. */
+export function currentAccessibilityObservation(assertion: AccessibilityAssertion, siblings: readonly AccessibilityAssertion[]): boolean {
+  if (!currentControlNameObservation(assertion)) return false
+  if (!assertion.passed || !assertion.key.startsWith('dom:')) return true
+  const scope = assertion.context?.match(/^accessibility:dom:(desktop|mobile):([a-f0-9]{64}):/)
+  if (!scope) return true
+  const checkId = assertion.key.slice(4)
+  const nativeScope = `accessibility:axe:${scope[1]}:${scope[2]}:${checkId}:`
+  return !siblings.some(item => item.key === 'axe:' + checkId && item.context?.startsWith(nativeScope) &&
+    (!item.passed || item.complete !== true))
 }
 export const AXE_POLICY_RULE_IDS = [
   'area-alt',
@@ -136,3 +155,7 @@ export function axeRuleToCheckId<T extends string>(axeId: T): AxeCheckId<T> {
 }
 export const AXE_POLICY_CHECK_IDS = [...new Set([...AXE_POLICY_RULE_IDS, ...Object.keys(AXE_RULE_CHECK_IDS) as Array<keyof typeof AXE_RULE_CHECK_IDS>].map(id => axeRuleToCheckId(id)))]
 export const ACCESSIBILITY_VERIFICATION_RULE = 'Accessibility observation: repeat the recorded desktop rule responsibilities on every affected page with the same requested and final URLs, capture profile, access conditions and engine policy. Missing rules, unresolved results and unavailable captures cannot certify recovery.'
+
+export function isComparableAccessibilityContext(context: string): boolean {
+  return context.startsWith('accessibility:') && !context.includes(':unknown:')
+}

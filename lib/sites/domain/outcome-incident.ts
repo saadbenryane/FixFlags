@@ -5,6 +5,9 @@ export const outcomeIncidentSchema = z.object({ version: z.literal(1),
   transition: z.enum(['clear', 'failure', 'ongoing_failure', 'recovery', 'regression', 'unknown']),
   incidentRunRequestId: z.string().nullable(), rootFlagIds: z.array(z.string()).max(100),
   flagIds: z.array(z.string()).max(100), recoveredFlagIds: z.array(z.string()).max(100),
+  inconclusiveFlagIds: z.array(z.string().min(1)).max(100).optional(),
+  recoveredBindingKeys: z.array(z.string().min(1)).min(1).max(100).optional(),
+  regressedFlagIds: z.array(z.string().min(1)).max(100).optional(),
   previousAssessmentId: z.string().nullable(),
 }).strict()
 export type OutcomeIncident = z.infer<typeof outcomeIncidentSchema>
@@ -12,6 +15,13 @@ export function readOutcomeIncident(evidence: unknown): OutcomeIncident | null {
   const raw = evidence && typeof evidence === 'object' && !Array.isArray(evidence) ? (evidence as Record<string, unknown>).incident : undefined
   const parsed = outcomeIncidentSchema.safeParse(raw)
   return parsed.success ? parsed.data : null
+}
+
+export function readOutcomeRecovery(evidence: unknown, state: string): OutcomeIncident | null {
+  const incident = readOutcomeIncident(evidence)
+  if (!incident?.incidentRunRequestId || !incident.recoveredFlagIds.length ||
+    (evidence as { supersededByAssessmentId?: unknown })?.supersededByAssessmentId != null) return null
+  return state === 'CLEAR' && incident.transition === 'recovery' || incident.recoveredBindingKeys?.length ? incident : null
 }
 
 /** Unknown checks do not end an incident. Recovery requires the same admitted

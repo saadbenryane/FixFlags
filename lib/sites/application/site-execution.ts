@@ -5,18 +5,20 @@ import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import { analysisEvidenceTaskWhere } from '@/lib/audit/progressive/contracts'
-import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
+import { FLAG_COMPARISON_TARGET, flagComparisonAuditScopeSelect } from '@/lib/audit/flag-comparison'
+import { sameSiteRunAuditWhere } from './analysis-scope'
 
 /** Prior observations omit comparison snapshots and full task artifacts. */
 export const siteObservationExecutionSelect = {
   where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' },
     { workKind: 'browser' }, { workKind: 'captures' }] },
-  select: { recordKind: true, id: true, targetKey: true, status: true, pageUrl: true, workKind: true, workState: true, detail: true, updatedAt: true },
+  select: { recordKind: true, id: true, targetKey: true, scopeKey: true, status: true, pageUrl: true, taskId: true, workKind: true, workState: true, detail: true, updatedAt: true },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
-/** Current conclusions additionally require their committed comparison. */
+/** Current conclusions also read their comparison and unsettled scope. */
 export const siteCoverageExecutionSelect = { ...siteObservationExecutionSelect,
-  where: { OR: [...siteObservationExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET }] },
+  where: { OR: [...siteObservationExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET },
+    { workKind: 'discovery' }, { workKind: { in: ['check', 'search', 'cross-page', 'flow'] }, status: { in: ['PENDING', 'RUNNING'] } }] },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 export const categoryCoverageExecutionSelect = {
@@ -27,7 +29,7 @@ export const categoryCoverageExecutionSelect = {
 export const siteEvidenceAuditSelect = {
   executionSpec: true,
   id: true,
-  parentId: true,
+  ...flagComparisonAuditScopeSelect,
   status: true,
   progress: true,
   reviewDepth: true,
@@ -75,7 +77,7 @@ export async function resolvePriorCompletedAudit(site: SiteRecord, currentId: st
         ...(currentId ? { id: { not: currentId } } : {}),
       },
       orderBy: { completedAt: 'desc' },
-      select: { ...siteEvidenceAuditSelect, verifierExecutions: siteObservationExecutionSelect },
+      select: { ...siteEvidenceAuditSelect, verifierExecutions: siteObservationExecutionSelect, pages: { select: { url: true } } },
     })
   }
   return null
@@ -95,17 +97,17 @@ export type ActiveSiteRun = {
 export async function loadActiveSiteRuns(site: SiteRecord, now: Date): Promise<ActiveSiteRun[]> {
   if (!site.projectId) return []
   const runs = await prisma.runRequest.findMany({
-    where: { projectId: site.projectId, status: { in: ['QUEUED', 'RUNNING'] } },
+    where: { projectId: site.projectId, status: { in: ['QUEUED', 'RUNNING'] }, ...sameSiteRunAuditWhere(site.projectId) },
     orderBy: { requestedAt: 'desc' },
     select: {
       id: true, auditId: true, source: true, executionSpec: true, verificationTarget: true,
       status: true, leaseUntil: true, requestedAt: true, audit: { select: { progress: true } },
-      selections: { select: { outcome: { select: { name: true } } } },
+      selections: { where: { outcome: { projectId: site.projectId } }, select: { outcome: { select: { name: true } } } },
     },
   })
   return runs.filter(run => readExecutionSpec(run.executionSpec)?.scope !== 'FIXTURE_SETUP').map(run => {
     const metadata = monitoringHistoryMetadata({ executionSpec: run.executionSpec, status: run.status, flagCount: 0,
-      runRequests: [{ ...run, assessments: [] }] })
+      runRequests: [run] })
     return { id: run.id, auditId: run.auditId, scope: metadata.scope ?? 'UNKNOWN', targetLabel: metadata.targetLabel ?? null,
       trigger: metadata.trigger ?? 'UNKNOWN', status: !run.leaseUntil || run.leaseUntil <= now ? 'INTERRUPTED' : run.status === 'RUNNING' ? 'RUNNING' : 'QUEUED',
       requestedAt: run.requestedAt.toISOString(), progress: run.audit?.progress ?? 0 }

@@ -10,6 +10,8 @@ import { fixedClock } from '@/lib/time/clock'
 import { executionWrite, withExecutionOwnership, ExecutionOwnershipLost } from '@/lib/audit/execution-ownership'
 import { DELETE, PATCH } from '@/app/api/projects/[id]/route'
 import { GET, POST } from '@/app/api/projects/route'
+import { loadResearchConsent, saveResearchConsent } from '@/lib/growth/research-consent'
+import { RESEARCH_CONSENT_EVENT, RESEARCH_CONSENT_VERSION } from '@/lib/growth/research-consent-contract'
 
 const session = vi.hoisted(() => ({ userId: '' }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: async () => ({ user: { id: session.userId } }) } } }))
@@ -111,13 +113,27 @@ run('legacy Project API uses the Site lifecycle with migrated PostgreSQL', () =>
     const lastRunAt = new Date(now.getTime() - 86_400_000)
     await prisma.project.update({ where: { id: projectId }, data: { watchLastRunAt: lastRunAt, watchPausedAt: now } })
     const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId } })
-    await removeSite({ projectId, userId: owner })
+    const scope = { projectId, userId: owner }
+    const optIn = { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION }
+    const original = await saveResearchConsent(scope, optIn)
+    expect(original.enabled).toBe(true)
+    await removeSite(scope)
     const response = await POST(request('POST', { name: 'Restored fixture', url }))
     expect(response.status).toBe(201)
     expect(await response.json()).toMatchObject({ id: projectId, watchInterval: 'WEEKLY', watchNextRunAt: expect.any(String) })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ deletedAt: null,
       watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date), watchLastRunAt: lastRunAt, watchPausedAt: null })
     expect(await prisma.siteOutcome.findFirstOrThrow({ where: { projectId } })).toMatchObject({ id: outcome.id, confirmedAt: outcome.confirmedAt })
+    expect(await loadResearchConsent(scope)).toMatchObject({ enabled: false, grantedAt: null })
+    const latest = () => prisma.siteLifecycleEvent.findFirstOrThrow({ where: { projectId, name: RESEARCH_CONSENT_EVENT },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] })
+    const withdrawal = await latest()
+    expect(withdrawal.properties).toEqual({ enabled: false, policyVersion: RESEARCH_CONSENT_VERSION, reason: 'site-removed' })
+    expect(withdrawal.createdAt.getTime()).toBeGreaterThan(Date.parse(original.grantedAt!))
+    await saveResearchConsent(scope, { enabled: false })
+    expect((await latest()).id).toBe(withdrawal.id)
+    expect(await saveResearchConsent(scope, optIn)).toMatchObject({ enabled: true })
+    expect((await latest()).createdAt.getTime()).toBeGreaterThan(withdrawal.createdAt.getTime())
   })
 
   it('preserves the configured protocol and port when editing the same Site origin', async () => {

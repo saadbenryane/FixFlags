@@ -6,6 +6,7 @@ export type TriageFailureReason =
   | 'no_provider_keys'
   | 'deadline_exhausted'
   | 'provider_exhausted'
+  | 'budget_unavailable'
   | 'contract_invalid'
   | 'unknown'
 
@@ -35,6 +36,9 @@ export function parseTriageFailure(error: unknown): TriageFailure {
     return { reason: 'contract_invalid', message, retryable: false }
   }
 
+  if (classifyJudgeProviderFailure(error) === 'budget_unavailable') {
+    return { reason: 'budget_unavailable', message, retryable: false }
+  }
   if (classifyJudgeProviderFailure(error)) {
     return { reason: 'provider_exhausted', message, retryable: isRetryableJudgeError(error) }
   }
@@ -64,6 +68,8 @@ export function triageFailureCode(reason: TriageFailureReason): string {
       return 'AUDIT_TIMEOUT'
     case 'contract_invalid':
       return 'AI_CONTRACT_INVALID'
+    case 'budget_unavailable':
+      return 'AI_BUDGET_UNAVAILABLE'
     case 'provider_exhausted':
     case 'unknown':
     default:

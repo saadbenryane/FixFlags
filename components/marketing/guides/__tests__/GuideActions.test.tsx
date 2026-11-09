@@ -4,6 +4,7 @@ import { GuideActions } from '../GuideActions'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { GUIDES_PAGE } from '@/lib/marketing/copy/guides'
 import { ANALYTICS_CONSENT_COOKIE, ANALYTICS_CONSENT_EVENT } from '@/lib/analytics/consent'
+import { GUIDE_ANALYZE_EVENT } from '@/lib/analytics/guide-entry'
 
 const recorded = () => (window.dataLayer ?? []).map(value => Array.from(value as IArguments)).filter(([type]) => type === 'event')
 
@@ -25,14 +26,15 @@ describe('guide acquisition entry', () => {
     window.history.replaceState({}, '', `${page}?utm_source=newsletter&utm_medium=email&utm_campaign=release&url=private&token=private`)
     render(<><MarketingPageViewTracker page={page} /><GuideActions page={page} /></>)
     const link = screen.getByRole('link', { name: GUIDES_PAGE.start })
-    await waitFor(() => expect(link).toHaveAttribute('href', '/new?utm_source=newsletter&utm_medium=email&utm_campaign=release'))
+    await waitFor(() => expect(link).toHaveAttribute('href', '/new?utm_source=newsletter&utm_medium=email&utm_campaign=release&ff_guide=checking-after-publishing'))
     link.addEventListener('click', event => event.preventDefault())
     fireEvent.click(link)
     const events = recorded()
     const view = events.find(([, name]) => name === 'marketing_page_view')?.[2] as Record<string, unknown>
-    const click = events.find(([, name]) => name === 'marketing_interaction')?.[2] as Record<string, unknown>
+    const click = events.find(([, name]) => name === GUIDE_ANALYZE_EVENT)?.[2] as Record<string, unknown>
     expect(view).toMatchObject({ page, utm_source: 'newsletter' })
-    expect(click).toMatchObject({ page, target: 'analyze', journey_id: view.journey_id })
+    expect(click).toMatchObject({ page, journey_id: view.journey_id })
+    expect(events.filter(([, name]) => name === 'marketing_interaction')).toEqual([])
     expect(JSON.stringify(events)).not.toContain('private')
   })
 
@@ -49,8 +51,12 @@ describe('guide acquisition entry', () => {
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
+    expect(link).toHaveAttribute('href', '/new?ff_guide=guides-index')
     expect(recorded().filter(([, name]) => name === 'marketing_page_view')).toHaveLength(1)
     rerender(<><MarketingPageViewTracker page="/guides/checking-after-publishing" /><GuideActions /></>)
     expect(recorded().filter(([, name]) => name === 'marketing_page_view')).toHaveLength(2)
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
+    fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
+    expect(link).toHaveAttribute('href', '/new')
   })
 })

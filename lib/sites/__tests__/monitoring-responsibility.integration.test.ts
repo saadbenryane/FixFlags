@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Prisma, type Audit } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -79,14 +79,15 @@ localDatabase('combined recorded monitoring responsibility', () => {
       }
       const read = vi.spyOn(prisma, '$queryRaw')
       try {
-        for (const scope of ['SITE', 'CATEGORY'] as const) {
-          const admitted = await buildExecutionSpec({ projectId: project.id, targetUrl: root, environment: 'production', scope,
-            ...(scope === 'CATEGORY' ? { categoryArea: 'conversion' as const } : {}), outcomes: [] })
-          expect(admitted.consoleObservationScopes).toEqual([{ pageUrl: root, minimumMs: 6500 }])
-        }
+        const care = await buildExecutionSpec({ projectId: project.id, targetUrl: root, environment: 'production', scope: 'SITE', outcomes: [] })
+        expect(care.consoleObservationScopes).toEqual([{ pageUrl: root, minimumMs: 6500 }])
+        const conversion = await buildExecutionSpec({ projectId: project.id, targetUrl: root, environment: 'production',
+          scope: 'CATEGORY', categoryArea: 'conversion', outcomes: [] })
+        expect(conversion.checks).not.toHaveProperty('console-errors-some')
+        expect(conversion.consoleObservationScopes).toBeUndefined()
         const indexes = read.mock.calls.flatMap(([query], index) =>
           (Array.isArray(query) ? query.join('') : (query as Prisma.Sql).sql).includes('FROM flags flag JOIN audits "source"') ? [index] : [])
-        expect(indexes).toHaveLength(scenario === 'history' ? 4 : 2)
+        expect(indexes).toHaveLength(scenario === 'history' ? 2 : 1)
         for (const index of indexes) {
           const rows = await read.mock.results[index].value as Array<{ target: unknown }>
           expect(rows.length).toBeLessThanOrEqual(512)
@@ -387,6 +388,11 @@ localDatabase('combined recorded monitoring responsibility', () => {
   it('retains admitted and natively observed controls without borrowing another Site, environment, page or receipt producer', async () => {
     const owner = 'action-scope-' + randomUUID(), root = 'https://example.com/', peer = root + 'forms'
     const form = 'form:' + 'a'.repeat(64), action = 'flow:control:' + 'b'.repeat(64), excluded = 'form:' + 'c'.repeat(64)
+    const responseControl = '7'.repeat(64), response = 'flow:response:v1:' + responseControl + ':' + '8'.repeat(64)
+    const pricing = 'flow:pricing:v2:' + 'd'.repeat(64)
+    const trackingControl = 'e'.repeat(64)
+    const redirected = peer + '/', redirectedForm = 'form:' + '9'.repeat(64)
+    const legacyInventory = (url: string) => 'form:' + createHash('sha256').update(url + ':inventory').digest('hex')
     await prisma.user.create({ data: { id: owner, email: owner + '@example.test' } })
     try {
       const project = await prisma.project.create({ data: { userId: owner, name: 'Care control scope', url: root, canonicalHost: 'example.com' } })
@@ -397,6 +403,7 @@ localDatabase('combined recorded monitoring responsibility', () => {
       } })
       await saved('DIAGNOSTIC', { verificationScopes: [{ pageUrl: peer, phases: ['page_load'], actionContexts: [form, form, 'malformed'] }] })
       await saved('SITE', { monitoringBehaviors: [{ pageUrl: peer, behaviors: [], actionContexts: [form] }] })
+      await saved('SITE', { monitoringBehaviors: [{ pageUrl: peer, behaviors: [], actionContexts: [legacyInventory(peer), legacyInventory(redirected)] }] })
       for (const extras of [{ environment: 'staging' }, { targetUrl: peer }])
         await saved('DIAGNOSTIC', { ...extras, verificationScopes: [{ pageUrl: peer, phases: ['page_load'], actionContexts: [excluded] }] })
       await saved('DIAGNOSTIC', { verificationScopes: [{ pageUrl: peer, phases: ['page_load'], actionContexts: [excluded] }] }, foreign.id)
@@ -409,10 +416,34 @@ localDatabase('combined recorded monitoring responsibility', () => {
         auditId: source.id, taskId: task.id, pageUrl: peer, source: 'DETERMINISTIC', targetKey: 'module:flow', scopeKey: 'page:' + peer + ':' + index,
         status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'flow', pageUrl: peer,
           execution: { auditId: sourceId, taskId: task.id, source: 'rendered-dom' },
-          assertions: [{ key: 'primary-action-response', context: index ? excluded : action, complete: true, passed: true }] },
+          assertions: [{ key: 'primary-action-response', context: index ? excluded : action, complete: true, passed: true },
+            { key: 'primary-action-response', context: index ? 'flow:response:v1:' + '6'.repeat(64) + ':' + '8'.repeat(64) : response, complete: true, passed: false },
+            { key: 'pricing-navigation', context: pricing, complete: true, passed: true }] },
       } })
+      const formTask = await prisma.auditExecutionTask.create({ data: { auditId: source.id, targetKey: 'task:form-validation', pageUrl: peer,
+        workKind: 'flow', source: 'EXECUTION', status: 'COMPLETED', workState: 'COMPLETED' } })
+      await prisma.auditVerificationReceipt.create({ data: { auditId: source.id, taskId: formTask.id, pageUrl: redirected,
+        source: 'DETERMINISTIC', targetKey: 'module:form-validation', scopeKey: 'page:' + redirected,
+        status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'form-validation', pageUrl: redirected,
+          execution: { auditId: source.id, taskId: formTask.id, source: 'rendered-dom' },
+          assertions: [legacyInventory(redirected), redirectedForm].map(context => ({
+            key: 'empty-form-validation', context, complete: false, passed: false,
+          })) } } })
+      const trackingSource = await saved('CATEGORY')
+      const trackingContext = (control: string) => 'tracking:public_action:vercel:library:example.com/_vercel/insights/script.js:request:v5:' +
+        '1'.repeat(64) + ':capture:' + '2'.repeat(64) + ':control:' + control + ':page:' + '3'.repeat(64)
+      for (const [index, workKind] of ['flow', 'check'].entries()) {
+        const producer = await prisma.auditExecutionTask.create({ data: { auditId: trackingSource.id, targetKey: 'task:' + workKind, pageUrl: peer,
+          workKind, source: 'EXECUTION', status: 'COMPLETED', workState: 'COMPLETED' } })
+        await prisma.auditVerificationReceipt.create({ data: {
+          auditId: trackingSource.id, taskId: producer.id, pageUrl: peer, source: 'DETERMINISTIC', targetKey: 'module:measurement', scopeKey: 'page:' + peer + ':' + index,
+          status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: peer,
+            execution: { auditId: trackingSource.id, taskId: producer.id, source: 'browser-network' },
+            assertions: [{ key: 'tracking-library', context: trackingContext(index ? 'f'.repeat(64) : trackingControl), complete: true, passed: false }] },
+        } })
+      }
       expect(await monitoringActionResponsibility({ projectId: project.id, environment: 'production', pages: [root, peer] }))
-        .toEqual(new Map([[peer, [action, form]]]))
+        .toEqual(new Map([[peer, ['flow:control:' + responseControl, action, 'flow:control:' + trackingControl, pricing, redirectedForm, form]]]))
       expect(await monitoringActionResponsibility({ projectId: project.id, environment: 'production', pages: [root] })).toEqual(new Map())
     } finally { await prisma.user.delete({ where: { id: owner } }) }
   })

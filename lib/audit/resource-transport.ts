@@ -1,15 +1,30 @@
 import type { CheerioAPI } from 'cheerio'
 import { z } from 'zod'
 import { htmlDocumentBase, isInertHtmlNode } from './html-document'
+import { isJavaScriptMimeType } from './javascript-mime'
 
 const MAX_REFERENCES = 2000
 const MAX_INSECURE = 200
+export const RESOURCE_TRANSPORT_VERSION = 3
+export const RESOURCE_TRANSPORT_CONTEXT = 'resource-transport:v' + RESOURCE_TRANSPORT_VERSION
+export const LEGACY_RESOURCE_TRANSPORT_CONTEXT = 'resource-transport:v2'
+export const RESOURCE_TRANSPORT_VERIFICATION_RULE = 'Recollect the declared resources from the public HTTPS page'
 export const resourceTransportSchema = z.object({
-  version: z.literal(1), complete: z.boolean(), inspected: z.number().int().nonnegative().max(MAX_REFERENCES),
+  version: z.union([z.literal(1), z.literal(2), z.literal(RESOURCE_TRANSPORT_VERSION)]),
+  complete: z.boolean(), inspected: z.number().int().nonnegative().max(MAX_REFERENCES),
   insecure: z.array(z.object({ kind: z.string().max(40), url: z.string().url().max(2000) }).strict()).max(MAX_INSECURE),
 }).strict()
 export type ResourceTransport = z.infer<typeof resourceTransportSchema>
 export const RESOURCE_TRANSPORT_SCOPE = 'Inspects resource URLs declared in this HTML, including responsive candidates. CSS contents, JavaScript-created requests, nested documents and actual browser delivery are outside this observation.'
+
+function hasScriptSource(type: string | undefined, language: string | undefined) {
+  if (type !== undefined) {
+    const declared = type.toLowerCase()
+    return declared === '' || declared === 'module' ||
+      isJavaScriptMimeType(declared.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, ''))
+  }
+  return !language || isJavaScriptMimeType('text/' + language.toLowerCase())
+}
 
 /** Read URL tokens before descriptors. Commas inside data URLs are not separators. */
 function srcsetUrls(value: string): string[] {
@@ -43,9 +58,16 @@ function srcsetUrls(value: string): string[] {
   return urls
 }
 
+function untrustworthyHttpResource(url: URL) {
+  const host = url.hostname.replace(/\.$/, '')
+  // URL canonicalizes IPv4 literals before the loopback range check.
+  return url.protocol === 'http:' && host !== 'localhost' && !host.endsWith('.localhost') &&
+    !/^127(?:\.\d{1,3}){3}$/.test(host) && host !== '[::1]'
+}
+
 /** No fetches. Preserve a bounded, redacted inventory from the collected HTML. */
 export function collectResourceTransport($: CheerioAPI, pageUrl: string): ResourceTransport {
-  const result: ResourceTransport = { version: 1, complete: true, inspected: 0, insecure: [] }
+  const result: ResourceTransport = { version: RESOURCE_TRANSPORT_VERSION, complete: true, inspected: 0, insecure: [] }
   const base = htmlDocumentBase($, pageUrl)
   const seen = new Set<string>()
   const add = (value: string | undefined, kind: string) => {
@@ -54,10 +76,7 @@ export function collectResourceTransport($: CheerioAPI, pageUrl: string): Resour
     result.inspected++
     let target: URL
     try { target = new URL(value, base) } catch { result.complete = false; return }
-    if (target.protocol !== 'http:') return
-    // Secure Contexts treats loopback and localhost URLs as potentially trustworthy.
-    if (target.hostname === 'localhost' || target.hostname.endsWith('.localhost') ||
-      /^127\./.test(target.hostname) || target.hostname === '[::1]') return
+    if (!untrustworthyHttpResource(target)) return
     target.username = ''; target.password = ''; target.search = ''; target.hash = ''
     const url = target.href
     if (url.length > 2000) { result.complete = false; return }
@@ -72,7 +91,7 @@ export function collectResourceTransport($: CheerioAPI, pageUrl: string): Resour
     const node = $(element)
     if (isInertHtmlNode(element)) return
     const tag = element.tagName.toLowerCase()
-    if (tag === 'script' && node.attr('type') && !/^(?:module|(?:text|application)\/(?:java|ecma)script)$/i.test(node.attr('type')!.split(';')[0].trim())) return
+    if (tag === 'script' && !hasScriptSource(node.attr('type'), node.attr('language'))) return
     if (tag === 'source' && !node.parent().is('picture, audio, video')) return
     if (tag === 'link') {
       const rel = (node.attr('rel') ?? '').toLowerCase().split(/\s+/)
@@ -95,7 +114,7 @@ export function observedInsecureResources(metadata: { resourceTransport?: Resour
   return metadata.images.flatMap(image => {
     try {
       const target = new URL(image.src, pageUrl)
-      if (target.protocol !== 'http:') return []
+      if (!untrustworthyHttpResource(target)) return []
       target.username = ''; target.password = ''; target.search = ''; target.hash = ''
       return [{ kind: 'img', url: target.href }]
     } catch { return [] }

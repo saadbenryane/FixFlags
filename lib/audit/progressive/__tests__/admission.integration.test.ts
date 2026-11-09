@@ -3,11 +3,11 @@ import { Prisma } from '@prisma/client'
 import { createServer } from 'node:http'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { getAuditTaskQueue } from '@/lib/queue/client'
+import { getAuditTaskQueue, isAuditTaskTransportReady } from '@/lib/queue/client'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import { coordinateProgressiveAudit, recoverProgressiveAudits, startProgressiveWorkers } from '../runtime'
-import { loadTaskGraph, loadTasks } from '../engine'
+import { coordinateProgressiveAudit, recoverPendingCoordinators, recoverProgressiveAudits, startProgressiveWorkers } from '../runtime'
+import { loadTaskGraph, loadTasks, persistTaskPlan, recoverActiveTaskGraphs } from '../engine'
 import { httpArtifactSchema } from '../snapshots'
 import { readArtifact, taskKindSchema } from '../contracts'
 import { TASK_QUEUES, taskDeliveryWindow, queueForTask, deliveryResourceSql } from '../queues'
@@ -86,19 +86,20 @@ run('bounded progressive graph admission across independent resource queues', ()
 
   it('keeps reservation lookup independent of a large unclaimed and historical task backlog', async () => {
     const audit = await createAudit()
-    await prisma.$executeRaw`INSERT INTO audit_verifier_executions
+    await prisma.$executeRaw`INSERT INTO audit_execution_tasks
       (id, "auditId", "targetKey", source, status, "workKind", "workState", "workDispatchState", "updatedAt")
-      SELECT ${audit.id} || '-work-' || n, ${audit.id}, 'task:work-' || n, 'EXECUTION', 'COMPLETED', 'http',
-        CASE WHEN n <= 8 THEN 'READY'::"AuditWorkState" WHEN n <= 8008 THEN 'READY'::"AuditWorkState" ELSE 'COMPLETED'::"AuditWorkState" END,
+      SELECT ${audit.id} || '-work-' || n, ${audit.id}, 'task:work-' || n, 'EXECUTION',
+        CASE WHEN n <= 8008 THEN 'PENDING'::"VerifierExecutionStatus" ELSE 'COMPLETED'::"VerifierExecutionStatus" END, 'http',
+        CASE WHEN n <= 8008 THEN 'READY'::"AuditWorkState" ELSE 'COMPLETED'::"AuditWorkState" END,
         CASE WHEN n <= 8 THEN 'SENT'::"AuditDispatchState" ELSE 'PENDING'::"AuditDispatchState" END, now()
       FROM generate_series(1, 24008) n`
-    await prisma.$executeRaw`ANALYZE audit_verifier_executions`
+    await prisma.$executeRaw`ANALYZE audit_execution_tasks`
     const query = reservedDeliveryQuery('http', 'excluded-task', new Date())
     expect(await prisma.$queryRaw(query)).toHaveLength(8)
     const [plan] = await prisma.$queryRaw<Array<{ 'QUERY PLAN': unknown }>>(Prisma.sql`EXPLAIN (ANALYZE, FORMAT JSON) ${query}`)
     const serialized = JSON.stringify(plan)
     expect(serialized).toContain('audit_verifier_delivery_window_idx')
-    expect(serialized).not.toContain('"Node Type":"Seq Scan","Parallel Aware":false,"Async Capable":false,"Relation Name":"audit_verifier_executions"')
+    expect(serialized).not.toContain('"Node Type":"Seq Scan","Parallel Aware":false,"Async Capable":false,"Relation Name":"audit_execution_tasks"')
   })
 
   it('collects and evaluates another Site while earlier provider work still owns the legacy audit capacity', async () => {
@@ -163,5 +164,74 @@ run('bounded progressive graph admission across independent resource queues', ()
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: available.id } })).toMatchObject({ startedAt: expect.any(Date) })
     expect((await loadTaskGraph(available.id)).find(task => task.workKind === 'bindings'))
       .toMatchObject({ workState: 'READY', workDispatchState: 'SENT', workAttempts: 0 })
+  })
+
+  it('recovers an older queued coordinator while an earlier Audit is locked and leaves fresh Audits to normal delivery', async () => {
+    const fresh = await createAudit('security-headers-missing')
+    const lockedAudit = await createAudit('security-headers-missing')
+    const due = await createAudit('security-headers-missing')
+    await prisma.audit.updateMany({ where: { id: { in: [lockedAudit.id, due.id] } }, data: { createdAt: new Date(Date.now() - 60_000) } })
+    await prisma.audit.update({ where: { id: due.id }, data: { dispatchNextAt: new Date(1) } })
+    let locked!: () => void, release!: () => void
+    const ready = new Promise<void>(resolve => { locked = resolve })
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const holder = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM audits WHERE id = ${lockedAudit.id} FOR NO KEY UPDATE`
+      locked()
+      await gate
+    }, { timeout: 10_000 })
+    let recovery: Promise<void> | undefined
+    try {
+      await ready
+      recovery = recoverPendingCoordinators(1)
+      await vi.waitFor(async () => expect(await prisma.audit.findUniqueOrThrow({ where: { id: due.id } }))
+        .toMatchObject({ startedAt: expect.any(Date) }), { timeout: 2_000, interval: 25 })
+      await recovery
+      expect(await loadTaskGraph(due.id)).toEqual(expect.arrayContaining([expect.objectContaining({ workKind: 'http' })]))
+      expect(await loadTaskGraph(fresh.id)).toHaveLength(0)
+      expect(await loadTaskGraph(lockedAudit.id)).toHaveLength(0)
+    } finally { release(); await holder; await recovery }
+    await recoverPendingCoordinators(1)
+    expect(await loadTaskGraph(lockedAudit.id)).toEqual(expect.arrayContaining([expect.objectContaining({ workKind: 'http' })]))
+  })
+
+  it('admits plans and settles expired work with the Redis producer disconnected, then delivers from PostgreSQL', async () => {
+    const queued = await createAudit('security-headers-missing')
+    const interrupted = await createAudit('security-headers-missing')
+    await prisma.audit.update({ where: { id: queued.id }, data: { createdAt: new Date(Date.now() - 60_000) } })
+    await prisma.audit.update({ where: { id: interrupted.id }, data: { status: 'CAPTURING', startedAt: new Date() } })
+    await persistTaskPlan(interrupted.id, [{ key: 'p0:http', kind: 'http', scope: 'page:' + interrupted.url, dependencies: [],
+      input: { pageUrl: interrupted.url, primary: true, position: 0, role: 'primary' } }])
+    const [expired] = await loadTaskGraph(interrupted.id)
+    await prisma.auditExecutionTask.update({ where: { id: expired.id }, data: { workState: 'RUNNING', workAttempts: 1,
+      workLeaseUntil: new Date(0), workRecoveryUntil: new Date(0), workToken: randomUUID() } })
+
+    const queue = getAuditTaskQueue('http'), redis = await queue.client
+    const publisher = vi.spyOn(queue, 'getJob')
+    redis.disconnect()
+    try {
+      await vi.waitFor(() => expect(redis.status).toBe('end'))
+      expect(isAuditTaskTransportReady()).toBe(false)
+      await recoverPendingCoordinators(1)
+      const tasks = await loadTaskGraph(queued.id)
+      expect(tasks.find(task => task.workKind === 'http')).toMatchObject({ workState: 'READY', workDispatchState: 'PENDING', workAttempts: 0 })
+      expect(publisher).not.toHaveBeenCalled()
+      await prisma.audit.update({ where: { id: queued.id }, data: { dispatchNextAt: new Date(0) } })
+      expect(await recoverActiveTaskGraphs(2, isAuditTaskTransportReady)).toBe(0)
+      expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: expired.id } }))
+        .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: 'RECOVERY_EXHAUSTED', workToken: null, workAttempts: 1, workResult: null })
+      expect(await loadTaskGraph(queued.id)).toEqual(tasks)
+      expect(publisher).not.toHaveBeenCalled()
+    } finally {
+      publisher.mockRestore()
+      if (redis.status !== 'ready') await redis.connect()
+      // The synthetic lease has no worker to drain it if an assertion failed.
+      await prisma.auditExecutionTask.deleteMany({ where: { id: expired.id, workState: 'RUNNING' } })
+    }
+    expect(isAuditTaskTransportReady()).toBe(true)
+    await prisma.audit.update({ where: { id: queued.id }, data: { dispatchNextAt: new Date(0) } })
+    expect(await recoverActiveTaskGraphs(1, isAuditTaskTransportReady)).toBeGreaterThan(0)
+    await vi.waitFor(async () => expect((await loadTaskGraph(queued.id)).find(task => task.workKind === 'http'))
+      .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 }), { timeout: 10_000, interval: 50 })
   })
 })

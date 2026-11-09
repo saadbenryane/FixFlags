@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CHECKOUT_ENTRY_EVALUATOR, DEFAULT_AVAILABILITY_EVALUATOR } from '@/lib/sites/domain/outcome-evaluation'
 vi.mock('node:crypto', async () => ({ ...await vi.importActual('node:crypto'), randomUUID: () => 'run-1' }))
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
@@ -101,6 +102,10 @@ const ownedOutcome = {
   project: { url: 'https://shop.example/' },
   bindings: [{ key: 'checkout-browser-v1', version: 1, enabled: true, mechanism: 'BROWSER_JOURNEY', required: true, config: { startUrl: 'https://shop.example/products/widget' } }],
 }
+
+const savedOutcomeCoverage = { environment: 'production', requiredBindings: ['http'], observedBindings: ['http'],
+  bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: 'https://shop.example/' },
+    evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] }
 
 describe('RunRequest tenant boundary and idempotency', () => {
   it('admits server-owned authorization without changing the executable definition or trusting caller context', async () => {
@@ -502,12 +507,19 @@ describe('RunRequest tenant boundary and idempotency', () => {
     const expanded = { ...baseline, monitoringPages: [root, peer], ...(kind !== 'page' ? { monitoringBehaviors: [{ pageUrl: peer,
       behaviors: kind === 'behavior' ? ['slow-replay'] : [], ...(kind === 'control' ? { actionContexts: ['form:' + 'a'.repeat(64)] } : {}) }] } : {}) }
     mocks.auditFindFirst.mockResolvedValue({ id: 'expanded-inventory', url: root, executionSpec: expanded, pages: [] })
-    mocks.historicalPageScope.mockImplementation(async (query: TemplateStringsArray) => query.join('').includes('SELECT DISTINCT "pageUrl", context')
+    mocks.historicalPageScope.mockImplementation(async (query: TemplateStringsArray) => query.join('').includes('SELECT "pageUrl", context FROM candidates')
       ? kind === 'control' ? [{ pageUrl: peer, context: 'form:' + 'a'.repeat(64) }] : [] : [])
     mocks.runFindFirst.mockResolvedValue({ id: 'narrow-run', auditId: 'narrow-audit', projectId: 'project-1',
       environment: 'production', executionSpec: admitted, requestHash: executionIntentHash(admitted), selections: [], verificationTarget: null })
     await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', scope: 'SITE', outcomeIds: [], source: 'WEB',
       idempotencyKey: 'expanded-care' })).rejects.toMatchObject({ status: 409, code: 'SITE_RUN_IN_PROGRESS' })
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+
+  it('does not admit another Outcome alongside the selected repair', async () => {
+    await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: ['outcome-1', 'another'], source: 'WEB',
+      verificationTarget: { kind: 'OUTCOME', outcomeId: 'outcome-1', attemptId: 'fix', parentAuditId: 'source' },
+    })).rejects.toMatchObject({ status: 400 })
     expect(mocks.createAudit).not.toHaveBeenCalled()
   })
 
@@ -695,13 +707,15 @@ describe('RunRequest tenant boundary and idempotency', () => {
       status: 'COMPLETED',
       outcomeId: 'outcome-1',
       outcome: { name: 'Checkout' },
-      selections: [{ outcomeId: 'outcome-1', outcome: { name: 'Checkout' } }],
+      selections: [{ outcomeId: 'outcome-1', outcome: { projectId: 'project-1', name: 'Checkout' } }],
       assessments: [{
+        auditId: 'audit-1',
         outcomeId: 'outcome-1',
         state: 'CLEAR',
         summary: 'Checkout reached.',
         assessedAt: new Date('2026-09-21T00:01:00.000Z'),
         validUntil: new Date('2099-01-01T00:00:00.000Z'),
+        coverage: savedOutcomeCoverage, evidence: { reason: 'required_bindings_succeeded' },
       }],
       auditId: 'audit-1',
       audit: { projectId: 'project-1', status: 'COMPLETED', progress: 100, improvementProjectedAt: new Date() },
@@ -718,10 +732,13 @@ describe('RunRequest tenant boundary and idempotency', () => {
   })
 
   it('retains each bound assessment without promoting successful uptime to whole-Site Clear', async () => {
-    mocks.runFindFirst.mockResolvedValue({ id: 'broad', projectId: 'project-1', status: 'COMPLETED', source: 'WATCH',
-      executionSpec: { version: 1, scope: 'SITE', targetUrl: 'https://shop.example/', environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
-      selections: [{ outcomeId: 'availability', outcome: { name: 'This page loads' } }],
-      assessments: [{ outcomeId: 'availability', state: 'CLEAR', summary: 'The page loads.', assessedAt: new Date(), validUntil: new Date('2099-01-01') }],
+    mocks.runFindFirst.mockResolvedValue({ id: 'broad', auditId: 'audit-1', projectId: 'project-1', status: 'COMPLETED', source: 'WATCH',
+      executionSpec: { version: 1, scope: 'SITE', targetUrl: 'https://shop.example/', environment: 'production', checks: {},
+        outcomes: [{ id: 'availability', kind: 'AVAILABILITY', expectation: null, bindingPolicy: 'ALL_REQUIRED',
+          bindings: savedOutcomeCoverage.bindings.map(({ key, version, mechanism, config }) => ({ key, version, mechanism, config, required: true })) }], verificationTarget: null },
+      selections: [{ outcomeId: 'availability', outcome: { projectId: 'project-1', name: 'This page loads' } }],
+      assessments: [{ auditId: 'audit-1', outcomeId: 'availability', state: 'CLEAR', summary: 'The page loads.',
+        assessedAt: new Date(), validUntil: new Date('2099-01-01'), coverage: savedOutcomeCoverage, evidence: { reason: 'available' } }],
       audit: { projectId: 'project-1', progress: 100, status: 'COMPLETED', completedAt: new Date(), reportCompleteness: 'PARTIAL',
         evidenceCoverage: {}, verifierExecutions: [], flags: [], pages: [] }, requestedAt: new Date(), completedAt: new Date(),
     })
@@ -734,13 +751,14 @@ describe('RunRequest tenant boundary and idempotency', () => {
       id: 'run-1', projectId: 'project-1', source: 'WATCH', status: 'COMPLETED',
       outcomeId: 'checkout-1', outcome: { name: 'Checkout' },
       selections: [
-        { outcomeId: 'checkout-1', outcome: { name: 'Checkout' } },
-        { outcomeId: 'form-1', outcome: { name: 'Signup' } },
+        { outcomeId: 'checkout-1', outcome: { projectId: 'project-1', name: 'Checkout' } },
+        { outcomeId: 'form-1', outcome: { projectId: 'project-1', name: 'Signup' } },
       ],
       assessments: [
-        { outcomeId: 'checkout-1', state: 'CLEAR', summary: 'Checkout reached.',
+        { auditId: 'audit-1', outcomeId: 'checkout-1', state: 'CLEAR', summary: 'Checkout reached.',
+          coverage: savedOutcomeCoverage, evidence: { reason: 'required_bindings_succeeded' },
           assessedAt: new Date('2026-09-21T00:01:00.000Z'), validUntil: new Date('2099-01-01T00:00:00.000Z') },
-        { outcomeId: 'form-1', state: 'COULD_NOT_VERIFY', summary: 'No safe completion.',
+        { auditId: 'audit-1', outcomeId: 'form-1', state: 'COULD_NOT_VERIFY', summary: 'No safe completion.',
           assessedAt: new Date('2026-09-21T00:01:00.000Z'), validUntil: new Date('2026-09-21T00:01:00.000Z') },
       ],
       auditId: 'audit-1', audit: { projectId: 'project-1', progress: 100 },
@@ -760,15 +778,15 @@ describe('RunRequest tenant boundary and idempotency', () => {
       source: 'WATCH', environment: 'production', requestedAt: new Date(),
       selections: [
         { outcomeId: 'checkout-1', outcome: {
-          id: 'checkout-1', kind: 'CHECKOUT', staleAfterMinutes: 60,
+          id: 'checkout-1', projectId: 'project-1', kind: 'CHECKOUT', staleAfterMinutes: 60,
           bindings: [{ key: 'checkout-browser-v1', required: true, mechanism: 'BROWSER_JOURNEY', scope: { device: 'mobile' } }],
         } },
         { outcomeId: 'form-1', outcome: {
-          id: 'form-1', kind: 'GENERIC', staleAfterMinutes: 60,
+          id: 'form-1', projectId: 'project-1', kind: 'GENERIC', staleAfterMinutes: 60,
           bindings: [{ key: 'form-browser-v1', required: true, mechanism: 'BROWSER_JOURNEY', scope: null }],
         } },
       ],
-      audit: { journeyReviews: [{ id: 'journey-1', goalAchieved: true, steps: [] }] },
+      audit: { projectId: 'project-1', journeyReviews: [{ id: 'journey-1', goalAchieved: true, steps: [] }] },
     }])
 
     await reconcileOutcomeRunsForAudit('audit-1')
@@ -797,14 +815,15 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.runFindMany.mockResolvedValue([{
       id: 'run-care', projectId: 'project-1', requestedByUserId: 'user-1',
       source: 'WEB', environment: 'production', requestedAt: new Date(),
-      selections: [], audit: { journeyReviews: [] },
+      selections: [], audit: { projectId: 'project-1', journeyReviews: [] },
     }])
 
     await reconcileOutcomeRunsForAudit('audit-care')
 
     expect(mocks.assessmentUpsert).not.toHaveBeenCalled()
     expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'run-care', status: { in: ['QUEUED', 'RUNNING'] } },
+      where: expect.objectContaining({ id: 'run-care', auditId: 'audit-care', projectId: 'project-1',
+        status: { in: ['QUEUED', 'RUNNING'] } }),
       data: expect.objectContaining({ status: 'COMPLETED', leaseUntil: null }),
     }))
   })
@@ -840,11 +859,11 @@ describe('RunRequest tenant boundary and idempotency', () => {
       selections: [{
         outcomeId: 'checkout-1',
         outcome: {
-          id: 'checkout-1', kind: 'CHECKOUT', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
+          id: 'checkout-1', projectId: 'project-1', kind: 'CHECKOUT', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
           bindings: [{ key: 'checkout-browser-v1', required: true, mechanism: 'BROWSER_JOURNEY', scope: null }],
         },
       }],
-      audit: { journeyReviews: [] },
+      audit: { projectId: 'project-1', journeyReviews: [] },
     }])
   }
 
@@ -894,7 +913,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
   it('requires every recorded binding before Clear and keeps a blocked form inconclusive', async () => {
     mocks.executionFindMany.mockImplementation(async ({ where }: { where: { outcomeId: string } }) => {
       if (where.outcomeId === 'checkout-1') {
-        return [{ bindingKey: 'checkout-browser-v1', disposition: 'SUCCEEDED', reason: 'checkout_reached' }]
+        return [{ bindingKey: 'checkout-browser-v1', disposition: 'SUCCEEDED', reason: 'checkout_reached', detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR } }]
       }
       return [{ bindingKey: 'form-browser-v1', disposition: 'BLOCKED', reason: 'protected_or_irreversible' }]
     })
@@ -903,15 +922,15 @@ describe('RunRequest tenant boundary and idempotency', () => {
       source: 'WATCH', environment: 'production', requestedAt: new Date(),
       selections: [
         { outcomeId: 'checkout-1', outcome: {
-          id: 'checkout-1', kind: 'CHECKOUT', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
+          id: 'checkout-1', projectId: 'project-1', kind: 'CHECKOUT', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
           bindings: [{ key: 'checkout-browser-v1', required: true, mechanism: 'BROWSER_JOURNEY', scope: null }],
         } },
         { outcomeId: 'form-1', outcome: {
-          id: 'form-1', kind: 'SIGNUP', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
+          id: 'form-1', projectId: 'project-1', kind: 'SIGNUP', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
           bindings: [{ key: 'form-browser-v1', required: true, mechanism: 'SAFE_FORM', scope: null }],
         } },
       ],
-      audit: { journeyReviews: [] },
+      audit: { projectId: 'project-1', journeyReviews: [] },
     }])
 
     await reconcileOutcomeRunsForAudit('audit-1')
@@ -1053,6 +1072,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
       expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
         where: {
           id: 'run-stale',
+          projectId: 'project-1',
           AND: expect.any(Array),
           auditId: null,
           status: { in: ['QUEUED', 'RUNNING'] },
@@ -1158,7 +1178,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
 
       const where = mocks.runFindMany.mock.calls[0]?.[0]?.where
       // Lease expiry alone cannot establish abandonment while physical work owns it.
-      expect(where).toMatchObject({
+      expect(where.OR[0]).toMatchObject({
         status: { in: ['QUEUED', 'RUNNING'] },
         OR: expect.arrayContaining([{ leaseUntil: null }, { leaseUntil: { lte: expect.any(Date) } },
             { audit: { status: { in: ['COMPLETED', 'FAILED'] }, OR: [

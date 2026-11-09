@@ -11,7 +11,7 @@ export function safeContext(
     Object.entries(value)
       .filter(
         ([key, item]) =>
-          key !== 'scheduled' && !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
+          key !== 'scheduled' && key !== 'watchTargetRevision' && !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
           item !== undefined,
       )
       .map(([key, item]) => {

@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../screenshot'
-import { createAuditPage } from './page-session'
+import { createAuditPage, withAuditPage } from './page-session'
 import { DESKTOP_CAPTURE_PROFILE } from './capture-profile'
 import * as publicTargets from '../url'
 
@@ -17,6 +17,28 @@ async function close(server: Server) {
 
 run('native preview credential origin', () => {
   afterAll(closeBrowser)
+  it('qualifies a public landing redirect while keeping direct sign-in and authorized sessions usable', async () => {
+    const server = createServer((request, response) => {
+      if (request.url === '/requested') {
+        response.writeHead(302, { location: '/login?state=fixture-state' }); response.end(); return
+      }
+      response.setHeader('content-type', 'text/html')
+      response.end('<!doctype html><title>Account</title><h1>Sign in</h1>')
+    })
+    const url = await listen(server), login = url + '/login'
+    const options = { profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, requirePublicLanding: true }
+    try {
+      const browser = await getAuditBrowser()
+      await expect(createAuditPage(browser, url + '/requested', { ...options, deadline: Date.now() + 6000 }))
+        .rejects.toMatchObject({ code: 'public_sign_in_redirect', httpStatus: 200, finalUrl: login })
+      await withAuditPage(browser, login, { ...options, deadline: Date.now() + 6000 },
+        async session => expect(session.page.url()).toBe(login))
+      await withAuditPage(browser, url + '/requested', { ...options, deadline: Date.now() + 6000,
+        scanAccess: { headers: { 'X-Preview-Token': 'fixture-landing-token' } } },
+      async session => expect(session.page.url()).toBe(login + '?state=fixture-state'))
+    } finally { await close(server) }
+  }, 20_000)
+
   it('keeps worker rendering functional while scoping headers and refusing worker mutations', async () => {
     let leaked = false, protectedHits = 0, workerHeader = false
     const resource = createServer((request, response) => {
@@ -176,7 +198,8 @@ run('native preview credential origin', () => {
         response.writeHead(302, { location: resourceUrl + '/redirected-resource' }); response.end(); return
       }
       response.setHeader('content-type', 'text/html')
-      response.end('<!doctype html><html><body><h1>Private preview content</h1><img src="' + resourceUrl + '/resource"><img src="/redirect"></body></html>')
+      response.end(`<!doctype html><html><body><h1>Private preview content</h1><img src="${resourceUrl}/resource"><img src="/redirect">
+        <script>fetch('${resourceUrl}/reflected-accept',{mode:'no-cors',headers:{Accept:'Application/Private-Preview'}}).catch(()=>{})</script></body></html>`)
     })
     const ownerUrl = await listen(owner)
     let session: Awaited<ReturnType<typeof createAuditPage>> | undefined
@@ -190,8 +213,11 @@ run('native preview credential origin', () => {
       expect(owned.some(request => request.authorization === basic && request.preview === 'fixture-token')).toBe(true)
       expect(external.length).toBeGreaterThan(0)
       expect(external.some(request => request.url === '/redirected-resource')).toBe(true)
+      await vi.waitFor(() => expect(external.some(request => request.url === '/reflected-accept')).toBe(true))
       expect(external.every(request => !request.authorization && !request.preview)).toBe(true)
-      expect(external.every(request => request.accept && request.accept !== 'application/private-preview')).toBe(true)
+      expect(external.map(({ accept }) => accept?.toLowerCase())).not.toContain('application/private-preview')
+      expect(external.find(request => request.url === '/resource')?.accept).toMatch(/^image\//)
+      expect(external.find(request => request.url === '/redirected-resource')?.accept).toBe(external.find(request => request.url === '/resource')?.accept)
     } finally {
       session?.disposeNetwork()
       await session?.page.context().close()

@@ -156,6 +156,9 @@ describe('private screenshot transport with the installed S3 SDK', () => {
       await deleteIntegrityPathArtifacts([id])
       expect(await readIntegrityArtifact(ownRun, 'frame.png')).toBeNull()
       expect(await readIntegrityArtifact(otherRun, 'frame.png')).toEqual(Buffer.from('retained frame'))
+      const cancelled = new AbortController()
+      cancelled.abort(new Error('Caller cancelled local capture'))
+      await expect(readIntegrityArtifact(otherRun, 'frame.png', { signal: cancelled.signal })).rejects.toThrow('Caller cancelled local capture')
       await expect(deleteIntegrityPathArtifacts(['../other'])).rejects.toThrow('canonical integrity path ID')
     } finally {
       for (const run of [ownRun, otherRun]) await fs.rm(path.join(process.cwd(), '.data', 'integrity', run), { recursive: true, force: true })

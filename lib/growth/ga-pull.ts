@@ -1,6 +1,10 @@
 import { google, type analyticsdata_v1beta } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
+import { ACQUISITION_FOLLOWUP_DAYS } from '@/lib/analytics/acquisition-value-cohort'
+import { captureLandingJourneySnapshot, type LandingJourneySnapshot } from '@/lib/analytics/site-first-value-funnel'
+import { exactGaFilter, FIXFLAGS_LANDING_SCOPE, gaReportCoverage } from './reporting-targets'
+import { FIXFLAGS_PUBLIC_GA_PAGES, publicGaPageRows } from './public-ga-pages'
 import {
   type GrowthPullOptions,
   growthArtifactSegment,
@@ -14,6 +18,7 @@ import {
 export type { GrowthPullOptions } from '@/lib/growth/pull-options'
 
 const GA_LANDING_JOURNEY_ROW_LIMIT = 100_000
+const DAY = 86_400_000
 
 function getGa4Property(): string {
   const raw = process.env.GA4_PROPERTY_ID?.trim()
@@ -24,9 +29,9 @@ function getGa4Property(): string {
 export interface GaPullResult {
   summary: Record<string, number | string>
   sources: { fetchedAt: string; sources: Array<Record<string, string | number>> }
-  pages: { fetchedAt: string; pages: Array<Record<string, string | number>> }
+  pages: { fetchedAt: string; pagePathScope?: 'fixflags-public-routes'; pages: Array<Record<string, string | number>> }
   events: { fetchedAt: string; events: Array<Record<string, string | number>> }
-  landingJourneys: GaLandingJourneyArtifact
+  landingJourneys: LandingJourneySnapshot | null
 }
 
 export interface GaLandingJourneyArtifact {
@@ -71,11 +76,10 @@ export function buildGaLandingJourneyArtifact(
   }
 }
 
-function dateRange(days: number): { startDate: string; endDate: string } {
-  const now = new Date()
+function dateRange(days: number, end: Date): { startDate: string; endDate: string } {
   return {
-    endDate: now.toISOString().slice(0, 10),
-    startDate: new Date(now.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+    startDate: new Date(end.getTime() - (days - 1) * DAY).toISOString().slice(0, 10),
   }
 }
 
@@ -104,8 +108,13 @@ function combineDimensionFilters(
   return { andGroup: { expressions } }
 }
 
+type GaReportTarget = {
+  client: ReturnType<typeof google.analyticsdata>
+  property: string
+}
+
 async function runReport(
-  analyticsdata: ReturnType<typeof google.analyticsdata>,
+  target: GaReportTarget,
   dimensions: string[],
   metrics: string[],
   options: GrowthPullOptions,
@@ -113,7 +122,7 @@ async function runReport(
   limit = 10_000,
   orderBy?: { metric: string; desc: boolean },
   additionalDimensionFilter?: Record<string, unknown>,
-  onMetadata?: (metadata: analyticsdata_v1beta.Schema$ResponseMetaData | null) => void,
+  onResponse?: (report: analyticsdata_v1beta.Schema$RunReportResponse) => void,
 ): Promise<Array<Record<string, string | number>>> {
   const excludeCountries = options.excludeCountries ?? []
   const dimensionFilter = combineDimensionFilters([
@@ -129,11 +138,11 @@ async function runReport(
   if (dimensionFilter) body.dimensionFilter = dimensionFilter
   if (orderBy) body.orderBys = [{ metric: { metricName: orderBy.metric }, desc: orderBy.desc }]
 
-  const response = await analyticsdata.properties.runReport({
-    property: getGa4Property(),
+  const response = await target.client.properties.runReport({
+    property: target.property,
     requestBody: body,
   })
-  onMetadata?.(response.data.metadata ?? null)
+  onResponse?.(response.data)
   return (response.data.rows ?? []).map((row) => {
     const entry: Record<string, string | number> = {}
     row.dimensionValues?.forEach((value, index) => {
@@ -147,54 +156,42 @@ async function runReport(
   })
 }
 
-export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPullResult | null> {
-  const auth = await googleServiceAccount(['https://www.googleapis.com/auth/analytics.readonly'])
-  if (!auth) return null
-  // googleapis-common bundles its own google-auth-library type instance.
-  const analyticsdata = google.analyticsdata({ version: 'v1beta', auth: auth as unknown as Parameters<typeof google.analyticsdata>[0]['auth'] })
-  const fetchedAt = new Date().toISOString()
-  const requestedDateRange = dateRange(resolveGrowthPullDays(options))
-  const summaryRows = await runReport(
-    analyticsdata,
-    [],
-    ['totalUsers', 'sessions', 'screenPageViews', 'engagementRate'],
-    options,
-    requestedDateRange,
-  )
-  const first = summaryRows[0] ?? {}
+async function pullFixFlagsLandingJourneys(target: GaReportTarget, options: GrowthPullOptions,
+  landingDateRange: ReturnType<typeof dateRange>, fetchedAt: string, db?: Parameters<typeof captureLandingJourneySnapshot>[2]) {
+  const scope = FIXFLAGS_LANDING_SCOPE
+  if (target.property !== `properties/${scope.property}`) return null
   let landingJourneys: GaLandingJourneyArtifact
   try {
     let reportingTimeZone: string | null = null
     let providerLimited = false
     const rows = await runReport(
-      analyticsdata,
+      target,
       [`customEvent:${ANALYTICS_JOURNEY_PARAM}`],
       ['eventCount'],
       options,
-      requestedDateRange,
+      landingDateRange,
       GA_LANDING_JOURNEY_ROW_LIMIT,
       undefined,
-      {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: { matchType: 'EXACT', value: 'landing_view' },
-        },
-      },
-      (metadata) => {
-        reportingTimeZone = metadata?.timeZone ?? null
-        providerLimited = Boolean(metadata?.subjectToThresholding || metadata?.dataLossFromOtherRow || metadata?.samplingMetadatas?.length)
+      { andGroup: { expressions: [
+        exactGaFilter('hostName', scope.hostname),
+        exactGaFilter('streamId', scope.streamId),
+        exactGaFilter('pagePath', scope.pagePath),
+        exactGaFilter('eventName', scope.eventName),
+      ] } },
+      (report) => {
+        ({ reportingTimeZone, providerLimited } = gaReportCoverage(report))
       },
     )
     landingJourneys = buildGaLandingJourneyArtifact(rows, {
       fetchedAt,
-      ...requestedDateRange,
+      ...landingDateRange,
       reportingTimeZone,
       providerLimited,
     })
   } catch {
     landingJourneys = {
       fetchedAt,
-      ...requestedDateRange,
+      ...landingDateRange,
       reportingTimeZone: null,
       providerLimited: false,
       status: 'unavailable',
@@ -203,6 +200,52 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
       rowLimitReached: false,
     }
   }
+  return captureLandingJourneySnapshot({ ...landingJourneys, scope }, undefined, db)
+}
+
+/** Read the exact landing cohort without persisting a GA artifact. */
+export async function inspectFixFlagsLandingJourneys(window: ReturnType<typeof dateRange>,
+  db: NonNullable<Parameters<typeof captureLandingJourneySnapshot>[2]>) {
+  const property = getGa4Property()
+  if (property !== `properties/${FIXFLAGS_LANDING_SCOPE.property}`) throw new Error('FixFlags GA4 property required')
+  const auth = await googleServiceAccount(['https://www.googleapis.com/auth/analytics.readonly'])
+  if (!auth) throw new Error('GA4 reporting credential unavailable')
+  const target = { property, client: google.analyticsdata({ version: 'v1beta',
+    auth: auth as unknown as Parameters<typeof google.analyticsdata>[0]['auth'] }) }
+  return pullFixFlagsLandingJourneys(target, {}, window, new Date().toISOString(), db)
+}
+
+export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPullResult | null> {
+  const auth = await googleServiceAccount(['https://www.googleapis.com/auth/analytics.readonly'])
+  if (!auth) return null
+  const target = {
+    property: getGa4Property(),
+    // googleapis-common bundles its own google-auth-library type instance.
+    client: google.analyticsdata({ version: 'v1beta', auth: auth as unknown as Parameters<typeof google.analyticsdata>[0]['auth'] }),
+  }
+  const now = new Date()
+  const fetchedAt = now.toISOString()
+  const days = resolveGrowthPullDays(options)
+  const requestedDateRange = dateRange(days, now)
+  // Leave a full reporting day plus a UTC boundary day beyond the seven-day follow-up.
+  const landingDateRange = dateRange(days, new Date(now.getTime() - (ACQUISITION_FOLLOWUP_DAYS + 2) * DAY))
+  const summaryRows = await runReport(
+    target,
+    [],
+    ['totalUsers', 'sessions', 'screenPageViews', 'engagementRate'],
+    options,
+    requestedDateRange,
+  )
+  const first = summaryRows[0] ?? {}
+  const landingJourneys = await pullFixFlagsLandingJourneys(target, options, landingDateRange, fetchedAt)
+  const scope = FIXFLAGS_LANDING_SCOPE
+  const fixFlagsProperty = target.property === `properties/${scope.property}`
+  const pageScope = fixFlagsProperty ? { andGroup: { expressions: [
+    exactGaFilter('hostName', scope.hostname), exactGaFilter('streamId', scope.streamId),
+    { filter: { fieldName: 'pagePath', inListFilter: { values: FIXFLAGS_PUBLIC_GA_PAGES, caseSensitive: true } } },
+  ] } } : undefined
+  const pageRows = await runReport(target, ['pagePath'], ['screenPageViews'], options, requestedDateRange, 100,
+    { metric: 'screenPageViews', desc: true }, pageScope)
   const result: GaPullResult = {
     summary: {
       totalUsers: Number(first.totalUsers ?? 0),
@@ -214,21 +257,19 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
     },
     sources: {
       fetchedAt,
-      sources: await runReport(analyticsdata, ['sessionSource'], ['sessions'], options, requestedDateRange, 50, {
+      sources: await runReport(target, ['sessionSource'], ['sessions'], options, requestedDateRange, 50, {
         metric: 'sessions',
         desc: true,
       }),
     },
     pages: {
       fetchedAt,
-      pages: await runReport(analyticsdata, ['pagePath'], ['screenPageViews'], options, requestedDateRange, 100, {
-        metric: 'screenPageViews',
-        desc: true,
-      }),
+      ...(fixFlagsProperty && { pagePathScope: 'fixflags-public-routes' as const }),
+      pages: fixFlagsProperty ? publicGaPageRows(pageRows) : pageRows,
     },
     events: {
       fetchedAt,
-      events: await runReport(analyticsdata, ['eventName'], ['eventCount'], options, requestedDateRange, 50, {
+      events: await runReport(target, ['eventName'], ['eventCount'], options, requestedDateRange, 50, {
         metric: 'eventCount',
         desc: true,
       }),
@@ -242,10 +283,10 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
     persistGrowthArtifact('ga-sources', `ga/${segment}/sources`, result.sources),
     persistGrowthArtifact('ga-pages', `ga/${segment}/pages`, result.pages),
     persistGrowthArtifact('ga-events', `ga/${segment}/events`, result.events),
-    persistGrowthArtifact(
+    landingJourneys && persistGrowthArtifact(
       'ga-landing-journeys',
       `ga/${segment}/landing-journeys`,
-      result.landingJourneys,
+      landingJourneys,
     ),
   ])
   return result

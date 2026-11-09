@@ -1,13 +1,33 @@
-import { readFile } from 'node:fs/promises'
 import { parsePublicIssueResearch } from '@/lib/graph/public-research'
+import { readReportJson } from './read-report-json'
+
+const USAGE = 'node --import tsx scripts/growth/validate-public-research.ts <release.json> [--manifest <private-manifest.json>]'
 
 /** Local validation only. This command never stores or publishes a dataset. */
 async function main() {
-  const path = process.argv[2]
-  if (!path || process.argv.length !== 3) {
-    throw new Error('Usage: npx tsx scripts/growth/validate-public-research.ts <release.json>')
+  const [path, flag, manifestPath, ...extra] = process.argv.slice(2)
+  if (!path || extra.length || (flag !== undefined && (flag !== '--manifest' || !manifestPath))) {
+    throw new Error('Invalid research validation options')
   }
-  const payload: unknown = JSON.parse(await readFile(path, 'utf8'))
+  const payload = await readReportJson(path)
+  if (manifestPath) {
+    const url = new URL(process.env.DATABASE_URL ?? '')
+    if (!['postgres:', 'postgresql:'].includes(url.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
+      throw new Error('Loopback database required')
+    }
+    const manifest = await readReportJson(manifestPath)
+    const { PrismaClient } = await import('@prisma/client')
+    const { preflightResearchRelease } = await import('@/lib/growth/research-release-preflight')
+    const db = new PrismaClient({ datasourceUrl: url.toString(), log: [] })
+    try {
+      const report = await preflightResearchRelease({ release: payload, manifest }, db)
+      console.log(JSON.stringify(report, null, 2))
+      if (report.status !== 'source-and-version-checks-passed') process.exitCode = 1
+    } finally {
+      await db.$disconnect()
+    }
+    return
+  }
   const dataset = parsePublicIssueResearch(payload)
   if (!dataset) throw new Error('Research release rejected. Check approval, schema, cohort sizes, check versions, and dates.')
   console.log(JSON.stringify({
@@ -24,6 +44,6 @@ async function main() {
 
 main().catch(() => {
   // Do not echo a malformed input, path, private approval reference, or raw JSON.
-  console.error('Research release validation failed. Check approval, schema, cohort sizes, check versions, dates, and JSON input. Usage: npx tsx scripts/growth/validate-public-research.ts <release.json>')
+  console.error(`Research release validation unavailable. Check local JSON files and the loopback database configuration for manifest preflight. Usage: ${USAGE}`)
   process.exitCode = 1
 })

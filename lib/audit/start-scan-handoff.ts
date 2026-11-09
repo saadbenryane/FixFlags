@@ -108,17 +108,18 @@ export function trackStartedAudit(args: {
   utmSource?: string | null
   utmCampaign?: string | null
   journeyId?: string | null
-  auditId?: string | null
   reused?: boolean
 }) {
-  trackEvent('started_audit', {
+  if (args.reused === undefined) return
+  const event = {
     source: args.source,
     is_logged_in: args.isLoggedIn,
     cta_placement: args.ctaPlacement,
     utm_source: args.utmSource ?? undefined,
     utm_campaign: args.utmCampaign ?? undefined,
     journey_id: args.journeyId ?? undefined,
-    audit_id: args.auditId ?? undefined,
     reused: args.reused,
-  })
+  }
+  if (args.reused) trackEvent('audit_reused', event)
+  else trackEvent('started_audit', event)
 }

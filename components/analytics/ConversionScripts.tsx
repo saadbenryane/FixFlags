@@ -1,8 +1,8 @@
 'use client'
 
 import { InteractiveButton } from '@/components/ui/interactive-controls'
-import { usePathname } from 'next/navigation'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
 import { ChevronDown } from 'lucide-react'
 import Script from 'next/script'
@@ -21,8 +21,10 @@ import {
   writeAnalyticsConsent,
 } from '@/lib/analytics/consent'
 import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy/legal'
-import { getGoogleAnalyticsId, initializeGoogleTag } from '@/lib/analytics/gtag'
+import { getGoogleAnalyticsId, initializeGoogleTag, isAnalyticsSuppressedPath, trackControlledGooglePageview } from '@/lib/analytics/gtag'
+import { isControlledGooglePath, usesControlledGooglePageviews } from '@/lib/analytics/controlled-pageview'
 import { ANALYTICS_JOURNEY_STORAGE_KEY } from '@/lib/analytics/journey-id'
+import { carriesPrivateContinuation, isAuthContinuationPath } from '@/lib/http/private-document'
 import styles from './ConversionScripts.module.css'
 
 /**
@@ -51,30 +53,46 @@ function useCaptureClickIds(enabled: boolean) {
 }
 
 export function ConversionScripts() {
-  const pathname = usePathname(),
-    privateAdmin = pathname === '/admin' || pathname?.startsWith('/admin/') === true
+  const pathname = usePathname()
+  if (pathname && isAuthContinuationPath(pathname)) {
+    return <Suspense fallback={null}><AuthContinuationAnalytics pathname={pathname} /></Suspense>
+  }
+  return <AnalyticsForPage pathname={pathname} analyticsSuppressed={isAnalyticsSuppressedPath(pathname)} />
+}
+
+function AuthContinuationAnalytics({ pathname }: { pathname: string }) {
+  const params = useSearchParams()
+  return <AnalyticsForPage pathname={pathname} analyticsSuppressed={!params || carriesPrivateContinuation(pathname, params)} />
+}
+
+function AnalyticsForPage({ pathname, analyticsSuppressed }: { pathname: string | null; analyticsSuppressed: boolean }) {
   const gaId = getGoogleAnalyticsId()
   const adsId = getGoogleAdsId()
   const pixelId = getMetaPixelId()
+  const controlled = usesControlledGooglePageviews()
+  const trackedPath = controlled ? pathname : null
   // The neutral notice is present in the first HTML. The pre-paint preference
   // bootstrap suppresses it for returning visitors until hydration resolves.
   const [consent, setConsent] = useState<AnalyticsConsent | null>()
+  const [googleReady, setGoogleReady] = useState(false)
   const [showPreferences, setShowPreferences] = useState(false)
   const preferencesOpener = useRef<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
-    if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = privateAdmin
+    const excludedGooglePath = controlled && (!trackedPath || !isControlledGooglePath(trackedPath))
+    if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = analyticsSuppressed || excludedGooglePath
+    trackControlledGooglePageview(trackedPath, analyticsSuppressed || excludedGooglePath)
     window.fbq?.(
       'consent',
-      privateAdmin ? 'revoke' : readAnalyticsConsent() === 'granted' ? 'grant' : 'revoke',
+      analyticsSuppressed ? 'revoke' : readAnalyticsConsent() === 'granted' ? 'grant' : 'revoke',
     )
-  }, [privateAdmin, gaId])
+  }, [trackedPath, controlled, analyticsSuppressed, gaId])
   useEffect(() => {
-    if (privateAdmin) return
-    initializeGoogleTag()
+    if (analyticsSuppressed) return
+    setGoogleReady(initializeGoogleTag())
     setConsent(readAnalyticsConsent())
     const onConsent = (event: Event) => {
-      initializeGoogleTag()
+      setGoogleReady(initializeGoogleTag())
       const choice = (event as CustomEvent<AnalyticsConsent>).detail
       window.fbq?.('consent', choice === 'granted' ? 'grant' : 'revoke')
       if (choice === 'denied') {
@@ -100,10 +118,10 @@ export function ConversionScripts() {
       window.removeEventListener(ANALYTICS_CONSENT_EVENT, onConsent)
       window.removeEventListener(ANALYTICS_PREFERENCES_EVENT, onPreferences)
     }
-  }, [privateAdmin])
+  }, [trackedPath, analyticsSuppressed])
 
-  const enabled = !privateAdmin && consent === 'granted'
-  const asking = !privateAdmin && (consent == null || showPreferences)
+  const enabled = !analyticsSuppressed && consent === 'granted'
+  const asking = !analyticsSuppressed && (consent == null || showPreferences)
   const notice = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!showPreferences) return
@@ -116,10 +134,10 @@ export function ConversionScripts() {
 
   const gtagId = gaId || (enabled ? adsId : undefined)
 
-  if (privateAdmin) return null
+  if (analyticsSuppressed) return null
   return (
     <>
-      {consent !== undefined && gtagId ? (
+      {consent !== undefined && gtagId && (!controlled || googleReady) ? (
         <Script
           id="google-tag"
           src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`}

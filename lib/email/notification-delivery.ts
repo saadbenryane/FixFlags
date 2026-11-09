@@ -4,6 +4,21 @@ import { MAX_NOTIFICATION_MESSAGE_BYTES, MAX_NOTIFICATION_ATTACHMENT_BYTES } fro
 
 export const NOTIFICATION_REQUEST_TIMEOUT_MS = 20_000
 const PROVIDER_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60_000
+const NOTIFICATION_DELIVERY_CONCURRENCY = 2
+
+/** Each group retains its selected order while independent groups share two lanes. */
+export async function deliverNotificationBatch<T>(receipts: readonly T[], groupId: (receipt: T) => string,
+  deliver: (receipt: T) => Promise<void>) {
+  const pending = [...Map.groupBy(receipts, groupId).values()]
+  let nextGroup = 0
+  await Promise.all(Array.from({ length: Math.min(NOTIFICATION_DELIVERY_CONCURRENCY, pending.length) }, async () => {
+    while (nextGroup < pending.length) {
+      const alerts = pending[nextGroup++]
+      await deliver(alerts.shift()!)
+      if (alerts.length) pending.push(alerts)
+    }
+  }))
+}
 
 /** Backoff belongs to each persisted delivery, independent of sweep frequency. */
 export function notificationRetryAt(failedAttempt: number, failedAt: Date) {

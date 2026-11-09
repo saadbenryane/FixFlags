@@ -15,6 +15,7 @@ export async function observeJourneyPlan(startUrl: string, contract: ProductCont
   ).createAuditPage(browserForPlan, startUrl, {
     profile: (await import('@/lib/audit/browser/capture-profile')).DESKTOP_CAPTURE_PROFILE,
     journeySafe: true,
+    requirePublicLanding: true,
     scanAccess,
   })
   try {

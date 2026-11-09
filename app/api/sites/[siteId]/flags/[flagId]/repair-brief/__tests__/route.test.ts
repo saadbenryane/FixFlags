@@ -7,7 +7,11 @@ const mocks = vi.hoisted(() => ({ owner: vi.fn(), key: vi.fn(), site: vi.fn(), f
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.owner }))
 vi.mock('@/lib/mcp/tools', () => ({ validateApiKey: mocks.key }))
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.site }))
-vi.mock('@/lib/sites/flags', () => ({ loadSiteFlagDetail: mocks.flag }))
+vi.mock('@/lib/sites/flags', async () => ({ loadSiteRepairBriefPage: async (site: { siteId: string }, id: string, appUrl: string, offset: number, expected?: string) => {
+  const flag = await mocks.flag(site, id)
+  const { buildSiteRepairBrief } = await import('@/lib/sites/repair-brief')
+  return flag ? buildSiteRepairBrief(site.siteId, flag, appUrl, id, offset, expected) : null
+} }))
 vi.mock('@/lib/get-app-url', () => ({ getAppUrl: () => 'https://fixflags.test' }))
 vi.mock('@/lib/sites/application/repair-evidence', () => ({ loadSiteRepairEvidence: mocks.evidence }))
 import { GET } from '../route'

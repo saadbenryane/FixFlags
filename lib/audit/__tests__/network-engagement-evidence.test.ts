@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { networkEngagementObservations, buildSilentFormFailureFlag } from '../checks/network-engagement'
 import { engagementContext, ENGAGEMENT_VERIFICATION_RULE, type EngagementRequest } from '../network-engagement-evidence'
 import { trackingRequestKey } from '../tracking/identity'
-import { checkReceiptSchema } from '../checks/receipt'
+import { checkReceiptSchema, readCheckReceipt } from '../checks/receipt'
 import { scopedAssertionForTarget } from '../checks/verification'
 import { recordedVerificationVerdict } from '../recovery-evidence'
 import type { NetworkFailureRecord } from '../browser/network-monitor'
@@ -15,7 +15,7 @@ const request = (url: string, overrides: Partial<EngagementRequest> = {}): Engag
 const failure = (url: string, status = 503): NetworkFailureRecord => ({ url, method: 'GET', status,
   resourceType: 'fetch', sameOrigin: true, engagementPath: true, at: 0 })
 function observe(requests: EngagementRequest[], failures: NetworkFailureRecord[] = [], extra: object = {}) {
-  return networkEngagementObservations({ pageUrl, failures, evidence: { version: 1, requests, truncated: false }, ...extra })
+  return networkEngagementObservations({ pageUrl, failures, evidence: { version: 3, requests, truncated: false }, ...extra })
 }
 const source = () => observe([request(url, { status: 503 }), request(peer, { status: 503 })], [failure(url), failure(peer)])
 function receipt(observed: ReturnType<typeof observe>) {
@@ -40,11 +40,45 @@ describe('native engagement request evidence', () => {
     expect(JSON.stringify(observed)).not.toContain('PRIVATE_ORIGINAL')
     expect(compare(observed)).toMatchObject({ passed: false, complete: true })
   })
+  it('raises a scoped Flag from bounded engagement evidence even if the generic failure list filled first', () => {
+    const observed = observe([request(url, { status: 503 })])
+    expect(observed.flags).toMatchObject([{ checkId: 'api-engagement-server-error', verificationRule: ENGAGEMENT_VERIFICATION_RULE }])
+    expect(observed.flags[0].evidenceTargets).toHaveLength(1)
+    expect(compare(observe([request(url)]), observed.flags[0])).toMatchObject({ passed: true, complete: true })
+  })
   it('requires all original requests for success while one comparable remaining failure disproves repair', () => {
     expect(compare(observe([request(url)]))).toBeUndefined()
     expect(compare(observe([request(url), request(peer, { status: null, state: 'failed' })]))).toBeUndefined()
     expect(compare(observe([request(url, { status: 503 })], [failure(url)]))).toMatchObject({ passed: false, complete: true })
     expect(compare(observe([request(url), request(peer)]))).toMatchObject({ passed: true, complete: true })
+  })
+  it('retains known failures and withholds positive repair proof when collection reached its request limit', () => {
+    const requests = [request(url), request(peer)]
+    expect(compare(observe(requests, [], { evidence: { version: 3, requests, truncated: true } }))).toBeUndefined()
+    requests.push(request(url, { status: 503 }))
+    expect(compare(observe(requests, [failure(url)], { evidence: { version: 3, requests, truncated: true } })))
+      .toMatchObject({ passed: false, complete: true })
+  })
+  it('keeps a full cohort of unexpected HTML responses within the receipt bounds', () => {
+    const requests = Array.from({ length: 64 }, (_, index) => request(url, {
+      destination: 'https://example.com/api/contact/' + 'x'.repeat(550), status: 210 + index, responseKind: 'unexpected_html',
+    }))
+    const result = receipt(observe(requests))
+    expect(result.assertions[0]).toMatchObject({ passed: false, complete: false, observed: expect.stringContaining('and other responses') })
+  })
+  it('keeps historical response-time capture scopes distinct from initiating scopes', () => {
+    const requests = [request(url), request(peer)]
+    expect(compare(observe(requests, [], { evidence: { version: 2, requests, truncated: false } }))).toBeUndefined()
+  })
+  it('preserves historical failures without certifying successes recorded before redirect lineage', () => {
+    const legacy = (status: number) => observe([], [], { evidence: { version: 2, requests: [request(url, { status })], truncated: false } })
+    const flag = legacy(503).flags[0]
+    expect(compare(legacy(503), flag)).toMatchObject({ passed: false, complete: true })
+    expect(compare(legacy(200), flag)).toBeUndefined()
+    expect(compare(observe([request(url)]), flag)).toBeUndefined()
+    const stored = receipt(legacy(200))
+    for (const value of [stored, { passed: true, assertions: stored.assertions }])
+      expect(readCheckReceipt(value).assertions[0]).toMatchObject({ passed: false, complete: false })
   })
   it('uses the same native source and original cohort in repair and monitoring recovery', () => {
     const original = source().flags[0]
@@ -66,16 +100,25 @@ describe('native engagement request evidence', () => {
     request(url, { status: 403 }),
     request(url, { status: 302 }),
   ])('refuses changed scope, unfinished transfers and access restrictions: %j', changed => {
-    expect(compare(observe([changed, request(peer)], [], { actionContext: 'flow:control:' + 'c'.repeat(64) }))).toBeUndefined()
+    expect(compare(observe([changed, request(peer)]))).toBeUndefined()
   })
   it('retains the original public-action control and refuses a different or missing control', () => {
-    const control = 'flow:control:' + 'c'.repeat(64)
-    const prior = observe([request(url, { phase: 'public_action', status: 401 })], [failure(url, 401)], { actionContext: control })
+    const control = 'c'.repeat(64)
+    const action = (actionKey?: string, status = 200) => {
+      const requests = [request(url, { phase: 'public_action', actionKey, status })]
+      return observe(requests, [], { evidence: { version: 3, requests, truncated: false } })
+    }
+    const prior = action(control, 401)
     expect(prior.flags[0].verificationRule).toBe(ENGAGEMENT_VERIFICATION_RULE)
-    for (const actionContext of [undefined, 'flow:control:' + 'd'.repeat(64)])
-      expect(compare(observe([request(url, { phase: 'public_action' })], [], { actionContext }), prior.flags[0])).toBeUndefined()
-    expect(compare(observe([request(url, { phase: 'public_action' })], [], { actionContext: control }), prior.flags[0]))
-      .toMatchObject({ passed: true, complete: true })
+    expect(compare(action(), prior.flags[0])).toBeUndefined()
+    expect(compare(action('d'.repeat(64)), prior.flags[0])).toBeUndefined()
+    expect(compare(action(control), prior.flags[0])).toMatchObject({ passed: true, complete: true })
+    expect(action(undefined, 401).flags[0]).toMatchObject({ checkId: 'api-engagement-unauthorized' })
+    expect(action(undefined, 401).flags[0].evidenceTargets).toBeUndefined()
+    const historical = { ...prior.flags[0], evidenceTargets: prior.flags[0].evidenceTargets?.map(target => ({
+      ...target, context: target.context?.replace(':request:v4:', ':request:v3:'),
+    })) }
+    expect(compare(action(control), historical)).toBeUndefined()
   })
   it('requires the observed form probe rather than substituting another request for a form response', () => {
     const probe = { url, method: 'GET', status: 503 }

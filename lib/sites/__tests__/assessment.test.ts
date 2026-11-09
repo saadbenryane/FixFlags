@@ -54,6 +54,27 @@ describe('shared Site assessment', () => {
     const stale = facts().map(fact => ({ ...fact, checkedAt: '2026-10-01T12:00:00Z' }))
     expect(projectSiteAssessment({ ...input(), coverage: stale })).toMatchObject({ result: 'STALE', completeness: 'FULL' })
     expect(projectSiteAssessment({ ...input(), outcomes: [{ state: 'STALE' }] }).result).toBe('STALE')
+    const expired = { ...input(), outcomes: [{ id: 'checkout', state: 'CLEAR' as const, validUntil: now }] }
+    expect(siteCardHealth({ ...expired, inFlight: false, finished: true, hasLastKnown: true })).toMatchObject({
+      state: 'unknown', assessment: { result: 'STALE', gaps: [{ area: null, outcomeId: 'checkout', reason: 'stale' }] },
+    })
+  })
+  it('keeps missing proof incomplete when the partial observation also expires', () => {
+    const coverage = facts().map(fact => {
+      if (fact.area === 'tracking') return { ...fact, state: 'unknown' as const, evidenced: false, stale: true }
+      if (fact.area === 'search') return { ...fact, state: 'unknown' as const, incompleteReason: 'A page was not reached', stale: true }
+      return fact
+    })
+    expect(siteCardHealth({ ...input(), coverage, inFlight: false, finished: true, hasLastKnown: true })).toMatchObject({
+      state: 'unknown', assessment: { result: 'COULD_NOT_VERIFY', completeness: 'PARTIAL',
+        gaps: [{ area: 'search', reason: 'incomplete' }, { area: 'tracking', reason: 'incomplete' }] },
+    })
+  })
+  it('honors stale coverage retained after a missed recheck even within its age window', () => {
+    const coverage = facts().map(fact => fact.area === 'tracking' ? { ...fact, state: 'unknown' as const, stale: true } : fact)
+    expect(siteCardHealth({ ...input(), coverage, inFlight: false, finished: true, hasLastKnown: true })).toMatchObject({
+      state: 'unknown', assessment: { result: 'STALE', completeness: 'FULL', gaps: [{ area: 'tracking', reason: 'stale' }] },
+    })
   })
   it('does not require a paused Outcome, but requires an enabled unassessed one', () => {
     expect(projectSiteAssessment({ ...input(), outcomes: [{ state: 'COULD_NOT_VERIFY', enabled: false }] }).result).toBe('CLEAR')

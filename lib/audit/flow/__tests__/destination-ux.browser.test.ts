@@ -1,15 +1,54 @@
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+import { createServer } from 'node:http'
 import { getAuditBrowser, closeBrowser } from '../../screenshot'
+import { createAuditPage } from '../../browser/page-session'
+import { DESKTOP_CAPTURE_PROFILE } from '../../browser/capture-profile'
 import { runDestinationUXProbes } from '../destination-ux-probes'
 import { runFlowUXChecks } from '../../checks/flow-ux'
+import { runFlowChecks } from '../../checks/flow'
+import { assembleFlowModuleCheck } from '../../checks/flow-module-receipt'
 import type { FlowScanResult } from '../run-flow-scan'
 import { runFlowScan } from '../run-flow-scan'
+import { primaryActionAssertions, primaryActionResponseDestinationKey } from '../primary-action-evidence'
 import * as screenshotStorage from '@/lib/storage/screenshots'
 
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('native destination observations', () => {
   afterAll(closeBrowser)
   afterEach(() => vi.unstubAllGlobals())
+  it('records the actual HTTP redirect destination for the original public Checkout link', async () => {
+    const methods: string[] = []
+    const server = createServer((request, response) => {
+      methods.push(request.method ?? '')
+      if (request.url === '/checkout') {
+        response.writeHead(302, { location: '/checkout/alternate' }).end()
+        return
+      }
+      response.setHeader('content-type', 'text/html')
+      response.end(request.url === '/start'
+        ? '<!doctype html><main><h1>Review your shopping cart</h1><a href="/checkout">Checkout</a></main>'
+        : '<!doctype html><title>Checkout</title><main><h1>Checkout</h1><p>Review the items in your cart.</p></main>')
+    })
+    await new Promise<void>((resolve, reject) => server.once('error', reject).listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    if (!address || typeof address === 'string') throw new Error('Checkout fixture did not bind a port')
+    const origin = 'http://127.0.0.1:' + address.port
+    try {
+      const session = await createAuditPage(await getAuditBrowser(), origin + '/start', {
+        profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, deadline: Date.now() + 15_000,
+      })
+      try {
+        const result = await runFlowScan(session.page, 'redirected-checkout-fixture', origin + '/start', {
+          mode: 'primary', captureSteps: false,
+        })
+        expect(result).toMatchObject({ status: 'success', finalUrl: origin + '/checkout/alternate', actionEvidence: {
+          clicked: true, response: 'healthy', httpStatus: 200,
+          responseDestinationKey: primaryActionResponseDestinationKey(origin + '/checkout/alternate'),
+        } })
+        expect(methods.every(method => method === 'GET')).toBe(true)
+      } finally { session.disposeNetwork(); await session.page.context().close() }
+    } finally { await new Promise<void>(resolve => server.close(() => resolve())) }
+  }, 20_000)
   it.each([false, true])('retains a known failed navigation while the error document keeps loading (capture %s)', async captureSteps => {
     const upload = vi.spyOn(screenshotStorage, 'uploadScreenshot').mockResolvedValue('https://fixture.invalid/landing.png')
     const context = await (await getAuditBrowser()).newContext()
@@ -50,6 +89,25 @@ run('native destination observations', () => {
       }
     } finally { await context.close() }
   })
+  it.each([
+    ['blank', '<main></main>'],
+    ['loading', '<main><div aria-busy="true">Loading your account</div></main>'],
+    ['missing page', '<main><h1>Page not found</h1><p>Check the address and try again.</p></main>'],
+  ])('keeps a %s HTTP 200 destination inconclusive for repair', async (_scenario, body) => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      await page.route('**', route => route.fulfill({ contentType: 'text/html', body: route.request().url().endsWith('/start')
+        ? '<!doctype html><main><h1>Useful project planning service</h1><a href="/signup">Get started</a></main>'
+        : '<!doctype html><title>Team signup</title>' + body }))
+      await page.goto('https://example.com/start')
+      const result = await runFlowScan(page, 'incomplete-destination-fixture', page.url(), { mode: 'primary', captureSteps: false })
+      expect(result.actionEvidence).toMatchObject({ clicked: true, httpStatus: 200 })
+      const assertions = primaryActionAssertions(result.actionEvidence)
+      for (const key of ['primary-action-response', 'primary-action-navigation'])
+        expect(assertions.find(assertion => assertion.key === key)).toMatchObject({ complete: false, passed: false })
+    } finally { await context.close() }
+  })
   it('reuses reached-document evidence through the full flow runner', async () => {
     const context = await (await getAuditBrowser()).newContext()
     try {
@@ -73,6 +131,26 @@ run('native destination observations', () => {
       expect(result.destinationUX?.loadQuality.timeToContentMs).toBe(result.postClickMetrics?.timeToFirstContentMs)
       expect(documents).toEqual(['/start', '/signup'])
       expect(requests).not.toHaveBeenCalled()
+    } finally { await context.close() }
+  })
+  it('keeps a rendered missing-page template out of destination content and trust conclusions', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      await page.route('**', route => route.fulfill({ contentType: 'text/html', body: route.request().url().endsWith('/start')
+        ? '<!doctype html><main><h1>Useful project planning service</h1><a href="/signup">Get started</a></main>'
+        : '<!doctype html><title>Page not found</title><main><h1>Page not found</h1><p>The requested page could not be located.</p></main>' }))
+      await page.goto('https://example.com/start')
+      const result = await runFlowScan(page, 'unavailable-destination-content', page.url(), { mode: 'destination', captureSteps: false })
+      const flags = runFlowChecks(result)
+      const { assertions } = assembleFlowModuleCheck({ result, actionRequired: true, actionFlags: flags, pricingOnly: false, targetedPricing: false })
+      const keys = ['destination-headline', 'destination-next-action', 'destination-promise', 'destination-action-count',
+        'destination-form-privacy', 'destination-trust', 'destination-content-timing', 'destination-loading-ui']
+      expect(assertions).toEqual(expect.arrayContaining(keys.map(key =>
+        expect.objectContaining({ key, complete: false, passed: false }))))
+      expect(flags.map(flag => flag.checkId)).not.toContain('flow-destination-no-cta')
+      expect(flags.map(flag => flag.checkId)).not.toContain('flow-cta-destination-no-trust')
+      expect(result.postClickMetrics?.timeToFirstContentMs).not.toBeNull()
     } finally { await context.close() }
   })
   it('uses the rendered headline, enabled controls and native trust signals without another HTTP request', async () => {

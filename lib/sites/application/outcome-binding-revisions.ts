@@ -30,7 +30,7 @@ export async function loadOutcomeBindingRevisions(outcomes: OutcomeBindings[]): 
   return outcomes.map(outcome => outcome.bindings.map(binding => {
     const id = binding.mechanism === 'SAFE_FORM' ? fixtureId(binding.config) : null
     const fixture = id && outcome.projectId ? byScope.get(identity(outcome.projectId, id)) : undefined
-    return { ...(bindingEvaluator(outcome.kind, binding.mechanism) ? { evaluator: bindingEvaluator(outcome.kind, binding.mechanism) } : {}), key: binding.key, required: binding.required, version: binding.version, mechanism: binding.mechanism,
+    return { evaluator: bindingEvaluator(outcome.kind, binding.mechanism, binding.config), key: binding.key, required: binding.required, version: binding.version, mechanism: binding.mechanism,
       ...(fixture ? { fixture: { id: fixture.id, version: fixture.version,
         authorized: fixtureOwnerCurrent(fixture) && fixture.enabled && Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version } } : {}) }
   }))

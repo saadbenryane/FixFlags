@@ -4,6 +4,7 @@ import { isCustomerFlag } from '../../attention'
 import { searchReceiptSchema } from '../contracts'
 import { document, evidence, markup, PAGE } from './fixtures'
 import { assessSearchRecovery } from '../recovery'
+import { observationsForFlag } from '../../flag-observations'
 
 describe('Search responsibilities and classification', () => {
   it.each([403, 404, 429, 503])('does not mistake an HTTP %s error document for published page content', async status => {
@@ -70,9 +71,38 @@ describe('Search responsibilities and classification', () => {
       expect(result.find(item => item.checkId === 'robots-blocks-indexing')?.reason === 'declared_indexing_exclusion').toBe(excluded)
     }
   })
+  it('flags a confirmed sitemap conflict from headers when the document and other sitemap evidence are incomplete', async () => {
+    const original = document(null, { reason: 'response_body_unavailable', headers: { 'x-robots-tag': 'googlebot: noindex' } })
+    const result = await evaluateSearch(evidence(undefined, { original, sitemapUrls: [PAGE], sitemapsComplete: false }), null, ['indexing'])
+    expect(result).toContainEqual(expect.objectContaining({ checkId: 'search-indexing-source', source: 'original-html', disposition: 'unknown' }))
+    expect(result).toContainEqual(expect.objectContaining({ checkId: 'search-indexing-source', source: 'http', disposition: 'observed' }))
+    expect(searchFindings(result)).toContainEqual(expect.objectContaining({ checkId: 'robots-blocks-indexing',
+      attentionPolicy: expect.objectContaining({ reason: 'sitemap_indexing_conflict' }) }))
+  })
+  it.each([{ status: 206 }, { status: 403 }, { reason: 'public_access_challenge' }, { reason: 'public_sign_in_redirect' }])(
+    'does not use indexing headers on an unavailable response: %j', async unavailable => {
+      const original = document(null, { ...unavailable, headers: { 'x-robots-tag': 'noindex' } })
+      const result = await evaluateSearch(evidence(undefined, { original, sitemapUrls: [PAGE] }), null, ['indexing'])
+      expect(result.find(item => item.checkId === 'robots-blocks-indexing')).toMatchObject({ disposition: 'observed', reason: 'indexing_comparison_incomplete' })
+      expect(searchFindings(result)).toEqual([])
+    })
   it('does not erase an original noindex removed by JavaScript', async () => {
     const result = await evaluateSearch(evidence(undefined, { original: document('<meta name="robots" content="noindex">') }))
     expect(result.find(item => item.checkId === 'robots-blocks-indexing')?.reason).toBe('declared_indexing_exclusion')
+  })
+  it('keeps rendered directives while withholding unmatched browser headers and a clean comparison', async () => {
+    const rendered = document('<title>Catalog</title>', { headers: { 'x-robots-tag': 'noindex' } })
+    const result = await evaluateSearch(evidence(undefined, { rendered, renderedResponseScoped: false, sitemapUrls: [PAGE] }), null, ['indexing'])
+    expect(result).toContainEqual(expect.objectContaining({ checkId: 'search-indexing-source', source: 'rendered-dom', disposition: 'observed' }))
+    expect(result).toContainEqual(expect.objectContaining({ checkId: 'search-indexing-source', source: 'http',
+      disposition: 'unknown', reason: 'rendered_response_scope_unavailable' }))
+    expect(result.find(item => item.checkId === 'robots-blocks-indexing')).toMatchObject({ disposition: 'observed', reason: 'indexing_comparison_incomplete' })
+    expect(searchFindings(result)).toEqual([])
+  })
+  it('can use a bound browser response header independently of its HTML', async () => {
+    const rendered = document(null, { headers: { 'x-robots-tag': 'noindex' } })
+    const result = await evaluateSearch(evidence(undefined, { rendered, renderedResponseScoped: true, sitemapUrls: [PAGE] }), null, ['indexing'])
+    expect(searchFindings(result)).toContainEqual(expect.objectContaining({ checkId: 'robots-blocks-indexing' }))
   })
   it('flags a proved sitemap/directive conflict with its policy receipt', async () => {
     const result = await evaluateSearch(evidence('<title>Page</title><meta name="robots" content="noindex">', { sitemapUrls: [PAGE] }))
@@ -95,6 +125,20 @@ describe('Search responsibilities and classification', () => {
     const result = await evaluateSearch(evidence(undefined, { robots: document('server failure', { status: 503 }) }))
     expect(result.find(item => item.checkId === 'search-crawl-access')?.disposition).toBe('unknown')
   })
+  it('does not treat partial page markup, headers or robots rules as Search evidence', async () => {
+    const original = document('<meta name="robots" content="noindex">', { status: 206, headers: { link: '</ignored>; rel=canonical' } })
+    const rendered = document('<title>Partial title</title><link rel="canonical" href="/ignored">', { status: 206 })
+    const robots = document('User-agent: *\nAllow: /', { status: 206, url: PAGE + 'robots.txt', finalUrl: PAGE + 'robots.txt' })
+    const result = await evaluateSearch(evidence(undefined, { original, rendered, robots, sitemapUrls: [PAGE] }), null,
+      ['presentation', 'indexing', 'canonical', 'crawl'])
+    expect(result).toEqual(expect.arrayContaining([
+      expect.objectContaining({ checkId: 'title-missing', disposition: 'unknown' }),
+      expect.objectContaining({ checkId: 'robots-blocks-indexing', disposition: 'unknown' }),
+      expect.objectContaining({ checkId: 'search-crawl-access', disposition: 'unknown' }),
+    ]))
+    expect(result.some(item => item.checkId === 'search-canonical-target')).toBe(false)
+    expect(searchFindings(result)).toEqual([])
+  })
   it.each(['https://cdn.example.net/rules.txt', 'http://example.com/rules.txt', 'https://example.com:8443/rules.txt'])
     ('applies redirected robots rules to their original authority: %s', async finalUrl => {
       const url = PAGE + 'robots.txt'
@@ -106,6 +150,31 @@ describe('Search responsibilities and classification', () => {
       expect((await evaluate('User-agent: *\nDisallow: /')).find(item => item.checkId === 'search-crawl-access'))
         .toMatchObject({ disposition: 'observed', reason: 'declared_crawl_restriction', evidence: [{ url: finalUrl }] })
     })
+  it('compares each observed redirect hop with its own robots authority and keeps repair scoped', async () => {
+    const sameHost = PAGE + 'redirect', target = 'https://example.net/final?mode=public', targetRobots = 'https://example.net/robots.txt'
+    const read = async (rules: string, finalUrl = target, previous?: ReturnType<typeof searchReceiptSchema.parse>) => {
+      const base = evidence(undefined, {
+        original: document('<title>Destination</title>', { finalUrl, redirects: [PAGE, sameHost] }),
+        redirectRobots: [document(rules, { url: targetRobots, finalUrl: targetRobots })],
+      })
+      return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: base.auditId, pageUrl: PAGE,
+        collectedAt: base.collectedAt, complete: true, observations: await evaluateSearch(base, previous, ['crawl']) })
+    }
+    const allowed = await read('User-agent: *\nAllow: /')
+    expect(allowed.observations.filter(item => item.checkId === 'search-crawl-access').map(item => item.disposition)).toEqual(['passed', 'passed', 'passed'])
+    const blocked = await read('User-agent: *\nDisallow: /final', target, allowed)
+    const flag = searchFindings(blocked.observations).find(flag => flag.checkId === 'search-crawl-access')!
+    expect(flag.evidence).toContain('https://example.net/final')
+    expect(flag.evidence).not.toContain('mode=public')
+    expect(assessSearchRecovery(blocked, flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: true, verdict: 'failed' })
+    const initialOnlyPolicy = { policy: 'search', version: 1, kind: 'flag', reason: 'crawl_policy_regressed', sources: ['robots-txt'] }
+    expect(assessSearchRecovery(blocked, flag.checkId, initialOnlyPolicy, PAGE)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const changed = await read('User-agent: *\nAllow: /', 'https://example.net/other', blocked)
+    expect(assessSearchRecovery(changed, flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const repaired = await read('User-agent: *\nAllow: /', target, blocked)
+    expect(assessSearchRecovery(repaired, flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: true, verdict: 'passed' })
+  })
+
   it.each([200, 404])('does not borrow another initial authority\'s robots response: HTTP %s', async status => {
     const result = await evaluateSearch(evidence(undefined, { robots: document('User-agent: *\nAllow: /', {
       url: 'https://other.example.net/robots.txt', finalUrl: PAGE + 'robots.txt', status,
@@ -152,6 +221,120 @@ describe('Search responsibilities and classification', () => {
   it('does not call a failed target fetch a broken canonical', async () => {
     const result = await evaluateSearch(evidence('<title>Page</title><link rel="canonical" href="/other">'))
     expect(result.find(item => item.checkId === 'search-canonical-target')?.disposition).toBe('unknown')
+  })
+  it('does not count a sign-in redirect as a reachable canonical target', async () => {
+    const target = PAGE + 'article', login = PAGE + 'login'
+    const body = '<link rel="canonical" href="/article">'
+    const signIn = document('<title>Sign in to continue</title>', { url: target, finalUrl: login, redirects: [target] })
+    const observations = await evaluateSearch(evidence(body, { canonicalTargets: [signIn] }), null, ['canonical'])
+    expect(observations.find(item => item.checkId === 'search-canonical-target')).toMatchObject({ disposition: 'unknown' })
+    expect(searchFindings(observations)).toEqual([])
+  })
+  it.each([[206, null, 'unknown'], [404, 'response_body_unavailable', 'failed'], [410, 'document_truncated', 'failed']] as const)(
+    'classifies canonical HTTP %s using the recorded response status and collection result', async (status, reason, disposition) => {
+      const target = PAGE + 'article'
+      const canonical = document('Observed response bytes', { url: target, finalUrl: target, status, reason, complete: reason === null })
+      const observations = await evaluateSearch(evidence('<link rel="canonical" href="/article">', { canonicalTargets: [canonical] }), null, ['canonical'])
+      expect(observations.find(item => item.checkId === 'search-canonical-target'))
+        .toMatchObject({ disposition, observed: target + ': HTTP ' + status })
+    })
+  it.each([[200, 'unknown'], [404, 'failed']] as const)('keeps exact HTTP %s evidence honest when a Link field is partially parsed', async (status, disposition) => {
+    const body = '<link rel="canonical" href="/article">', target = PAGE + 'article'
+    const link = '</article>; rel=canonical, </unread>; title="unfinished'
+    const original = document(body, { headers: { link } })
+    const canonicalTarget = document('Canonical article response', { url: target, finalUrl: target, status })
+    const observations = await evaluateSearch(evidence(body, { original, canonicalTargets: [canonicalTarget] }), null, ['canonical'])
+    expect(observations.find(item => item.checkId === 'search-canonical-invalid' && item.source === 'http')?.disposition).toBe('unknown')
+    expect(observations.find(item => item.checkId === 'search-canonical-conflict')?.disposition).toBe('observed')
+    expect(observations.find(item => item.checkId === 'search-canonical-target')?.disposition).toBe(disposition)
+  })
+  it('records a public HTTP canonical when the response body is unavailable', async () => {
+    const target = PAGE + 'article'
+    const original = document(null, { headers: { link: '</article>; rel="alternate canonical"' }, reason: 'response_body_unavailable' })
+    const missing = document(null, { url: target, finalUrl: target, status: 404, complete: true })
+    const observations = await evaluateSearch(evidence(undefined, { original, canonicalTargets: [missing] }), null, ['canonical'])
+    expect(observations.find(item => item.checkId === 'search-canonical-target')).toMatchObject({ disposition: 'failed', observed: target + ': HTTP 404' })
+  })
+  it('verifies corrected canonical syntax only after inspecting every originally failing source', async () => {
+    const checkId = 'search-canonical-invalid'
+    const invalid = '<link rel="canonical" href="javascript:invalid">'
+    const valid = '<link rel="canonical" href="/">'
+    const baseline = await evaluateSearch(evidence(invalid, { original: document(invalid, { headers: { link: '<ftp://example.com/>; rel=canonical' } }) }),
+      null, ['canonical'])
+    const policy = searchFindings(baseline).find(item => item.checkId === checkId)?.attentionPolicy
+    expect(policy?.sources).toEqual(['original-html', 'http', 'rendered-dom'])
+    const receipt = async (rendered: ReturnType<typeof document>) => {
+      const input = evidence(valid, { rendered })
+      return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: input.auditId, pageUrl: PAGE,
+        collectedAt: input.collectedAt, complete: rendered.complete, observations: await evaluateSearch(input, null, ['canonical']) })
+    }
+    expect(assessSearchRecovery(await receipt(document(null)), checkId, policy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(await receipt(document(invalid)), checkId, policy)).toMatchObject({ comparable: true, verdict: 'failed' })
+    expect(assessSearchRecovery(await receipt(document(valid)), checkId, policy)).toMatchObject({ comparable: true, verdict: 'passed' })
+  })
+  it.each(['failed', 'unknown'] as const)('keeps a canonical target %s despite another target redirecting there', async disposition => {
+    const alias = PAGE + 'alias', target = PAGE + 'article'
+    const redirected = document('Reached via the alias', { url: alias, finalUrl: target, redirects: [target] })
+    const exact = document(null, { url: target, finalUrl: target, status: disposition === 'failed' ? 404 : null,
+      complete: disposition === 'failed' })
+    const observations = await evaluateSearch(evidence('<link rel="canonical" href="/alias"><link rel="canonical" href="/article">',
+      { canonicalTargets: [redirected, exact] }), null, ['canonical'])
+    expect(observations.find(item => item.id === 'search-canonical-target:' + alias)?.disposition).toBe('passed')
+    expect(observations.find(item => item.id === 'search-canonical-target:' + target)?.disposition).toBe(disposition)
+  })
+  it('requires every originally failed canonical target for repair and never substitutes another declaration', async () => {
+    const first = PAGE + 'article?lang=en', second = PAGE + 'guide', replacement = PAGE + 'article?lang=fr'
+    const receiptFor = async (targets: Array<[string, number | null]>) => {
+      const input = evidence(targets.map(([url]) => '<link rel="canonical" href="' + url + '">').join(''),
+        { canonicalTargets: targets.map(([url, status]) => document('Observed response', { url, finalUrl: url, status, complete: status !== null })) })
+      return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: input.auditId, pageUrl: PAGE,
+        collectedAt: input.collectedAt, complete: true, observations: await evaluateSearch(input, null, ['canonical']) })
+    }
+    const original = await receiptFor([[first, 404], [second, 404]])
+    const flag = searchFindings(original.observations).find(flag => flag.checkId === 'search-canonical-target')!
+    expect(flag.attentionPolicy).toMatchObject({ resourceKeys: [expect.any(String), expect.any(String)],
+      pageScopes: [{ pageUrl: PAGE, resourceKeys: [expect.any(String), expect.any(String)] }] })
+    const verify = async (targets: Array<[string, number | null]>) =>
+      assessSearchRecovery(await receiptFor(targets), flag.checkId, flag.attentionPolicy, PAGE)
+    expect(await verify([[replacement, 200], [second, 200]])).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(await verify([[first, 404], [second, null], [replacement, 200]])).toMatchObject({ comparable: true, verdict: 'failed' })
+    expect(await verify([[second, 200], [first, 200], [replacement, null]])).toMatchObject({ comparable: true, verdict: 'passed' })
+
+    const { resourceKeys, pageScopes, ...legacyPolicy } = flag.attentionPolicy!
+    expect(resourceKeys).toHaveLength(2)
+    expect(pageScopes).toHaveLength(1)
+    const source = observationsForFlag({ ...flag, attentionPolicy: legacyPolicy }, {
+      auditId: 'original', taskId: 'original-canonical', checkVersion: 1, collectedAt: original.collectedAt,
+    }).items[0]
+    const verifyLegacy = async (targets: Array<[string, number | null]>, retained = source) => {
+      const current = await receiptFor(targets)
+      // v5 used the requested URL in its ID but stored no resource key.
+      const historical = { ...current, observations: current.observations.map(item => item.checkId === flag.checkId
+        ? { ...item, resourceKey: undefined, ...(item.observed.endsWith(': HTTP 206')
+          ? { disposition: 'passed' as const, reason: 'canonical_target_reachable' } : {}) } : item) }
+      return assessSearchRecovery(historical, flag.checkId, legacyPolicy, PAGE, [PAGE], retained)
+    }
+    expect(await verifyLegacy([[replacement, 200], [second, 200]])).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(await verifyLegacy([[first, 206], [second, 200]])).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(await verifyLegacy([[first, 404], [second, null]])).toMatchObject({ comparable: true, verdict: 'failed' })
+    expect(await verifyLegacy([[first, 200], [second, 200]])).toMatchObject({ comparable: true, verdict: 'passed' })
+    expect(await verifyLegacy([[first, 200], [second, 200]], { ...source, provenance: null })).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(await verifyLegacy([[first, 200], [second, 200]], { ...source, evidence: source.evidence + '\nTruncated record' }))
+      .toMatchObject({ comparable: false, verdict: 'unknown' })
+  })
+  it('reuses the completed public navigation response at its final URL', async () => {
+    const target = PAGE + 'article'
+    const body = '<link rel="canonical" href="/article">'
+    const observations = await evaluateSearch(evidence(body, { original: document(body, { finalUrl: target, redirects: [target] }) }), null, ['canonical'])
+    expect(observations.find(item => item.id === 'search-canonical-target:' + target)?.disposition).toBe('passed')
+  })
+  it('prefers a fresh canonical request over a retained copy of the original redirect', async () => {
+    const target = PAGE + 'article', body = '<link rel="canonical" href="/"><link rel="canonical" href="/article">'
+    const original = document(body, { finalUrl: target, redirects: [target] })
+    const direct = document('The original URL is gone', { status: 404 })
+    const observations = await evaluateSearch(evidence(body, { original, canonicalTargets: [{ ...original }, direct] }), null, ['canonical'])
+    expect(observations.find(item => item.id === 'search-canonical-target:' + PAGE)?.disposition).toBe('failed')
+    expect(observations.find(item => item.id === 'search-canonical-target:' + target)?.disposition).toBe('passed')
   })
   it('does not expose credentialed capture as public Search evidence', async () => {
     const result = await evaluateSearch(evidence(undefined, { public: false }))

@@ -9,7 +9,7 @@ const db = vi.hoisted(() => ({
   creditPurchase: { aggregate: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
   siteLifecycleEvent: { upsert: vi.fn() },
   chatUsagePeriod: { upsert: vi.fn(), update: vi.fn() },
-  chatUsageReservation: { aggregate: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+  chatUsageReservation: { aggregate: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
 }))
 vi.mock('@/lib/db', () => ({ prisma: db }))
 vi.mock('@/lib/env', () => ({ getEnv: () => ({ ADMIN_USER_IDS: [] }) }))
@@ -42,6 +42,7 @@ beforeEach(() => {
   db.chatUsagePeriod.update.mockResolvedValue(period)
   db.chatUsageReservation.aggregate.mockResolvedValue({ _sum: { reservedTokens: 0 } })
   db.chatUsageReservation.create.mockResolvedValue({ id: 'reservation' })
+  db.chatUsageReservation.updateMany.mockResolvedValue({ count: 0 })
 })
 
 describe('unrestricted one-website open beta', () => {

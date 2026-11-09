@@ -5,6 +5,10 @@ import { claimExecution } from '@/lib/audit/execution-ownership'
 import { activeRunWhere, reclaimExpiredRuns } from '../run-leases'
 import { reconcileOutcomeRunsForAudit } from '../run-reconciliation'
 import { getOwnedRun } from '../run-queries'
+import { performAdminExternalAction } from '@/lib/admin/external-actions'
+import { adminDomainActorForOperation } from '@/lib/admin/domain-actor'
+import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
+import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 
 const run = process.env.OUTCOME_CONFIRMATION_DB_REQUIRED === 'true' ? describe : describe.skip
 
@@ -36,6 +40,77 @@ run('expired run evidence with migrated PostgreSQL', () => {
     expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: requestId } })).toMatchObject({ status: 'COMPLETED', errorCode: null })
     expect(await getOwnedRun(userId, requestId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
   }
+
+  it.each(['authorized result', 'authorized retirement', 'authorized cleanup', 'transfer before retirement',
+    'revocation before result', 'replacement before request close'] as const)(
+    'keeps operator expired-run recovery within its scope: %s', async scenario => {
+      const authorized = scenario.startsWith('authorized')
+      const fixture = await observed(scenario === 'authorized result' || scenario === 'revocation before result' ? 'COMPLETED' : 'CAPTURING')
+      const { project, audit, request } = fixture
+      if (scenario === 'replacement before request close') await prisma.audit.update({ where: { id: audit.id }, data: { status: 'FAILED' } })
+      const actorId = 'run-recovery-operator-' + randomUUID(), sessionId = randomUUID()
+      await prisma.user.create({ data: { id: actorId, email: actorId + '@example.test', role: 'admin' } })
+      await prisma.session.create({ data: { id: sessionId, userId: actorId, token: randomUUID(), expiresAt: new Date(Date.now() + 60_000) } })
+      const operation = await prisma.adminOperation.create({ data: { actorId, actorSessionId: sessionId, actorAuthenticatedAt: new Date(),
+        action: scenario === 'authorized cleanup' ? 'SITE_ACCOUNT_CLEANUP' : 'SITE_RECONCILE',
+        targetType: 'SITE', targetId: project.id, ownerId: userId, reason: 'Controlled expired-run authority',
+        input: {}, expectedRevision: 'fixture', idempotencyKey: randomUUID(), requestHash: 'fixture', intentExpiresAt: new Date(Date.now() + 60_000),
+        status: 'RUNNING', executionToken: randomUUID(), leaseUntil: new Date(Date.now() + 60_000) } })
+      const find = prisma.audit.findUnique.bind(prisma.audit)
+      const selected = authorized ? undefined : vi.spyOn(prisma.audit, 'findUnique').mockImplementationOnce(async args => {
+        const result = await find(args)
+        if (scenario === 'transfer before retirement') await prisma.$transaction([
+          prisma.project.update({ where: { id: project.id }, data: { userId: actorId } }),
+          prisma.audit.update({ where: { id: audit.id }, data: { userId: actorId } }),
+        ])
+        if (scenario === 'revocation before result') await prisma.session.delete({ where: { id: sessionId } })
+        if (scenario === 'replacement before request close') await prisma.adminOperation.update({ where: { id: operation.id }, data: { executionToken: randomUUID() } })
+        return result
+      })
+      try {
+        if (scenario === 'authorized cleanup') {
+          await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'DELETING' } })
+          await prisma.project.update({ where: { id: project.id }, data: { deletedAt: new Date() } })
+          const scope = { actor: adminDomainActorForOperation(operation), projectId: project.id, userId }
+          await expect(reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit, scope)).rejects.toMatchObject({ code: 'TARGET_CHANGED' })
+          expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit, { ...scope, cleanup: true })).toBe(1)
+          expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'FAILED', errorCode: 'EXECUTION_LEASE_EXPIRED' })
+          return
+        }
+        const tick = performAdminExternalAction(operation, {})
+        if (authorized) {
+          await expect(tick).resolves.toMatchObject({ state: 'RECONCILED', reconciledRuns: 1 })
+          if (scenario === 'authorized result') await completed(request.id)
+          else expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'FAILED', errorCode: 'EXECUTION_LEASE_EXPIRED' })
+          return
+        }
+        await expect(tick).rejects.toMatchObject({ code: scenario === 'transfer before retirement' ? 'TARGET_CHANGED'
+          : scenario === 'revocation before result' ? 'ADMIN_ACCESS_REVOKED' : 'ADMIN_DOMAIN_ACCESS_DENIED' })
+        expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toEqual(request)
+        expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
+          status: scenario === 'replacement before request close' ? 'FAILED' : audit.status, failureCode: null,
+        })
+        expect(await prisma.outcomeAssessment.count({ where: { runRequestId: request.id } })).toBe(0)
+        expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(1)
+      } finally {
+        selected?.mockRestore()
+        if (scenario === 'authorized cleanup') await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'ACTIVE' } })
+        await prisma.adminOperation.delete({ where: { id: operation.id } })
+        await prisma.user.delete({ where: { id: actorId } })
+      }
+    })
+
+  it('reports no settlement until a completed Site Audit has published its comparison', async () => {
+    const { project, audit, request } = await observed()
+    await prisma.runRequest.update({ where: { id: request.id }, data: { executionSpec: { version: 1, engine: 'progressive-v1',
+      scope: 'SITE', environment: 'production', targetUrl: project.url, checks: {}, outcomes: [], verificationTarget: null } } })
+    expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(0)
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'RUNNING' })
+    await prisma.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: FLAG_COMPARISON_TARGET, source: 'SYSTEM', status: 'COMPLETED' } })
+    expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(1)
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'COMPLETED' })
+    expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(0)
+  })
 
   it.each(['selected', 'renewed-before-write'] as const)('preserves a legacy physical lease %s despite an expired request lease', async timing => {
     const fixture = await observed('CAPTURING'), lease = new Date(Date.now() + 90_000)
@@ -101,6 +176,52 @@ run('expired run evidence with migrated PostgreSQL', () => {
     await completed(fixture.request.id)
   })
 
+  it('restores the recorded failure and inconclusive outcome when the worker stopped before settling the run', async () => {
+    const { project, audit, request, outcome } = await observed('CAPTURING')
+    const failedAt = new Date(Date.now() - 60_000)
+    const errorCode = 'QUEUE_ENQUEUE_FAILED'
+    await prisma.runRequest.update({ where: { id: request.id }, data: { requestedAt: new Date(failedAt.getTime() - 1000) } })
+    await prisma.audit.update({ where: { id: audit.id }, data: { status: 'FAILED', completedAt: failedAt,
+      failureCode: errorCode, errorMsg: 'Internal execution diagnostic' } })
+
+    expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(1)
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({
+      status: 'FAILED', errorCode, errorMessage: getUserFacingAuditError(errorCode), completedAt: failedAt, leaseUntil: null,
+    })
+    const assessment = await prisma.outcomeAssessment.findUniqueOrThrow({ where: { runRequestId_outcomeId: { runRequestId: request.id, outcomeId: outcome.id } } })
+    expect(assessment).toMatchObject({ state: 'COULD_NOT_VERIFY', evidence: { reason: errorCode }, assessedAt: failedAt, validUntil: failedAt,
+      coverage: { requiredBindings: ['http'], observedBindings: [] } })
+    expect(await getOwnedRun(userId, request.id)).toMatchObject({ result: 'FAILED', outcomes: [{ outcomeId: outcome.id, result: 'COULD_NOT_VERIFY' }] })
+    expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(0)
+    expect(await prisma.outcomeAssessment.findMany({ where: { runRequestId: request.id } })).toEqual([assessment])
+  })
+
+  it('retains the active run when assessment persistence fails and settles it once on concurrent retry', async () => {
+    const { project, audit, request, outcome } = await observed('CAPTURING')
+    const errorCode = 'CONTROLLED_SETTLEMENT_WRITE_FAILURE'
+    const executionSpec = { version: 1, engine: 'progressive-v1', scope: 'OUTCOMES', targetUrl: project.url, environment: 'production',
+      checks: {}, verificationTarget: null, outcomes: [{ id: outcome.id, kind: outcome.kind, expectation: null,
+        bindingPolicy: outcome.bindingPolicy, bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', required: true,
+          config: { startUrl: project.url }, scope: null }] }] }
+    await prisma.runRequest.update({ where: { id: request.id }, data: { executionSpec } })
+    await prisma.outcomeExecutionBinding.updateMany({ where: { outcomeId: outcome.id }, data: { enabled: false } })
+    await prisma.audit.update({ where: { id: audit.id }, data: { status: 'FAILED', completedAt: new Date(), failureCode: errorCode } })
+    await prisma.$executeRaw`ALTER TABLE outcome_assessments ADD CONSTRAINT reject_controlled_settlement
+      CHECK (evidence->>'reason' IS DISTINCT FROM 'CONTROLLED_SETTLEMENT_WRITE_FAILURE') NOT VALID`
+    try {
+      expect(await reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)).toBe(0)
+      expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'RUNNING', completedAt: null })
+      expect(await prisma.outcomeAssessment.count({ where: { runRequestId: request.id } })).toBe(0)
+    } finally { await prisma.$executeRaw`ALTER TABLE outcome_assessments DROP CONSTRAINT reject_controlled_settlement` }
+
+    const reclaim = () => reclaimExpiredRuns(project.id, reconcileOutcomeRunsForAudit)
+    expect((await Promise.all([reclaim(), reclaim()])).sort()).toEqual([0, 1])
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({ status: 'FAILED', errorCode })
+    expect(await prisma.outcomeAssessment.findMany({ where: { runRequestId: request.id } })).toMatchObject([
+      { state: 'COULD_NOT_VERIFY', coverage: { requiredBindings: ['http'], observedBindings: [] } },
+    ])
+  })
+
   it('preserves a committed assessment through interrupted final projection without duplicating it on retry', async () => {
     const fixture = await observed()
     const write = vi.spyOn(prisma.runRequest, 'updateMany').mockRejectedValueOnce(new Error('Controlled result projection failure'))
@@ -144,6 +265,8 @@ run('expired run evidence with migrated PostgreSQL', () => {
       .toMatchObject({ status: 'FAILED', errorCode: status === 'FAILED' ? 'RUN_ABANDONED' : 'EXECUTION_LEASE_EXPIRED' })
     expect(await claimExecution(fixture.audit.id, { resume: true })).toBeNull()
     expect(await prisma.outcomeBindingExecution.findMany({ where: { auditId: fixture.audit.id } })).toEqual(originalBindings)
-    expect(await prisma.outcomeAssessment.count({ where: { runRequestId: fixture.request.id } })).toBe(status === 'FAILED' ? 0 : 1)
+    expect(await prisma.outcomeAssessment.findFirstOrThrow({ where: { runRequestId: fixture.request.id } })).toMatchObject({
+      state: 'COULD_NOT_VERIFY', evidence: { reason: status === 'FAILED' ? 'RUN_ABANDONED' : 'EXECUTION_LEASE_EXPIRED' },
+    })
   })
 })

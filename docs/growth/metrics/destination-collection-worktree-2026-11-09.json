@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "fixflags.controlled-destination-collection.v1",
+  "observedAt": "2026-11-09T14:38:25.367Z",
+  "method": "Native bounded collection and public-link assertion replay with synthetic response streams",
+  "source": {
+    "baseRevision": "3e7453bc20d3d79c3e72730c64ee90d0af9c4ed7",
+    "selectedFileSha256": {
+      "lib/audit/url.ts": "195accbf72d58affd235a6cca9aa5935f7aec2f526d13ace96f90138ad16fb27",
+      "lib/audit/open-check.ts": "09ee8ce06f27d92bca7cd63f9d5001cff0f932caa19df5201060e25544683009",
+      "lib/audit/html-document.ts": "078d47206033a82737a7c464acc8c3f885aaa3a61a6e2268dbf1f73e60bc1932",
+      "lib/audit/soft-404.ts": "cfe91d510cf51a859fb87d34916c26982131a8c4eef8d4a92eb53589b98da83f",
+      "lib/audit/native-http-evidence.ts": "60f98fd43a83df4bbddbdd9e26fcea540adb903f993a05f8bab0c81f2ea19e72",
+      "lib/audit/checks/destination-evidence.ts": "2fd0b12dcf9a4487f051c7b86d24fb8b44b4d61d70c056fb4f14dd035695c248",
+      "lib/audit/checks/public-links.ts": "b57f2a50eaffe6dd43d4dc28f7ccfde4ea7c4b8e2cf35066f0b6156f2c96a152",
+      "scripts/growth/run-destination-collection-study.ts": "9e02630bbce8373500936ca22d5cfde455bfb47007124dc4b031656331af49dd"
+    },
+    "fixtureSha256": "534bc212795ab52db16a7ed96f6e04ab7f3da453d8c3338cac51d37a667129f1",
+    "node": "v22.23.2"
+  },
+  "limitations": [
+    "No network, browser, customer, database or live repair is exercised.",
+    "A passing link assertion is one input to repair verification. This experiment does not issue a verified repair."
+  ],
+  "observations": [
+    {
+      "caseId": "initial-missing",
+      "targeted": false,
+      "fixtureBytes": 98,
+      "collectorStoppedBeforeEnd": false,
+      "outcome": "render_error",
+      "status": 200,
+      "shouldFlagDead": true,
+      "passed": false,
+      "complete": true,
+      "flagCheckIds": [
+        "broken-internal-links"
+      ],
+      "replayMatched": true
+    },
+    {
+      "caseId": "ordinary-oversize",
+      "targeted": false,
+      "fixtureBytes": 30110,
+      "collectorStoppedBeforeEnd": true,
+      "outcome": "unknown",
+      "status": 200,
+      "shouldFlagDead": false,
+      "passed": false,
+      "complete": false,
+      "flagCheckIds": [],
+      "replayMatched": true
+    },
+    {
+      "caseId": "targeted-within-extended-budget",
+      "targeted": true,
+      "fixtureBytes": 30110,
+      "collectorStoppedBeforeEnd": false,
+      "outcome": "reachable",
+      "status": 200,
+      "shouldFlagDead": false,
+      "passed": true,
+      "complete": true,
+      "flagCheckIds": [],
+      "replayMatched": true
+    },
+    {
+      "caseId": "targeted-over-extended-budget",
+      "targeted": true,
+      "fixtureBytes": 70110,
+      "collectorStoppedBeforeEnd": true,
+      "outcome": "unknown",
+      "status": 200,
+      "shouldFlagDead": false,
+      "passed": false,
+      "complete": false,
+      "flagCheckIds": [],
+      "replayMatched": true
+    },
+    {
+      "caseId": "missing-recurrence",
+      "targeted": false,
+      "fixtureBytes": 98,
+      "collectorStoppedBeforeEnd": false,
+      "outcome": "render_error",
+      "status": 200,
+      "shouldFlagDead": true,
+      "passed": false,
+      "complete": true,
+      "flagCheckIds": [
+        "broken-internal-links"
+      ],
+      "replayMatched": true
+    },
+    {
+      "caseId": "explicit-404-with-large-body",
+      "targeted": false,
+      "fixtureBytes": 70105,
+      "collectorStoppedBeforeEnd": true,
+      "outcome": "not_found",
+      "status": 404,
+      "shouldFlagDead": true,
+      "passed": false,
+      "complete": true,
+      "flagCheckIds": [
+        "broken-internal-links"
+      ],
+      "replayMatched": true
+    },
+    {
+      "caseId": "cut-inside-guidance-heading",
+      "targeted": false,
+      "fixtureBytes": 20058,
+      "collectorStoppedBeforeEnd": true,
+      "outcome": "render_error",
+      "status": 200,
+      "shouldFlagDead": true,
+      "passed": false,
+      "complete": true,
+      "flagCheckIds": [
+        "broken-internal-links"
+      ],
+      "replayMatched": true
+    },
+    {
+      "caseId": "complete-guidance-heading",
+      "targeted": false,
+      "fixtureBytes": 137,
+      "collectorStoppedBeforeEnd": false,
+      "outcome": "render_error",
+      "status": 200,
+      "shouldFlagDead": true,
+      "passed": false,
+      "complete": true,
+      "flagCheckIds": [
+        "broken-internal-links"
+      ],
+      "replayMatched": true
+    },
+    {
+      "caseId": "closed-missing-heading-before-cut",
+      "targeted": false,
+      "fixtureBytes": 70105,
+      "collectorStoppedBeforeEnd": true,
+      "outcome": "render_error",
+      "status": 200,
+      "shouldFlagDead": true,
+      "passed": false,
+      "complete": true,
+      "flagCheckIds": [
+        "broken-internal-links"
+      ],
+      "replayMatched": true
+    }
+  ]
+}

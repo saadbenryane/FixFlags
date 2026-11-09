@@ -134,6 +134,35 @@ describe('metadata parsing failure boundary', () => {
     expect(checked.flags.map(flag => flag.checkId)).toContain('buttons-no-text')
   })
 
+  it('keeps a sign-in screen outside requested-page checks, technology and summary evidence', async () => {
+    const capture = await boundary.capture(), finalUrl = pageUrl + 'login'
+    const divertedScope = { ...scope, finalUrl }
+    boundary.capture.mockResolvedValue({ ...capture, desktopFinalUrl: finalUrl, desktopHttpStatus: 200,
+      desktopHtml: '<main data-reactroot><h1>Sign in</h1><button></button></main>', renderedScope: divertedScope,
+      desktopLoadExperience: { observation: { version: 1, device: 'desktop', scope: divertedScope,
+        ready: true, restricted: false, contentVisible: true } },
+      accessibilityEvidence: { ...capture.accessibilityEvidence, scope: divertedScope },
+    })
+    const ctx = context(), handler = collectionHandlers.find(handler => handler.kind === 'browser')!
+    const artifact = await handler.evaluate(ctx)
+    expect(artifact.data).toMatchObject({ metadata: null, technologies: { status: 'UNAVAILABLE', detections: [] },
+      snapshot: { publicSignInRedirect: true, desktopHttpStatus: 200, desktopFinalUrl: finalUrl } })
+    expect(boundary.parse).not.toHaveBeenCalled()
+    ctx.input.primary = false
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]), auditPage: { update: vi.fn() } }
+    await handler.commit!(ctx, artifact, tx as never)
+    expect(tx.auditPage.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      status: 'FAILED', failureCode: 'BROWSER_SCOPE_UNAVAILABLE', consoleErrors: [],
+    }) }))
+
+    ctx.input.module = 'accessibility'
+    ctx.dependencies.set('browser', { workKind: 'browser', workState: 'COMPLETED', workResult: artifact } as never)
+    const checked = checkArtifactSchema.parse(readArtifact(await evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate(ctx), 'check').data)
+    expect(checked).toMatchObject({ flags: [], receipt: { pageUrl, complete: false, passed: false,
+      limitation: expect.stringContaining('reached sign-in') } })
+    expect(checked.receipt.assertions.some(assertion => assertion.complete)).toBe(false)
+  })
+
   it.each(['http', 'browser'] as const)('retries a transient parser crash without repeating the %s observation', async kind => {
     boundary.parse.mockRejectedValueOnce(new TaskFailure('PARSER_CRASH', true, undefined, true)).mockResolvedValueOnce(healthyMeta())
     const handler = collectionHandlers.find(handler => handler.kind === kind)!

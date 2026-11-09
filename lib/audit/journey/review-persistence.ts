@@ -46,7 +46,7 @@ export async function recordJourneyResult(
   filteredFindings: JourneyFindingDraft[],
   boundOutcome?: { outcomeId: string; bindingKey: string },
   deferProjectedFlags = false,
-): Promise<JourneyFindingDraft[]> {
+) {
   for (const finding of filteredFindings) if (!deferProjectedFlags && scopedOverlayRule(finding.verificationRule) && finding.evidenceTargets?.length) {
     await executionWrite(async tx => {
       const existing = await tx.flag.findFirst({ where: { auditId, checkId: finding.checkId,
@@ -138,6 +138,7 @@ export async function recordJourneyResult(
     },
   }))
 
+  const flagIds: string[] = []
   for (const f of findingsToPersist) {
     if (deferProjectedFlags && (scopedOverlayRule(f.verificationRule) || projectedJourneyFinding(f))) continue
     const grouped = members(f)
@@ -181,9 +182,10 @@ export async function recordJourneyResult(
     await executionWrite(tx => tx.journeyFinding.updateMany({ where: { journeyReviewId: review.id,
       OR: grouped.map(finding => ({ checkId: finding.checkId, stepNumber: finding.stepNumber, evidence: finding.evidence })),
     }, data: { flagId: saved.id } }))
+    flagIds.push(saved.id)
   }
 
   await mergeActionTimeline(auditId, result.actionTimeline as ActionTimelineEvent[] | undefined)
 
-  return findingsToRecord
+  return { reviewId: review.id, findings: findingsToRecord, flagIds }
 }

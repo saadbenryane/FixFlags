@@ -2,6 +2,7 @@ import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { loadSiteSummaryReferences } from './summary-references'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag, hasUnresolvedFlagEvidence } from '@/lib/audit/attention'
+import { flagComparisonAuditScopeSelect } from '@/lib/audit/flag-comparison'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { isAuditFinished, isAuditInFlight } from '@/lib/sites/coverage'
 import {
@@ -43,7 +44,7 @@ async function loadWatchedOutcomeSummaries(projectIds: string[]) {
   if (!references.length) return []
   return prisma.siteOutcome.findMany({
     where: { projectId: { in: projectIds }, enabled: true, id: { in: references.map(row => row.id) } },
-    select: { id: true, projectId: true, enabled: true, environment: true, staleAfterMinutes: true,
+    select: { id: true, projectId: true, kind: true, enabled: true, environment: true, staleAfterMinutes: true,
       bindings: { where: { enabled: true }, select: { key: true, required: true, mechanism: true, version: true, config: true } },
       assessments: { where: { id: { in: references.flatMap(row => row.assessmentIds) } },
         orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }],
@@ -99,8 +100,7 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       where: { projectId: { in: projectIds }, id: { in: references.flatMap(row => row.latestAuditId ? [row.latestAuditId] : []) } },
       select: {
         id: true,
-        parentId: true,
-        projectId: true,
+        ...flagComparisonAuditScopeSelect,
         status: true,
         startedAt: true,
         completedAt: true,
@@ -108,6 +108,7 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
         failureStage: true,
         triageAt: true,
         aiReviewAt: true,
+        reviewDepth: true,
         evidenceCoverage: true,
         verifierExecutions: siteCoverageExecutionSelect,
         failedModules: true,
@@ -120,7 +121,7 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
     prisma.audit.findMany({
       where: { projectId: { in: projectIds }, status: 'COMPLETED',
         id: { in: references.flatMap(row => row.completedAuditId ? [row.completedAuditId] : []) } },
-      select: { id: true, parentId: true, projectId: true, status: true, createdAt: true, completedAt: true,
+      select: { id: true, ...flagComparisonAuditScopeSelect, status: true, createdAt: true, completedAt: true,
         evidenceCoverage: true, executionSpec: true, failureCode: true, triageAt: true, aiReviewAt: true,
         verifierExecutions: siteObservationExecutionSelect, failedModules: true },
     }),
@@ -206,7 +207,8 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
     const latest = latestByProject.get(project.id) ?? null
     const completed = latest?.status === 'COMPLETED' ? latest : completedByProject.get(project.id) ?? null
     const pages = latest ? pagesByAudit.get(latest.id) ?? [] : []
-    const pageCoverage = executionPageCoverage({ executionSpec: latest?.executionSpec, pages, executions: latest?.verifierExecutions })
+    const pageCoverage = executionPageCoverage({ auditId: latest?.id, executionSpec: latest?.executionSpec, pages,
+      executions: latest?.verifierExecutions, failedModules: latest?.failedModules })
     const { pagesReached, pagesExpected } = pageCoverage
 
     const durable = improvementsByProject.get(project.id) ?? []
@@ -228,8 +230,9 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
         priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: incidentAffectedPaths([flag]).length }) }))
     const customerFlags = [...durableFlags, ...unprojected]
 
-    const { coverage: facts, coverageMaxAgeMs, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({ audit: latest,
-      prior: completed?.id !== latest?.id ? completed : null, flags: customerFlags,
+    const { coverage: facts, coverageMaxAgeMs, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({
+      audit: latest ? { ...latest, pages } : null,
+      prior: completed && completed.id !== latest?.id ? { ...completed, pages: pagesByAudit.get(completed.id) ?? [] } : null, flags: customerFlags,
       categories: categoryAudits.filter(audit => audit.projectId === project.id), now, evidenceComplete,
       watchInterval, watchEveryMinutes: project.watchEveryMinutes })
     const evidenced = facts.filter((fact) => fact.evidenced)

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { Page } from 'playwright'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../../screenshot'
 import { blockFormSubmits } from '../../browser/journey-safety'
 import { probeFormValidation } from '../form-probes'
@@ -29,7 +29,7 @@ run('native form ownership during empty-field validation', () => {
   it('recognizes a submit button associated with a form outside its subtree', async () => {
     await observe('<form id="subscribe"><label>Email<input name="email" required></label></form><button form="subscribe">Subscribe</button>', async (page, token) => {
       const result = await probeFormValidation(page, { isolated: true, localValidationToken: token })
-      expect(result.evidence).toMatchObject({ disposition: 'passed', reason: 'native_validation' })
+      expect(result.evidence).toMatchObject({ disposition: 'passed', reason: 'native_feedback', feedbackMs: expect.any(Number) })
       expect(checkFormValidation(result.evidence).flags).toEqual([])
     })
   })
@@ -58,6 +58,30 @@ run('native form ownership during empty-field validation', () => {
     })
   })
 
+  it.each(['route change', 'same-URL reload'] as const)('refuses to diagnose a missing submitter after a %s during inventory', async change => {
+    await observe('<form id="subscribe"><input name="email" required></form>', async page => {
+      const evaluate = page.evaluate.bind(page)
+      const intercept = vi.spyOn(page, 'evaluate').mockImplementationOnce(async (fn, arg) => {
+        const inventory = await evaluate(fn, arg)
+        if (change === 'same-URL reload') await page.reload()
+        else await evaluate(() => history.pushState({}, '', '/other-form'))
+        return inventory
+      })
+      try {
+        expect(await probeFormValidation(page)).toMatchObject({ formValidation: 'skipped', inventoryIncomplete: true })
+      } finally { intercept.mockRestore() }
+    })
+  })
+
+  it('withholds feedback from a replacement form carrying the original selectors', async () => {
+    await observe('<form id="subscribe"><input name="email" aria-required="true"><button>Subscribe</button><p role="alert" hidden></p></form>' +
+      '<script>document.getElementById("subscribe").onsubmit=event=>{event.preventDefault();const replacement=event.target.cloneNode(true);' +
+      'const error=replacement.querySelector("p");error.hidden=false;error.textContent="Email is required";event.target.replaceWith(replacement)}</script>', async (page, token) => {
+      const observed = await probeFormValidation(page, { isolated: true, localValidationToken: token })
+      expect(observed.evidence).toMatchObject({ disposition: 'unknown', reason: 'form_changed' })
+    })
+  })
+
   it('does not claim native rejection when the selected submitter bypasses constraints', async () => {
     await observe('<form id="subscribe"><input name="email" required><button formnovalidate>Subscribe</button></form>' +
       '<script>document.getElementById("subscribe").onsubmit=event=>event.preventDefault()</script>', async (page, token) => {
@@ -81,7 +105,7 @@ run('native form ownership during empty-field validation', () => {
       expect(source).toMatchObject({ disposition: 'failed', reason: 'missing_feedback' })
       const expectedTargets = [{ context: source.context, selector: source.selector, label: source.label }]
       await page.evaluate(() => { document.querySelector('input')!.required = true })
-      expect((await probeFormValidation(page, { ...options, expectedTargets })).evidence).toMatchObject({ context: source.context, disposition: 'passed', reason: 'native_validation' })
+      expect((await probeFormValidation(page, { ...options, expectedTargets })).evidence).toMatchObject({ context: source.context, disposition: 'passed', reason: 'native_feedback' })
       const oldContext = 'form:' + createHash('sha256').update(JSON.stringify([page.url(), JSON.stringify({ form: 'subscribe', action: page.url(), fields: [{ name: 'email', tag: 'INPUT' }] })])).digest('hex')
       expect((await probeFormValidation(page, { ...options, expectedTargets: [{ ...expectedTargets[0], context: oldContext }] })).evidence).toMatchObject({ context: oldContext, disposition: 'unknown', reason: 'form_unavailable' })
       await page.evaluate(() => document.querySelector('input')!.setAttribute('form', 'other'))

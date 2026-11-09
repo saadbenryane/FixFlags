@@ -29,6 +29,9 @@ import { lockImprovementLedger } from './ledger-lock'
 import { repairSourceSelect, repairSourcesSchema, type RepairSources } from '@/lib/sites/domain/repair-source'
 import type { ImprovementServiceDependencies } from './service-types'
 import { reactivateRepairSources } from './repair-attention'
+import { outcomeFlagOwner } from '@/lib/audit/flag-identity'
+import { loadConfirmedOutcomeFlagIds } from '@/lib/sites/application/outcome-finding-sources'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 export async function createImprovementAttempt(input: {
   improvementId: string
@@ -109,10 +112,6 @@ export async function createImprovementAttempt(input: {
     // The retrieved task must still describe the facts being captured. Both
     // reads run while the Site and improvement ledger exclude other writers.
     await dependencies.validateRepair?.()
-    const accepted = await tx.improvement.updateMany({
-      where: { id: improvement.id, acceptedAt: null },
-      data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
-    })
     const handoffReference = input.handoffReference ?? existing?.handoffReference
     const referenceFlagId = handoffReference?.startsWith('flag:') ? handoffReference.slice(5) : null
     const selectedSources = sourceFlagIds.length ? sourceFlagIds : referenceFlagId ? [referenceFlagId] : []
@@ -128,7 +127,15 @@ export async function createImprovementAttempt(input: {
       if (sourceObservations.flags.length !== selectedSources.length || referenceFlagId &&
         !sourceObservations.flags.some(flag => flag.id === referenceFlagId && flag.auditId === input.sourceAuditId))
         throw new ImprovementAttemptConflict()
+      const outcomeFlags = sourceObservations.flags.flatMap(flag => outcomeFlagOwner(flag.fingerprint)
+        ? [{ id: flag.id, fingerprint: flag.fingerprint, projectId: input.projectId }] : [])
+      if ((await loadConfirmedOutcomeFlagIds(outcomeFlags, tx)).size !== outcomeFlags.length)
+        throw new SiteRunRefusal('Open the current Outcome to record a repair for a confirmed finding.', 409)
     }
+    const accepted = await tx.improvement.updateMany({
+      where: { id: improvement.id, acceptedAt: null },
+      data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
+    })
     const data = {
       ...(sourceObservations ? { sourceObservations } : {}),
       ...(sourceFlagIds.length ? { sourceFlagIds } : {}),

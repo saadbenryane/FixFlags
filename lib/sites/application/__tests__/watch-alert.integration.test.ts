@@ -9,8 +9,9 @@ import { loadOperations } from '@/lib/admin/operations'
 import { loadSiteOperations } from '@/lib/admin/site-operations'
 import { readMonitoringHealth } from '@/lib/health/monitoring'
 import { fixedClock } from '@/lib/time/clock'
-import { scheduleUptimeProbes } from '@/lib/uptime/service'
+import { executeUptimeProbe, scheduleUptimeProbes } from '@/lib/uptime/service'
 import { loadUptimeSummary } from '@/lib/uptime/queries'
+import { UPTIME_CONFIRMATION_MS, uptimeSlotStart } from '@/lib/uptime/domain'
 import { setProjectWatch } from '../monitoring-settings'
 
 const uptimeQueue = vi.hoisted(() => ({ enqueue: vi.fn(async () => {}) }))
@@ -73,7 +74,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(await prisma.notificationDigest.findMany({ where: { userId }, orderBy: { id: 'asc' } })).toEqual(original)
     const watchIds = Array.from({ length: operations.pagination.take - 1 }, () => randomUUID())
     await prisma.audit.createMany({ data: watchIds.map(id => ({ id, userId, projectId, url,
-      status: 'COMPLETED', recheckTrigger: 'WATCH', watchNotificationStatus: 'FAILED', createdAt: old, completedAt: old })) })
+      status: 'COMPLETED', recheckTrigger: 'WATCH', watchNotificationStatus: 'FAILED', createdAt: old, completedAt: old, improvementProjectedAt: old })) })
     const first = await loadOperations(actor, { queue: 'watch-alerts' }), second = await loadOperations(actor, { queue: 'watch-alerts', page: '2' })
     expect(first.total).toBe(watchIds.length + expected.length)
     const combined = [...first.rows, ...second.rows]
@@ -159,6 +160,41 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     await prisma.uptimeMonitor.update({ where: { id: monitor.id }, data: { nextProbeAt: before } })
     expect(await readMonitoringHealth(now)).toMatchObject({ overdueUptimeProbes: 1, inconclusiveUptimeSites: 0 })
     expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(1)
+  })
+
+  it('surfaces an overdue confirmation before the routine probe is overdue and clears it after replay', async () => {
+    const now = new Date()
+    const dueAt = new Date(now.getTime() - 65_000)
+    const firstAt = new Date(dueAt.getTime() - UPTIME_CONFIRMATION_MS)
+    const scheduledAt = new Date(uptimeSlotStart(firstAt.getTime()))
+    await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
+    const sessionId = randomUUID()
+    await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
+    const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: now }
+    await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: new Date(now.getTime() + 86400_000) } })
+    const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, nextProbeAt: scheduledAt } })
+    const job = { monitorId: monitor.id, version: monitor.version, scheduledAt: scheduledAt.toISOString(), attempt: 1 as const }
+    const confirmation = { ...job, attempt: 2 as const }
+    uptimeQueue.enqueue.mockRejectedValueOnce(new Error('Controlled confirmation delivery failure'))
+    await executeUptimeProbe(job, async () => ({ result: 'FAILED', reason: 'response_error',
+      statusCode: 503, durationMs: 5, finalUrl: url }), fixedClock(firstAt))
+    expect(uptimeQueue.enqueue).toHaveBeenCalledExactlyOnceWith(confirmation, dueAt)
+    expect(await readMonitoringHealth(new Date(dueAt.getTime() + 30_000))).toMatchObject({ ok: true, overdueUptimeProbes: 0 })
+
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, overdueUptimeProbes: 1, inconclusiveUptimeSites: 0 })
+    const operations = await loadOperations(actor, { queue: 'uptime' })
+    expect(operations.total).toBe(1)
+    expect(operations.rows).toMatchObject([{ siteId: projectId, at: dueAt, action: 'SITE_RECONCILE' }])
+    expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
+
+    await scheduleUptimeProbes(fixedClock(now), 1, projectId)
+    expect(uptimeQueue.enqueue).toHaveBeenNthCalledWith(2, confirmation, dueAt)
+    await executeUptimeProbe(confirmation, async () => ({ result: 'ONLINE', reason: 'response_received',
+      statusCode: 200, durationMs: 5, finalUrl: url }), fixedClock(now))
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueUptimeProbes: 0, inconclusiveUptimeSites: 0 })
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(0)
+    expect(await prisma.uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(0)
+    expect(await loadUptimeSummary(uptimeReadSite({ id: projectId, userId }), now)).toMatchObject({ state: 'online', openIncidentCount: 0 })
   })
 
   it('requires sustained current-target evidence and refuses old-generation or future conclusive probes', async () => {
@@ -364,7 +400,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, undeliveredWatchAlerts: 1 })
     const operations = await loadOperations(actor, { queue: 'watch-alerts' })
     expect(operations.total).toBe(1)
-    expect(operations.rows).toMatchObject([{ id: watch.id, action: 'WATCH_NOTIFICATION_RETRY' }])
+    expect(operations.rows).toMatchObject([{ id: watch.id, action: null }])
     expect((await loadSiteOperations(now)).find(item => item.label === 'Monitoring notifications needing attention')?.value).toBe(1)
     for (const record of retained) expect(await prisma.audit.findUniqueOrThrow({ where: { id: record.id } })).toEqual(record)
   })
@@ -377,12 +413,16 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: now }
     const alert = await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH',
       createdAt: old, completedAt: now, improvementProjectedAt: now, watchNotificationStatus: 'PENDING' } })
+    await prisma.audit.create({ data: { url, userId, projectId, status: 'QUEUED', recheckTrigger: 'WATCH',
+      createdAt: old, watchNotificationStatus: 'PENDING' } })
+    await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH',
+      createdAt: old, completedAt: old, watchNotificationStatus: 'PENDING' } })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: true })
     const overdue = await prisma.audit.update({ where: { id: alert.id }, data: { completedAt: old } })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, undeliveredWatchAlerts: 1, undeliveredUptimeAlerts: 0 })
     const operations = await loadOperations(actor, { queue: 'watch-alerts' })
     expect(operations.total).toBe(1)
-    expect(operations.rows).toMatchObject([{ id: alert.id, state: 'Awaiting delivery', action: 'WATCH_NOTIFICATION_RETRY' }])
+    expect(operations.rows).toMatchObject([{ id: alert.id, state: 'Awaiting delivery', action: null }])
     expect((await loadSiteOperations(now)).find(item => item.label === 'Monitoring notifications needing attention')?.value).toBe(operations.total)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: alert.id } })).toEqual(overdue)
     await prisma.audit.update({ where: { id: alert.id }, data: { watchNotificationStatus: 'SENDING',
@@ -402,11 +442,14 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     const sessionId = randomUUID()
     await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
     const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: now }
-    const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, enabled: false, nextProbeAt: now } })
-    const incident = await prisma.uptimeIncident.create({ data: { monitorId: monitor.id, version: 1, targetUrl: url,
+    const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, enabled: false, nextProbeAt: now, version: 2 } })
+    const incident = await prisma.uptimeIncident.create({ data: { monitorId: monitor.id, version: monitor.version, targetUrl: url,
       startedAt: old, confirmedAt: old, reason: 'Controlled failure' } })
     const alert = await prisma.uptimeNotification.create({ data: { incidentId: incident.id, kind: 'DOWN', createdAt: old,
       status: 'PENDING', nextAttemptAt: now } })
+    const obsolete = await prisma.uptimeIncident.create({ data: { monitorId: monitor.id, version: monitor.version - 1,
+      targetUrl: 'https://previous.example/', startedAt: old, confirmedAt: old, recoveredAt: old, reason: 'Retained prior target',
+      notifications: { create: { kind: 'RECOVERED', status: 'FAILED', attempts: 8, nextAttemptAt: old } } }, include: { notifications: true } })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: true })
     const overdue = await prisma.uptimeNotification.update({ where: { id: alert.id }, data: { nextAttemptAt: old } })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, undeliveredUptimeAlerts: 1, undeliveredWatchAlerts: 0 })
@@ -415,6 +458,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(operations.rows).toMatchObject([{ id: alert.id, state: 'Awaiting delivery', action: 'UPTIME_NOTIFICATION_RETRY' }])
     expect((await loadSiteOperations(now)).find(item => item.label === 'Uptime notifications needing attention')?.value).toBe(operations.total)
     expect(await prisma.uptimeNotification.findUniqueOrThrow({ where: { id: alert.id } })).toEqual(overdue)
+    expect(await prisma.uptimeNotification.findUniqueOrThrow({ where: { id: obsolete.notifications[0].id } })).toEqual(obsolete.notifications[0])
     await prisma.uptimeNotification.update({ where: { id: alert.id }, data: { status: 'SENDING', leaseUntil: new Date(now.getTime() + 60_000) } })
     expect(await readMonitoringHealth(now)).toMatchObject({ ok: true })
     await prisma.uptimeNotification.update({ where: { id: alert.id }, data: { leaseUntil: new Date(now.getTime() - 1) } })
@@ -473,13 +517,50 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'undelivered', at: null })
   })
 
+  it('shows a terminal provider failure for the exact accepted Watch alert', async () => {
+    const providerId = randomUUID(), completedAt = new Date()
+    const alert = await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH',
+      completedAt, watchNotificationStatus: 'SENT', watchNotificationAttempts: 1, watchNotificationProviderId: providerId } })
+    const load = (ownerEvidence = true) => loadSiteHome(projectId, { ownerEvidence })
+    expect((await load())?.watch.alert).toMatchObject({ state: 'accepted', status: 'SENT', attempts: 1 })
+    await prisma.emailDelivery.create({ data: { providerId, userId, recipientHash: 'fixture', sourceId: 'different-audit',
+      channel: 'watch', acceptedAt: completedAt, firstAttemptAt: completedAt, failedAt: completedAt } })
+    expect((await load())?.watch.alert.state).toBe('accepted')
+    await prisma.emailDelivery.update({ where: { providerId }, data: { sourceId: alert.id, channel: 'summary' } })
+    expect((await load())?.watch.alert.state).toBe('accepted')
+    await prisma.emailDelivery.update({ where: { providerId }, data: { channel: 'watch' } })
+    expect((await load())?.watch.alert.state).toBe('undelivered')
+    const deliveredAt = new Date(completedAt.getTime() + 1)
+    await prisma.emailDelivery.update({ where: { providerId }, data: { deliveredAt } })
+    expect((await load())?.watch.alert.state).toBe('accepted')
+    await prisma.emailDelivery.update({ where: { providerId }, data: { bouncedAt: deliveredAt } })
+    const home = await load()
+    expect(home?.watch.alert).toMatchObject({ state: 'undelivered', status: 'SENT', attempts: 1, at: completedAt.toISOString() })
+    expect(siteWatchAlertNotice(home!.watch.alert)?.actionHref).toBe('/settings')
+    expect((await load(false))?.watch.alert.state).toBe('accepted')
+    const otherOwner = await prisma.user.create({ data: { email: randomUUID() + '@example.test' } })
+    try {
+      await prisma.project.update({ where: { id: projectId }, data: { userId: otherOwner.id } })
+      expect((await load())?.watch.alert.state).toBe('accepted')
+    } finally {
+      await prisma.project.update({ where: { id: projectId }, data: { userId } })
+      await prisma.user.delete({ where: { id: otherOwner.id } })
+    }
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: alert.id } }))
+      .toMatchObject({ watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 })
+  })
+
   it('uses the projected saved attempt ceiling in the customer notice', async () => {
     const alert = await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH', completedAt: new Date(),
       watchNotificationStatus: 'FAILED', watchNotificationAttempts: 6, watchNotificationAttemptCeiling: 10 } })
     const home = await loadSiteHome(projectId)
     expect(home?.watch.alert.state).toBe('delivering')
     expect(siteWatchAlertNotice(home!.watch.alert)).toBeNull()
-    await prisma.audit.update({ where: { id: alert.id }, data: { watchNotificationAttempts: 10 } })
+    const leaseUntil = new Date(Date.now() + 60_000)
+    await prisma.audit.update({ where: { id: alert.id }, data: { watchNotificationAttempts: 10,
+      watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: leaseUntil } })
+    expect((await loadSiteHome(projectId))?.watch.alert).toMatchObject({ state: 'delivering', leaseUntil: leaseUntil.toISOString() })
+    await prisma.audit.update({ where: { id: alert.id }, data: { watchNotificationLeaseUntil: new Date(0) } })
     const exhausted = await loadSiteHome(projectId)
     expect(exhausted?.watch.alert.state).toBe('undelivered')
     expect(siteWatchAlertNotice(exhausted!.watch.alert)).not.toBeNull()

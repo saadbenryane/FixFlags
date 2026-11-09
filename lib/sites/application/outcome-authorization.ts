@@ -22,10 +22,7 @@ async function lockOutcomeAuthority(tx: Prisma.TransactionClient, site: SiteReco
         AND url = ${site.url} AND "deletedAt" IS NULL FOR UPDATE
     `
     if (projects.length !== 1) return false
-    await tx.$queryRaw`
-      SELECT id FROM audits WHERE "projectId" = ${site.projectId}
-        AND status NOT IN ('COMPLETED', 'FAILED') ORDER BY id FOR UPDATE
-    `
+    await lockSiteOutcomeAudits(tx, site.projectId)
     return true
   }
   if (!site.provisionalSiteId) return false
@@ -37,9 +34,15 @@ async function lockOutcomeAuthority(tx: Prisma.TransactionClient, site: SiteReco
   return true
 }
 
+export function lockSiteOutcomeAudits(tx: Prisma.TransactionClient, projectId: string) {
+  return tx.$queryRaw`
+    SELECT id FROM audits WHERE "projectId" = ${projectId}
+      AND status NOT IN ('COMPLETED', 'FAILED') ORDER BY id FOR UPDATE`
+}
+
 /** Invalidate ownership before permission changes commit. The normal engine
  * settles dependent work, and its ownership watcher releases live resources. */
-export async function fenceOutcomeBindingTasks(tx: Prisma.TransactionClient, site: SiteRecord, outcomeId: string,
+export async function fenceOutcomeBindingTasks(tx: Prisma.TransactionClient, site: Pick<SiteRecord, 'projectId' | 'primaryAuditId'>, outcomeId: string,
   reason: 'OUTCOME_AUTHORIZATION_CHANGED' | 'BINDING_CHANGED') {
   const active = ['WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'] as const
   const tasks = await tx.auditExecutionTask.findMany({ where: {

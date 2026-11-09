@@ -9,7 +9,7 @@ export type AuditAdmission =
   | { kind: 'retry'; parentId: string }
   | { kind: 'site-run'; parentId?: string; executionSpec: ExecutionSpec;
       request: Prisma.RunRequestUncheckedCreateInput & { id: string };
-      scheduledClaim?: ScheduledRunClaim; operator?: AdminDomainActor; verificationAttemptId?: string }
+      scheduledClaim?: ScheduledRunClaim; operator?: AdminDomainActor; verificationAttemptId?: string; preservePreparedScope?: true }
 
 /** Execution and charging policy follow admitted intent, never independent switches. */
 export function resolveAuditAdmission(admission: AuditAdmission) {
@@ -18,7 +18,7 @@ export function resolveAuditAdmission(admission: AuditAdmission) {
     verificationAttemptId: undefined as string | undefined, runRequestId: undefined as string | undefined,
     runRequestAdmission: undefined as Prisma.RunRequestUncheckedCreateInput | undefined,
     executionSpec: undefined as ExecutionSpec | undefined, scheduledClaim: undefined as ScheduledRunClaim | undefined,
-    operator: undefined as AdminDomainActor | undefined }
+    operator: undefined as AdminDomainActor | undefined, preservePreparedScope: undefined as true | undefined }
   switch (admission?.kind) {
     case 'new-check': return defaults
     case 'retry':
@@ -35,7 +35,7 @@ export function resolveAuditAdmission(admission: AuditAdmission) {
         skipUsageCount: watch || !['SITE', 'CATEGORY'].includes(scope), reuseActiveManual: false,
         verificationAttemptId: admission.executionSpec.verificationTarget?.attemptId ?? admission.verificationAttemptId,
         runRequestId: admission.request.id, runRequestAdmission: admission.request, executionSpec: admission.executionSpec,
-        scheduledClaim: admission.scheduledClaim, operator: admission.operator }
+        scheduledClaim: admission.scheduledClaim, operator: admission.operator, preservePreparedScope: admission.preservePreparedScope }
     }
     default: throw new Error('Explicit audit admission is required')
   }

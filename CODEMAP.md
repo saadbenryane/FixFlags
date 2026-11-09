@@ -9,7 +9,7 @@ supersedes: []
 
 ## Project Responsibility
 
-FixFlags is the independent Product Intelligence System for AI-built software. Paste a URL, get every unresolved Flag ranked across Message, Experience, and Reach, apply the fixes in your AI editor, then re-check the result.
+FixFlags is the independent monitor for software that acts. The website product carries URL analysis through meaningful Flags, repair handoff, independent verification and continuing monitoring. Message, Experience and Reach remain compatibility identifiers underneath the current eight-area Site experience. Product purpose belongs to [the vision](knowledge/vision.md); this file maps the implementation.
 
 ## System Entry Points
 
@@ -36,6 +36,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `app/(docs)/`        | Public product documentation shell and `/docs` routes                                                                                                    | `lib/docs/catalog.ts`                            |
 | `app/(auth)/`        | Sign-in, sign-up, forgot/reset password                                                                                                                  | —                                                |
 | `app/(app)/`         | Authenticated dashboard, billing, settings                                                                                                               | —                                                |
+| `app/sites/`         | Site workspaces and detail pages; shared sign-in continuation delegates to existing Site and owner access decisions                                      | `lib/sites/page-access.ts`                        |
 | `app/report/[id]/`   | Canonical complete report and ranked Fix list; `details/` redirects here                                                                                 | `knowledge/report-contract.md`                   |
 | `app/share/[token]/` | Scoped canonical share rendering; shared details links redirect after access checks                                                                      | `lib/security/share-grant.ts`                    |
 | `app/admin/`         | Admin dashboard                                                                                                                                          | —                                                |

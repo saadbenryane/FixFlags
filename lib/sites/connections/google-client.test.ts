@@ -1,7 +1,35 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { liveGoogleClient } from './google'
+import { parseAnalyticsReports } from './analytics-report'
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+describe('Analytics report qualification', () => {
+  const metricHeaders = [{ name: 'sessions' }, { name: 'screenPageViews' }]
+  const audience = { metricHeaders: [...metricHeaders, { name: 'activeUsers' }],
+    rows: [{ metricValues: [{ value: '0' }, { value: '0' }, { value: '0' }] }] }
+  const page = (path: string, count: string) => ({ dimensionValues: [{ value: path }], metricValues: [{ value: count }, { value: count }] })
+  const report = (rows: ReturnType<typeof page>[], rowCount = rows.length) => ({
+    dimensionHeaders: [{ name: 'pagePath' }], metricHeaders, rows, rowCount,
+  })
+
+  it('keeps the intentional top-page limit while rejecting incomplete watched rows', () => {
+    const top = report(Array.from({ length: 25 }, (_, index) => page('/page-' + index, '0')), 40)
+    expect(parseAnalyticsReports({ reports: [top, audience] }, [])).toMatchObject({ pagesLimited: false, audienceLimited: false,
+      audience: { sessions: 0, activeUsers: 0, pageViews: 0 } })
+    const incomplete = parseAnalyticsReports({ reports: [top, audience, report([], 1)] }, ['/watch'])
+    expect(incomplete).toMatchObject({ pagesLimited: true })
+    expect(incomplete.pages).toHaveLength(25)
+  })
+
+  it('keeps qualified siblings when rows conflict, exceed storage bounds or leave the watched scope', () => {
+    const top = report([page('/same', '2'), page('/valid', '0'), page('/oversized', '2147483648'), page('/hex', '0x10')])
+    const watched = report([page('/same', '3'), page('/outside', '10')])
+    expect(parseAnalyticsReports({ reports: [top, audience, watched] }, ['/same', '/other'])).toMatchObject({
+      pages: [{ pagePath: '/valid', sessions: 0, pageViews: 0 }], pagesLimited: true, audienceLimited: false,
+    })
+  })
+})
 
 describe('bounded Analytics property discovery', () => {
   it('reads the retained property directly and follows its stream pages without enumerating accounts', async () => {

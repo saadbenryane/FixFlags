@@ -1,5 +1,8 @@
 const routeState=vi.hoisted(()=>({pathname:'/'}))
-vi.mock('next/navigation',()=>({usePathname:()=>routeState.pathname}))
+vi.mock('next/navigation', () => ({
+  usePathname: () => routeState.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}))
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,6 +39,7 @@ describe('ConversionScripts consent', () => {
     delete window.dataLayer
     delete window.gtag
     delete window.fbq
+    document.body.removeAttribute('data-ga-public-paths')
     sessionStorage.clear()
     vi.unstubAllEnvs()
   })
@@ -148,6 +152,134 @@ describe('ConversionScripts consent', () => {
     expect(document.documentElement.style.paddingTop).toBe('17px')
     expect(document.documentElement.style.paddingBottom).toBe('23px')
     expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    '/share/test-token',
+    '/share/test-token/details',
+    '/reset-password?token=fixture-token',
+    '/cli/authorize?user_code=FIXTURE',
+    '/sign-in?next=%2Fcli%2Fauthorize%3Fuser_code%3DFIXTURE',
+    '/sign-up?next=%2Fcli%2Fauthorize%3Fuser_code%3DFIXTURE',
+    '/two-factor?next=%2Fcli%2Fauthorize%3Fuser_code%3DFIXTURE',
+    '/post-login?next=%2Fcli%2Fauthorize%3Fuser_code%3DFIXTURE',
+    '/sites/fixture-site',
+    '/sites/fixture-site/flags/fixture-flag',
+    '/report/fixture-report/details',
+    '/compare/fixture-comparison',
+    '/sign-up?next=%2Fsites%2Ffixture-site',
+    '/post-login?next=%2Freport%2Ffixture-report',
+  ])(
+    'keeps analytics and click-ID capture off %s even with prior consent',
+    (pathname) => {
+      const url = new URL(pathname, window.location.origin)
+      routeState.pathname = url.pathname
+      url.searchParams.set('gclid', 'test-click')
+      window.history.replaceState({}, '', url)
+      document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+      vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+      const pixel = vi.fn()
+      window.fbq = pixel
+
+      render(<ConversionScripts />)
+
+      expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(window.dataLayer).toBeUndefined()
+      expect(pixel).toHaveBeenCalledWith('consent', 'revoke')
+      expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
+      expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=granted`)
+    },
+  )
+
+  it('retains analytics on an ordinary sign-up continuation', () => {
+    routeState.pathname = '/sign-up'
+    window.history.replaceState({}, '', '/sign-up?next=%2Fdashboard')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+
+    render(<ConversionScripts />)
+
+    expect(screen.getAllByTestId('analytics-script')).toHaveLength(2)
+    expect(window.dataLayer?.length).toBeGreaterThan(0)
+  })
+
+  it('retains analytics for the public sample', () => {
+    routeState.pathname = '/samples/details'
+    window.history.replaceState({}, '', '/samples/details')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+
+    render(<ConversionScripts />)
+
+    expect(screen.getAllByTestId('analytics-script')).toHaveLength(2)
+  })
+
+  it('queues controlled views once per public path with sanitized context and no private route referrer', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    vi.stubEnv('NEXT_PUBLIC_GA_PAGEVIEW_MODE', 'controlled')
+    document.body.dataset.gaPublicPaths = '/ /guides /new'
+    const externalReferrer = vi.spyOn(document, 'referrer', 'get')
+      .mockReturnValue('https://external.example/search?private-query=fixture')
+    window.history.replaceState({}, '', '/?utm_source=partner-guide&token=fixture-token&gclid=fixture-click#fixture-hash')
+    const view = render(<ConversionScripts />)
+    const commands = () => window.dataLayer!.map(command => Array.from(command as IArguments))
+    const pageviews = () => commands().filter(([verb, event]) => verb === 'event' && event === 'page_view')
+    const origin = window.location.origin
+    expect(commands()).toContainEqual(['config', 'G-TEST12345', expect.objectContaining({ send_page_view: false })])
+    expect(pageviews()).toEqual([['event', 'page_view', {
+      send_to: 'G-TEST12345', page_location: origin + '/?utm_source=partner-guide', page_referrer: 'https://external.example', page_title: '/',
+    }]])
+    fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }))
+    expect(pageviews()).toHaveLength(1)
+    expect(commands()).toContainEqual(['set', {
+      page_location: origin + '/?utm_source=partner-guide&gclid=fixture-click', page_referrer: 'https://external.example', page_title: '/',
+    }])
+
+    const navigate = (path: string) => {
+      window.history.replaceState({}, '', path)
+      routeState.pathname = window.location.pathname
+      view.rerender(<ConversionScripts />)
+    }
+    navigate('/guides?utm_source=private%40example.test')
+    navigate('/sites/fixture-site')
+    navigate('/unknown/fixture-private')
+    navigate('/new?url=https%3A%2F%2Fprivate-target.example%2F')
+    expect(pageviews().slice(1)).toEqual([
+      ['event', 'page_view', { send_to: 'G-TEST12345', page_location: origin + '/guides', page_referrer: origin + '/', page_title: '/guides' }],
+      ['event', 'page_view', { send_to: 'G-TEST12345', page_location: origin + '/new', page_referrer: '', page_title: '/new' }],
+    ])
+    expect(JSON.stringify(commands())).not.toMatch(/fixture-token|fixture-hash|private-query|fixture-site|fixture-private|private-target|private%40/)
+    externalReferrer.mockRestore()
+  })
+
+  it('keeps controlled Google initialization off a page missing from the allowed paths', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    vi.stubEnv('NEXT_PUBLIC_GA_PAGEVIEW_MODE', 'controlled')
+    document.body.dataset.gaPublicPaths = '/ /guides'
+    routeState.pathname = '/unknown'
+    window.history.replaceState({}, '', '/unknown')
+    render(<ConversionScripts />)
+
+    expect(window.dataLayer).toBeUndefined()
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+  })
+
+  it('disables loaded analytics after a same-page credential continuation commits', () => {
+    routeState.pathname = '/sign-in'
+    window.history.replaceState({}, '', '/sign-in?next=%2Fdashboard')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    const pixel = vi.fn()
+    window.fbq = pixel
+    const view = render(<ConversionScripts />)
+
+    window.history.replaceState({}, '', '/sign-in?next=%2Fcli%2Fauthorize%3Fuser_code%3DFIXTURE')
+    view.rerender(<ConversionScripts />)
+
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+    expect(pixel).toHaveBeenLastCalledWith('consent', 'revoke')
+    expect((window as unknown as Record<string, unknown>)['ga-disable-G-TEST12345']).toBe(true)
   })
 
   it.each([null, 'denied'])('loads only GA with storage denied for a %s choice', async (choice) => {

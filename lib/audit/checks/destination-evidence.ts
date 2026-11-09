@@ -15,6 +15,8 @@ export type DestinationCheckOptions = {
   originalContexts?: readonly string[]
   /** Normal monitoring keeps still-declared historical responsibilities first. */
   retainedContexts?: ReadonlySet<string>
+  /** Reproduce the action inventory used by a retained HTTP journal. */
+  legacyActionInventory?: boolean
   openDestination?: (...args: Parameters<typeof openCheckDestination>) => Promise<OpenCheckObservation>
   observeImage?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<PreviewImageResponse>
   /** Tests supply a collected document. Production uses the public fetcher. */

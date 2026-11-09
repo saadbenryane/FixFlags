@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client'
 
+export function sameSiteRunAuditWhere(projectId: string): Prisma.RunRequestWhereInput {
+  return { OR: [{ auditId: null }, { audit: { projectId } }] }
+}
+
 /** Setup observations belong to fixture settings and cannot replace Site evidence. */
 export const siteAnalysisAuditWhere = {
   OR: [{ executionSpec: { path: ['scope'], equals: Prisma.AnyNull } },

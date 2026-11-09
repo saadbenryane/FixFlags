@@ -3,6 +3,7 @@ import { Worker as ParserWorker } from 'node:worker_threads'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
 vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dns-fixture')).dnsFixture(dns))
 import { collectionHandlers } from '../collectors'
+import { readBrowserPageCheckEvidence } from '../browser-evidence'
 import { evaluatorHandlers } from '../evaluators'
 import { httpArtifactSchema } from '../snapshots'
 import { PREVIEW_IMAGE_MAX_BYTES } from '../../checks/preview-image-response'
@@ -48,7 +49,7 @@ async function withheldHeaders(document: ReturnType<typeof missingDocument>) {
   const result = await checked(headerContext(document))
   expect(result.flags).toEqual([])
   expect(result.receipt).toMatchObject({ applicable: true, passed: false, complete: false, pageUrl,
-    limitation: 'This response is not the origin header configuration. Header configuration remains unknown.' })
+    limitation: 'The page did not return a usable public response. Its header configuration remains unknown.' })
   expect(result.receipt.assertions.find(assertion => assertion.key === 'content-security-policy'))
     .toMatchObject({ passed: false, complete: false })
   expect(result.receipt.assertions.every(assertion => assertion.complete === false && assertion.passed === false)).toBe(true)
@@ -62,6 +63,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('guarded public destination evidence', () => {
+  it('withholds an older partial desktop artifact while retaining the independent mobile capture', () => {
+    const desktop = context('seo').dependencies.get('browser')!
+    const artifact = readArtifact(desktop.workResult, 'browser')
+    desktop.workResult = serializeArtifact('browser', { ...artifact.data, snapshot: { ...artifact.data.snapshot as object, desktopHttpStatus: 206 } })
+    expect(readBrowserPageCheckEvidence([desktop]).source).toBeNull()
+    const mobile = { ...desktop, workInput: { device: 'mobile' }, workResult: serializeArtifact('browser',
+      { ...artifact.data, metadata: null, snapshot: { ...artifact.data.snapshot as object, desktopHtml: null,
+        captureStatus: { desktop: 'pending', mobile: 'ok' } } }) }
+    expect(readBrowserPageCheckEvidence([desktop, mobile]).source?.data.snapshot.captureStatus.mobile).toBe('ok')
+  })
   it('leaves time to publish the collected HTTP response when metadata parsing cannot finish', async () => {
     const post = ParserWorker.prototype.postMessage
     const stalled = vi.spyOn(ParserWorker.prototype, 'postMessage').mockImplementation(function(this: ParserWorker, ...args: Parameters<ParserWorker['postMessage']>) {
@@ -376,6 +387,14 @@ describe('guarded public destination evidence', () => {
     await withheldHeaders(document)
   })
 
+  it('keeps security header evidence on the original scope when a redirect leads to sign-in', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: '/login' } }))
+    fetchMock.mockResolvedValueOnce(new Response('<title>Sign in to continue</title>', { status: 200, headers: { 'content-type': 'text/html' } }))
+    const document = await collectDocument(pageUrl, Date.now() + 10_000)
+    expect(document).toMatchObject({ finalUrl: 'https://example.com/login', status: 200, complete: false, reason: 'public_sign_in_redirect' })
+    await withheldHeaders(document)
+  })
+
   it('records an unresolved redirect as incomplete header evidence', async () => {
     fetchMock.mockImplementation(async (input: string | URL | Request) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
@@ -386,6 +405,29 @@ describe('guarded public destination evidence', () => {
     await withheldHeaders(document)
   })
 
+  it('withholds headers from a different Site and evaluates a same-Site redirect at its final URL', async () => {
+    for (const target of ['https://example.net/landing', 'https://www.example.com/landing']) {
+      fetchMock.mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: target } }))
+      fetchMock.mockResolvedValueOnce(new Response('<title>Landing page</title>', { headers: { 'content-type': 'text/html' } }))
+      const document = await collectDocument(pageUrl, Date.now() + 10_000)
+      expect(document).toMatchObject({ url: pageUrl, finalUrl: target, status: 200, complete: true })
+      if (target.includes('example.net')) await withheldHeaders(document)
+      else {
+        const { flags } = await checked(headerContext(document))
+        expect(flags).toEqual([expect.objectContaining({ checkId: 'security-headers-missing', pageUrl,
+          evidenceTargets: expect.arrayContaining([expect.objectContaining({ context: expect.stringContaining(destinationContext(target, target)) })]) })])
+      }
+    }
+  })
+
+  it.each([204, 205, 206])('withholds policy observations for HTTP %s without a full document', async status => {
+    fetchMock.mockResolvedValueOnce(new Response(status === 206 ? '<title>Partial' : null, { status,
+      headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'" } }))
+    const document = await collectDocument(pageUrl, Date.now() + 10_000)
+    expect(document.status).toBe(status)
+    await withheldHeaders(document)
+  })
+
   it.each([401, 403, 429])('records a restricted %s response as incomplete header evidence', async status => {
     fetchMock.mockImplementation(async () => new Response('Forbidden area', { status,
       headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'" } }))
@@ -393,6 +435,24 @@ describe('guarded public destination evidence', () => {
     expect(document.status).toBe(status)
     expect(document.reason).not.toBe('public_access_challenge')
     await withheldHeaders(document)
+  })
+
+  it.each([404, 503])('records a %s response as incomplete page header evidence', async status => {
+    fetchMock.mockResolvedValue(new Response('Page unavailable', { status, headers: { 'content-type': 'text/html' } }))
+    const document = await collectDocument(pageUrl, Date.now() + 10_000)
+    expect(document).toMatchObject({ status, complete: true, reason: null })
+    await withheldHeaders(document)
+  })
+
+  it('uses headers from a successful response even if reading its body fails', async () => {
+    const body = new ReadableStream({ start(controller) { controller.error(new Error('body interrupted')) } })
+    fetchMock.mockResolvedValue(new Response(body, { status: 200, headers: { 'content-type': 'text/html' } }))
+    const document = await collectDocument(pageUrl, Date.now() + 10_000)
+    expect(document).toMatchObject({ status: 200, complete: false, reason: 'response_body_unavailable' })
+    const result = await checked(headerContext(document))
+    expect(result.flags.map(flag => flag.checkId)).toEqual(['security-headers-missing'])
+    expect(result.receipt.assertions.find(assertion => assertion.key === 'content-security-policy'))
+      .toMatchObject({ passed: false, complete: true })
   })
 
   it('records a settled response without a status as incomplete header evidence', async () => {

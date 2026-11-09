@@ -12,6 +12,8 @@ import {
 import { rubricLabel } from '@/lib/utils'
 import { compareFlagPriority, type FlagVerificationState } from '@/lib/sites/presentation'
 import type { UptimeStatus, uptimeAssessment } from '@/lib/uptime/status'
+import { measuredProviderRequest, openAIResponseUsage } from '@/lib/audit/provider-request'
+import type { ProviderUsageAdmission } from '@/lib/audit/provider-usage'
 
 type OpenAIClient = NonNullable<typeof openai>
 
@@ -82,27 +84,31 @@ export function workspaceChatTokenUpperBound(input: WorkspaceChatInput): number 
 
 async function runOpenAIChat(
   client: OpenAIClient,
-  input: WorkspaceChatInput
-): Promise<{ text: string; inputTokens: number; outputTokens: number; model: string }> {
+  input: WorkspaceChatInput,
+  onAttempt?: ProviderUsageAdmission,
+) {
   const cfg = getChatProviderConfig('openai', 15_000)
-  const response = await client.chat.completions.create({
+  const requestBody = {
     model: cfg.model,
     max_tokens: Math.min(cfg.maxTokens, MAX_CHAT_TOKENS),
     messages: [
       { role: 'system', content: SYSTEM },
-      {
-        role: 'user',
-        content: buildPrompt(input),
-      },
+      { role: 'user', content: buildPrompt(input) },
     ],
-  }, { timeout: cfg.timeoutMs, maxRetries: 0 })
+  } satisfies Parameters<typeof client.chat.completions.create>[0]
+  const { response, usage } = await measuredProviderRequest({
+    api: 'chat.completions', requestBody, model: cfg.model, onAttempt,
+    request: () => client.chat.completions.create(requestBody, { timeout: cfg.timeoutMs, maxRetries: 0 }),
+    usage: response => openAIResponseUsage(response, cfg.model),
+  })
 
   const text = response.choices[0]?.message?.content?.trim() ?? ''
   return {
     text,
-    inputTokens: response.usage?.prompt_tokens ?? 0,
-    outputTokens: response.usage?.completion_tokens ?? 0,
-    model: response.model || cfg.model,
+    // Allowance counts all input tokens. Operator pricing retains the separate
+    // ordinary/cache categories in the admitted provider receipt.
+    usage: usage ? { inputTokens: usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0),
+      outputTokens: usage.outputTokens, model: usage.model } : null,
   }
 }
 
@@ -176,6 +182,7 @@ export interface ChatDiffItem {
  */
 export interface ChatDiffSummary {
   hasParent: boolean
+  comparisonUnavailable?: boolean
   fixed: ChatDiffItem[]
   regressed: ChatDiffItem[]
   newIssues: ChatDiffItem[]
@@ -433,6 +440,7 @@ function formatDiffItems(items: ChatDiffItem[]): string {
 
 function buildChangedReply(input: ChatProductQuestionInput): string {
   const { diff } = input
+  if (diff.comparisonUnavailable) return 'The comparison is unavailable, so I can’t verify what changed since the last review.'
   if (!diff.hasParent) {
     const product = input.productName ? ` of ${input.productName}` : ''
     return `This is the first review${product} in this thread, so there is no earlier review to compare against yet. Run an update review to see what changes next time.`
@@ -661,10 +669,10 @@ export function answerProductQuestion(
   return { kind, ...answer }
 }
 
-export async function runWorkspaceChat(input: WorkspaceChatInput): Promise<{
+export async function runWorkspaceChat(input: WorkspaceChatInput, onAttempt?: ProviderUsageAdmission): Promise<{
   reply: string
   mode: 'llm'
-  usage: { inputTokens: number; outputTokens: number; model?: string }
+  usage: { inputTokens: number; outputTokens: number; model?: string } | null
 }> {
   const client = getChatOpenAIClient()
   if (!client) {
@@ -672,15 +680,15 @@ export async function runWorkspaceChat(input: WorkspaceChatInput): Promise<{
   }
 
   try {
-    const result = await runOpenAIChat(client, input)
+    const result = await runOpenAIChat(client, input, onAttempt)
     if (result.text) {
       return {
         reply: result.text,
         mode: 'llm',
-        usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, model: result.model },
+        usage: result.usage,
       }
     }
-    throw new WorkspaceChatUnavailableError({ inputTokens: result.inputTokens, outputTokens: result.outputTokens, model: result.model })
+    throw new WorkspaceChatUnavailableError(result.usage ?? undefined)
   } catch (error) {
     if (error instanceof WorkspaceChatUnavailableError) throw error
     throw new WorkspaceChatUnavailableError()

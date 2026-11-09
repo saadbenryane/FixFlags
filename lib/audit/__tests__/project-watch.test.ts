@@ -24,7 +24,6 @@ const mocks = vi.hoisted(() => ({
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
   recordSiteLifecycleEvent: vi.fn(),
-  initializeDefaultMonitoring: vi.fn(),
   ensureDefaultMonitoring: vi.fn(),
   refreshGoogleContext: vi.fn(),
 }))
@@ -36,7 +35,8 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     flag: { findMany: mocks.flagFindMany },
     $transaction: mocks.transaction,
-    $queryRaw: mocks.notificationQuery,
+    $queryRaw: (query: unknown, ...values: unknown[]) => Array.isArray(query) && String(query[0]).includes('FROM uptime_monitors')
+      ? Promise.resolve([]) : mocks.notificationQuery(query, ...values),
     user:{findUnique:mocks.userFindUnique},
     project: {
       findMany: mocks.projectFindMany,
@@ -50,17 +50,22 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.auditUpdateMany,
     },
     siteOutcome: { findMany: mocks.siteOutcomeFindMany, updateMany: mocks.siteOutcomeUpdateMany },
-    uptimeMonitor: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    uptimeMonitor: { updateMany: vi.fn(async () => ({ count: 0 })), createMany: vi.fn(async () => ({ count: 1 })) },
   },
 }))
-vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.assertOperator }))
-vi.mock('@/lib/sites/application/scheduled-runs', () => ({
+vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.assertOperator, lockAdminDomainActor: mocks.assertOperator }))
+vi.mock('@/lib/sites/application/scheduled-runs', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/sites/application/scheduled-runs')>(),
   requestScheduledSiteRun: mocks.requestScheduledSiteRun,
 }))
 vi.mock('@/lib/sites/application/default-monitoring', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/sites/application/default-monitoring')>(),
-  initializeDefaultMonitoring: mocks.initializeDefaultMonitoring, ensureDefaultMonitoring: mocks.ensureDefaultMonitoring }))
+  ensureDefaultMonitoring: mocks.ensureDefaultMonitoring }))
 vi.mock('@/lib/sites/application/scheduled-completion', () => ({ reconcileScheduledCompletions: async () => 0 }))
+vi.mock('@/lib/sites/application/scheduled-watch-storage', () => ({
+  selectDueWatchProjects: mocks.projectFindMany,
+  updateUnlockedWatchProject: (_id: string, where: unknown, data: unknown) => mocks.projectUpdateMany({ where, data }),
+}))
 vi.mock('@/lib/billing/product-transaction', () => ({ productTransaction: (operation: (tx: object) => unknown) => operation({}) }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
@@ -86,7 +91,7 @@ const project = {
 
 function completedWatch<T extends { project?: Record<string, unknown>; user?: Record<string, unknown> } & Record<string, unknown>>(row: T) {
   return {
-    userId: 'user-1', status: 'COMPLETED' as const,
+    userId: 'user-1', status: 'COMPLETED' as const, parentId: null, parent: null,
     completedAt: new Date('2026-07-22T12:00:00Z'), improvementProjectedAt: new Date('2026-07-22T12:00:01Z'),
     ...row,
     user: row.user ? { emailVerified: true, ...row.user } : undefined,
@@ -108,8 +113,9 @@ describe('Product Watch', () => {
     mocks.siteOutcomeUpdateMany.mockResolvedValue({ count: 1 })
     mocks.transaction.mockImplementation(async (operations: Array<Promise<unknown>> | ((tx: unknown) => unknown)) => typeof operations === 'function' ? operations(prisma) : Promise.all(operations))
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.auditFindFirst.mockImplementation(async ({ where }) => where.watchNotificationStatus === 'SENDING' ? { id: 'audit-1' } : null)
     mocks.sendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null })
-    mocks.projectFindFirst.mockResolvedValue({ ...project, watchEveryMinutes: null })
+    mocks.projectFindFirst.mockResolvedValue({ ...project, url: 'https://example.com/', watchEveryMinutes: null })
     mocks.siteOutcomeFindMany.mockResolvedValue([])
     mocks.requestScheduledSiteRun.mockResolvedValue({ runId: 'run-1', auditId: 'child-1', reused: false })
     mocks.refreshGoogleContext.mockResolvedValue(undefined)
@@ -122,21 +128,20 @@ describe('Product Watch', () => {
   })
 
   it('retains the operator grant through scheduled admission', async () => {
-    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation', executionToken: 'lease' }
     await processDueProjectWatches(1, { clock: fixedClock(new Date('2026-07-22T12:00:00Z')), onlyProjectId: project.id, operator })
     expect(mocks.assertOperator).toHaveBeenCalledWith(operator, project.userId, project.id)
     expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ operator }))
   })
 
-  it('refuses an unscoped operator sweep before default setup or scheduling', async () => {
-    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+  it('refuses an unscoped operator sweep before scheduling', async () => {
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation', executionToken: 'lease' }
     await expect(processDueProjectWatches(1, { operator })).rejects.toMatchObject({ code: 'ADMIN_DOMAIN_SCOPE_DENIED' })
-    expect(mocks.initializeDefaultMonitoring).not.toHaveBeenCalled()
     expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
   })
 
   it('refuses revoked operator authority before changing monitoring state', async () => {
-    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation', executionToken: 'lease' }
     mocks.assertOperator.mockRejectedValue(new Error('Revoked operator'))
     await expect(processDueProjectWatches(1, { onlyProjectId: project.id, operator })).rejects.toThrow('Revoked operator')
     expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
@@ -201,20 +206,20 @@ describe('Product Watch', () => {
       if (where.id === project.userId) throw new Error('Account lookup failed')
       return { ...project.user, id: 'user-2' }
     })
-    mocks.projectUpdateMany.mockImplementation(async ({ where }) => {
-      if (where.id === project.id) throw new Error('This retry write failed')
+    mocks.projectUpdateMany.mockImplementation(async ({ where, data }) => {
+      if (where.id === project.id && data.watchNextRunAt) throw new Error('This retry write failed')
       return { count: 1 }
     })
     expect(await processDueProjectWatches()).toEqual({ processed: 1, enqueued: 1, errors: 1 })
     expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-2' }))
   })
 
-  it('uses each Site admission time after earlier work and policy lookup delay', async () => {
+  it('uses each same-owner Site admission time after earlier work and policy lookup delay', async () => {
     const start = new Date('2026-10-11T09:00:00Z')
     let instant = start.getTime()
-    mocks.projectFindMany.mockResolvedValue([project, { ...project, id: 'project-2', userId: 'user-2' }])
-    mocks.userFindUnique.mockImplementation(async ({ where }) => {
-      if (where.id === 'user-2') instant += 15 * 60_000
+    mocks.projectFindMany.mockResolvedValue([project, { ...project, id: 'project-2' }])
+    mocks.userFindUnique.mockResolvedValueOnce(project.user).mockImplementationOnce(async ({ where }) => {
+      instant += 15 * 60_000
       return { ...project.user, id: where.id }
     })
     mocks.requestScheduledSiteRun.mockImplementation(async ({ projectId }) => {
@@ -356,9 +361,9 @@ describe('Product Watch', () => {
 
   it('enables weekly watching on Free', async () => {
     mocks.projectFindFirst.mockResolvedValue({
-      id: 'project-1',
+      ...project,
+      url: 'https://example.com/',
       user: { ...project.user, plan: 'FREE' },
-      watchInterval: project.watchInterval,
     })
 
     const result = await setProjectWatch({
@@ -396,9 +401,7 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ processed: 1, enqueued: 1, errors: 0 })
-    expect(mocks.projectFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.not.objectContaining({ isManaged: expect.anything() }),
-    }))
+    expect(mocks.projectFindMany).toHaveBeenCalledWith(new Date('2026-08-25T00:00:00.000Z'), 20, { projectId: undefined, userId: undefined })
     expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({
       projectId: 'project-1',
       interval: 'weekly',
@@ -512,7 +515,7 @@ describe('Product Watch', () => {
     })
     mocks.auditUpdateMany.mockResolvedValue({ count: 0 })
 
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
@@ -521,7 +524,7 @@ describe('Product Watch', () => {
     mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', userId: 'user-1', projectId: 'project-1', recheckTrigger: 'WATCH',
       user: { lifecycleStatus: reason === 'suspended' ? 'SUSPENDED' : 'ACTIVE', email: 'owner@example.com' },
       project: { userId: reason === 'other-owner' ? 'other' : 'user-1', deletedAt: reason === 'removed' ? new Date() : null } }))
-    await notifyWatchRegression(null, 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
     expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
@@ -535,11 +538,12 @@ describe('Product Watch', () => {
       project: { userId: 'user-1', deletedAt: null, notificationLevel: 'FLAGS', notifyOnRecovery: true } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], regressed: [], newIssues: [{ id: 'new' }] })
     mocks.auditUpdateMany.mockResolvedValue({ count: 0 })
-    await notifyWatchRegression(null, 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
       status: 'COMPLETED', completedAt: expect.any(Date), improvementProjectedAt: { not: null },
       user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com', emailVerified: true },
-      project: { userId: 'user-1', deletedAt: null, watchPausedAt: null, user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: 'FLAGS', notifyOnRecovery: true },
+      project: { userId: 'user-1', deletedAt: null, watchPausedAt: null, watchTargetRevision: 1,
+        user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: 'FLAGS', notifyOnRecovery: true },
     }), data: expect.objectContaining({ watchNotificationStatus: 'SENDING' }) }))
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
@@ -561,7 +565,7 @@ describe('Product Watch', () => {
       fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
     })
 
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
 
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
     expect(mocks.sendEmail).toHaveBeenCalledWith(
@@ -591,7 +595,7 @@ describe('Product Watch', () => {
       fixed: [{ id: 'fixed' }], inconclusive: [], unchanged: [], newIssues: [], regressed: [],
     })
 
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -612,7 +616,7 @@ describe('Product Watch', () => {
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com' }, project: { notificationLevel: 'FLAGS' } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], regressed: [],
       newIssues: [{ checkId: 'title-missing', severity: 'IMPORTANT', confidence: 1, status: 'OPEN' }] })
-    await classifyWatchResult(null, 'child-1')
+    await classifyWatchResult('child-1')
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).toHaveBeenCalledOnce()
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
@@ -629,7 +633,7 @@ describe('Product Watch', () => {
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [{ ...finding, id: 'invalid-repair', problem: 'Unsupported recovery', supportingEvidenceUnreadable: true }],
       inconclusive: [], unchanged: [], regressed: [{ ...finding, id: 'invalid-failure', problem: 'Unsupported regression', supportingEvidenceUnreadable: true }],
       newIssues: [{ ...finding, id: 'valid-failure', problem: 'Genuine recorded failure' }] })
-    await notifyWatchRegression(null, 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
     const message = mocks.sendEmail.mock.calls[0][0]
     expect(message.subject).toBe('example.com: 1 problem to review')
@@ -645,8 +649,8 @@ describe('Product Watch', () => {
     mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', projectId: 'project-1', recheckTrigger: 'WATCH',
       status: state === 'undated' ? 'COMPLETED' : state, completedAt: state === 'undated' ? null : new Date(),
       user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' } }))
-    await classifyWatchResult(null, 'child-1')
-    await notifyWatchRegression(null, 'child-1')
+    await classifyWatchResult('child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
     expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
@@ -656,7 +660,7 @@ describe('Product Watch', () => {
   it('refuses direct delivery before the durable projection receipt', async () => {
     mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', projectId: 'project-1', recheckTrigger: 'WATCH',
       improvementProjectedAt: null, user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' } }))
-    await notifyWatchRegression(null, 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
     expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
@@ -675,7 +679,7 @@ describe('Product Watch', () => {
       regressed: [{ ...flag, id: 'regressed', problem: 'Recurrent metadata failure' }],
       fixed: [{ ...flag, id: 'fixed', problem: 'Repaired title' }], unchanged: [], inconclusive: [],
     })
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
     const message = mocks.sendEmail.mock.calls[0]![0]
     expect(message.subject).toBe('example.com: 2 problems to review')
@@ -701,7 +705,7 @@ describe('Product Watch', () => {
     mocks.flagFindMany.mockResolvedValue([{ ...finding, auditId: 'original-scan', evidence: 'hero.jpg is oversized',
       whyItMatters: 'Large image download', fix: '', affectedPaths: [finding.pageUrl], verificationRule: 'Remeasure the same image.', supportingObservations: null }])
     mocks.repairTask.mockResolvedValue({ prompt: '/report/original-scan\nhttps://example.com/shop\nhero.jpg is oversized\nServe each at the size it is displayed.\nRemeasure the same image.', promptHash: 'a'.repeat(64), source: { sourceAuditId: 'original-scan', checkId: finding.checkId, problem: finding.problem, pageUrl: finding.pageUrl } })
-    await notifyWatchRegression(null, 'child-1')
+    await notifyWatchRegression('child-1')
     const first = mocks.sendEmail.mock.calls[0][0]
     expect(first.text).toContain('/report/original-scan')
     expect(first.text).toContain(finding.pageUrl)
@@ -711,7 +715,7 @@ describe('Product Watch', () => {
     const payload = mocks.auditUpdateMany.mock.calls.find(([input]) => input.data.watchNotificationPayload)![0].data.watchNotificationPayload
     mocks.auditFindUnique.mockResolvedValue({ ...child, watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1, watchNotificationPayload: payload })
     mocks.flagFindMany.mockRejectedValue(new Error('Repair source is temporarily unavailable'))
-    await notifyWatchRegression(null, 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.flagFindMany).toHaveBeenCalledOnce()
     expect(mocks.sendEmail.mock.calls[1][0]).toEqual(first)
   })
@@ -725,7 +729,7 @@ describe('Product Watch', () => {
       watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1, watchNotificationPayload: payload,
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Updated name' }, project: { watchInterval: 'WEEKLY' } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
     const { version, ...body } = payload
     void version
     expect(mocks.sendEmail).toHaveBeenCalledWith(body,
@@ -740,7 +744,7 @@ describe('Product Watch', () => {
         subject: 'Recorded subject', html: '<p>Evidence</p>', text: 'Evidence', tags: [{ name: 'audit_id', value: 'child-1' }] },
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' }, project: { watchInterval: 'WEEKLY' } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       watchNotificationStatus: 'FAILED', watchNotificationLastError: 'Recorded notification no longer matches its recipient or Audit',
@@ -750,6 +754,8 @@ describe('Product Watch', () => {
   it('links a recovery notification to the parent Flag that holds its proof', async () => {
     mocks.auditFindUnique.mockResolvedValue(completedWatch({
       id: 'child-1',
+      parentId: 'parent-1',
+      parent: { projectId: 'project-1' },
       url: 'https://example.com/',
       projectId: 'project-1',
       recheckTrigger: 'WATCH',
@@ -779,7 +785,7 @@ describe('Product Watch', () => {
       regressed: [],
     })
 
-    await notifyWatchRegression('parent-1', 'child-1')
+    await notifyWatchRegression('child-1')
 
     expect(mocks.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -809,7 +815,7 @@ describe('Product Watch', () => {
     })
 
     it('links and explains the eligible critical Flag rather than an excluded finding', async () => {
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
       const message = mocks.sendEmail.mock.calls[0][0]
       expect(message.to).toBe('owner@example.test')
       expect(message.subject).toContain('1 problem to review')
@@ -830,14 +836,14 @@ describe('Product Watch', () => {
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [recovered], inconclusive: [], unchanged: [],
         newIssues: [important, critical], regressed: [] })
       mocks.sendEmail.mockResolvedValue({ data: null, error: { message: 'Uncertain delivery' } })
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
       const firstPayload = mocks.auditUpdateMany.mock.calls.find(([input]) => input.data.watchNotificationPayload)![0].data.watchNotificationPayload
       const firstKey = mocks.sendEmail.mock.calls[0][1].idempotencyKey
       const settings = { notificationLevel: preference === 'critical-only' ? 'CRITICAL_ONLY' : 'FLAGS',
         notifyOnRecovery: preference !== 'disable-recovery' }
       mocks.auditFindUnique.mockResolvedValue(completedWatch({ ...child, watchNotificationAttempts: 2,
         watchNotificationPayload: firstPayload, project: settings }))
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
       const [revisedBody, revisedOptions] = mocks.sendEmail.mock.calls[1]
       expect(revisedOptions.idempotencyKey).not.toBe(firstKey)
       expect(revisedBody.html).toContain('/flags/critical?')
@@ -850,7 +856,7 @@ describe('Product Watch', () => {
         watchNotificationPayload: revisedPayload, project: settings,
         user: { ...child.user, name: 'Changed owner name' } }))
       mocks.sendEmail.mockResolvedValue({ data: { id: 'accepted' }, error: null })
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
       expect(mocks.sendEmail.mock.calls[2][0]).toEqual(revisedBody)
       expect(mocks.sendEmail.mock.calls[2][1].idempotencyKey).toBe(revisedOptions.idempotencyKey)
       expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
@@ -862,14 +868,14 @@ describe('Product Watch', () => {
       const child = await mocks.auditFindUnique()
       mocks.auditFindUnique.mockResolvedValue(completedWatch({ ...child, project: { notificationLevel: 'OFF', notifyOnRecovery: true } }))
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [critical], inconclusive: [], unchanged: [], newIssues: [critical], regressed: [] })
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
       expect(mocks.sendEmail).not.toHaveBeenCalled()
       expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchNotificationStatus: 'NOT_APPLICABLE' }) }))
     })
 
     it('does not notify low-confidence findings even when an older count was persisted', async () => {
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ ...critical, confidence: 0.2 }], regressed: [] })
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
       expect(mocks.sendEmail).not.toHaveBeenCalled()
     })
   })
@@ -917,7 +923,7 @@ describe('Product Watch', () => {
         return { count: 1 }
       })
 
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
 
       expect(child.watchNotificationStatus).toBe('FAILED')
       expect(child.watchNotificationLastError).toBe('Too many requests')
@@ -950,7 +956,7 @@ describe('Product Watch', () => {
         vi.stubGlobal('fetch', providerFetch)
         const provider = new Resend('re_test_not_a_real_key')
         mocks.sendEmail.mockImplementation((...args: Parameters<typeof provider.emails.send>) => provider.emails.send(...args))
-        const notification = notifyWatchRegression('parent-1', 'child-1')
+        const notification = notifyWatchRegression('child-1')
         await admitted
         await vi.advanceTimersByTimeAsync(20_000)
         await notification
@@ -966,7 +972,7 @@ describe('Product Watch', () => {
     it('keeps an accepted notification sent when lifecycle telemetry fails', async () => {
       mocks.recordSiteLifecycleEvent.mockRejectedValue(new Error('Analytics unavailable'))
 
-      await expect(notifyWatchRegression('parent-1', 'child-1')).resolves.toBeUndefined()
+      await expect(notifyWatchRegression('child-1')).resolves.toBeUndefined()
 
       expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ watchNotificationStatus: 'SENT' }),
@@ -980,7 +986,7 @@ describe('Product Watch', () => {
     it('does not record a malformed success response as sent', async () => {
       mocks.sendEmail.mockResolvedValue({ data: null, error: null })
 
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
 
       expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ watchNotificationStatus: 'FAILED' }),
@@ -1067,7 +1073,7 @@ describe('Product Watch', () => {
       })
 
 
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
 
       // Reclaimed, so the alert actually goes out instead of being suppressed.
       expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
@@ -1107,7 +1113,7 @@ describe('Product Watch', () => {
         watchNotificationLeaseUntil: lease === 'expired' ? new Date(Date.now() - 60_000) : null,
       }))
 
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
 
       expect(mocks.sendEmail).not.toHaveBeenCalled()
       expect(mocks.auditUpdateMany).toHaveBeenCalledWith({
@@ -1135,7 +1141,7 @@ describe('Product Watch', () => {
       // The read-time guard is only an optimisation. Concurrency safety has to
       // live in the claim itself, or two workers racing on the same alert would
       // both believe they own the delivery.
-      await notifyWatchRegression('parent-1', 'child-1')
+      await notifyWatchRegression('child-1')
 
       const claimWhere = mocks.auditUpdateMany.mock.calls[0]?.[0]?.where
       expect(claimWhere).toMatchObject({

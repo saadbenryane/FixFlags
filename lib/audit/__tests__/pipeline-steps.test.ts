@@ -127,8 +127,10 @@ describe('runTriageStep', () => {
     const recordResponse = vi.fn(async () => undefined)
     vi.mocked(beginProviderUsage).mockResolvedValueOnce(recordResponse)
     const admission = vi.mocked(runTriageWithRetry).mock.calls[0][9]!
-    await expect(admission('gpt-4o-mini')).resolves.toBe(recordResponse)
-    expect(beginProviderUsage).toHaveBeenCalledWith('test-audit', 'triage', 'gpt-4o-mini')
+    const bound = { model: 'gpt-4o-mini', api: 'chat.completions' as const, inputTokens: 1000, outputTokens: 100,
+      images: 0, bodyBytes: 100, bodySha256: '1'.repeat(64), maxCostUsd: 0.001, pricing: null }
+    await expect(admission('gpt-4o-mini', bound)).resolves.toBe(recordResponse)
+    expect(beginProviderUsage).toHaveBeenCalledWith('test-audit', 'triage', 'gpt-4o-mini', bound)
     expect(result).toBe(mockResult)
   })
 

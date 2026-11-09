@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { PUBLIC_LINK_VERIFICATION_RULE } from '@/lib/audit/checks/destination-evidence'
 import { calculateSiteValueCohort, type ValueRun } from '../site-value-cohort'
-import type { AcquisitionAudit, AcquisitionCycle } from '../acquisition-value-cohort'
+import type { AcquisitionAudit, AcquisitionCycle, AcquisitionStart } from '../acquisition-value-cohort'
 const at=(day:number)=>new Date(Date.UTC(2026,9,1)+day*86_400_000)
 const audit=(id:string,day:number):AcquisitionAudit=>({id,projectId:'private-site',userId:'private-owner',parentId:null,source:'DASHBOARD',status:'COMPLETED',
   createdAt:at(day),startedAt:at(day+.1),completedAt:at(day+.2),project:{id:'private-site',userId:'private-owner',deletedAt:null}})
@@ -15,7 +16,7 @@ function fixture(){
   return {since:at(0),now:at(10),claims:[{idempotencyKey:'analysis_claimed:initial',projectId:'private-site',userId:'private-owner',createdAt:at(1)}],
     sites:[{id:'private-site',userId:'private-owner',createdAt:at(1),deletedAt:null as Date|null}],
     audits:[audit('initial',0),audit('later',2),audit('after',3),audit('post-monitor',4),audit('return',5)],
-    cycles:[cycle],runs:[run('later',2),run('post-monitor',4),run('return',5,'WEB')]}
+    starts: [] as AcquisitionStart[], cycles:[cycle],runs:[run('later',2),run('post-monitor',4),run('return',5,'WEB')]}
 }
 describe('continuing Site value',()=>{
   it('counts a later-source repair and a completed subsequent monitor once per Site',()=>{
@@ -31,6 +32,19 @@ describe('continuing Site value',()=>{
     expect(calculateSiteValueCohort(input)).toMatchObject({followupDays:7,counts:{sites:1,completedScheduledChecks:0}})
     expect(calculateSiteValueCohort({...input,followupDays:7})).toEqual(calculateSiteValueCohort(input))
     expect(calculateSiteValueCohort({...input,followupDays:28})).toMatchObject({followupDays:28,counts:{sites:1,completedScheduledChecks:1}})
+  })
+  it('counts one acknowledged repair handoff per Site inside the post-claim window', () => {
+    const input = fixture()
+    const matched = { projectId: input.sites[0].id, occurredAt: at(7.9), acknowledgedAt: at(8) }
+    const report = calculateSiteValueCohort({ ...input, clipboardHandoffs: [matched, matched] })
+    expect(report.counts.ownerAcknowledgedClipboardHandoff).toBe(1)
+    for (const invalid of [
+      { ...matched, occurredAt: at(0.9) },
+      { ...matched, acknowledgedAt: at(8.001) },
+      { ...matched, projectId: 'foreign' },
+    ]) {
+      expect(calculateSiteValueCohort({ ...input, clipboardHandoffs: [invalid] }).counts.ownerAcknowledgedClipboardHandoff).toBe(0)
+    }
   })
   it('excludes immature 28-day Sites before counts and shares, including the maturity boundary',()=>{
     const input=fixture();input.now=at(28.99)
@@ -95,5 +109,55 @@ describe('continuing Site value',()=>{
     expect(calculateSiteValueCohort(input).counts).toMatchObject({completedScheduledChecks:0,ownerRequestedFollowup:0})
     input.runs[2].environment='production';input.runs[2].requestedByUserId='other'
     expect(calculateSiteValueCohort(input).counts.ownerRequestedFollowup).toBe(0)
+  })
+
+  it('attributes continued usage only to the consented guide on the exact first claim', () => {
+    const input = fixture()
+    input.audits[0].source = 'HOMEPAGE'
+    const start = { idempotencyKey: 'analyze_started:initial', createdAt: at(0.1), userId: null, version: 1,
+      properties: { anonymous: true, guideEntry: 'website-online-but-not-working', journeyId: `ffj_${'c'.repeat(32)}` } }
+    input.starts = [start]
+    const report = calculateSiteValueCohort(input)
+    expect(report.guideEntries).toEqual([{ guide: 'website-online-but-not-working', ...report.counts }])
+    expect(JSON.stringify(report)).not.toMatch(/private-|ffj_/)
+    for (const otherStart of [
+      { ...start, idempotencyKey: 'analyze_started:later' },
+      { ...start, createdAt: at(1.1) },
+      { ...start, createdAt: at(-1) },
+      { ...start, properties: { ...start.properties, journeyId: undefined } },
+    ]) {
+      expect(calculateSiteValueCohort({ ...input, starts: [otherStart] }).guideEntries).toEqual([])
+    }
+    expect(calculateSiteValueCohort({ ...input, followupDays: 28 }).guideEntries).toEqual([])
+    input.claims[0].createdAt = at(8)
+    expect(calculateSiteValueCohort({ ...input, now: at(20) }).guideEntries).toEqual([])
+  })
+
+  it('credits a verified public-link repair only when verification is admitted within Site follow-up', () => {
+    const input = fixture()
+    const guide = 'website-online-but-not-working'
+    const [initial] = input.audits
+    initial.source = 'HOMEPAGE'
+    input.starts = [{ idempotencyKey: 'analyze_started:initial', createdAt: at(0.1), userId: null, version: 1,
+      properties: { anonymous: true, guideEntry: guide, journeyId: `ffj_${'c'.repeat(32)}` } }]
+    const [cycle] = input.cycles
+    cycle.sourceAuditId = initial.id
+    cycle.occurrence!.auditId = initial.id
+    Object.assign(cycle.occurrence!.flag, {
+      auditId: initial.id, checkId: 'broken-internal-links', verificationRule: PUBLIC_LINK_VERIFICATION_RULE,
+    })
+    const result = cycle.events[2]
+    result.id = 'public-link-repair-result'
+    result.attempt!.sourceAuditId = initial.id
+    const publicLinkFollowup = new Map([[result.id, new Map([['post-monitor', 'failed' as const]])]])
+    const report = (claimedAt: Date) => calculateSiteValueCohort({ ...input,
+      claims: [{ ...input.claims[0], createdAt: claimedAt }], now: at(50), startWindowEnd: at(7),
+      followupDays: 28, publicLinkFollowup,
+    }).guideEntries
+    expect(report(at(3))).toMatchObject([{ guide, independentlyImproved: 1, verifiedPublicLinkRepair: 1,
+      comparableScheduledPublicLinkRecheck: 1, publicLinkFailureAfterVerifiedRepair: 1 }])
+    // Verification was already admitted, although execution and the result are later.
+    expect(report(at(3.05))).toMatchObject([{ guide, independentlyImproved: 1, verifiedPublicLinkRepair: 0,
+      comparableScheduledPublicLinkRecheck: 0, publicLinkFailureAfterVerifiedRepair: 0 }])
   })
 })

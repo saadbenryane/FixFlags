@@ -6,12 +6,17 @@ import * as transactions from '@/lib/billing/product-transaction'
 import { requestScheduledSiteRun } from '../scheduled-runs'
 import { setProjectWatch } from '../monitoring-settings'
 import { processDueProjectWatches } from '@/lib/audit/project-watch'
+import { initializeDefaultMonitoring } from '../default-monitoring'
 import { requestSiteRun } from '../run-requests'
-import { settleIdleScheduledCare } from '../scheduled-completion'
+import { commitScheduledRun, reconcileScheduledCompletions, settleIdleScheduledCare } from '../scheduled-completion'
+import * as scheduledCompletion from '../scheduled-completion'
+import { updateOwnedSiteIdentity } from '../settings-commands'
 import { dispatchAudit } from '@/lib/audit/dispatch'
 import * as betaPolicy from '@/lib/billing/beta-policy'
 import { expireUnownedExecution } from '@/lib/audit/execution-ownership'
 import { reconcileOutcomeRunsForAudit } from '../run-reconciliation'
+import { fixedClock } from '@/lib/time/clock'
+import { calcWatchNextRun } from '@/lib/audit/watch-interval'
 
 const queue = vi.hoisted(() => ({ add: vi.fn(async () => ({ id: 'queued' })) }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => queue }))
@@ -44,12 +49,84 @@ run('scheduled admission against the current monitoring claim', () => {
   async function idleSource() {
     return prisma.audit.create({ data: { projectId, userId, url: 'https://example.com/', status: 'COMPLETED',
       createdAt: new Date(now.getTime() - 3600_000), completedAt: new Date(now.getTime() - 3599_000),
+      pages: { create: { url: 'https://example.com/', normalizedUrl: 'https://example.com/', position: 0, role: 'primary', status: 'COMPLETED' } },
       executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
         environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
   }
   const idleInput = () => ({ projectId, userId, targetUrl: 'https://example.com/', interval: 'weekly' as const,
     everyMinutes: null, admittedAt: now, claim: { ...input().claim, targetUrl: 'https://example.com/', interval: 'weekly' as const,
       everyMinutes: null, scheduledAt } })
+
+  it('records a fresh attempt marker while advancing cadence from the real admission time', async () => {
+    await prisma.project.update({ where: { id: projectId }, data: { watchLeaseUntil: null } })
+    const scope = { clock: fixedClock(now), onlyProjectId: projectId }
+    const attemptedAt = new Date(now.getTime() + 1), next = calcWatchNextRun('weekly', now)
+    expect(await processDueProjectWatches(1, scope)).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    expect(await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' } })).toMatchObject({
+      status: 'QUEUED', context: { scheduled: { attemptedAt: attemptedAt.getTime(), scheduledAt: scheduledAt.getTime(), nextRunAt: next.getTime() } },
+    })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({
+      watchLastAttemptAt: attemptedAt, watchNextRunAt: next, watchLeaseUntil: null,
+    })
+    expect(await processDueProjectWatches(1, scope)).toEqual({ processed: 0, enqueued: 0, errors: 0 })
+    expect(queue.add).toHaveBeenCalledOnce()
+  })
+
+  it.each([false, true])('admits fresh work when an edited origin shares an earlier due slot (returned to original: %s)', async returned => {
+    const tick = { projectId, userId, interval: 'weekly' as const, scheduledAt, now }
+    const original = await requestScheduledSiteRun(tick)
+    await prisma.audit.update({ where: { id: original.auditId! }, data: { status: 'COMPLETED',
+      createdAt: new Date(now.getTime() - 5000), completedAt: new Date(now.getTime() - 4000) } })
+    await prisma.runRequest.update({ where: { id: original.runId! }, data: { status: 'COMPLETED', completedAt: new Date(), leaseUntil: null } })
+    await updateOwnedSiteIdentity({ projectId, userId }, { origin: 'http://example.com:8080' })
+    if (returned) await updateOwnedSiteIdentity({ projectId, userId }, { origin: 'https://example.com' })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({
+      watchTargetRevision: returned ? 3 : 2, watchLeaseUntil: null, watchNextRunAt: expect.any(Date),
+    })
+    const current = await requestScheduledSiteRun(tick)
+    expect(current).toMatchObject({ reused: false })
+    expect(current.auditId).not.toBe(original.auditId)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: current.auditId! } })).toMatchObject({
+      url: returned ? 'https://example.com/' : 'http://example.com:8080/', executionSpec: { scope: 'SITE' },
+    })
+    expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: current.runId! } })).toMatchObject({
+      context: { watchTargetRevision: returned ? 3 : 2 },
+    })
+    expect(await requestScheduledSiteRun(tick)).toMatchObject({ runId: current.runId, reused: true })
+    expect(queue.add).toHaveBeenCalledTimes(2)
+  })
+
+  it('refuses to commit an earlier origin receipt against a new claim', async () => {
+    const original = await requestScheduledSiteRun({ projectId, userId, interval: 'weekly', scheduledAt, now })
+    const targetUrl = 'http://example.com:8080'
+    // Model a retained edit before origin revisions were recorded.
+    await prisma.project.update({ where: { id: projectId }, data: { url: targetUrl } })
+    const saved = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    await expect(commitScheduledRun({ projectId, userId, runId: original.runId!, admittedAt: now, claim: {
+      ...input().claim, targetUrl, interval: 'weekly', everyMinutes: null, scheduledAt,
+    } })).rejects.toMatchObject({ code: 'WATCH_CLAIM_CHANGED' })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(saved)
+    expect((await prisma.runRequest.findUniqueOrThrow({ where: { id: original.runId! } })).context).not.toHaveProperty('scheduled')
+  })
+
+  it('runs the newly due origin and keeps a late failure from changing its clock', async () => {
+    const prior = await requestScheduledSiteRun(input())
+    const target = 'http://example.com:8080'
+    await updateOwnedSiteIdentity({ projectId, userId }, { origin: target })
+    const due = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    expect(due).toMatchObject({ watchTargetRevision: 2, watchLeaseUntil: null, watchConsecutiveFailures: 0 })
+    expect(due.watchNextRunAt!.getTime()).toBeLessThanOrEqual(Date.now())
+    await prisma.audit.update({ where: { id: prior.auditId! }, data: { status: 'FAILED', completedAt: new Date() } })
+    await prisma.runRequest.update({ where: { id: prior.runId! }, data: { status: 'FAILED', completedAt: new Date(), leaseUntil: null } })
+    expect(await reconcileScheduledCompletions(1, undefined, { projectId, runId: prior.runId! })).toBe(0)
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(due)
+
+    expect(await processDueProjectWatches(1, { onlyProjectId: projectId })).toMatchObject({ enqueued: 1, errors: 0 })
+    const current = await prisma.runRequest.findFirstOrThrow({ where: { projectId, id: { not: prior.runId! } }, include: { audit: true } })
+    expect(current).toMatchObject({ audit: { url: target + '/' }, context: { watchTargetRevision: 2,
+      scheduled: { targetRevision: 2, scheduledAt: due.watchNextRunAt!.getTime() } } })
+    expect(queue.add).toHaveBeenCalledTimes(2)
+  })
 
   it.each(['pause', 'transfer', 'removed', 'suspended', 'cadence', 'target', 'expired-claim'] as const)(
     'does not advance idle care after its current authority changes: %s', async change => {
@@ -191,6 +268,7 @@ run('scheduled admission against the current monitoring claim', () => {
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } }))
       .toMatchObject({ watchInterval: 'DAILY', watchPausedAt: null, watchNextRunAt: null })
     await prisma.user.update({ where: { id: userId }, data: { plan: 'TEAM', subscriptionStatus: 'ACTIVE' } })
+    await initializeDefaultMonitoring(5)
     expect(await processDueProjectWatches(5)).toEqual({ processed: 1, enqueued: 1, errors: 0 })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } }))
       .toMatchObject({ watchInterval: 'DAILY', watchPausedAt: null, watchNextRunAt: expect.any(Date) })
@@ -292,6 +370,40 @@ run('scheduled admission against the current monitoring claim', () => {
       .toMatchObject({ watchLeaseUntil: null, watchConsecutiveFailures: 0 })
     expect((await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).watchNextRunAt!.getTime())
       .toBeGreaterThan(now.getTime() + 6 * 86400_000)
+  })
+
+  it.each(['QUEUED', 'COMPLETED'] as const)('retries a failed schedule write using the exact %s receipt', async status => {
+    await prisma.project.update({ where: { id: projectId }, data: { watchLeaseUntil: null } })
+    const scope = { onlyProjectId: projectId }
+    vi.spyOn(scheduledCompletion, 'commitScheduledRun').mockRejectedValueOnce(new Error('Controlled schedule write failure'))
+    expect(await processDueProjectWatches(1, scope)).toEqual({ processed: 1, enqueued: 0, errors: 1 })
+
+    const saved = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    const run = await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' } })
+    expect(saved).toMatchObject({ watchNextRunAt: scheduledAt, watchLeaseUntil: expect.any(Date), watchConsecutiveFailures: 0 })
+    expect(run.context).not.toHaveProperty('scheduled')
+    expect(queue.add).toHaveBeenCalledOnce()
+    expect(await processDueProjectWatches(1, scope)).toEqual({ processed: 0, enqueued: 0, errors: 0 })
+    if (status === 'COMPLETED') {
+      // Model the admitted execution settling independently before the lease expires.
+      const completedAt = new Date()
+      await prisma.audit.update({ where: { id: run.auditId! }, data: { status, completedAt } })
+      await prisma.runRequest.update({ where: { id: run.id }, data: { status, completedAt, leaseUntil: null } })
+    }
+
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(saved.watchLeaseUntil!.getTime() + 1000)
+      expect(await processDueProjectWatches(1, scope)).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    } finally { vi.useRealTimers() }
+    expect(queue.add).toHaveBeenCalledOnce()
+    expect(await prisma.audit.count({ where: { projectId } })).toBe(1)
+    expect(await prisma.runRequest.findMany({ where: { projectId } })).toMatchObject([
+      { id: run.id, auditId: run.auditId, status, idempotencyKey: run.idempotencyKey, context: { scheduled: { scheduledAt: scheduledAt.getTime() } } },
+    ])
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({
+      watchLeaseUntil: null, watchConsecutiveFailures: 0, watchLastError: null,
+    })
   })
 
   it.each(['legacy', 'failed-request', 'failed-progressive'] as const)('admits due care past an abandoned %s Audit status without rewriting its history', async previous => {

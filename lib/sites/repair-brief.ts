@@ -21,7 +21,7 @@ export function prepareSiteRepairBrief(siteId: string, flag: SiteFlagDetail, app
   const observations = flag.supportingObservations == null ? [] : readSupportingObservationView(flag.supportingObservations)
   const unreadable = Boolean(flag.supportingEvidenceUnreadable || observations === null)
   const evidenceMissing = flag.evidenceMissing || !flag.evidence.trim()
-  const total = unreadable ? null : observations!.length
+  const total = flag.supportingEvidencePage ? flag.supportingEvidencePage.total : unreadable ? null : observations!.length
   const definition = resolveRepairDefinition({ ...flag, supportingEvidenceUnreadable: unreadable, evidenceMissing })
   const ready = Boolean(definition && hasRepairGuidance(definition.guidance))
   const context = {
@@ -69,7 +69,9 @@ export function prepareSiteRepairBrief(siteId: string, flag: SiteFlagDetail, app
     schemaVersion: context.schemaVersion, siteId, referenceFlagId,
     sourceFlagIds: flag.sourceFlagIds?.toSorted(),
     flag: { ...recordedFlag, flagId: referenceFlagId,
-      supportingObservations: observations?.map(item => createHash('sha256').update(canonicalIntent(item)).digest('hex')) ?? null }, repair: context.repair,
+      supportingObservations: flag.supportingEvidenceRevision
+        ? { version: 2, revision: flag.supportingEvidenceRevision }
+        : observations?.map(item => createHash('sha256').update(canonicalIntent(item)).digest('hex')) ?? null }, repair: context.repair,
     verification: { expectedBehavior: context.verification.expectedBehavior, rule: context.verification.rule },
   })).digest('hex')
   if (expectedContextHash && expectedContextHash !== contextHash)
@@ -82,6 +84,8 @@ export function prepareSiteRepairBrief(siteId: string, flag: SiteFlagDetail, app
   return {
     contextHash,
     complete: () => {
+      if (flag.supportingEvidencePage && (flag.supportingEvidencePage.offset !== 0 || total !== observations?.length))
+        throw new SiteRunRefusal('Read the complete original repair task before exporting it.', 409, 'PARTIAL_REPAIR_SOURCE')
       const { schemaVersion: _schemaVersion, ...task } = context
       void _schemaVersion
       return repairFileTaskSchema.parse({ ...task, contextHash, verification, references: sourceLinks })
@@ -91,7 +95,10 @@ export function prepareSiteRepairBrief(siteId: string, flag: SiteFlagDetail, app
         throw new SiteRunRefusal('Choose a valid supporting observation page.', 400, 'INVALID_OBSERVATION_PAGE')
       if (observationOffset > (total ?? 0))
         throw new SiteRunRefusal('Choose a valid supporting observation page.', 400, 'INVALID_OBSERVATION_PAGE')
-      let page = unreadable ? null : observations!.slice(observationOffset, observationOffset + REPAIR_OBSERVATIONS_PER_PAGE)
+      if (flag.supportingEvidencePage && observationOffset !== flag.supportingEvidencePage.offset)
+        throw new SiteRunRefusal('Choose a valid supporting observation page.', 400, 'INVALID_OBSERVATION_PAGE')
+      let page = unreadable ? null : flag.supportingEvidencePage ? observations!
+        : observations!.slice(observationOffset, observationOffset + REPAIR_OBSERVATIONS_PER_PAGE)
       const jsonUrl = (offset: number) => `${base}/api${scope}/repair-brief?contextHash=${contextHash}${offset ? `&observationOffset=${offset}` : ''}`
       const request = (offset: number) => ({ tool: MCP_TOOLS.getFlag.name, arguments: { siteId, flagId: referenceFlagId,
         expectedContextHash: contextHash, ...(offset ? { observationOffset: offset } : {}) } })

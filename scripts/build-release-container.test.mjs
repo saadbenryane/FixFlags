@@ -41,6 +41,7 @@ describe('release image configuration', () => {
     assert.ok(args.includes(`GIT_COMMIT_SHA=${sha}`))
     assert.ok(args.includes(`NEXT_PUBLIC_APP_URL=${settings.NEXT_PUBLIC_APP_URL}`))
     assert.ok(args.includes(`NEXT_PUBLIC_GA_ID=${settings.NEXT_PUBLIC_GA_ID}`))
+    assert.ok(args.includes('NEXT_PUBLIC_GA_PAGEVIEW_MODE=automatic'))
     assert.ok(!args.join(' ').includes('private-'))
   })
   it('rejects a verification runtime paired with a production build', () => {
@@ -58,5 +59,10 @@ describe('release image configuration', () => {
   it('permits an environment without analytics and rejects invalid IDs', () => {
     assert.ok(releaseContainerBuildArguments({ ...settings, NEXT_PUBLIC_GA_ID: '' }, sha).includes('NEXT_PUBLIC_GA_ID='))
     assert.throws(() => releaseContainerBuildArguments({ ...settings, NEXT_PUBLIC_GA_ID: 'private-secret' }, sha))
+  })
+  it('forwards the controlled pageview mode and rejects unsupported values', () => {
+    assert.ok(releaseContainerBuildArguments({ ...settings, NEXT_PUBLIC_GA_PAGEVIEW_MODE: 'controlled' }, sha)
+      .includes('NEXT_PUBLIC_GA_PAGEVIEW_MODE=controlled'))
+    assert.throws(() => releaseContainerBuildArguments({ ...settings, NEXT_PUBLIC_GA_PAGEVIEW_MODE: 'unknown' }, sha))
   })
 })

@@ -15,6 +15,21 @@ function historyPage(id: string, observedAt: string, nextCursor: string | null):
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('recorded uptime reporting', () => {
+  it.each(['certificate_expired', 'dns_failure', 'connection_failed'] as const)('shows the confirming origin for %s even when no probes remain', async reason => {
+    const at = '2026-11-03T12:00:00Z', failureOrigin = 'https://edge.example.com:8443'
+    const recorded: UptimeHistory = { ...history(), incidentOpen: true, openIncidentCount: 1, incidents: [{
+      id: 'retained-incident', targetUrl: summary.targetUrl, failureOrigin,
+      startedAt: at, confirmedAt: at, recoveredAt: null, supersededAt: null, reason,
+    }] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ siteId: 'site-1', ...recorded })))
+    render(<UptimeCard siteId="site-1" summary={summary} />)
+    fireEvent.click(screen.getByRole('button', { name: C.details }))
+    const incident = (await screen.findByText(C.incidentOpen, { selector: 'strong' })).closest('li')!
+    fireEvent.click(within(incident).getByText(C.probeDetails, { selector: 'summary' }))
+    expect(within(incident).getByText(summary.targetUrl)).toBeVisible()
+    expect(within(incident).getByText(C.reasons[reason] + ' · ' + failureOrigin)).toBeVisible()
+  })
+
   it.each(['recovered', 'paused'] as const)('updates an open history dialog from the newer %s Site snapshot without replacing recorded checks', async change => {
     let finish!: (response: Response) => void
     const old: UptimeSummary = { ...summary, state: 'offline', lastCheckedAt: '2026-11-03T12:00:00Z', openIncidentCount: 1 }
@@ -152,9 +167,9 @@ describe('recorded uptime reporting', () => {
     expect(older.closest('li')).toHaveFocus()
   })
 
-  it.each(['online', 'offline'] as const)('lets an expired %s observation become unknown in both views while retaining incident and probe evidence', async state => {
+  it.each(['online', 'offline', 'checking'] as const)('lets an expired %s observation become unknown in both views while retaining incident and probe evidence', async state => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-11-03T12:09:30Z'))
+    vi.setSystemTime(new Date(state === 'checking' ? '2026-11-03T12:04:30Z' : '2026-11-03T12:09:30Z'))
     const at = '2026-11-03T12:00:00.000Z'
     const current = { ...summary, state, lastCheckedAt: at, openIncidentCount: state === 'offline' ? 1 : 0, incidentOpen: state === 'offline' }
     const result = state === 'online' ? 'ONLINE' : 'FAILED'
@@ -173,6 +188,8 @@ describe('recorded uptime reporting', () => {
       await act(async () => { await vi.advanceTimersByTimeAsync(0) })
       const dialog = screen.getByRole('dialog')
       expect(within(dialog).getByText(C.states[state], { selector: '[data-state]' })).toBeVisible()
+      fireEvent.click(within(dialog).getByText(C.history, { selector: 'summary' }))
+      if (state === 'checking') expect(within(dialog).getByText(`${C.results.FAILED} · ${C.confirmationPending}`)).toBeVisible()
       await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
       expect(trigger).toHaveTextContent(C.states.unknown)
       expect(trigger).not.toHaveTextContent(C.states[state])
@@ -181,7 +198,7 @@ describe('recorded uptime reporting', () => {
         expect(screen.getByText(C.openIncidents(1))).toBeInTheDocument()
         expect(within(dialog).getByText(C.incidentOpen)).toBeVisible()
       }
-      fireEvent.click(within(dialog).getByText(C.history, { selector: 'summary' }))
+      expect(within(dialog).queryByText(`${C.results.FAILED} · ${C.confirmationPending}`)).not.toBeInTheDocument()
       expect(within(dialog).getByText(C.results[result])).toBeVisible()
       expect(within(dialog).getByText(state === 'online' ? /HTTP 200/ : /HTTP 503/)).toBeVisible()
     } finally { page.unmount(); vi.useRealTimers() }
@@ -234,6 +251,44 @@ describe('recorded uptime reporting', () => {
       expect(fetcher).toHaveBeenCalledTimes(3)
       expect(within(dialog).getByRole('button', { name: 'Load more checks' })).toBeEnabled()
     } finally { view.unmount(); vi.useRealTimers(); vi.restoreAllMocks() }
+  })
+
+  it.each([false, true])('restarts a rejected continuation with a fresh server cursor (restart needs retry: %s)', async restartNeedsRetry => {
+    const scope = { key: 'monitor:1', from: '2026-10-11T12:00:00.000Z', through: '2026-10-12T12:00:00.000Z' }
+    const response = (page: UptimeHistory) => Response.json({ siteId: 'site-1', ...page, historyScope: scope })
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(response(historyPage('first', '2026-10-12T11:00:00.000Z', 'cursor-first')))
+      .mockResolvedValueOnce(response(historyPage('old', '2026-10-12T10:00:00.000Z', 'cursor-retired')))
+      .mockResolvedValueOnce(Response.json({}, { status: 400 }))
+    if (restartNeedsRetry) fetcher.mockResolvedValueOnce(Response.json({}, { status: 503 }))
+    fetcher.mockResolvedValueOnce(response(historyPage('first', '2026-10-12T11:00:00.000Z', 'cursor-new')))
+      .mockResolvedValueOnce(response(historyPage('tail', '2026-10-12T09:00:00.000Z', null)))
+    vi.stubGlobal('fetch', fetcher)
+    render(<UptimeCard siteId="site-1" summary={summary} />)
+    fireEvent.click(screen.getByRole('button', { name: C.details }))
+    const dialog = screen.getByRole('dialog')
+    const panel = (await within(dialog).findByText(C.history, { selector: 'summary' })).closest('details')!
+    fireEvent.click(within(panel).getByText(C.history, { selector: 'summary' }))
+    const more = () => within(dialog).getByRole('button', { name: C.loadMore })
+    fireEvent.click(more())
+    await waitFor(() => expect(panel.querySelectorAll('ul > li')).toHaveLength(2))
+    fireEvent.click(more())
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4))
+    expect(fetcher.mock.calls.slice(2, 4).map(([url]) => url)).toEqual([
+      '/api/sites/site-1/uptime?window=24h&cursor=cursor-retired', '/api/sites/site-1/uptime?window=24h',
+    ])
+    if (restartNeedsRetry) {
+      await within(dialog).findByRole('alert')
+      expect(panel.querySelectorAll('ul > li')).toHaveLength(2)
+      expect(within(dialog).queryByRole('button', { name: C.loadMore })).not.toBeInTheDocument()
+      fireEvent.click(within(dialog).getByRole('button', { name: C.retry }))
+      await waitFor(() => expect(fetcher.mock.calls[4]?.[0]).toBe('/api/sites/site-1/uptime?window=24h'))
+    }
+    await waitFor(() => expect(panel.querySelectorAll('ul > li')).toHaveLength(1))
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    fireEvent.click(more())
+    await waitFor(() => expect(fetcher.mock.calls.at(-1)?.[0]).toBe('/api/sites/site-1/uptime?window=24h&cursor=cursor-new'))
+    await waitFor(() => expect(panel.querySelectorAll('ul > li')).toHaveLength(2))
   })
 
   it('keeps the observation time beside the current state without a fixed cadence', () => {

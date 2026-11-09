@@ -3,6 +3,8 @@ import { NextRequest } from 'next/server'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 const prismaMock = vi.hoisted(() => ({
+  $transaction: vi.fn(), $queryRaw: vi.fn(),
+  outcomeExecutionBinding: { findFirst: vi.fn() },
   project: { findFirst: vi.fn(), update: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
@@ -40,6 +42,9 @@ function voidReq() {
 describe('PATCH /api/projects/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    prismaMock.$transaction.mockImplementation(async operation => operation(prismaMock))
+    prismaMock.$queryRaw.mockResolvedValue([])
+    prismaMock.outcomeExecutionBinding.findFirst.mockResolvedValue(null)
     getSession.mockResolvedValue({ user: { id: 'u1' } })
     canonicalProductHost.mockReturnValue('example.com')
     prismaMock.project.findFirst.mockResolvedValue({
@@ -70,7 +75,7 @@ describe('PATCH /api/projects/[id]', () => {
   })
 
   it('returns 200 and updates the project name', async () => {
-    prismaMock.project.update.mockResolvedValue({ id: 'p1', name: 'New Name' })
+    prismaMock.project.update.mockResolvedValue({ id: 'p1', name: 'New Name', url: 'https://example.com' })
     const res = await PATCH(jsonReq({ name: 'New Name' }), { params: Promise.resolve({ id: 'p1' }) })
     expect(res.status).toBe(200)
     await res.json()
@@ -81,7 +86,7 @@ describe('PATCH /api/projects/[id]', () => {
   })
 
   it('preserves the configured origin on URL edits', async () => {
-    prismaMock.project.update.mockResolvedValue({ id: 'p1' })
+    prismaMock.project.update.mockResolvedValue({ id: 'p1', url: 'http://example.com:8080' })
     expect((await PATCH(jsonReq({ url: 'http://example.com:8080/pricing' }), { params: Promise.resolve({ id: 'p1' }) })).status).toBe(200)
     expect(prismaMock.project.update).toHaveBeenCalledWith(expect.objectContaining({ data: { url: 'http://example.com:8080' } }))
   })

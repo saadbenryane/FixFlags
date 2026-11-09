@@ -4,7 +4,7 @@ import { assessSearchRecovery } from '../recovery'
 import { mergeSearchAttentionPolicies } from '../attention-scope'
 import { searchReceiptSchema, type PublicDocument } from '../contracts'
 import { document, evidence, PAGE } from './fixtures'
-import { hasRecordedRecoveryEvidence } from '../../recovery-evidence'
+import { recordedVerificationVerdict } from '../../recovery-evidence'
 
 const first = PAGE + 'first.xml', second = PAGE + 'second.xml', replacement = PAGE + 'replacement.xml'
 function sitemap(url: string, state: 'valid' | 'invalid' | 'missing' | 'unavailable') {
@@ -19,6 +19,41 @@ async function receipt(documents: PublicDocument[], pageUrl = PAGE) {
 }
 
 describe('sitemap recovery preserves original resources', () => {
+  it('requires the new syntax contract before a supported text file can verify a syntax repair', async () => {
+    const text = { ...sitemap(first, 'valid'), body: PAGE + 'pricing', headers: { 'content-type': 'text/plain' } }
+    const after = await receipt([text])
+    const before = await receipt([{ ...text, body: '/relative' }])
+    const flag = searchFindings(before.observations).find(flag => flag.checkId === 'search-sitemap-invalid')!
+    expect(flag.attentionPolicy?.version).toBe(6)
+    expect(assessSearchRecovery(after, flag.checkId, flag.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const xmlPolicy = searchFindings((await receipt([sitemap(first, 'invalid')])).observations)
+      .find(flag => flag.checkId === 'search-sitemap-invalid')!.attentionPolicy!
+    const historical = { ...xmlPolicy, version: 2, pageScopes: xmlPolicy.pageScopes?.map(scope => ({ ...scope, version: 2 })) }
+    expect(assessSearchRecovery(after, flag.checkId, historical)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(await receipt([sitemap(first, 'valid')]), flag.checkId, historical)).toMatchObject({ comparable: true, verdict: 'passed' })
+  })
+  it('keeps a missing sitemap open when its replacement response is not usable discovery data', async () => {
+    const missing = searchFindings((await receipt([sitemap(first, 'missing')])).observations).find(flag => flag.checkId === 'sitemap-missing')!
+    const wrongStructure = { ...sitemap(first, 'valid'), body: '<urlset><sitemap><loc>https://example.com/pages.xml</loc></sitemap></urlset>' }
+    const current = await receipt([wrongStructure])
+    expect(current.observations.find(item => item.checkId === 'search-sitemap-invalid')).toMatchObject({ disposition: 'failed', reason: 'sitemap_invalid_structure' })
+    expect(assessSearchRecovery(current, missing.checkId, missing.attentionPolicy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(await receipt([sitemap(first, 'valid')]), missing.checkId, missing.attentionPolicy))
+      .toMatchObject({ comparable: true, verdict: 'passed' })
+  })
+  it('retains an observed missing sitemap through an interrupted body but refuses an access challenge', async () => {
+    const missing = sitemap(first, 'missing')
+    const interrupted = { ...missing, complete: false, reason: 'response_body_unavailable' }
+    const prior = searchFindings((await receipt([missing])).observations).find(flag => flag.checkId === 'sitemap-missing')!
+    const current = await receipt([interrupted])
+    expect(searchFindings(current.observations)).toContainEqual(expect.objectContaining({
+      checkId: 'sitemap-missing', evidence: expect.stringContaining('HTTP 404'),
+    }))
+    expect(assessSearchRecovery(current, prior.checkId, prior.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'failed' })
+    const challenged = await receipt([{ ...interrupted, headers: { 'cf-mitigated': 'challenge' } }])
+    expect(assessSearchRecovery(challenged, prior.checkId, prior.attentionPolicy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+  })
+
   it('preserves every admitted resource in the repair evidence when their URLs exceed a display excerpt', async () => {
     const urls = Array.from({ length: 5 }, (_, index) => PAGE + 'sitemap-' + index + '-' + 'path'.repeat(450) + '.xml')
     const before = await receipt(urls.map(url => sitemap(url, 'invalid')))
@@ -36,9 +71,9 @@ describe('sitemap recovery preserves original resources', () => {
     expect(flag.attentionPolicy?.resourceKeys).toHaveLength(2)
     expect(flag.evidence).toContain(first)
     expect(flag.evidence).toContain(second)
-    const recovered = (current: Awaited<ReturnType<typeof receipt>>) => hasRecordedRecoveryEvidence({
+    const verdict = (current: Awaited<ReturnType<typeof receipt>>) => recordedVerificationVerdict({
       auditId: current.auditId, executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: PAGE,
-        environment: 'production', checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null }, flag,
+        environment: 'production', checks: { [checkId]: checkId === 'search-sitemap-invalid' ? 2 : 1 }, outcomes: [], verificationTarget: null }, flag,
       executions: [{ targetKey: 'module:search-discovery', status: 'COMPLETED', detail: current }],
     })
     for (const documents of [
@@ -48,12 +83,27 @@ describe('sitemap recovery preserves original resources', () => {
     ]) {
       const current = await receipt(documents)
       expect(assessSearchRecovery(current, checkId, flag.attentionPolicy)).toMatchObject({ comparable: false, verdict: 'unknown' })
-      expect(recovered(current)).toBe(false)
+      expect(verdict(current)).toBeNull()
     }
+    const stillBroken = await receipt([sitemap(second, 'unavailable'), sitemap(first, state)])
+    const exactFailure = stillBroken.observations.find(item => item.checkId === checkId && item.disposition === 'failed')!
+    expect(assessSearchRecovery(stillBroken, checkId, flag.attentionPolicy))
+      .toEqual({ comparable: true, verdict: 'failed', observationIds: [exactFailure.id] })
+    expect(verdict(stillBroken)).toBe('failed')
+    const originalScope = flag.attentionPolicy!.pageScopes![0]
+    const separateScopes = { ...flag.attentionPolicy,
+      pageScopes: flag.attentionPolicy!.resourceKeys!.map(resourceKey => ({ ...originalScope, resourceKeys: [resourceKey] })) }
+    expect(assessSearchRecovery(stillBroken, checkId, separateScopes))
+      .toEqual({ comparable: true, verdict: 'failed', observationIds: [exactFailure.id] })
+    const unrelatedFailure = await receipt([sitemap(replacement, state), sitemap(second, 'unavailable')])
+    expect(verdict(unrelatedFailure)).toBeNull()
+    const differentVersion = searchReceiptSchema.parse({ ...stillBroken, observations: stillBroken.observations.map(item =>
+      item.id === exactFailure.id ? { ...item, checkVersion: 2 } : item) })
+    expect(verdict(differentVersion)).toBeNull()
     const repaired = await receipt([sitemap(second, 'valid'), sitemap(first, 'valid')])
     expect(assessSearchRecovery(repaired, checkId, flag.attentionPolicy))
       .toMatchObject({ comparable: true, verdict: 'passed' })
-    expect(recovered(repaired)).toBe(true)
+    expect(verdict(repaired)).toBe('passed')
     const recurrence = await receipt([sitemap(second, state), sitemap(first, state)])
     expect(assessSearchRecovery(recurrence, checkId, flag.attentionPolicy)).toMatchObject({ comparable: true, verdict: 'failed' })
   })

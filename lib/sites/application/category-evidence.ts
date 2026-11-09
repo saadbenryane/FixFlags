@@ -5,12 +5,14 @@ import { readExecutionSpec, type CategoryArea } from '../domain/execution-spec'
 import { SITE_ASSESSMENT_COPY } from '@/lib/marketing/copy/site-assessment'
 import { categoryCoverageExecutionSelect } from './site-execution'
 import { recordedWorkComplete, type RecordedCompletionTask } from '@/lib/audit/progressive/recorded-completeness'
-import { executionPageCoverage } from '../page-coverage'
+import { executionPageCoverage, recordedPageEvidenceScope } from '../page-coverage'
 import { recordedRunFlags } from '../assessment'
 import { analysisEnvironmentValueSql } from './analysis-scope'
+import { isSearchProviderModule } from '@/lib/audit/search/definitions'
+import { flagComparisonAuditScopeSelect, type FlagComparisonAuditScope } from '@/lib/audit/flag-comparison'
 
 const categorySelect = {
-  id: true, parentId: true, projectId: true, executionSpec: true, status: true, createdAt: true, completedAt: true,
+  id: true, ...flagComparisonAuditScopeSelect, executionSpec: true, status: true, createdAt: true, startedAt: true, completedAt: true,
   evidenceCoverage: true, failedModules: true, failureCode: true,
   verifierExecutions: categoryCoverageExecutionSelect,
   pages: { select: { url: true, status: true } },
@@ -26,18 +28,21 @@ export function categoryEvidenceBaselines(projectId: string | null, current: { i
   return source ? [{ projectId, auditId: source.id }] : []
 }
 
-export function categoryCoverageFact(audit: Pick<CategoryEvidenceAudit, 'id' | 'parentId' | 'executionSpec' | 'status' | 'completedAt' | 'evidenceCoverage' | 'failedModules' | 'failureCode' | 'pages'> &
+export function categoryCoverageFact(audit: FlagComparisonAuditScope & Pick<CategoryEvidenceAudit, 'id' | 'executionSpec' | 'status' | 'completedAt' | 'evidenceCoverage' | 'failedModules' | 'failureCode' | 'pages'> &
   { verifierExecutions: Array<CoverageExecution & RecordedCompletionTask> }, now: Date,
   flags: Array<{ checkId: string | null; rubric: string; severity: string; impactTag: string | null }> = [], coverageMaxAgeMs?: number): CoverageFact | null {
   const spec = readExecutionSpec(audit.executionSpec)
   if (!spec?.category) return null
   const fact = buildCoverageFacts({ auditStatus: audit.status, completedAt: audit.completedAt, now, coverageMaxAgeMs,
     evidenceCoverage: audit.evidenceCoverage, failedModules: audit.failedModules,
-    verifierExecutions: audit.verifierExecutions, flags })
+    verifierExecutions: audit.verifierExecutions, pageScope: recordedPageEvidenceScope(audit), flags })
     .find(fact => fact.area === spec.category!.area)!
-  const pagesComplete = executionPageCoverage({ executionSpec: audit.executionSpec, pages: audit.pages, executions: audit.verifierExecutions }).complete
-  const requiredWorkFailed = Array.isArray(audit.failedModules) && audit.failedModules.length > 0
-  const requiredWorkComplete = recordedWorkComplete(audit.verifierExecutions)
+  const pagesComplete = executionPageCoverage({ auditId: audit.id, executionSpec: audit.executionSpec, pages: audit.pages,
+    executions: audit.verifierExecutions, failedModules: audit.failedModules }).complete
+  const publicSearch = spec.category.area === 'search'
+  const requiredWorkFailed = Array.isArray(audit.failedModules) && audit.failedModules.some(module =>
+    !publicSearch || typeof module !== 'string' || !isSearchProviderModule(module))
+  const requiredWorkComplete = recordedWorkComplete(audit.verifierExecutions, publicSearch ? ['google'] : [])
   const publication = recordedRunFlags({ executionSpec: audit.executionSpec, audit: { ...audit, flags: [] } })
   const published = publication.comparisonComplete && publication.evidenceComplete
   if (audit.status !== 'COMPLETED' || !pagesComplete || requiredWorkFailed || !requiredWorkComplete || !published) return { ...fact,

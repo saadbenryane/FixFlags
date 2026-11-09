@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import { enqueuePendingAiReview } from './enqueue-ai-review'
+import { scheduleOptionalAiReview } from './enqueue-ai-review'
 import { claimExecution, withExecutionOwnership } from './execution-ownership'
 import { persistImprovementCycle } from './finalize'
 import { coordinateProgressiveAudit } from './progressive/runtime'
@@ -12,9 +12,9 @@ export async function runAudit(auditId: string): Promise<void> {
   if (!audit) throw new Error(`Audit ${auditId} not found`)
   if (audit.status === 'FAILED') return
   if (audit.status === 'COMPLETED') {
-    await enqueuePendingAiReview(auditId)
     const owner = await claimExecution(auditId, { projectionOnly: true })
     if (owner) await withExecutionOwnership(owner, () => persistImprovementCycle(auditId, audit.parentId))
+    await scheduleOptionalAiReview(auditId)
     return
   }
   if (readExecutionSpec(audit.executionSpec)?.engine !== 'progressive-v1') {

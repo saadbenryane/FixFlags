@@ -20,6 +20,18 @@ export interface PricingProbeResult {
   pricingComplete?: boolean
 }
 
+function observePricingSection(page: Page, hash: string) {
+  return page.evaluate(fragment => {
+    let element: Element | null = null
+    try { const id = decodeURIComponent(fragment.slice(1)); element = document.getElementById(id) ?? [...document.getElementsByName(id)].find(node => node.tagName === 'A') ?? null } catch { /* Malformed fragments remain unavailable. */ }
+    const ready = document.readyState === 'complete' || ((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.domContentLoadedEventEnd ?? 0) > 0
+    if (!element) return { ready, visible: false }
+    const rect = element.getBoundingClientRect()
+    if (!element.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || getComputedStyle(element).contentVisibility === 'hidden') return { ready, visible: false }
+    return { ready, visible: rect.width > 0 && rect.height > 0 && rect.top < innerHeight && rect.bottom > 0 && rect.left < innerWidth && rect.right > 0 }
+  }, hash)
+}
+
 /** Observe the actual header action using the same painted-control inventory as
  * primary actions. Neither hidden mobile copies nor destination refetches apply. */
 export async function probePricingNav(page: Page, overlayRecorder?: OverlayInteractionRecorder, expectedContexts?: string[], excludedContexts?: readonly string[]): Promise<PricingProbeResult> {
@@ -69,15 +81,7 @@ export async function probePricingNav(page: Page, overlayRecorder?: OverlayInter
     overlayRecorder?.activated(inspected)
     if (fragment) {
       await sleep(400)
-      const reached = await page.evaluate(hash => {
-        let element: Element | null = null
-        try { const id = decodeURIComponent(hash.slice(1)); element = document.getElementById(id) ?? [...document.getElementsByName(id)].find(node => node.tagName === 'A') ?? null } catch { /* Malformed fragments remain unavailable. */ }
-        const ready = document.readyState === 'complete' || ((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.domContentLoadedEventEnd ?? 0) > 0
-        if (!element) return { ready, visible: false }
-        const rect = element.getBoundingClientRect()
-        if (!element.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || getComputedStyle(element).contentVisibility === 'hidden') return { ready, visible: false }
-        return { ready, visible: rect.width > 0 && rect.height > 0 && rect.top < innerHeight && rect.bottom > 0 && rect.left < innerWidth && rect.right > 0 }
-      }, target.hash)
+      const reached = await observePricingSection(page, target.hash)
       const current = new URL(page.url())
       if (current.origin !== entry.origin || current.pathname !== entry.pathname || current.search !== entry.search) return result('unavailable', false)
       return result(reached.visible ? 'visible-section' : 'missing-section', reached.ready, reached.visible)
@@ -96,11 +100,20 @@ export async function probePricingNav(page: Page, overlayRecorder?: OverlayInter
     if (!ready || !observation.copy?.complete) return result('unavailable', false)
     if (!received && requested) return result('unavailable', false)
     if (page.url() === before && !received) return result('no-advance', true)
-    const reached = new URL(observation.pageUrl)
-    const declared = reached.origin === target.origin && reached.pathname.replace(/\/$/, '') === target.pathname.replace(/\/$/, '')
-    const pricingPage = declared || /pricing|plans?/i.test(reached.pathname) || observation.copy.h1s.some(heading => /\bpricing\b|\bplans?\b/i.test(heading))
     const healthy = observation.state === 'healthy' || !received && page.url() !== before && observation.state === 'unknown'
-    if (!healthy || !observation.copy.pageText.trim()) return result('unavailable', false)
+    if (!healthy || !observation.copy.pageText.trim() || page.url() !== observation.pageUrl) return result('unavailable', false)
+    const reached = new URL(observation.pageUrl)
+    if (reached.origin !== target.origin || reached.search !== target.search) return result('unexpected-destination', false)
+    const declaredPath = reached.pathname.replace(/\/$/, '') === target.pathname.replace(/\/$/, '')
+    if (target.hash) {
+      if (!declaredPath || reached.hash !== target.hash) return result('unexpected-destination', false)
+      const section = await observePricingSection(page, target.hash)
+      if (page.url() !== observation.pageUrl) return result('unavailable', false)
+      return result(section.visible ? 'visible-section' : 'missing-section', section.ready, section.visible)
+    }
+    const pricingLabel = /\b(?:pricing|plans?)\b/i
+    const pricingPage = declaredPath || !target.search &&
+      (pricingLabel.test(reached.pathname) || observation.copy.h1s.some(heading => pricingLabel.test(heading)))
     return result(pricingPage ? 'page-reached' : 'unexpected-destination', pricingPage, pricingPage)
   } catch {
     const after = await overlayRecorder?.inspect(selector, 'nav', 'pricing_navigation_after')

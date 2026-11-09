@@ -5,6 +5,7 @@ import { auditPageObservation, captureObservationScopeSchema } from './observati
 
 export const KEYBOARD_STEP_LIMIT = 40
 export const KEYBOARD_INTERACTION_LIMIT = 4
+export const KEYBOARD_FOCUS_POLICY = 'painted-properties-v10'
 const INTERACTION_STEP_LIMIT = 16
 const targetSchema = z.object({
   id: z.number().int().positive(), selector: z.string().min(1).max(2000), label: z.string().max(160),
@@ -26,7 +27,8 @@ export const keyboardInteractionSchema = z.object({
 export type KeyboardInteraction = z.infer<typeof keyboardInteractionSchema>
 export const keyboardEvidenceSchema = z.object({
   version: z.literal(1), pageUrl: z.string().url(), collectedAt: z.string().datetime(),
-  focusPolicy: z.enum(['painted-properties-v2', 'painted-properties-v3']).optional(),
+  focusPolicy: z.enum(['painted-properties-v2', 'painted-properties-v3', 'painted-properties-v4', 'painted-properties-v5', 'painted-properties-v6',
+    'painted-properties-v7', 'painted-properties-v8', 'painted-properties-v9', KEYBOARD_FOCUS_POLICY]).optional(),
   scope: captureObservationScopeSchema.optional(),
   complete: z.boolean(), reason: z.string().min(1).max(160), candidateCount: z.number().int().nonnegative(),
   steps: z.array(targetSchema).max(KEYBOARD_STEP_LIMIT),
@@ -69,7 +71,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement
         return active as HTMLElement | null
       }
-      function opaque(el: Element) { return el.tagName === 'IFRAME' || el.tagName.includes('-') && !el.shadowRoot }
+      function opaque(el: Element) { return el.matches('iframe,frame') || el.tagName.includes('-') && !el.shadowRoot }
       function byId(el: Element, id: string) {
         const root = el.getRootNode()
         return root instanceof Document || root instanceof ShadowRoot ? root.getElementById(id) : null
@@ -126,8 +128,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       if (elements().nodes.some(el => el.matches('iframe,frame'))) limitations.push('embedded_frame_uninspected')
       if (candidates.length > 200) limitations.push('candidate_limit')
       const inspected = candidates.slice(0, 200)
-      const properties = ['outlineStyle', 'outlineWidth', 'outlineColor', 'outlineOffset', 'boxShadow',
-        'backgroundColor', 'color', 'textDecoration', 'opacity', 'transform'] as const
+      const properties = ['backgroundColor', 'color', 'textDecoration', 'opacity', 'transform'] as const
       const colorCanvas = document.createElement('canvas')
       colorCanvas.width = colorCanvas.height = 1
       const colorContext = colorCanvas.getContext('2d', { willReadFrequently: true })
@@ -148,6 +149,18 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         const sampled = sampleColor(color)
         return sampled ? sampled[3] > 0 : null
       }
+      type Paint = { color: string; sample: number[] }
+      function compositeColor(backdrop: number[], layers: Paint[]): string | null {
+        if (layers[0].sample[3] === 255) return layers[0].sample.join(':')
+        if (!colorContext) return null
+        colorContext.fillStyle = `rgb(${backdrop[0]} ${backdrop[1]} ${backdrop[2]})`
+        colorContext.fillRect(0, 0, 1, 1)
+        for (let index = layers.length - 1; index >= 0; index--) {
+          colorContext.fillStyle = layers[index].color
+          colorContext.fillRect(0, 0, 1, 1)
+        }
+        return colorContext.getImageData(0, 0, 1, 1).data.join(':')
+      }
       function paintedInDocument(el: Element) {
         if (!el.isConnected || !el.getClientRects().length || getComputedStyle(el).visibility !== 'visible') return false
         for (let node: Element | null = el; node; node = parent(node)) {
@@ -156,45 +169,93 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         }
         return true
       }
-      function paintedOutline(style: CSSStyleDeclaration, node: Element): boolean | null {
-        if (['none', 'hidden'].includes(style.outlineStyle) || !(parseFloat(style.outlineWidth) > 0)) return false
-        const color = sampleColor(style.outlineColor)
-        if (!color) return null
-        if (color[3] === 0) return false
-        if (color[3] !== 255 || parseFloat(style.outlineOffset) < 0 || parseFloat(style.opacity) !== 1 ||
-          style.filter !== 'none' || style.mixBlendMode !== 'normal') return null
-        const rect = node.getBoundingClientRect(), outset = parseFloat(style.outlineWidth) + Math.max(0, parseFloat(style.outlineOffset))
+      function hasPaintClip(style: CSSStyleDeclaration) {
+        return style.clipPath !== 'none' || style.clip !== 'auto' || style.maskImage !== 'none'
+      }
+      function clippedToBorderBox(node: Element, style: CSSStyleDeclaration) {
+        // A rectangular inset can leave shadow paint in rounded corners or
+        // between inline fragments. Only a single square-cornered box is exact.
+        return /^inset\(0(?:px|%)\)$/.test(style.clipPath) && style.filter === 'none' &&
+          (style.borderRadius === '0px' || style.borderRadius === '0%') && node instanceof HTMLElement && node.getClientRects().length === 1
+      }
+      function overlapsRoundedCorner(style: CSSStyleDeclaration, bounds: DOMRect, rect: DOMRect, outset: number) {
+        const left = rect.left - outset - bounds.left, right = bounds.right - rect.right - outset
+        const top = rect.top - outset - bounds.top, bottom = bounds.bottom - rect.bottom - outset
+        const corners = [
+          { radius: style.borderTopLeftRadius, x: left, y: top },
+          { radius: style.borderTopRightRadius, x: right, y: top },
+          { radius: style.borderBottomRightRadius, x: right, y: bottom },
+          { radius: style.borderBottomLeftRadius, x: left, y: bottom },
+        ]
+        function extent(value: string, size: number) {
+          if (/^\d*\.?\d+px$/.test(value)) return parseFloat(value)
+          if (/^\d*\.?\d+%$/.test(value)) return size * parseFloat(value) / 100
+          return Infinity
+        }
+        // The corner rectangles bound the curved areas before CSS scales
+        // overlapping radii down. Outside those rectangles the box is filled.
+        return corners.some(({ radius, x, y }) => {
+          const [horizontal, vertical = horizontal] = radius.split(' ')
+          return x < extent(horizontal, bounds.width) && y < extent(vertical, bounds.height)
+        })
+      }
+      function uniformBackdrop(node: Element, outset: number): number[] | null {
+        const rect = node.getBoundingClientRect()
         let backdrop: number[] | null = null
         for (let ancestor = parent(node); ancestor; ancestor = parent(ancestor)) {
           const surrounding = getComputedStyle(ancestor)
-          if (parseFloat(surrounding.opacity) !== 1 || surrounding.filter !== 'none' || surrounding.backdropFilter !== 'none' ||
-            surrounding.mixBlendMode !== 'normal') return null
+          if (hasPaintClip(surrounding) || parseFloat(surrounding.opacity) !== 1 || surrounding.filter !== 'none' || surrounding.backdropFilter !== 'none' ||
+            surrounding.mixBlendMode !== 'normal' || surrounding.transform !== 'none' || surrounding.rotate !== 'none' ||
+            surrounding.scale !== 'none' || surrounding.perspective !== 'none') return null
           const bounds = ancestor.getBoundingClientRect()
-          if (surrounding.overflowX !== 'visible' && (bounds.left > rect.left - outset || bounds.right < rect.right + outset) ||
-            surrounding.overflowY !== 'visible' && (bounds.top > rect.top - outset || bounds.bottom < rect.bottom + outset)) return null
+          const containsPaint = /(?:^| )(paint|strict|content)(?: |$)/.test(surrounding.contain) || surrounding.contentVisibility === 'auto'
+          if ((containsPaint || surrounding.overflowX !== 'visible') && (bounds.left > rect.left - outset || bounds.right < rect.right + outset) ||
+            (containsPaint || surrounding.overflowY !== 'visible') && (bounds.top > rect.top - outset || bounds.bottom < rect.bottom + outset)) return null
           if (backdrop) continue
           if (surrounding.backgroundImage !== 'none' || surrounding.boxShadow !== 'none') return null
           const background = sampleColor(surrounding.backgroundColor)
           if (!background || background[3] !== 0 && background[3] !== 255) return null
           if (background[3] === 255) {
             if (bounds.left > rect.left - outset || bounds.top > rect.top - outset ||
-              bounds.right < rect.right + outset || bounds.bottom < rect.bottom + outset) return null
+              bounds.right < rect.right + outset || bounds.bottom < rect.bottom + outset ||
+              overlapsRoundedCorner(surrounding, bounds, rect, outset)) return null
             backdrop = background
           }
         }
         if (!backdrop && (matchMedia('(prefers-color-scheme: dark)').matches ||
           getComputedStyle(document.documentElement).colorScheme.includes('dark') || getComputedStyle(document.body).colorScheme.includes('dark'))) return null
         // The default light browser canvas is white when ancestors are transparent.
-        backdrop ??= [255, 255, 255, 255]
-        if (color.slice(0, 3).every((channel, index) => channel === backdrop![index]))
-          return style.boxShadow === 'none' ? false : null
-        return true
+        return backdrop ?? [255, 255, 255, 255]
       }
-      function profile(el: Element) {
-        const descendants = elements(el, 13)
+      function comparableBackdrop(style: CSSStyleDeclaration, node: Element, outset: number, pseudo = false): number[] | null {
+        if (parseFloat(style.opacity) !== 1 ||
+          style.filter !== 'none' || style.mixBlendMode !== 'normal') return null
+        if (hasPaintClip(style) || pseudo && hasPaintClip(getComputedStyle(node))) return null
+        return uniformBackdrop(node, outset)
+      }
+      function outlineSignature(style: CSSStyleDeclaration, node: Element, shadow: string, pseudo: boolean): string | null {
+        const width = parseFloat(style.outlineWidth), offset = parseFloat(style.outlineOffset)
+        if (['none', 'hidden'].includes(style.outlineStyle) || !(width > 0)) return 'none'
+        const sample = sampleColor(style.outlineColor)
+        if (!sample) return null
+        if (sample[3] === 0) return 'none'
+        if (offset < 0) return null
+        if (!pseudo && style.outlineStyle !== 'auto' && parseFloat(style.opacity) === 1 &&
+          style.mixBlendMode === 'normal' && clippedToBorderBox(node, style)) return shadow === 'none' ? 'none' : null
+        // Outline overlap with another painted layer needs its own geometry.
+        if (sample[3] !== 255 && (shadow !== 'none' || pseudo || style.outlineStyle === 'auto')) return null
+        const backdrop = comparableBackdrop(style, node, width + offset, pseudo)
+        if (!backdrop) return null
+        const color = compositeColor(backdrop, [{ color: style.outlineColor, sample }])
+        if (!color) return null
+        if (color === backdrop.join(':')) return shadow === 'none' ? 'none' : null
+        return [style.outlineStyle, width, offset, color].join(':')
+      }
+      function profile(el: Element, wrapperRingOnly = false) {
+        const descendants = wrapperRingOnly ? { nodes: [el], truncated: false } : elements(el, 13)
         const nodes = descendants.nodes.filter(paintedInDocument)
         const styles = nodes.flatMap(node => [{ style: getComputedStyle(node), node, pseudo: false },
-          ...['::before', '::after'].map(pseudo => ({ style: getComputedStyle(node, pseudo), node, pseudo: true }))
+          ...(wrapperRingOnly ? [] : ['::before', '::after'].map(pseudo => ({ style: getComputedStyle(node, pseudo), node, pseudo: true })))
             .filter(({ style }) => !['none', 'normal'].includes(style.content) && style.display !== 'none' && style.visibility === 'visible' && parseFloat(style.opacity) !== 0)])
         let uncertainPaint = false
         function colorSignature(color: string) {
@@ -218,9 +279,55 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
           else if (colors.every(color => paintedColor(color) === false)) return 'none'
           return shadow
         }
+        function boxShadowSignature(style: CSSStyleDeclaration, node: Element, pseudo: boolean) {
+          const shadow = shadowSignature(style.boxShadow)
+          if (shadow === 'none' || pseudo) return shadow
+          // A sharp, centered outer shadow paints outside its border box only.
+          const layers = shadow.split(/,(?![^()]*\))/).map(layer => layer.trim()).filter(layer => shadowSignature(layer) !== 'none')
+          if (clippedToBorderBox(node, style)) {
+            const inset = layers.filter(layer => /\binset\b/.test(layer)).join(', ')
+            if (inset && wrapperRingOnly) uncertainPaint = true
+            return inset || 'none'
+          }
+          const rings = layers.map(layer => /^([a-z]+\([^()]*\))\s+0px 0px 0px (-?[\d.]+)px$/i.exec(layer))
+          if (!rings.every(ring => ring !== null)) {
+            if (wrapperRingOnly) uncertainPaint = true
+            return shadow
+          }
+          // Only sharp, centered shadows have constant paint within these bands.
+          const paints: Array<Paint & { spread: number }> = []
+          let opaqueCoverage = 0
+          for (const ring of rings) {
+            const spread = Number(ring[2])
+            if (spread <= opaqueCoverage) continue
+            const sample = sampleColor(ring[1])
+            if (!sample) { uncertainPaint = true; return shadow }
+            paints.push({ spread, color: ring[1], sample })
+            if (sample[3] === 255) opaqueCoverage = spread
+          }
+          if (!paints.length) return 'none'
+          const translucent = paints.some(paint => paint.sample[3] !== 255)
+          if (translucent && paints.length > 12) { uncertainPaint = true; return shadow }
+          const spreads = paints.map(paint => paint.spread)
+          const edges = translucent ? [...new Set(spreads)].sort((left, right) => left - right) : spreads
+          const backdrop = comparableBackdrop(style, node, edges[edges.length - 1])
+          if (!backdrop) { uncertainPaint = true; return shadow }
+          const bands: Array<{ end: number; color: string }> = []
+          for (const [index, end] of edges.entries()) {
+            const color = translucent ? compositeColor(backdrop, paints.filter(paint => paint.spread >= end)) : paints[index].sample.join(':')
+            if (!color) { uncertainPaint = true; return shadow }
+            const previous = bands.at(-1)
+            if (previous?.color === color) previous.end = end
+            else bands.push({ end, color })
+          }
+          if (bands.at(-1)?.color === backdrop.join(':')) bands.pop()
+          return bands.length ? bands.map(band => `${band.end}:${band.color}`).join(',') : 'none'
+        }
         function signature({ style, node, pseudo }: { style: CSSStyleDeclaration; node: Element; pseudo: boolean }) {
-          const outline = paintedOutline(style, node)
+          const shadow = boxShadowSignature(style, node, pseudo)
+          const outline = outlineSignature(style, node, shadow, pseudo)
           if (outline === null) uncertainPaint = true
+          if (wrapperRingOnly) return [shadow, outline].join('|')
           const borders = (['Top', 'Right', 'Bottom', 'Left'] as const).map(side => {
             const line = style[`border${side}Style`], width = style[`border${side}Width`], color = style[`border${side}Color`]
             if (['none', 'hidden'].includes(line) || !(parseFloat(width) > 0)) return 'none'
@@ -243,11 +350,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
               ? 'none' : colorSignature(style.stroke),
           ] : []
           const text = hasText(style, node, pseudo)
-          return [...borders, ...svgPaint, text ? shadowSignature(style.textShadow) : 'none', ...properties.map(key => {
-            if (key.startsWith('outline')) {
-              return outline ? style[key] : 'none'
-            }
-            if (key === 'boxShadow') return shadowSignature(style.boxShadow)
+          return [outline, shadow, ...borders, ...svgPaint, text ? shadowSignature(style.textShadow) : 'none', ...properties.map(key => {
             // Chromium paints glyphs with text-fill-color, which can override
             // color. Empty boxes and fixed-fill icons do not paint that property.
             if (key === 'color') return text ? colorSignature(style.webkitTextFillColor || style.color) : 'none'
@@ -263,7 +366,11 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         }
         const recorded = styles.map(signature).join(';')
         return { signature: recorded, uncertainPaint,
-          unstable: styles.some(({ style }) => style.animationName !== 'none' || style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)),
+          // The element's animation list omits generated content. Preserve the
+          // conservative check for pseudo-elements without walking their subtree.
+          unstable: styles.some(({ style, pseudo }) => style.animationName !== 'none' ||
+            pseudo && style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)) ||
+            nodes.some(node => node.getAnimations().some(animation => animation.pending || animation.playState === 'running')),
           truncated: descendants.truncated }
       }
       function selector(el: Element): string {
@@ -283,6 +390,28 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         const style = getComputedStyle(el)
         return paintedInDocument(el) && style.display !== 'none' && !closest(el, '[hidden],[aria-hidden="true"]')
       }
+      function hasUncoveredHit(el: Element) {
+        // Try the center first, then inset points for partially covered or
+        // irregular controls. Hit testing cannot establish painted visibility.
+        const points = [[0.5, 0.5], [0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8]]
+        for (const rect of Array.from(el.getClientRects()).slice(0, 4)) {
+          const left = Math.max(0, rect.left), right = Math.min(innerWidth, rect.right)
+          const top = Math.max(0, rect.top), bottom = Math.min(innerHeight, rect.bottom)
+          if (left >= right || top >= bottom) continue
+          for (const [column, row] of points) {
+            const x = left + (right - left) * column, y = top + (bottom - top) * row
+            let hit = document.elementFromPoint(x, y)
+            // Document-level hits can be retargeted to an open shadow host.
+            while (hit && hit !== el && hit.shadowRoot && contains(hit, el)) {
+              const inner = hit.shadowRoot.elementFromPoint(x, y)
+              if (inner === hit) break
+              hit = inner
+            }
+            if (hit && contains(el, hit)) return true
+          }
+        }
+        return false
+      }
       function identity(el: Element) {
         const rect = el.getBoundingClientRect()
         const name = el.getAttribute('aria-label') || (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).slice(0, 8)
@@ -294,28 +423,44 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
             width: Math.max(0, Math.min(1, (Math.min(innerWidth, rect.right) - Math.max(0, rect.left)) / innerWidth)),
             height: Math.max(0, Math.min(1, (Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)) / innerHeight)) } }
       }
-      const baseline = new Map(inspected.map((el, index) => [el, { id: index + 1, domOrder: index,
-        focusedAtRegistration: el === activeElement(), ...profile(el) }]))
+      function focusBaseline(el: Element) {
+        const wrapper = parent(el)
+        return { focusedAtRegistration: el === activeElement(), ...profile(el),
+          wrapper: wrapper && !wrapper.matches('html,body') && paintedInDocument(wrapper)
+            ? { node: wrapper, focused: wrapper.matches(':focus-within'), ...profile(wrapper, true) } : null }
+      }
+      function wrapperIndicator(active: Element, before: ReturnType<typeof focusBaseline>['wrapper']): z.infer<typeof targetSchema>['indicator'] {
+        if (!before || before.node !== parent(active) || !before.node.matches(':focus-within')) return 'missing'
+        const wrapper = before.node, after = profile(wrapper, true)
+        if (before.signature === after.signature && before.uncertainPaint === after.uncertainPaint) return 'missing'
+        if (before.uncertainPaint || after.uncertainPaint) return 'unknown'
+        const controls = elements(wrapper, 13)
+        const shared = controls.truncated || controls.nodes.some(node => node !== active &&
+          (opaque(node) || node.matches(focusableSelector + ',[role^="menuitem"]') && !node.matches(':disabled') && paintedInDocument(node)))
+        const bounds = wrapper.getBoundingClientRect(), rect = active.getBoundingClientRect()
+        const surrounds = bounds.left <= rect.left && bounds.right >= rect.right && bounds.top <= rect.top && bounds.bottom >= rect.bottom
+        return before.focused || before.unstable || after.unstable || shared || !surrounds ? 'unknown' : 'styled'
+      }
+      const baseline = new Map(inspected.map((el, index) => [el, { id: index + 1, domOrder: index, ...focusBaseline(el) }]))
       let nextId = baseline.size + 1
       const initialDialog = closest(activeElement(), 'dialog[open],[role="dialog"],[role="alertdialog"]')
       function sample() {
         const active = activeElement()
         if (!active || active === document.body || active === document.documentElement) return null
-        if (opaque(active)) return { unknown: true as const }
+        if (opaque(active)) return { unknown: true as const, opaque: true as const }
         const before = baseline.get(active)
         if (!before) return { unknown: true as const }
         const identity = selector(active)
         if (identity.length > 2000) return { unknown: true as const }
-        const after = profile(active), style = getComputedStyle(active), rect = active.getBoundingClientRect()
-        const inViewport = rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth
-        const changed = before.signature !== after.signature
+        const after = profile(active), style = getComputedStyle(active)
+        const indicator = before.signature !== after.signature ? 'styled' : wrapperIndicator(active, before.wrapper)
         const uncertain = before.unstable || after.unstable || before.truncated || after.truncated ||
-          before.uncertainPaint || after.uncertainPaint || !paintedInDocument(active) || !inViewport ||
-          opaque(active) || !active.matches(':focus-visible') || parseFloat(style.opacity) === 0 ||
+          before.uncertainPaint || after.uncertainPaint || !paintedInDocument(active) || !hasUncoveredHit(active) ||
+          !active.matches(':focus-visible') || parseFloat(style.opacity) === 0 ||
           before.focusedAtRegistration ||
-          (!changed && active.matches('textarea,[contenteditable="true"],input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])'))
+          (indicator === 'missing' && active.matches('textarea,[contenteditable="true"],input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])'))
         return { id: before.id, ...describe(active), domOrder: before.domOrder, tabIndex: active.tabIndex,
-          indicator: uncertain ? 'unknown' as const : changed ? 'styled' as const : 'missing' as const,
+          indicator: uncertain ? 'unknown' as const : indicator,
         }
       }
       const describe = identity
@@ -362,8 +507,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         const root = popupFor(index)
         if (!root) return
         for (const [order, el] of elements(root).nodes.filter(el => el === root || el.matches(focusableSelector + ',[role^="menuitem"]')).slice(0, 200).entries()) {
-          if (!baseline.has(el as HTMLElement)) baseline.set(el as HTMLElement, { id: nextId++, domOrder: order,
-            focusedAtRegistration: el === activeElement(), ...profile(el) })
+          if (!baseline.has(el as HTMLElement)) baseline.set(el as HTMLElement, { id: nextId++, domOrder: order, ...focusBaseline(el) })
         }
       }
       function popupState(index: number) {
@@ -404,9 +548,11 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
     if (priorRefusals) initial.limitations.push('initial_resources_unavailable')
     const steps: KeyboardEvidence['steps'] = []
     let complete = false, reason = 'step_limit', trap: KeyboardEvidence['trap'] = 'not_observed'
+    let opaqueFocusReached = false
     const interactions: KeyboardInteraction[] = []
     const visited = new Set<number>()
     async function inspectExit() {
+      if (opaqueFocusReached) { trap = 'unknown'; reason = 'focus_scope_changed'; return }
       const dialog = await state.evaluate(value => value.dialogState())
       await page.keyboard.press('Shift+Tab')
       const reverse = await state.evaluate(value => value.sample())
@@ -425,11 +571,16 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       const target = await state.evaluate(value => value.sample())
       if (!target) {
         if (await state.evaluate(value => value.dialogState())) { await inspectExit(); break }
-        complete = visited.size === initial.count && await state.evaluate(value => value.inventoryUnchanged())
-        reason = complete ? 'document_boundary_observed' : 'unvisited_controls'
+        complete = !opaqueFocusReached && visited.size === initial.count && await state.evaluate(value => value.inventoryUnchanged())
+        reason = complete ? 'document_boundary_observed' : opaqueFocusReached ? 'focus_scope_changed' : 'unvisited_controls'
         break
       }
-      if ('unknown' in target) { reason = 'focus_scope_changed'; break }
+      if ('unknown' in target) {
+        // Keep the Tab and time bounds across opaque scopes. Later controls
+        // can still provide exact evidence, but the full sequence stays unknown.
+        if (target.opaque && refusalCount() === 0) { opaqueFocusReached = true; continue }
+        reason = 'focus_scope_changed'; break
+      }
       if (visited.has(target.id)) {
         await inspectExit()
         break
@@ -603,7 +754,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       if (reason === 'document_boundary_observed') reason = 'focus_indicator_unresolved'
     }
     const capture = auditPageObservation(page)
-    return keyboardEvidenceSchema.parse({ version: 1, focusPolicy: 'painted-properties-v3', pageUrl, collectedAt, complete, reason, navigationComplete,
+    return keyboardEvidenceSchema.parse({ version: 1, focusPolicy: KEYBOARD_FOCUS_POLICY, pageUrl, collectedAt, complete, reason, navigationComplete,
       ...(capture && !capture.restricted && capture.scope.finalUrl === pageUrl ? { scope: capture.scope } : {}),
       candidateCount: initial.count, steps, trap, limitations: initial.limitations,
       interactionCount: openerCount, interactions })

@@ -1,12 +1,12 @@
 import { CHECKOUT_ENTRY_EVALUATOR } from '../domain/outcome-evaluation'
 import { currentExecutionOwnership } from '@/lib/audit/execution-ownership'
-import { prisma } from '@/lib/db'
 import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
-import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
+import { outcomeArtifactNamespace } from '@/lib/integrity/artifact-namespace'
 import { runPathProbe } from '@/lib/integrity/run-path-probe'
 import { checkoutAttemptObservation, checkoutProbeVerdict } from '@/lib/integrity/purchase'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 import { recordBindingEvidence, type BindingObservation } from './binding-evidence'
+import { checkoutDestinationKey } from './checkout-capture'
 
 export async function runCheckoutBinding(input: {
   auditId: string
@@ -16,18 +16,21 @@ export async function runCheckoutBinding(input: {
   bindingVersion?: number
   startUrl: string
   allowLocalhost: boolean
+  purchaseControlKey?: string
 }): Promise<void> {
   const startedAt = Date.now()
   const result = await runPathProbe({
-    runId: `outcome-${input.runId}-${input.bindingKey}-g${currentExecutionOwnership()?.generation ?? 0}`,
+    runId: outcomeArtifactNamespace(input, currentExecutionOwnership()?.generation ?? 0),
     url: input.startUrl,
     allowLocalhost: input.allowLocalhost,
+    ...(input.purchaseControlKey ? { purchaseControlKey: input.purchaseControlKey } : {}),
   })
   const verdict = checkoutProbeVerdict(result)
   const copy = checkoutResultCopy(verdict.reason)
   const isFlag = verdict.isFlag
   const isClear = verdict.isClear
-  await persistJourneyResult(input.auditId, {
+  const destinationKey = checkoutDestinationKey(result.steps.at(-1)?.destinationUrl, result.finalUrl)
+  const { reviewId, flagIds } = await persistJourneyResult(input.auditId, {
     journeyType: 'checkout',
     startUrl: input.startUrl,
     status: isClear || isFlag ? 'COMPLETED' : 'ABANDONED',
@@ -74,27 +77,27 @@ export async function runCheckoutBinding(input: {
       screenshot: step.screenshotUrl,
     })),
   }, { outcomeId: input.outcomeId, bindingKey: input.bindingKey })
-  const failure = isFlag ? await prisma.flag.findFirst({ where: { auditId: input.auditId,
-    fingerprint: outcomeFlagFingerprint(input.outcomeId, input.bindingKey) }, select: { id: true } }) : null
   await recordBindingEvidence({
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     bindingVersion: input.bindingVersion,
     mechanism: 'BROWSER_JOURNEY',
-    failureFlagId: failure?.id,
+    failureFlagId: isFlag ? flagIds[0] : undefined,
     attempts: result.attempts.map((attempt): BindingObservation => {
       const observation = checkoutAttemptObservation(attempt)
       return {
         disposition: observation.disposition,
         reason: observation.reason,
-        detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR, stepCount: attempt.steps.length, videoUrl: attempt.videoUrl, httpStatus: attempt.outcome.httpStatus, finalUrl: attempt.finalUrl },
+        detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR, stepCount: attempt.steps.length, videoUrl: attempt.videoUrl, httpStatus: attempt.outcome.httpStatus, finalUrl: attempt.finalUrl,
+          ...(attempt.outcome.purchaseControlKey ? { purchaseControlKey: attempt.outcome.purchaseControlKey } : {}) },
       }
     }),
     conclusive: {
       disposition: verdict.disposition,
       reason: verdict.reason,
-      detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR, stepCount: result.steps.length },
+      detail: { evaluator: CHECKOUT_ENTRY_EVALUATOR, stepCount: result.steps.length, journeyReviewId: reviewId,
+        checkoutDestinationKey: destinationKey, ...(result.purchaseControlKey ? { purchaseControlKey: result.purchaseControlKey } : {}) },
     },
   })
 }

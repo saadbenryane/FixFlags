@@ -1,5 +1,5 @@
 import { describe, it, vi, expect, beforeEach } from 'vitest'
-import type { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 /**
@@ -50,6 +50,8 @@ vi.mock('@/lib/queue/estimate', () => ({
 
 import { POST } from '@/app/api/checks/route'
 import { AuditLimitError } from '@/lib/audit/create-audit'
+import { SITE_URL } from '@/lib/marketing/copy/brand'
+import { ANALYTICS_CONSENT_COOKIE } from '@/lib/analytics/consent'
 
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -134,7 +136,9 @@ describe('POST /api/checks - billing gating enforcement', () => {
   it('passes only a well-formed consented journey key into audit attribution', async () => {
     const journeyId = `ffj_${'b'.repeat(32)}`
 
-    const accepted = await POST(postReq({ url: 'https://example.com', journeyId }))
+    const req = postReq({ url: 'https://example.com', journeyId })
+    Object.defineProperty(req, 'cookies', { value: { get: () => ({ value: 'granted' }) } })
+    const accepted = await POST(req)
     expect(accepted.status).toBe(201)
     expect(checkAndPlan).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -148,6 +152,74 @@ describe('POST /api/checks - billing gating enforcement', () => {
     )
     expect(rejected.status).toBe(400)
     expect(checkAndPlan).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'denied'])('withholds an unconsented journey key and strips referrer measurement markers (%s)', async consent => {
+    const journeyId = `ffj_${'a'.repeat(32)}`
+    const req = new NextRequest('http://localhost/api/checks', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json',
+        referer: `http://localhost/other?ff_guide=guides-index&journey_id=${journeyId}&utm_campaign=original`,
+        ...(consent && { cookie: `${ANALYTICS_CONSENT_COOKIE}=${consent}` }) },
+      body: JSON.stringify({ url: 'https://example.com', source: 'homepage', journeyId }),
+    })
+    expect((await POST(req)).status).toBe(201)
+    const { attribution } = checkAndPlan.mock.calls[0][0]
+    expect(attribution).toMatchObject({ journeyId: null, referrer: 'http://localhost/other?utm_campaign=original' })
+    expect(attribution.guideEntry).toBeUndefined()
+  })
+
+  it.each([
+    ['granted', '/new', 'website-online-but-not-working', undefined, false, true],
+    ['denied', '/new', 'website-online-but-not-working', undefined, false, false],
+    ['granted', '/', 'website-online-but-not-working', undefined, false, false],
+    ['granted', '/new', 'https://customer.example/private', undefined, false, false],
+    ['granted', '/new', 'website-online-but-not-working', 'another-check', false, false],
+    ['granted', '/new', 'website-online-but-not-working', undefined, true, false],
+  ] as const)('qualifies guide metadata without changing scan admission (%s, %s, %s)', async (consent, path, guideEntry, parentId, signedIn, accepted) => {
+    if (signedIn) getSession.mockResolvedValue({ user: { id: 'user-1' } })
+    const req = postReq({ url: 'https://example.com', source: 'homepage', parentId, journeyId: `ffj_${'b'.repeat(32)}` })
+    const referer = new URL(path, req.nextUrl.origin)
+    referer.searchParams.set('ff_guide', guideEntry)
+    referer.searchParams.set('utm_campaign', 'original')
+    req.headers.set('referer', referer.href)
+    Object.defineProperty(req, 'cookies', { value: { get: () => ({ value: consent }) } })
+    expect((await POST(req)).status).toBe(201)
+    const { attribution } = checkAndPlan.mock.calls[0][0]
+    expect(attribution.source).toBe('HOMEPAGE')
+    expect(attribution.guideEntry).toBe(accepted ? guideEntry : undefined)
+    expect(attribution.journeyId).toBe(consent === 'granted' ? `ffj_${'b'.repeat(32)}` : null)
+    expect(attribution.utmSource).toBeNull()
+    if (path === '/new') expect(attribution.referrer).toBe(`${req.nextUrl.origin}/new?utm_campaign=original`)
+  })
+
+  it('accepts the configured public guide origin when the request URL uses the proxy origin', async () => {
+    const publicNewUrl = new URL('/new', SITE_URL).href
+    const req = new NextRequest('http://localhost/api/checks', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        referer: `${publicNewUrl}?ff_guide=guides-index`,
+        cookie: `${ANALYTICS_CONSENT_COOKIE}=granted`,
+      },
+      body: JSON.stringify({ url: 'https://example.com', source: 'homepage', journeyId: `ffj_${'b'.repeat(32)}` }),
+    })
+    expect((await POST(req)).status).toBe(201)
+    expect(checkAndPlan.mock.calls[0][0].attribution).toMatchObject({ guideEntry: 'guides-index', referrer: publicNewUrl })
+  })
+
+  it.each([
+    ['http://localhost/new?ff_guide=guides-index&ff_guide=checking-after-publishing', true],
+    ['https://unrelated.example/new?ff_guide=guides-index', true],
+    ['http://localhost/new?ff_guide=guides-index', false],
+  ])('withholds ambiguous, foreign or unlinked guide referrals %s', async (referer, hasJourney) => {
+    const req = postReq({ url: 'https://example.com', source: 'homepage', journeyId: hasJourney ? `ffj_${'b'.repeat(32)}` : undefined })
+    req.headers.set('referer', referer)
+    Object.defineProperty(req, 'cookies', { value: { get: () => ({ value: 'granted' }) } })
+    expect((await POST(req)).status).toBe(201)
+    const { attribution } = checkAndPlan.mock.calls[0][0]
+    expect(attribution.guideEntry).toBeUndefined()
+    expect(attribution.referrer).not.toContain('ff_guide')
   })
 
   it('returns reused true when an anonymous check resumes a last-hour public report', async () => {

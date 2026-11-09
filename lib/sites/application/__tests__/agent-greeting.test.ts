@@ -99,7 +99,7 @@ describe('Site greetings', () => {
 
   it('routes greetings with substantive questions through normal evidence answering', async () => {
     await sendSiteAgentMessage({ ...input, message: 'Hi, why is checkout failing?' })
-    expect(mocks.model).toHaveBeenCalledWith(expect.objectContaining({ message: 'Hi, why is checkout failing?' }))
+    expect(mocks.model).toHaveBeenCalledWith(expect.objectContaining({ message: 'Hi, why is checkout failing?' }), expect.any(Function))
     expect(mocks.reserve).toHaveBeenCalled()
     expect(mocks.save).toHaveBeenCalledWith('intent-1', expect.objectContaining({ reply: 'An evidence answer' }), input.userId)
   })

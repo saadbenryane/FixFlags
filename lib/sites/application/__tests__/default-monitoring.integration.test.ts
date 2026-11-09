@@ -5,7 +5,7 @@ import * as transactions from '@/lib/billing/product-transaction'
 import { prisma } from '@/lib/db'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 import { ensureDefaultMonitoring, initializeDefaultMonitoring, MONITORING_SCHEDULE_UNAVAILABLE } from '../default-monitoring'
-import { removeSite } from '../settings-commands'
+import { removeSite, updateOwnedSiteIdentity } from '../settings-commands'
 import * as betaPolicy from '@/lib/billing/beta-policy'
 import { activateSiteMonitoring, monitoringOptions } from '../monitoring-activation'
 import { setProjectWatch } from '../monitoring-settings'
@@ -40,11 +40,12 @@ run('automatic monitoring with migrated PostgreSQL', () => {
     ])
     expect(admissions[0].id).toBe(admissions[1].id)
     const site = await prisma.project.findUniqueOrThrow({ where: { id: admissions[0].id }, include: {
-      siteOutcomes: { include: { bindings: true } },
+      siteOutcomes: { include: { bindings: true } }, uptimeMonitor: true,
     } })
     expect(site.url).toBe('http://example.com:8080')
     expect(site.watchInterval).toBe('WEEKLY')
     expect(site.watchNextRunAt).toBeInstanceOf(Date)
+    expect(site.uptimeMonitor).toMatchObject({ enabled: true, targetUrl: 'http://example.com:8080/', state: 'unknown', version: 1 })
     expect(site.siteOutcomes).toHaveLength(1)
     expect(site.siteOutcomes[0].confirmedAt).toBeInstanceOf(Date)
     expect(site.siteOutcomes[0].bindings).toHaveLength(1)
@@ -66,6 +67,14 @@ run('automatic monitoring with migrated PostgreSQL', () => {
     expect(saved.confirmedAt).toEqual(outcome.confirmedAt)
     expect(saved.bindings[0]).toMatchObject({ id: binding.id, version: 3 })
     expect(await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, site.id, 'foreign-user', now))).toBe(false)
+    try {
+      await updateOwnedSiteIdentity({ projectId: site.id, userId }, { origin: 'https://example.com' })
+      await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, site.id, userId, now))
+      expect(await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: binding.id } }))
+        .toMatchObject({ version: 3, config: binding.config })
+    } finally {
+      await updateOwnedSiteIdentity({ projectId: site.id, userId }, { origin: site.url })
+    }
   })
 
   it('rechecks an expiring grant for each Site after delayed setup', async () => {
@@ -231,6 +240,43 @@ run('automatic monitoring with migrated PostgreSQL', () => {
       expect(await prisma.siteOutcome.count({ where: { projectId: sites[0].id } })).toBe(1)
     } finally {
       await prisma.$executeRawUnsafe('ALTER TABLE site_outcomes DROP CONSTRAINT IF EXISTS fixture_failed_monitoring_setup')
+      await prisma.project.deleteMany({ where: { id: { in: sites.map(site => site.id) } } })
+    }
+  })
+  it('skips a locked Site before applying the setup limit and initializes it after release', async () => {
+    const sites = await Promise.all(['locked-setup', 'independent-setup'].map((host, index) => prisma.project.create({ data: {
+      userId, name: host, url: 'https://' + host + '.example.com/', canonicalHost: host + '.example.com',
+      createdAt: new Date(100 + index),
+    } })))
+    let release!: () => void, locked!: () => void
+    const released = new Promise<void>(resolve => { release = resolve })
+    const ready = new Promise<void>(resolve => { locked = resolve })
+    const held = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM projects WHERE id = ${sites[0].id} FOR UPDATE`
+      locked()
+      await released
+    }, { timeout: 10_000 })
+    try {
+      await Promise.race([ready, held])
+      const setup = initializeDefaultMonitoring(1, fixedClock(now))
+      try {
+        await vi.waitFor(async () => {
+          expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[1].id } }))
+            .toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: now })
+        }, { timeout: 1500 })
+        expect(await prisma.siteOutcome.count({ where: { projectId: sites[0].id } })).toBe(0)
+      } finally {
+        release()
+        await held
+        await setup
+      }
+      await initializeDefaultMonitoring(1, fixedClock(now))
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[0].id } }))
+        .toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: now, monitoringSetupRetryAt: null })
+      expect(await prisma.siteOutcome.count({ where: { projectId: { in: sites.map(site => site.id) } } })).toBe(2)
+    } finally {
+      release()
+      await held
       await prisma.project.deleteMany({ where: { id: { in: sites.map(site => site.id) } } })
     }
   })

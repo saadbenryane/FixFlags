@@ -12,7 +12,8 @@ function observedReceipt(module: string, assertions: string[]) {
   return { kind: 'site-module-check', version: 1, module, pageUrl: 'https://example.com/', passed: true, applicable: true,
     assertions: assertions.map(key => ({ key, name: key, expected: 'Fixture assertion is satisfied',
       observed: 'Fixture input establishes this assertion', passed: true })),
-    execution: { auditId: 'current', taskId: 'task-' + module, checkVersion: 1, source: module === 'accessibility' ? 'axe' : 'original-html',
+    execution: { auditId: 'current', taskId: 'task-' + module, checkVersion: 1,
+      source: module === 'accessibility' ? 'axe' : module === 'security' ? 'http' : 'original-html',
       collectedAt: '2026-10-11T10:00:00.000Z' } }
 }
 
@@ -390,8 +391,8 @@ describe('site card packaging', () => {
   it('evidences security and tracking from recorded assertions, never module completion alone', () => {
     const base = {
       auditStatus: 'COMPLETED' as const,
-      completedAt: new Date('2026-09-08T12:00:00Z'),
-      now: new Date('2026-09-09T12:00:00Z'),
+      completedAt: new Date('2026-10-11T12:00:00Z'),
+      now: new Date('2026-10-12T12:00:00Z'),
       evidenceCoverage: {
         metadata: true,
         desktopPageSpeed: true,
@@ -418,7 +419,6 @@ describe('site card packaging', () => {
     const withModules = buildCoverageFacts({
       ...base,
       verifierExecutions: [
-        { targetKey: 'module:trust', status: 'COMPLETED' },
         { targetKey: 'module:security', status: 'COMPLETED', detail: observedReceipt('security', ['https', 'image-transport']) },
         { targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) },
       ],
@@ -458,6 +458,26 @@ describe('site card packaging', () => {
     })
     expect(incomplete.find((fact) => fact.area === 'security')?.state).toBe('unknown')
     expect(incomplete.find((fact) => fact.area === 'tracking')?.state).toBe('unknown')
+  })
+
+  it.each(['markup', 'another page', 'another run'])('excludes %s from current Tracking browser evidence', (kind) => {
+    const pageUrl = 'https://example.com/'
+    const now = new Date('2026-10-11T12:00:00Z')
+    const markup = observedReceipt('measurement', ['analytics-markup'])
+    const request = observedReceipt('measurement', ['tracking-initiation'])
+    const detail = kind === 'markup' ? markup : {
+      ...request,
+      pageUrl: kind === 'another page' ? pageUrl + 'other' : pageUrl,
+      assertions: request.assertions.map(assertion => ({ ...assertion, complete: true, disposition: 'observed' })),
+      execution: { ...request.execution, auditId: kind === 'another run' ? 'earlier' : 'current', source: 'browser-network' },
+    }
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, flags: [],
+      pageScope: { auditId: 'current', pages: [pageUrl], tracking: true, search: false, securityTransport: false },
+      verifierExecutions: [{ targetKey: 'module:measurement', status: 'COMPLETED', detail }],
+    })
+    expect(facts.find(fact => fact.area === 'tracking')).toMatchObject({ state: 'unknown', evidenced: false,
+      incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(facts.find(fact => fact.area === 'tracking')?.label).not.toBe(SITE_ACTION_COPY.execution.tracking.requestsObserved)
   })
 
   it('retains dated evidence without showing expired health while checking', () => {

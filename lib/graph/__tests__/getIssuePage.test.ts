@@ -4,6 +4,8 @@ import { researchFixture } from './fixtures/public-research'
 
 const { prismaMock } = vi.hoisted(() => ({ prismaMock: {
   growthArtifact: { findUnique: vi.fn() },
+  $transaction: vi.fn(),
+  $executeRaw: vi.fn(),
   issue: { findFirst: vi.fn(), findMany: vi.fn() },
   benchmarkSnapshot: { findFirst: vi.fn() },
   $queryRaw: vi.fn(),
@@ -19,6 +21,7 @@ describe('public issue research boundary', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-13T00:00:00Z'))
     vi.mocked(hasCurrentResearchPermissions).mockResolvedValue(true)
+    prismaMock.$transaction.mockImplementation(async read => read(prismaMock))
     prismaMock.growthArtifact.findUnique.mockResolvedValue({ kind: PUBLIC_RESEARCH_KIND, payload: researchFixture() })
   })
   afterEach(() => vi.useRealTimers())
@@ -30,6 +33,9 @@ describe('public issue research boundary', () => {
     expect(JSON.stringify(result)).not.toContain('synthetic-test-permission')
     expect(JSON.stringify(result)).not.toContain('copyReviewRef')
     expect(prismaMock.growthArtifact.findUnique).toHaveBeenCalledWith({ where: { path: PUBLIC_RESEARCH_PATH }, select: { kind: true, payload: true } })
+    expect(prismaMock.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'RepeatableRead' })
+    expect(prismaMock.$executeRaw.mock.calls[0][0].join('')).toBe('SET TRANSACTION READ ONLY')
+    expect(hasCurrentResearchPermissions).toHaveBeenCalledWith(expect.any(Object), prismaMock)
     expect(prismaMock.issue.findFirst).not.toHaveBeenCalled()
     expect(prismaMock.issue.findMany).not.toHaveBeenCalled()
     expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
@@ -45,6 +51,11 @@ describe('public issue research boundary', () => {
     expect(await getPublicIssueLibrary()).toEqual([])
     expect(await getIssuePage('security-headers-missing')).toBeNull()
     expect(await getTopIssuesForChecks(['security-headers-missing'])).toEqual([])
+  })
+
+  it('withholds the release when the evidence snapshot is unavailable', async () => {
+    prismaMock.$transaction.mockRejectedValueOnce(new Error('Private database context'))
+    await expect(getPublicIssueLibrary()).resolves.toEqual([])
   })
 
   it.each([

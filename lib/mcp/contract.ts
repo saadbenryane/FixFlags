@@ -49,13 +49,13 @@ export function mcpStructuredResult<T extends object>(payload: T) {
   }
 }
 
-export function mcpCoreError(error: unknown, defaults?: { code?: string; action?: string }) {
+export function mcpCoreError(error: unknown, defaults?: { code?: string; action?: string; message?: string }) {
   const typed = error instanceof Error
     ? error
     : new Error('MCP tool failed')
   let code = defaults?.code ?? 'MCP_TOOL_FAILED'
   let action = defaults?.action ?? 'retry'
-  let message = 'FixFlags could not complete this request. Please retry.'
+  let message = defaults?.message ?? 'FixFlags could not complete this request. Please retry.'
 
   if (error instanceof SiteRunRefusal) {
     code = error.code; message = error.message

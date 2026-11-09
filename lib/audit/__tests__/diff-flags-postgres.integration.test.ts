@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { diffFlagsAgainstParent, getFlagDiffSummary, persistFlagDiffSummary } from '../diff-flags'
+import { diffFlagsAgainstParent, getFlagDiffSummary, persistFlagDiffSummary, readReportComparison } from '../diff-flags'
 import { classifyWatchResult } from '../project-watch'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from './check-fixtures'
 import { runPerformanceChecks } from '../checks/performance'
 import { scopePerformanceAssertions } from '../performance-measurement'
+import { mergeSupportingObservations, observationsForFlag } from '../flag-observations'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 
@@ -50,6 +51,51 @@ run('historical page conditions in monitoring comparisons', () => {
     return { parent, child, proof, original, current }
   }
 
+  it('refuses foreign parent evidence before projecting recovery or publishing a comparison', async () => {
+    const { parent, child, proof, original } = await performanceRunFixture(false)
+    const foreign = await prisma.project.create({ data: { userId, name: 'Separate Site',
+      canonicalHost: 'other.example.com', url: 'https://other.example.com/' } })
+    await prisma.audit.update({ where: { id: parent.id }, data: { projectId: foreign.id } })
+
+    await expect(diffFlagsAgainstParent(child.id, proof.id)).rejects.toThrow('original parent')
+    await expect(diffFlagsAgainstParent(child.id, parent.id)).rejects.toThrow('same Site')
+    await expect(getFlagDiffSummary(parent.id, child.id)).rejects.toThrow('same Site')
+    await expect(getFlagDiffSummary(parent.id, proof.id)).rejects.toThrow('same Site')
+    await expect(persistFlagDiffSummary(parent.id, child.id)).rejects.toThrow('same Site')
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({
+      status: 'OPEN', resolvedInId: null,
+    })
+    expect(await prisma.auditVerificationReceipt.count({ where: { auditId: child.id, scopeKey: 'product' } })).toBe(0)
+  })
+
+  it('withholds a previously published comparison if its recorded parent belongs to another Site', async () => {
+    const { parent, child } = await performanceRunFixture(false)
+    expect(await readReportComparison(parent.id, child.id)).toBeNull()
+    await persistFlagDiffSummary(parent.id, child.id)
+    expect(await readReportComparison(parent.id, child.id)).toMatchObject({ fixed: [{ checkId: 'lcp-poor' }] })
+    const foreign = await prisma.project.create({ data: { userId, name: 'Separate Site',
+      canonicalHost: 'other.example.com', url: 'https://other.example.com/' } })
+    await prisma.audit.update({ where: { id: parent.id }, data: { projectId: foreign.id } })
+    expect(await readReportComparison(parent.id, child.id)).toBeNull()
+    await expect(getFlagDiffSummary(parent.id, child.id)).rejects.toThrow('same Site')
+  })
+
+  it('refuses publication when both Audits move Sites after the comparison was prepared', async () => {
+    const { parent, child } = await performanceRunFixture(false)
+    const foreign = await prisma.project.create({ data: { userId, name: 'Separate Site',
+      canonicalHost: 'other.example.com', url: 'https://other.example.com/' } })
+    const read = prisma.audit.findUniqueOrThrow.bind(prisma.audit)
+    const move = vi.spyOn(prisma.audit, 'findUniqueOrThrow').mockImplementationOnce(async args => {
+      const result = await read(args)
+      await prisma.audit.updateMany({ where: { id: { in: [parent.id, child.id] } }, data: { projectId: foreign.id } })
+      return result
+    })
+    try {
+      await expect(persistFlagDiffSummary(parent.id, child.id)).rejects.toThrow('original parent and Site scope')
+      expect(await prisma.auditVerificationReceipt.count({ where: { auditId: child.id, scopeKey: 'product' } })).toBe(0)
+    } finally { move.mockRestore() }
+  })
+
   it.each(['OPEN', 'FIXED', 'REGRESSED', 'IGNORED'] as const)('compares the observed failure before a later native recovery without overwriting retained lifecycle (current=%s)', async status => {
     const { parent, child, proof, original, current } = await performanceRunFixture()
     await prisma.flag.update({ where: { id: original.id }, data: { status: 'FIXED', resolvedInId: proof.id } })
@@ -61,6 +107,57 @@ run('historical page conditions in monitoring comparisons', () => {
     expect(await prisma.flag.findMany({ where: { id: { in: [original.id, current!.id] } }, orderBy: { id: 'asc' } })).toEqual(saved)
     await persistFlagDiffSummary(parent.id, child.id)
     expect(await getFlagDiffSummary(parent.id, child.id)).toEqual(before)
+  })
+
+  it.each(['matching', 'different page', 'historical without a page column'] as const)(
+    'uses the receipt ledger page for repair and publication when it is %s', async scope => {
+      const { parent, child, original } = await performanceRunFixture(false)
+      if (scope !== 'matching') await prisma.auditVerificationReceipt.updateMany({
+        where: { auditId: child.id, targetKey: 'module:performance' },
+        data: { pageUrl: scope === 'different page' ? child.url + 'pricing' : null },
+      })
+      const expected = scope === 'different page'
+        ? { fixed: [], inconclusive: [{ id: original.id }] }
+        : { fixed: [{ id: original.id }], inconclusive: [] }
+      expect(await getFlagDiffSummary(parent.id, child.id)).toMatchObject(expected)
+      await diffFlagsAgainstParent(child.id, parent.id)
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject(scope === 'different page'
+        ? { status: 'OPEN', resolvedInId: null } : { status: 'FIXED', resolvedInId: child.id })
+      await persistFlagDiffSummary(parent.id, child.id)
+      expect(await getFlagDiffSummary(parent.id, child.id)).toMatchObject(expected)
+    },
+  )
+
+  it.each([false, true])('requires category admission for each original page before closing a Flag (peer admitted=%s)', async admitted => {
+    const { parent, child, original } = await performanceRunFixture(false)
+    const peer = child.url + 'pricing'
+    await prisma.audit.update({ where: { id: child.id }, data: { executionSpec: {
+      ...(child.executionSpec as object), scope: 'CATEGORY', category: { area: 'performance', sourceAuditId: parent.id,
+        pages: admitted ? [child.url, peer] : [child.url] },
+    } } })
+    const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture(peer) } })
+    const originalPeer = runPerformanceChecks(measurement, null, peer)[0]
+    const originalScope = { auditId: parent.id, checkVersion: 1, collectedAt: parent.completedAt!.toISOString() }
+    await prisma.flag.update({ where: { id: original.id }, data: { affectedPaths: [child.url, peer],
+      supportingObservations: mergeSupportingObservations([
+        observationsForFlag({ ...original, pageUrl: child.url }, { ...originalScope, taskId: 'original-root' }),
+        observationsForFlag({ ...originalPeer, pageUrl: peer }, { ...originalScope, taskId: 'original-peer' }),
+      ]),
+    } })
+    await prisma.auditVerificationReceipt.create({ data: { auditId: child.id, targetKey: 'module:performance', scopeKey: 'page:' + peer,
+      pageUrl: peer, source: 'DETERMINISTIC', status: 'COMPLETED', detail: {
+        kind: 'site-module-check', version: 1, module: 'performance', pageUrl: peer, applicable: true, passed: true,
+        assertions: scopePerformanceAssertions(measurement, peer, [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms',
+          observed: '1000ms', passed: true, complete: true }]),
+        execution: { auditId: child.id, taskId: 'peer-speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: child.completedAt!.toISOString() },
+      } } })
+    const expected = admitted ? { fixed: [{ id: original.id }], inconclusive: [] } : { fixed: [], inconclusive: [{ id: original.id }] }
+    expect(await getFlagDiffSummary(parent.id, child.id)).toMatchObject(expected)
+    await diffFlagsAgainstParent(child.id, parent.id)
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject(admitted
+      ? { status: 'FIXED', resolvedInId: child.id } : { status: 'OPEN', resolvedInId: null })
+    await persistFlagDiffSummary(parent.id, child.id)
+    expect(await getFlagDiffSummary(parent.id, child.id)).toMatchObject(expected)
   })
 
   it.each(['recovery', 'growth', 'dismissal'] as const)('replans comparison when source %s commits between its evidence read and write', async change => {
@@ -164,7 +261,7 @@ run('historical page conditions in monitoring comparisons', () => {
     await persistFlagDiffSummary(parent.id, child.id)
     const frozen = await getFlagDiffSummary(parent.id, child.id)
     expect(frozen).toEqual(before)
-    await classifyWatchResult(parent.id, child.id)
+    await classifyWatchResult(child.id)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: child.id } })).toMatchObject({
       watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0 })
     await diffFlagsAgainstParent(child.id, parent.id)
@@ -177,7 +274,7 @@ run('historical page conditions in monitoring comparisons', () => {
     await diffFlagsAgainstParent(child.id, parent.id)
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: current.id } })).toEqual(subsequentlyRecovered)
     expect(await getFlagDiffSummary(parent.id, child.id)).toEqual(frozen)
-    await classifyWatchResult(parent.id, child.id)
+    await classifyWatchResult(child.id)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: child.id } })).toMatchObject({
       watchRegressionCount: 1, watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0 })
     expect(await prisma.flag.count({ where: { auditId: { in: [parent.id, child.id] } } })).toBe(3)

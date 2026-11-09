@@ -86,7 +86,8 @@ describe('availability Outcome execution', () => {
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.flagCreate.mockResolvedValue({ id: 'flag-1' })
     mocks.auditFindUnique.mockResolvedValue({ htmlMetadata: { pageText: 'Unrelated old capture must never be read.' } })
-    const frame = {}, page = { evaluate: async () => ({ text: 'Example page is ready.', html: '<main>Example page is ready.</main>', url: 'https://example.net/' }),
+    const frame = {}, page = { evaluate: async () => ({ cues: { text: 'Example page is ready.', titles: [], headings: [] },
+      missingPageLabels: [], labelsComplete: true, url: 'https://example.net/' }),
       url: () => 'https://example.net/', context: () => ({ close: async () => {} }), mainFrame: () => frame, off: vi.fn(),
       on: (_: string, listener: (response: unknown) => void) => listener({ status: () => 200, headers: () => ({}), url: () => 'https://example.net/',
         frame: () => frame, request: () => ({ isNavigationRequest: () => true }) }) }

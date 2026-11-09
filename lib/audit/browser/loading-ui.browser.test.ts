@@ -18,11 +18,12 @@ run('native loading visibility inheritance', () => {
         const box = document.querySelector('#loader')!.getBoundingClientRect()
         return document.elementFromPoint(box.left + 10, box.top + 10)?.id
       })).toBe('loader')
-      expect(await readLoadingUi(page)).toMatchObject({ loadingVisible: true, loadingLabel: 'spinner' })
-      expect(await page.evaluate(loadingUiInDocument, true)).toBe(false)
+      const initial = await readLoadingUi(page)
+      expect(initial).toMatchObject({ loadingVisible: true, loadingLabel: 'spinner' })
+      expect(await page.evaluate(loadingUiInDocument, initial)).toBe(false)
       const started = Date.now()
       await page.evaluate(() => { setTimeout(() => document.querySelector('#loader')?.remove(), 150) })
-      const cleared = await page.waitForFunction(loadingUiInDocument, true, { timeout: 3000 })
+      const cleared = await page.waitForFunction(loadingUiInDocument, initial, { timeout: 3000 })
       try { expect(await cleared.jsonValue()).toBeGreaterThanOrEqual(started + 100) }
       finally { await cleared.dispose() }
     } finally { await context.close() }
@@ -35,8 +36,9 @@ run('native loading visibility inheritance', () => {
       await page.setContent('<!doctype html><html><head><title>Hidden loading</title></head><body>' +
         '<main style="' + hidden + '"><div class="spinner" style="width:300px;height:180px;background:red">Loading content</div></main>' +
         '<h1>Useful page content</h1></body></html>')
-      expect(await readLoadingUi(page)).toMatchObject({ loadingVisible: false })
-      expect(await page.evaluate(loadingUiInDocument, true)).toEqual(expect.any(Number))
+      const initial = await readLoadingUi(page)
+      expect(initial).toMatchObject({ loadingVisible: false })
+      expect(await page.evaluate(loadingUiInDocument, initial)).toEqual(expect.any(Number))
     } finally { await context.close() }
   })
 

@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "watchTargetRevision" INTEGER NOT NULL DEFAULT 1;

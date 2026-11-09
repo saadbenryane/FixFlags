@@ -189,8 +189,7 @@ export function AuditInput({
           utmSource: params.get('utm_source'),
           utmCampaign: params.get('utm_campaign'),
           journeyId,
-          auditId: typeof data.reportId === 'string' ? data.reportId : null,
-          reused: data.reused === true,
+          reused: typeof data.reused === 'boolean' ? data.reused : undefined,
         })
       },
     }).catch(() => ({ ok: false, message: AUDIT_ERRORS.admissionBusy }))

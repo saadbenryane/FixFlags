@@ -21,7 +21,7 @@ import {
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
-export const auth = betterAuth({
+const createAuth = () => betterAuth({
   appName: BRAND.name,
   // Backup-code enrollment uses the plugin's secret record. Public
   // authenticator-app routes stay unavailable for passkey-only two-factor.
@@ -169,3 +169,16 @@ export const auth = betterAuth({
     }),
   ],
 })
+
+type Auth = ReturnType<typeof createAuth>
+let runtimeAuth: Auth | undefined
+
+function getRuntimeAuth(): Auth {
+  return runtimeAuth ??= createAuth()
+}
+
+// Route discovery imports this module during builds without runtime credentials.
+export const auth: Pick<Auth, 'api' | 'handler'> = {
+  get api() { return getRuntimeAuth().api },
+  handler(request) { return getRuntimeAuth().handler(request) },
+}

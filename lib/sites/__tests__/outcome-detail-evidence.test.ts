@@ -4,6 +4,7 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, checkoutResultCopy, customerBindingResult, outcomeStatusLabel } from '@/lib/sites/outcome-state'
+import { CHECKOUT_ENTRY_EVALUATOR } from '@/lib/sites/domain/outcome-evaluation'
 
 const mocks = vi.hoisted(() => ({
   outcomeFindMany: vi.fn(),
@@ -50,6 +51,9 @@ function projectSite(): SiteRecord {
 }
 
 function outcomeRow() {
+  const checkoutEvidenceBinding: { key: string; version: number; mechanism: string; evaluator?: string } = {
+    key: 'checkout-browser-v1', version: 1, mechanism: 'BROWSER_JOURNEY', evaluator: CHECKOUT_ENTRY_EVALUATOR,
+  }
   return {
     id: 'outcome-1',
     projectId: 'project-1',
@@ -80,7 +84,7 @@ function outcomeRow() {
       improvementId: null,
       runRequestId: 'run-new',
       coverage: { environment: 'production', requiredBindings: ['checkout-browser-v1'],
-        bindings: [{ key: 'checkout-browser-v1', version: 1, mechanism: 'BROWSER_JOURNEY' }] },
+        bindings: [checkoutEvidenceBinding] },
       auditId: 'audit-new',
     }],
     runSelections: [{
@@ -122,7 +126,7 @@ function executionsNewestFirst() {
       bindingKey: 'checkout-browser-v1',
       disposition: 'SUCCEEDED',
       reason: 'checkout_reached',
-      detail: { finalUrl: 'https://shop.example/checkout' },
+      detail: { finalUrl: 'https://shop.example/checkout', evaluator: CHECKOUT_ENTRY_EVALUATOR },
       createdAt: NEWER,
       auditId: 'audit-new',
     },
@@ -213,7 +217,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     expect(checkout?.latestEvidence).toEqual({
       disposition: 'SUCCEEDED',
       reason: 'checkout_reached',
-      detail: { finalUrl: 'https://shop.example/checkout' },
+      detail: { finalUrl: 'https://shop.example/checkout', evaluator: CHECKOUT_ENTRY_EVALUATOR },
       createdAt: NEWER.toISOString(),
       auditId: 'audit-new',
     })
@@ -274,12 +278,24 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     expect(detail?.timeline).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'attempt:attempt-new' })]))
   })
 
-  it('uses an explicit legacy observation revision without altering the raw detail', async () => {
-    const evidence = { ...executionsNewestFirst()[0], bindingVersion: null, detail: { bindingVersion: 1, finalUrl: 'https://shop.example/checkout' } }
+  it('uses an explicit observation revision in JSON without altering the raw detail', async () => {
+    const evidence = { ...executionsNewestFirst()[0], bindingVersion: null,
+      detail: { bindingVersion: 1, finalUrl: 'https://shop.example/checkout', evaluator: CHECKOUT_ENTRY_EVALUATOR } }
     mocks.executionFindMany.mockResolvedValue([evidence])
     const detail = await loadSiteOutcomeDetail(projectSite(), 'outcome-1')
     expect(detail?.bindings[0].latestEvidence).toMatchObject({ disposition: 'SUCCEEDED', detail: evidence.detail })
     expect(mcpOutcomePayload(detail!).methods[0].evidence).not.toBeNull()
+  })
+
+  it('keeps a legacy Checkout success in history without publishing it as current proof', async () => {
+    const row = outcomeRow()
+    delete row.assessments[0].coverage.bindings[0].evaluator
+    mocks.outcomeFindFirst.mockResolvedValue(row)
+    mocks.executionFindMany.mockResolvedValue([{ ...executionsNewestFirst()[0], detail: { finalUrl: 'https://shop.example/checkout' } }])
+    const detail = await loadSiteOutcomeDetail(projectSite(), row.id)
+    expect(detail).toMatchObject({ state: 'COULD_NOT_VERIFY' })
+    expect(detail?.bindings[0].latestEvidence).toBeNull()
+    expect(detail?.timeline).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'attempt:attempt-new', auditId: 'audit-new' })]))
   })
 
   it('retains the requested assessment and its failed method when an older request completes later', async () => {
@@ -314,6 +330,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
       state: 'COULD_NOT_VERIFY',
       summary: checkoutResultCopy('no_buy_control').summary,
     }
+    delete row.assessments[0].coverage.bindings[0].evaluator
     mocks.outcomeFindFirst.mockResolvedValue(row)
     mocks.executionFindMany.mockResolvedValue([
       {
@@ -377,6 +394,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     ['password_gate', 'Provide access for this checkout, then verify again.'],
     ['timeout', 'Verify again. The last check reached the time limit.'],
     ['flaky', 'Verify again. The repeated purchase attempts did not agree.'],
+    ['checkout_surface_unavailable', 'Check that checkout fully loads for a signed-out visitor, then verify again.'],
     ['unrecognized', 'Verify again.'],
   ] as const)('uses the Checkout next step for %s', async (reason, recovery) => {
     const row = outcomeRow()

@@ -163,6 +163,7 @@ model EmailDelivery {
   user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, acceptedAt(sort: Desc)])
+  @@index([acceptedAt])
   @@map("email_deliveries")
 }
 
@@ -175,6 +176,7 @@ model EmailProviderEvent {
   bodyHash        String
   receivedAt      DateTime @default(now())
   processedAt     DateTime?
+  discardedAt     DateTime?
   expiresAt       DateTime
 
   @@index([providerId, occurredAt])
@@ -688,7 +690,10 @@ model Project {
   /// Explicit monitoring intent, separate from analysis due time and allowance.
   watchPausedAt               DateTime?
   monitoringSetupRetryAt      DateTime?
+  uptimeSetupRetryAt          DateTime?
   watchLastRunAt              DateTime?
+  /// Separates checks admitted before and after a Site target edit.
+  watchTargetRevision         Int                   @default(1)
   /// *
   ///    * Lowercase hostname without www. Exact Product identity within an account.
   canonicalHost               String
@@ -735,6 +740,7 @@ model Project {
   @@index([userId])
   @@index([watchNextRunAt])
   @@index([monitoringSetupRetryAt, createdAt, id])
+  @@index([uptimeSetupRetryAt, createdAt, id])
   @@index([watchLeaseUntil])
   @@index([scanAccessAuthorizedByUserId])
   @@map("projects")
@@ -795,6 +801,7 @@ model Audit {
   leadSyncedAt               DateTime?
   includeAi                  Boolean                      @default(true)
   aiReviewAt                 DateTime?
+  prescriptionHandoffRetryAt DateTime?
   triageAt                   DateTime?
   gclid                      String?
   fbclid                     String?
@@ -1002,10 +1009,26 @@ model ChatUsageReservation {
   createdAt      DateTime        @default(now())
   expiresAt      DateTime
   finalizedAt    DateTime?
+  /// Attempt identity and normalized consumption, without prompts or responses.
+  providerUsage  Json?
   period         ChatUsagePeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
 
   @@index([periodId, status, expiresAt])
   @@map("chat_usage_reservations")
+}
+
+/// Atomic operational dollar admission. Attempts and responses remain on their
+/// existing execution, chat or administrator receipt, never in a second ledger.
+model ProviderSpendWindow {
+  key            String   @id
+  expiresAt      DateTime
+  limitMicros    BigInt
+  reservedMicros BigInt   @default(0)
+  settledMicros  BigInt   @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@map("provider_spend_windows")
 }
 
 model JourneyReview {
@@ -1410,6 +1433,9 @@ model Flag {
   position              Int
   evidenceTargets       Json?
   supportingObservations Json?
+  supportingObservationVersion Int @default(0)
+  /// Validated count and digest for bounded reads, fenced by the source version.
+  supportingObservationIndex Json?
   status                FlagStatus             @default(OPEN)
   resolvedInId          String?
   createdAt             DateTime               @default(now())
@@ -1526,6 +1552,9 @@ model ImprovementAttempt {
 }
 
 model AuditExecutionTask {
+  /// Exact interpretation identity. Output remains in the existing workResult.
+  interpretationKey String? @unique
+  interpretationSourceId String?
   workState         AuditWorkState?
   workKind          String?
   workDependencies  String[]                @default([])
@@ -1590,6 +1619,7 @@ model AuditVerificationReceipt {
 /// Read-only composition for coverage and historical projections. Scheduling never writes this view.
 view AuditVerifierExecution {
   recordKind String
+  taskId String?
   workState         AuditWorkState?
   workKind          String?
   workDependencies  String[]
@@ -3090,6 +3120,8 @@ model UptimeIncident {
   recoveredAt   DateTime?
   supersededAt  DateTime?
   reason        String
+  // Reuse the column originally introduced for certificate failures.
+  failureOrigin String?              @map("tlsFailureOrigin")
   monitor       UptimeMonitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
   notifications UptimeNotification[]
 

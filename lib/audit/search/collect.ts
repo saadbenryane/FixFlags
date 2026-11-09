@@ -1,50 +1,54 @@
 import { searchSectionBody, type RenderedSearchSnapshot } from './rendered-snapshot'
-import * as cheerio from 'cheerio'
 import { canonicalDeclarations } from './canonical-declarations'
-import { XMLParser, XMLValidator } from 'fast-xml-parser'
-import { EntityDecoder } from '@nodable/entities'
+import { parseActiveHtmlDocument } from '../html-document'
+import { parseSitemapXml, parseTextSitemap, sitemapLocation, type SitemapResult } from './sitemap-formats'
 import { safeFetchDocument } from '../url'
 import { PublicCertificateError, readCertificateFailure } from '../tls-evidence'
-import { PublicResponseBodyError, type PublicHttpDocument } from '../http-evidence'
+import { isPublicChallengeHeader, isSuccessfulPublicGetStatus, PublicResponseBodyError, type PublicHttpDocument } from '../http-evidence'
 import { PublicRedirectError } from '../redirect-evidence'
-import { isBotInterstitialDocument } from '../browser/page-capture'
+import { isBotInterstitialDocument, isPublicSignInRedirect, PUBLIC_SIGN_IN_REDIRECT } from '../browser/page-capture'
 import type { PublicDocument, SearchPageEvidence } from './contracts'
-import { SITEMAP_DOCUMENT_LIMIT, SITEMAP_URL_LIMIT } from './contracts'
+import { SITEMAP_DOCUMENT_LIMIT, SITEMAP_STRUCTURE_VERSION, SITEMAP_URL_LIMIT } from './contracts'
+import { searchUrlIdentity } from './resource-identity'
 export { SITEMAP_DOCUMENT_LIMIT, SITEMAP_URL_LIMIT } from './contracts'
 
 export const SEARCH_DOCUMENT_LIMIT = 1_000_000
 
-class InvalidSitemapReference extends Error {}
-
-/** Decode only XML's predefined and numeric references, exactly once. The
- * parser keeps CDATA separate; DTD declarations are refused before parsing. */
-function sitemapEntityDecoder() {
-  return new EntityDecoder({
-    numericAllowed: true,
-    onInputEntity: () => 'throw', onExternalEntity: () => 'throw',
-    postCheck: (resolved, original) => {
-      if (/&(?!amp;|lt;|gt;|quot;|apos;|#(?:[0-9]+|x[0-9a-fA-F]+);)/.test(original))
-        throw new InvalidSitemapReference('Undeclared XML entity')
-      for (const match of original.matchAll(/&#(x[0-9a-fA-F]+|[0-9]+);/g)) {
-        const code = match[1].startsWith('x') ? parseInt(match[1].slice(1), 16) : Number(match[1])
-        if (!(code === 9 || code === 10 || code === 13 || code >= 0x20 && code <= 0xd7ff ||
-          code >= 0xe000 && code <= 0xfffd || code >= 0x10000 && code <= 0x10ffff))
-          throw new InvalidSitemapReference('Invalid XML character reference')
-      }
-      return resolved
-    },
-  })
-}
-
 export type SearchSiteResources = {
   robots: PublicDocument; sitemaps: PublicDocument[]; sitemapUrls: string[];
-  complete: boolean; declaredSitemaps: string[];
+  complete: boolean; declaredSitemaps: string[]; sitemapStructureVersion?: 1 | typeof SITEMAP_STRUCTURE_VERSION;
 }
 export type SearchResourceCache = Map<string, Promise<SearchSiteResources>>
+
+/** Only the independently fetched public HTTP redirect chain can add crawl targets. */
+export function crawlNavigationTargets(pageUrl: string, document: PublicDocument) {
+  const page = searchUrlIdentity(pageUrl)
+  if (document.reason === PUBLIC_SIGN_IN_REDIRECT || searchUrlIdentity(document.url) !== page ||
+    !document.redirects.length || searchUrlIdentity(document.redirects[0]) !== page) return [page]
+  const observed = [...document.redirects.slice(1, 5), document.finalUrl].map(searchUrlIdentity)
+  return [...new Set([page, ...observed.filter(url => /^https?:\/\//.test(url))])]
+}
 
 export function missingDocument(url: string, reason: string): PublicDocument {
   return { url, finalUrl: url, status: null, headers: {}, body: null, complete: false,
     reason, collectedAt: new Date().toISOString(), redirects: [] }
+}
+
+export function hasPublicSearchChallenge(document: PublicDocument): boolean {
+  return document.reason === 'public_access_challenge' || isPublicChallengeHeader(document.headers['cf-mitigated'])
+}
+
+/** A received missing-resource status survives a cut-off body. */
+export function isMissingPublicResource(document: PublicDocument): boolean {
+  return (document.status === 404 || document.status === 410) && !hasPublicSearchChallenge(document) &&
+    (document.complete || document.reason === 'response_body_unavailable' || document.reason === 'document_truncated')
+}
+
+/** Headers belong to the observed response even when the body is incomplete. */
+export function publicSearchResponseHeaders(document: PublicDocument) {
+  if (document.status === null || !isSuccessfulPublicGetStatus(document.status) || hasPublicSearchChallenge(document) ||
+    document.reason === PUBLIC_SIGN_IN_REDIRECT) return undefined
+  return document.headers
 }
 
 export async function collectDocument(url: string, deadline: number, maxBytes = SEARCH_DOCUMENT_LIMIT): Promise<PublicDocument> {
@@ -69,64 +73,74 @@ export async function collectDocument(url: string, deadline: number, maxBytes = 
     }
   }
   const challenge = isBotInterstitialDocument({ body: data.body ?? '', headers: data.headers, status: data.statusCode })
+  const signIn = !challenge && isPublicSignInRedirect({ requestedUrl: url, finalUrl: data.finalUrl, status: data.statusCode, body: data.body })
   return { url, finalUrl: data.finalUrl, status: data.statusCode, headers: data.headers, body: data.body,
-    complete: data.complete && !challenge, reason: challenge ? 'public_access_challenge' : redirectFailure ?? (bodyUnavailable ? 'response_body_unavailable'
+    complete: data.complete && !challenge && !signIn, reason: challenge ? 'public_access_challenge' : signIn ? PUBLIC_SIGN_IN_REDIRECT : redirectFailure ?? (bodyUnavailable ? 'response_body_unavailable'
       : data.complete ? null : 'document_truncated'), collectedAt: new Date().toISOString(), redirects: data.redirects }
 }
 
-export function parseSitemap(document: PublicDocument): { urls: string[]; children: string[]; valid: boolean; reason: string } {
+export function parseSitemap(document: PublicDocument): SitemapResult {
+  if (hasPublicSearchChallenge(document)) return { urls: [], children: [], valid: false, reason: 'public_access_challenge' }
   if (!document.complete || !document.body || document.status !== 200) return { urls: [], children: [], valid: false, reason: document.reason ?? 'sitemap_unavailable' }
-  if (/<!DOCTYPE|<!ENTITY/i.test(document.body) || XMLValidator.validate(document.body) !== true) return { urls: [], children: [], valid: false, reason: 'sitemap_invalid_xml' }
-  let parsed: Record<string, unknown>
-  try {
-    parsed = new XMLParser({ processEntities: true, entityDecoder: sitemapEntityDecoder(),
-      ignoreAttributes: false, parseTagValue: false, removeNSPrefix: true }).parse(document.body)
-  } catch (error) {
-    return { urls: [], children: [], valid: false, reason: error instanceof InvalidSitemapReference
-      ? 'sitemap_invalid_xml' : 'sitemap_parse_unavailable' }
-  }
-  const root = parsed.urlset ?? parsed.sitemapindex
-  if (!root || typeof root !== 'object') return { urls: [], children: [], valid: false, reason: 'not_a_sitemap' }
-  const entries = (root as Record<string, unknown>)[parsed.urlset ? 'url' : 'sitemap']
-  const rows = entries == null ? [] : Array.isArray(entries) ? entries : [entries]
-  let invalid = false
-  const urls = rows.slice(0, SITEMAP_URL_LIMIT).flatMap(row => {
-    const raw = row && typeof row === 'object' ? (row as Record<string, unknown>).loc : undefined
-    try {
-      if (typeof raw !== 'string') throw new Error('missing loc')
-      const url = new URL(raw.trim())
-      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('invalid loc')
-      return [url.toString()]
-    } catch { invalid = true; return [] }
-  })
-  if (rows.length > SITEMAP_URL_LIMIT) return { urls: parsed.urlset ? urls : [], children: parsed.sitemapindex ? urls : [], valid: false, reason: 'sitemap_url_limit' }
-  return { urls: parsed.urlset ? urls : [], children: parsed.sitemapindex ? urls : [], valid: !invalid, reason: invalid ? 'sitemap_invalid_location' : 'sitemap_parsed' }
+  const body = document.body.trimStart()
+  if (body.startsWith('<')) return parseSitemapXml(document.body)
+  const contentType = document.headers['content-type']?.split(';')[0].trim().toLowerCase()
+  const pathname = new URL(document.finalUrl).pathname
+  const textList = contentType === 'text/plain' || /\.txt(?:\.gz)?$/i.test(pathname) || /^https?:\/\//i.test(body)
+  return textList ? parseTextSitemap(body) : parseSitemapXml(document.body)
 }
 
 export async function collectSiteResources(origin: string, deadline: number, collectedRobots?: PublicDocument): Promise<SearchSiteResources> {
   const robots = collectedRobots ?? await collectDocument(new URL('/robots.txt', origin).toString(), deadline, 512_000)
-  const isText = robots.complete && robots.status === 200 && !/<(?:!doctype|html)\b/i.test(robots.body ?? '')
-  const declared = new Set<string>(), queue: string[] = []
+  return readSiteSitemaps(origin, robots, url => collectDocument(url, deadline))
+}
+
+/** Rebuild older inventory from its retained public documents and exact declaration graph. */
+export async function qualifyRecordedSiteResources(origin: string, resources: SearchSiteResources): Promise<SearchSiteResources> {
+  if (resources.sitemapStructureVersion === SITEMAP_STRUCTURE_VERSION || !resources.sitemaps.length) return resources
+  const documents = new Map(resources.sitemaps.map(document => [document.url, document]))
+  return readSiteSitemaps(origin, resources.robots, async url =>
+    documents.get(url) ?? missingDocument(url, 'resource_collection_incomplete'))
+}
+
+async function readSiteSitemaps(origin: string, robots: PublicDocument, readDocument: (url: string) => Promise<PublicDocument>): Promise<SearchSiteResources> {
+  const robotsText = robots.complete && robots.status === 200 && robots.body !== null && !/<(?:!doctype|html)\b/i.test(robots.body)
+    ? robots.body : null
+  const declared = new Set<string>(), pending: Array<Promise<PublicDocument>> = []
   const sitemaps: PublicDocument[] = [], seen = new Set<string>(), sitemapUrls = new Set<string>()
-  let complete = true
+  // A fallback sitemap can establish membership even when the publisher's
+  // declaration inventory could not be read.
+  let complete = robotsText !== null || isMissingPublicResource(robots)
+  function enqueue(url: string) {
+    if (seen.has(url)) return
+    seen.add(url)
+    if (pending.length >= SITEMAP_DOCUMENT_LIMIT) { complete = false; return }
+    const request = readDocument(url)
+    // Handle early rejection until the ordered read below reaches this request.
+    void request.catch(() => undefined)
+    pending.push(request)
+  }
   function declare(url: string) {
     if (declared.has(url)) return
     if (declared.size >= SITEMAP_URL_LIMIT) { complete = false; return }
-    declared.add(url); queue.push(url)
+    declared.add(url)
+    enqueue(url)
   }
-  if (isText) for (const line of (robots.body ?? '').split(/\r?\n/)) {
-    const match = line.replace(/#.*$/, '').match(/^\s*sitemap\s*:\s*(\S+)\s*$/i)
-    if (match) declare(match[1])
+  if (robotsText !== null) for (const line of robotsText.split(/\r?\n/)) {
+    const match = line.replace(/#.*$/, '').match(/^\s*sitemap\s*:\s*(.*?)\s*$/i)
+    if (!match) continue
+    const url = sitemapLocation(match[1])
+    if (url) declare(url)
+    else complete = false
   }
-  if (!queue.length) queue.push(new URL('/sitemap.xml', origin).toString())
-  while (queue.length && sitemaps.length < SITEMAP_DOCUMENT_LIMIT) {
-    const url = queue.shift()!
-    if (seen.has(url)) continue
-    seen.add(url)
-    const document = await collectDocument(url, deadline)
+  if (!pending.length) enqueue(new URL('/sitemap.xml', origin).toString())
+  // Known siblings fetch concurrently. Consume them in declaration order so
+  // child admission and the shared URL limit stay independent of timing.
+  for (const request of pending) {
+    const document = await request
     sitemaps.push(document)
     const parsed = parseSitemap(document)
-    if (!parsed.valid && document.status !== 404 && document.status !== 410) complete = false
+    if (!parsed.valid && (declared.has(document.url) || !isMissingPublicResource(document))) complete = false
     for (const url of parsed.urls) {
       if (sitemapUrls.has(url)) continue
       // The persisted bound applies to the entire execution, not each file.
@@ -136,50 +150,69 @@ export async function collectSiteResources(origin: string, deadline: number, col
     }
     for (const child of parsed.children) declare(child)
   }
-  if (queue.some(url => !seen.has(url))) complete = false
-  return { robots, sitemaps, sitemapUrls: [...sitemapUrls], complete, declaredSitemaps: [...declared] }
+  return { robots, sitemaps, sitemapUrls: [...sitemapUrls], complete, declaredSitemaps: [...declared], sitemapStructureVersion: SITEMAP_STRUCTURE_VERSION }
+}
+
+/** Keep response provenance, while keeping the diverted page out of all Search
+ * sections and out of the declared-target collection plan. */
+function qualifySearchDocument(document: PublicDocument): PublicDocument {
+  const { url, finalUrl, status } = document
+  if (document.searchSnapshot && document.searchSnapshot.finalUrl !== finalUrl)
+    document = { ...document, searchSnapshot: undefined }
+  if (status === null) return document
+  const sections = document.searchSnapshot?.sections
+  const signIn = document.reason === PUBLIC_SIGN_IN_REDIRECT || isPublicSignInRedirect({
+    requestedUrl: url, finalUrl, status, body: document.body, fragments: sections ? [sections.metadata.html, sections.text.html] : undefined,
+  })
+  return signIn ? { ...document, body: null, headers: {}, searchSnapshot: undefined,
+    complete: false, reason: PUBLIC_SIGN_IN_REDIRECT } : document
 }
 
 export async function collectSearchEvidence(input: {
   auditId: string; pageUrl: string; original?: PublicDocument;
   collectorVersion?: 1 | 2; renderedHtml: string | null; renderedSearchSnapshot?: RenderedSearchSnapshot; renderedComplete?: boolean; renderedCollectedAt?: string;
+  renderedSignInRedirect?: true;
   headers?: Record<string, string> | null; finalUrl?: string; status?: number | null;
-  deadline: number; cache: SearchResourceCache; privateCapture?: boolean; collectCanonicalTargets?: boolean;
+  renderedResponseScoped?: boolean;
+  deadline: number; cache: SearchResourceCache; privateCapture?: boolean; collectCanonicalTargets?: boolean; collectRedirectRobots?: boolean;
   /** The browser document alone used credentials; other inputs remain public. */
   renderedPrivate?: boolean;
 }): Promise<SearchPageEvidence> {
   const collectedAt = new Date().toISOString()
   const origin = new URL(input.pageUrl).origin
   const empty = missingDocument(input.pageUrl, input.privateCapture ? 'private_capture' : 'capture_unavailable')
-  const original = input.privateCapture ? empty : input.original ?? empty
-  const rendered: PublicDocument = input.privateCapture ? empty : input.renderedPrivate ? missingDocument(input.pageUrl, 'private_capture') : {
+  const original = input.privateCapture ? empty : qualifySearchDocument(input.original ?? empty)
+  const rendered = input.privateCapture ? empty : input.renderedPrivate ? missingDocument(input.pageUrl, 'private_capture') : qualifySearchDocument({
     url: input.pageUrl, finalUrl: input.finalUrl ?? input.pageUrl, status: input.status ?? null,
-    headers: input.headers ?? {}, body: input.renderedHtml,
+    headers: input.renderedResponseScoped === false ? {} : input.headers ?? {}, body: input.renderedHtml,
     searchSnapshot: input.renderedSearchSnapshot,
     complete: Boolean(input.renderedHtml) && input.renderedComplete !== false && Buffer.byteLength(input.renderedHtml ?? '') <= SEARCH_DOCUMENT_LIMIT,
-    reason: input.renderedHtml ? input.renderedComplete === false || Buffer.byteLength(input.renderedHtml) > SEARCH_DOCUMENT_LIMIT ? 'document_truncated' : null : 'capture_unavailable',
+    reason: input.renderedSignInRedirect ? PUBLIC_SIGN_IN_REDIRECT
+      : input.renderedHtml ? input.renderedComplete === false || Buffer.byteLength(input.renderedHtml) > SEARCH_DOCUMENT_LIMIT ? 'document_truncated' : null : 'capture_unavailable',
     collectedAt: input.renderedCollectedAt ?? collectedAt, redirects: original.redirects,
-  }
+  })
   if (!input.cache.has(origin)) input.cache.set(origin, input.privateCapture
     ? Promise.resolve({ robots: missingDocument(new URL('/robots.txt', origin).toString(), 'private_capture'), sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [] })
     : collectSiteResources(origin, input.deadline))
-  const site = await input.cache.get(origin)!
+  const redirectOrigins = !input.privateCapture && input.collectRedirectRobots !== false
+    ? [...new Set(crawlNavigationTargets(input.pageUrl, original).map(url => new URL(url).origin))].filter(target => target !== origin) : []
+  const [site, redirectRobots] = await Promise.all([input.cache.get(origin)!,
+    Promise.all(redirectOrigins.map(target => collectDocument(new URL('/robots.txt', target).href, input.deadline, 512_000)))])
   const canonicalUrls = new Set<string>()
   for (const document of input.collectCanonicalTargets === false ? [] : [original, rendered]) {
     const body = searchSectionBody(document, 'canonical')
-    if (body == null) continue
-    const $ = cheerio.load(body)
-    for (const declaration of canonicalDeclarations($, document.finalUrl, document === original ? document.headers.link : undefined))
+    const parsed = canonicalDeclarations(body === null ? null : parseActiveHtmlDocument(body).document,
+      document.finalUrl, document === original ? publicSearchResponseHeaders(document)?.link : undefined)
+    for (const declaration of parsed.declarations)
       if (declaration.url) canonicalUrls.add(declaration.url)
   }
   const canonicalTargets: PublicDocument[] = []
-  for (const url of [...canonicalUrls].slice(0, 3)) {
-    // History API changes can move the rendered URL without requesting it.
-    // Only the public transport can supply a reusable target response.
-    if (url === original.finalUrl && original.complete) canonicalTargets.push(original)
-    else canonicalTargets.push(await collectDocument(url, input.deadline))
-  }
+  // The evaluator can reuse the original public response at its terminal URL.
+  // Keep it in one place. A rendered URL can change without a network request.
+  for (const url of [...canonicalUrls].filter(url => !original.complete || url !== original.finalUrl).slice(0, 3))
+    canonicalTargets.push(await collectDocument(url, input.deadline))
   return { auditId: input.auditId, pageUrl: input.pageUrl, collectedAt, public: !input.privateCapture, collectorVersion: input.collectorVersion ?? (input.renderedSearchSnapshot ? 2 : 1),
-    original, rendered, robots: site.robots, sitemaps: site.sitemaps, sitemapUrls: site.sitemapUrls,
+    renderedResponseScoped: input.renderedResponseScoped,
+    original, rendered, robots: site.robots, redirectRobots, sitemaps: site.sitemaps, sitemapUrls: site.sitemapUrls,
     sitemapsComplete: site.complete, declaredSitemaps: site.declaredSitemaps, canonicalTargets }
 }

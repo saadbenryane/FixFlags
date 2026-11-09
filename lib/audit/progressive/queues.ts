@@ -34,7 +34,7 @@ const routing: Array<{ kinds: TaskKind[]; modules?: string[]; queue: TaskQueue }
   { kinds: ['browser', 'motion', 'overlays', 'keyboard', 'captures', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'automatic-accounts'], queue: 'browser' },
   { kinds: ['pagespeed'], queue: 'pagespeed' }, { kinds: ['google'], queue: 'google' },
   { kinds: ['judge', 'prescription'], queue: 'provider' },
-  { kinds: ['search'], modules: ['search-canonical'], queue: 'http' },
+  { kinds: ['search'], modules: ['search-canonical', 'search-crawl'], queue: 'http' },
   // Destination requests use HTTP capacity, keeping local evaluation independent.
   { kinds: ['check'], modules: ['og-image', 'auth-checkout', 'seo'], queue: 'http' },
   { kinds: ['http', 'search-resources', 'discovery'], queue: 'http' },

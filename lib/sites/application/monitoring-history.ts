@@ -2,24 +2,25 @@ import { loadSiteAnalysisSelection } from './legacy-analysis'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
+import { flagComparisonAuditScopeSelect } from '@/lib/audit/flag-comparison'
 import { monitoringHistoryMetadata, type MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
 import type { SiteRecord } from '@/lib/sites/types'
 import { siteAnalysisAuditWhere } from './analysis-scope'
-import { completeOutcomeEvidence } from '../domain/outcome-proof'
-import { projectSiteAssessment, recordedDiagnosticConclusion, recordedAccountConclusion } from '../assessment'
-import { readExecutionSpec } from '../domain/execution-spec'
+import { projectSiteAssessment, recordedRepairConclusion, recordedAccountConclusion } from '../assessment'
+import { readExecutionSpec, readVerificationTarget } from '../domain/execution-spec'
 import { categoryCoverageExecutionSelect, siteCoverageExecutionSelect } from './site-execution'
 import { executionPageCoverage } from '../page-coverage'
 import { projectRecordedSiteResult } from './recorded-assessment'
 import { analysisDidNotFinish } from '../analysis-completion'
 import { readSiteEvidence } from './site-evidence-read'
+import { recordedOutcomes } from './recorded-outcomes'
 
 const historySelect = {
-  id: true, parentId: true, status: true, failureCode: true, failureStage: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
+  id: true, ...flagComparisonAuditScopeSelect, status: true, failureCode: true, failureStage: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
   runRequests: { orderBy: { requestedAt: 'desc' }, take: 1, select: {
-    source: true, executionSpec: true, verificationTarget: true,
-    selections: { select: { outcome: { select: { name: true } } } },
-    assessments: { select: { outcomeId: true, state: true, validUntil: true, coverage: true, evidence: true } },
+    projectId: true, source: true, executionSpec: true, verificationTarget: true,
+    selections: { select: { outcomeId: true, outcome: { select: { projectId: true, name: true } } } },
+    assessments: { select: { auditId: true, outcomeId: true, state: true, validUntil: true, coverage: true, evidence: true } },
   } },
   verificationAttempts: { take: 12, orderBy: { createdAt: 'desc' }, select: { id: true, outcome: true, comparable: true,
     handoffReference: true, sourceAuditId: true, verificationAuditId: true, evidenceReference: true } },
@@ -75,47 +76,63 @@ async function loadHistoryExecutions(audits: Array<{ id: string; executionSpec: 
   return byAudit
 }
 
-export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof historySelect }>, legacyIds: string[], proofFlags: Array<{ id: string; problem: string; auditId: string }> = [], accountTaskResult?: unknown): MonitoringHistoryEntry {
+type HistoryAudit = Prisma.AuditGetPayload<{ select: typeof historySelect }>
+
+function repairSource(audit: HistoryAudit) {
+  const requested = audit.runRequests.find(run => run.projectId === audit.projectId)?.verificationTarget
+  const recorded = (audit.executionSpec as { verificationTarget?: unknown } | null)?.verificationTarget
+  const target = readVerificationTarget(recorded ?? requested)
+  if (!target || !audit.projectId || audit.parentId !== target.parentAuditId) return null
+  const attempt = audit.verificationAttempts.find(item => item.id === target.attemptId &&
+    item.verificationAuditId === audit.id && item.sourceAuditId === target.parentAuditId)
+  if (!attempt?.handoffReference?.startsWith('flag:')) return null
+  return { id: attempt.handoffReference.slice(5), auditId: attempt.sourceAuditId }
+}
+
+export function projectHistory(audit: HistoryAudit, legacyIds: string[], proofFlags: Array<{ id: string; problem: string; auditId: string }> = [], accountTaskResult?: unknown): MonitoringHistoryEntry {
   const flags = audit.flags.filter(isCustomerFlag)
-  const metadata = monitoringHistoryMetadata({ ...audit, legacySiteAnalysis: legacyIds.includes(audit.id), flagCount: flags.length })
-  const target = (audit.executionSpec as { verificationTarget?: { attemptId?: string } } | null)?.verificationTarget
-    ?? audit.runRequests[0]?.verificationTarget as { attemptId?: string } | null | undefined
-  const attempt = audit.verificationAttempts.find(item => item.id === target?.attemptId)
-  const sourceId = attempt?.handoffReference?.startsWith('flag:') ? attempt.handoffReference.slice(5) : null
-  const proof = sourceId ? proofFlags.find(item => item.id === sourceId && item.auditId === attempt?.sourceAuditId) : null
-  let linkedFlags = [...flags.map(flag => ({ id: flag.id, title: flag.problem })),
-    ...(proof && !flags.some(flag => flag.problem === proof.problem) ? [{ id: proof.id, title: proof.problem }] : [])]
-  const selected = audit.runRequests[0]
+  const selected = audit.runRequests.find(run => run.projectId === audit.projectId)
+  const executionSpec = audit.executionSpec ?? selected?.executionSpec
+  const outcomes = recordedOutcomes({ executionSpec: selected?.executionSpec ?? executionSpec,
+    auditId: audit.id, projectId: audit.projectId, request: selected })
+  const metadata = monitoringHistoryMetadata({ ...audit, runRequests: selected ? [{ ...selected,
+    selections: outcomes.flatMap(item => item.selection ? [{ outcome: item.selection }] : []),
+  }] : [], legacySiteAnalysis: legacyIds.includes(audit.id), flagCount: flags.length })
+  const source = repairSource(audit)
+  const proof = source && proofFlags.find(item => item.id === source.id && item.auditId === source.auditId)
+  // A repair event opens the Flag the owner selected, even if the recheck
+  // emitted a fresh observation with the same wording.
+  let linkedFlags = (proof ? [proof] : flags).map(flag => ({ id: flag.id, title: flag.problem }))
+  const repair = recordedRepairConclusion({ executionSpec, verificationTarget: selected?.verificationTarget, audit })
+  const repairCheck = Boolean(repair || metadata.afterFix || metadata.scope === 'DIAGNOSTIC')
   const accountOnly = (audit.executionSpec as { scope?: string } | null)?.scope === 'ACCOUNT_CHECKS'
   const accountConclusion = recordedAccountConclusion(audit.executionSpec, accountTaskResult)
   if (accountOnly) {
     metadata.scope = 'OUTCOMES'; metadata.targetLabel = 'Automatic account checks'
     metadata.result = accountConclusion?.state === 'FLAG' ? 'FLAG' : accountConclusion?.state === 'CLEAR' ? 'CLEAR' : 'COULD_NOT_VERIFY'
   }
-  const completedScope = accountOnly ? accountConclusion?.complete === true : metadata.scope === 'OUTCOMES'
-    ? Boolean(selected?.assessments.length && selected.assessments.length === selected.selections.length && selected.assessments.every(assessment =>
-      ['CLEAR', 'FLAG'].includes(assessment.state) && completeOutcomeEvidence(assessment.coverage, assessment.evidence)))
-    : metadata.scope === 'DIAGNOSTIC' && recordedDiagnosticConclusion({ executionSpec: audit.executionSpec, audit })?.complete === true
-  const pageCoverage = executionPageCoverage({ executionSpec: audit.executionSpec, pages: audit.pages, executions: audit.verifierExecutions })
+  const pageCoverage = executionPageCoverage({ auditId: audit.id, executionSpec: audit.executionSpec, pages: audit.pages,
+    executions: audit.verifierExecutions, failedModules: audit.failedModules })
   const executionIncomplete = !audit.completedAt || analysisDidNotFinish(audit)
   let completionState: MonitoringHistoryEntry['completionState'] = audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt ||
     Boolean(audit.failureCode && executionIncomplete) ||
-    (!completedScope && Array.isArray(audit.failedModules) && audit.failedModules.some(module => module !== 'judge' && module !== 'page-triage-evaluation')) ||
-    (!completedScope && (executionIncomplete || !pageCoverage.complete)) ? 'PARTIAL' : 'COMPLETED'
+    (Array.isArray(audit.failedModules) && audit.failedModules.some(module => module !== 'judge' && module !== 'page-triage-evaluation')) ||
+    executionIncomplete || !pageCoverage.complete ? 'PARTIAL' : 'COMPLETED'
   const spec = readExecutionSpec(audit.executionSpec)
   let flagCount = flags.length
   if (accountOnly) completionState = audit.status === 'FAILED' ? 'FAILED' : accountConclusion?.complete ? 'COMPLETED' : 'PARTIAL'
-  if (metadata.scope === 'DIAGNOSTIC') {
-    const diagnostic = recordedDiagnosticConclusion({ executionSpec: audit.executionSpec, audit })
-    const assessment = projectSiteAssessment({ status: audit.status, executionSpec: audit.executionSpec,
-      requiredAreas: [], coverage: [], flags: [], now: audit.completedAt ?? audit.updatedAt,
-      scopedConclusion: diagnostic, assessmentComplete: diagnostic?.complete ?? false, checkedAt: audit.completedAt })
+  if (repairCheck || !accountOnly && metadata.scope === 'OUTCOMES') {
+    const assessment = projectSiteAssessment({ status: audit.status, executionSpec,
+      requiredAreas: [], coverage: [], flags: repairCheck ? [] : flags, now: audit.completedAt ?? audit.updatedAt,
+      scopedConclusion: repair, assessmentComplete: repairCheck ? repair?.complete === true : undefined,
+      outcomes: repairCheck ? [] : outcomes, checkedAt: audit.completedAt })
     metadata.result = assessment.result === 'CLEAR' ? 'CLEAR' : assessment.result === 'FLAG' ? 'FLAG' : 'COULD_NOT_VERIFY'
     completionState = audit.status === 'FAILED' ? 'FAILED' : assessment.completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL'
   }
-  if (spec?.scope === 'SITE' || spec?.category) {
+  if (!repairCheck && (spec?.scope === 'SITE' || spec?.category)) {
     const evidenceAt = audit.completedAt ?? audit.updatedAt
-    const { assessment, findings } = projectRecordedSiteResult({ audit, now: evidenceAt, assessments: selected?.assessments ?? [] })
+    const { assessment, findings } = projectRecordedSiteResult({ audit, now: evidenceAt,
+      assessments: outcomes.flatMap(item => item.assessment ? [item.assessment] : []) })
     if (findings) {
       flagCount = findings.length
       linkedFlags = findings.flatMap(finding => finding.id ? [{ id: finding.id, title: finding.problem }] : [])
@@ -150,15 +167,19 @@ async function readMonitoringHistory(site: SiteRecord, selection?: Awaited<Retur
     : site.primaryAuditId ? { id: site.primaryAuditId, projectId: null, userId: null } : null
   if (!scope) return { timeline: [], trend: [] }
   const base = { ...scope, status: { in: ['COMPLETED', 'FAILED'] as Array<'COMPLETED' | 'FAILED'> } }
+  const select = { ...historyAuditSelect, runRequests: { ...historyAuditSelect.runRequests,
+    where: { projectId: site.projectId ?? { in: [] } } } } satisfies Prisma.AuditSelect
   const [timelineAudits, trendAudits] = await Promise.all([
-    prisma.audit.findMany({ where: { ...base, ...siteAnalysisAuditWhere }, orderBy: { createdAt: 'desc' }, take: 8, select: historyAuditSelect }),
-    prisma.audit.findMany({ where: { ...base, ...scoped.where }, orderBy: { createdAt: 'desc' }, take: 8, select: historyAuditSelect }),
+    prisma.audit.findMany({ where: { ...base, ...siteAnalysisAuditWhere }, orderBy: { createdAt: 'desc' }, take: 8, select }),
+    prisma.audit.findMany({ where: { ...base, ...scoped.where }, orderBy: { createdAt: 'desc' }, take: 8, select }),
   ])
   const executions = await loadHistoryExecutions([...timelineAudits, ...trendAudits])
   const timeline = timelineAudits.map(audit => ({ ...audit, verifierExecutions: executions.get(audit.id) ?? [] }))
   const trend = trendAudits.map(audit => ({ ...audit, verifierExecutions: executions.get(audit.id) ?? [] }))
-  const sourceIds = [...new Set(timeline.flatMap(audit => audit.verificationAttempts.flatMap(attempt =>
-    attempt.handoffReference?.startsWith('flag:') ? [attempt.handoffReference.slice(5)] : [])))]
+  const sourceIds = [...new Set(timeline.flatMap(audit => {
+    const source = repairSource(audit)
+    return source ? [source.id] : []
+  }))]
   const proofs = sourceIds.length ? await prisma.flag.findMany({ where: { id: { in: sourceIds }, audit: scope },
     select: { id: true, problem: true, auditId: true } }) : []
   const accountAuditIds = [...new Set([...timeline, ...trend].filter(audit => readExecutionSpec(audit.executionSpec)?.scope === 'ACCOUNT_CHECKS').map(audit => audit.id))]

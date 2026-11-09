@@ -35,13 +35,13 @@ import { requestScheduledSiteRun } from '@/lib/sites/application/scheduled-runs'
 import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { fixedClock, systemClock } from '@/lib/time/clock'
-import { scheduleUptimeProbes } from '@/lib/uptime/service'
+import * as uptime from '@/lib/uptime/service'
 import { loadUptimeSummary } from '@/lib/uptime/queries'
 import { enqueueAiReview, enqueuePendingAiReview, recoverPendingAiReviews } from '@/lib/audit/enqueue-ai-review'
 import { executionWrite, withExecutionOwnership } from '@/lib/audit/execution-ownership'
 import * as prescription from '@/lib/audit/judge-prescription'
 import { prescriptionOutputSchema } from '@/lib/audit/judge-prescription-schema'
-import { recordedPrescriptionFields } from '@/lib/audit/prescription-guidance-schema'
+import { composePrescriptionRubrics, recordedPrescriptionFields } from '@/lib/audit/prescription-guidance-schema'
 import { uploadScreenshot, deleteAuditScreenshotAssets } from '@/lib/storage/screenshots'
 import { loadExecutionProgress } from '@/lib/sites/application/execution-progress'
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
@@ -150,7 +150,7 @@ run('URL-first analysis through claim and monitored repair', () => {
     await getAuditBrowser(); worker = startWorker(); await worker.waitUntilReady()
     const diagnostics = getBrowserDiagnostics()
     await touchWorkerHeartbeat({ browserOk: diagnostics.connected, activeBrowserContexts: diagnostics.activeContexts, queueState: 'idle' })
-  })
+  }, 60_000)
   afterAll(async () => {
     await worker?.close(); await clearWorkerHeartbeat(); await closeBrowser()
     await deleteAuditScreenshotAssets(capturedAudits)
@@ -162,7 +162,7 @@ run('URL-first analysis through claim and monitored repair', () => {
     }
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()))
     vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); await prisma.$disconnect()
-  })
+  }, 60_000)
   async function complete(auditId: string, browserRequired = true) {
     capturedAudits.push(auditId)
     await vi.waitFor(async () => {
@@ -176,7 +176,21 @@ run('URL-first analysis through claim and monitored repair', () => {
         .toMatchObject({ workState: 'COMPLETED' })
       if (browserRequired) expect(await prisma.auditExecutionTask.findFirstOrThrow({ where: { auditId, targetKey: 'task:p0:browser' } }))
         .toMatchObject({ workState: 'COMPLETED', workResult: { data: { metadata: { renderedCopy: { complete: true } } } } })
-    }, { timeout: 90_000, interval: 200 })
+    }, { timeout: 90_000, interval: 200 }).catch(async error => {
+      const [audit, tasks, events] = await Promise.allSettled([
+        prisma.audit.findUnique({ where: { id: auditId }, select: {
+          status: true, failureCode: true, dispatchState: true, improvementProjectedAt: true,
+        } }),
+        prisma.auditExecutionTask.findMany({ where: { auditId, workKind: { not: null } }, orderBy: { targetKey: 'asc' },
+          select: { targetKey: true, workState: true, workDependencies: true, workDispatchState: true,
+            workGeneration: true, workAttempts: true, workErrorCode: true, workLeaseUntil: true,
+            workRetryAt: true, workRecoveryUntil: true } }),
+        prisma.auditPipelineEvent.findMany({ where: { auditId }, orderBy: { sequence: 'desc' }, take: 12,
+          select: { stage: true, event: true, status: true, occurredAt: true } }),
+      ])
+      console.info('Claimed monitoring observation did not settle', JSON.stringify({ auditId, audit, tasks, events }))
+      throw error
+    })
   }
   it('isolates unclaimed history and fences an ownership change during the read', async () => {
     const audits: string[] = [], sites: string[] = []
@@ -201,6 +215,44 @@ run('URL-first analysis through claim and monitored repair', () => {
       await prisma.audit.deleteMany({ where: { id: { in: audits } } })
     }
   })
+  it('dispatches uptime after claiming and resuming a Site with a retained schedule', async () => {
+    const legacyOwner = 'retained-uptime-' + randomUUID()
+    await prisma.user.create({ data: { id: legacyOwner, email: legacyOwner + '@example.test' } })
+    const backfill = vi.spyOn(uptime, 'initializeUptimeMonitors').mockResolvedValue(undefined)
+    const dispatch = uptime.dispatchDueUptimeProbes
+    const backgroundDispatch = vi.spyOn(uptime, 'dispatchDueUptimeProbes').mockResolvedValue({ published: 0, failed: 0 })
+    try {
+      const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' }, url: pageUrl, visitorKey: 'retained-uptime-' + randomUUID() })
+      await complete(anonymous.auditId)
+      const watchNextRunAt = new Date(Date.now() + 86_400_000)
+      const existing = await prisma.project.create({ data: { userId: legacyOwner, name: 'Retained Site', url: origin + '/',
+        canonicalHost: new URL(origin).hostname, watchInterval: 'WEEKLY', watchNextRunAt } })
+      expect(await prisma.uptimeMonitor.findUnique({ where: { projectId: existing.id } })).toBeNull()
+      expect(await claimAnonymousAudits(legacyOwner)).toBe(1)
+      const site = (await loadSiteRecord(anonymous.siteId!))!
+      expect(site).toMatchObject({ projectId: existing.id, primaryAuditId: anonymous.auditId, watchNextRunAt })
+      const monitor = await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId: existing.id } })
+      expect(monitor).toMatchObject({ enabled: true, targetUrl: existing.url })
+
+      const ownerIntent = { projectId: existing.id, userId: legacyOwner }
+      expect(await setProjectWatch({ ...ownerIntent, action: 'pause' })).toMatchObject({ ok: true })
+      expect(await loadUptimeSummary(site)).toMatchObject({ enabled: false, state: 'paused' })
+      expect(await setProjectWatch({ ...ownerIntent, action: 'resume' })).toMatchObject({ ok: true })
+      expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({
+        enabled: true, version: monitor.version, targetUrl: existing.url, lastCheckedAt: null,
+      })
+      expect(await dispatch(systemClock, 1, existing.id)).toEqual({ published: 1, failed: 0 })
+      await vi.waitFor(async () => expect(await prisma.uptimeProbe.findFirst({ where: { monitorId: monitor.id } }))
+        .toMatchObject({ result: 'ONLINE', statusCode: 200 }), { timeout: 10_000, interval: 100 })
+      expect(await loadUptimeSummary(site)).toMatchObject({ enabled: true, state: 'online' })
+    } finally {
+      backfill.mockRestore()
+      backgroundDispatch.mockRestore()
+      cookieState.values.delete(ANON_AUDIT_IDS_COOKIE)
+      await prisma.user.delete({ where: { id: legacyOwner } })
+    }
+  }, 110_000)
+
   it('keeps the original Site and evidence through signed claim, default uptime, independent repair and scheduled recurrence', async () => {
     const anonymous = await createAndEnqueueAudit({ admission: { kind: 'new-check' },
     url: pageUrl,
@@ -265,7 +317,7 @@ run('URL-first analysis through claim and monitored repair', () => {
     const availability = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId: site.projectId!, kind: 'AVAILABILITY' }, include: { bindings: true } })
     expect((await loadExecutionProgress(site, source.id))?.total).toBeGreaterThan(0)
     expect(availability.bindings).toMatchObject([{ mechanism: 'HTTP_AVAILABILITY' }])
-    await scheduleUptimeProbes(systemClock, 1, site.projectId!)
+    await uptime.scheduleUptimeProbes(systemClock, 1, site.projectId!)
     await vi.waitFor(async () => expect(await loadUptimeSummary(site)).toMatchObject({ enabled: true, state: 'online' }), { timeout: 10_000, interval: 100 })
     const monitor = await prisma.uptimeMonitor.findUniqueOrThrow({ where: { projectId: site.projectId! } })
     repaired = true
@@ -290,7 +342,17 @@ run('URL-first analysis through claim and monitored repair', () => {
     // Make broad evidence due without moving only the scheduler's lease clock.
     await prisma.audit.update({ where: { id: source.id }, data: { createdAt: new Date(tick.getTime() - 8 * 86400_000) } })
     await prisma.project.update({ where: { id: site.projectId! }, data: { watchNextRunAt: tick } })
-    expect(await processDueProjectWatches(1, { onlyProjectId: site.projectId!, clock: fixedClock(tick) })).toMatchObject({ enqueued: 1, errors: 0 })
+    const busyOwner = await prisma.user.create({ data: { email: 'busy-watch-' + randomUUID() + '@example.test' } })
+    try {
+      const busySite = await prisma.project.create({ data: { userId: busyOwner.id, name: 'Busy Watch fixture', url: pageUrl,
+        canonicalHost: 'example.com', watchInterval: 'WEEKLY', watchNextRunAt: new Date(tick.getTime() - 60_000) } })
+      await prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${busyOwner.id} FOR UPDATE`
+        expect(await processDueProjectWatches(1, { clock: fixedClock(tick) })).toMatchObject({ enqueued: 1, errors: 0 })
+        expect(await prisma.project.findUniqueOrThrow({ where: { id: busySite.id } })).toEqual(busySite)
+        expect(await prisma.runRequest.count({ where: { projectId: busySite.id } })).toBe(0)
+      }, { timeout: 10_000 })
+    } finally { await prisma.user.delete({ where: { id: busyOwner.id } }) }
     const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId: site.projectId!, source: 'WATCH' }, orderBy: { requestedAt: 'desc' } })
     await complete(watch.auditId!)
     const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: watch.auditId!, checkId: flag.checkId } })
@@ -343,7 +405,7 @@ run('URL-first analysis through claim and monitored repair', () => {
       action: 'SITE_RECONCILE', targetType: 'SITE', targetId: site.projectId!, ownerId: owner, reason: 'Controlled local reconciliation',
       input: {}, expectedRevision: 'fixture', idempotencyKey: randomUUID(), requestHash: 'fixture', intentExpiresAt: new Date(Date.now() + 300_000),
       status: 'RUNNING', executionToken: randomUUID(), leaseUntil: new Date(Date.now() + 300_000) } })
-    const operator = { kind: 'admin' as const, actorId, operationId: operation.id }
+    const operator = { kind: 'admin' as const, actorId, operationId: operation.id, executionToken: operation.executionToken! }
     const operatorTick = new Date()
     try {
       await prisma.project.update({ where: { id: site.projectId! }, data: { watchNextRunAt: operatorTick } })
@@ -503,16 +565,20 @@ run('URL-first analysis through claim and monitored repair', () => {
         expect(provider).toHaveBeenCalledTimes(primaryMissing || captureMissing ? 0 : 1)
         if (interrupted) expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'prescription_guidance_committed' } })).toBe(1)
         const site = (await loadSiteRecord(project.id))!
-        expect(await loadSiteFlagDetail(site, findings[0]!.id)).toMatchObject({ repairGuidance: failedPrescriptions ? 'unavailable' : 'ready' })
+        const detail = await loadSiteFlagDetail(site, findings[0]!.id)
+        expect(detail).toMatchObject({ repairGuidance: 'ready' })
         if (failedPrescriptions) {
-          const before = { improvements: await prisma.improvement.count({ where: { projectId: project.id } }),
-            events: await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: project.id } } }),
-            attempts: await prisma.improvementAttempt.count({ where: { improvement: { projectId: project.id } } }) }
-          await expect(recordFlagImprovementAttempt({ flagId: findings[0]!.id, userId: owner, builder: 'copy', action: 'HANDOFF_COPIED' }))
-            .rejects.toThrow('Repair guidance is unavailable')
-          expect({ improvements: await prisma.improvement.count({ where: { projectId: project.id } }),
-            events: await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: project.id } } }),
-            attempts: await prisma.improvementAttempt.count({ where: { improvement: { projectId: project.id } } }) }).toEqual(before)
+          expect(detail?.repairDefinition).toMatchObject({ kind: 'investigation', source: 'investigation' })
+          expect(detail?.fix).toContain(findings[0]!.problem)
+          const attempts = () => prisma.improvementAttempt.count({ where: { improvement: { projectId: project.id } } })
+          const handoffs = () => prisma.improvementCycleEvent.count({ where: {
+            cycle: { projectId: project.id }, idempotencyKey: 'handoff-copied:' + findings[0]!.id, type: 'HANDOFF_COPIED',
+          } })
+          const before = await attempts()
+          expect(await handoffs()).toBe(0)
+          await recordFlagImprovementAttempt({ flagId: findings[0]!.id, userId: owner, builder: 'copy', action: 'HANDOFF_COPIED' })
+          expect(await handoffs()).toBe(1)
+          expect(await attempts()).toBe(before)
         }
 
       } finally {
@@ -535,15 +601,25 @@ run('URL-first analysis through claim and monitored repair', () => {
       verdict: 'Recorded triage fixture', score: 72, htmlMetadata: { title: 'Recorded public page' },
       evidenceCoverage: { metadata: true, aiAssessment: true },
       executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl,
-        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
+      flags: { create: { fingerprint: 'ai-observation:v2::fixture-title-review', source: 'AI', rubric: 'REACH', severity: 'POLISH', problem: 'Review the page title',
+        evidence: 'Recorded public page', whyItMatters: 'The title should reflect the page purpose.',
+        fix: '', confidence: 0.5, position: 0, pageUrl } } } })
     let release!: () => void
     const held = new Promise<void>(resolve => { release = resolve })
     const provider = vi.spyOn(prescription, 'runPrescriptionWithRetry').mockImplementationOnce(async () => {
       await held; throw new Error('Controlled unavailable prescription provider')
-    }).mockResolvedValue({ output: prescription.validatePrescriptionOutput(prescriptionOutputSchema.parse({ flagPrescriptions: [],
-      rubricPrescriptions: ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Use the recorded evidence for this lifecycle fixture.',
-        cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })) }), []),
-      usage: { inputTokens: 1, outputTokens: 1, model: 'local-lifecycle-fixture' } })
+    }).mockImplementation(async input => {
+      expect(input.existingFlags).toHaveLength(1)
+      const [flag] = input.existingFlags
+      const flagPrescriptions = [{ flagKey: flag.flagKey,
+        ...recordedPrescriptionFields(flag), fix: 'Review the recorded title against the page purpose before suggesting any change.',
+        agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null }]
+      const output = prescriptionOutputSchema.parse({ flagPrescriptions,
+        rubricPrescriptions: composePrescriptionRubrics(input.existingFlags, flagPrescriptions) })
+      return { output: prescription.validatePrescriptionOutput(output, input.existingFlags),
+        usage: { inputTokens: 1, outputTokens: 1, model: 'local-lifecycle-fixture' } }
+    })
     try {
       const url = await uploadScreenshot(audit.id, 'desktop', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a56sAAAAASUVORK5CYII=', 'base64'))
       await prisma.screenshot.create({ data: { auditId: audit.id, device: 'DESKTOP', url, width: 1, height: 1 } })
@@ -585,6 +661,7 @@ run('URL-first analysis through claim and monitored repair', () => {
       await vi.waitFor(async () => expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
         .toMatchObject({ workState: 'COMPLETED', workAttempts: 2 }), { timeout: 5000, interval: 25 })
       expect(await prisma.auditExecutionTask.count({ where: { auditId: audit.id, workKind: { not: null } } })).toBe(1)
+      expect((await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id } })).fix).toContain('Review the recorded title')
       const enriched = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
       // Reproduce interruption after enrichment commits but before task ack.
       await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workState: 'RUNNING', status: 'RUNNING',

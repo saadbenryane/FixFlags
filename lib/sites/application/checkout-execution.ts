@@ -10,6 +10,8 @@ import { runGenericBrowserJourneyBinding } from './browser-journey-binding'
 import { runAvailabilityBinding } from './availability-binding'
 import { runSignupBinding } from './signup-binding'
 import { admittedOutcomeAuthorization } from '../domain/outcome-authorization'
+import { admittedOutcomeCoverage, comparableOutcomeCoverage, recordedCheckoutFailureScope } from '../domain/outcome-proof'
+import { loadSelectedOutcomeRepairSource } from './outcome-repair-source'
 
 type BoundSelection = {
   outcome: {
@@ -164,6 +166,27 @@ export async function runBoundOutcomeExecutions(auditId: string, only?: { outcom
       }
       // BROWSER_JOURNEY: dispatch to checkout-specific or generic runner based on outcome kind
       if (selection.outcome.kind === 'CHECKOUT') {
+        let purchaseControlKey: string | undefined
+        const target = spec?.verificationTarget
+        if (spec?.scope === 'OUTCOMES' && target?.kind === 'OUTCOME' && target.outcomeId === selection.outcome.id) {
+          const attempt = await prisma.improvementAttempt.findFirst({
+            where: { id: target.attemptId, sourceAuditId: target.parentAuditId, verificationAuditId: auditId,
+              improvement: { projectId: request.projectId, outcomeId: target.outcomeId } },
+            select: { improvementId: true, handoffReference: true, sourceFlagIds: true },
+          })
+          const admitted = spec.outcomes.find(outcome => outcome.id === target.outcomeId)
+          const original = attempt && await loadSelectedOutcomeRepairSource(prisma, {
+            projectId: request.projectId, sourceAuditId: target.parentAuditId, outcomeId: target.outcomeId,
+          }, attempt)
+          if (!original || !admitted || original.kind !== 'CHECKOUT' ||
+            !comparableOutcomeCoverage(original.coverage, admittedOutcomeCoverage(spec, admitted))) {
+            await recordExecution({ auditId, outcomeId: target.outcomeId, bindingKey: binding.key, bindingVersion: binding.version,
+              mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'required_coverage_incomplete' })
+            continue
+          }
+          if (original.bindingKey === binding.key)
+            purchaseControlKey = recordedCheckoutFailureScope(original.coverage, binding.key)?.purchaseControlKey
+        }
         await runCheckoutBinding({
           auditId,
           runId: request.id,
@@ -172,6 +195,7 @@ export async function runBoundOutcomeExecutions(auditId: string, only?: { outcom
           bindingVersion: binding.version,
           startUrl,
           allowLocalhost,
+          ...(purchaseControlKey ? { purchaseControlKey } : {}),
         })
         continue
       }

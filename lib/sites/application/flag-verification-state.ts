@@ -2,9 +2,11 @@ import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { attemptHasActiveVerification } from '@/lib/improvements/attempt-state'
 import { flagVerificationFeedback, type FlagVerificationFeedback } from '../flag-resolution'
+import type { SiteRecord } from '../types'
+import { readSiteEvidence } from './site-evidence-read'
 
 type Target = { id: string; auditId: string; improvementId?: string | null; createdAt?: Date }
-type CurrentVerification = { verifying: boolean; feedback: FlagVerificationFeedback | null }
+type CurrentVerification = { auditId: string; verifying: boolean; feedback: FlagVerificationFeedback | null }
 type Row = { flagId: string; outcome: string | null; comparable: boolean | null; verificationReason: string | null;
   sourceAuditId: string; sourceFlagIds: string[]; handoffReference: string | null; verificationAuditId: string;
   projectId: string; parentId: string; status: string; createdAt: Date; completedAt: Date | null; finalizeState: string | null }
@@ -13,7 +15,7 @@ type Row = { flagId: string; outcome: string | null; comparable: boolean | null;
  * repair drafts precede it in the bounded display history. Reads remain scalar
  * and select at most one matching check per original Flag. */
 export async function loadCurrentFlagVerifications(projectId: string, targets: readonly Target[],
-  db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma) {
+  db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma, verificationAuditId: string | null = null) {
   const selected = targets.filter((target): target is Target & { improvementId: string } => Boolean(target.improvementId))
   const states = new Map<string, CurrentVerification>()
   for (let offset = 0; offset < selected.length; offset += 200) {
@@ -37,6 +39,7 @@ export async function loadCurrentFlagVerifications(projectId: string, targets: r
           WHERE "auditId" = proof.id AND "workKind" = 'finalize' AND "workState" IN ('READY', 'RUNNING', 'RETRY_WAIT')
           ORDER BY "createdAt" DESC, id DESC LIMIT 1) finalizer ON true
         WHERE incident.id = requested."improvementId" AND incident."projectId" = ${projectId}
+          AND (${verificationAuditId}::text IS NULL OR proof.id = ${verificationAuditId})
           AND (cardinality(attempt."sourceFlagIds") > 0 AND requested."flagId" = ANY(attempt."sourceFlagIds")
             OR cardinality(attempt."sourceFlagIds") = 0 AND attempt."sourceAuditId" = requested."sourceAuditId"
               AND (attempt."handoffReference" IS NULL OR attempt."handoffReference" NOT LIKE 'flag:%'
@@ -50,10 +53,22 @@ export async function loadCurrentFlagVerifications(projectId: string, targets: r
       const attempt = { ...row, verificationAudit: { id: row.verificationAuditId, projectId: row.projectId,
         parentId: row.parentId, status: row.status, createdAt: row.createdAt, completedAt: row.completedAt,
         verifierExecutions: row.finalizeState ? [{ workKind: 'finalize', workState: row.finalizeState }] : [] } }
-      states.set(row.flagId, { verifying: attemptHasActiveVerification(attempt, projectId, target.auditId, target.id),
+      states.set(row.flagId, { auditId: row.verificationAuditId, verifying: attemptHasActiveVerification(attempt, projectId, target.auditId, target.id),
         feedback: flagVerificationFeedback({ projectId, sourceAuditId: target.auditId, sourceFlagId: target.id,
           observedAt: target.createdAt, attempts: [attempt] }) })
     }
   }
   return states
+}
+
+export async function loadSiteFlagVerification(site: SiteRecord, flagId: string, verificationAuditId: string) {
+  const projectId = site.projectId
+  if (!projectId) return null
+  return readSiteEvidence(site, async () => {
+    const source = await prisma.flag.findFirst({ where: { id: flagId, audit: { projectId } },
+      select: { id: true, auditId: true, improvementOccurrence: { select: { improvementId: true } } } })
+    if (!source?.improvementOccurrence) return null
+    return (await loadCurrentFlagVerifications(projectId, [{ id: source.id, auditId: source.auditId,
+      improvementId: source.improvementOccurrence.improvementId }], prisma, verificationAuditId)).get(flagId) ?? null
+  })
 }

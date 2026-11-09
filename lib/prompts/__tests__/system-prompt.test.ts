@@ -107,7 +107,8 @@ describe('system-prompt triage contract', () => {
   it('keeps prescription focused on fixes after triage value is visible', () => {
     const system = buildPrescriptionSystemPrompt()
     assert.match(system, /PRESCRIPTION/i)
-    assert.match(system, /flag titles, evidence, and why it matters/i)
+    assert.match(system, /guidance for the recorded findings .* without a new diagnosis/i)
+    assert.match(system, /keyed by every exact admitted flagKey/i)
   })
 
   it('prescription system prompt requires scope guards', () => {

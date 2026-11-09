@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
+import { createHash } from 'node:crypto'
 import type { Browser, Page, Frame, Response } from 'playwright'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { PageCaptureError } from '@/lib/audit/browser/page-capture'
@@ -16,8 +17,9 @@ import {
   pageLooksPasswordGated,
   pageShowsCheckoutError,
   selectFirstAvailableVariant,
+  type BuyControl,
 } from './buy-controls'
-import { classifyWalk, combineAttempts } from './classify'
+import { classifyWalk, combinePathAttempts } from './classify'
 import type {
   PathProbeAttempt,
   PathProbeResult,
@@ -37,6 +39,11 @@ export interface RunPathProbeOptions {
   browser?: Browser
   confirmRed?: boolean
   deadline?: number
+  purchaseControlKey?: string
+}
+
+function purchaseControlKey(identity: NonNullable<BuyControl['identity']>): string {
+  return createHash('sha256').update(JSON.stringify(identity)).digest('hex')
 }
 
 export async function runPathProbe(options: RunPathProbeOptions): Promise<PathProbeResult> {
@@ -51,7 +58,7 @@ export async function runPathProbe(options: RunPathProbeOptions): Promise<PathPr
   if (confirmRed && firstClass.health === 'RED') {
     second = await runAttempt(browser, runId, 2, options)
   }
-  const combined = combineAttempts(firstClass, second ? classifyWalk(second.outcome) : null)
+  const combined = combinePathAttempts(first, second)
   const chosen = second && combined.health === 'RED' ? second : first
 
   return {
@@ -64,6 +71,7 @@ export async function runPathProbe(options: RunPathProbeOptions): Promise<PathPr
     gifUrl: chosen.gifUrl,
     failedStep: chosen.outcome.failedStep,
     finalUrl: chosen.finalUrl,
+    purchaseControlKey: chosen.outcome.purchaseControlKey,
   }
 }
 
@@ -140,15 +148,19 @@ async function runAttempt(
       await captureWalkStep(page, 'variant', steps, stepPngs)
     }
 
-    const buy = await discoverBuyControl(page)
+    const buy = await discoverBuyControl(page, options.purchaseControlKey
+      ? identity => purchaseControlKey(identity) === options.purchaseControlKey : undefined)
     outcome.buyControlFound = Boolean(buy)
     if (!buy) {
+      if (options.purchaseControlKey) outcome.originalPurchaseControlUnavailable = true
       outcome.failedStep = 'add_to_cart'
       await captureWalkStep(page, 'failure', steps, stepPngs)
       return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
     const previousCheckoutFrame = await observeCheckoutFrame(page, navigationResponses)
+    if (buy.identity)
+      outcome.purchaseControlKey = purchaseControlKey(buy.identity)
     const clicked = await clickSelector(page, buy.selector)
     outcome.buyControlClicked = clicked
     if (!clicked) {

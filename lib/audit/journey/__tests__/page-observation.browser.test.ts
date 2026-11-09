@@ -87,6 +87,8 @@ run('native public journey page conditions', () => {
       expect(await observeJourneyPage(page, 'signup', 'landing', [], conditions, false,
         { status: 503 })).toMatchObject({ available: false })
       expect(await observeJourneyPage(page, 'signup', 'landing', [], conditions, false,
+        { status: 206 })).toMatchObject({ available: false })
+      expect(await observeJourneyPage(page, 'signup', 'landing', [], conditions, false,
         { status: session.httpStatus })).toMatchObject({ available: true })
       await page.locator('main').evaluate(main => main.insertAdjacentHTML('afterbegin', '<h1 hidden>Verify you are human</h1>'))
       expect(await observeJourneyPage(page, 'signup', 'landing', [], conditions, false,

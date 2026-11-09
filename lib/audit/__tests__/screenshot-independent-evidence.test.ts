@@ -22,11 +22,16 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
   let loadingReads = 0
   return {
   page: { url: () => 'https://example.com/', close: mocks.close, context: () => ({ close: mocks.close }),
+    on: vi.fn(), off: vi.fn(),
     screenshot: mocks.screenshot, waitForFunction: (fn: unknown, argument: unknown) => mocks.wait(fn, argument, navigationStartedAt),
     evaluate: async (fn: (...args: unknown[]) => unknown, argument: unknown) => {
       const replacement = mocks.read(fn, argument)
       if (replacement !== undefined) return replacement
       if (Array.isArray(argument)) return []
+      if (argument && typeof argument === 'object' && 'faviconSelector' in argument) return {
+        finalUrl: 'https://example.com/', baseUrl: 'https://example.com/', faviconHrefs: [], faviconComplete: true,
+        metadata: { title: 'Example', lang: 'en' },
+      }
       if (argument && typeof argument === 'object' && 'collectTrust' in argument) return {
         anchors: [], publishedText: 'Content', publishedHrefs: [], jsonLd: [], markers: [], markupComplete: true,
         anchorOverflow: false, hrefOverflow: false, textOverflow: false, jsonOverflow: false, privacyInLongAnchor: false,
@@ -65,7 +70,7 @@ describe('independent rendered evidence', () => {
   })
   it.each(['head', 'markers', 'html', 'signals'] as const)('retains independent facts when the %s document reader is unavailable', async reader => {
     mocks.read.mockImplementation((fn, argument) => {
-      if (reader === 'head' && typeof argument === 'number' || reader === 'markers' && Array.isArray(argument) ||
+      if (reader === 'head' && argument && typeof argument === 'object' && 'faviconSelector' in argument || reader === 'markers' && Array.isArray(argument) ||
         reader === 'html' && fn.toString().includes('document.documentElement.outerHTML')) throw new Error('Controlled independent document read failure')
       if (reader === 'signals' && argument && typeof argument === 'object' && 'collectTrust' in argument) return {}
     })
@@ -79,6 +84,22 @@ describe('independent rendered evidence', () => {
     if (reader === 'head') expect(result.runtimeHeadScope).toBeUndefined()
     if (reader === 'markers') expect(result.technologyRuntimeMarkers).toBeUndefined()
     if (reader === 'signals') expect(result.publicTrustSignals).toBeUndefined()
+  })
+  it.each([
+    [[], true, false],
+    [[], false, undefined],
+    [['/icon.png'], false, true],
+  ] as const)('qualifies native favicon candidates %j with complete observation %s', async (faviconHrefs, faviconComplete, declared) => {
+    mocks.read.mockImplementation((_fn, argument) => {
+      if (argument && typeof argument === 'object' && 'faviconSelector' in argument) return {
+        finalUrl: 'https://example.com/', baseUrl: 'https://example.com/', faviconHrefs, faviconComplete,
+        metadata: { title: 'Example' },
+      }
+    })
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined,
+      { runFlow: false, captureMedia: false, collectMobile: false, collectAccessibility: false })
+    expect(result.runtimeHeadMetadata?.hasFavicon).toBe(declared)
+    expect(result.runtimeHeadMetadata?.title).toBe('Example')
   })
   it.each([false, true])('retains independent facts when every optional screenshot fails, mobile %s', async collectMobile => {
     mocks.screenshot.mockRejectedValue(new Error('Screenshot font deadline exceeded'))

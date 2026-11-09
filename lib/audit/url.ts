@@ -4,12 +4,13 @@ import { addAbortSignal } from 'node:stream'
 import { createGunzip } from 'node:zlib'
 import { MIMEType } from 'node:util'
 import { decodeBuffer } from 'encoding-sniffer'
+import { CookieJar } from 'tough-cookie'
 import type { Agent } from 'undici'
 import { publicHttpCapacity } from './progressive/capacity'
 import { isPublicIp } from './public-ip'
 import { PublicCertificateError, readCertificateFailure } from './tls-evidence'
-import { PublicResponseBodyError, type PublicHttpDocument } from './http-evidence'
-import { PublicRedirectError, isAutomaticRedirectStatus } from './redirect-evidence'
+import { isPublicChallengeHeader, PublicResponseBodyError, responseEvidenceHeaders, type PublicHttpDocument } from './http-evidence'
+import { PublicRedirectError, publicRedirectDestination } from './redirect-evidence'
 import { currentExecutionOwnership } from './execution-ownership'
 import { parseWebsiteAddress } from '@/lib/utils/website-address'
 import { createPublicHttpDispatchers } from './public-http-dispatchers'
@@ -197,14 +198,23 @@ export async function safeFetchHtml(
   return { html: document.body, finalUrl: document.finalUrl, statusCode: document.statusCode, headers: document.headers }
 }
 
+type PublicFetchOptions = {
+  timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
+  accept?: string; publicOnly?: boolean; headers?: Record<string, string>;
+  /** Decode gzip file content within the same byte and execution bounds. */
+  decodeGzip?: boolean;
+  /** Called after local capacity admission, before URL and DNS validation. */
+  onRequestStart?: () => void;
+  /** Reports a selected hop's origin before DNS validation, without its path or query. */
+  onHopStart?: (origin: string) => void;
+}
+const MAX_REDIRECT_COOKIE_HEADER_BYTES = 8_192
+
 /** One bounded transport owns HTTP admission, redirects and response reads.
  * Capacity waiting and response collection have separate bounded budgets;
  * an explicit execution deadline remains the limit across both phases. */
-async function fetchPublicBody<Body>(rawUrl: string, options: {
-  timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
-  accept?: string; decodeGzip?: boolean;
-  publicOnly?: boolean; headers?: Record<string, string>; onRequestStart?: () => void;
-}, decodeBody: (bytes: Buffer, contentType?: string) => Body, requireHtml = false): Promise<Omit<PublicHttpDocument, 'body'> & { body: Body }> {
+async function fetchPublicBody<Body>(rawUrl: string, options: PublicFetchOptions,
+  decodeBody: (bytes: Buffer, contentType?: string) => Body, requireHtml = false): Promise<Omit<PublicHttpDocument, 'body'> & { body: Body }> {
   const timeoutMs = options.timeoutMs ?? 5000, deadline = options.deadline ?? Infinity
   const executionSignal = currentExecutionOwnership()?.signal
   const admissionExpiresAt = Math.min(deadline, Date.now() + timeoutMs)
@@ -221,41 +231,68 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
     controller.abort()
   }, Math.max(1, expiresAt - Date.now()))
   const redirects: string[] = []
+  let redirectCookies: CookieJar | undefined
+  let cookieHeader: string | undefined
+  let sameOriginChain = true
   let uncertainRedirect = false
   const maxBytes = options.maxBytes ?? 1_000_000
+  const maxRedirects = options.maxRedirects ?? 5
+  const admitHop = async (raw: string) => {
+    const normalized = normalizeAuditUrl(raw)
+    if (options.onHopStart && normalized.ok) options.onHopStart(new URL(normalized.url).origin)
+    return (await assertNormalizedPublicUrl(normalized, signal, options.publicOnly)).toString()
+  }
   let requestInFlight = false
   try {
     signal.throwIfAborted()
     if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
     options.onRequestStart?.()
-    let current = (await assertPublicAuditUrl(rawUrl, signal, options.publicOnly)).toString()
+    let current = await admitHop(rawUrl)
     const credentialOrigin = new URL(current).origin
-    for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
+    const hasConfiguredCookie = Object.keys(options.headers ?? {}).some(name => name.toLowerCase() === 'cookie')
+    for (let hop = 0; hop <= maxRedirects; hop++) {
       signal.throwIfAborted()
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
       requestInFlight = true
       transport ??= httpDispatchers.lease(signal)
       let response: Response
+      const origin = new URL(current).origin
       try {
         response = await fetch(current, { redirect: 'manual', signal, dispatcher: transport.dispatcher,
           headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml',
-            ...(new URL(current).origin === credentialOrigin ? options.headers ?? {} : {}) } } as RequestInit & { dispatcher: Agent })
+            ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+            ...(origin === credentialOrigin ? options.headers ?? {} : {}) } } as RequestInit & { dispatcher: Agent })
       } catch (error) {
         const failure = readCertificateFailure(error)
-        if (failure && new URL(current).protocol === 'https:') throw new PublicCertificateError(current, [...redirects], failure, error)
+        if (failure && origin.startsWith('https:')) throw new PublicCertificateError(current, [...redirects], failure, error)
         throw error
       }
       requestInFlight = false
-      if (response.status >= 300 && response.status < 400) {
+      // The advertised destination of an explicit challenge cannot establish
+      // the public response of the requested page.
+      if (response.status >= 300 && response.status < 400 && !isPublicChallengeHeader(response.headers.get('cf-mitigated'))) {
         const location = response.headers.get('location')
         await response.body?.cancel()
-        requestInFlight = false
-        if (!location) throw new Error('Redirect response is missing a location')
-        uncertainRedirect ||= response.headers.has('set-cookie') || response.headers.has('cf-mitigated') || !isAutomaticRedirectStatus(response.status)
-        const next = (await assertPublicAuditUrl(new URL(location, current).toString(), signal, options.publicOnly)).toString()
-        if (hop === (options.maxRedirects ?? 5)) throw new PublicRedirectError({ finalUrl: current,
-          statusCode: response.status, headers: Object.fromEntries(response.headers), redirects: [...redirects] }, uncertainRedirect,
-        requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : undefined)
+        const destination = publicRedirectDestination(response.status, location, current)
+        const hasSetCookie = response.headers.has('set-cookie')
+        uncertainRedirect ||= hasSetCookie || response.headers.has('cf-mitigated')
+        const redirectError = (message?: string) => new PublicRedirectError({ finalUrl: current,
+          statusCode: response.status, headers: responseEvidenceHeaders(response.headers), redirects: [...redirects] }, uncertainRedirect, message)
+        if (!destination || hop === maxRedirects)
+          throw redirectError(destination && requireHtml ? `Destination exceeded ${maxRedirects} redirects` : undefined)
+        const next = await admitHop(destination)
+        // Public response cookies live only in this chain and cannot cross
+        // an origin change. A caller's explicitly configured Cookie wins.
+        const sameOrigin = new URL(next).origin === origin
+        sameOriginChain &&= sameOrigin
+        if (!sameOrigin || (origin === credentialOrigin && hasConfiguredCookie)) redirectCookies = undefined
+        else if (hasSetCookie) {
+          redirectCookies ??= new CookieJar(undefined, { allowSecureOnLocal: false })
+          for (const cookie of response.headers.getSetCookie()) redirectCookies.setCookieSync(cookie, current, { ignoreError: true })
+        }
+        cookieHeader = redirectCookies?.getCookieStringSync(next, { sameSiteContext: sameOriginChain ? 'strict' : 'lax' })
+        if (cookieHeader && Buffer.byteLength(cookieHeader) > MAX_REDIRECT_COOKIE_HEADER_BYTES)
+          throw redirectError('Redirect cookies exceeded the public request header limit')
         redirects.push(current)
         current = next
         continue
@@ -265,7 +302,7 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
         throw new Error(!response.ok ? `Destination returned HTTP ${response.status}` : 'Destination did not return an HTML document')
       }
       if (requireHtml && !response.body) throw new Error('Destination returned an empty response')
-      const headers = Object.fromEntries(response.headers.entries())
+      const headers = responseEvidenceHeaders(response.headers)
       if (!response.body) return { body: decodeBody(Buffer.alloc(0), headers['content-type']), finalUrl: current, statusCode: response.status, headers, complete: true, redirects }
       const reader = response.body.getReader()
       const chunks: Uint8Array[] = []
@@ -307,7 +344,7 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
         reader.releaseLock()
       }
     }
-    throw new Error(requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : 'Public evidence redirect limit exceeded')
+    throw new Error(requireHtml ? `Destination exceeded ${maxRedirects} redirects` : 'Public evidence redirect limit exceeded')
   } catch (error) {
     if (requestInFlight && expiredDuringDns) throw new AuditUrlError(DNS_UNAVAILABLE_MESSAGE, 'DNS_UNAVAILABLE')
     if (requestInFlight && transport?.dnsFailure) throw transport.dnsFailure
@@ -322,18 +359,11 @@ async function fetchPublicBody<Body>(rawUrl: string, options: {
 }
 
 /** Raw HTTP evidence shares the bounded transport and origin-scoped headers. */
-export function safeFetchDocument(rawUrl: string, options: {
-  timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
-  accept?: string; publicOnly?: boolean; headers?: Record<string, string>;
-  /** Decode gzip file content within the same byte and execution bounds. */
-  decodeGzip?: boolean;
-  /** Called after local capacity admission, before URL and DNS validation. */
-  onRequestStart?: () => void;
-} = {}) {
+export function safeFetchDocument(rawUrl: string, options: PublicFetchOptions = {}) {
   return fetchPublicBody(rawUrl, options, decodeDocument)
 }
 
 /** Binary evidence keeps the original bytes through the same public boundary. */
-export function safeFetchResource(rawUrl: string, options: Parameters<typeof safeFetchDocument>[1] = {}) {
+export function safeFetchResource(rawUrl: string, options: PublicFetchOptions = {}) {
   return fetchPublicBody(rawUrl, options, bytes => bytes)
 }

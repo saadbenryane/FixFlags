@@ -157,36 +157,50 @@ export function inspectFeature(entity: StructuredEntity, type: string, entities:
   const has = (key: string) => entityValues(entity, key, entities).some(value => value !== '' && value != null)
   const missing = rules.required.filter(key => !has(key))
   if (rules.oneOf && !rules.oneOf.some(has)) missing.push(rules.oneOf.join(' or '))
-  const invalid: string[] = []
+  const invalid: string[] = [], validated: string[] = []
   const urls = entityValues(entity, 'url', entities)
-  for (const value of urls) {
-    try { if (typeof value !== 'string' || !['https:', 'http:'].includes(new URL(value).protocol)) invalid.push('url') }
-    catch { invalid.push('url') }
-  }
+  const invalidUrl = urls.some(value => typeof value !== 'string' || !URL.canParse(value) || !['https:', 'http:'].includes(new URL(value).protocol))
+  if (urls.length) (invalidUrl ? invalid : validated).push('url')
   if (type === 'Product' || type === 'SoftwareApplication') {
-    for (const offer of entityValues(entity, 'offers', entities)) {
-      if (!offer || typeof offer !== 'object' || !('properties' in offer)) { missing.push('offers.price'); continue }
+    const offers = entityValues(entity, 'offers', entities)
+    let pricesComplete = offers.length > 0
+    for (const offer of offers) {
+      if (!offer || typeof offer !== 'object' || !('properties' in offer)) {
+        missing.push('offers.price')
+        pricesComplete = false
+        continue
+      }
       const prices = entityValues(offer as StructuredEntity, 'price', entities)
       const lowPrices = entityValues(offer as StructuredEntity, 'lowPrice', entities)
       const supplied = prices.length ? prices : type === 'Product' ? lowPrices : []
-      if (!supplied.length) missing.push(type === 'Product' ? 'offers.price or offers.lowPrice' : 'offers.price')
-      if (supplied.some(value => !['string', 'number'].includes(typeof value) || String(value).trim() === '' || !Number.isFinite(Number(value)) || Number(value) < 0)) invalid.push('offers.price')
+      if (!supplied.length) {
+        missing.push(type === 'Product' ? 'offers.price or offers.lowPrice' : 'offers.price')
+        pricesComplete = false
+      }
+      if (supplied.some(value => !['string', 'number'].includes(typeof value) || String(value).trim() === '' || !Number.isFinite(Number(value)) || Number(value) < 0)) {
+        invalid.push('offers.price')
+        pricesComplete = false
+      }
     }
+    if (pricesComplete) validated.push('offers.price')
   }
   if (type === 'BreadcrumbList') {
     const items = entityValues(entity, 'itemListElement', entities)
     if (items.length < 2) missing.push('at least two breadcrumb items')
     for (let index = 0; index < items.length; index++) {
       const item = items[index]
-      if (!item || typeof item !== 'object' || !('properties' in item)) { invalid.push(`itemListElement[${index}]`); continue }
+      const path = `itemListElement[${index}]`
+      if (!item || typeof item !== 'object' || !('properties' in item)) { invalid.push(path); continue }
+      validated.push(path)
       const node = item as StructuredEntity
-      if (!entityValues(node, 'name', entities).length) missing.push(`itemListElement[${index}].name`)
+      if (!entityValues(node, 'name', entities).length) missing.push(path + '.name')
       const position = entityValues(node, 'position', entities)[0]
-      if (position == null) missing.push(`itemListElement[${index}].position`)
-      else if (!Number.isInteger(Number(position)) || Number(position) < 1) invalid.push(`itemListElement[${index}].position`)
-      if (index < items.length - 1 && !entityValues(node, 'item', entities).length) missing.push(`itemListElement[${index}].item`)
+      if (position == null) missing.push(path + '.position')
+      else if (!Number.isInteger(Number(position)) || Number(position) < 1) invalid.push(path + '.position')
+      else validated.push(path + '.position')
+      if (index < items.length - 1 && !entityValues(node, 'item', entities).length) missing.push(path + '.item')
     }
   }
   return { missing: [...new Set(missing)], recommended: rules.recommended.filter(key => !has(key)),
-    invalid: [...new Set(invalid)], source: rules.source }
+    invalid: [...new Set(invalid)], validated, source: rules.source }
 }

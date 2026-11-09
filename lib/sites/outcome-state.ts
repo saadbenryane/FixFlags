@@ -1,4 +1,3 @@
-import type { OutcomeAssessmentState } from '@prisma/client'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -88,12 +87,12 @@ export function customerMechanismLabel(mechanism: string, key: string): string {
 }
 
 export function currentOutcomeState(
-  assessment: { state: OutcomeAssessmentState; validUntil: Date } | null,
+  assessment: { state: CustomerOutcomeState; validUntil?: Date | null } | null,
   now = new Date(),
 ): CustomerOutcomeState {
   if (!assessment) return 'COULD_NOT_VERIFY'
   if (assessment.state === 'COULD_NOT_VERIFY') return 'COULD_NOT_VERIFY'
-  if (assessment.validUntil.getTime() <= now.getTime()) return 'STALE'
+  if (assessment.validUntil && assessment.validUntil <= now) return 'STALE'
   return assessment.state
 }
 
@@ -115,7 +114,21 @@ export function checkoutResultCopy(reason: string): {
       return {
         summary: 'FixFlags independently reached checkout.',
         problem: '',
-        evidence: 'The purchase path added the selected product and reached checkout.',
+        evidence: OUTCOME_DETAIL_COPY.checkoutReachedEvidence,
+        fix: '',
+      }
+    case 'checkout_surface_unavailable':
+      return {
+        summary: OUTCOME_DETAIL_COPY.checkoutSurfaceUnavailable.summary,
+        problem: '',
+        evidence: OUTCOME_DETAIL_COPY.checkoutSurfaceUnavailable.evidence,
+        fix: '',
+      }
+    case 'original_purchase_control_unavailable':
+      return {
+        summary: OUTCOME_DETAIL_COPY.originalPurchaseControlUnavailable.summary,
+        problem: '',
+        evidence: OUTCOME_DETAIL_COPY.originalPurchaseControlUnavailable.evidence,
         fix: '',
       }
     case 'add_to_cart_noop':
@@ -197,6 +210,13 @@ export function checkoutResultCopy(reason: string): {
 /** Next step when Checkout could not be verified. Confirmed failures stay on the Flag. */
 export function checkoutCouldNotVerifyRecovery(reason: string | null | undefined): string {
   switch (reason) {
+    case 'original_purchase_control_unavailable':
+      return OUTCOME_DETAIL_COPY.originalPurchaseControlUnavailable.recovery
+    case 'checkout_destination_changed':
+    case 'checkout_purchase_control_changed':
+      return OUTCOME_DETAIL_COPY.checkoutComparison[reason].recovery
+    case 'checkout_surface_unavailable':
+      return OUTCOME_DETAIL_COPY.checkoutSurfaceUnavailable.recovery
     case 'safety_boundary':
       return 'This check stops before payments or unauthorized submissions. Provide a safely reachable checkout entry.'
     case 'no_buy_control':

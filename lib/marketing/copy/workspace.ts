@@ -14,6 +14,27 @@ export const OUTCOME_DETAIL_COPY = {
   noEvidence: 'This method has not produced evidence yet.',
   currentEvidenceMissing: 'This method needs a fresh check. Earlier results are in History.',
   methodPassed: 'FixFlags completed this check.',
+  checkoutReachedEvidence: 'FixFlags used a purchase control and reached checkout. The check stopped before payment or order submission.',
+  checkoutSurfaceUnavailable: {
+    summary: 'FixFlags reached checkout but couldn’t confirm it was usable.',
+    evidence: 'The browser reached a checkout address without observing a usable checkout.',
+    recovery: 'Check that checkout fully loads for a signed-out visitor, then verify again.',
+  },
+  checkoutComparison: {
+    checkout_destination_changed: {
+      summary: 'The browser reached a different checkout. The original issue is still open.',
+      recovery: 'Restore the original checkout and run the check again.',
+    },
+    checkout_purchase_control_changed: {
+      summary: 'FixFlags couldn’t verify the original purchase control. The issue is still open.',
+      recovery: 'Check that the original purchase control opens checkout, then verify again.',
+    },
+  },
+  originalPurchaseControlUnavailable: {
+    summary: 'FixFlags couldn’t locate the original purchase control.',
+    evidence: 'The browser stopped before clicking any purchase control.',
+    recovery: 'Make the original purchase control available to a signed-out visitor, then verify again.',
+  },
   limitationHeading: 'What FixFlags could not establish',
   flagsHeading: 'Flags',
   noFlags: 'No open Flag is tied to this Outcome.',
@@ -35,6 +56,7 @@ export const SITE_WORKSPACE_COPY = {
   remaining: (count: number) => `${count} ${count === 1 ? 'task' : 'tasks'} remaining`,
   milestones: { done: 'Recorded', current: 'In progress', pending: 'Queued', partial: 'Incomplete' },
   disconnected: 'Updates disconnected', queued: 'Queued', analyzing: 'Analyzing',
+  analysisFinished: 'Analysis finished.',
   retryUpdates: 'Retry updates',
   findings: 'Findings',
   siteMenu: 'Website navigation', accountMenu: 'Account navigation',

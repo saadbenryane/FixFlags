@@ -1,37 +1,59 @@
+import { Prisma, type Audit } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { logger } from '@/lib/logger'
 
 export const DISPATCH_LEASE_MS = 30_000
+const DISPATCH_CONCURRENCY = 4
+type DispatchClaim = Pick<Audit, 'id' | 'dispatchAttempts' | 'createdAt' | 'recoveryUntil'> & { dispatchLeaseUntil: Date }
 
-/** Queue admission is a durable Audit transition with an idempotent job identity. */
-export async function dispatchAudit(auditId: string): Promise<boolean> {
+/** Take short, nonblocking claims and release the database rows before publishing. */
+function claimPendingAudits(dueAt: Date, limit: number, auditId?: string) {
   const now = new Date()
   const leaseUntil = new Date(now.getTime() + DISPATCH_LEASE_MS)
-  const claimed = await prisma.audit.updateMany({
-    where: { id: auditId, status: 'QUEUED', dispatchState: 'PENDING', dispatchNextAt: { lte: now },
-      OR: [{ dispatchLeaseUntil: null }, { dispatchLeaseUntil: { lte: now } }] },
-    data: { dispatchLeaseUntil: leaseUntil, dispatchAttempts: { increment: 1 } },
-  })
-  if (claimed.count !== 1) return false
-  const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId }, select: { dispatchAttempts: true, createdAt: true, recoveryUntil: true } })
+  return prisma.$queryRaw<DispatchClaim[]>(Prisma.sql`
+    WITH due AS (
+      SELECT id FROM audits
+      WHERE status = 'QUEUED' AND "dispatchState" = 'PENDING' AND "dispatchNextAt" <= ${dueAt}
+        AND ("dispatchLeaseUntil" IS NULL OR "dispatchLeaseUntil" <= ${dueAt})
+        ${auditId ? Prisma.sql`AND id = ${auditId}` : Prisma.empty}
+      ORDER BY "dispatchNextAt", id
+      LIMIT ${limit} FOR NO KEY UPDATE SKIP LOCKED
+    )
+    UPDATE audits a SET "dispatchLeaseUntil" = ${leaseUntil}, "dispatchAttempts" = a."dispatchAttempts" + 1, "updatedAt" = ${now}
+    FROM due WHERE a.id = due.id
+    RETURNING a.id, a."dispatchLeaseUntil", a."dispatchAttempts", a."createdAt", a."recoveryUntil"`)
+}
+
+function settleDispatch(claim: DispatchClaim, change: Prisma.Sql, requireUnstarted = false) {
+  return prisma.$executeRaw(Prisma.sql`
+    UPDATE audits SET "dispatchLeaseUntil" = NULL, "updatedAt" = ${new Date()}, ${change}
+    WHERE id IN (
+      SELECT id FROM audits WHERE id = ${claim.id} AND "dispatchState" = 'PENDING'
+        AND "dispatchLeaseUntil" = ${claim.dispatchLeaseUntil}
+        ${requireUnstarted ? Prisma.sql`AND status = 'QUEUED'
+          AND ("executionLeaseUntil" IS NULL OR "executionLeaseUntil" <= clock_timestamp())` : Prisma.empty}
+      FOR NO KEY UPDATE SKIP LOCKED
+    )`)
+}
+
+async function publishAudit(audit: DispatchClaim) {
+  const auditId = audit.id
   try {
     await getAuditQueue().add('audit', { auditId }, { jobId: auditId, attempts: 1, removeOnComplete: 100, removeOnFail: 500 })
-    await prisma.audit.updateMany({ where: { id: auditId, dispatchState: 'PENDING', dispatchLeaseUntil: leaseUntil }, data: {
-      dispatchState: 'SENT', dispatchLeaseUntil: null, dispatchError: null,
-    } })
-    return true
   } catch {
+    const now = new Date()
     const exhausted = now.getTime() >= (audit.recoveryUntil?.getTime() ?? audit.createdAt.getTime() + 60 * 60_000)
-    const deferred = await prisma.audit.updateMany({ where: { id: auditId, status: 'QUEUED', dispatchState: 'PENDING', dispatchLeaseUntil: leaseUntil }, data: {
-      dispatchLeaseUntil: null, dispatchError: 'Queue admission is temporarily unavailable.',
-      dispatchNextAt: new Date(now.getTime() + Math.min(60_000, 5000 * 2 ** Math.min(8, audit.dispatchAttempts))),
-      ...(exhausted ? { dispatchState: 'FAILED', status: 'FAILED', failureCode: 'QUEUE_ENQUEUE_FAILED', failureStage: 'queue',
-        errorMsg: 'The automatic recovery window ended before execution could start. No website verdict was established.', completedAt: now } : {}),
-    } })
+    const retryAt = new Date(now.getTime() + Math.min(60_000, 5000 * 2 ** Math.min(8, audit.dispatchAttempts)))
+    const terminal = exhausted ? Prisma.sql`, "dispatchState" = 'FAILED', status = 'FAILED',
+      "failureCode" = 'QUEUE_ENQUEUE_FAILED', "failureStage" = 'queue',
+      "errorMsg" = 'The automatic recovery window ended before execution could start. No website verdict was established.',
+      "completedAt" = ${now}` : Prisma.empty
+    const deferred = await settleDispatch(audit, Prisma.sql`
+      "dispatchError" = 'Queue admission is temporarily unavailable.', "dispatchNextAt" = ${retryAt}${terminal}`, true)
     // An uncertain producer response cannot override a worker that started or
     // another dispatch claim. Reconcile Runs only from our committed transition.
-    if (deferred.count !== 1) return false
+    if (!deferred) return false
     logger.warn('Audit queue admission will be reconciled', { auditId, exhausted })
     if (exhausted) {
       const { markOutcomeRunsCouldNotVerify } = await import('@/lib/sites/application/run-reconciliation')
@@ -39,17 +61,39 @@ export async function dispatchAudit(auditId: string): Promise<boolean> {
     }
     return false
   }
+  // Once the broker accepts the job, a lost acknowledgement write leaves the
+  // claim recoverable. It cannot be used as evidence that publication failed.
+  await settleDispatch(audit, Prisma.sql`"dispatchState" = 'SENT', "dispatchError" = NULL`)
+    .catch(error => logger.error('Audit delivery acknowledgement deferred', error, { auditId }))
+  return true
+}
+
+/** Foreground admission uses the same durable claim as worker recovery. */
+export async function dispatchAudit(auditId: string): Promise<boolean> {
+  try {
+    const [claim] = await claimPendingAudits(new Date(), 1, auditId)
+    return claim ? await publishAudit(claim) : false
+  } catch (error) {
+    logger.error('Audit dispatch interrupted; retained intent will be retried', error, { auditId })
+    return false
+  }
 }
 
 export async function dispatchPendingAudits(limit = 25): Promise<number> {
-  const now = new Date()
-  const audits = await prisma.audit.findMany({ where: { status: 'QUEUED', dispatchState: 'PENDING', dispatchNextAt: { lte: now },
-    OR: [{ dispatchLeaseUntil: null }, { dispatchLeaseUntil: { lte: now } }] },
-    orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.max(1, Math.min(limit, 100)), select: { id: true } })
   let sent = 0
-  for (const audit of audits) {
-    try { if (await dispatchAudit(audit.id)) sent++ }
-    catch (error) { logger.error('Audit dispatch interrupted; retained intent will be retried', error, { auditId: audit.id }) }
+  const size = Math.max(1, Math.min(limit, 100))
+  // A fixed cutoff prevents one failed intent becoming eligible again while
+  // a slow broker is still serving this sweep.
+  const dueAt = new Date()
+  for (let offset = 0; offset < size; offset += DISPATCH_CONCURRENCY) {
+    const batchSize = Math.min(DISPATCH_CONCURRENCY, size - offset)
+    const claims = await claimPendingAudits(dueAt, batchSize)
+    const results = await Promise.allSettled(claims.map(publishAudit))
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'fulfilled') { if (result.value) sent++ }
+      else logger.error('Audit dispatch interrupted; retained intent will be retried', result.reason, { auditId: claims[index].id })
+    }
+    if (claims.length < batchSize) break
   }
   return sent
 }

@@ -3,6 +3,7 @@ import type { RuntimeHeadMetadata } from '../metadata'
 import type { ScreenshotResult } from '../screenshot'
 import { documentEvidenceWithheld } from '../browser/document-evidence'
 import { captureObservationScopeSchema, type CaptureObservationScope } from '../browser/observation-scope'
+import { FAVICON_HREF_VERSION } from './favicon-declaration'
 
 export const NATIVE_HEAD_TEXT_LIMIT = 8000
 const text = z.string().max(NATIVE_HEAD_TEXT_LIMIT).nullable()
@@ -12,8 +13,8 @@ export type HeadMetadataObservation = { metadata: RuntimeHeadMetadata; scope: Ca
 /** Native fields have independent bounds. An unavailable field cannot become
  * absence, and a large body cannot erase a successfully observed head. */
 export function capturedHeadMetadata(capture: Pick<ScreenshotResult,
-  'runtimeHeadMetadata' | 'runtimeHeadScope' | 'collectionRestrictions' | 'desktopFinalUrl'> | null | undefined): HeadMetadataObservation | undefined {
-  if (!capture?.runtimeHeadMetadata) return undefined
+  'runtimeHeadMetadata' | 'runtimeHeadScope' | 'collectionRestrictions' | 'desktopFinalUrl' | 'publicSignInRedirect'> | null | undefined): HeadMetadataObservation | undefined {
+  if (!capture?.runtimeHeadMetadata || capture.publicSignInRedirect) return undefined
   const scope = captureObservationScopeSchema.safeParse(capture.runtimeHeadScope)
   if (!scope.success || capture.desktopFinalUrl && new URL(capture.desktopFinalUrl).href !== new URL(scope.data.finalUrl).href) return undefined
   const metadata: RuntimeHeadMetadata = {}
@@ -23,7 +24,10 @@ export function capturedHeadMetadata(capture: Pick<ScreenshotResult,
       if (value.success) metadata[field] = value.data?.trim() || null
     }
     const favicon = z.boolean().safeParse(capture.runtimeHeadMetadata.hasFavicon)
-    if (favicon.success) metadata.hasFavicon = favicon.data
+    if (favicon.success) {
+      metadata.hasFavicon = favicon.data
+      if (capture.runtimeHeadMetadata.faviconHrefVersion === FAVICON_HREF_VERSION) metadata.faviconHrefVersion = FAVICON_HREF_VERSION
+    }
   }
   return { metadata, scope: scope.data }
 }

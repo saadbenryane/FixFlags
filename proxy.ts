@@ -7,6 +7,7 @@ import {
   siteHostname,
 } from '@/lib/http/site-host'
 import { isMcpDiscoveryPath } from '@/lib/mcp/discoverability'
+import { carriesPrivateContinuation, isPrivateDocumentPath } from '@/lib/http/private-document'
 
 const PROTECTED_PREFIXES = ['/admin', '/settings'] as const
 
@@ -132,7 +133,12 @@ export async function proxy(request: NextRequest) {
     response.headers.set('X-Frame-Options', 'DENY')
   }
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  const { pathname: requestPath, searchParams } = request.nextUrl
+  response.headers.set(
+    'Referrer-Policy',
+    isPrivateDocumentPath(requestPath) || carriesPrivateContinuation(requestPath, searchParams)
+      ? 'no-referrer' : 'strict-origin-when-cross-origin',
+  )
   response.headers.set(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
@@ -161,6 +167,10 @@ export const config = {
     '/api/stripe/credit-pack',
     '/api/webhooks/railway/:path*',
     '/api/well-known/mcp-json/:path*',
+    '/share/:path*',
+    '/sites/:path*',
+    '/report/:path*',
+    '/compare/:path*',
     // Skip API routes, static assets, and images
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

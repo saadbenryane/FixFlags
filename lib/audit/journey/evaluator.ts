@@ -52,21 +52,20 @@ async function runOpenAIEvaluator(
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = {
+      model: cfg.model,
+      max_tokens: cfg.maxTokens,
+      messages: [
+        { role: 'system', content: buildEvaluatorSystemPrompt() },
+        { role: 'user', content: buildEvaluatorUserPrompt(input) },
+      ],
+      tools: [JOURNEY_EVALUATION_TOOL_OPENAI],
+      tool_choice: { type: 'function', function: { name: 'evaluate_journey' } },
+    } satisfies Parameters<typeof client.chat.completions.create>[0]
     const { response, usage } = await measuredProviderRequest({
+      api: 'chat.completions', requestBody,
       model: cfg.model, onAttempt,
-      request: () => client.chat.completions.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        messages: [
-          { role: 'system', content: buildEvaluatorSystemPrompt() },
-          { role: 'user', content: buildEvaluatorUserPrompt(input) },
-        ],
-        tools: [JOURNEY_EVALUATION_TOOL_OPENAI],
-        tool_choice: { type: 'function', function: { name: 'evaluate_journey' } },
-      },
-      { signal: controller.signal }
-      ),
+      request: () => client.chat.completions.create(requestBody, { signal: controller.signal }),
       usage: response => openAIResponseUsage(response, cfg.model),
     })
 
@@ -98,36 +97,35 @@ async function runAnthropicEvaluator(
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = {
+      model: cfg.model,
+      max_tokens: cfg.maxTokens,
+      system: [
+        {
+          type: 'text',
+          text: buildEvaluatorSystemPrompt(),
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      tools: [
+        {
+          name: 'evaluate_journey',
+          description: 'Evaluate a completed user journey for UX issues',
+          input_schema: JOURNEY_EVALUATION_PARAMETERS as import('@anthropic-ai/sdk/resources/messages').Tool.InputSchema,
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'evaluate_journey' },
+      messages: [
+        {
+          role: 'user',
+          content: buildEvaluatorUserPrompt(input),
+        },
+      ],
+    } satisfies Parameters<typeof client.messages.create>[0]
     const { response, usage } = await measuredProviderRequest({
+      api: 'messages', requestBody,
       model: cfg.model, onAttempt,
-      request: () => client.messages.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        system: [
-          {
-            type: 'text',
-            text: buildEvaluatorSystemPrompt(),
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        tools: [
-          {
-            name: 'evaluate_journey',
-            description: 'Evaluate a completed user journey for UX issues',
-            input_schema: JOURNEY_EVALUATION_PARAMETERS as import('@anthropic-ai/sdk/resources/messages').Tool.InputSchema,
-          },
-        ],
-        tool_choice: { type: 'tool', name: 'evaluate_journey' },
-        messages: [
-          {
-            role: 'user',
-            content: buildEvaluatorUserPrompt(input),
-          },
-        ],
-      },
-      { signal: controller.signal }
-      ),
+      request: () => client.messages.create(requestBody, { signal: controller.signal }),
       usage: response => anthropicResponseUsage(response, cfg.model),
     })
 

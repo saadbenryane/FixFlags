@@ -1,9 +1,11 @@
-import { comparableOutcomeCoverage, completeOutcomeEvidence } from '@/lib/sites/domain/outcome-proof'
+import { checkoutScopeGaps, comparableOutcomeCoverage, completeOutcomeEvidence, recordedOutcomeBindingResults } from '@/lib/sites/domain/outcome-proof'
+import { hasCurrentOutcomeSuccess } from '@/lib/sites/domain/outcome-evaluation'
 import type { Prisma, ReportCompleteness } from '@prisma/client'
-import { verifierScopeKey, verifierTargetKey, normalizeVerifierUrl as normalizeUrl } from './verifier-scope'
+import { matchesRecordedVerifierTask, verifierScopeKey, verifierTargetKey, normalizeVerifierUrl as normalizeUrl } from './verifier-scope'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
-import { createRecordedRecoveryReader, recordedObservationGap, type RecoveryFlag, type RecordedRecoveryReader } from '@/lib/audit/recovery-evidence'
+import { currentPageResponseObservation } from '@/lib/audit/checks/assertion'
+import { createRecordedRecoveryReader, recordedObservationGap, type RecoveryExecution, type RecoveryFlag, type RecordedRecoveryReader } from '@/lib/audit/recovery-evidence'
 import { baseCheckId } from '@/lib/audit/flag-identity'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { VERIFICATION_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
@@ -63,7 +65,7 @@ export function assessVerificationCoverage(input: {
   pageUrl: string | null
   executionSpec?: unknown
   originalFlag?: RecoveryFlag
-  verifierExecutions: Array<{
+  verifierExecutions: Array<Pick<RecoveryExecution, 'pageUrl' | 'task'> & {
     targetKey: string
     scopeKey: string
     status: 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE' | 'PENDING' | 'RUNNING'
@@ -100,11 +102,14 @@ export function assessVerificationCoverage(input: {
   const isSearch = search.success && search.data.auditId === input.auditId && search.data.pageUrl === input.pageUrl &&
     search.data.checkId === input.checkId?.split('::page:')[0]
   const exactCheck = checkVerifierSchema.safeParse(targetExecution?.detail)
-  const isExactCheck = exactCheck.success && exactCheck.data.auditId === input.auditId &&
+  const rejectedExactCheck = exactCheck.success && (!currentPageResponseObservation(exactCheck.data.assertion) ||
+    !matchesRecordedVerifierTask(targetExecution?.task?.id, exactCheck.data.taskId))
+  const isExactCheck = exactCheck.success && !rejectedExactCheck && exactCheck.data.auditId === input.auditId &&
     exactCheck.data.checkId === input.checkId?.split('::page:')[0] &&
     (!input.pageUrl || normalizeUrl(exactCheck.data.pageUrl) === normalizeUrl(input.pageUrl))
   const evidenceComparable = Boolean(
-    recordedCondition || !requiresOriginalScope && (isExactCheck ? exactCheck.data.comparable : isSearch ? search.data.comparable : evidence.desktopScreenshot && evidence.metadata && (!isAi || evidence.aiAssessment))
+    recordedCondition || !requiresOriginalScope && !rejectedExactCheck &&
+      (isExactCheck ? exactCheck.data.comparable : isSearch ? search.data.comparable : evidence.desktopScreenshot && evidence.metadata && (!isAi || evidence.aiAssessment))
   )
   const relevantPageCovered = recordedCondition || !requiresOriginalScope && (isExactCheck || (input.pageUrl
     ? input.pages.some(
@@ -193,7 +198,7 @@ export function assessVerificationCoverage(input: {
 /** Targeted Outcome proof uses the same required binding scope as its failure. */
 export function assessTargetedOutcomeCoverage(input: {
   auditId: string; auditStatus: string; projectId: string; parentAuditId: string
-  outcomeId: string | null; attemptId: string
+  outcomeId: string | null; attemptId: string; outcomeKind?: string; bindingKey?: string; recoveredByRun?: boolean
   targeted?: boolean
   run: {
     id: string; projectId: string; status: string; environment: string; verificationTarget: Prisma.JsonValue
@@ -206,16 +211,23 @@ export function assessTargetedOutcomeCoverage(input: {
   const target = record(input.run.verificationTarget)
   const assessment = input.run.assessments.find(item => item.outcomeId === input.outcomeId && item.auditId === input.auditId && item.runRequestId === input.run.id)
   const observed = record(assessment?.coverage ?? null)
-  const sameScope = comparableOutcomeCoverage(input.sourceAssessment?.coverage, observed) && observed.environment === input.run.environment
+  const scopeGaps = checkoutScopeGaps(input.sourceAssessment?.coverage, observed)
+  const sameCheckout = input.bindingKey ? !scopeGaps.has(input.bindingKey) : !scopeGaps.size
+  const sameScope = sameCheckout && comparableOutcomeCoverage(input.sourceAssessment?.coverage, observed) && observed.environment === input.run.environment
   const conclusive = assessment?.state === 'CLEAR' || assessment?.state === 'FLAG'
-  const executed = completeOutcomeEvidence(observed, assessment?.evidence)
+  const wholeProof = conclusive && completeOutcomeEvidence(observed, assessment?.evidence) &&
+    (assessment?.state !== 'CLEAR' || !input.outcomeKind || hasCurrentOutcomeSuccess(input.outcomeKind, observed))
+  const multiple = Array.isArray(observed.requiredBindings) && observed.requiredBindings.length > 1
+  const result = input.bindingKey ? recordedOutcomeBindingResults(observed, input.outcomeKind).get(input.bindingKey) : undefined
+  const verdict = result === 'FAILED' ? 'failed' : result === 'SUCCEEDED' && (assessment?.state === 'CLEAR' || input.recoveredByRun) ? 'passed' : null
+  const executed = Boolean(verdict || wholeProof && (!multiple || assessment?.state === 'CLEAR'))
   const intended = input.targeted === false ? input.run.verificationTarget === null : target.kind === 'OUTCOME' &&
     target.attemptId === input.attemptId && target.outcomeId === input.outcomeId && target.parentAuditId === input.parentAuditId
   const comparable = input.auditStatus === 'COMPLETED' && input.run.status === 'COMPLETED' &&
     input.run.projectId === input.projectId && intended &&
-    input.sourceAssessment?.state === 'FLAG' && sameScope && conclusive && executed
+    input.sourceAssessment?.state === 'FLAG' && sameScope && executed && record(assessment?.evidence ?? null).supersededByAssessmentId == null
   return {
-    comparable,
+    comparable, verdict: comparable ? verdict : null,
     reason: comparable ? 'The same behavior was checked again.' : 'This check did not cover the same behavior.',
     coverage: {
       completeReview: input.auditStatus === 'COMPLETED', evidenceComparable: comparable,

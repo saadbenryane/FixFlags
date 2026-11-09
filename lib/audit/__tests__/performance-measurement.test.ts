@@ -18,10 +18,28 @@ it('binds whitelisted measurement conditions without retaining provider URLs, qu
   expect(performanceMeasurement({ ...raw, configSettings: { ...raw.configSettings, throttling: { cpuSlowdownMultiplier: 1 } } }, 'mobile').scope?.profileKey).not.toBe(original.scope?.profileKey)
   expect(performanceMeasurement({ ...raw, finalUrl: 'https://example.com/different' }, 'mobile').scope?.finalKey).not.toBe(original.scope?.finalKey)
   expect(performanceMeasurement({ ...raw, configSettings: { emulatedFormFactor: 'mobile', throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } } }, 'mobile').scope).toEqual(original.scope)
+  expect(performanceMeasurement({ ...raw, configSettings: { ...raw.configSettings, emulatedFormFactor: 'mobile' } }, 'mobile').scope).toEqual(original.scope)
+  expect(performanceMeasurement({ ...raw, configSettings: { ...raw.configSettings, emulatedFormFactor: 'desktop' } }, 'mobile').scope).toBeNull()
   expect(performanceMeasurementSchema.parse({ ...original, scope: undefined }).scope).toBeUndefined()
 })
 it('records unavailable historical conditions as unknown', () => {
   expect(performanceMeasurement({ fetchTime: 'not-a-date', lighthouseVersion: 12 }, 'desktop')).toMatchObject({ measuredAt: null, lighthouseVersion: null, formFactor: null, throttlingMethod: null })
+})
+it('keeps the main document in comparison scope when the address bar shows a different URL', () => {
+  const displayed = 'https://example.com/plans?campaign=PRIVATE_CAMPAIGN'
+  const document = 'https://example.com/fallback?state=PRIVATE_STATE'
+  const legacy = { requestedUrl: displayed, finalUrl: displayed,
+    lighthouseVersion: '13.0', configSettings: { formFactor: 'desktop', throttlingMethod: 'simulate' } }
+  const original = performanceMeasurement(legacy, 'desktop').scope
+  expect(original).not.toBeNull()
+  expect(performanceMeasurement({ ...legacy, mainDocumentUrl: displayed, finalDisplayedUrl: displayed }, 'desktop').scope).toEqual(original)
+  expect(performanceMeasurement({ ...legacy, finalUrl: undefined, mainDocumentUrl: displayed }, 'desktop').scope).toEqual(original)
+  const diverted = performanceMeasurement({ ...legacy, finalUrl: document, mainDocumentUrl: document, finalDisplayedUrl: displayed }, 'desktop')
+  expect(diverted.scope).toMatchObject({ ...original, mainDocumentKey: expect.stringMatching(/^[a-f0-9]{64}$/) })
+  expect(diverted.scope).not.toEqual(original)
+  expect(performanceMeasurementSchema.parse(diverted)).toEqual(diverted)
+  expect(JSON.stringify(diverted)).not.toContain('PRIVATE_')
+  expect(performanceMeasurement({ ...legacy, mainDocumentUrl: 'invalid', finalDisplayedUrl: displayed }, 'desktop').scope).toBeNull()
 })
 it.each(['stale', 'future', 'missing', 'legacy', 'fresh'] as const)('qualifies provider timing independently of response receipt: %s', mode => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-26T12:02:00.000Z'))

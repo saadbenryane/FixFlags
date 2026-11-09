@@ -1,6 +1,7 @@
 import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
 import { observationsForFlag, publicSupportingObservations } from '@/lib/audit/flag-observations'
 import { describe, expect, it } from 'vitest'
+import { ACCESSIBILITY_VERIFICATION_RULE } from '@/lib/audit/checks/accessibility-rules'
 import {
   baseCheckId,
   collapseFlagsWithAffectedPaths,
@@ -128,6 +129,22 @@ describe('Flag identity', () => {
       'https://example.com/',
       'https://example.com/pricing',
     ])
+  })
+  it('keeps distinct recorded Accessibility repairs attached to their pages without repeating shared instructions', () => {
+    const first = { checkId: 'form-inputs-no-label', source: 'DETERMINISTIC', verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
+      problem: 'Missing field label', severity: 'IMPORTANT', rubric: 'EXPERIENCE', pageUrl: 'https://example.com/',
+      evidence: 'The control has no name.', fix: 'Associate the email field with its label.' }
+    const repeated = { ...first, pageUrl: 'https://example.com/contact' }
+    const other = { ...first, pageUrl: 'https://example.com/pricing', fix: 'Name the plan selector.' }
+    const [collapsed] = collapseFlagsWithAffectedPaths([other, repeated, first])
+    expect(collapsed.fix).toBe('For https://example.com/, https://example.com/contact\nAssociate the email field with its label.\n\n' +
+      'For https://example.com/pricing\nName the plan selector.')
+    expect(collapseFlagsWithAffectedPaths([first, repeated, other])[0].fix).toBe(collapsed.fix)
+    expect(collapseFlagsWithAffectedPaths([collapsed])[0].fix).toBe(collapsed.fix)
+    expect(collapseFlagsWithAffectedPaths([first, repeated])[0].fix).toBe(first.fix)
+    expect(collapseFlagsWithAffectedPaths([first, { ...other, verificationRule: null }])[0].fix).toBe(first.fix)
+    const [multiPage] = collapseFlagsWithAffectedPaths([{ ...first, affectedPaths: [first.pageUrl, repeated.pageUrl] }, other])
+    expect(multiPage.fix).toContain('From reviews covering https://example.com/, https://example.com/contact\n' + first.fix)
   })
   it('preserves scoped evidence across phases without drawing another page over the representative capture', () => {
     const target = { kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const, label: 'Library', context: 'tracking:page_load:library:page:one' }

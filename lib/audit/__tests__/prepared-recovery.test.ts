@@ -5,6 +5,8 @@ import { evaluateSearch, searchFindings } from '../search/registry'
 import { searchReceiptSchema } from '../search/contracts'
 import { document, evidence, PAGE } from '../search/__tests__/fixtures'
 import { assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
+import { capturePageKey } from '../browser/observation-scope'
+import { JOURNEY_VERIFICATION_RULE } from '../checks/journey-evidence'
 
 const spec = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: PAGE,
   environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null }
@@ -31,6 +33,26 @@ describe('prepared recovery uses one selected evidence snapshot', () => {
     expect(reader.hasRecovery(flag(peer))).toBe(false)
     expect(reader.verdict({ ...flag(), supportingObservations: mergeSupportingObservations([original(PAGE), original(peer)]) })).toBe('failed')
     expect(reader.verdict({ ...flag(), supportingObservations: mergeSupportingObservations([original(PAGE), original(unknown)]) })).toBeNull()
+  })
+
+  it('uses a category journey destination only when its recorded task began on an admitted page', () => {
+    const start = new URL('/entry', PAGE).href
+    const executionSpec = { ...spec, scope: 'CATEGORY', targetUrl: start, checks: { 'journey-signup-no-form': 1 },
+      category: { area: 'conversion', sourceAuditId: 'before', pages: [start] } }
+    const context = `journey:signup:destination:${capturePageKey(PAGE)}:${'a'.repeat(64)}:${JSON.stringify([{ selector: '#signup', label: 'Sign up' }])}`
+    const finding = { checkId: 'journey-signup-no-form', pageUrl: PAGE, verificationRule: JOURNEY_VERIFICATION_RULE,
+      evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', context }] }
+    const observed = response()
+    const execution = { targetKey: 'module:journeys', status: 'COMPLETED', pageUrl: PAGE, detail: { ...observed.detail, module: 'journeys',
+      assertions: [{ ...observed.detail.assertions[0], key: 'destination-form', context }],
+      execution: { ...observed.detail.execution, taskId: 'journey', source: 'rendered-dom' },
+    } }
+    const verdict = (task: { id: string; pageUrl: string } | null) => createRecordedRecoveryReader({ auditId: 'after', executionSpec,
+      executions: [{ ...execution, task }] }).verdict(finding)
+    expect(verdict({ id: 'journey', pageUrl: start })).toBe('passed')
+    expect(verdict({ id: 'journey', pageUrl: PAGE })).toBeNull()
+    expect(verdict({ id: 'another-task', pageUrl: start })).toBeNull()
+    expect(verdict(null)).toBeNull()
   })
 
   it('does not read mutated transport input or a later admitted scope through a retained reader', () => {

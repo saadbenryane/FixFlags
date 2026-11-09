@@ -259,6 +259,23 @@ describe('loadReportRouteState progressive handoff', () => {
     expect(JSON.stringify(publicPolicy)).not.toContain('private-property')
   })
 
+  it('keeps the completed report usable when its comparison belongs to another Site', async () => {
+    const page = 'https://example.com/'
+    const flag = { id: 'current-flag', checkId: 'title-missing', rubric: 'REACH', severity: 'IMPORTANT', source: 'DETERMINISTIC',
+      problem: 'Page title is missing', evidence: 'No title was observed.', whyItMatters: 'Visitors need a title.', fix: 'Add a title.',
+      pageUrl: page, confidence: 1, status: 'OPEN' }
+    auditFindUnique.mockResolvedValueOnce({ status: 'COMPLETED', parentId: 'parent', projectId: 'site', parent: { projectId: 'other' }, pages: [] })
+    getProgressiveAuditForRequest.mockResolvedValue({ kind: 'completed' })
+    getGatedAuditForRequest.mockResolvedValue({ kind: 'ok', accessContext: 'public', isLoggedIn: false, session: null,
+      showDeterministicFixes: false, showPrescription: false, sampleFixFlag: null,
+      audit: { id: 'a1', url: page, status: 'COMPLETED', projectId: 'site', userId: 'owner', parentId: 'parent',
+        score: null, pageType: null, flags: [flag], rubricRows: [], rubrics: [], screenshots: [], productContract: null,
+        completedAt: new Date('2026-10-17T03:02:00.000Z'), reportCompleteness: 'FULL', failedModules: [] } })
+
+    expect(await loadReportRouteState(Promise.resolve({ id: 'a1' }))).toMatchObject({ kind: 'completed', recheckDiff: null,
+      projection: { review: { freshComparableUpdate: false }, explorer: { flags: [expect.objectContaining({ id: flag.id })] } } })
+  })
+
   it('preserves access denial before any completed-report work', async () => {
     getProgressiveAuditForRequest.mockResolvedValue({ kind: 'forbidden' })
 

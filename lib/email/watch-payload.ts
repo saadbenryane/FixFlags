@@ -10,6 +10,7 @@ export const watchEmailSelectionSchema = z.object({
 export const watchEmailSnapshotSchema = notificationEmailSnapshotSchema.extend({
   selection: watchEmailSelectionSchema.optional(),
   deliveryKey: z.string().min(1).max(250).optional(),
+  receiptOwnerId: z.string().min(1).optional(),
 }).strict()
 export const watchEmailPayloadSchema = watchEmailSnapshotSchema.extend({
   previous: z.array(watchEmailSnapshotSchema).max(32).optional(),

@@ -13,7 +13,12 @@ import { repairBriefDeliverySchema } from '@/lib/sites/repair-brief-contract'
 
 const mocks = vi.hoisted(() => ({ site: vi.fn(), flag: vi.fn(), evidence: vi.fn() }))
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.site }))
-vi.mock('@/lib/sites/flags', () => ({ loadSiteFlagDetail: mocks.flag }))
+vi.mock('@/lib/sites/flags', () => ({ loadSiteFlagDetail: mocks.flag,
+  loadSiteRepairContextPage: async (site: SiteRecord, id: string, appUrl: string, offset?: number, expected?: string) => {
+    const flag = await mocks.flag(site, id)
+    return flag ? { brief: buildSiteRepairBrief(site.siteId, flag, appUrl, id, offset, expected), attempts: flag.attempts, verifying: flag.verifying } : null
+  },
+}))
 vi.mock('@/lib/get-app-url', () => ({ getAppUrl: () => 'https://fixflags.test' }))
 vi.mock('@/lib/sites/application/repair-evidence', () => ({ loadSiteRepairEvidence: mocks.evidence }))
 import { registerSiteOutcomeTools } from '../tools/sites'

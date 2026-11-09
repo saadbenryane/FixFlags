@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { EvidenceTarget } from './evidence-targets'
 import { jsonValueSchema } from '@/lib/json-value'
 
-const targetSchema = z.object({
+export const observationTargetSchema = z.object({
   kind: z.enum(['element', 'page']), source: z.literal('measured'), device: z.enum(['desktop', 'mobile']),
   rect: z.object({ x: z.number().finite(), y: z.number().finite(), width: z.number().finite(), height: z.number().finite() }).strict().optional(),
   selector: z.string().optional(), text: z.string().optional(), label: z.string(), context: z.string().optional(),
@@ -13,7 +13,7 @@ export const supportingObservationsSchema = z.object({
   items: z.array(z.object({
     source: z.string().nullable(), checkId: z.string().nullable(), checkVersion: z.number().int().positive().nullable(),
     pageUrl: z.string().url().nullable(), evidence: z.string(), verificationRule: z.string().nullable(),
-    evidenceTargets: z.array(targetSchema),
+    evidenceTargets: z.array(observationTargetSchema),
     attentionPolicy: jsonValueSchema.optional(),
     provenance: z.object({ auditId: z.string().min(1), taskId: z.string().min(1),
       collectedAt: z.string().datetime().nullable() }).strict().nullable(),
@@ -26,9 +26,10 @@ export const supportingObservationViewSchema = supportingObservationsSchema.shap
   source: true, checkId: true, checkVersion: true, pageUrl: true, evidence: true,
 }).extend({ recordedAt: z.string().datetime().nullable(),
   sourceAuditId: z.string().min(1).optional(), sourceFlagId: z.string().min(1).optional(),
-  references: z.array(targetSchema.pick({ device: true, label: true, selector: true })),
+  references: z.array(observationTargetSchema.pick({ device: true, label: true, selector: true })),
 }).strict()
 export type SupportingObservationView = z.infer<typeof supportingObservationViewSchema>
+const supportingObservationViewsSchema = z.array(supportingObservationViewSchema).max(5000)
 type ObservationInput = {
   source?: string | null; checkId?: string | null; pageUrl?: string | null; evidence?: string;
   verificationRule?: string | null; evidenceTargets?: EvidenceTarget[]; supportingObservations?: unknown;
@@ -64,20 +65,28 @@ export function mergeSupportingObservations(values: SupportingObservations[]): S
 
 /** UI references omit private comparison contexts and credentials. */
 export function publicSupportingObservations(value: unknown): SupportingObservationView[] {
-  return readSupportingObservations(value)?.items.map(item => ({
+  const recorded = readSupportingObservations(value)
+  return recorded ? projectSupportingObservations(recorded) : []
+}
+
+function projectSupportingObservations(recorded: SupportingObservations): SupportingObservationView[] {
+  return recorded.items.map(item => ({
     source: item.source, checkId: item.checkId, checkVersion: item.checkVersion, pageUrl: item.pageUrl,
     evidence: item.evidence, recordedAt: item.provenance?.collectedAt ?? null,
     ...(item.provenance?.auditId ? { sourceAuditId: item.provenance.auditId } : {}),
     references: item.evidenceTargets.map(target => ({ device: target.device, label: target.label, selector: target.selector })),
-  })) ?? []
+  }))
 }
 
 /** Handoffs accept the recorded server contract or its validated public view.
  * Neither view can supply missing private comparison rules or provenance. */
 export function readSupportingObservationView(value: unknown): SupportingObservationView[] | null {
-  if (readSupportingObservations(value)) return publicSupportingObservations(value)
-  const parsed = z.array(supportingObservationViewSchema).max(5000).safeParse(value)
-  return parsed.success ? parsed.data : null
+  if (Array.isArray(value)) {
+    const parsed = supportingObservationViewsSchema.safeParse(value)
+    return parsed.success ? parsed.data : null
+  }
+  const recorded = readSupportingObservations(value)
+  return recorded ? projectSupportingObservations(recorded) : null
 }
 
 /** Safe presentation state; it cannot grant comparison evidence or provenance. */

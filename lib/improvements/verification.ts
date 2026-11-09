@@ -12,18 +12,59 @@ import { prisma } from '@/lib/db'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 import { assessTargetedOutcomeCoverage,assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
 import { canonicalIntent, readExecutionSpec, readVerificationTarget } from '@/lib/sites/domain/execution-spec'
-import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
+import { readOutcomeIncident, readOutcomeRecovery } from '@/lib/sites/domain/outcome-incident'
+import { loadOutcomeRepairSource } from '@/lib/sites/application/outcome-repair-source'
 import { createRecordedRecoveryReader, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
+import { baseCheckId, outcomeFlagOwner, parseAffectedPaths } from '@/lib/audit/flag-identity'
+import { observationTargetSchema, readSupportingObservations } from '@/lib/audit/flag-observations'
 import { systemClock } from '@/lib/time/clock'
 import type {
-Flag,ImprovementStatus,Prisma,
+Flag,ImprovementAttempt,ImprovementStatus,Prisma,
 VerificationOutcome
 } from '@prisma/client'
 
 import { improvementFingerprint } from './occurrences'
 import { lockImprovementLedger } from './ledger-lock'
 import { readRepairSources, repairSourceSelect } from '@/lib/sites/domain/repair-source'
+import { attemptTargetsFlag } from './attempt-state'
+import { normalizeVerifierUrl } from './verifier-scope'
 import type { ImprovementServiceDependencies,VerificationResult } from './service-types'
+
+function repairAnchor<T extends { flagId: string; auditId: string }>(occurrences: readonly T[],
+  attempt: Pick<ImprovementAttempt, 'sourceAuditId' | 'sourceFlagIds' | 'handoffReference'>): T | undefined {
+  const scoped = occurrences.filter(occurrence => occurrence.auditId === attempt.sourceAuditId &&
+    attemptTargetsFlag(attempt, occurrence.auditId, occurrence.flagId))
+  if (attempt.handoffReference?.startsWith('flag:'))
+    return scoped.find(occurrence => attempt.handoffReference === 'flag:' + occurrence.flagId)
+  // Older attempts without a Flag reference are usable only if the recorded
+  // Audit and any retained membership identify a single original occurrence.
+  return scoped.length === 1 ? scoped[0] : undefined
+}
+
+type RepairObservation = RecoveryFlag & Pick<Flag, 'source' | 'checkId' | 'fingerprint' | 'pageUrl'>
+
+/** A shared Improvement identifies a family of failures. Evidence links need
+ * matching conditions, independent of coordinates, display text and task IDs. */
+function failureScope(flag: RepairObservation): string | null {
+  const observations = readSupportingObservations(flag.supportingObservations)
+  if (flag.supportingObservations != null && !observations) return null
+  const scopes = (observations?.items ?? [flag]).map(observation => {
+    const rawTargets = observation.evidenceTargets ?? []
+    if (!Array.isArray(rawTargets) || observations && flag.attentionPolicy != null && observation.attentionPolicy === undefined) return null
+    const targets = rawTargets.map(target => observationTargetSchema.safeParse(target))
+    if (targets.some(target => !target.success)) return null
+    return canonicalIntent({ source: observation.source, checkId: baseCheckId(observation.checkId),
+      pageUrl: observation.pageUrl ? normalizeVerifierUrl(observation.pageUrl) : null,
+      checkVersion: 'checkVersion' in observation ? observation.checkVersion : null,
+      verificationRule: observation.verificationRule ?? null, attentionPolicy: observation.attentionPolicy ?? null,
+      targets: [...new Set(targets.flatMap(({ data: target }) =>
+        target ? [canonicalIntent([target.kind, target.device, target.selector, target.context])] : []))].sort(),
+    })
+  })
+  if (scopes.some(scope => scope === null)) return null
+  const pages = [...parseAffectedPaths(flag.affectedPaths), ...(flag.pageUrl ? [flag.pageUrl] : [])]
+  return canonicalIntent({ pages: [...new Set(pages.map(normalizeVerifierUrl))].sort(), scopes: [...new Set(scopes)].sort() })
+}
 
 /**
  * Reconciles pending attempts against a fresh child Review.
@@ -62,6 +103,8 @@ export async function reconcileImprovementVerification(input: {
             targetKey: true,
             scopeKey: true,
             status: true,
+            pageUrl: true,
+            task: { select: { id: true, pageUrl: true } },
             evidenceReference: true,
             detail: true,
           },
@@ -75,7 +118,7 @@ export async function reconcileImprovementVerification(input: {
   if (targetedRun && (!target || target.parentAuditId !== input.parentAuditId || targetedRun.projectId !== verificationAudit.projectId)) return []
   const [parentOccurrences, currentFlags] = await Promise.all([
     prisma.improvementOccurrence.findMany({
-      where: { auditId: input.parentAuditId },
+      where: { auditId: input.parentAuditId, audit: { projectId }, improvement: { projectId } },
       include: {
         flag: true,
         improvement: {
@@ -95,7 +138,7 @@ export async function reconcileImprovementVerification(input: {
   const recoveredOutcomeIds = verificationAudit.status === 'COMPLETED' ? verificationAudit.runRequests?.flatMap(run =>
     run.verificationTarget === null && run.projectId === verificationAudit.projectId && run.status === 'COMPLETED'
       ? run.assessments.filter(assessment => assessment.auditId === verificationAudit.id && assessment.runRequestId === run.id &&
-        assessment.state === 'CLEAR' && readOutcomeIncident(assessment.evidence)?.transition === 'recovery').map(assessment => assessment.outcomeId)
+        readOutcomeRecovery(assessment.evidence, assessment.state)).map(assessment => assessment.outcomeId)
       : []) ?? [] : []
   // Query unresolved fixes rather than every Flag accumulated during an outage.
   // Only a source Flag closed by this exact recovery can resume an inconclusive fix.
@@ -110,18 +153,23 @@ export async function reconcileImprovementVerification(input: {
         orderBy: { createdAt: 'desc' },
         include: { improvement: true, sourceAudit: { select: { improvementOccurrences: { include: { flag: true } } } } },
       }) : []
+  const parentByImprovement = Map.groupBy(parentOccurrences, occurrence => occurrence.improvementId)
   const recoveredOccurrences = recoveredAttempts.flatMap(attempt => {
     if (attempt.improvement.outcomeId && !recoveredOutcomeIds.includes(attempt.improvement.outcomeId)) return []
-    const occurrence = attempt.sourceAudit.improvementOccurrences.find(item => item.improvementId === attempt.improvementId &&
+    const sources = attempt.sourceAudit.improvementOccurrences.filter(item => item.improvementId === attempt.improvementId)
+    const occurrence = repairAnchor(sources, attempt)
+    const recovered = sources.some(item => attemptTargetsFlag(attempt, item.auditId, item.flagId) &&
       item.flag.status === 'FIXED' && item.flag.resolvedInId === verificationAudit.id)
-    return occurrence ? [{ ...occurrence, improvement: { ...attempt.improvement, attempts: [attempt] } }] : []
+    return occurrence && recovered ? [{ ...occurrence, improvement: { ...attempt.improvement, attempts: [attempt] } }] : []
   })
-  const occurrences = [...recoveredOccurrences, ...parentOccurrences].flatMap(occurrence =>
-    occurrence.improvement.attempts.map(attempt => ({ ...occurrence, improvement: { ...occurrence.improvement, attempts: [attempt] } })))
+  const parentRepairs = [...parentByImprovement.values()].flatMap(occurrences =>
+    occurrences[0].improvement.attempts.flatMap(attempt => {
+      const occurrence = repairAnchor(occurrences, attempt)
+      return occurrence ? [{ ...occurrence, improvement: { ...occurrence.improvement, attempts: [attempt] } }] : []
+    }))
+  const occurrences = [...recoveredOccurrences, ...parentRepairs]
 
-  const currentByKey = new Map(
-    currentFlags.map((flag) => [improvementFingerprint(flag), flag])
-  )
+  const currentByKey = Map.groupBy(currentFlags.filter(flag => flag.status !== 'FIXED'), improvementFingerprint)
   const results: VerificationResult[] = []
   const reconciledAttemptIds = new Set<string>()
   const recoveryReader = createRecordedRecoveryReader({ auditId: verificationAudit.id,
@@ -135,8 +183,8 @@ export async function reconcileImprovementVerification(input: {
     if (target && target.attemptId !== attempt.id) continue
     if (reconciledAttemptIds.has(attempt.id)) continue
     reconciledAttemptIds.add(attempt.id)
-    const current = currentByKey.get(occurrence.improvement.fingerprint ?? improvementFingerprint(occurrence.flag))
-    const assessSource = (flag: RecoveryFlag & Pick<Flag, 'source' | 'checkId' | 'fingerprint' | 'pageUrl'>) => assessVerificationCoverage({
+    const candidates = currentByKey.get(occurrence.improvement.fingerprint ?? improvementFingerprint(occurrence.flag)) ?? []
+    const assessSource = (flag: RepairObservation) => assessVerificationCoverage({
       auditId: verificationAudit.id,
       status: verificationAudit.status,
       reportCompleteness: verificationAudit.reportCompleteness,
@@ -155,7 +203,8 @@ export async function reconcileImprovementVerification(input: {
     }, recoveryReader)
     const original = readRepairSources(attempt.sourceObservations)
     const selectedIds = original?.flags.map(flag => flag.id) ?? attempt.sourceFlagIds
-    let coverageDecision = assessSource(original?.flags.find(flag => flag.id === occurrence.flagId) ?? occurrence.flag)
+    let assessedSource: RepairObservation = original?.flags.find(flag => flag.id === occurrence.flagId) ?? occurrence.flag
+    let coverageDecision = assessSource(assessedSource)
     if ((selectedIds?.length || attempt.sourceObservations != null) && !occurrence.improvement.outcomeId) {
       const liveSources = await prisma.flag.findMany({ where: { id: { in: selectedIds ?? [] },
         audit: { projectId: verificationAudit.projectId }, improvementOccurrence: { improvementId: attempt.improvementId } },
@@ -165,63 +214,55 @@ export async function reconcileImprovementVerification(input: {
       const frozenScope = !target || canonicalIntent(admitted?.verificationSourceFlagIds?.toSorted()) === canonicalIntent(selectedIds?.toSorted())
       const sameObservations = attempt.sourceObservations == null || Boolean(original && (!target ||
         canonicalIntent(admitted?.verificationSources) === canonicalIntent(original)))
-      const decisions = sources.map(assessSource)
-      const failure = decisions.find(decision => decision.comparable && decision.verdict === 'failed')
-      const gap = decisions.find(decision => !decision.comparable || decision.verdict !== 'passed')
+      const decisions = sources.map(source => ({ source, decision: assessSource(source) }))
+      const failure = decisions.find(({ decision }) => decision.comparable && decision.verdict === 'failed')
+      const gap = decisions.find(({ decision }) => !decision.comparable || decision.verdict !== 'passed')
       const complete = liveSources.length === selectedIds?.length && sources.length === selectedIds?.length && frozenScope && sameObservations
       // Every selected capture must recover. A comparable remaining failure
       // still proves the repair incomplete when another capture is unavailable.
       if (!complete) coverageDecision = { ...coverageDecision, comparable: false, verdict: null,
         reason: 'The update Review did not retain the original selected repair scope.' }
-      else if (failure) coverageDecision = failure
-      else if (gap) coverageDecision = { ...gap, comparable: false, verdict: null }
+      else if (failure) {
+        coverageDecision = failure.decision
+        assessedSource = failure.source
+      }
+      else if (gap) coverageDecision = { ...gap.decision, comparable: false, verdict: null }
       else coverageDecision = { ...coverageDecision, comparable: true, verdict: 'passed' }
     }
     const outcomeRun = target?.kind === 'OUTCOME' ? targetedRun : !target && occurrence.improvement.outcomeId
       ? verificationAudit.runRequests?.find(run => run.verificationTarget === null && run.projectId === verificationAudit.projectId &&
         run.assessments.some(assessment => assessment.outcomeId === occurrence.improvement.outcomeId)) : null
+    const bound = outcomeFlagOwner(assessedSource.fingerprint)
+    const bindingKey = bound?.outcomeId === occurrence.improvement.outcomeId ? bound?.bindingKey : undefined
     if (outcomeRun) {
-      const sourceAssessment = occurrence.improvement.outcomeId
-        ? await prisma.outcomeAssessment.findFirst({
-            where: { auditId: sourceAuditId, outcomeId: occurrence.improvement.outcomeId },
-            orderBy: { assessedAt: 'desc' }, select: { state: true, coverage: true },
-          }) : null
+      const sourceAssessment = occurrence.improvement.outcomeId && verificationAudit.projectId
+        ? await loadOutcomeRepairSource(prisma, { projectId: verificationAudit.projectId, sourceAuditId,
+            outcomeId: occurrence.improvement.outcomeId, improvementId: occurrence.improvementId, flagId: occurrence.flagId }) : null
       coverageDecision = assessTargetedOutcomeCoverage({
         auditId: verificationAudit.id, auditStatus: verificationAudit.status,
         projectId: verificationAudit.projectId, parentAuditId: sourceAuditId,
-        outcomeId: occurrence.improvement.outcomeId, attemptId: attempt.id,
-        run: outcomeRun, sourceAssessment, targeted: target?.kind === 'OUTCOME',
+        outcomeId: occurrence.improvement.outcomeId, attemptId: attempt.id, outcomeKind: sourceAssessment?.kind,
+        run: outcomeRun, sourceAssessment, targeted: target?.kind === 'OUTCOME', bindingKey,
+        recoveredByRun: occurrence.flag.status === 'FIXED' && occurrence.flag.resolvedInId === verificationAudit.id,
       })
     }
     const stableAiIdentity =
       occurrence.flag.source !== 'AI' || Boolean(occurrence.flag.fingerprint)
-    const comparable = coverageDecision.comparable && stableAiIdentity
-    const reason = !stableAiIdentity
-      ? 'The original AI observation has no stable evidence fingerprint for comparison.'
-      : coverageDecision.reason
-    const targetedState = outcomeRun?.assessments.find(item => item.outcomeId === occurrence.improvement.outcomeId)?.state ?? null
+    const assessment = outcomeRun?.assessments.find(item => item.outcomeId === occurrence.improvement.outcomeId &&
+      item.auditId === verificationAudit.id && item.runRequestId === outcomeRun.id)
     const verificationVerdict = coverageDecision.verdict
-    const outcome: VerificationOutcome = !comparable
-      ? 'INCONCLUSIVE'
-      : targetedState === 'FLAG'
-        ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
-      : verificationVerdict === 'passed'
-        ? 'IMPROVED'
-      : verificationVerdict === 'failed'
-        ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
-      : !current
-        ? 'IMPROVED'
-        : current.status === 'REGRESSED'
-          ? 'REGRESSED'
-          : 'UNCHANGED'
-    let status: ImprovementStatus = outcome === 'IMPROVED' ? 'VERIFIED' : 'UNVERIFIED'
-    const evidenceReference = {
-      beforeAuditId: sourceAuditId,
-      beforeFlagId: occurrence.flagId,
-      afterAuditId: input.verificationAuditId,
-      afterFlagId: current?.id ?? null,
-      ...(attempt.sourceFlagIds?.length ? { beforeFlagIds: attempt.sourceFlagIds } : {}),
+    let failures: Flag[] = []
+    let sourceScope: string | null = null
+    if (coverageDecision.comparable && stableAiIdentity && verificationVerdict !== 'passed' && assessment?.state !== 'CLEAR') {
+      if (outcomeRun) {
+        const recordedIds = readOutcomeIncident(assessment?.evidence)?.flagIds ?? []
+        failures = candidates.filter(flag => recordedIds.includes(flag.id) && (!bindingKey || flag.fingerprint === assessedSource.fingerprint))
+      } else {
+        sourceScope = failureScope(assessedSource)
+        if (sourceScope !== null) failures = candidates.filter(flag => failureScope(flag) === sourceScope)
+      }
     }
+    const current = failures.length === 1 ? failures[0] : undefined
 
     const recorded = await executionTransaction(async (tx) => {
       // Collection takes the Site lock before changing a live Flag. Re-read
@@ -231,21 +272,48 @@ export async function reconcileImprovementVerification(input: {
       await lockImprovementLedger(tx, occurrence.improvementId)
       const latestAttempt = await tx.improvementAttempt.findFirst({ where: { improvementId: occurrence.improvementId },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true } })
+      const liveFailure = current ? await tx.flag.findFirst({ where: {
+        id: current.id, auditId: verificationAudit.id, audit: { projectId }, status: { not: 'FIXED' },
+        OR: [{ improvementOccurrence: null }, { improvementOccurrence: { improvementId: occurrence.improvementId } }],
+      } }) : null
+      const linkedFailure = liveFailure && current && improvementFingerprint(liveFailure) === improvementFingerprint(current) &&
+        (outcomeRun || failureScope(liveFailure) === sourceScope) ? liveFailure : null
+      // A historical completion receipt can lack an explicit verdict. A
+      // sibling or ambiguous Flag cannot supply its missing conclusion.
+      const unknownLegacyContinuation = !outcomeRun && verificationVerdict == null && candidates.length > 0 && !linkedFailure
+      const comparable = coverageDecision.comparable && stableAiIdentity && !unknownLegacyContinuation
+      const reason = !stableAiIdentity ? 'The original AI observation has no stable evidence fingerprint for comparison.'
+        : coverageDecision.comparable && unknownLegacyContinuation ? 'The update Review did not identify a comparable continuation of the original finding.'
+          : coverageDecision.reason
+      const outcome: VerificationOutcome = !comparable ? 'INCONCLUSIVE'
+        : verificationVerdict === 'passed' ? 'IMPROVED'
+        : assessment?.state === 'FLAG' || verificationVerdict === 'failed' || linkedFailure
+          ? linkedFailure?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
+          : 'IMPROVED'
+      let status: ImprovementStatus = outcome === 'IMPROVED' ? 'VERIFIED' : 'UNVERIFIED'
       // The selected attempt can settle or acquire another verification while
       // evidence is assessed. The advisory lock serializes commits, but only
       // this comparison prevents a stale snapshot from replacing newer facts.
       const claimed = await tx.improvementAttempt.updateMany({
         where: { id: attempt.id, improvementId: occurrence.improvementId, sourceAuditId,
           outcome: attempt.outcome ?? null, verificationAuditId: attempt.verificationAuditId ?? null,
+          // Unadmitted legacy drafts can change while coverage is being read.
+          ...(attempt.frozen ? {} : { updatedAt: attempt.updatedAt, handoffReference: attempt.handoffReference ?? null,
+            sourceFlagIds: { equals: attempt.sourceFlagIds ?? [] } }),
+          sourceAudit: { projectId },
           improvement: { projectId, status: { notIn: ['REJECTED', 'SUPERSEDED'] } } },
         data: {
           verificationAuditId: input.verificationAuditId,
           outcome,
           testedCondition: original?.flags.find(flag => flag.id === occurrence.flagId)?.verificationRule ?? occurrence.improvement.successCondition,
           comparable,
-          verificationCoverage: coverageDecision.coverage,
+          verificationCoverage: unknownLegacyContinuation ? { ...coverageDecision.coverage, evidenceComparable: false } : coverageDecision.coverage,
           verificationReason: reason,
-          evidenceReference,
+          evidenceReference: {
+            beforeAuditId: sourceAuditId, beforeFlagId: occurrence.flagId, afterAuditId: input.verificationAuditId,
+            afterFlagId: linkedFailure?.id ?? null,
+            ...(attempt.sourceFlagIds?.length ? { beforeFlagIds: attempt.sourceFlagIds } : {}),
+          },
           remainingRisk:
             outcome === 'IMPROVED'
               ? null
@@ -297,13 +365,13 @@ export async function reconcileImprovementVerification(input: {
           }
         }
       }
-      if (current) {
+      if (linkedFailure) {
         await tx.improvementOccurrence.upsert({
-          where: { flagId: current.id },
+          where: { flagId: linkedFailure.id },
           create: {
             improvementId: occurrence.improvementId,
             auditId: input.verificationAuditId,
-            flagId: current.id,
+            flagId: linkedFailure.id,
             kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED',
           },
           update: { kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED' },
@@ -344,9 +412,10 @@ export async function reconcileImprovementVerification(input: {
           outcome,
         }, tx)
       }
-      return true
+      return { outcome, status, comparable, reason }
     })
     if (!recorded) continue
+    const { outcome, status, comparable, reason } = recorded
     results.push({
       improvementId: occurrence.improvementId,
       attemptId: attempt.id,

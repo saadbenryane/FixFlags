@@ -7,13 +7,41 @@ import { parseDictionary, parseItem, Token } from 'structured-headers'
 
 export const SECURITY_HEADER_VERIFICATION_RULE = 'Public response headers: repeat every originally failed header responsibility on the same response URL.'
 export const SECURITY_HEADER_LIMITATION = 'Some response header declarations could not be interpreted. Their configuration remains unknown.'
-export const SECURITY_HEADER_WITHHELD_LIMITATION = 'This response is not the origin header configuration. Header configuration remains unknown.'
-const POLICY_ASSERTIONS_V2 = new Set(['csp-inline-scripts', 'csp-eval', 'csp-objects', 'frame-protection', 'x-content-type-options', 'referrer-policy',
+export const SECURITY_HEADER_WITHHELD_LIMITATION = 'The page did not return a usable public response. Its header configuration remains unknown.'
+const VERSIONED_POLICY_ASSERTIONS = new Set(['content-security-policy', 'csp-inline-scripts', 'csp-eval', 'csp-objects', 'frame-protection', 'x-content-type-options', 'referrer-policy',
   'hsts-duration', 'hsts-subdomains', 'hsts-preload', 'permissions-policy', 'opener-policy', 'embedder-policy', 'resource-policy'])
+const V3_POLICY_ASSERTIONS = new Set(['csp-objects', 'frame-protection'])
+function securityHeaderContextPrefix(key: string) {
+  const version = V3_POLICY_ASSERTIONS.has(key) ? 'v3:' : VERSIONED_POLICY_ASSERTIONS.has(key) ? 'v2:' : ''
+  return `security-header:${version}${key}:`
+}
 /** Older substring and directive-presence observations remain historical,
  * rather than proof under the corrected browser policy interpretation. */
 export function currentSecurityHeaderObservation(assertion: Pick<CheckAssertion, 'key' | 'context'>) {
-  return !POLICY_ASSERTIONS_V2.has(assertion.key) || assertion.context?.startsWith('security-header:v2:' + assertion.key + ':') === true
+  return !VERSIONED_POLICY_ASSERTIONS.has(assertion.key) || assertion.context?.startsWith(securityHeaderContextPrefix(assertion.key)) === true
+}
+
+/** Keep comparable historical diagnoses testable with current observations. */
+export function currentSecurityHeaderTarget(context: string, checkId?: string) {
+  const previous = 'security-header:content-security-policy:'
+  if (context.startsWith(previous)) return securityHeaderContextPrefix('content-security-policy') + context.slice(previous.length)
+
+  // Missing XFO and permissive CSP did not depend on how XFO values were split.
+  const previousFrame = 'security-header:v2:frame-protection:'
+  if (context.startsWith(previousFrame) && (checkId === 'security-frame-options-missing' || checkId === 'security-csp-frame-ancestors-permissive')) {
+    return securityHeaderContextPrefix('frame-protection') + context.slice(previousFrame.length)
+  }
+  return context
+}
+
+/** Watch can compare a grouped finding with an individual finding when both
+ * name the same response and registered header responsibility. */
+export function securityHeaderFailureScope(context: string, checkId: string) {
+  const key = /^security-header:(?:v[23]:)?([a-z-]+):destination:[a-f0-9]{64}$/.exec(context)?.[1]
+  if (!key) return undefined
+  const checkIds = PAGE_CHECK_DEFINITIONS['security-headers'].assertions[key]?.verifies
+  if (!checkIds?.includes(checkId)) return undefined
+  return { context: currentSecurityHeaderTarget(context, checkId), checkIds }
 }
 
 /** Separators inside quoted HTTP field values do not create policy tokens. */
@@ -30,6 +58,16 @@ function headerTokens(value: string, delimiter = ','): string[] {
   values.push(value.slice(start))
   return values.map(value => value.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, ''))
 }
+
+/** The HTML frame check deduplicates case-insensitive field values. A mix
+ * containing a recognized value blocks framing without expressing a policy. */
+function inspectFrameOptions(header: string | undefined) {
+  const values = new Set(headerTokens(header ?? '').map(value => value.toLowerCase()))
+  const restrictive = values.has('deny') || values.has('sameorigin')
+  if (values.size > 1 && (restrictive || values.has('allowall'))) return 'conflict'
+  return restrictive ? 'restrictive' : 'unrestricted'
+}
+
 const REFERRER_POLICIES = new Set(['no-referrer', 'no-referrer-when-downgrade', 'same-origin', 'origin',
   'strict-origin', 'origin-when-cross-origin', 'strict-origin-when-cross-origin', 'unsafe-url'])
 
@@ -117,10 +155,10 @@ function crossOriginPolicyToken(value: string, structured: boolean): string | nu
 }
 
 const HEADER_RESPONSIBILITIES = [
-  ['content-security-policy', 'Content Security Policy', 'An enforcing CSP header is present'],
+  ['content-security-policy', 'Content Security Policy', 'The response declares a recognized enforcing CSP directive'],
   ['csp-inline-scripts', 'CSP inline script permissions', 'Enforced policies restrict arbitrary inline scripts and handlers'],
   ['csp-eval', 'CSP dynamic script permissions', 'Enforced policies restrict JavaScript string evaluation'],
-  ['csp-objects', 'CSP object sources', 'An object-src directive without a wildcard is recorded'],
+  ['csp-objects', 'CSP object sources', 'Enforced object sources are limited to specific hosts or blocked'],
   ['hsts-duration', 'HSTS duration', 'The HTTPS HSTS max-age is at least 31536000 seconds'],
   ['hsts-subdomains', 'HSTS subdomain declaration', 'A valid nonzero HTTPS HSTS policy specifies includeSubDomains'],
   ['hsts-preload', 'HSTS preload declaration', 'A valid nonzero HTTPS HSTS policy contains the preload declaration'],
@@ -143,7 +181,7 @@ export function securityHeaderObservations(url: string, headers: Record<string, 
   const observe = (key: string, name: string, expected: string, observed: string, passed: boolean, complete = true, advisory = false) => {
     values.push({ key, name, expected, observed, passed: complete && passed, complete,
       ...(advisory ? { disposition: 'observed' as const } : {}),
-      context: `security-header:${POLICY_ASSERTIONS_V2.has(key) ? 'v2:' : ''}${key}:${responseContext}` })
+      context: securityHeaderContextPrefix(key) + responseContext })
   }
   if (headers === null) {
     for (const [key, name, expected] of HEADER_RESPONSIBILITIES) {
@@ -157,18 +195,31 @@ export function securityHeaderObservations(url: string, headers: Record<string, 
   const hstsPolicy = hsts ? inspectHsts(hsts) : null
   const age = hstsPolicy?.age ?? null
   const hstsComplete = !hsts || hstsPolicy !== null
-  const frame = headers['x-frame-options']?.trim().toLowerCase()
   const referrerHeader = headers['referrer-policy']
   const referrer = headerTokens(referrerHeader ?? '').map(token => token.toLowerCase()).filter(token => REFERRER_POLICIES.has(token)).at(-1)
   const permissions = headers['permissions-policy']
   const overbroad = permissions ? sensitivePermissionWildcards(permissions) : []
-  observe('content-security-policy', 'Content Security Policy', 'An enforcing CSP header is present', csp ? 'Enforcing CSP recorded' : 'Enforcing CSP absent', Boolean(csp))
+  observe('content-security-policy', 'Content Security Policy', 'The response declares a recognized enforcing CSP directive',
+    policy.enforcement === null ? 'The declared CSP did not establish recognized enforcement.'
+      : policy.enforcement ? 'A recognized enforcing CSP directive was recorded.' : 'No enforcing CSP directive was recorded.',
+    policy.enforcement === true, policy.enforcement !== null)
+  const { sandboxBlocksScripts, inlineAllowed, evalAllowed } = policy
+  const sandboxEvidence = 'The enforced CSP sandbox disables scripting.'
+  const unknownScriptEvidence = policy.sandboxUncertain ? 'The CSP sandbox directives did not establish whether scripts are blocked.'
+    : 'Applicable script restrictions could not be established.'
   observe('csp-inline-scripts', 'CSP inline script permissions', 'Enforced policies restrict arbitrary inline scripts and handlers',
-    policy.inlineAllowed === null ? 'Applicable script restrictions could not be established.' : policy.inlineAllowed ? 'Enforced policies permit arbitrary inline scripts or handlers.' : 'At least one enforced policy restricts each inline script and handler scope.', policy.inlineAllowed === false, policy.inlineAllowed !== null)
+    sandboxBlocksScripts ? sandboxEvidence : inlineAllowed === null ? unknownScriptEvidence
+      : inlineAllowed ? 'Enforced policies permit arbitrary inline scripts or handlers.' : 'At least one enforced policy restricts each inline script and handler scope.',
+    inlineAllowed === false, inlineAllowed !== null)
   observe('csp-eval', 'CSP dynamic script permissions', 'Enforced policies restrict JavaScript string evaluation',
-    policy.evalAllowed === null ? 'Applicable script restrictions could not be established.' : policy.evalAllowed ? 'Enforced policies permit JavaScript string evaluation through unsafe-eval.' : 'At least one enforced script policy omits the unsafe-eval keyword. WebAssembly permission is separate.', policy.evalAllowed === false, policy.evalAllowed !== null)
-  observe('csp-objects', 'CSP object sources', 'An object-src directive without a wildcard is recorded',
-    policy.objectRestricted ? 'An enforced object-src directive without a wildcard was recorded.' : 'No enforced object-src directive without a wildcard was recorded.', policy.objectRestricted)
+    sandboxBlocksScripts ? sandboxEvidence : evalAllowed === null ? unknownScriptEvidence
+      : evalAllowed ? 'Enforced policies permit JavaScript string evaluation through unsafe-eval.' : 'At least one enforced script policy omits the unsafe-eval keyword. WebAssembly permission is separate.',
+    evalAllowed === false, evalAllowed !== null)
+  observe('csp-objects', 'CSP object sources', 'Enforced object sources are limited to specific hosts or blocked',
+    policy.objectRestricted === null ? 'The effective object source restrictions could not be established.'
+      : policy.objectRestricted ? 'An enforced object-src directive or its default-src fallback limits the object sources.'
+        : 'The enforced policy allows broad object sources or has no applicable object restriction.',
+    policy.objectRestricted === true, policy.objectRestricted !== null)
   observe('hsts-duration', 'HSTS duration', 'The HTTPS HSTS max-age is at least 31536000 seconds', age === null ? hsts ? 'HSTS duration could not be parsed' : 'HSTS absent' : `HSTS max-age ${age} seconds`, age !== null && age >= 31536000, https && (!hsts || age !== null))
   observe('hsts-subdomains', 'HSTS subdomain declaration', 'A valid nonzero HTTPS HSTS policy specifies includeSubDomains',
     !hstsComplete ? 'The HSTS declaration could not be interpreted' : hstsPolicy?.subdomains ? 'includeSubDomains recorded in a nonzero policy' : 'A nonzero policy with includeSubDomains is absent',
@@ -176,9 +227,15 @@ export function securityHeaderObservations(url: string, headers: Record<string, 
   observe('hsts-preload', 'HSTS preload declaration', 'A valid nonzero HTTPS HSTS policy contains the preload declaration',
     !hstsComplete ? 'The HSTS declaration could not be interpreted' : hstsPolicy?.preload ? 'Preload declaration recorded; browser-list enrollment was not checked' : 'A nonzero policy with preload is absent; browser-list enrollment was not checked',
     hstsPolicy?.preload === true, https && hstsComplete)
-  const framed = policy.hasFrameAncestors ? policy.frameProtected : frame === 'deny' || frame === 'sameorigin'
+  const frame = inspectFrameOptions(headers['x-frame-options'])
+  const frameConflict = !policy.hasFrameAncestors && frame === 'conflict'
+  const framed = policy.hasFrameAncestors ? policy.frameProtected : frame !== 'unrestricted'
   observe('frame-protection', 'Frame configuration', 'Enforced frame-ancestors restricts parents, or DENY/SAMEORIGIN applies',
-    framed === null ? 'The enforced ancestor sources could not be interpreted.' : framed ? 'Restrictive frame configuration recorded.' : policy.hasFrameAncestors ? 'Enforced frame-ancestors permits arbitrary web origins and overrides X-Frame-Options.' : 'Accepted frame configuration absent.', framed === true, framed !== null)
+    framed === null ? 'The enforced ancestor sources could not be interpreted.'
+      : frameConflict ? 'Conflicting X-Frame-Options values block embedding under the standard frame check. A deliberate frame policy remains unverified.'
+        : framed ? 'Restrictive frame configuration recorded.'
+          : policy.hasFrameAncestors ? 'Enforced frame-ancestors permits arbitrary web origins and overrides X-Frame-Options.'
+            : 'Accepted frame configuration absent.', framed === true, framed !== null, frameConflict)
   const nosniff = headerTokens(headers['x-content-type-options'] ?? '')[0].toLowerCase() === 'nosniff'
   observe('x-content-type-options', 'Content type protection', 'The first response field value specifies nosniff',
     nosniff ? 'The first field value enables nosniff' : 'The first field value does not enable nosniff', nosniff)
@@ -227,6 +284,8 @@ export function runSecurityHeaderChecks(
   const csp = headers['content-security-policy'] ?? null
   const cspReportOnly = headers['content-security-policy-report-only'] ?? null
   const observations = securityHeaderObservations(url, headers)
+  const enforcing = observations.find(item => item.key === 'content-security-policy')!
+  const missingEnforcement = enforcing.complete === true && !enforcing.passed
   const failed = (key: string) => observations.find(item => item.key === key)?.passed === false
   const scoped = (flag: DeterministicFlag, ids = [flag.checkId]): DeterministicFlag => ({ ...flag,
     verificationRule: SECURITY_HEADER_VERIFICATION_RULE,
@@ -234,20 +293,20 @@ export function runSecurityHeaderChecks(
       .map(item => ({ kind: 'page', context: item.context!, source: 'measured', device: 'desktop', label: item.name })),
   })
 
-  if (!csp) {
+  if (missingEnforcement) {
     findings.push({
       checkId: 'security-csp-missing',
       rubric: 'REACH',
       impactTag: 'TRUST',
       severity: 'CRITICAL',
-      problem: 'No Content-Security-Policy header',
-      evidence:
-        'No Content-Security-Policy header found. A CSP is defense-in-depth that limits which scripts and resources can run, reducing the blast radius if a script injection ever occurs.',
+      problem: csp?.trim() ? 'Content-Security-Policy does not declare enforcement' : 'No Content-Security-Policy header',
+      evidence: csp?.trim() ? 'No enforcing directive was found in the recorded header.'
+        : 'No Content-Security-Policy header found. A CSP is defense-in-depth that limits which scripts and resources can run, reducing the blast radius if a script injection ever occurs.',
       fix: 'Review the scripts, styles and resource origins the page needs. Test a Content-Security-Policy-Report-Only policy before enforcing Content-Security-Policy, then confirm that the existing page and customer tasks still work. Use nonces or hashes for required inline scripts rather than copying an untested policy.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else {
+  } else if (enforcing.passed) {
     if (observations.find(item => item.key === 'csp-inline-scripts')?.complete && failed('csp-inline-scripts')) {
       findings.push({
         checkId: 'security-csp-unsafe-inline',
@@ -276,14 +335,15 @@ export function runSecurityHeaderChecks(
       })
     }
 
-    if (failed('csp-objects')) {
+    const objectSources = observations.find(item => item.key === 'csp-objects')
+    if (objectSources?.complete && !objectSources.passed) {
       findings.push({
         checkId: 'security-csp-weak-object-src',
         rubric: 'REACH',
         impactTag: 'TRUST',
         severity: 'POLISH',
-        problem: 'CSP object-src allows * or is missing',
-        evidence: 'No enforced object-src directive without a wildcard was recorded. Other fallback restrictions and plugin execution were not assessed.',
+        problem: 'CSP leaves object sources broadly allowed',
+        evidence: objectSources.observed,
         fix: "Add object-src 'none' to your CSP to prevent embedding of legacy plugins.",
         confidence: 1.0,
         source: 'DETERMINISTIC',
@@ -291,7 +351,7 @@ export function runSecurityHeaderChecks(
     }
   }
 
-  if (cspReportOnly && !csp) {
+  if (missingEnforcement && cspReportOnly && inspectCsp(cspReportOnly).enforcement === true) {
     findings.push({
       checkId: 'security-csp-report-only',
       rubric: 'REACH',
@@ -299,7 +359,7 @@ export function runSecurityHeaderChecks(
       severity: 'POLISH',
       problem: 'CSP is report-only, not enforced',
       evidence:
-        'Content-Security-Policy-Report-Only header is present but no enforced Content-Security-Policy header exists. Violations are reported but not blocked.',
+        'A policy was declared in Content-Security-Policy-Report-Only, and the response contained no enforcing CSP directive.',
       fix: 'Convert Content-Security-Policy-Report-Only to Content-Security-Policy after confirming no legitimate content is blocked. Monitor violation reports first.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
@@ -392,14 +452,14 @@ export function runSecurityHeaderChecks(
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
-    } else if (!['deny', 'sameorigin'].includes(frameOptions.trim().toLowerCase())) {
+    } else {
       findings.push({
         checkId: 'security-frame-options-too-permissive',
         rubric: 'REACH',
         impactTag: 'TRUST',
         severity: 'POLISH',
         problem: 'X-Frame-Options is not DENY or SAMEORIGIN',
-        evidence: `X-Frame-Options is set to "${frameOptions}", which most browsers no longer honor safely.`,
+        evidence: 'The recorded X-Frame-Options values do not restrict embedding, and no enforced frame-ancestors directive applies.',
         fix: 'Set X-Frame-Options to DENY or SAMEORIGIN. For embedding pages, use a CSP frame-ancestors directive with specific trusted origins.',
         confidence: 1.0,
         source: 'DETERMINISTIC',

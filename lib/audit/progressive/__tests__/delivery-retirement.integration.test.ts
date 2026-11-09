@@ -148,8 +148,8 @@ run('obsolete task delivery retirement with migrated PostgreSQL and Redis', () =
   it('continues an independent queue after one ledger lookup fails', async () => {
     const first = await admit(), second = await admit('pagespeed')
     await prisma.audit.updateMany({ where: { id: { in: [first.audit.id, second.audit.id] } }, data: { status: 'FAILED' } })
-    const read = prisma.auditVerifierExecution.findMany.bind(prisma.auditVerifierExecution)
-    const interrupted = vi.spyOn(prisma.auditVerifierExecution, 'findMany').mockImplementation(args => {
+    const read = prisma.auditExecutionTask.findMany.bind(prisma.auditExecutionTask)
+    const interrupted = vi.spyOn(prisma.auditExecutionTask, 'findMany').mockImplementation(args => {
       const ids = args?.where?.id
       if (ids && typeof ids === 'object' && Array.isArray(ids.in) && ids.in.includes(first.task.id))
         throw new Error('Controlled ledger read failure')

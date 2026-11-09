@@ -1,12 +1,13 @@
 import type { Page } from 'playwright'
 import type { CaptureObservationScope } from './observation-scope'
+import type { ViewportDocument } from './viewport-observation'
 
 export type LoadingObservation = {
   version: 1; device: 'desktop' | 'mobile'; scope: CaptureObservationScope
-  contentVisible: boolean; ready: boolean; restricted: boolean
+  contentVisible: boolean; ready: boolean; restricted: boolean; interrupted?: true
 }
 
-export type LoadingUiSnapshot = {
+export type LoadingUiSnapshot = ViewportDocument & {
   readyState: string
   title: string | null
   loadingVisible: boolean
@@ -14,8 +15,10 @@ export type LoadingUiSnapshot = {
 }
 
 /** Shared browser predicate for capture, layout and loading-clearance observation. */
-export function loadingUiInDocument(waitForClear: boolean): LoadingUiSnapshot | false | number {
+export function loadingUiInDocument(expected: ViewportDocument | null): LoadingUiSnapshot | false | number | 'interrupted' {
   ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
+  const pageUrl = location.href, timeOrigin = performance.timeOrigin
+  if (expected && (expected.timeOrigin !== timeOrigin || expected.pageUrl !== pageUrl)) return 'interrupted'
   let loadingLabel: string | null = null
   for (const element of document.querySelectorAll('[aria-busy="true"], [role="progressbar"]:not([aria-valuenow]), progress:not([value]), [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]')) {
     if (element.getAttribute('data-loading') === 'false' && !element.matches('[aria-busy="true"], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]')) continue
@@ -35,11 +38,12 @@ export function loadingUiInDocument(waitForClear: boolean): LoadingUiSnapshot | 
     break
   }
   const loadingVisible = loadingLabel !== null
-  return waitForClear ? loadingVisible ? false : Date.now() : { readyState: document.readyState, title: document.title.trim() || null, loadingVisible, loadingLabel }
+  if (expected) return loadingVisible ? false : Date.now()
+  return { pageUrl, timeOrigin, readyState: document.readyState, title: document.title.trim() || null, loadingVisible, loadingLabel }
 }
 
 export async function readLoadingUi(page: Page): Promise<LoadingUiSnapshot> {
-  const snapshot = await page.evaluate(loadingUiInDocument, false)
+  const snapshot = await page.evaluate(loadingUiInDocument, null)
   if (typeof snapshot !== 'object') throw new Error('Loading snapshot was not returned')
   return snapshot
 }

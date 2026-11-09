@@ -9,6 +9,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { MCP_TOOLS } from '../lib/mcp/tool-manifest'
 import { z } from 'zod'
 import { REVIEW_ENTRY, SITE_BOARD_COPY } from '../lib/marketing/copy/terminology'
+import { FINDING_LABEL_COPY } from '../lib/marketing/copy/finding-labels'
 
 test('owned URL entry, partial scan, precise category recheck and responsive evidence', async ({ page, baseURL }) => {
   test.skip(process.env.FIXFLAGS_LOCAL_RELIABILITY_PROOF !== '1' || process.env.FIXFLAGS_LOCAL_PROVIDER_REFUSAL !== '1', 'Explicit isolated local proof only')
@@ -132,7 +133,8 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
         await page.evaluate(() => { window.scrollTo(0, 0); (document.activeElement as HTMLElement | null)?.blur() })
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
         await expect(page.getByRole('article', { name: 'Search', exact: true })).toBeVisible()
-        await expect(page.getByRole('button', { name: 'Check again', exact: true }).first()).toBeEnabled()
+        await expect(page.getByRole('article', { name: 'Search', exact: true })
+          .getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search'), exact: true })).toBeEnabled()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
         await page.screenshot({ path: `${output}/${theme}-${width}.png`, fullPage: true, animations: 'disabled' })
       }
@@ -144,7 +146,7 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
     const sourceFlagId = titleFlag.sourceFlagId ?? titleFlag.id
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseURL })
     await page.goto(`/sites/${siteId}/flags/${titleFlag.id}`)
-    await expect(page.getByRole('heading', { name: titleFlag.problem, exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: FINDING_LABEL_COPY['title-missing'], exact: true })).toBeVisible()
     await page.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt, exact: true }).click()
     await expect(page.getByRole('button', { name: SITE_BOARD_COPY.copyPromptCopied, exact: true })).toBeVisible()
     expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/title/i)
@@ -153,11 +155,12 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
       data: { missingTitle: false } })).ok()).toBe(true)
     await page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
     await page.getByLabel(SITE_BOARD_COPY.changeLabel).fill('Restored the original and rendered page title.')
-    const verifyResponse = page.waitForResponse(response => response.url().endsWith(`/api/sites/${siteId}/flags/${sourceFlagId}/verify`) && response.request().method() === 'POST')
+    const verifyResponse = page.waitForResponse(response => response.url().endsWith(`/api/sites/${siteId}/flags/${titleFlag.id}/verify`) && response.request().method() === 'POST')
     await page.getByRole('dialog').getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
     const acceptedVerification = await verifyResponse
     expect(acceptedVerification.status()).toBe(202)
     const verified = await acceptedVerification.json()
+    expect(verified.flagId).toBe(titleFlag.id)
     await expect.poll(async () => {
       const attempt = await db.improvementAttempt.findUnique({ where: { id: verified.attemptId }, select: { outcome: true, verificationReason: true, comparable: true } })
       proof.repair = { flagId: titleFlag.id, sourceFlagId, attemptId: verified.attemptId, verificationAuditId: verified.verificationAuditId,

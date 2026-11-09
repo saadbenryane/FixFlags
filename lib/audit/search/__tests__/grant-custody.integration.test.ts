@@ -7,6 +7,7 @@ import { searchReceiptSchema } from '../contracts'
 import { assessSearchRecovery } from '../recovery'
 import { getGscAccessToken } from '@/lib/integrations/google-search-console'
 import { decryptSecret } from '@/lib/security/crypto'
+import { completeGoogleConnection, signConnectionState } from '@/lib/sites/connections/google'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('Search provider authorization at evidence commit', () => {
@@ -19,6 +20,7 @@ run('Search provider authorization at evidence commit', () => {
     const database = new URL(process.env.DATABASE_URL!)
     if (!['localhost', '127.0.0.1'].includes(database.hostname) || !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Use the disposable execution verifier')
+    vi.stubEnv('BETTER_AUTH_SECRET', 'local-search-grant-fixture-secret')
     await prisma.user.createMany({ data: [owner, stranger].map(id => ({ id, email: id + '@example.test' })) })
     vi.stubGlobal('fetch', async (input: string | URL | Request) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
@@ -39,6 +41,7 @@ run('Search provider authorization at evidence commit', () => {
   })
   afterAll(async () => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     await prisma.user.deleteMany({ where: { id: { in: [owner, stranger] } } })
     await prisma.$disconnect()
   })
@@ -113,10 +116,20 @@ run('Search provider authorization at evidence commit', () => {
         await vi.waitFor(() => expect(requests).toBe(2))
         if (phase === 'owner') await prisma.project.update({ where: { id: site.id }, data: { userId: stranger } })
         else if (phase === 'deleted') await prisma.siteConnection.delete({ where: { id: connection.id } })
-        else await prisma.siteConnection.update({ where: { id: connection.id }, data: phase === 'revoked'
+        else if (phase === 'replaced') {
+          const state = signConnectionState({ userId: owner, projectId: site.id, provider: 'SEARCH_CONSOLE' })
+          await expect(completeGoogleConnection({ state, code: 'fixture-reauthorization', sessionUserId: owner, client: {
+            exchangeCode: async () => ({ accessToken: 'new-access', refreshToken: 'new-grant', expiresInSeconds: 3600 }),
+            listSearchSites: async () => [{ siteUrl: property }],
+            querySearch: async (_token, scope) => [{ keys: ['https://' + scope.hostnames[0] + '/', 'service'], clicks: 20, impressions: 100 }],
+            findAnalyticsProperty: vi.fn(), queryAnalytics: vi.fn(), revoke: vi.fn(),
+          } })).resolves.toEqual({ projectId: site.id })
+          const current = await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })
+          expect(current).toMatchObject({ status: 'CONNECTED', propertyId: property })
+          expect(current.authorizationId).not.toBe(connection.authorizationId)
+        } else await prisma.siteConnection.update({ where: { id: connection.id }, data: phase === 'revoked'
           ? { status: 'REVOKED', encryptedAccessToken: null, encryptedRefreshToken: null }
-          : phase === 'replaced' ? { encryptedAccessToken: encryptSecret('new-access'), encryptedRefreshToken: encryptSecret('new-grant') }
-            : phase === 'property' ? { propertyId: pageUrl }
+          : phase === 'property' ? { propertyId: pageUrl }
               : { encryptedAccessToken: encryptSecret('refreshed-access'), tokenExpiresAt: new Date(Date.now() + 7200_000) } })
         release()
         const completed = await settled

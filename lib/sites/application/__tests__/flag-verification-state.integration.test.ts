@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { loadCurrentFlagVerifications } from '../flag-verification-state'
+import { loadCurrentFlagVerifications, loadSiteFlagVerification } from '../flag-verification-state'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
+import { getOwnedRun } from '../run-queries'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('current admitted Flag verification', () => {
@@ -65,10 +66,30 @@ run('current admitted Flag verification', () => {
     await prisma.audit.update({ where: { id: earlier.audit.id }, data: { status: 'FAILED', completedAt: new Date('2026-11-02T00:01:00Z') } })
     const later = await check(new Date('2026-11-03T00:00:00Z'))
     await prisma.improvementAttempt.update({ where: { id: later.attempt.id }, data: { createdAt: new Date('2026-10-31T00:00:00Z') } })
-    expect((await loadCurrentFlagVerifications(projectId, targets())).get(flagId)).toEqual({ verifying: true, feedback: null })
+    expect((await loadCurrentFlagVerifications(projectId, targets())).get(flagId)).toEqual({ auditId: later.audit.id, verifying: true, feedback: null })
     await prisma.audit.update({ where: { id: later.audit.id }, data: { status: 'FAILED', completedAt: new Date('2026-11-03T00:01:00Z') } })
     expect((await loadCurrentFlagVerifications(projectId, targets())).get(flagId))
       .toMatchObject({ verifying: false, feedback: { result: 'could_not_verify', checkedAt: '2026-11-03T00:01:00.000Z' } })
+  })
+
+  it('follows an exact repair after collection and after newer checks arrive', async () => {
+    const { audit, attempt } = await check()
+    const site = (await loadSiteRecord(projectId))!
+    const read = () => loadSiteFlagVerification(site, flagId, audit.id)
+    expect(await read()).toMatchObject({ auditId: audit.id, verifying: true })
+    const completedAt = new Date('2026-11-02T00:01:00Z')
+    await prisma.audit.update({ where: { id: audit.id }, data: { status: 'COMPLETED', completedAt } })
+    const task = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:finalize',
+      source: 'SYSTEM', status: 'RUNNING', workKind: 'finalize', workState: 'RUNNING' } })
+    expect(await read()).toMatchObject({ verifying: true })
+    await prisma.improvementAttempt.update({ where: { id: attempt.id }, data: { outcome: 'UNCHANGED', comparable: true } })
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { status: 'COMPLETED', workState: 'COMPLETED' } })
+    const newer = await check(new Date('2026-11-03T00:00:00Z'))
+    expect(await loadSiteFlagDetail(site, flagId)).toMatchObject({ verifying: true, activeVerificationAuditId: newer.audit.id })
+    expect(await read()).toMatchObject({ auditId: audit.id, verifying: false })
+    expect(await loadSiteFlagVerification(site, flagId, sourceId)).toBeNull()
+    expect(await loadSiteFlagVerification(site, 'unrelated-flag', audit.id)).toBeNull()
+    await expect(loadSiteFlagVerification({ ...site, userId: 'other-owner' }, flagId, audit.id)).rejects.toThrow('Site not found')
   })
 
   it('keeps pending finalization active and refuses unrelated parents, later occurrences and foreign Sites', async () => {
@@ -85,6 +106,29 @@ run('current admitted Flag verification', () => {
     await prisma.audit.update({ where: { id: audit.id }, data: { parentId: sourceId } })
     expect(await loadCurrentFlagVerifications('foreign-site', targets())).toEqual(new Map())
     expect(await loadCurrentFlagVerifications(projectId, [{ ...targets()[0], id: 'later-flag' }])).toEqual(new Map())
+  })
+
+  it.each(['IMPROVED', 'INCONCLUSIVE'] as const)('keeps the run and Flag pending until the exact %s comparison settles', async outcome => {
+    const { audit, attempt } = await check()
+    const target = { kind: 'DIAGNOSTIC', attemptId: attempt.id, parentAuditId: sourceId,
+      checkId: 'title-missing', pageUrl: 'https://example.com/' }
+    const spec = { version: 1, engine: 'progressive-v1', scope: 'DIAGNOSTIC', targetUrl: target.pageUrl,
+      environment: 'production', checks: { 'title-missing': 1 }, outcomes: [], verificationTarget: target }
+    await prisma.audit.update({ where: { id: audit.id }, data: { status: 'COMPLETED', completedAt: new Date(), executionSpec: spec } })
+    const request = await prisma.runRequest.create({ data: { projectId, requestedByUserId: ownerId, auditId: audit.id,
+      source: 'WEB', status: 'COMPLETED', completedAt: new Date(), idempotencyKey: randomUUID(), executionSpec: spec } })
+    const finalizer = await prisma.auditExecutionTask.create({ data: { auditId: audit.id, targetKey: 'task:finalize', source: 'EXECUTION',
+      workKind: 'finalize', workState: 'RETRY_WAIT', status: 'FAILED' } })
+    expect(await getOwnedRun(ownerId, request.id, projectId)).toMatchObject({ status: 'RUNNING', result: null,
+      summary: null, completionState: 'PENDING', completedAt: null })
+    expect((await loadCurrentFlagVerifications(projectId, targets())).get(flagId)?.verifying).toBe(true)
+    await prisma.improvementAttempt.update({ where: { id: attempt.id }, data: { outcome, comparable: outcome === 'IMPROVED',
+      evidenceReference: { beforeAuditId: sourceId, afterAuditId: audit.id } } })
+    await prisma.auditExecutionTask.update({ where: { id: finalizer.id }, data: { workState: 'COMPLETED', status: 'COMPLETED' } })
+    expect(await getOwnedRun(ownerId, request.id, projectId)).toMatchObject({ status: 'COMPLETED',
+      result: outcome === 'IMPROVED' ? 'CLEAR' : 'COULD_NOT_VERIFY', completionState: outcome === 'IMPROVED' ? 'FULL' : 'PARTIAL' })
+    expect(await getOwnedRun(ownerId, request.id)).toEqual(await getOwnedRun(ownerId, request.id, projectId))
+    expect((await loadCurrentFlagVerifications(projectId, targets())).get(flagId)?.verifying).toBe(false)
   })
 
   it('reads only scalar current state beside a large immutable comparison snapshot', async () => {

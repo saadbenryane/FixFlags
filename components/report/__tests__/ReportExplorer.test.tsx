@@ -107,7 +107,7 @@ describe('ReportExplorer anonymous teaser', () => {
         })
       ).toHaveAttribute('aria-pressed', 'true')
     })
-    expect(screen.getAllByRole('button', { name: 'Copy prompt' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Copy fix instructions' }).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Create a free account to get the fix prompt/i)).not.toBeInTheDocument()
   })
 

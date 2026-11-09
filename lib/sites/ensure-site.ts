@@ -5,6 +5,7 @@ import { encodeSiteId, siteUrlParts, type SiteRecord } from '@/lib/sites/types'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { productNameFromUrl } from '@/lib/audit/product-intelligence'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { watchErrorMessage } from './watch-state'
 
 /**
  * Resolve or create the customer Site for an analysis.
@@ -56,7 +57,7 @@ export async function ensureSiteForAudit(input: {
       watchNextRunAt: project.watchNextRunAt,
       watchPausedAt: project.watchPausedAt,
       watchLastRunAt: project.watchLastRunAt,
-      watchLastError: project.watchLastError,
+      watchLastError: watchErrorMessage(project.watchLastError),
       watchConsecutiveFailures: project.watchConsecutiveFailures,
       userId: project.userId,
     }
@@ -101,7 +102,7 @@ export async function ensureSiteForAudit(input: {
         watchNextRunAt: project.watchNextRunAt,
         watchPausedAt: project.watchPausedAt,
         watchLastRunAt: project.watchLastRunAt,
-        watchLastError: project.watchLastError,
+        watchLastError: watchErrorMessage(project.watchLastError),
         watchConsecutiveFailures: project.watchConsecutiveFailures,
         userId: project.userId,
       }
@@ -211,7 +212,7 @@ export async function loadSiteRecord(
       watchNextRunAt: project.watchNextRunAt,
       watchPausedAt: project.watchPausedAt,
       watchLastRunAt: project.watchLastRunAt,
-      watchLastError: project.watchLastError,
+      watchLastError: watchErrorMessage(project.watchLastError),
       watchConsecutiveFailures: project.watchConsecutiveFailures,
       userId: project.userId,
     }

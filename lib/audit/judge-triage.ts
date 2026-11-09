@@ -4,6 +4,7 @@ import OpenAI from 'openai'
 import type { ProviderUsageAdmission } from './provider-usage'
 import {
   triageProviderOutputSchema,
+  triageOutputSchema,
   QUALITY_TRIAGE_SCHEMA_OPENAI,
   QUALITY_TRIAGE_TOOL,
   type TriageOutput,
@@ -12,9 +13,10 @@ import { buildTriageSystemPrompt, buildTriageUserPrompt, type TriageContext } fr
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
-import { getTriageProviderConfig } from './judge-config'
+import { getTriageProviderConfig, type ProviderConfig } from './judge-config'
+import { createHash } from 'node:crypto'
 import { getScreenshotHint } from './screenshot-hint'
-import { assessTriageRecommendations, type TriageAssessment } from './triage-grounding'
+import { assessTriageRecommendations, triageAssessmentSchema, type TriageAssessment } from './triage-grounding'
 import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
@@ -34,6 +36,26 @@ export interface TriageResult {
   output: TriageOutput
   usage: TriageUsage
   assessment?: TriageAssessment
+}
+
+export function reusableTriageInterpretation(result: TriageResult, configurations: readonly { provider: string; model: string }[]) {
+  return result.assessment?.status === 'COMPLETE' && result.output.rubrics.every(rubric => rubric.assessmentState === 'ASSESSED')
+    && configurations.some(config => config.provider === result.usage.provider && config.model === result.usage.model)
+}
+
+/** Re-run current grounding and policy before a retained interpretation can
+ * attach to a fresh observation. Original provider consumption is not replayed. */
+export function revalidateTriageInterpretation(value: unknown, context: TriageContext, flags: DeterministicFlag[]): TriageResult | null {
+  if (!value || typeof value !== 'object') return null
+  const recorded = value as TriageResult
+  const parsed = triageOutputSchema.safeParse(recorded.output)
+  const assessment = triageAssessmentSchema.safeParse(recorded.assessment)
+  if (!parsed.success || !assessment.success || assessment.data.status !== 'COMPLETE') return null
+  const grounded = assessTriageRecommendations(parsed.data.newFlags, context)
+  if (grounded.assessment.status !== 'COMPLETE') return null
+  const output = validateTriageOutput(parsed.data, flags, context.pagePurpose?.purpose ?? 'unknown', context)
+  if (output.newFlags.length !== parsed.data.newFlags.length) return null
+  return { output, assessment: assessment.data, usage: { inputTokens: 0, outputTokens: 0, model: recorded.usage?.model ?? 'reused' } }
 }
 
 export function isTriageProviderConfigured(): boolean {
@@ -139,17 +161,7 @@ function parseTriageOutput(
     assessment: { ...assessment, admittedCount: output.newFlags.length, rubrics: parsed.data.rubrics, verdict: parsed.data.verdict } }
 }
 
-async function runAnthropicTriage(
-  context: ReturnType<typeof buildTriageContext>,
-  flags: DeterministicFlag[],
-  desktopBase64: string | null,
-  mobileBase64: string | null,
-  maxTimeoutMs?: number,
-  onAttempt?: ProviderUsageAdmission
-): Promise<TriageResult> {
-  if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
-  const client = anthropic
-
+function anthropicTriageRequest(context: ReturnType<typeof buildTriageContext>, desktopBase64: string | null, mobileBase64: string | null, cfg: ProviderConfig) {
   const imageContent: Anthropic.ImageBlockParam[] = []
   if (desktopBase64) {
     imageContent.push({
@@ -163,45 +175,114 @@ async function runAnthropicTriage(
       source: { type: 'base64', media_type: 'image/png', data: mobileBase64 },
     })
   }
+  return {
+    model: cfg.model,
+    max_tokens: cfg.maxTokens,
+    system: [
+      {
+        type: 'text',
+        text: buildTriageSystemPrompt(),
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    tools: [QUALITY_TRIAGE_TOOL],
+    tool_choice: { type: 'tool', name: 'quality_triage' },
+    messages: [
+      {
+        role: 'user',
+        content: [
+          ...imageContent,
+          {
+            type: 'text',
+            text: buildTriageUserPrompt({
+              ...context,
+              screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
+            }),
+          },
+        ],
+      },
+    ],
+  } satisfies Parameters<NonNullable<typeof anthropic>['messages']['create']>[0]
+}
+
+function openAITriageRequest(context: ReturnType<typeof buildTriageContext>, desktopBase64: string | null, mobileBase64: string | null, cfg: ProviderConfig) {
+  const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
+  if (desktopBase64) {
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:image/png;base64,${desktopBase64}`,
+        detail: 'low',
+      },
+    })
+  }
+  if (mobileBase64) {
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:image/png;base64,${mobileBase64}`,
+        detail: 'low',
+      },
+    })
+  }
+  content.push({
+    type: 'text',
+    text: buildTriageUserPrompt({
+      ...context,
+      screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
+    }),
+  })
+  return {
+    model: cfg.model,
+    max_tokens: cfg.maxTokens,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'quality_triage',
+        strict: true,
+        schema: QUALITY_TRIAGE_SCHEMA_OPENAI,
+      },
+    },
+    messages: [
+      { role: 'system', content: buildTriageSystemPrompt() },
+      { role: 'user', content },
+    ],
+  } satisfies Parameters<NonNullable<typeof openai>['chat']['completions']['create']>[0]
+}
+
+/** These digests use the very same request builders as SDK dispatch. Native
+ * receipt IDs and unused provider timestamps cannot invalidate interpretation. */
+export function triageInterpretationRequestDigests(context: ReturnType<typeof buildTriageContext>, desktopBase64: string | null,
+  mobileBase64: string | null, configurations: readonly (ProviderConfig & { provider: string })[]) {
+  return configurations.map(config => {
+    const body = config.provider === 'openai' ? openAITriageRequest(context, desktopBase64, mobileBase64, config)
+      : config.provider === 'anthropic' ? anthropicTriageRequest(context, desktopBase64, mobileBase64, config) : null
+    if (!body) throw new Error('Unknown triage provider: ' + config.provider)
+    return { provider: config.provider, model: config.model, bodySha256: createHash('sha256').update(JSON.stringify(body)).digest('hex') }
+  })
+}
+
+async function runAnthropicTriage(
+  context: ReturnType<typeof buildTriageContext>,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null,
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
+): Promise<TriageResult> {
+  if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+  const client = anthropic
 
   const cfg = getTriageProviderConfig('anthropic', maxTimeoutMs)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = anthropicTriageRequest(context, desktopBase64, mobileBase64, cfg)
     const { response, usage } = await measuredProviderRequest({
-      model: cfg.model, onAttempt: onAttempt,
-      request: () => client.messages.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        system: [
-          {
-            type: 'text',
-            text: buildTriageSystemPrompt(),
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        tools: [QUALITY_TRIAGE_TOOL],
-        tool_choice: { type: 'tool', name: 'quality_triage' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              ...imageContent,
-              {
-                type: 'text',
-                text: buildTriageUserPrompt({
-                  ...context,
-                  screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
-                }),
-              },
-            ],
-          },
-        ],
-      },
-      { signal: controller.signal }
-      ),
+      api: 'messages', requestBody,
+      model: cfg.model, onAttempt,
+      request: () => client.messages.create(requestBody, { signal: controller.signal }),
       usage: response => anthropicResponseUsage(response, cfg.model),
     })
 
@@ -230,59 +311,16 @@ async function runOpenAITriage(
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
   const client = openai
 
-  const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
-  if (desktopBase64) {
-    content.push({
-      type: 'image_url',
-      image_url: {
-        url: `data:image/png;base64,${desktopBase64}`,
-        detail: 'low',
-      },
-    })
-  }
-  if (mobileBase64) {
-    content.push({
-      type: 'image_url',
-      image_url: {
-        url: `data:image/png;base64,${mobileBase64}`,
-        detail: 'low',
-      },
-    })
-  }
-  content.push({
-    type: 'text',
-    text: buildTriageUserPrompt({
-      ...context,
-      screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
-    }),
-  })
-
   const cfg = getTriageProviderConfig('openai', maxTimeoutMs)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
+    const requestBody = openAITriageRequest(context, desktopBase64, mobileBase64, cfg)
     const { response, usage } = await measuredProviderRequest({
-      model: cfg.model, onAttempt: onAttempt,
-      request: () => client.chat.completions.create(
-      {
-        model: cfg.model,
-        max_tokens: cfg.maxTokens,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'quality_triage',
-            strict: true,
-            schema: QUALITY_TRIAGE_SCHEMA_OPENAI,
-          },
-        },
-        messages: [
-          { role: 'system', content: buildTriageSystemPrompt() },
-          { role: 'user', content },
-        ],
-      },
-      { signal: controller.signal }
-      ),
+      api: 'chat.completions', requestBody,
+      model: cfg.model, onAttempt,
+      request: () => client.chat.completions.create(requestBody, { signal: controller.signal }),
       usage: response => openAIResponseUsage(response, cfg.model),
     })
 

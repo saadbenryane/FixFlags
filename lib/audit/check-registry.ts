@@ -3,6 +3,9 @@ import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { canonicalHistoricalCheckId } from './check-compatibility'
 import { SEARCH_CHECK_REGISTRY, type SearchCheckIdentity } from './search/definitions'
 import { AXE_POLICY_CHECK_IDS } from './checks/accessibility-rules'
+import { PUBLIC_PREVIEW_CHECK_VERSIONS } from './checks/corridor-contract'
+import { isPreviewDeclarationCheck, PUBLIC_PREVIEW_VERSION } from './checks/preview-contract'
+import { FAVICON_CHECK_VERSION } from './checks/favicon-declaration'
 
 export type CheckDefinition = { version: number; area: SiteCardArea; module: string; capabilities: readonly string[] }
 
@@ -16,15 +19,15 @@ const LEGACY_CHECK_DEFINITIONS = {
   'description-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'description-too-short': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'description-too-long': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
-  'og-image-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-social-preview"] },
-  'og-image-broken': { version: 1, area: 'search', module: 'og-image', capabilities: ["reach-social-preview"] },
-  'og-title-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-social-preview"] },
-  'og-description-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-social-preview"] },
+  'og-image-missing': { version: PUBLIC_PREVIEW_VERSION, area: 'search', module: 'og-image', capabilities: ["reach-social-preview"] },
+  'og-image-broken': { version: PUBLIC_PREVIEW_VERSION, area: 'search', module: 'og-image', capabilities: ["reach-social-preview"] },
+  'og-title-missing': { version: PUBLIC_PREVIEW_VERSION, area: 'search', module: 'og-image', capabilities: ["reach-social-preview"] },
+  'og-description-missing': { version: PUBLIC_PREVIEW_VERSION, area: 'search', module: 'og-image', capabilities: ["reach-social-preview"] },
   'viewport-missing': { version: 1, area: 'accessibility', module: 'metadata', capabilities: ["reach-title-description"] },
   'lang-missing': { version: 1, area: 'accessibility', module: 'metadata', capabilities: ["reach-title-description"] },
   'canonical-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-indexability"] },
   'robots-blocks-indexing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-indexability"] },
-  'favicon-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
+  'favicon-missing': { version: FAVICON_CHECK_VERSION, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'perf-score-critical': { version: 1, area: 'performance', module: 'performance', capabilities: ["experience-core-web-vitals"] },
   'perf-score-poor': { version: 1, area: 'performance', module: 'performance', capabilities: ["experience-core-web-vitals"] },
   'lcp-critical': { version: 1, area: 'performance', module: 'performance', capabilities: ["experience-core-web-vitals"] },
@@ -221,8 +224,8 @@ const LEGACY_CHECK_DEFINITIONS = {
   'journey-funnel-missing-feedback': { version: 2, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
   'journey-funnel-unclear-progress': { version: 2, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
   'journey-funnel-too-many-steps': { version: 2, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
-  'corridor-og-title-drift': { version: 2, area: 'search', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
-  'corridor-og-description-drift': { version: 1, area: 'search', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
+  'corridor-og-title-drift': { version: PUBLIC_PREVIEW_CHECK_VERSIONS['corridor-og-title-drift'], area: 'search', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
+  'corridor-og-description-drift': { version: PUBLIC_PREVIEW_CHECK_VERSIONS['corridor-og-description-drift'], area: 'search', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
   'api-engagement-unauthorized': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'api-engagement-server-error': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'form-submit-api-unauthorized': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
@@ -244,6 +247,14 @@ const axeDefinitions = Object.fromEntries(AXE_GENERATED_CHECK_IDS.map(id => [id,
 export const CHECK_DEFINITIONS = { ...LEGACY_CHECK_DEFINITIONS, ...searchDefinitions, ...axeDefinitions, ...ACCOUNT_CHECK_DEFINITIONS }
 
 export const CHECK_REGISTRY: Record<string, CheckDefinition> = CHECK_DEFINITIONS
+
+export function executionCheckModule(id: string, version?: number) {
+  return version === 1 && isPreviewDeclarationCheck(id) ? 'metadata' : CHECK_REGISTRY[id]?.module
+}
+
+export function supportsExecutionCheckVersion(id: string, version: number) {
+  return CHECK_REGISTRY[id]?.version === version || version === 1 && (isPreviewDeclarationCheck(id) || id === 'og-image-broken' || id === 'favicon-missing')
+}
 
 export function registeredCheck(id: string | null | undefined) {
   return CHECK_REGISTRY[canonicalHistoricalCheckId(id)]

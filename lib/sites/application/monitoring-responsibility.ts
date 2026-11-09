@@ -2,7 +2,9 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { INTERNAL_REVIEW_PAGE_CEILING, monitoringReviewUrls } from '@/lib/audit/review-depth'
-import { actionContextSchema, executionSpecSchema, monitoredBehaviorSchema, type ExecutionSpec } from '../domain/execution-spec'
+import { executionSpecSchema, monitoredBehaviorSchema, type ExecutionSpec } from '../domain/execution-spec'
+import { ACTION_CONTEXT_PATTERN, PRIMARY_ACTION_RESPONSE_CONTEXT, actionContextSchema } from '@/lib/audit/flow/action-context'
+import { TRACKING_ACTION_CONTEXT } from '@/lib/audit/tracking/identity'
 import { analysisEnvironmentSourceSql, claimedSiteWideAnalysisSourceSql } from './analysis-scope'
 import { consoleObservationMinimum } from '@/lib/audit/console-evidence'
 import { recordedTargetBatches, type RecordedTargetReader } from '@/lib/audit/recorded-targets'
@@ -55,14 +57,16 @@ function responsibilitySources(input: { projectId: string; environment: string }
 
 /** Reuse admitted control intent and attributable native receipts. Read only
  * page/context pairs, never whole reports or private collector payloads. These
- * are future observation obligations, not a claim of current health. */
+ * are future observation obligations, not a claim of current health.
+ * Legacy inventory gaps could be copied into later plans. Exclude their
+ * synthetic keys using both the requested page and the observed receipt URL. */
 export async function monitoringActionResponsibility(input: {
   projectId: string; environment: string; pages: readonly string[];
 }, db: ResponsibilityReader = prisma): Promise<Map<string, string[]>> {
   if (!input.pages.length) return new Map()
   const rows = await db.$queryRaw<Array<{ pageUrl: string; context: string }>>`
     WITH sources AS MATERIALIZED (${responsibilitySources(input, true, true)}), candidates AS (
-      SELECT scope.value->>'pageUrl' AS "pageUrl", member.value #>> '{}' AS context
+      SELECT scope.value->>'pageUrl' AS "pageUrl", member.value #>> '{}' AS context, false AS "legacyInventory"
         FROM sources s CROSS JOIN LATERAL jsonb_array_elements(CASE
           WHEN s."executionSpec"->>'scope' IN ('SITE', 'CATEGORY') AND jsonb_typeof(s."executionSpec"->'monitoringBehaviors') = 'array'
             THEN s."executionSpec"->'monitoringBehaviors' ELSE '[]'::jsonb END || CASE
@@ -73,21 +77,39 @@ export async function monitoringActionResponsibility(input: {
         WHERE s."executionSpec"->'version' = '1'::jsonb AND s."executionSpec"->>'targetUrl' = s."url"
           AND scope.value->>'pageUrl' IN (${Prisma.join(input.pages)})
       UNION ALL
-      SELECT task."pageUrl", assertion.value->>'context'
+      SELECT task."pageUrl", CASE WHEN receipt."targetKey" = 'module:measurement'
+          THEN 'flow:control:' || substring(assertion.value->>'context' FROM ${TRACKING_ACTION_CONTEXT.source})
+          WHEN receipt."targetKey" = 'module:flow' AND assertion.value->>'key' = 'primary-action-response'
+            AND assertion.value->>'context' ~ ${PRIMARY_ACTION_RESPONSE_CONTEXT.source}
+          THEN 'flow:control:' || substring(assertion.value->>'context' FROM ${PRIMARY_ACTION_RESPONSE_CONTEXT.source})
+          ELSE assertion.value->>'context' END,
+        receipt."targetKey" = 'module:form-validation' AND assertion.value->>'context' =
+          ('form:' || encode(sha256(convert_to(receipt."pageUrl" || ':inventory', 'UTF8')), 'hex'))
         FROM sources s JOIN "audit_verifier_executions" receipt ON receipt."auditId" = s."id"
         JOIN "audit_execution_tasks" task ON task."id" = receipt."taskId" AND task."auditId" = s."id"
         CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(receipt.detail->'assertions') = 'array'
           THEN receipt.detail->'assertions' ELSE '[]'::jsonb END) assertion(value)
-        WHERE receipt."targetKey" IN ('module:flow', 'module:form-validation') AND receipt.status = 'COMPLETED'
+        WHERE receipt."targetKey" IN ('module:flow', 'module:form-validation', 'module:measurement') AND receipt.status = 'COMPLETED'
           AND receipt.detail->>'kind' = 'site-module-check' AND receipt.detail->'version' = '1'::jsonb
           AND receipt.detail->'execution'->>'auditId' = s."id" AND receipt.detail->'execution'->>'taskId' = task."id"
-          AND receipt.detail->'execution'->>'source' = 'rendered-dom' AND task."pageUrl" IN (${Prisma.join(input.pages)})
-          AND (receipt."targetKey" = 'module:flow' AND receipt.detail->>'module' = 'flow'
-            AND assertion.value->>'key' IN ('primary-action-click', 'primary-action-navigation', 'primary-action-response', 'pricing-navigation')
-            OR receipt."targetKey" = 'module:form-validation' AND receipt.detail->>'module' = 'form-validation'
-              AND assertion.value->>'key' IN ('empty-form-validation', 'form-feedback'))
-    ) SELECT DISTINCT "pageUrl", context FROM candidates
-      WHERE context ~ '^(form:|flow:control:|flow:pricing:v1:)[a-f0-9]{64}$' ORDER BY "pageUrl", context`
+          AND task."workKind" = 'flow' AND task."pageUrl" IN (${Prisma.join(input.pages)})
+          AND receipt."pageUrl" = receipt.detail->>'pageUrl'
+          AND (receipt.detail->'execution'->>'source' = 'rendered-dom' AND (
+              receipt."targetKey" = 'module:flow' AND receipt.detail->>'module' = 'flow'
+                AND receipt."pageUrl" = task."pageUrl"
+                AND assertion.value->>'key' IN ('primary-action-click', 'primary-action-navigation', 'primary-action-response', 'pricing-navigation')
+              OR receipt."targetKey" = 'module:form-validation' AND receipt.detail->>'module' = 'form-validation'
+                AND assertion.value->>'key' IN ('empty-form-validation', 'form-feedback'))
+            OR receipt."targetKey" = 'module:measurement' AND receipt.detail->>'module' = 'measurement'
+              AND receipt.detail->'execution'->>'source' = 'browser-network'
+              AND receipt."pageUrl" = task."pageUrl"
+              AND assertion.value->>'key' IN ('tracking-library', 'tracking-http-response'))
+    ) SELECT "pageUrl", context FROM candidates
+      WHERE context ~ ${ACTION_CONTEXT_PATTERN}
+        AND (context NOT LIKE 'form:%' OR context <>
+          ('form:' || encode(sha256(convert_to("pageUrl" || ':inventory', 'UTF8')), 'hex')))
+      GROUP BY "pageUrl", context HAVING NOT bool_or("legacyInventory")
+      ORDER BY "pageUrl", context`
   const scopes = new Map<string, string[]>()
   for (const row of rows) {
     if (!input.pages.includes(row.pageUrl) || !actionContextSchema.safeParse(row.context).success) continue

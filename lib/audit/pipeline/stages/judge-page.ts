@@ -10,6 +10,7 @@ import { accumulateTriageUsage } from '@/lib/audit/pipeline/context'
 import { parseTriageFailure, type TriageFailure } from '@/lib/audit/pipeline/triage-failure'
 import { runTriageStep } from '@/lib/audit/pipeline/triage-step'
 import type { PipelineContext, ReviewStageResult } from '@/lib/audit/pipeline/types'
+import type { CaptureObservationScope } from '@/lib/audit/browser/observation-scope'
 
 export interface JudgePageArtifact {
   triage?: TriageResult
@@ -26,6 +27,7 @@ interface JudgePageInput {
   desktopBase64: string
   mobileBase64: string | null
   completeness: 'FULL' | 'PARTIAL'
+  observationScope?: CaptureObservationScope
 }
 
 /**

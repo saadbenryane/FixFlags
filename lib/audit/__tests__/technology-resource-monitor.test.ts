@@ -47,10 +47,13 @@ describe('technology resource sanitization', () => {
     const response = (index: number) => ({
       url: () => `https://cdn.example.com/app-${index}.js?secret=${index}`,
       status: () => 200,
+      headers: () => ({}),
       ok: () => true,
       request: () => ({
+        url: () => `https://cdn.example.com/app-${index}.js?secret=${index}`,
         resourceType: () => 'script',
         method: () => 'GET',
+        redirectedFrom: () => null,
       }),
     })
 

@@ -2,10 +2,40 @@ import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { mergeRuntimeHeadMetadata, parseMetadataFromHtml, trimMetadataForStorage } from '@/lib/audit/metadata'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
+import { FAVICON_HREF_VERSION } from '@/lib/audit/checks/favicon-declaration'
 
 const BASE_URL = 'https://example.com'
 
 describe('parseMetadataFromHtml', () => {
+  it.each([
+    ['<link rel="icon">', false],
+    ['<link rel="icon" href="  ">', false],
+    ['<link rel="icon" href="#symbol">', false],
+    ['<link rel="icon" href="/page#symbol">', false],
+    ['<link rel="icon" href="javascript:alert(1)">', false],
+    ['<link rel="icon" href="https://user:password@example.com/icon.png">', false],
+    ['<link rel="icon" href="http://[">', false],
+    ['<link rel="icon" href="data:,">', false],
+    ['<link rel="icon" href="data:image/png;base64,">', false],
+    ['<link rel="icon" href="data:image/png;base64,#fragment">', false],
+    ['<template><link rel="icon" href="/icon.png"></template>', false],
+    ['<noscript><link rel="icon" href="/icon.png"></noscript>', false],
+    ['</head><body><link rel="icon" href="/icon.png">', false],
+    ['<link rel="shortcut ICON" href="/icon.svg#symbol">', true],
+    ['<link rel="apple-touch-icon" href="/touch.png">', true],
+    ['<link rel="apple-touch-icon-precomposed" href="/touch.png">', true],
+    ['<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22/%3E">', true],
+    ['<base href="/assets/"><link rel="icon" href="page">', true],
+    ['<base href="data:,"><link rel="icon" href="icon.png">', true],
+    ['<link rel="icon" href=""><link rel="icon" href="/icon.png">', true],
+  ] as const)('checks the active icon address in %s', (markup, declared) => {
+    for (const source of ['crawler', 'rendered'] as const) {
+      const metadata = parseMetadataFromHtml('<head>' + markup + '</head>', BASE_URL + '/page', source)
+      assert.equal(metadata.hasFavicon, declared)
+      assert.equal(metadata.faviconHrefVersion, FAVICON_HREF_VERSION)
+    }
+  })
+
   it.each([
     ['<button aria-label=" "></button>', 1],
     ['<button><span hidden>Hidden label</span></button>', 1],
@@ -281,6 +311,20 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.hasPrivacyPolicy, true)
   })
 
+  it('does not treat public prose, links, comments or structured content as analytics configuration', () => {
+    const content = '<!-- PostHog example --><main><p>Compare Plausible and Mixpanel.</p>' +
+      '<a href="/guides/googletagmanager">Read the setup guide</a>' +
+      '<script type="APPLICATION/LD+JSON">{"description":"A guide to Hotjar"}</script></main>'
+    for (const mode of ['crawler', 'rendered'] as const) {
+      const meta = parseMetadataFromHtml(content, BASE_URL, mode)
+      assert.equal(meta.hasAnalytics, false)
+      assert.equal(meta.hasCookieBasedAnalytics, false)
+      const declared = parseMetadataFromHtml('<script src="https://www.googletagmanager.com/gtag/js?id=G-123"></script>' + content, BASE_URL, mode)
+      assert.equal(declared.hasAnalytics, true)
+      assert.equal(declared.hasCookieBasedAnalytics, true)
+    }
+  })
+
   it('detects search/URL input fields as CTAs on tool landing pages', () => {
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -311,6 +355,7 @@ describe('parseMetadataFromHtml', () => {
     const meta = mergeRuntimeHeadMetadata(parseMetadataFromHtml(html, BASE_URL), {
       title: 'Runtime title from the hydrated app',
       hasFavicon: true,
+      faviconHrefVersion: FAVICON_HREF_VERSION,
     })
 
     assert.equal(meta.title, 'Runtime title from the hydrated app')
@@ -322,13 +367,22 @@ describe('parseMetadataFromHtml', () => {
     const parsed = parseMetadataFromHtml('<html lang="en"><head><title>Original title</title>' +
       '<meta name="description" content="Original description"><meta property="og:title" content="Original preview">' +
       '<meta name="viewport" content="width=device-width"><link rel="icon" href="/favicon.ico"></head></html>', BASE_URL)
-    const merged = mergeRuntimeHeadMetadata(parsed, { title: null, ogTitle: null, viewport: null, lang: null, hasFavicon: false })
+    const merged = mergeRuntimeHeadMetadata(parsed, {
+      title: null, ogTitle: null, viewport: null, lang: null, hasFavicon: false, faviconHrefVersion: FAVICON_HREF_VERSION,
+    })
     assert.equal(merged.title, null)
     assert.equal(merged.ogTitle, null)
     assert.equal(merged.viewport, null)
     assert.equal(merged.lang, null)
     assert.equal(merged.hasFavicon, false)
     assert.equal(merged.description, parsed.description)
+  })
+
+  it('retains qualified parsed evidence when an older runtime observation only counted a link tag', () => {
+    const parsed = parseMetadataFromHtml('<link rel="icon" href="">', BASE_URL)
+    const merged = mergeRuntimeHeadMetadata(parsed, { hasFavicon: true })
+    assert.equal(merged.hasFavicon, false)
+    assert.equal(merged.faviconHrefVersion, FAVICON_HREF_VERSION)
   })
 })
 

@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { documentEvidenceWithheld, renderedDocumentForSearch } from './document-evidence'
+import { documentEvidenceWithheld, renderedDocumentForSearch, renderedResponseHeadersForSearch } from './document-evidence'
+import { searchResourceKey } from '../search/resource-identity'
 
 const snapshot = { sections: { links: { complete: true } } }
 
 describe('document evidence', () => {
+  it('reads browser headers only for the captured HTTP resource', () => {
+    const desktopFinalUrl = 'https://example.com/catalog?plan=pro#details'
+    const responseHeaders = { 'x-robots-tag': 'noindex' }
+    const recorded = { desktopFinalUrl, responseHeaders, desktopResponseResourceKey: searchResourceKey(desktopFinalUrl) }
+    expect(renderedResponseHeadersForSearch(recorded)).toBe(responseHeaders)
+    expect(renderedResponseHeadersForSearch({ ...recorded, desktopFinalUrl: desktopFinalUrl.replace('pro', 'free') })).toBeUndefined()
+    expect(renderedResponseHeadersForSearch({ ...recorded, desktopResponseResourceKey: undefined })).toBeUndefined()
+    expect(renderedResponseHeadersForSearch({ ...recorded, collectionRestrictions: ['read_only_refusal'] })).toBeUndefined()
+  })
   it('keeps a captured page when the only restriction is a refused action', () => {
     expect(documentEvidenceWithheld(['protected_action_requires_fixture', 'payment_or_download_blocked'])).toBe(false)
     expect(renderedDocumentForSearch({

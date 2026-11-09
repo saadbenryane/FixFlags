@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { assertNoPackagedRuntimeData } from './runtime-artifacts.mjs'
 
 const nextDistDir = process.env.NEXT_DIST_DIR || '.next'
 const standaloneRoot = join(nextDistDir, 'standalone')
@@ -10,6 +11,7 @@ if (!existsSync(serverEntry)) {
   console.error(`Standalone runtime is missing: ${serverEntry}`)
   process.exit(1)
 }
+assertNoPackagedRuntimeData(standaloneRoot)
 
 const staticSource = join(nextDistDir, 'static')
 const staticDestination = join(standaloneRoot, nextDistDir, 'static')

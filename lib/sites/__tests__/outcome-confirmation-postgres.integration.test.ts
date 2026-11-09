@@ -15,6 +15,13 @@ import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { loadIncidentRecoveryProofs } from '@/lib/sites/application/incident-proofs'
 import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
+import { classifyWatchResult, notifyWatchRegression } from '@/lib/audit/project-watch'
+import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
+import { getOwnedRun } from '@/lib/sites/application/run-queries'
+import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
+import { materializeAttentionForAudit } from '@/lib/improvements/occurrences'
+import { attemptIntentHash } from '@/lib/improvements/attempt-intent'
+import { DEFAULT_AVAILABILITY_EVALUATOR } from '@/lib/sites/domain/outcome-evaluation'
 import { loadSiteFindings, loadSiteFlagDetail, loadSiteFlags, loadSiteResolvedFlags } from '@/lib/sites/flags'
 import type { SiteRecord } from '@/lib/sites/types'
 
@@ -213,12 +220,13 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
           outcomeId: outcome.id, runRequestId: request.id, auditId: request.auditId,
           state: position === 1 || index === 21 ? 'CLEAR' as const : 'FLAG' as const,
           summary: outcome.name, assessedAt: request.requestedAt, validUntil: new Date(now + 3600_000),
-          coverage: { environment: 'production', requiredBindings: [binding.key], bindings: [binding] },
+          coverage: { environment: 'production', requiredBindings: [binding.key], bindings: [{ ...binding, evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] },
         })) })
         await prisma.outcomeBindingExecution.createMany({ data: audits.map(audit => ({
           outcomeId: outcome.id, auditId: audit.id, bindingKey: binding.key, bindingVersion: 1, mechanism: binding.mechanism,
           disposition: position === 0 ? 'FAILED' as const : 'SUCCEEDED' as const,
           reason: position === 0 ? 'response_error' : 'response_received', createdAt: audit.createdAt,
+          detail: { evaluator: DEFAULT_AVAILABILITY_EVALUATOR },
         })) })
       }
       queryTrace.active = true; queryTrace.queries = []
@@ -296,6 +304,74 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     expect(summary.presentation.result.state).toBe('flags')
   })
 
+  it('keeps a superseded failure in its run history without reopening the Site or scheduling an alert', async () => {
+    const outcome = await prisma.siteOutcome.create({ data: { projectId, name: 'Page loads', slug: 'late-failure', kind: 'AVAILABILITY' } })
+    const binding = { key: 'http', mechanism: 'HTTP_AVAILABILITY', version: 1, required: true,
+      config: { startUrl: site.url, expectedSelector: 'body' } } as const
+    const specification = { version: 1, engine: 'progressive-v1', scope: 'OUTCOMES', targetUrl: site.url,
+      environment: 'production', checks: {}, verificationTarget: null,
+      outcomes: [{ id: outcome.id, kind: 'AVAILABILITY', expectation: null, bindingPolicy: 'ALL_REQUIRED', bindings: [binding] }] }
+    const coverage = { environment: 'production', requiredBindings: [binding.key], observedBindings: [binding.key],
+      bindings: [{ ...binding, evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] }
+    const at = Date.now()
+    async function createRun(state: 'FLAG' | 'CLEAR', requestedAt: Date, assessedAt: Date) {
+      const audit = await prisma.audit.create({ data: { projectId, userId, url: site.url, status: 'COMPLETED',
+        executionSpec: specification, recheckTrigger: 'WATCH', completedAt: assessedAt } })
+      const run = await prisma.runRequest.create({ data: { auditId: audit.id, projectId, source: 'WATCH', status: 'COMPLETED',
+        requestedAt, idempotencyKey: state, executionSpec: specification, selections: { create: { outcomeId: outcome.id } } } })
+      return { audit, run, input: { projectId, outcomeId: outcome.id, outcomeKind: outcome.kind, bindingKeys: [binding.key],
+        runRequestId: run.id, auditId: audit.id, state, summary: state, assessedAt, validUntil: new Date(at + 60_000),
+        coverage, evidence: { reason: state === 'CLEAR' ? 'available' : 'http_unavailable' }, failureFlagIds: [] as string[] } }
+    }
+    const older = await createRun('FLAG', new Date(at - 10_000), new Date(at - 1000))
+    const newer = await createRun('CLEAR', new Date(at - 5000), new Date(at - 2000))
+    const flag = await prisma.flag.create({ data: { auditId: older.audit.id, source: 'DETERMINISTIC', checkId: 'outcome-availability-failed',
+      fingerprint: outcomeFlagFingerprint(outcome.id, binding.key), rubric: 'EXPERIENCE', severity: 'CRITICAL',
+      problem: 'The page was unavailable', evidence: 'Controlled HTTP 503', whyItMatters: 'The page cannot be reached',
+      fix: 'Restore the page', confidence: 1, position: 0 } })
+    const improvement = await prisma.improvement.create({ data: { projectId, outcomeId: outcome.id, fingerprint: flag.fingerprint!,
+      title: 'Restore the page', judgment: 'Controlled unavailable response', expectedBenefit: 'The page responds',
+      recommendedChange: 'Restore the response', successCondition: 'Comparable public response succeeds' } })
+    await prisma.improvementOccurrence.create({ data: { improvementId: improvement.id, flagId: flag.id, auditId: older.audit.id, kind: 'OBSERVED' } })
+    const declaration = { siteId: projectId, userId, flagId: flag.id, idempotencyKey: 'retained-declaration' }
+    expect(await loadSiteFindings(site)).toEqual({ flags: [], recommendations: [] })
+    expect(await loadSiteFlagDetail(site, improvement.id)).toBeNull()
+    expect(await loadSiteFlagDetail(site, flag.id)).toMatchObject({ sourceFlagId: flag.id })
+    await expect(recordSiteFlagFix(declaration)).rejects.toMatchObject({ status: 409 })
+    // Retained requests from before confirmation was required still replay.
+    const intent = { sourceAuditId: older.audit.id, handoffReference: 'flag:' + flag.id, userId }
+    const retained = await prisma.improvementAttempt.create({ data: { improvementId: improvement.id, sourceAuditId: intent.sourceAuditId,
+      handoffReference: intent.handoffReference, builder: 'site', idempotencyKey: declaration.idempotencyKey, requestHash: attemptIntentHash(intent) } })
+    const current = await persistOutcomeAssessment(newer.input)
+    expect((await persistOutcomeAssessment({ ...older.input, improvementId: improvement.id, failureFlagIds: [flag.id] })).evidence)
+      .toMatchObject({ supersededByAssessmentId: current.id, incident: { transition: 'failure', flagIds: [flag.id] } })
+    expect(await outcomeMonitoringDiff(older.audit.id)).toMatchObject({ newIssues: [], regressed: [], fixed: [] })
+    await classifyWatchResult(older.audit.id)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: older.audit.id } })).toMatchObject({
+      watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationAttempts: 0, watchRegressionCount: 0, watchRecoveryCount: 0,
+    })
+    expect(await loadSiteFindings(site)).toEqual({ flags: [], recommendations: [] })
+    expect(await getOwnedRun(userId, older.run.id)).toMatchObject({ result: 'FLAG' })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+    await expect(recordSiteFlagFix({ ...declaration, idempotencyKey: 'late-declaration' })).rejects.toMatchObject({ status: 409 })
+    expect(await recordSiteFlagFix(declaration)).toMatchObject({ attemptId: retained.id })
+    expect(await prisma.improvementAttempt.count({ where: { improvementId: improvement.id } })).toBe(1)
+
+    const saved = await prisma.auditVerificationReceipt.create({ data: { auditId: older.audit.id, targetKey: FLAG_COMPARISON_TARGET,
+      scopeKey: 'product', status: 'COMPLETED', source: 'SYSTEM', detail: { kind: 'flag-comparison', version: 1,
+        auditId: older.audit.id, parentAuditId: null, summary: { fixed: [], inconclusive: [], unchanged: [], regressed: [],
+          newIssues: [{ id: flag.id, checkId: flag.checkId, problem: flag.problem, severity: flag.severity, rubric: flag.rubric,
+            status: flag.status, confidence: flag.confidence }] } } } })
+    await prisma.audit.update({ where: { id: older.audit.id }, data: { watchNotificationStatus: 'PENDING', watchRegressionCount: 1,
+      improvementProjectedAt: new Date() } })
+    await prisma.user.update({ where: { id: userId }, data: { emailVerified: true } })
+    await notifyWatchRegression(older.audit.id)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: older.audit.id } })).toMatchObject({
+      watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationAttempts: 0,
+    })
+    expect(await prisma.auditVerificationReceipt.findUniqueOrThrow({ where: { id: saved.id } })).toEqual(saved)
+  })
+
   it('retains newer incidents through a delayed older success, then verifies genuine recovery and recurrence', async () => {
     if (!/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(new URL(process.env.DATABASE_URL!).pathname))
       throw new Error('Use the disposable execution verifier')
@@ -305,7 +381,8 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
       title: 'Restore the page', judgment: 'Controlled unavailable response', expectedBenefit: 'The page responds',
       recommendedChange: 'Restore the response', successCondition: 'Comparable public response succeeds', status: 'PROPOSED' } })
     const base = Date.now(), coverage = { environment: 'production', policy: 'ALL_REQUIRED', requiredBindings: ['http'], observedBindings: ['http'], scope: null,
-      bindings: [{ key: 'http', mechanism: 'HTTP_AVAILABILITY', version: 1, config: { startUrl: site.url }, scope: null }] }
+      bindings: [{ key: 'http', mechanism: 'HTTP_AVAILABILITY', version: 1, config: { startUrl: site.url }, scope: null,
+        evaluator: DEFAULT_AVAILABILITY_EVALUATOR }] }
     async function observation(label: string, requested: number, observed: number, state: 'FLAG' | 'CLEAR') {
       const audit = await prisma.audit.create({ data: { projectId, userId, url: site.url, status: 'COMPLETED', completedAt: new Date(base + observed), isPublic: false } })
       const run = await prisma.runRequest.create({ data: { projectId, auditId: audit.id, source: 'WEB', idempotencyKey: label,
@@ -328,6 +405,10 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     expect(readOutcomeIncident(current.evidence)?.transition).toBe('ongoing_failure')
     const historical = await persistOutcomeAssessment(delayed.input)
     expect(historical.evidence).toMatchObject({ supersededByAssessmentId: current.id, incident: { transition: 'clear', recoveredFlagIds: [] } })
+    const lateOngoing = await observation('late-ongoing-failure', -25_000, -6000, 'FLAG')
+    expect((await persistOutcomeAssessment(lateOngoing.input)).evidence).toMatchObject({
+      supersededByAssessmentId: current.id, incident: { transition: 'ongoing_failure', incidentRunRequestId: original.run.id },
+    })
     expect(await persistOutcomeAssessment(delayed.input)).toEqual(historical)
     await expect(persistOutcomeAssessment({ ...delayed.input, projectId: 'another-site' })).rejects.toThrow('no matching Site request')
     for (const flag of [original.flag!, newer.flag!]) expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }))
@@ -340,9 +421,17 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     const ongoing = await persistOutcomeAssessment(continued.input)
     expect(readOutcomeIncident(ongoing.evidence)).toMatchObject({ transition: 'ongoing_failure', incidentRunRequestId: original.run.id })
     const repaired = await observation('genuine-recovery', 3000, 4000, 'CLEAR')
+    for (const offset of [2500, 4500]) {
+      const detached = await observation('mismatched-history-' + offset, offset, offset, 'CLEAR')
+      await prisma.outcomeAssessment.create({ data: { runRequestId: detached.run.id, outcomeId: outcome.id,
+        auditId: delayed.audit.id, state: 'CLEAR', summary: 'Controlled mismatched receipt',
+        coverage, evidence: { reason: 'available' }, assessedAt: detached.input.assessedAt, validUntil: detached.input.validUntil } })
+    }
     expect(readOutcomeIncident((await persistOutcomeAssessment(repaired.input)).evidence)?.transition).toBe('recovery')
     for (const flag of [original.flag!, newer.flag!, continued.flag!]) expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }))
       .toMatchObject({ status: 'FIXED', resolvedInId: repaired.audit.id })
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: lateOngoing.flag!.id } }))
+      .toMatchObject({ status: 'OPEN', resolvedInId: null })
     const recoveredRows = await prisma.flag.findMany({ where: { id: { in: [original.flag!.id, newer.flag!.id, continued.flag!.id] } } })
     const proofs = await loadIncidentRecoveryProofs([{ projectId, flags: recoveredRows }])
     for (const flag of recoveredRows) expect(proofs.get(projectId)?.hasFlag?.(flag)).toBe(true)
@@ -353,6 +442,10 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
         bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY' as const, required: true, config: { startUrl: site.url } }] }],
       verificationTarget: null }
     await prisma.audit.update({ where: { id: repaired.audit.id }, data: { executionSpec: monitored } })
+    const detached = await observation('detached-recovery-row', 4200, 4200, 'CLEAR')
+    await prisma.outcomeAssessment.create({ data: { runRequestId: detached.run.id, outcomeId: outcome.id,
+      auditId: repaired.audit.id, state: 'CLEAR', summary: 'Controlled mismatched receipt', coverage,
+      evidence: { reason: 'available' }, assessedAt: detached.input.assessedAt, validUntil: detached.input.validUntil } })
     const summary = await outcomeMonitoringDiff(repaired.audit.id)
     const resolved = await loadSiteResolvedFlags(site)
     expect(summary?.fixed.map(flag => flag.id)).toEqual([continued.flag!.id])
@@ -360,9 +453,27 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     const recoveredDetail = await loadSiteOutcomeDetail(site, outcome.id)
     expect(recoveredDetail?.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
     expect(mcpOutcomePayload(recoveredDetail!).freshness.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
+    const verified = await prisma.improvement.findUniqueOrThrow({ where: { id: improvement.id } })
+    expect(verified.status).toBe('VERIFIED')
+    const lateFailure = await observation('late-failure-after-repair', 2900, 4600, 'FLAG')
+    await prisma.improvementOccurrence.delete({ where: { flagId: lateFailure.flag!.id } })
+    await prisma.flag.update({ where: { id: lateFailure.flag!.id }, data: { problem: 'Older page response failure' } })
+    await materializeAttentionForAudit(lateFailure.audit.id)
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvement.id } })).toEqual(verified)
+    expect(await loadSiteFindings(site)).toEqual({ flags: [], recommendations: [] })
+    expect(await loadSiteFlagDetail(site, improvement.id)).toMatchObject({ sourceFlagId: continued.flag!.id, status: 'FIXED' })
+    expect(await loadSiteFlagDetail(site, lateFailure.flag!.id)).toMatchObject({ sourceFlagId: lateFailure.flag!.id })
+    const lateAssessment = await persistOutcomeAssessment(lateFailure.input)
+    expect(lateAssessment.evidence).toMatchObject({ supersededByAssessmentId: expect.any(String) })
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvement.id } })).toEqual(verified)
+    expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: lateFailure.flag!.id } }))
+      .toMatchObject({ improvementId: improvement.id, auditId: lateFailure.audit.id, kind: 'OBSERVED' })
+    expect(await loadSiteFindings(site)).toEqual({ flags: [], recommendations: [] })
     const repeated = await observation('genuine-recurrence', 5000, 6000, 'FLAG')
     expect(readOutcomeIncident((await persistOutcomeAssessment(repeated.input)).evidence)?.transition).toBe('regression')
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: repeated.flag!.id } })).toMatchObject({ status: 'REGRESSED' })
+    expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvement.id } }))
+      .toMatchObject({ status: 'PROPOSED', title: repeated.flag!.problem })
     const after = await loadIncidentRecoveryProofs([{ projectId, flags: await prisma.flag.findMany({ where: { audit: { projectId } } }) }])
     expect(after.get(projectId)?.hasFlag?.(repeated.flag!)).toBe(false)
     for (const flag of recoveredRows) expect(after.get(projectId)?.hasFlag?.(flag)).toBe(true)
@@ -431,18 +542,26 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     await prisma.auditPage.create({ data: { auditId: audit.id, url: site.url, normalizedUrl: site.url, role: 'primary', position: 0, status: 'COMPLETED' } })
     await prisma.auditVerificationReceipt.create({ data: { auditId: audit.id, targetKey: 'module:security', source: 'DETERMINISTIC', status: 'COMPLETED',
       detail: { kind: 'site-module-check', version: 1, module: 'security', pageUrl: site.url, passed: true, applicable: true,
-        assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Secure transport', observed: 'Secure transport', passed: true })) } } })
+        execution: { auditId: audit.id, taskId: 'fixture-http', checkVersion: 1, source: 'http', collectedAt: audit.completedAt!.toISOString() },
+        assertions: ['https', 'resource-transport'].map(key => ({ key, name: key, expected: 'Secure transport', observed: 'Secure transport', passed: true })) } } })
     const outcome = await prisma.siteOutcome.create({ data: { projectId, name: 'Page availability', slug: 'current-read', kind: 'AVAILABILITY',
       bindings: { create: { key: 'http', mechanism: 'HTTP_AVAILABILITY', version: 1, config: { startUrl: site.url } } } } })
-    const run = await prisma.runRequest.create({ data: { projectId, auditId: audit.id, source: 'WEB', idempotencyKey: 'read-proof', status: 'COMPLETED' } })
-    const coverage = { environment: 'production', requiredBindings: ['http'], bindings: [{ key: 'http', mechanism: 'HTTP_AVAILABILITY', version: 1 }] }
-    const assessment = await prisma.outcomeAssessment.create({ data: { outcomeId: outcome.id, runRequestId: run.id, auditId: audit.id,
-      state: 'CLEAR', summary: 'Controlled availability observation', validUntil: new Date(Date.now() + 60_000), coverage } })
+    const binding = { key: 'http', mechanism: 'HTTP_AVAILABILITY', version: 1 }
+    async function record(evaluator?: string) {
+      const run = await prisma.runRequest.create({ data: { projectId, auditId: audit.id, source: 'WEB',
+        idempotencyKey: evaluator ?? 'read-legacy-proof', status: 'COMPLETED', selections: { create: { outcomeId: outcome.id } } } })
+      return prisma.outcomeAssessment.create({ data: { outcomeId: outcome.id, runRequestId: run.id, auditId: audit.id,
+        state: 'CLEAR', summary: 'Controlled availability observation', validUntil: new Date(Date.now() + 60_000),
+        coverage: { environment: 'production', requiredBindings: ['http'], bindings: [{ ...binding, ...(evaluator ? { evaluator } : {}) }] } } })
+    }
     async function expectCurrent(state: 'CLEAR' | 'COULD_NOT_VERIFY') {
       const [summaries, details] = await Promise.all([loadSiteSummaries(userId), listSiteOutcomes(site)])
       expect(summaries.find(row => row.id === projectId)?.presentation.result.state).toBe(state === 'CLEAR' ? 'clear' : 'could_not_verify')
       expect(details.find(row => row.id === outcome.id)?.state).toBe(state)
     }
+    const historical = await record()
+    await expectCurrent('COULD_NOT_VERIFY')
+    const assessment = await record(DEFAULT_AVAILABILITY_EVALUATOR)
     await expectCurrent('CLEAR')
     await prisma.outcomeExecutionBinding.update({ where: { outcomeId_key: { outcomeId: outcome.id, key: 'http' } }, data: { version: 2 } })
     await expectCurrent('COULD_NOT_VERIFY')
@@ -452,6 +571,7 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     await prisma.siteOutcome.update({ where: { id: outcome.id }, data: { environment: 'staging' } })
     await expectCurrent('COULD_NOT_VERIFY')
     expect(await prisma.outcomeAssessment.findUniqueOrThrow({ where: { id: assessment.id } })).toEqual(assessment)
+    expect(await prisma.outcomeAssessment.findUniqueOrThrow({ where: { id: historical.id } })).toEqual(historical)
     await prisma.siteOutcome.update({ where: { id: outcome.id }, data: { environment: 'production' } })
     const fixture = await prisma.outcomeFixture.create({ data: { projectId, configuredByUserId: userId, name: 'Read-only fixture metadata', targetUrl: site.url,
       fieldMapping: {}, encryptedValues: 'unused-in-read-fixture', successCriterion: {}, resetUrl: site.url, cleanupUrl: site.url,
@@ -459,7 +579,8 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     await prisma.outcomeExecutionBinding.update({ where: { outcomeId_key: { outcomeId: outcome.id, key: 'http' } },
       data: { mechanism: 'SAFE_FORM', version: 2, config: { fixtureId: fixture.id } } })
     await expectCurrent('COULD_NOT_VERIFY')
-    const formRun = await prisma.runRequest.create({ data: { projectId, auditId: audit.id, source: 'WEB', idempotencyKey: 'form-read-proof', status: 'COMPLETED' } })
+    const formRun = await prisma.runRequest.create({ data: { projectId, auditId: audit.id, source: 'WEB',
+      idempotencyKey: 'form-read-proof', status: 'COMPLETED', selections: { create: { outcomeId: outcome.id } } } })
     const formAssessment = await prisma.outcomeAssessment.create({ data: { outcomeId: outcome.id, runRequestId: formRun.id, auditId: audit.id,
       state: 'CLEAR', summary: 'Controlled form observation', validUntil: new Date(Date.now() + 60_000), coverage: {
         environment: 'production', requiredBindings: ['http'], bindings: [{ key: 'http', mechanism: 'SAFE_FORM', version: 2,

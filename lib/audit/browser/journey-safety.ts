@@ -14,6 +14,7 @@ export interface FormProbeResult {
   url: string
   method: string
   status: number
+  requestKey?: string
 }
 
 export interface JourneyRouteGuardOptions {

@@ -125,7 +125,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
           {selectedFlag.image ? <Image src={selectedFlag.image} alt={selectedFlag.imageAlt ?? ''} width={1280} height={720} /> : null}
           <a href={selectedFlag.url}>{selectedFlag.page}</a>
         </section>
-        <FixPromptCard prompt={prompt} onCopy={() => void copyFlag('read', prompt)} copied={copyResult?.source === 'read' && !manualPrompt} copyLabel={S.sampleCopy} />
+        <FixPromptCard prompt={prompt} onCopy={() => void copyFlag('read', prompt)} copied={copyResult?.source === 'read' && !manualPrompt} copyLabel={S.sampleCopy} copiedLabel={Dashboard.bundleCopied} />
         <details className={s.modalDetails}><summary>{Dashboard.checkDetails}<ChevronDown size={15} aria-hidden /></summary><Link href="/docs/fix-with-ai">{S.guidanceAction}<ArrowRight size={15} aria-hidden /></Link></details>
       </> : selectedCard ? <SampleFlagSelection key={selectedCard.id} ids={selectedCard.flags ?? (selectedCard.flag ? [selectedCard.flag] : [])} onCopy={text => void copyFlag('read', text)}>
         {selectedCard.id === 'site' ? <SitePageResults pages={samplePages(['availability', 'contact'], openFlag)} /> : <>
@@ -136,7 +136,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
               : <details className={s.resultDisclosure}><summary className={s.compactResult}>{result.status === 'Checked' ? <Check size={16} aria-hidden /> : <CircleHelp size={16} aria-hidden />}<strong>{result.label}</strong><span>{result.status}</span><ChevronDown size={14} aria-hidden /></summary><p>{result.detail}</p></details>}
           </li>)}</ul>
         </>}
-        {selectedCard.flagCount ? <FixPromptCard prompt={sampleBundle([...(selectedCard.flags ?? (selectedCard.flag ? [selectedCard.flag] : []))])} onCopy={() => void copyFlag('read', sampleBundle([...(selectedCard.flags ?? (selectedCard.flag ? [selectedCard.flag] : []))]))} copied={copyResult?.source === 'read' && !manualPrompt} /> : null}
+        {selectedCard.flagCount ? <FixPromptCard prompt={sampleBundle([...(selectedCard.flags ?? (selectedCard.flag ? [selectedCard.flag] : []))])} onCopy={() => void copyFlag('read', sampleBundle([...(selectedCard.flags ?? (selectedCard.flag ? [selectedCard.flag] : []))]))} copied={copyResult?.source === 'read' && !manualPrompt} copyLabel={Dashboard.fixAll} copiedLabel={Dashboard.bundleCopied} /> : null}
         <details className={s.modalDetails}><summary>{Dashboard.checkDetails}<ChevronDown size={15} aria-hidden /></summary>
           <p className={s.scope}>{selectedCard.scope}</p>
           {selectedCard.connection ? <aside className={s.contextConnection}><Link href={selectedCard.connection.href as Route}>{selectedCard.connection.label}<ArrowRight size={14} aria-hidden /></Link><p>{selectedCard.connection.body}</p><small>{S.connections}</small></aside> : null}

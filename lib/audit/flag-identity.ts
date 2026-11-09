@@ -3,6 +3,8 @@ import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 import { mergeSearchAttentionPolicies } from './search/attention-scope'
 import { mergeSupportingObservations, observationsForFlag } from './flag-observations'
 import { durableCheckId } from './check-identity'
+import { ACCESSIBILITY_VERIFICATION_RULE } from './checks/accessibility-rules'
+import { isUsableFixPrompt } from './prescription-policy'
 export { baseCheckId, durableCheckId } from './check-identity'
 
 export function parseAffectedPaths(value: unknown): string[] {
@@ -86,6 +88,29 @@ function severityWeight(severity: string): number {
   return 2
 }
 
+/** Compose recorded guidance with its original page or review scope. */
+export function combineAccessibilityFixes(group: readonly {
+  source?: string; verificationRule?: string | null; pageUrl?: string | null; affectedPaths?: unknown; evidence?: string; fix?: string;
+}[]): string | undefined {
+  if (group.length < 2) return undefined
+  const byFix = new Map<string, { pages: Set<string>; reviewScope: boolean }>()
+  for (const flag of group) {
+    if (flag.source !== 'DETERMINISTIC' || flag.verificationRule !== ACCESSIBILITY_VERIFICATION_RULE ||
+      !flag.pageUrl || !flag.evidence?.trim() || !isUsableFixPrompt(flag.fix)) return undefined
+    const fix = flag.fix.trim()
+    const pages = [...new Set([flag.pageUrl, ...parseAffectedPaths(flag.affectedPaths)])]
+    const scope = byFix.get(fix) ?? { pages: new Set<string>(), reviewScope: false }
+    for (const page of pages) scope.pages.add(page)
+    scope.reviewScope ||= pages.length > 1
+    byFix.set(fix, scope)
+  }
+  const sections = [...byFix].map(([fix, { pages, reviewScope }]) => ({
+    fix, pages: [...pages].sort().join(', '), label: reviewScope ? 'From reviews covering' : 'For',
+  }))
+  if (new Set(sections.map(section => section.pages)).size < 2) return undefined
+  return sections.map(({ fix, pages, label }) => `${label} ${pages}\n${fix}`).sort().join('\n\n')
+}
+
 /**
  * One underlying issue, many affected paths. Collapse repeated shared chrome
  * into one Flag. Do not collapse distinct issues because titles look similar.
@@ -98,6 +123,7 @@ export function collapseFlagsWithAffectedPaths<
     rubric: string
     severity: string
     evidence?: string
+    fix?: string
     evidenceTargets?: EvidenceTarget[]
     affectedPaths?: string[]
     attentionPolicy?: unknown
@@ -136,6 +162,7 @@ export function collapseFlagsWithAffectedPaths<
     }))).values()] : undefined
     const attentionPolicy = mergeSearchAttentionPolicies(group.map(flag => flag.attentionPolicy), representative.attentionPolicy)
     const supportingObservations = mergeSupportingObservations(group.map(flag => observationsForFlag(flag)))
+    const combinedFix = combineAccessibilityFixes(group)
     const evidence =
       group.length === 1
         ? representative.evidence
@@ -149,6 +176,7 @@ export function collapseFlagsWithAffectedPaths<
       ...representative,
       checkId: durableCheckId(representative.checkId) ?? representative.checkId,
       evidence,
+      ...(combinedFix ? { fix: combinedFix } : {}),
       supportingObservations,
       ...(attentionPolicy ? { attentionPolicy } : {}),
       ...(scopedTargets ? { evidenceTargets: scopedTargets } : {}),

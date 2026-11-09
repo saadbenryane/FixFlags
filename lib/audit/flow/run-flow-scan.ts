@@ -2,7 +2,7 @@ import { captureScreenshot } from '../browser/capture-screenshot'
 import { type ScanAccessConfig } from '../scan-access'
 import { randomUUID } from 'node:crypto'
 import { auditPageObservation } from '../browser/observation-scope'
-import type { Browser, Page, Response as BrowserResponse } from 'playwright'
+import type { Browser, Page, Request, Response as BrowserResponse } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { discoverFlowCtasWithFallback, flowCtaSelector, rankCtaCandidate } from './discover-cta'
@@ -12,6 +12,7 @@ import { resolveSameOrigin, isIntentionalExternalCta, isSameSiteOrigin } from '.
 import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
 import { observeRenderedCopy, type RenderedCopy } from '../browser/rendered-copy'
 import { readLoadingUi } from '../browser/loading-ui'
+import { observeViewport } from '../browser/viewport-observation'
 import { hasMissingPageContent } from '../soft-404'
 import { anchorFromViewportRect } from './flow-evidence'
 import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
@@ -30,7 +31,7 @@ import {
   dismissOpenDialogs,
   type OverlayBlockerInfo,
 } from '@/lib/audit/browser/overlay-probe'
-import { primaryPageContext, type PrimaryActionEvidence } from './primary-action-evidence'
+import { primaryActionResponseDestinationKey, primaryPageContext, type PrimaryActionEvidence } from './primary-action-evidence'
 import { isBotInterstitialPage } from '../browser/page-capture'
 import { observeNavigationResponse } from './navigation-response'
 import { actionPanelOpened, visibleActionPanels, type ActionPanelObservation } from './action-panels'
@@ -105,6 +106,10 @@ export interface RunFlowScanOptions {
   overlayOnly?: boolean
   /** A repair checks the original recorded control rather than today's top CTA. */
   expectedActionContexts?: string[]
+  onPrimaryActionWindow?: (context: string | null) => void
+  onNavigationChallenge?: (request: Request) => void
+  /** Network repair shares the broad walk's loading window without collecting destination copy. */
+  observePostClickLoading?: boolean
   expectedPricingContexts?: string[]
   excludedActionContexts?: readonly string[]
   mode?: 'primary' | 'destination' | 'pricing'
@@ -222,7 +227,8 @@ async function runFlowScanWithinBudget(
   const actionEvidence: PrimaryActionEvidence = { version: 1,
     pageContext: primaryPageContext(pageUrl, page.url(), page.viewportSize(), auditPageObservation(page)?.scope), controlContext: null,
     candidateCount: candidates.length, candidateComplete: discovered.complete || candidates.length > 0, presenceVersion: 5,
-    clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null }
+    clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null,
+    responseDestinationKey: null }
   const originalActions = options.expectedOverlayTargets?.filter(target => target.kind === 'cta' && target.context.split(':')[3].startsWith('primary_action'))
   const originalIndexes = originalActions?.length ? await page.evaluate(selectors => selectors.flatMap(selector => {
     const element = document.querySelector(selector)
@@ -327,7 +333,9 @@ async function runFlowScanWithinBudget(
 
     page.on('response', recordDocumentResponse)
     try {
-      if (options.mode !== 'primary') postClick = startPostClickObservation(page, { expectNavigation: !skipNavigationWait, deadline: started + deadlineMs })
+      if (options.mode !== 'primary' || options.observePostClickLoading)
+        postClick = startPostClickObservation(page, { expectNavigation: !skipNavigationWait, deadline: started + deadlineMs })
+      options.onPrimaryActionWindow?.(cta.context ?? null)
       await clickTarget.click({ timeout: FLOW_CLICK_TIMEOUT_MS, noWaitAfter: true })
       postClick?.afterClick()
       clicked = true
@@ -335,6 +343,7 @@ async function runFlowScanWithinBudget(
       actionEvidence.clickBlocked = false
       options.overlayRecorder?.activated(beforeInspection)
     } catch (err) {
+      options.onPrimaryActionWindow?.(null)
       await clickTarget.dispose().catch(() => {})
       throw err
     }
@@ -385,13 +394,23 @@ async function runFlowScanWithinBudget(
   if (clickResponse) actionEvidence.responseExpected = true
   actionEvidence.httpStatus = clickResponseStatus ?? null
   const explicitChallenge = isBotInterstitialPage({ cfMitigated: clickResponse?.headers()['cf-mitigated'] })
-  const postClickMetrics = postClick && (!clickResponseStatus || clickResponseStatus < 400) && !explicitChallenge
+  const partialResponse = clickResponseStatus === 206
+  const postClickMetrics = postClick && (!clickResponseStatus || clickResponseStatus < 400) && !explicitChallenge && !partialResponse
     ? await postClick.finish(Boolean(clickResponse)) : undefined
   if (options.mode === 'primary' && clickResponse) await page.waitForLoadState('domcontentloaded', {
     timeout: Math.max(1, Math.min(1500, started + deadlineMs - Date.now())),
   }).catch(() => undefined)
   const navigationObservation = await observeNavigationResponse(page, clickResponse)
+  if (clickResponse && navigationObservation.matchesResponse && navigationObservation.state === 'challenge')
+    options.onNavigationChallenge?.(clickResponse.request())
+  options.onPrimaryActionWindow?.(null)
   actionEvidence.response = navigationObservation.state
+  if (navigationObservation.matchesResponse)
+    actionEvidence.responseDestinationKey = primaryActionResponseDestinationKey(navigationObservation.pageUrl)
+  if (partialResponse) {
+    postClick?.cancel()
+    return { status: 'skipped', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
+  }
   if (actionEvidence.response === 'error') {
     postClick?.cancel()
     actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) ? 'changed' : !skipNavigationWait ? 'same' : 'unknown'
@@ -405,7 +424,17 @@ async function runFlowScanWithinBudget(
   const semanticPanelOpened = !urlsMeaningfullyChanged(landingUrl, page.url()) || declaredRouteReached
     ? actionPanelOpened(panelsBefore, await visibleActionPanels(page)) : false
   const routeAfter = navigationObservation.copy
-  const loading = cta.fragmentRoute ? await readLoadingUi(page).catch(() => null) : null
+  const loading = cta.fragmentRoute || navigationObservation.state === 'healthy' ? await readLoadingUi(page).catch(() => null) : null
+  if (clickResponseStatus && clickResponseStatus >= 200 && clickResponseStatus < 300 && navigationObservation.state !== 'challenge') {
+    // A successful HTTP response can still be a blank shell or an error template.
+    const documentReady = navigationObservation.state === 'healthy' && routeAfter && loading && loading.readyState !== 'loading' &&
+      !loading.loadingVisible && !hasMissingPageContent([...routeAfter.h1s, ...(loading.title ? [loading.title] : [])], routeAfter.pageText)
+    const viewport = documentReady && !routeAfter.pageText.trim()
+      ? await observeViewport(page, { profile: 'post-click-v2', includeActions: false }).catch(() => null)
+      : null
+    actionEvidence.destinationContentObserved = Boolean(documentReady && page.url() === navigationObservation.pageUrl &&
+      (routeAfter.pageText.trim() || viewport?.pageUrl === navigationObservation.pageUrl && viewport.content))
+  }
   const routeSurfaceReady = Boolean(routeAfter && routeAfter.pageUrl === page.url() && loading?.readyState === 'complete' &&
     !loading.loadingVisible && !hasMissingPageContent([...routeAfter.h1s, ...(loading.title ? [loading.title] : [])], routeAfter.pageText))
   const beforeHeadings = new Set([...(routeBefore?.h1s ?? []), ...(routeBefore?.h2s ?? [])])
@@ -434,10 +463,13 @@ async function runFlowScanWithinBudget(
   if (cta.fragmentRoute && !clickResponse && actionEvidence.navigation === 'unknown')
     return { status: 'skipped', steps, finalUrl, postClickMetrics, ...ctaMeta }
 
+  // Missing or loading shells are distinct from partial copy collection. When
+  // copy collection is partial, independent control and trust probes can run.
+  const inspectContent = actionEvidence.response !== 'healthy' || actionEvidence.destinationContentObserved !== false
   const destinationUX = options.mode !== 'primary' && urlsMeaningfullyChanged(landingUrl, finalUrl)
-    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, postClickMetrics)
+    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, postClickMetrics, { inspectContent })
     : undefined
-  const destinationTrust = destinationUX?.trustSignals
+  const destinationTrust = inspectContent ? destinationUX?.trustSignals : undefined
 
   const leftOrigin = !isSameSiteOrigin(finalUrl, origin)
   if (leftOrigin && !isConversionPathUrl(origin, finalUrl)) {

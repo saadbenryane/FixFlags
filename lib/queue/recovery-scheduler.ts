@@ -1,4 +1,5 @@
 import { deleteExpiredAccountMessages } from '@/lib/sites/accounts/retention'
+import { deleteExpiredProviderWindows } from '@/lib/billing/provider-budget'
 import { tryAcquireLock, withSchedulerLease } from './lock'
 import {
   recoverCompletedImprovementProjections,
@@ -13,12 +14,17 @@ import { runGaPull } from '@/lib/growth/ga-pull'
 import { deleteExpiredProductSignals } from '@/lib/signals/product-signals'
 import { logger } from '@/lib/logger'
 import { createTimerScheduler } from './timer-scheduler'
+import { isAuditTaskTransportReady } from './client'
 import { recoverExpiredSiteRuns } from '@/lib/sites/application/run-leases'
 import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
 import { dispatchPendingAudits } from '@/lib/audit/dispatch'
-import { recoverProgressiveAudits } from '@/lib/audit/progressive/runtime'
+import { recoverPendingCoordinators } from '@/lib/audit/progressive/runtime'
+import { recoverActiveTaskGraphs } from '@/lib/audit/progressive/engine'
+import { recoverPendingAiReviews } from '@/lib/audit/enqueue-ai-review'
+import { retireObsoleteTaskDeliveries } from '@/lib/audit/progressive/delivery-window'
 import { refreshDueGoogleContexts } from '@/lib/sites/connections/google'
 import { MONITORING_SWEEP_INTERVAL_MS } from '@/lib/sites/monitoring-freshness'
+import { initializeDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { deliverWebsiteSummaries } from '@/lib/notifications/service'
 import { maintainEmailDelivery, retryPendingNurtureEmails } from '@/lib/email/maintenance'
 
@@ -42,19 +48,12 @@ const SIGNAL_RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SIGNAL_RETENTION_LOCK_TTL_MS = 25 * 60 * 60 * 1000
 
 let scheduler: ReturnType<typeof createTimerScheduler> | null = null
-let progressiveRecoveryRunning = false
 
-async function progressiveRecoveryTick(): Promise<void> {
-  if (progressiveRecoveryRunning) return
-  progressiveRecoveryRunning = true
-  try {
-    await withSchedulerLease('progressive-recovery', async signal => {
-      try { await dispatchPendingAudits() }
-      catch (error) { logger.error('Pending Audit dispatch sweep failed', error) }
-      if (!signal.aborted) await recoverProgressiveAudits()
-    })
-  } catch (error) { logger.error('Progressive recovery sweep failed', error instanceof Error ? error : new Error(String(error))) }
-  finally { progressiveRecoveryRunning = false }
+function leasedRecovery(name: string, recover: (signal: AbortSignal) => Promise<unknown>) {
+  return async () => {
+    try { await withSchedulerLease(name, async signal => { if (!signal.aborted) await recover(signal) }) }
+    catch (error) { logger.error('Recovery sweep failed', error, { name }) }
+  }
 }
 
 async function recoveryTick(): Promise<void> {
@@ -95,6 +94,11 @@ async function integrityWatchTick(): Promise<void> {
   } catch (err) {
     logger.error('Integrity watch sweep failed', err instanceof Error ? err : new Error(String(err)))
   }
+}
+
+async function projectWatchSetupTick(): Promise<void> {
+  try { await initializeDefaultMonitoring(20) }
+  catch (error) { logger.error('Project watch setup sweep failed', error instanceof Error ? error : new Error(String(error))) }
 }
 
 async function projectWatchTick(): Promise<void> {
@@ -188,6 +192,14 @@ async function signalRetentionTick(): Promise<void> {
   }
 }
 
+export async function providerRetentionTick(): Promise<void> {
+  try {
+    await withSchedulerLease('provider-budget-retention', async signal => {
+      if (!signal.aborted) await deleteExpiredProviderWindows()
+    })
+  } catch (error) { logger.error('Provider budget retention failed', error instanceof Error ? error : new Error(String(error))) }
+}
+
 export async function accountRetentionTick(): Promise<void> {
   try {
     await withSchedulerLease('account-message-retention', async signal => {
@@ -208,10 +220,15 @@ export function startRecoveryScheduler() {
   scheduler = createTimerScheduler(error => logger.error('Scheduler callback failed', error))
   const jobs: Array<[() => Promise<unknown>, number, number]> = [
     [accountRetentionTick, 5000, 60_000],
-    [progressiveRecoveryTick, 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
+    [() => dispatchPendingAudits(), 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
+    [() => recoverPendingCoordinators(), 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
+    [() => recoverActiveTaskGraphs(undefined, isAuditTaskTransportReady), 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
+    [leasedRecovery('progressive-prescriptions', () => recoverPendingAiReviews()), 2000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
+    [leasedRecovery('progressive-retirement', () => retireObsoleteTaskDeliveries()), 3000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
     [recoveryTick, 15_000, RECOVERY_INTERVAL_MS],
     [projectionRecoveryTick, 16_000, RECOVERY_INTERVAL_MS],
     [siteRunRecoveryTick, 17_000, RECOVERY_INTERVAL_MS],
+    [projectWatchSetupTick, 4000, MONITORING_SWEEP_INTERVAL_MS],
     [projectWatchTick, 5000, MONITORING_SWEEP_INTERVAL_MS],
     [projectWatchNotificationTick, 6000, MONITORING_SWEEP_INTERVAL_MS],
     [websiteSummaryTick, 8000, 60_000],
@@ -223,6 +240,7 @@ export function startRecoveryScheduler() {
     [growthRollupTick, 90_000, ROLLUP_INTERVAL_MS],
     [analyticsTick, 120_000, ANALYTICS_INTERVAL_MS],
     [signalRetentionTick, 150_000, SIGNAL_RETENTION_INTERVAL_MS],
+    [providerRetentionTick, 155_000, SIGNAL_RETENTION_INTERVAL_MS],
   ]
   for (const [tick, initial, interval] of jobs) {
     scheduler.schedule(tick, initial)

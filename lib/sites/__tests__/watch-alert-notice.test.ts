@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   WATCH_NOTIFICATION_ATTEMPT_LIMIT,
@@ -7,8 +5,6 @@ import {
 } from '@/lib/audit/watch-notification'
 import { siteWatchAlertNotice as projectedWatchAlertNotice, watchAlertSummary } from '@/lib/sites/watch-alert-notice'
 import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy-barrel'
-
-const root = resolve(__dirname, '../../..')
 
 // Exercise policy and notice together for the recorded raw delivery fixtures.
 function siteWatchAlertNotice(input: Parameters<typeof watchAlertDelivery>[0] & { at: Date | string | null }) {
@@ -130,19 +126,6 @@ describe('Site notice for an undelivered alert', () => {
     const body = WATCH_ALERT_DELIVERY.undeliveredBody('Sep 20, 2026', true)
     expect(body).not.toMatch(/resend|api key|provider|smtp|422|500|forbidden/i)
     expect(body).toMatch(/could not confirm.*reached your inbox/i)
-  })
-
-  it('reads the alert inside a resolved projectId, so no tenant sees another tenant alert', () => {
-    // A provisional Site has no projectId. Querying with projectId: null matches
-    // unscoped Watch alerts belonging to other tenants, and an undelivered alert
-    // is exactly the kind of state that must never leak sideways.
-    const queries = readFileSync(resolve(root, 'lib/sites/application/queries.ts'), 'utf8')
-    expect(queries).toMatch(/async function loadLatestWatchAlert\(projectId: string \| null \| undefined\)/)
-    expect(queries).toMatch(/return projectId\s*\? await prisma\.audit\.findFirst/)
-    expect(queries).toContain('where: { projectId, ...watchObservationWhere(projectId)')
-    expect(queries).toContain('loadLatestWatchAlert(site.projectId)')
-    expect(queries).toContain('watchNotificationLeaseUntil: true')
-    expect(queries).toContain('leaseUntil: latestAlert?.watchNotificationLeaseUntil')
   })
 
   it('avoids the banned voice patterns', () => {

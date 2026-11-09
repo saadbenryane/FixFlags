@@ -6,14 +6,17 @@ import {
 import { getGoogleAnalyticsId, initializeGoogleTag, isGaConfigured } from '@/lib/analytics/gtag'
 import { hasAnalyticsConsent } from '@/lib/analytics/consent'
 import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { GUIDE_ANALYZE_EVENT } from '@/lib/analytics/guide-entry'
+import { durableCheckId } from '@/lib/audit/check-identity'
 
 /**
  * Funnel events for launch instrumentation.
- * `started_audit` is the product name for scan_submitted (kept for ad conversions).
+ * `started_audit` records a newly admitted analysis (kept for conversion reporting).
  */
 export type FunnelEvent =
   | 'landing_view'
   | 'started_audit'
+  | 'audit_reused'
   | 'scan_validation_failed'
   | 'signed_up'
   | 'signup_started'
@@ -43,6 +46,7 @@ export type FunnelEvent =
   | 'managed_subscription'
   | 'marketing_page_view'
   | 'marketing_interaction'
+  | typeof GUIDE_ANALYZE_EVENT
   | 'tool_interaction'
   | 'waitlist_joined'
   | 'requested_demo'
@@ -100,9 +104,9 @@ type EventParams = {
     utm_source?: string
     utm_campaign?: string
     journey_id?: string
-    audit_id?: string
     reused?: boolean
   }
+  audit_reused: EventParams['started_audit']
   scan_validation_failed: {
     reason?: string
     cta_placement?: 'hero' | 'final' | 'dashboard' | 'other'
@@ -184,6 +188,7 @@ type EventParams = {
     action: 'navigate' | 'expand' | 'copy'
     target: string
   }
+  [GUIDE_ANALYZE_EVENT]: { page: string; journey_id?: string }
   tool_interaction: {
     tool: AcquisitionTool
     outcome: 'submitted' | ToolResultOutcome
@@ -279,8 +284,13 @@ export function trackEvent<T extends FunnelEvent>(
     ...(params as Record<string, unknown> | undefined),
     send_to: getGoogleAnalyticsId(),
   }
-  // Email is only for the separate, consented Ads enhanced-conversion call.
+  // Keep operational identities out of browser analytics payloads.
   delete eventParams.email
+  delete eventParams.user_id
+  delete eventParams.audit_id
+  delete eventParams.parent_audit_id
+  delete eventParams.flag_id
+  if (typeof eventParams.check_id === 'string') eventParams.check_id = durableCheckId(eventParams.check_id) ?? undefined
   try {
     window.gtag!('event', event, eventParams)
   } catch (error) {
@@ -299,8 +309,7 @@ export function trackEvent<T extends FunnelEvent>(
     fireMetaPixelEvent('CompleteRegistration', undefined, eventID)
   }
 
-  if (event === 'started_audit') {
-    fireGoogleAdsConversion(undefined)
+  if (event === 'started_audit' && eventParams.reused === false) {
     fireMetaPixelEvent('Lead')
   }
 

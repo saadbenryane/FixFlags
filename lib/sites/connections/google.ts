@@ -8,6 +8,8 @@ import { analyticsReportScope, analyticsWatchedPagePaths, ANALYTICS_PAGE_LIMIT, 
 import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
 import { SITE_CONNECTION_COPY as C } from '@/lib/marketing/copy/site-connections'
 import { GoogleProviderError, googleResponseFailure, readGoogleTokens } from '@/lib/integrations/google-response'
+import { readSearchConsoleRows, searchConsoleContextRow, searchConsoleReportingPeriod } from '@/lib/integrations/search-console-report'
+import { parseAnalyticsReports } from './analytics-report'
 import {
   chooseAnalyticsProperty,
   chooseSearchProperty,
@@ -167,12 +169,13 @@ export function liveGoogleClient(): GoogleConnectionClient {
           endDate: period.endDate,
           dimensions: ['page', 'query'],
           dimensionFilterGroups: [{ groupType: 'and', filters: [{ dimension: 'page', operator: 'includingRegex', expression: searchPageFilter(scope) }] }],
+          dataState: 'final',
+          aggregationType: 'byPage',
           rowLimit: 25,
         }),
       })
       if (!response.ok) throw await googleResponseFailure(response)
-      const data = await response.json() as { rows?: Array<{ keys?: string[]; clicks?: number; impressions?: number; position?: number }> }
-      return data.rows ?? []
+      return readSearchConsoleRows(response, searchConsoleContextRow, { dimensionCount: 2, limit: 25, pageScoped: true })
     },
     async findAnalyticsProperty(accessToken, host, propertyId) {
       let requests = 0
@@ -248,28 +251,7 @@ export function liveGoogleClient(): GoogleConnectionClient {
         }),
       })
       if (!response.ok) throw await googleResponseFailure(response)
-      const data = await response.json() as { reports?: Array<{ dimensionHeaders?: Array<{ name?: string }>; metricHeaders?: Array<{ name?: string }>;
-        rows?: Array<{ dimensionValues?: Array<{ value?: string }>; metricValues?: Array<{ value?: string }> }> }> }
-      const pageReports = [data.reports?.[0], ...(watched.length ? [data.reports?.[2]] : [])], audienceReport = data.reports?.[1]
-      const audienceSessions = audienceReport?.metricHeaders?.findIndex(header => header.name === 'sessions') ?? -1
-      const activeUsers = audienceReport?.metricHeaders?.findIndex(header => header.name === 'activeUsers') ?? -1
-      const audienceViews = audienceReport?.metricHeaders?.findIndex(header => header.name === 'screenPageViews') ?? -1
-      if (data.reports?.length !== (watched.length ? 3 : 2) || [audienceSessions, activeUsers, audienceViews].some(index => index < 0))
-        throw new Error('Analytics report columns are unavailable')
-      const metric = (value: string | undefined) => value?.trim() ? Number(value) : undefined
-      const pages = pageReports.flatMap(report => {
-        const path = report?.dimensionHeaders?.findIndex(header => header.name === 'pagePath') ?? -1
-        const sessions = report?.metricHeaders?.findIndex(header => header.name === 'sessions') ?? -1
-        const views = report?.metricHeaders?.findIndex(header => header.name === 'screenPageViews') ?? -1
-        if ([path, sessions, views].some(index => index < 0)) throw new Error('Analytics report columns are unavailable')
-        return (report?.rows ?? []).slice(0, ANALYTICS_PAGE_LIMIT).map(row => ({ pagePath: row.dimensionValues?.[path]?.value,
-          sessions: metric(row.metricValues?.[sessions]?.value), pageViews: metric(row.metricValues?.[views]?.value) }))
-      })
-      // A watched page may also be a top page. Use its single provider aggregate, never add both copies.
-      return { pages: [...new Map(pages.map(page => [page.pagePath, page])).values()],
-        audience: { sessions: metric(audienceReport?.rows?.[0]?.metricValues?.[audienceSessions]?.value),
-          activeUsers: metric(audienceReport?.rows?.[0]?.metricValues?.[activeUsers]?.value),
-          pageViews: metric(audienceReport?.rows?.[0]?.metricValues?.[audienceViews]?.value) } }
+      return parseAnalyticsReports(await response.json(), watched)
     },
     async revoke(token) {
       await request('https://oauth2.googleapis.com/revoke', {
@@ -305,20 +287,34 @@ export function googleConnectionCredentialScope(connection: GoogleCredentials, u
     tokenExpiresAt: connection.tokenExpiresAt }
 }
 
-async function commitSync(input: { connectionId: string; projectId: string; userId: string; authorityScope: Prisma.SiteConnectionWhereInput; siteUrl?: string }, result: SyncResult,
+async function commitSync(input: {
+  connectionId: string; projectId: string; userId: string; provider: SiteConnectionProvider
+  authorityScope: Prisma.SiteConnectionWhereInput; previousPropertyId: string | null; siteUrl?: string; analyticsPagesLimited?: boolean
+}, result: SyncResult,
   facts: ConnectionFact[] | null, observedAt: Date, period: ReportingPeriod) {
   await prisma.$transaction(async tx => {
     await lockConnectionOwner(tx, input.projectId, input.userId)
     const admitted = await tx.siteConnection.updateMany({
-      where: { ...input.authorityScope, id: input.connectionId, projectId: input.projectId,
+      where: { ...input.authorityScope, id: input.connectionId, projectId: input.projectId, propertyId: input.previousPropertyId,
         project: { ...activeConnectionProject, userId: input.userId, ...(input.siteUrl ? { url: input.siteUrl } : {}) },
-        OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: observedAt } }] },
+        AND: [
+          { OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: observedAt } }] },
+          { OR: [{ lastSyncAttemptAt: null }, { lastSyncAttemptAt: { lte: observedAt } }] },
+        ] },
       data: { lastSyncAttemptAt: observedAt, status: result.status, statusDetail: result.detail,
         ...(['CONNECTED', 'MISMATCH'].includes(result.status) ? { propertyId: result.propertyId, propertyLabel: result.propertyLabel } : {}), ...(result.status === 'CONNECTED' ? { lastSyncedAt: observedAt } : {}) },
     })
     if (admitted.count !== 1) throw new Error(C.changed)
     if (facts !== null) {
-      await tx.siteConnectionFact.deleteMany({ where: { connectionId: input.connectionId } })
+      const sameAnalyticsProperty = input.provider === 'ANALYTICS' && result.propertyId !== null && input.previousPropertyId === result.propertyId
+      const updatedKinds = [...new Set(facts.map(fact => fact.kind))]
+      const retainPages = sameAnalyticsProperty && input.analyticsPagesLimited && updatedKinds.includes('analytics_page')
+      await tx.siteConnectionFact.deleteMany({ where: { connectionId: input.connectionId,
+        ...(retainPages ? { OR: [
+          { kind: { in: updatedKinds.filter(kind => kind !== 'analytics_page') } },
+          { kind: 'analytics_page', pagePath: { in: facts.flatMap(fact => fact.kind === 'analytics_page' && fact.pagePath ? [fact.pagePath] : []) } },
+        ] } : sameAnalyticsProperty ? { kind: { in: updatedKinds } } : {}),
+      } })
       if (facts.length) await tx.siteConnectionFact.createMany({ data: facts.map(fact => ({
         kind: fact.kind, pagePath: fact.pagePath, subject: fact.subject, clicks: fact.clicks,
         impressions: fact.impressions, sessions: fact.sessions, activeUsers: fact.activeUsers, pageViews: fact.pageViews, position: fact.position,
@@ -326,6 +322,11 @@ async function commitSync(input: { connectionId: string; projectId: string; user
         periodStart: new Date(period.startDate), periodEnd: new Date(period.endDate),
         ...(fact.reportScope ? { reportScope: fact.reportScope } : {}),
       })) })
+      if (retainPages) {
+        const excess = await tx.siteConnectionFact.findMany({ where: { connectionId: input.connectionId, kind: 'analytics_page' },
+          orderBy: [{ observedAt: 'desc' }, { id: 'desc' }], skip: 2 * ANALYTICS_PAGE_LIMIT, select: { id: true } })
+        if (excess.length) await tx.siteConnectionFact.deleteMany({ where: { connectionId: input.connectionId, id: { in: excess.map(fact => fact.id) } } })
+      }
     }
   })
   return result
@@ -344,44 +345,52 @@ export async function syncGoogleConnection(input: {
   })
   if (!connection?.encryptedAccessToken) throw new Error(C.changed)
   if (canonicalHost(input.host) !== canonicalHost(connection.project.canonicalHost)) throw new Error(C.changed)
+  if (connection.propertyId && input.propertyId && connection.propertyId !== input.propertyId)
+    throw new Error(C.changed)
   const recordedToken = Buffer.from(decryptSecret(connection.encryptedAccessToken))
   const suppliedToken = Buffer.from(input.accessToken)
   if (recordedToken.length !== suppliedToken.length || !timingSafeEqual(recordedToken, suppliedToken)) throw new Error(C.changed)
   const client = input.client ?? liveGoogleClient()
   const observedAt = new Date()
-  const period = reportingPeriod(observedAt)
+  const period = input.provider === 'SEARCH_CONSOLE' ? searchConsoleReportingPeriod(observedAt) : reportingPeriod(observedAt)
   let result: SyncResult
   let facts: ConnectionFact[] | null = null
+  let analyticsPagesLimited: boolean | undefined
   try {
     if (input.provider === 'SEARCH_CONSOLE') {
-      const properties = input.propertyId ? [] : await client.listSearchSites(input.accessToken)
-      const property = input.propertyId ?? (input.siteUrl
-        ? properties.find(property => searchPropertyCoversUrl(property.siteUrl, input.siteUrl!))?.siteUrl ?? null
-        : chooseSearchProperty(properties, input.host))
-      if (!property || input.siteUrl && !searchPropertyCoversUrl(property, input.siteUrl)) {
+      const propertyId = connection.propertyId ?? input.propertyId
+      const properties = propertyId ? [] : await client.listSearchSites(input.accessToken)
+      const property = propertyId ?? chooseSearchProperty(properties, connection.project.url)
+      if (!property || !searchPropertyCoversUrl(property, connection.project.url)) {
         result = { status: 'MISMATCH', detail: 'No Search Console property matches this Site.', propertyId: null, propertyLabel: null }
       } else {
         const scope = searchReportScope(input.host, property)
-        facts = factsFromSearchRows(await client.querySearch(input.accessToken, scope, period), scope)
+        const rows = await client.querySearch(input.accessToken, scope, period)
+        if (rows.some(row => !row.keys?.[0] || !row.keys[1]?.trim() || !searchPropertyCoversUrl(property, row.keys[0])))
+          throw new GoogleProviderError('MALFORMED_PROVIDER_RESPONSE')
+        facts = factsFromSearchRows(rows, scope)
         if (!facts.some(fact => fact.impressions !== null || fact.clicks !== null)) {
           facts = null
           result = { status: 'UNAVAILABLE', detail: C.searchMissingCounts, propertyId: property, propertyLabel: property }
         } else result = { status: 'CONNECTED', detail: 'Search Console numbers are available as context.', propertyId: property, propertyLabel: property }
       }
     } else {
-      const selected = await client.findAnalyticsProperty(input.accessToken, input.host, input.propertyId ?? undefined)
-      const property = selected && (!input.propertyId || selected.propertyId === input.propertyId)
+      const propertyId = connection.propertyId ?? input.propertyId ?? undefined
+      const selected = await client.findAnalyticsProperty(input.accessToken, input.host, propertyId)
+      const property = selected && (!propertyId || selected.propertyId === propertyId)
         ? chooseAnalyticsProperty([selected], input.host) : null
       if (!property) result = { status: 'MISMATCH', detail: 'No Analytics property matches this Site.', propertyId: null, propertyLabel: null }
       else {
         const scope = analyticsReportScope(input.host, property.propertyId)
         const watched = analyticsWatchedPagePaths(connection.project.url, connection.project.sitePages?.map(page => page.url) ?? [], scope)
         const report = await client.queryAnalytics(input.accessToken, scope, period, watched)
+        analyticsPagesLimited = report.pagesLimited
+        const limited = report.pagesLimited || report.audienceLimited
         facts = [...factsFromAnalyticsRows(report.pages, scope), ...factsFromAnalyticsAudience(report.audience, scope)]
-        if (!facts.some(fact => fact.sessions !== null || fact.activeUsers != null || fact.pageViews != null)) {
+        if (!facts.length) {
           facts = null
-          result = { status: 'UNAVAILABLE', detail: C.analyticsMissingCounts, propertyId: property.propertyId, propertyLabel: property.label }
-        } else result = { status: 'CONNECTED', detail: C.analyticsAvailable, propertyId: property.propertyId, propertyLabel: property.label }
+          result = { status: 'UNAVAILABLE', detail: limited ? C.analyticsLimited : C.analyticsMissingCounts, propertyId: property.propertyId, propertyLabel: property.label }
+        } else result = { status: 'CONNECTED', detail: limited ? C.analyticsPartial : C.analyticsAvailable, propertyId: property.propertyId, propertyLabel: property.label }
       }
     }
   } catch (error) {
@@ -396,7 +405,7 @@ export async function syncGoogleConnection(input: {
   const authorityScope = result.status === 'CONNECTED' ? googleConnectionGrantScope(connection, input.userId)
     : googleConnectionCredentialScope(connection, input.userId)
   // Write failures roll back both state and facts; they cannot claim a successful sync.
-  return commitSync({ ...input, authorityScope: { ...authorityScope, propertyId: connection.propertyId } }, result, facts, observedAt, period)
+  return commitSync({ ...input, authorityScope, previousPropertyId: connection.propertyId, analyticsPagesLimited }, result, facts, observedAt, period)
 }
 
 export async function completeGoogleConnection(input: {
@@ -541,10 +550,11 @@ export async function refreshDueGoogleContexts(now = new Date(), limit = 20, dep
       data: { lastSyncAttemptAt: now },
     })
     if (claimed.count !== 1) return
+    const claimedCredentials = { ...googleConnectionCredentialScope(connection, connection.project.userId), lastSyncAttemptAt: now }
     try {
       const access = await getGoogleConnectionAccess(connection, connection.project.userId)
       if (!access) {
-        await prisma.siteConnection.updateMany({ where: googleConnectionCredentialScope(connection, connection.project.userId),
+        await prisma.siteConnection.updateMany({ where: claimedCredentials,
           data: { status: 'NEEDS_REAUTH', statusDetail: 'Reconnect this Google account to keep reading it.' } })
         return
       }
@@ -552,7 +562,7 @@ export async function refreshDueGoogleContexts(now = new Date(), limit = 20, dep
         host: connection.project.canonicalHost, siteUrl: connection.project.url, propertyId: connection.propertyId, accessToken: access.token, client: dependencies.client })
     } catch (error) {
       const reauthenticate = error instanceof GoogleProviderError && error.requiresReauthentication
-      await prisma.siteConnection.updateMany({ where: googleConnectionCredentialScope(connection, connection.project.userId),
+      await prisma.siteConnection.updateMany({ where: claimedCredentials,
         data: { status: reauthenticate ? 'NEEDS_REAUTH' : 'UNAVAILABLE', statusDetail: reauthenticate
           ? 'Reconnect this Google account to keep reading it.' : 'Google is unavailable. Earlier context retains its original observation date.' } })
     }

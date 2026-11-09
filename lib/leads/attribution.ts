@@ -1,5 +1,6 @@
 import { AuditSource } from '@prisma/client'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
+import type { GuideEntry } from '@/lib/analytics/guide-entry'
 
 export interface AuditAttribution {
   normalizedDomain: string | null
@@ -11,6 +12,7 @@ export interface AuditAttribution {
   gclid: string | null
   fbclid: string | null
   journeyId: string | null
+  guideEntry?: GuideEntry
 }
 
 const CLIENT_SOURCES = new Set<AuditSource>([
@@ -52,6 +54,7 @@ export function buildAttribution(input: {
   gclid?: string | null
   fbclid?: string | null
   journeyId?: string | null
+  guideEntry?: GuideEntry
 }): AuditAttribution {
   const normalizedDomain = normalizeDomain(input.url)
   const searchParams = input.searchParams
@@ -91,6 +94,7 @@ export function buildAttribution(input: {
     gclid,
     fbclid,
     journeyId: input.journeyId?.trim() || null,
+    ...(input.guideEntry ? { guideEntry: input.guideEntry } : {}),
   }
 }
 

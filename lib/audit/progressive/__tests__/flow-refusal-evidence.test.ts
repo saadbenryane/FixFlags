@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const probe = vi.hoisted(() => ({ scan: vi.fn(), close: vi.fn(), dispose: vi.fn(), refused: true,
   failures: [] as import('../../browser/network-monitor').NetworkFailureRecord[],
-  engagement: { version: 1, requests: [], truncated: false } as import('../../network-engagement-evidence').EngagementEvidence }))
+  engagement: { version: 1, requests: [], truncated: false } as import('../../network-engagement-evidence').EngagementEvidence,
+  tracking: undefined as import('../../tracking/contracts').TrackingEvidence | undefined }))
 vi.mock('../../flow/run-flow-scan', () => ({ runFlowScan: probe.scan }))
 vi.mock('../../scan-access-store', () => ({ resolveAuditScanAccess: async () => null }))
 vi.mock('../../screenshot', () => ({ getAuditBrowser: async () => ({}) }))
 vi.mock('../evaluators', () => ({ browserEvidence: () => null }))
 vi.mock('../../browser/page-session', () => ({ createAuditPage: async (_browser: unknown, url: string, options: { onSafetyRefusal?: (reason: string) => void }) => {
   if (probe.refused) options.onSafetyRefusal?.('protected_action_requires_fixture')
-  return { page: { url: () => url, context: () => ({ close: probe.close }) }, setTrackingPhase: () => undefined,
-    tracking: () => undefined, engagement: () => probe.engagement, settleEngagement: async () => undefined,
+  return { page: { url: () => url, context: () => ({ close: probe.close }) }, setTrackingPhase: () => undefined, setPublicActionControl: () => undefined,
+    tracking: () => probe.tracking, engagement: () => probe.engagement, settleNetwork: async () => undefined,
     networkFailures: probe.failures, formProbe: null, disposeNetwork: probe.dispose }
 } }))
 import { actionHandlers } from '../actions'
@@ -25,9 +26,20 @@ function context(): TaskContext {
     task: { id: 'flow', workGeneration: 1 }, input: { pageUrl, position: 0, primary: false, role: 'secondary' },
     deadline: Date.now() + 10_000, dependencies: new Map() } as unknown as TaskContext
 }
-beforeEach(() => { vi.clearAllMocks(); probe.refused = true; probe.failures = []; probe.engagement = { version: 1, requests: [], truncated: false } })
+beforeEach(() => { vi.clearAllMocks(); probe.refused = true; probe.failures = []; probe.engagement = { version: 1, requests: [], truncated: false }; probe.tracking = undefined })
 
 describe('flow observations after a protected action refusal', () => {
+  it('keeps a measured library error when the public action walk cannot finish', async () => {
+    probe.refused = false
+    probe.scan.mockResolvedValue({ status: 'skipped', steps: [], finalUrl: pageUrl })
+    probe.tracking = { version: 1, phase: 'public_action', requests: [{ provider: 'vercel', role: 'library', hostname: 'example.com',
+      endpoint: '/_vercel/insights/script.js', method: 'GET', phase: 'public_action', state: 'response', status: 503, atMs: 1, reason: null }],
+      truncated: false, durationMs: 100, consentInteraction: 'existing_flow' }
+    const artifact = readArtifact(await handler.evaluate(context()), 'flow')
+    expect(() => handler.validateResult(artifact)).not.toThrow()
+    expect(artifact.data.flags).toMatchObject([{ checkId: 'tracking-library-http-error' }])
+    expect(artifact.data.flowReceipt).toMatchObject({ complete: false, passed: false })
+  })
   it.each(['skipped', 'timeout'] as const)('retains an independent recorded API failure after a %s walk without certifying action completion', async status => {
     probe.refused = false
     const destination = 'https://example.com/api/account'

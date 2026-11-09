@@ -12,11 +12,12 @@ import { BOARD_PREVIEW_COPY } from '@/lib/marketing/copy/board-preview'
 
 const coverage = { environment: 'production', requiredBindings: ['http'], observedBindings: ['http'],
   bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: 'https://example.com/' } }] }
-function row(assessment: unknown) {
-  return { id: 'audit', status: 'COMPLETED', failureCode: null, failedModules: [], pages: [], flags: [],
+function row(assessment: object | null) {
+  return { id: 'audit', projectId: 'site', status: 'COMPLETED', failureCode: null, failedModules: [], pages: [], flags: [],
     completedAt: new Date('2026-10-11T12:00:00Z'), updatedAt: new Date(), executionSpec: { scope: 'OUTCOMES' }, recheckTrigger: 'WATCH',
-    verificationAttempts: [], runRequests: [{ source: 'WATCH', verificationTarget: null,
-      selections: [{ outcome: { name: 'The page loads' } }], assessments: [assessment] }] }
+    verificationAttempts: [], runRequests: [{ projectId: 'site', source: 'WATCH', verificationTarget: null,
+      selections: [{ outcomeId: 'availability', outcome: { projectId: 'site', name: 'The page loads' } }],
+      assessments: assessment ? [{ auditId: 'audit', outcomeId: 'availability', ...assessment }] : [] }] }
 }
 describe('history execution loading', () => {
   const shared = [
@@ -84,11 +85,16 @@ describe('scope completion in monitoring history', () => {
       { targetKey: 'projection:flag-comparison', status: 'COMPLETED', detail: { kind: 'flag-comparison', version: 1, auditId: 'audit', parentAuditId: null,
         summary: { newIssues: [], unchanged: [], regressed: [], fixed: [], inconclusive: [] } } },
       { targetKey: 'module:security', status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'security', applicable: true, passed: true,
-        pageUrl: targetUrl, assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })) } },
+        pageUrl: targetUrl, assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })),
+        execution: { auditId: 'audit', taskId: 'security', checkVersion: 1, source: 'http', collectedAt: '2026-10-11T12:00:00.000Z' } } },
     ] }
     expect(projectHistory(audit as never, [])).toMatchObject({ scope: 'SITE', completionState: 'PARTIAL' })
-    expect(projectHistory({ ...audit, pages: [...audit.pages, { url: peer, status: 'COMPLETED' }] } as never, []))
-      .toMatchObject({ completionState: 'COMPLETED' })
+    const collected = { ...audit, pages: [...audit.pages, { url: peer, status: 'COMPLETED' }] }
+    expect(projectHistory(collected as never, [])).toMatchObject({ completionState: 'PARTIAL' })
+    const primary = audit.verifierExecutions[1]
+    collected.verifierExecutions = [...audit.verifierExecutions, { ...primary, detail: { ...primary.detail, pageUrl: peer,
+      execution: { ...primary.detail.execution, taskId: 'linked-security' } } }]
+    expect(projectHistory(collected as never, [])).toMatchObject({ completionState: 'COMPLETED' })
   })
   it('does not let unavailable account behavior become a complete account history entry', () => {
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'ACCOUNT_CHECKS', targetUrl: 'https://example.com/',
@@ -121,7 +127,8 @@ describe('scope completion in monitoring history', () => {
       category: { area: 'security', sourceAuditId: 'full', pages: ['https://example.com/'] }, checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null })
     const receipt = { targetKey: 'module:security', status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'security',
       pageUrl: spec.targetUrl, passed: true, applicable: true, complete: true,
-      assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })) } }
+      assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })),
+      execution: { auditId: 'audit', taskId: 'security', checkVersion: 1, source: 'http', collectedAt: '2026-10-11T12:00:00.000Z' } } }
     const comparison = { targetKey: 'projection:flag-comparison', status: 'COMPLETED', detail: { kind: 'flag-comparison', version: 1, auditId: 'audit', parentAuditId: 'full',
       summary: { fixed: [], inconclusive: [], unchanged: [], regressed: [], newIssues: [] } } }
     const audit = { ...row(null), parentId: 'full', evidenceCoverage: {}, executionSpec: spec,
@@ -160,13 +167,26 @@ describe('scope completion in monitoring history', () => {
     ] })
     expect(projectHistory(audit as never, [], [], artifact)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'FAILED' })
   })
-  it('links recovery to the exact recorded original Flag and source audit', () => {
-    const audit = { ...row({ state: 'CLEAR', coverage, evidence: { reason: 'available' } }),
-      executionSpec: { scope: 'DIAGNOSTIC', verificationTarget: { kind: 'DIAGNOSTIC', attemptId: 'attempt', pageUrl: 'https://example.com/billing' } },
-      verificationAttempts: [{ id: 'attempt', comparable: true, outcome: 'IMPROVED', handoffReference: 'flag:original', sourceAuditId: 'before' }] }
+  it('keeps the original repair link when a new finding has the same title', () => {
     const source = { id: 'original', problem: 'Billing page is unavailable', auditId: 'before' }
-    expect(projectHistory(audit as never, [], [source]).flags).toEqual([{ id: 'original', title: source.problem }])
-    expect(projectHistory(audit as never, [], [{ ...source, auditId: 'other' }]).flags).toEqual([])
+    const finding = { id: 'current', problem: source.problem, severity: 'HIGH', confidence: 1, checkId: 'page-http-error' }
+    const attempt = { id: 'attempt', comparable: true, outcome: 'UNCHANGED', handoffReference: 'flag:original', sourceAuditId: 'before',
+      verificationAuditId: 'audit', evidenceReference: { beforeAuditId: 'before', afterAuditId: 'audit' } }
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'DIAGNOSTIC', targetUrl: 'https://example.com/billing',
+      environment: 'production', checks: { 'page-http-error': 1 }, outcomes: [], verificationTarget: {
+        kind: 'DIAGNOSTIC', checkId: 'page-http-error', pageUrl: 'https://example.com/billing', parentAuditId: 'before', attemptId: 'attempt',
+      } })
+    const audit = { ...row(null), parentId: 'before', executionSpec: spec, runRequests: [], flags: [finding], verificationAttempts: [attempt] }
+    const history = projectHistory(audit as never, [], [source])
+    expect(history).toMatchObject({ result: 'FLAG', flags: [{ id: 'original', title: source.problem }] })
+    const view = siteViewFixture(); view.monitoringHistory = [history]
+    expect(projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents[0]).toMatchObject({
+      flags: [{ id: 'original', href: `/sites/${view.site.siteId}/flags/original` }],
+    })
+    expect(projectHistory(audit as never, [], [{ ...source, auditId: 'other' }]).flags).toEqual([{ id: 'current', title: source.problem }])
+    expect(projectHistory({ ...audit, parentId: 'other' } as never, [], [source]).flags).toEqual([{ id: 'current', title: source.problem }])
+    expect(projectHistory({ ...audit, verificationAttempts: [{ ...attempt, verificationAuditId: 'other' }] } as never, [], [source]).flags)
+      .toEqual([{ id: 'current', title: source.problem }])
   })
   it('keeps missing and blocked evidence partial rather than deriving completeness from run completion', () => {
     for (const assessment of [{ state: 'COULD_NOT_VERIFY', coverage, evidence: { reason: 'bot_wall' } },

@@ -132,3 +132,14 @@ export function validateBindingForOutcome(
   }
   return { success: false, reason: 'outcome_kind_unsupported' }
 }
+
+export type StoredOutcomeBinding<Mechanism extends string = string> = {
+  key: string; version: number; mechanism: Mechanism; required: boolean; config: Prisma.JsonValue; scope?: Prisma.JsonValue | null
+}
+
+export function snapshotOutcomeBinding<Mechanism extends string>(kind: string, binding: StoredOutcomeBinding<Mechanism>) {
+  const validated = validateBindingForOutcome(kind, binding.mechanism as OutcomeExecutionMechanism, binding.config)
+  return { key: binding.key, version: binding.version, mechanism: binding.mechanism,
+    required: binding.required, config: validated.success ? validated.data.config : {},
+    ...(!validated.success ? { configurationError: validated.reason } : {}), scope: binding.scope ?? null }
+}

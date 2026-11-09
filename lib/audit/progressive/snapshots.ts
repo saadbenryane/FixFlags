@@ -3,9 +3,10 @@ import { cruxEvidenceSchema } from '../crux'
 import { renderedCopySchema } from '../browser/rendered-copy'
 import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
 import { publicPageSignalsSchema } from '../browser/public-page-signals'
-import { publicDocumentSchema, SITEMAP_DOCUMENT_LIMIT, SITEMAP_URL_LIMIT } from '../search/contracts'
+import { publicDocumentSchema, SITEMAP_DOCUMENT_LIMIT, SITEMAP_STRUCTURE_VERSION, SITEMAP_URL_LIMIT } from '../search/contracts'
 export { publicDocumentSchema } from '../search/contracts'
 import { trackingEvidenceSchema } from '../tracking/contracts'
+import { engagementEvidenceSchema } from '../network-engagement-evidence'
 import { resourceTransportSchema } from '../resource-transport'
 import { resourceAuditsSchema } from '../pagespeed-opportunities'
 import { tapTargetAuditsSchema } from '../pagespeed-tap-targets'
@@ -16,12 +17,15 @@ import { motionWindowSchema } from '../checks/motion-evidence'
 import { jsonValueSchema } from '@/lib/json-value'
 import { technologyCaptureSchema } from '../technology-capture'
 import { pagePreviewSchema } from '../checks/page-preview'
+import { publicPagePreviewSchema } from '../checks/public-page-preview'
+import { FAVICON_HREF_VERSION } from '../checks/favicon-declaration'
 import type { PageMetadata } from '../metadata'
 import { HTML_CONTROL_NAMES_VERSION } from '../checks/accessibility-rules'
 import type { PageSpeedResult } from '../pagespeed'
 import { pageSpeedFailureSchema } from '../pagespeed'
 import type { ScreenshotResult } from '../screenshot'
 import { readArtifact, taskIsSettled } from './contracts'
+import { responseEvidenceHeaders } from '../http-evidence'
 
 const text = z.string().max(1_000_000), strings = z.array(text).max(10_000)
 const count = z.number().finite().nonnegative()
@@ -39,7 +43,7 @@ export const pageMetadataSchema = z.object({
   forms: count, inputsWithoutLabel: count, buttonsWithoutText: count, linksWithoutText: count, iframesWithoutTitle: count,
   positiveTabindex: count, ctaTexts: strings, hasStructuredData: z.boolean(), structuredDataTypes: strings,
   hasAnalytics: z.boolean(), hasCookieBasedAnalytics: z.boolean(), hasCookieConsent: z.boolean(),
-  hasPrivacyPolicy: z.boolean(), hasContactInfo: z.boolean(), hasFavicon: z.boolean(), hasSkipLink: z.boolean(),
+  hasPrivacyPolicy: z.boolean(), hasContactInfo: z.boolean(), hasFavicon: z.boolean(), faviconHrefVersion: z.literal(FAVICON_HREF_VERSION).optional(), hasSkipLink: z.boolean(),
   navLandmarkCount: count, pageText: text, jsonLd: z.array(jsonValueSchema).max(50), elementIds: strings,
   anchorNames: strings.optional(), testimonialBlocks: z.array(z.object({ quote: text, attribution: z.string().max(1200).nullable() }).strict()).max(1000).optional(),
   formInputsMissingValidation: count, totalFormInputs: count, maxConversionFormInputs: count,
@@ -61,6 +65,7 @@ export const screenshotSnapshotSchema = z.object({
   desktopHtmlTruncated: z.boolean().optional(), desktopHtmlCompacted: z.boolean().optional(), renderedSearchSnapshot: renderedSearchSnapshotSchema.optional(),
   desktopBase64: z.string().max(8_000_000).nullable(), mobileBase64: z.string().max(8_000_000).nullable(),
   desktopFinalUrl: z.string().url().optional(), desktopHttpStatus: z.number().int().nullable().optional(),
+  desktopResponseResourceKey: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   originalDocument: publicDocumentSchema.optional(),
   consoleErrors: z.array(z.object({ type: text, text, identity: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict()).max(500),
   consoleCoverage: consoleCoverageSchema.optional(),
@@ -71,13 +76,17 @@ export const screenshotSnapshotSchema = z.object({
   captureFailures: z.array(object).max(10), captureMetrics: object.nullable().optional(), loadExperience: object.nullable().optional(),
   desktopLoadExperience: object.nullable().optional(),
   motionWindow: motionWindowSchema.optional(),
-  runtimeHeadMetadata: object.nullable().optional(), renderedCopy: renderedCopySchema.nullable().optional(), responseHeaders: z.record(z.string(), text).nullable().optional(),
+  runtimeHeadMetadata: object.nullable().optional(), renderedCopy: renderedCopySchema.nullable().optional(),
+  responseHeaders: z.record(z.string(), text).transform(headers => responseEvidenceHeaders(Object.entries(headers))).nullable().optional(),
   runtimeHeadScope: captureObservationScopeSchema.optional(),
   tracking: trackingEvidenceSchema.optional(),
+  engagement: engagementEvidenceSchema.optional(),
   networkFailures: z.array(object).max(500).optional(), technologyResources: z.array(object).max(500).optional(),
   technologyResourcesTruncated: z.boolean().optional(), technologyRuntimeMarkers: strings.optional(), actionTimeline: z.array(object).max(500).optional(),
   formProbe: object.nullable().optional(), axeViolations: z.array(object).max(500).optional(), evidenceHarvest: z.array(object).max(500).optional(),
   collectionRestrictions: z.array(z.string().max(120)).max(16).optional(),
+  publicSignInRedirect: z.literal(true).optional(),
+  mobileSignInRedirect: z.literal(true).optional(),
 }).strict()
 export function readScreenshotSnapshot(value: unknown): ScreenshotResult {
   // Explicit version-one adapter for the browser collector's nested diagnostic contracts.
@@ -89,10 +98,11 @@ export const httpNavigationSchema = pageMetadataSchema.pick({ links: true }).ext
   documentUrl: z.string().url(), linkBaseUrl: z.string().url(), complete: z.boolean(),
 }).strict()
 export const httpArtifactSchema = z.object({ document: publicDocumentSchema, metadata: pageMetadataSchema.nullable(), metadataFailure: metadataFailureSchema.optional(),
-  navigation: httpNavigationSchema.optional() }).strict()
+  navigation: httpNavigationSchema.optional(), publicPreview: publicPagePreviewSchema.optional() }).strict()
 export const resourceArtifactSchema = z.object({
   robots: publicDocumentSchema, sitemaps: z.array(publicDocumentSchema).max(SITEMAP_DOCUMENT_LIMIT), sitemapUrls: z.array(z.string().url()).max(SITEMAP_URL_LIMIT),
   complete: z.boolean(), declaredSitemaps: z.array(z.string()).max(SITEMAP_URL_LIMIT),
+  sitemapStructureVersion: z.union([z.literal(1), z.literal(SITEMAP_STRUCTURE_VERSION)]).optional(),
 }).strict()
 export const browserArtifactSchema = z.object({ pageId: z.string().min(1), snapshot: screenshotSnapshotSchema,
   preview: pagePreviewSchema.optional(),

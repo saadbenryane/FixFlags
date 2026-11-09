@@ -36,6 +36,36 @@ describe('recorded public AI visibility evaluation', () => {
     expect(evaluate(AI_VISIBILITY_PROMPTS.map(([promptId]) => ({ ...observation, promptId }))).coverage.status).toBe('complete')
   })
 
+  it('keeps unbranded buying evidence separate by platform and counts each registered guide once per answer', () => {
+    const guide = 'website-online-but-not-working'
+    const cited = `https://fixflags.com/guides/${guide}`
+    const result = evaluate([
+      { ...observation, answer: 'FixFlags', citationUrls: [cited] },
+      { ...observation, promptId: 'buying-01', answer: 'FixFlags', citationUrls: [cited, cited + '/', cited.replace('fixflags.com', 'www.fixflags.com')] },
+      { ...observation, promptId: 'buying-01', observedAt: '2026-10-20T11:00:00Z',
+        citationUrls: ['https://fixflags.com/guides/guides-index', 'https://fixflags.com/guides/private-unregistered', cited.replace('fixflags.com', 'another.org')] },
+      { ...observation, promptId: 'buying-02', platform: 'perplexity' },
+      { ...observation, promptId: 'comparison-01', platform: 'copilot', answer: 'FixFlags', citationUrls: [cited] },
+    ])
+    expect(result.unbrandedDiscovery).toEqual([
+      { platform: 'chatgpt', coverage: { expectedPrompts: 6, observedPrompts: 1, observations: 2, status: 'partial' },
+        observable: { brandMentionAnswers: 1, answersCitingFixFlags: 2, answersCitingRegisteredGuides: 1,
+          guideCitations: [{ guide, answers: 1 }] } },
+      { platform: 'copilot', coverage: { expectedPrompts: 6, observedPrompts: 0, observations: 0, status: 'unavailable' }, observable: null },
+      { platform: 'perplexity', coverage: { expectedPrompts: 6, observedPrompts: 1, observations: 1, status: 'partial' },
+        observable: { brandMentionAnswers: 0, answersCitingFixFlags: 0, answersCitingRegisteredGuides: 0, guideCitations: [] } },
+    ])
+    expect(JSON.stringify(result)).not.toMatch(/https:\/\/|private-unregistered|recorded-model-v1/)
+  })
+
+  it('requires every buying prompt on the same platform for complete buying coverage', () => {
+    const buying = AI_VISIBILITY_PROMPTS.filter(([, category]) => category === 'buying')
+    const mixed = buying.map(([promptId], index) => ({ ...observation, promptId, platform: index ? 'chatgpt' : 'copilot' }))
+    expect(evaluate(mixed).unbrandedDiscovery.map(row => row.coverage.status)).toEqual(['partial', 'partial'])
+    const singlePlatform = mixed.map(row => ({ ...row, platform: 'chatgpt' }))
+    expect(evaluate(singlePlatform).unbrandedDiscovery[0].coverage.status).toBe('complete')
+  })
+
   it.each([
     { promptId: 'unknown-prompt' }, { model: '' }, { platform: 'unknown-secret-platform' }, { observedAt: '2026-02-30T12:00:00Z' },
     { observedAt: '2027-01-01T12:00:00Z' }, { answer: '' }, { citationUrls: ['https://fixflags.com/share/private-token'] },

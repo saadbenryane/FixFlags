@@ -7,7 +7,8 @@ vi.mock('@/lib/db', () => ({ prisma: {
 import { loadResearchConsent, saveResearchConsent, researchSiteIdentity, researchAuditMatchesSite } from '../research-consent'
 import { RESEARCH_CONSENT_VERSION } from '../research-consent-contract'
 const owner = { projectId: 'project', userId: 'owner' }
-const project = { id: 'project', url: 'https://synthetic.example/' }
+const account = { lifecycleStatus: 'ACTIVE', lifecycleRevision: 0 }
+const project = { id: 'project', userId: 'owner', url: 'https://synthetic.example/', watchTargetRevision: 1, user: account, ...account }
 const grant = { id: 'grant', version: 1, userId: 'owner', createdAt: new Date('2026-10-13T10:00:00Z'),
   properties: { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION, siteIdentity: researchSiteIdentity(project.url) } }
 
@@ -18,7 +19,9 @@ describe('Site research permission', () => {
   })
   it('defaults to off and checks the current owner and deletion state', async () => {
     expect(await loadResearchConsent(owner)).toEqual({ enabled: false, grantedAt: null, policyVersion: RESEARCH_CONSENT_VERSION })
-    expect(db.project).toHaveBeenCalledWith({ where: { id: 'project', userId: 'owner', deletedAt: null }, select: { id: true, url: true } })
+    expect(db.project).toHaveBeenCalledWith({ where: { id: 'project', userId: 'owner', deletedAt: null },
+      select: { id: true, userId: true, url: true, watchTargetRevision: true,
+        user: { select: { lifecycleStatus: true, lifecycleRevision: true } } } })
     db.project.mockResolvedValue(null)
     await expect(loadResearchConsent(owner)).rejects.toMatchObject({ status: 404 })
   })
@@ -27,7 +30,8 @@ describe('Site research permission', () => {
     await expect(saveResearchConsent(owner, { enabled: true, policyVersion: 'old-policy' })).rejects.toThrow()
     const view = await saveResearchConsent(owner, { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION })
     expect(view.enabled).toBe(true)
-    expect(db.create.mock.calls[0][0].data).toMatchObject({ projectId: 'project', userId: 'owner', version: 1, properties: grant.properties })
+    expect(db.create.mock.calls[0][0].data).toMatchObject({ projectId: 'project', userId: 'owner', version: 1,
+      properties: { ...grant.properties, ownerLifecycleRevision: 0, siteTargetRevision: 1 } })
     db.latest.mockResolvedValue(grant)
     await saveResearchConsent(owner, { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION })
     expect(db.create).toHaveBeenCalledTimes(1)
@@ -45,7 +49,7 @@ describe('Site research permission', () => {
     }
   })
   it('refuses writes to a deleted or foreign Site before creating any record', async () => {
-    db.lock.mockResolvedValue([])
+    db.lock.mockResolvedValueOnce([{ id: owner.userId }]).mockResolvedValueOnce([])
     await expect(saveResearchConsent(owner, { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION })).rejects.toMatchObject({ status: 404 })
     expect(db.create).not.toHaveBeenCalled()
   })
@@ -53,7 +57,45 @@ describe('Site research permission', () => {
   it('persists withdrawal even when a domain change already made the old grant ineligible', async () => {
     db.latest.mockResolvedValue({ ...grant, properties: { ...grant.properties, siteIdentity: researchSiteIdentity('https://old-domain.example') } })
     await saveResearchConsent(owner, { enabled: false })
-    expect(db.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ properties: { ...grant.properties, enabled: false } }) }))
+    expect(db.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      properties: { ...grant.properties, enabled: false, ownerLifecycleRevision: 0, siteTargetRevision: 1 },
+    }) }))
+  })
+
+  it('withholds stale grants after reactivation and allows a fresh active-owner grant', async () => {
+    db.latest.mockResolvedValue(grant)
+    const reactivated = { lifecycleStatus: 'ACTIVE', lifecycleRevision: 2 }
+    db.project.mockResolvedValue({ ...project, user: reactivated })
+    expect((await loadResearchConsent(owner)).enabled).toBe(false)
+    db.lock.mockResolvedValueOnce([{ id: owner.userId }]).mockResolvedValueOnce([{ ...project, ...reactivated }])
+    expect((await saveResearchConsent(owner, { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION })).enabled).toBe(true)
+    expect(db.create.mock.calls[0][0].data.properties).toMatchObject({ ownerLifecycleRevision: 2, enabled: true })
+  })
+
+  it('rejects an unavailable account before granting and still records withdrawal', async () => {
+    const suspended = { lifecycleStatus: 'SUSPENDED', lifecycleRevision: 1 }
+    db.latest.mockResolvedValue(grant)
+    db.project.mockResolvedValue({ ...project, user: suspended })
+    expect((await loadResearchConsent(owner)).enabled).toBe(false)
+    db.lock.mockResolvedValueOnce([])
+    await expect(saveResearchConsent(owner, { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION }))
+      .rejects.toMatchObject({ code: 'ACCOUNT_UNAVAILABLE' })
+    expect(db.create).not.toHaveBeenCalled()
+    db.lock.mockResolvedValueOnce([{ ...project, ...suspended }])
+    expect((await saveResearchConsent(owner, { enabled: false })).enabled).toBe(false)
+    expect(db.create.mock.calls[0][0].data.properties).toMatchObject({ ownerLifecycleRevision: 1, enabled: false })
+  })
+
+  it('requires a new grant after a Site target revision changes even if the address is restored', async () => {
+    const restored = { ...project, watchTargetRevision: 3 }
+    db.project.mockResolvedValue(restored)
+    for (const previous of [grant, { ...grant, properties: { ...grant.properties, siteTargetRevision: 1 } }]) {
+      db.latest.mockResolvedValue(previous)
+      expect((await loadResearchConsent(owner)).enabled).toBe(false)
+    }
+    db.lock.mockResolvedValueOnce([{ id: owner.userId }]).mockResolvedValueOnce([restored])
+    expect((await saveResearchConsent(owner, { enabled: true, policyVersion: RESEARCH_CONSENT_VERSION })).enabled).toBe(true)
+    expect(db.create.mock.calls[0][0].data.properties).toMatchObject({ siteTargetRevision: 3, enabled: true })
   })
 
   it('binds consent to the Site address without retaining query secrets and allows only its page scope', () => {
@@ -61,5 +103,24 @@ describe('Site research permission', () => {
     expect(researchAuditMatchesSite('https://site.example/store', 'https://site.example/store/pricing')).toBe(true)
     expect(researchAuditMatchesSite('https://site.example/store', 'https://site.example/elsewhere')).toBe(false)
     expect(researchAuditMatchesSite('https://site.example/', 'https://site.example:8443/')).toBe(false)
+    expect(researchAuditMatchesSite('https://site.example/store', 'https://site.example/store/caf%C3%A9%20menu')).toBe(true)
+  })
+
+  it.each([
+    '/store/..%2Felsewhere',
+    '/store/%2e%2e%5celsewhere',
+    '/store/%252e%252e%252felsewhere',
+    '/store/..;part/elsewhere',
+    '/store/..%3Bpart/elsewhere',
+    '/store/path%3Ftoken=value',
+    '/store/path%23token',
+    '/store//nested',
+    '/store/path%00suffix',
+    '/store/path%zz',
+    '/store/path%C0%AFsuffix',
+  ])('withholds ambiguous research path %s', (path) => {
+    const url = 'https://site.example' + path
+    expect(researchAuditMatchesSite('https://site.example/store', url)).toBe(false)
+    expect(researchAuditMatchesSite(url, url)).toBe(false)
   })
 })

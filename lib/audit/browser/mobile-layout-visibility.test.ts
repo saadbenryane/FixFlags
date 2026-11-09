@@ -147,14 +147,14 @@ run('native mobile layout visibility', () => {
       const originalSelector = flag.evidenceTargets![0].selector!
       const passingSample = (observed: typeof repaired) => observed.assertions.find(assertion => assertion.key === 'mobile-input-fonts' &&
         assertion.targets?.some(target => target.selector === originalSelector))
-      expect(passingSample(repaired)).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
-      expect(proof(repaired)).toBeUndefined()
+      expect(passingSample(repaired)).toMatchObject({ passed: true, complete: true })
+      expect(proof(repaired)?.assertion.passed).toBe(true)
       expect(JSON.stringify(repaired)).not.toContain('PRIVATE_INPUT_VALUE')
       await page.locator('main').evaluate(element => element.insertAdjacentHTML('beforeend', '<form id="additional"><label>Another field<input type="text" name="another" style="font-size:12px"></label></form>'))
       const expanded = await observe()
-      expect(passingSample(expanded)).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+      expect(passingSample(expanded)).toMatchObject({ passed: true, complete: true })
       expect(expanded.flags.some(finding => finding.checkId === 'mobile-input-zoom')).toBe(true)
-      expect(proof(expanded)).toBeUndefined()
+      expect(proof(expanded)?.assertion.passed).toBe(true)
       const legacy = scopeRenderedPageEvidence({ module: 'mobile-ux-quality', mobile: auditPageObservation(page)!.scope, assertions: [],
         flags: [{ ...flag, verificationRule: undefined, evidenceTargets: flag.evidenceTargets!.map(target => ({ ...target, context: undefined })) }] }).flags[0]
       expect(proof(repaired, legacy)).toBeUndefined()

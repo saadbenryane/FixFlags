@@ -78,7 +78,7 @@ export async function collectMobileNavigation(page: Page, deadline: number, opti
   try {
     const [initial, viewport, title] = await Promise.all([
       page.evaluate(readNavigation, { selectors: options.selectors }),
-      observeViewport(page, { profile: 'mobile-navigation', includeActions: false, excludeLoading: true }), page.title(),
+      observeViewport(page, { profile: 'mobile-navigation', includeActions: false }), page.title(),
     ])
     const activate = (selector: string, timeout: number) => initial.touch
       ? page.locator(selector).tap({ timeout }) : page.locator(selector).click({ timeout })

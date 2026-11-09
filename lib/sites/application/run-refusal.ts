@@ -13,3 +13,8 @@ export class SiteRunRefusal extends Error {
       : code === 'REPAIR_DOCUMENT_CHANGED' ? 'read_document_from_start' : undefined
   }
 }
+
+export const RUN_AUDIT_SCOPE_CHANGED = {
+  code: 'RUN_AUDIT_SCOPE_CHANGED',
+  message: 'The previous run has no admitted execution.',
+} as const

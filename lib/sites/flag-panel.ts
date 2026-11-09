@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { supportingObservationViewSchema } from '@/lib/audit/flag-observations'
 import { FLAG_VERIFICATION_FEEDBACK_RESULTS } from './flag-resolution'
 
+export const flagVerificationStatusSchema = z.object({ auditId: z.string().min(1), verifying: z.boolean() }).strict()
+
 /** Only the public evidence needed by the dashboard, never Site or account records. */
 export const siteFlagPanelSchema = z.object({
   flag: z.object({
@@ -14,6 +16,7 @@ export const siteFlagPanelSchema = z.object({
     supportingObservations: z.array(supportingObservationViewSchema), supportingEvidenceUnreadable: z.boolean(),
     performanceEvidenceSource: z.enum(['lab', 'field']).nullable(),
     verifying: z.boolean(), status: z.string(),
+    activeVerificationAuditId: z.string().min(1).nullable().optional(),
     verificationFeedback: z.object({ result: z.enum(FLAG_VERIFICATION_FEEDBACK_RESULTS), checkedAt: z.string().datetime().nullable() }).nullable().optional(),
   }),
   capture: z.object({ url: z.string(), recordedAt: z.string() }).nullable(),

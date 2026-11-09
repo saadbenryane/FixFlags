@@ -9,6 +9,7 @@ export const accessibilityEvidenceSchema = z.object({
   scope: captureObservationScopeSchema, engine: z.string().min(1).max(100),
   rules: z.array(z.object({ id: z.string().min(1).max(160), state: z.enum(['passed', 'failed', 'incomplete', 'inapplicable']),
     nodes: z.number().int().nonnegative() }).strict()).max(300),
+  embeddedScopes: z.record(z.string(), z.string().regex(/^[a-f0-9]{64}$/)).optional(),
 }).strict()
 export type AccessibilityEvidence = z.infer<typeof accessibilityEvidenceSchema>
 export type MobileAccessibilityCapture = { evidence?: AccessibilityEvidence; violations?: AxeViolation[] }

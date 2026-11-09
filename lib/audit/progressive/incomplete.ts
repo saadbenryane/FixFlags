@@ -1,6 +1,7 @@
 import { sumPrescriptionResponses } from '../prescription-usage'
 import { getUserFacingAuditError } from '../user-facing-errors'
 import { Prisma, type AuditExecutionTask } from '@prisma/client'
+import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -9,10 +10,12 @@ import { MAX_TASKS_PER_AUDIT, prescriptionResultSchema, taskArtifactSchema, task
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
 import { settleRecordedPages } from './page-settlement'
-import { CHECK_REGISTRY } from '../check-registry'
+import { executionCheckModule } from '../check-registry'
 import { CHECK_MODULES } from '@/lib/audit/checks/definitions'
 import { formatRecordedRepairGuidance } from '@/lib/improvements/repair-guidance'
 import { RUBRIC_ORDER } from '../constants'
+import { SEARCH_LOCAL_MODULES } from '../search/definitions'
+import { PUBLIC_SIGN_IN_REDIRECT } from '../browser/page-capture'
 
 const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
 
@@ -126,7 +129,8 @@ export async function recordSettledPrescriptionCost(auditId: string) {
     llmCacheReadTokens: usage.cacheReadTokens,
     llmCacheWriteTokens: usage.cacheWriteTokens,
     phase: 'prescription',
-    ...(measured ? { llmMeasurements: measured.measurements, llmUsageComplete: measured.complete } : {}),
+    ...(measured ? { llmMeasurements: measured.measurements, llmUsageComplete: measured.complete,
+      llmRecordedCostUsd: measured.estimatedCostUsd } : {}),
   })
 }
 
@@ -135,12 +139,21 @@ export function logUnrecordedPrescriptionCost(auditId: string, error: unknown) {
 }
 
 type CoverageTask = Pick<AuditExecutionTask, 'id' | 'auditId' | 'workKind' | 'workInput'>
+const unfinishedPageScope = z.object({
+  pageUrl: taskInputSchema.shape.pageUrl,
+  module: taskInputSchema.shape.module,
+  device: taskInputSchema.shape.device,
+})
 const observationModules: Readonly<Record<string, readonly string[]>> = {
   journeys: ['journeys', 'overlays'], 'cross-page': ['corridor'], discovery: ['seo'],
   'slow-replay': ['slow-replay'], overlays: ['overlays'], 'automatic-accounts': ['automatic-accounts'],
 }
 function unfinishedModules(kind: string | null, module?: string): readonly string[] {
   if (kind === 'check') return module ? [module] : []
+  if (kind === 'search') {
+    if (!module || module === 'summary') return ['search']
+    return SEARCH_LOCAL_MODULES.includes('module:' + module) ? [module] : []
+  }
   if (kind !== 'flow') return observationModules[kind ?? ''] ?? []
   if (module === 'mobile-navigation') return ['mobile-navigation']
   if (module === 'form-validation') return ['form-validation', 'overlays']
@@ -158,11 +171,18 @@ export async function settleFailedFinalization(tx: Prisma.TransactionClient, tas
 
 /** Exhaustion is a recorded coverage gap, not disappearance of a failed check. */
 export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, task: CoverageTask, reason: string) {
-  const input = taskInputSchema.parse(task.workInput)
   if (task.workKind === 'prescription') {
     await settlePrescriptionAudit(tx, task.auditId)
     return
   }
+
+  // A page-level gap only needs its recorded scope. An unreadable scope
+  // leaves the terminal task as the record, without creating a page receipt.
+  // Fixture state and recorded provider observations keep full validation.
+  const schema = task.workKind === 'fixture-setup' || task.workKind === 'google' ? taskInputSchema : unfinishedPageScope
+  const scope = schema.safeParse(task.workInput)
+  if (!scope.success) return
+  const input = scope.data
 
   if (task.workKind === 'fixture-setup') {
     const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { projectId: true, userId: true, executionSpec: true } })
@@ -175,7 +195,7 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
   if (modules.length) {
     const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { executionSpec: true } })
     const spec = readExecutionSpec(audit?.executionSpec)
-    const admitted = new Set(Object.keys(spec?.checks ?? {}).flatMap(id => CHECK_REGISTRY[id]?.module ?? []))
+    const admitted = new Set(Object.entries(spec?.checks ?? {}).map(([id, version]) => executionCheckModule(id, version)))
     for (const executionModule of modules) {
       const definition = Object.hasOwn(CHECK_MODULES, executionModule) ? CHECK_MODULES[executionModule] : undefined
       if (definition && spec && !admitted.has(executionModule)) continue
@@ -183,12 +203,15 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
       // earlier observation cannot hide this gap or be overwritten by it.
       const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '') + ':unfinished:' + task.id
       const receipt = definition ? checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: executionModule,
-        pageUrl: input.pageUrl, passed: false, applicable: true, complete: false, failed: true, assertions: [] })
+        pageUrl: input.pageUrl, passed: false, applicable: true, complete: false, failed: true, assertions: [],
+        ...(reason === 'PAGE_' + PUBLIC_SIGN_IN_REDIRECT.toUpperCase() ? { limitation: 'The browser reached sign-in. The requested page could not be inspected.' } : {}),
+      })
         : { kind: 'unavailable-check', version: 1, module: executionModule, failed: true }
       await tx.auditVerificationReceipt.upsert({ where: { auditId_targetKey_scopeKey: {
         auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey } },
         create: { taskId: task.id, auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey,
-          pageUrl: input.pageUrl, source: 'DETERMINISTIC', status: 'FAILED', checkVersion: definition?.version ?? null, detail: receipt,
+          pageUrl: input.pageUrl, source: task.workKind === 'search' ? 'SEARCH' : 'DETERMINISTIC',
+          status: 'FAILED', checkVersion: definition?.version ?? null, detail: receipt,
           evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
     }
   }

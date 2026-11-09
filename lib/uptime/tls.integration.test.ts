@@ -1,5 +1,6 @@
 import { uptimeReadSite } from './__tests__/read-site'
 import { randomUUID } from 'node:crypto'
+import { createServer as createRedirectServer } from 'node:http'
 import { createServer } from 'node:https'
 import { Agent } from 'undici'
 import { Queue } from 'bullmq'
@@ -7,10 +8,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { createQueueRedis } from '@/lib/queue/redis'
 import { probeUptime } from './probe'
-import { executeUptimeProbe, scheduleUptimeProbes } from './service'
+import { executeUptimeProbe, retainUptimeHistory, scheduleUptimeProbes } from './service'
 import { startUptimeWorker, uptimeJobId } from './queue'
 import { loadUptimeHistory, loadUptimeSummary } from './queries'
-import { UPTIME_INTERVAL_MS } from './domain'
+import { UPTIME_INTERVAL_MS, UPTIME_RETENTION_MS } from './domain'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import { createTestTlsCertificates } from '@/lib/audit/__tests__/tls-certificates'
 import { readMonitoringHealth } from '@/lib/health/monitoring'
@@ -21,8 +22,10 @@ vi.mock('node:dns/promises', async () => (await import('@/lib/audit/__tests__/dn
 
 const run = process.env.UPTIME_TEST_DATABASE_URL && process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' ? describe : describe.skip
 run('certificate failures through real TLS and the installed uptime worker', () => {
-  const identity = randomUUID(), target = 'https://example.com/'
+  const identity = randomUUID(), target = 'http://www.example.com/'
+  const peer = 'https://example.com:8443', destination = peer + '/landing'
   let tls: ReturnType<typeof createTestTlsCertificates> | undefined, server: ReturnType<typeof createServer> | undefined
+  let redirectServer: ReturnType<typeof createRedirectServer> | undefined
   let transport = '', httpRequests = 0, bodyInterrupted = false
   let trusted: Agent, untrusted: Agent, trustAvailable = true
   let worker: ReturnType<typeof startUptimeWorker> | undefined
@@ -47,12 +50,16 @@ run('certificate failures through real TLS and the installed uptime worker', () 
     })
     await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve))
     transport = 'https://127.0.0.1:' + (server.address() as { port: number }).port
+    redirectServer = createRedirectServer((_request, response) => { response.writeHead(302, { location: destination }).end() })
+    await new Promise<void>(resolve => redirectServer!.listen(0, '127.0.0.1', resolve))
+    const entryTransport = 'http://127.0.0.1:' + (redirectServer.address() as { port: number }).port
     trusted = new Agent({ connect: { ca: tls.ca, servername: 'example.com' }, pipelining: 0 })
     untrusted = new Agent({ connect: { servername: 'example.com' }, pipelining: 0 })
     const nativeFetch = globalThis.fetch
     vi.stubGlobal('fetch', (input: string | URL | Request, options?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
-      if (url.origin !== 'https://example.com') throw new Error('External transport unavailable in this fixture')
+      if (url.origin === new URL(target).origin) return nativeFetch(entryTransport + url.pathname + url.search, options)
+      if (url.origin !== peer) throw new Error('External transport unavailable in this fixture')
       // Only socket destination and the fixture CA change. TLS verification,
       // SNI and hostname validation stay enabled against the recorded host.
       return nativeFetch(transport + url.pathname + url.search, { ...options, dispatcher: trustAvailable ? trusted : untrusted } as RequestInit)
@@ -73,6 +80,7 @@ run('certificate failures through real TLS and the installed uptime worker', () 
       if (userId) await prisma.user.deleteMany({ where: { id: userId } })
       await prisma.$disconnect()
       await trusted?.close(); await untrusted?.close()
+      if (redirectServer) { redirectServer.closeAllConnections(); await new Promise<void>(resolve => redirectServer!.close(() => resolve())) }
       if (server) { server.closeAllConnections(); await new Promise<void>(resolve => server!.close(() => resolve())) }
       tls?.dispose()
       vi.unstubAllGlobals()
@@ -93,7 +101,8 @@ run('certificate failures through real TLS and the installed uptime worker', () 
       expect(await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitorId } })).toMatchObject({ leaseToken: null })
     }, { timeout: 8000, interval: 25 })
     const rows = await prisma.uptimeProbe.findMany({ where: { monitorId }, orderBy: [{ observedAt: 'desc' }, { attempt: 'desc' }] })
-    expect(rows[0]).toMatchObject({ result: expectedResult, reason, statusCode, targetUrl: target })
+    const finalUrl = expectedResult === 'FAILED' ? peer : statusCode === null ? null : destination
+    expect(rows[0]).toMatchObject({ result: expectedResult, reason, statusCode, targetUrl: target, finalUrl })
   }
   async function nextSlot() {
     const due = (await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitorId } })).nextProbeAt
@@ -110,7 +119,7 @@ run('certificate failures through real TLS and the installed uptime worker', () 
     instant = (await prisma.uptimeMonitor.findUniqueOrThrow({ where: { id: monitorId } })).confirmationDueAt!
     await observe(2, 'FAILED', 'certificate_expired')
     const incident = await prisma.uptimeIncident.findFirstOrThrow({ where: { monitorId } })
-    expect(incident).toMatchObject({ reason: 'certificate_expired', recoveredAt: null })
+    expect(incident).toMatchObject({ reason: 'certificate_expired', recoveredAt: null, targetUrl: target, failureOrigin: peer })
     expect(await prisma.uptimeNotification.findMany({ where: { incidentId: incident.id } })).toMatchObject([{ kind: 'DOWN', status: 'PENDING' }])
     useCertificate('valid'); trustAvailable = false; await nextSlot()
     await observe(3, 'UNKNOWN', 'probe_unavailable')
@@ -150,8 +159,20 @@ run('certificate failures through real TLS and the installed uptime worker', () 
     const history = await loadUptimeHistory(uptimeReadSite({ id: projectId, userId: userId! }), '24h', null, clock.now())
     expect(history).toMatchObject({ state: 'offline', openIncidentCount: 1, probes: expect.any(Array) })
     expect(history!.probes).toHaveLength(12)
+    expect(history!.probes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reason: 'certificate_expired', confirmed: true, targetUrl: target, finalUrl: peer, statusCode: null }),
+      expect.objectContaining({ result: 'ONLINE', targetUrl: target, finalUrl: destination, statusCode: 200 }),
+    ]))
     for (const row of history!.probes) expect(UPTIME_COPY.reasons[row.reason as keyof typeof UPTIME_COPY.reasons]).toBeTruthy()
     expect(await prisma.audit.count({ where: { projectId } })).toBe(0)
     expect(await prisma.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ auditsUsed: 3 })
+
+    const afterRetention = new Date(instant.getTime() + UPTIME_RETENTION_MS + 1)
+    expect(await retainUptimeHistory(afterRetention)).toBe(false)
+    expect(await prisma.uptimeProbe.count({ where: { monitorId } })).toBe(0)
+    expect(await loadUptimeHistory(uptimeReadSite({ id: projectId, userId: userId! }), '24h', null, afterRetention)).toMatchObject({
+      state: 'unknown', openIncidentCount: 1, probes: [],
+      incidents: [{ reason: 'certificate_expired', targetUrl: target, failureOrigin: peer, recoveredAt: null }],
+    })
   }, 60_000)
 })

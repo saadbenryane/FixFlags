@@ -241,9 +241,9 @@ describe('regression: shopify-com.html', () => {
     [
       { checkId: 'title-too-long', severity: 'POLISH' },
       { checkId: 'no-contact-info', severity: 'POLISH' },
-      { checkId: 'cookie-consent-absent', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
       { checkId: 'buttons-no-text', severity: 'POLISH' },
     ],
-    ['links-no-text', 'images-missing-alt', 'no-privacy-policy', 'form-missing-validation']
+    ['links-no-text', 'images-missing-alt', 'no-privacy-policy', 'form-missing-validation', 'cookie-consent-absent']
   )
 })

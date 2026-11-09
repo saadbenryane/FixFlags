@@ -24,7 +24,7 @@ describe('Site follow-up cohort query', () => {
     expect(mocks.runs).not.toHaveBeenCalled()
   })
   it('propagates 28-day maturity while selecting first claims before window filtering', async () => {
-    mocks.claims.mockResolvedValue([
+    mocks.claims.mockResolvedValueOnce([
       { idempotencyKey: 'analysis_claimed:old', projectId: 'old-site', userId: 'owner', createdAt: new Date('2026-08-01T00:00:00Z') },
       { idempotencyKey: 'analysis_claimed:later', projectId: 'old-site', userId: 'owner', createdAt: since },
       { idempotencyKey: 'analysis_claimed:new', projectId: 'new-site', userId: 'owner', createdAt: new Date('2026-10-01T00:00:00Z') },
@@ -34,6 +34,11 @@ describe('Site follow-up cohort query', () => {
     expect(mocks.sites.mock.calls[0][0].where).toEqual({ id: { in: ['new-site'] } })
     expect(mocks.runs.mock.calls[0][0].where).toEqual({ projectId: { in: ['new-site'] }, environment: 'production', requestedAt: { gte: since, lte: now } })
     expect(mocks.audits.mock.calls[0][0].select).not.toHaveProperty('url')
+    expect(mocks.claims.mock.calls[1][0].where).toEqual({
+      name: 'analyze_started', version: 1, userId: null,
+      createdAt: { gte: new Date('2026-08-25T00:00:00Z'), lte: now },
+      idempotencyKey: { in: ['analyze_started:new'] },
+    })
     expect(mocks.cycles.mock.calls[0][0].select.events.select.attempt.select).toEqual({ id: true, sourceAuditId: true, improvementId: true, createdAt: true })
   })
   it('rejects unsupported durations before any database operation', async () => {

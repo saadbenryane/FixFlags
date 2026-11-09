@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ site: vi.fn(), flag: vi.fn(), attempt: vi.fn(), record: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { improvementAttempt: { findFirst: mocks.attempt } } }))
+const mocks = vi.hoisted(() => ({ site: vi.fn(), flag: vi.fn(), attempt: vi.fn(), record: vi.fn(), occurrences: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { improvementAttempt: { findFirst: mocks.attempt },
+  improvementOccurrence: { findMany: mocks.occurrences } } }))
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.site }))
 vi.mock('@/lib/sites/flags', () => ({ loadSiteFlagDetail: mocks.flag }))
 vi.mock('@/lib/improvements/service', () => ({ recordFlagImprovementAttempt: mocks.record }))
@@ -69,9 +70,17 @@ describe('frozen Flag verification source', () => {
   })
   it('retains historical attempts without a recorded Flag only while their source still matches', async () => {
     mocks.attempt.mockResolvedValue({ id: 'attempt', sourceAuditId: 'later-review', handoffReference: null })
+    mocks.occurrences.mockResolvedValue([{ flagId: 'later-flag' }])
     expect(await requireSiteFlagAttempt(input)).toMatchObject({ flag: { sourceAuditId: 'later-review' } })
     mocks.attempt.mockResolvedValue({ id: 'attempt', sourceAuditId: 'original-review', handoffReference: null })
     await expect(requireSiteFlagAttempt(input)).rejects.toThrow('Fix attempt')
+  })
+  it('refuses new verification for ambiguous legacy captures while retaining accepted receipt replay', async () => {
+    mocks.attempt.mockResolvedValue({ id: 'attempt', sourceAuditId: 'later-review', handoffReference: null })
+    mocks.occurrences.mockResolvedValue([{ flagId: 'later-flag' }, { flagId: 'sibling-flag' }])
+    await expect(requireSiteFlagAttempt(input)).rejects.toMatchObject({ status: 409 })
+    expect(await requireSiteFlagAttempt(input, { allowSettled: true })).toMatchObject({ attemptId: 'attempt' })
+    expect(mocks.occurrences).toHaveBeenCalledOnce()
   })
   it('refuses another owner before reading private evidence', async () => {
     await expect(requireSiteFlagAttempt({ ...input, userId: 'another' })).rejects.toThrow('Site not found')

@@ -1,4 +1,5 @@
 import { PUBLIC_OFFER } from './public-offer'
+import type { WebsiteGuideSlug } from '@/lib/analytics/guide-entry'
 
 export const GUIDE_REVIEWED_AT = '2026-10-20'
 
@@ -25,7 +26,7 @@ export const GUIDES_PAGE = {
 
 export type GuideSource = { title: string; href: string; supports: string }
 export type WebsiteGuide = {
-  slug: string
+  slug: WebsiteGuideSlug
   title: string
   description: string
   decision: string

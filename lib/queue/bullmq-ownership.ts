@@ -30,3 +30,36 @@ export function createOwnedWorker(name: string, processor: Processor, options: O
 export function createOwnedQueue(name: string, options: Omit<QueueOptions, 'connection'> = {}) {
   return ownConnection(createQueueRedis(), connection => new Queue(name, { ...options, connection }))
 }
+
+/** The native initialization promise never recovers after rejection. Retire
+ * only that facade, keeping a borrowed Redis client available to its peers. */
+export function createQueueProducer(name: string, {
+  onError, connection, ...options
+}: Omit<QueueOptions, 'connection' | 'skipWaitingForReady'> & { onError: (error: Error) => void; connection?: () => Redis }) {
+  let current: Queue | undefined
+
+  async function close(queue = current) {
+    if (!queue) return
+    await queue.close()
+    if (current === queue) current = undefined
+  }
+
+  return {
+    get() {
+      if (current) return current
+      // INFO still validates Redis, through the producer's command deadline.
+      // Waiting separately for a ready event can outlive that deadline.
+      const settings = { ...options, skipWaitingForReady: true }
+      const queue = connection ? new Queue(name, { ...settings, connection: connection() }) : createOwnedQueue(name, settings)
+      current = queue
+      queue.on('error', onError)
+      void queue.waitUntilReady().catch(async () => {
+        try { await close(queue) }
+        catch (error) { onError(error instanceof Error ? error : new Error(String(error))) }
+        finally { if (current === queue) current = undefined }
+      })
+      return queue
+    },
+    close: () => close(),
+  }
+}

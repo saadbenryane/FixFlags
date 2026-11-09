@@ -2,6 +2,7 @@ import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { prisma } from '@/lib/db'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { productWatchReadiness } from '@/lib/sites/application/monitoring-settings'
+import { watchErrorMessage } from '@/lib/sites/watch-state'
 
 export type ProductWatchQueryResult = {
   projectId: string
@@ -46,7 +47,7 @@ export async function loadProductWatch(
     watchLastRunAt: project.watchLastRunAt,
     watchLastAttemptAt: project.watchLastAttemptAt,
     watchConsecutiveFailures: project.watchConsecutiveFailures,
-    watchLastError: project.watchLastError,
+    watchLastError: watchErrorMessage(project.watchLastError),
     readiness: productWatchReadiness(),
   }
 }

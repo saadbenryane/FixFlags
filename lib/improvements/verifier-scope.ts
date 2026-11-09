@@ -17,6 +17,17 @@ export function normalizeVerifierUrl(value: string): string {
       ? serialized.slice(0, -1) : serialized
   } catch { return value }
 }
+
+/** Historical rows can omit the page column. A recorded page must agree with its evidence. */
+export function matchesRecordedVerifierPage(recordedPage: string | null | undefined, evidencePage: string): boolean {
+  return recordedPage == null || normalizeVerifierUrl(recordedPage) === normalizeVerifierUrl(evidencePage)
+}
+
+/** A retained receipt can omit the task link. An explicit link binds its evidence. */
+export function matchesRecordedVerifierTask(recordedTaskId: string | null | undefined, evidenceTaskId: string): boolean {
+  return recordedTaskId == null || recordedTaskId === evidenceTaskId
+}
+
 export function verifierScopeKey(pageUrl: string | null): string {
   return pageUrl ? `page:${normalizeVerifierUrl(pageUrl)}` : 'product'
 }

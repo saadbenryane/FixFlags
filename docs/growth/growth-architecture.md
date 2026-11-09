@@ -352,7 +352,8 @@ links to the issue detail template. Cross-family links remain future work.
 **Purpose:** As issues cross `MIN_SAMPLE_SIZE`, they automatically appear in
 the sitemap without manual intervention.
 
-**Current design:** `app/sitemap.ts` reads from the knowledge graph:
+**Current design:** `app/sitemap.xml/route.ts` serves the public sitemap. The
+issue entries come from the currently eligible reviewed research release.
 
 - Static routes (from `INDEXABLE_ROUTES`) — unchanged
 - Issue routes: reviewed entries from `getIndexableIssueCheckIds()`, backed by

@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { HOMEPAGE_CHECK_COVERAGE } from '@/lib/marketing/copy/check-coverage'
-import { ADVERTISED_COVERAGE, validateAdvertisedCoverage } from '../advertised-coverage'
+import { ADVERTISED_COVERAGE, advertisedCoverageObligations, validateAdvertisedCoverage } from '../advertised-coverage'
 
 describe('advertised coverage registration', () => {
+  it('enumerates every catalog responsibility without treating registration or fixture names as acceptance', () => {
+    const inventory = advertisedCoverageObligations()
+    expect(inventory).toHaveLength(108)
+    for (const entry of inventory) {
+      expect(entry.label).toBe(HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items))
+        .find(item => item.id === entry.id)?.label)
+      expect(entry.obligations).toHaveLength(entry.acceptance.proofEnvironments.length * entry.acceptance.scenarios.length)
+      expect(entry.obligations.every(obligation => obligation.status === 'evidence_required' && obligation.receipt === null)).toBe(true)
+    }
+    expect(inventory.find(entry => entry.id === 'performance.inp')?.obligations).toEqual(expect.arrayContaining([
+      { environment: 'live_provider', scenario: 'repaired', status: 'evidence_required', receipt: null },
+    ]))
+  })
   it('maps every unchanged customer label through an explicit stable coverage identity', () => {
     const items = HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items))
     expect(new Set(items.map(item => item.id)).size).toBe(items.length)

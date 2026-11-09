@@ -4,8 +4,9 @@ import { currentExecutionOwnership, executionTransaction } from '@/lib/audit/exe
 import { getGoogleConnectionAccess, googleConnectionCredentialScope, googleConnectionGrantScope } from '@/lib/sites/connections/google'
 import { searchPropertyCoversUrl } from '@/lib/sites/connections/report-scope'
 import { getGscAccess, inspectSearchUrl, querySearchAnalytics, SearchConsoleError, type SearchUrlInspection, type GscSearchRow } from '@/lib/integrations/google-search-console'
+import { searchConsoleReportingPeriod } from '@/lib/integrations/search-console-report'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
-import { searchObservationSchema, searchReceiptSchema, type SearchObservation, type SearchReceipt } from './contracts'
+import { readRecordedSearchReceipt, searchObservationSchema, searchReceiptSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { searchFindings } from './registry'
 import { googleIndexObservations } from './google-index'
 import { verificationSourceAuditId } from '@/lib/sites/domain/verification-source'
@@ -98,13 +99,18 @@ function failureCode(error: unknown): Failure {
 
 /** Provider facts and their receipt commit together, with one writer for each Audit/page. */
 async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null, inspection: SearchUrlInspection | null, rows: GscSearchRow[], dateRange: string, moduleName: GoogleReceiptModule, applicable: boolean) {
+  const scope = { targetKey: `module:${moduleName}`, auditId: receipt.auditId, pageUrl: receipt.pageUrl }
+  if (!readRecordedSearchReceipt({ ...scope, detail: receipt })) throw new Error('Google Search receipt is outside its evaluator scope')
   return executionTransaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`search-google:${receipt.auditId}:${receipt.pageUrl}`}, 0))`
     const existing = await tx.auditVerifierExecution.findUnique({
       where: { auditId_targetKey_scopeKey: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}` } }, select: { detail: true },
     })
-    const prior = searchReceiptSchema.safeParse(existing?.detail)
-    if (prior.success) return prior.data
+    if (existing) {
+      const prior = readRecordedSearchReceipt({ ...scope, detail: existing.detail })
+      if (!prior) throw new Error('Persisted Google Search receipt is incompatible')
+      return prior
+    }
     if (access) {
       // Keep Project -> connection lock order. Revocation and transfer cannot
       // cross the grant comparison and its evidence commit.
@@ -161,8 +167,9 @@ export async function runGoogleSearchForAudit(input: {
   requireConfiguredEvidence?: boolean;
 }) {
   const moduleName = input.receiptModule ?? 'search-google'
-  const indexRequested = !input.sections || input.sections.includes('index')
-  const analyticsRequested = !input.sections || input.sections.includes('analytics')
+  const targetKey = `module:${moduleName}`
+  const indexRequested = moduleName !== 'search-google-performance' && (!input.sections || input.sections.includes('index'))
+  const analyticsRequested = moduleName !== 'search-google-index' && (!input.sections || input.sections.includes('analytics'))
   let retryAfterMs: number | undefined
   const audit = await prisma.audit.findFirst({
     where: { id: input.auditId, userId: input.userId ?? null },
@@ -173,17 +180,20 @@ export async function runGoogleSearchForAudit(input: {
   const admission = audit.projectId && audit.userId ? await googleAdmission(audit.projectId, audit.userId,
     { pageUrls: pages.map(page => page.url), requireConfiguredEvidence: input.requireConfiguredEvidence }) : null
   retryAfterMs = admission?.retryAfterMs
-  const end = new Date(Date.now() - 24 * 60 * 60 * 1000), start = new Date(end.getTime() - 27 * 24 * 60 * 60 * 1000)
-  const startDate = start.toISOString().slice(0, 10), endDate = end.toISOString().slice(0, 10), dateRange = `${startDate}/${endDate}`
+  const { startDate, endDate } = searchConsoleReportingPeriod()
+  const dateRange = `${startDate}/${endDate}`
   const receipts: SearchReceipt[] = []
   let providerRefusal: Failure | null = null
   for (const page of pages) {
     const existing = await prisma.auditVerifierExecution.findUnique({
       where: { auditId_targetKey_scopeKey: { auditId: input.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${page.url}` } }, select: { detail: true },
     })
-    const saved = searchReceiptSchema.safeParse(existing?.detail)
-    if (saved.success) { receipts.push(saved.data); continue }
-    if (existing) throw new Error('Persisted Google Search receipt is incompatible')
+    if (existing) {
+      const saved = readRecordedSearchReceipt({ targetKey, auditId: input.auditId, pageUrl: page.url, detail: existing.detail })
+      if (!saved) throw new Error('Persisted Google Search receipt is incompatible')
+      receipts.push(saved)
+      continue
+    }
     const observations: SearchObservation[] = [], collectedAt = new Date().toISOString()
     let inspection: SearchUrlInspection | null = null, rows: GscSearchRow[] = []
     const applicable = input.requireConfiguredEvidence === true || admission?.pageUrls.includes(page.url) === true
@@ -205,12 +215,12 @@ export async function runGoogleSearchForAudit(input: {
         if (status?.verdict) {
           const sourceAuditId = await verificationSourceAuditId(prisma, audit, page.url)
           const prior = sourceAuditId ? await prisma.auditVerifierExecution.findUnique({
-            where: { auditId_targetKey_scopeKey: { auditId: sourceAuditId, targetKey: `module:${moduleName}`, scopeKey: `page:${page.url}` } },
-            select: { detail: true },
+            where: { auditId_targetKey_scopeKey: { auditId: sourceAuditId, targetKey, scopeKey: `page:${page.url}` } },
+            select: { detail: true, status: true },
           }) : null
-          const priorReceipt = searchReceiptSchema.safeParse(prior?.detail)
+          const priorReceipt = sourceAuditId && prior ? readRecordedSearchReceipt({ targetKey, auditId: sourceAuditId, pageUrl: page.url, ...prior }) : null
           observations.push(...googleIndexObservations({ pageUrl: page.url, property: access.property, collectedAt, status,
-            previous: priorReceipt.success ? priorReceipt.data : null, local: page.local }))
+            previous: priorReceipt, local: page.local }))
         }
         if (inspection.richResultsResult) observations.push(providerObservation(page.url, {
           checkId: 'search-google-rich-results', source: 'google-index', disposition: 'observed', reason: 'google_rich_results_recorded', collectedAt,
@@ -223,7 +233,7 @@ export async function runGoogleSearchForAudit(input: {
           observations.push(failed(page.url, 'MALFORMED_PROVIDER_RESPONSE', 'google-analytics', collectedAt))
           rows = []
         } else {
-        observations.push(...searchAnalyticsObservations({ pageUrl: page.url, property: access.property, collectedAt, dateRange, rows }))
+          observations.push(...searchAnalyticsObservations({ pageUrl: page.url, property: access.property, collectedAt, dateRange, rows }))
         }
       } else if (analyticsRequested && performance.status === 'rejected') observations.push(failed(page.url, failureCode(performance.reason), 'google-analytics', collectedAt))
       for (const settled of [index, performance]) if (settled.status === 'rejected' && settled.reason instanceof SearchConsoleError)

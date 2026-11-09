@@ -7,8 +7,10 @@ beforeEach(() => { fixture.env = {} })
 describe('independent repair-guidance model configuration', () => {
   it('uses the validated structured-output model without changing scoring, triage or chat', () => {
     expect(getPrescriptionProviderConfig('openai')).toMatchObject({ model: 'gpt-6-luna', reasoningEffort: 'none', maxTokens: 8192, timeoutMs: 90000 })
-    for (const config of [getProviderConfig('openai'), getTriageProviderConfig('openai'), getChatProviderConfig('openai')])
+    for (const config of [getProviderConfig('openai'), getChatProviderConfig('openai')])
       expect(config.model).toBe('gpt-4o-mini')
+    expect(getTriageProviderConfig('openai').model).toBe('gpt-4o-mini-2024-07-18')
+    expect(getTriageProviderConfig('anthropic').model).toBe('claude-haiku-4-5-20251001')
   })
   it('retains an explicit legacy judge model unless prescription has its own choice', () => {
     fixture.env.OPENAI_JUDGE_MODEL = 'configured-legacy-model'

@@ -9,6 +9,7 @@ const actor = {
   kind: "admin" as const,
   actorId: "operator",
   operationId: "operation",
+  executionToken: "lease",
 };
 beforeEach(() => {
   vi.clearAllMocks();
@@ -42,6 +43,13 @@ describe("operator execution scope", () => {
     await expect(
       assertAdminDomainActor(actor, "owner", "site"),
     ).rejects.toMatchObject({ code: "ADMIN_DOMAIN_ACCESS_DENIED" });
+    expect(mocks.actor).not.toHaveBeenCalled();
+  });
+  it("refuses to inherit a replacement execution token", async () => {
+    const operation = await mocks.operation();
+    mocks.operation.mockResolvedValue({ ...operation, executionToken: "replacement" });
+    await expect(assertAdminDomainActor(actor, "owner", "site"))
+      .rejects.toMatchObject({ code: "ADMIN_DOMAIN_ACCESS_DENIED" });
     expect(mocks.actor).not.toHaveBeenCalled();
   });
   it("refuses another customer or site", async () => {

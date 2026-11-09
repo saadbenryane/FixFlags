@@ -165,9 +165,26 @@ it('recovers a cursor refused after retargeting by retrying from the first page'
   const { result } = mount()
   await advance()
   await act(async () => { await result.current.loadMore() })
-  expect(result.current.error).toBe(true)
-  await act(async () => { await result.current.retry() })
+  expect(result.current.error).toBe(false)
+  expect(fetcher).toHaveBeenCalledTimes(3)
   expect(fetcher.mock.calls[2][0]).toBe('/api/sites/site/uptime?window=24h')
+  expect(result.current.history?.probes.map(probe => probe.id)).toEqual(['new-target'])
+})
+
+it('retries the first page when automatic cursor recovery cannot read the new history', async () => {
+  const updated = page(['new-target'], null); updated.historyScope!.key = 'monitor:2'
+  const fetcher = vi.fn().mockResolvedValueOnce(reply()).mockResolvedValueOnce(Response.json({}, { status: 400 }))
+    .mockResolvedValueOnce(Response.json({}, { status: 503 })).mockResolvedValueOnce(reply(updated))
+  vi.stubGlobal('fetch', fetcher)
+  const { result } = mount()
+  await advance()
+  await act(async () => { await result.current.loadMore() })
+  expect(result.current.error).toBe(true)
+  expect(result.current.history?.nextCursor).toBeNull()
+  expect(result.current.history?.probes.map(probe => probe.id)).toEqual(['first'])
+  await act(async () => { await result.current.retry() })
+  expect(fetcher.mock.calls[3][0]).toBe('/api/sites/site/uptime?window=24h')
+  expect(result.current.error).toBe(false)
   expect(result.current.history?.probes.map(probe => probe.id)).toEqual(['new-target'])
 })
 

@@ -6,7 +6,8 @@ import type { CheckAssertion } from './assertion'
 import type { AccessibilityEvidence, MobileAccessibilityCapture } from '../browser/accessibility-evidence'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
 import { AXE_POLICY_CHECK_IDS, ACCESSIBILITY_DOM_CHECK_IDS, ACCESSIBILITY_VERIFICATION_RULE, MOBILE_ACCESSIBILITY_RULE_IDS, axeRuleToCheckId, HTML_CONTROL_NAMES_VERSION,
-  HTML_CONTROL_NAMES_CONTEXT, HTML_CONTROL_NAME_CHECK_IDS, AXE_DOCUMENT_SCOPE_CONTEXT, axeTargetSelector } from './accessibility-rules'
+  HTML_CONTROL_NAMES_CONTEXT, HTML_CONTROL_NAME_CHECK_IDS, AXE_DOCUMENT_SCOPE_CONTEXT, AXE_EMBEDDED_SCOPE_CONTEXT, axeTargetSelector, isIframeAxeTarget,
+  currentAccessibilityObservation } from './accessibility-rules'
 import { filterOutIframeAxeViolations, runAccessibilityChecks, type AxeViolation } from './accessibility'
 
 function context(kind: 'axe' | 'dom', scope: CaptureObservationScope, checkId: string, engine = '', rules: string[] = [], device = 'desktop', documentScope?: string) {
@@ -23,10 +24,15 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
     if (!rules.length) continue
     const failed = rules.some(rule => rule.state === 'failed')
     const complete = Boolean(known && (failed || evidence.documentScope === AXE_DOCUMENT_SCOPE_CONTEXT && rules.every(rule => rule.state !== 'incomplete')))
-    result.push({ key: 'axe:' + checkId, name: 'Automated accessibility: ' + checkId,
+    const assertion = { key: 'axe:' + checkId, name: 'Automated accessibility: ' + checkId,
       expected: 'No failed or unresolved results for the recorded automated rule responsibility',
       observed: rules.map(rule => `${rule.id}: ${rule.state}, ${rule.nodes} inspected nodes`).join('; ').slice(0, 2000),
-      passed: complete && !failed, complete, context: context('axe', evidence!.scope, checkId, evidence!.engine, rules.map(rule => rule.id), input.device, evidence!.documentScope) })
+      passed: complete && !failed, complete, context: context('axe', evidence!.scope, checkId, evidence!.engine, rules.map(rule => rule.id), input.device, evidence!.documentScope) }
+    result.push(assertion)
+    const embedded = evidence?.embeddedScopes?.[checkId]
+    if (embedded && evidence.documentScope === AXE_DOCUMENT_SCOPE_CONTEXT) {
+      result.push({ ...assertion, context: assertion.context + AXE_EMBEDDED_SCOPE_CONTEXT + embedded })
+    }
   }
   const counts: Record<typeof ACCESSIBILITY_DOM_CHECK_IDS[number], number | undefined> = {
     'images-missing-alt': metadata?.imagesWithoutAlt, 'form-inputs-no-label': metadata?.inputsWithoutLabel,
@@ -58,7 +64,10 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
     expected: 'No failed or unresolved automated rules in the inspected rendered page scope',
     observed: evidence ? `${failed} failed and ${unresolved} unresolved automated rules recorded; manual accessibility was not evaluated.` : 'Full automated rule outcomes are unavailable; manual accessibility was not evaluated.',
     passed: complete && !failed, complete })
-  return result
+  return result.map(assertion => currentAccessibilityObservation(assertion, result) ? assertion : {
+    ...assertion, passed: false, complete: false,
+    observed: 'The HTML count is available, but native evidence for the same captured responsibility remains unresolved.',
+  })
 }
 
 export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations: CheckAssertion[], axe?: AxeViolation[], device: 'desktop' | 'mobile' = 'desktop', ownedDocuments = false): DeterministicFlag[] {
@@ -66,11 +75,20 @@ export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations
   return flags.map(flag => {
     // Axe findings retain their existing human copy. Fallback findings use the
     // exact captured-HTML predicate instead of borrowing a different rule's pass.
-    const fromAxe = violations.some(violation => axeRuleToCheckId(violation.id) === flag.checkId)
-    const assertion = observations.find(item => item.key === (fromAxe ? 'axe:' : 'dom:') + flag.checkId && item.context)
-    return assertion ? { ...flag, verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
-      evidenceTargets: fromAxe ? violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId).flatMap(violation => violation.nodes).slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device, selector: axeTargetSelector(node.target), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: assertion.context }))
-        : [{ kind: 'page', source: 'measured', device, label: flag.checkId, context: assertion.context }] } : flag
+    const matched = violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId)
+    const fromAxe = matched.length > 0
+    const key = (fromAxe ? 'axe:' : 'dom:') + flag.checkId
+    const targetContext = observations.find(item => item.key === key && item.context)?.context
+    if (!targetContext) return flag
+    // Scope the whole responsibility before limiting the displayed node sample.
+    const nodes = matched.flatMap(violation => violation.nodes)
+    const embeddedPrefix = targetContext + AXE_EMBEDDED_SCOPE_CONTEXT
+    const scopedContext = nodes.some(node => isIframeAxeTarget(node.target))
+      ? observations.find(item => item.key === key && item.context?.startsWith(embeddedPrefix))?.context ?? embeddedPrefix + 'unavailable'
+      : targetContext
+    return { ...flag, verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
+      evidenceTargets: fromAxe ? nodes.slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device, selector: axeTargetSelector(node.target), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: scopedContext }))
+        : [{ kind: 'page', source: 'measured', device, label: flag.checkId, context: targetContext }] }
   })
 }
 

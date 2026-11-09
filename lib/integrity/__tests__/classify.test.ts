@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { classifyWalk, combineAttempts, goalProbeReason } from '@/lib/integrity/classify'
-import type { WalkOutcome } from '@/lib/integrity/types'
+import { classifyWalk, combineAttempts, combinePathAttempts, goalProbeReason } from '@/lib/integrity/classify'
+import type { PathProbeAttempt, WalkOutcome } from '@/lib/integrity/types'
 
 function outcome(overrides: Partial<WalkOutcome> = {}): WalkOutcome {
   return {
@@ -78,6 +78,30 @@ describe('combineAttempts', () => {
         { health: 'GREEN', reason: 'checkout_reached' }
       )
     ).toEqual({ health: 'UNKNOWN', reason: 'flaky', confirmed: false })
+  })
+})
+
+describe('checkout failure confirmation', () => {
+  const failedCheckout: PathProbeAttempt = {
+    outcome: outcome({ httpStatus: 503, purchaseControlKey: 'a'.repeat(64) }),
+    steps: [{ label: 'failure', url: 'https://store.example/product',
+      destinationUrl: 'https://store.example/checkout', screenshotUrl: null }],
+    finalUrl: 'https://store.example/product', videoUrl: null, gifUrl: null,
+  }
+
+  it('confirms repeated failure at the same embedded checkout', () => {
+    expect(combinePathAttempts(failedCheckout, failedCheckout))
+      .toEqual({ health: 'RED', reason: 'http_error', confirmed: true })
+  })
+
+  it.each([
+    { ...failedCheckout, outcome: outcome({ checkoutErrorVisible: true }) },
+    { ...failedCheckout, outcome: outcome({ httpStatus: 503, failedStep: 'landing' }) },
+    { ...failedCheckout, outcome: { ...failedCheckout.outcome, purchaseControlKey: 'b'.repeat(64) } },
+    { ...failedCheckout, steps: [{ ...failedCheckout.steps[0], destinationUrl: 'https://store.example/other-checkout' }] },
+  ])('keeps different failures inconclusive even when both attempts fail', second => {
+    expect(combinePathAttempts(failedCheckout, second))
+      .toEqual({ health: 'UNKNOWN', reason: 'flaky', confirmed: false })
   })
 })
 

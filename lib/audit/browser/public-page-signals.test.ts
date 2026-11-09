@@ -55,17 +55,32 @@ describe('shared native public-page signals', () => {
     expect(runTrustChecks(location.href, null, signals, copy(false)).map(flag => flag.checkId)).toEqual(['cookie-consent-absent'])
     expect(runTrustChecks(location.href, null, signals, copy(true))).toEqual([])
   })
-  it('keeps uninspected contact text and analytics unknown without discarding an observed missing privacy link', async () => {
+  it('keeps uninspected contact text unknown without losing independent analytics absence', async () => {
     document.body.innerHTML = '<p>' + 'x'.repeat(1_100_000) + '</p>'
     const signals = await readPublicPageSignals(page)
-    expect(signals).toMatchObject({ hasAnalytics: null, hasPrivacyPolicy: false, hasContactInfo: null, hasCookieBasedAnalytics: null })
+    expect(signals).toMatchObject({ hasAnalytics: false, hasPrivacyPolicy: false, hasContactInfo: null, hasCookieBasedAnalytics: false })
     const observations = publicTrustObservations(null, signals, copy(false))
     expect(observations['privacy-link']).toMatchObject({ passed: false, complete: true })
     expect(observations['contact-information']).toMatchObject({ passed: false, complete: false })
-    expect(observations['cookie-consent-signals']).toMatchObject({ passed: false, complete: false })
+    expect(observations['cookie-consent-signals']).toMatchObject({ passed: true, complete: true })
     expect(publicTrustObservations(null, signals, copy(true))['cookie-consent-signals']).toMatchObject({ passed: true, complete: true,
-      observed: expect.stringContaining('analytics markup') })
+      observed: expect.stringContaining('consent obligations were not evaluated') })
     expect(runTrustChecks(location.href, null, signals, copy(false)).map(flag => flag.checkId)).toEqual(['no-privacy-policy'])
+  })
+  it('retains explicit declarations after large unrelated markup and oversized inline candidates', async () => {
+    document.body.innerHTML = '<div data-content="' + 'x'.repeat(550_000) + '">Compare Plausible and PostHog</div>' +
+      '<script type="application/ld+json">"' + 'y'.repeat(550_000) + '"</script>' +
+      '<script type="text/plain" src="https://plausible.io/js/pa-PRIVATE_PROJECT.js"></script>'
+    expect(await readPublicPageSignals(page, 'analytics')).toMatchObject({ hasAnalytics: true, hasCookieBasedAnalytics: false })
+    const inline = document.createElement('script')
+    inline.type = 'application/json'
+    inline.text = '"' + 'z'.repeat(550_000) + '"'
+    document.head.append(inline)
+    const partial = await readPublicPageSignals(page, 'analytics')
+    expect(partial).toMatchObject({ hasAnalytics: true, hasCookieBasedAnalytics: null })
+    expect(JSON.stringify(partial)).not.toContain('PRIVATE_PROJECT')
+    document.body.lastElementChild?.remove()
+    expect(await readPublicPageSignals(page, 'analytics')).toMatchObject({ hasAnalytics: null, hasCookieBasedAnalytics: null })
   })
   it('excludes unpublished contact details and dormant privacy links', async () => {
     document.body.innerHTML = '<template><a href="/privacy">Privacy</a>Contact template@example.com</template>' +

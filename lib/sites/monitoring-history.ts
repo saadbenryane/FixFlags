@@ -27,7 +27,6 @@ type HistoryRun = {
   executionSpec?: unknown
   verificationTarget: unknown
   selections: Array<{ outcome: { name: string } }>
-  assessments: Array<{ state: string }>
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -42,7 +41,6 @@ export function monitoringHistoryMetadata(input: {
   status: string
   flagCount: number
   runRequests?: HistoryRun[]
-  verificationAttempts?: Array<{ id?: string; outcome: string | null; comparable: boolean | null }>
 }): Pick<MonitoringHistoryEntry, 'scope' | 'targetLabel' | 'trigger' | 'afterFix' | 'result'> {
   const run = input.runRequests?.[0]
   const spec = record(input.executionSpec) ?? record(run?.executionSpec)
@@ -65,15 +63,10 @@ export function monitoringHistoryMetadata(input: {
       try { targetLabel = new URL(url).pathname } catch { /* An invalid stored URL cannot label the checked scope. */ }
     }
   }
-  const attempts = input.verificationAttempts ?? []
-  const assessments = run?.assessments ?? []
   let result: MonitoringHistoryEntry['result'] = null
-  if (input.status === 'FAILED') result = 'COULD_NOT_VERIFY'
-  else if (input.flagCount > 0 || assessments.some(item => item.state === 'FLAG')) result = 'FLAG'
-  else if (scope !== 'SITE' && scope !== 'CATEGORY') {
-    if (afterFix) result = typeof target?.attemptId === 'string' && attempts.some(item => item.id === target.attemptId && item.outcome === 'IMPROVED' && item.comparable === true) ? 'CLEAR' : 'COULD_NOT_VERIFY'
-    else result = assessments.length > 0 && assessments.length === run?.selections.length && assessments.every(item => item.state === 'CLEAR') ? 'CLEAR' : 'COULD_NOT_VERIFY'
-  }
+  if (input.status === 'FAILED' || afterFix) result = 'COULD_NOT_VERIFY'
+  else if (input.flagCount > 0) result = 'FLAG'
+  else if (scope !== 'SITE' && scope !== 'CATEGORY') result = 'COULD_NOT_VERIFY'
   return { scope, targetLabel, trigger, afterFix, result }
 }
 

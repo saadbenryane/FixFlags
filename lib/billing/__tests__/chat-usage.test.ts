@@ -1,3 +1,4 @@
+import { boundProviderRequest } from '@/lib/audit/provider-request-bound'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const tx = vi.hoisted(() => ({
@@ -16,6 +17,8 @@ import {
   chatUsagePeriod,
   reserveChatUsage,
   finalizeChatUsage,
+  beginChatProviderUsage,
+  releaseChatUsage,
 } from '@/lib/billing/chat-usage'
 
 const user = { id: 'u1', plan: 'FREE' as const, role: 'user', subscriptionStatus: 'NONE' }
@@ -59,6 +62,42 @@ describe('monthly chat usage', () => {
     const result = await reserveChatUsage(user, 10_000)
     expect(result).toMatchObject({ reservationId: null, allowance: { remaining: 4_500 } })
     expect(tx.chatUsageReservation.create).not.toHaveBeenCalled()
+  })
+
+  it.each([0, -1, 1.5, NaN, Infinity])('refuses invalid reservation bounds before database admission: %s', async tokens => {
+    await expect(reserveChatUsage(user, tokens)).rejects.toThrow('positive token bound')
+    expect(tx.chatUsageReservation.create).not.toHaveBeenCalled()
+  })
+
+  it('retains a lost provider response as unknown without releasing the reserved bound', async () => {
+    tx.chatUsageReservation.findUnique.mockResolvedValue({
+      id: 'r1', periodId: 'p1', reservedTokens: 10_000, status: 'REQUESTED', period,
+    })
+    const result = await finalizeChatUsage('r1', null)
+    expect(tx.chatUsageReservation.update).toHaveBeenCalledWith(expect.objectContaining({ data: {
+      status: 'UNKNOWN', finalizedAt: expect.any(Date),
+    } }))
+    expect(tx.chatUsagePeriod.update).not.toHaveBeenCalled()
+    expect(result.used).toBe(1500)
+  })
+
+  it('does not turn a dispatched request into zero consumption during cleanup', async () => {
+    tx.chatUsageReservation.findUnique.mockResolvedValue({
+      id: 'r1', periodId: 'p1', reservedTokens: 10_000, status: 'REQUESTED', period,
+    })
+    await releaseChatUsage('r1')
+    expect(tx.chatUsageReservation.update).toHaveBeenCalledWith(expect.objectContaining({ data: {
+      status: 'UNKNOWN', finalizedAt: expect.any(Date),
+    } }))
+    expect(tx.chatUsagePeriod.update).not.toHaveBeenCalled()
+  })
+
+  it('refuses duplicate provider admission before returning a request recorder', async () => {
+    tx.chatUsageReservation.findUnique.mockResolvedValue({
+      id: 'r1', periodId: 'p1', reservedTokens: 10_000, status: 'REQUESTED', period,
+    })
+    tx.chatUsageReservation.updateMany.mockResolvedValue({ count: 0 })
+    await expect(beginChatProviderUsage('r1', 'gpt-4o-mini', boundProviderRequest('gpt-4o-mini', 'chat.completions', { max_tokens: 600 }), null)).rejects.toThrow('already admitted')
   })
 
   it('reconciles the reservation to provider-reported input and output usage', async () => {

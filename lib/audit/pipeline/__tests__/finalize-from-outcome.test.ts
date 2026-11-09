@@ -45,7 +45,8 @@ vi.mock('@/lib/audit/finalize', () => ({
 }))
 vi.mock('@/lib/audit/pipeline/triage-step', () => ({ runTriageStep }))
 vi.mock('@/lib/audit/pipeline/context', () => ({ accumulateTriageUsage }))
-vi.mock('@/lib/audit/pipeline/combine-pages', () => ({
+vi.mock('@/lib/audit/pipeline/combine-pages', async original => ({
+  ...await original<typeof import('@/lib/audit/pipeline/combine-pages')>(),
   productScoresFromFlags,
   collapsedPageFlags: vi.fn(() => []),
   buildCombinedTriageOutput,
@@ -165,11 +166,13 @@ describe('finalizeFromOutcome', () => {
       pageRun({ pageId: 'peer', url: 'https://example.com/pricing' })]
     persistTriageResults.mockResolvedValue(undefined)
     resolveAuditOutcome.mockReturnValue({ kind, pageRuns: runs, reason: 'no_provider_keys', message: 'No provider keys' })
-    await finalizeFromOutcome({ ctx: ctx(), auditId: 'audit-1', auditUrl: runs[0].url,
-      pageRuns: runs, startedAt: new Date(), captureAdditionalEvidence: false })
-    expect(persistAuditFailedModules).toHaveBeenCalledWith('audit-1', runs)
-    expect(kind === 'triage_complete' ? finalizeTriageAudit : finalizeTriageDegraded).toHaveBeenCalledWith(expect.objectContaining({
-      pagesReviewed: 2, evidence: expect.objectContaining({ metadata: false, desktopScreenshot: true }),
+    await finalizeFromOutcome({ ctx: { ...ctx(), openCheckCount: 5 }, auditId: 'audit-1', auditUrl: runs[0].url,
+      pageRuns: runs, startedAt: new Date(), captureAdditionalEvidence: false, failedModules: ['discovery'] })
+    expect(persistAuditFailedModules).toHaveBeenCalledWith('audit-1', runs, ['discovery'])
+    const finalize = kind === 'triage_complete' ? finalizeTriageAudit : finalizeTriageDegraded
+    expect(persistAuditFailedModules.mock.invocationCallOrder[0]).toBeLessThan(finalize.mock.invocationCallOrder[0])
+    expect(finalize).toHaveBeenCalledWith(expect.objectContaining({
+      pagesReviewed: 2, openCheckRequests: 5, evidence: expect.objectContaining({ metadata: false, desktopScreenshot: true }),
     }))
   })
 
@@ -188,7 +191,7 @@ describe('finalizeFromOutcome', () => {
       pageRuns: retried, startedAt: new Date(), captureAdditionalEvidence: false })
     expect(persistAuditFailedModules).toHaveBeenCalledWith('audit-1', [expect.objectContaining({
       flags: [native], failedModules: ['page-triage-evaluation'], triage: expect.objectContaining({ assessment: expect.objectContaining({ candidates: [rawCandidate] }) }),
-    })])
+    })], undefined)
     expect(finalizeTriageAudit).toHaveBeenCalledWith(expect.objectContaining({ evidence: expect.objectContaining({ aiAssessment: false, desktopScreenshot: true }) }))
     expect(original.flags).toEqual([native])
     expect(original.failedModules).toEqual([])

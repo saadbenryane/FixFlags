@@ -162,10 +162,11 @@ run('Google credential ownership during refresh', () => {
     expect(await connectionToken(current, replacement.id)).toBe('new-owner-access')
     expect((await loadSiteConnectionViews(initial.projectId)).facts).toEqual([])
     expect(await prisma.siteConnectionFact.findUnique({ where: { id: historical.id } })).toEqual(historical)
-    queryAnalytics.mockResolvedValue({ pages: [], audience: { sessions: 19 } })
+    queryAnalytics.mockResolvedValue({ pages: [{ pagePath: '/', sessions: 19 }], audience: {} })
     await syncGoogleConnection({ userId: replacement.id, connectionId: initial.id, projectId: initial.projectId,
       provider: 'ANALYTICS', host: 'example.com', siteUrl: 'https://example.com/', accessToken: 'new-owner-access', client })
-    expect((await loadSiteConnectionViews(initial.projectId)).facts).toMatchObject([{ sessions: 19, contextState: 'current' }])
+    expect((await loadSiteConnectionViews(initial.projectId)).facts).toMatchObject([{ kind: 'analytics_page', sessions: 19, contextState: 'current' }])
+    expect(await prisma.siteConnectionFact.findUnique({ where: { id: historical.id } })).toBeNull()
   })
 
   it.each((['owner', 'removed', 'suspended', 'target'] as const).flatMap(change => [
@@ -354,6 +355,53 @@ run('Google credential ownership during refresh', () => {
     expect(await prisma.siteConnectionFact.findFirstOrThrow({ where: { connectionId: connection.id } })).toMatchObject({ impressions: 0, clicks: 0 })
   })
 
+  it('keeps finalized Search Console context when Google returns a different aggregation or incomplete dates', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'fixture-client')
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'fixture-secret')
+    const initial = await connectionFixture('example.com', 'SEARCH_CONSOLE')
+    const propertyId = 'https://example.com/'
+    const connection = await prisma.siteConnection.update({ where: { id: initial.id }, data: { propertyId } })
+    const path = 'https://example.com/pricing?plan=teams'
+    const row = (impressions: number, page = path) => ({ keys: [page, 'team plans'], impressions, clicks: 0 })
+    const replies = [
+      { responseAggregationType: 'byPage', rows: [row(80)] },
+      { responseAggregationType: 'byProperty', rows: [row(900)] },
+      { responseAggregationType: 'byPage', rows: [row(0)], metadata: { first_incomplete_date: '2026-10-14' } },
+      { responseAggregationType: 'byPage', rows: [row(0), row(400, 'https://other.example/pricing')] },
+      { responseAggregationType: 'byPage', rows: [row(0)] },
+      { responseAggregationType: 'byProperty', rows: [row(900)] },
+    ]
+    const queries: Array<{ url: string; body: { startDate: string; endDate: string; dataState?: string; aggregationType?: string } }> = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/sites')) return Response.json({ siteEntry: [{ siteUrl: 'sc-domain:example.com' }] })
+      queries.push({ url, body: JSON.parse(String(options?.body)) })
+      return Response.json(replies.shift())
+    }))
+    const input = { userId, connectionId: connection.id, projectId: connection.projectId, provider: 'SEARCH_CONSOLE' as const,
+      host: 'example.com', siteUrl: 'https://example.com/', propertyId, accessToken: 'fixture-expired-access' }
+    vi.setSystemTime(new Date('2026-10-14T01:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'CONNECTED' })
+    const first = (await loadSiteConnectionViews(connection.projectId)).facts[0]
+    expect(first).toMatchObject({ impressions: 80, contextState: 'current' })
+    for (const day of [15, 16, 17]) {
+      vi.setSystemTime(new Date(`2026-10-${day}T01:00:00Z`))
+      expect(await syncGoogleConnection(input)).toMatchObject({ status: 'UNAVAILABLE' })
+      expect((await loadSiteConnectionViews(connection.projectId)).facts).toEqual([{ ...first, contextState: 'unavailable' }])
+    }
+    vi.setSystemTime(new Date('2026-10-18T01:00:00Z'))
+    expect(await syncGoogleConnection({ ...input, propertyId: undefined })).toMatchObject({ status: 'CONNECTED', propertyId })
+    const recovered = (await loadSiteConnectionViews(connection.projectId)).facts[0]
+    expect(recovered).toMatchObject({ impressions: 0, clicks: 0, contextState: 'current', periodEnd: '2026-10-16T00:00:00.000Z' })
+    expect(connectionLines([recovered], 'https://example.com/pricing?plan=solo')).toEqual([])
+    vi.setSystemTime(new Date('2026-10-19T01:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'UNAVAILABLE' })
+    expect((await loadSiteConnectionViews(connection.projectId)).facts).toEqual([{ ...recovered, contextState: 'unavailable' }])
+    await expect(syncGoogleConnection({ ...input, propertyId: 'sc-domain:example.com' })).rejects.toThrow('connection changed')
+    expect(queries).toHaveLength(6)
+    expect(queries.every(query => query.url.includes(encodeURIComponent(propertyId)) &&
+      query.body.dataState === 'final' && query.body.aggregationType === 'byPage')).toBe(true)
+  })
+
   it('scopes a shared Analytics property to the owned Site and preserves unscoped observations without presenting them as current traffic', async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'fixture-client')
     vi.stubEnv('GOOGLE_CLIENT_SECRET', 'fixture-secret')
@@ -364,7 +412,7 @@ run('Google credential ownership during refresh', () => {
     expect((await loadSiteConnectionViews(connection.projectId)).facts).toEqual([])
     expect(await prisma.siteConnectionFact.findUnique({ where: { id: historical.id } })).not.toBeNull()
     const transport = vi.fn(async (target: string, options?: RequestInit) => {
-      if (new URL(target).pathname.endsWith('/accountSummaries')) return new Response(JSON.stringify({ accountSummaries: [{ propertySummaries: [{ property: 'properties/123', displayName: 'Several websites' }] }] }))
+      if (new URL(target).pathname.endsWith('/properties/123')) return Response.json({ displayName: 'Several websites' })
       if (new URL(target).pathname.endsWith('/dataStreams')) return new Response(JSON.stringify({ dataStreams: [
         { webStreamData: { defaultUri: 'https://example.com/' } }, { webStreamData: { defaultUri: 'https://other.example/' } },
       ] }))
@@ -417,20 +465,183 @@ run('Google credential ownership during refresh', () => {
       .toMatchObject({ sessions: 0, activeUsers: 0 })
   })
 
+  it('retains independently dated Analytics audience and page evidence across partial refreshes', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'fixture-client')
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'fixture-secret')
+    const connection = await connectionFixture()
+    const now = new Date('2026-10-14T00:00:00Z')
+    vi.setSystemTime(now)
+    const queryAnalytics = vi.fn<GoogleConnectionClient['queryAnalytics']>()
+    queryAnalytics.mockResolvedValueOnce({ pages: [{ pagePath: '/pricing', pageViews: 12 }], audience: { sessions: 19 } })
+      .mockResolvedValueOnce({ pages: [{ pagePath: '/pricing', pageViews: 0 }], audience: {} })
+      .mockResolvedValueOnce({ pages: [{ pagePath: '/pricing' }], audience: { sessions: 21 } })
+    const client = { ...liveGoogleClient(), findAnalyticsProperty: async () => ({
+      propertyId: 'properties/123', label: 'Site', streamUrls: ['https://example.com/'],
+    }), queryAnalytics }
+    const input = { userId, connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS' as const, host: 'example.com',
+      accessToken: 'fixture-expired-access', client }
+    await syncGoogleConnection(input)
+    const before = await loadSiteConnectionViews(connection.projectId)
+    const audience = before.facts.find(fact => fact.kind === 'analytics_site')!
+    expect(audience).toMatchObject({ sessions: 19, observedAt: now.toISOString(), contextState: 'current' })
+
+    const pageTime = new Date(now.getTime() + 60_000)
+    vi.setSystemTime(pageTime)
+    expect(await syncGoogleConnection({ ...input, propertyId: 'properties/123' })).toMatchObject({ status: 'CONNECTED' })
+    const pagesFresh = await loadSiteConnectionViews(connection.projectId)
+    expect(pagesFresh.facts.find(fact => fact.kind === 'analytics_site')).toMatchObject({
+      sessions: 19, observedAt: audience.observedAt, periodStart: audience.periodStart, periodEnd: audience.periodEnd, contextState: 'stale',
+    })
+    expect(pagesFresh.facts.find(fact => fact.kind === 'analytics_page')).toMatchObject({
+      pageViews: 0, observedAt: pageTime.toISOString(), contextState: 'current',
+    })
+    const board = await loadSiteHome(connection.projectId, { ownerEvidence: true, viewerAuthenticated: true })
+    expect(board?.cards.find(card => card.id === 'tracking')?.facts.join(' ')).toContain('1 recorded page')
+
+    const audienceTime = new Date(now.getTime() + 120_000)
+    vi.setSystemTime(audienceTime)
+    expect(await syncGoogleConnection({ ...input, propertyId: 'properties/123' })).toMatchObject({ status: 'CONNECTED' })
+    const audienceFresh = await loadSiteConnectionViews(connection.projectId)
+    expect(audienceFresh.facts.find(fact => fact.kind === 'analytics_page')).toMatchObject({
+      pageViews: 0, observedAt: pageTime.toISOString(), contextState: 'stale',
+    })
+    expect(audienceFresh.facts.find(fact => fact.kind === 'analytics_site')).toMatchObject({
+      sessions: 21, observedAt: audienceTime.toISOString(), contextState: 'current',
+    })
+    expect(connectionLines(audienceFresh.facts, 'https://example.com/pricing').join(' ')).toContain('Retained context is stale')
+  })
+
+  it('keeps limited Analytics reports from replacing independently qualified context', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'fixture-client')
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'fixture-secret')
+    const connection = await connectionFixture()
+    const client = { ...liveGoogleClient(), findAnalyticsProperty: async () => ({
+      propertyId: 'properties/123', label: 'Site', streamUrls: ['https://example.com/'],
+    }) }
+    const input = { userId, connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS' as const,
+      host: 'example.com', propertyId: 'properties/123', accessToken: 'fixture-expired-access', client }
+    const pageReport = (views: string, metadata?: object) => ({ dimensionHeaders: [{ name: 'pagePath' }],
+      metricHeaders: [{ name: 'sessions' }, { name: 'screenPageViews' }], rowCount: 1,
+      rows: [{ dimensionValues: [{ value: '/' }], metricValues: [{ value: views }, { value: views }] }], metadata })
+    const audienceReport = (sessions: string, metadata?: object) => ({
+      metricHeaders: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'screenPageViews' }], rowCount: 1,
+      rows: [{ metricValues: [{ value: sessions }, { value: sessions }, { value: sessions }] }], metadata,
+    })
+    const sample = { samplingMetadatas: [{ samplesReadCount: '1', samplingSpaceSize: '10' }] }
+    const firstPages = pageReport('12')
+    firstPages.rows.push({ dimensionValues: [{ value: '/previous' }], metricValues: [{ value: '4' }, { value: '4' }] })
+    firstPages.rowCount = 2
+    const reports = [
+      [firstPages, audienceReport('19'), pageReport('12')],
+      [pageReport('0'), audienceReport('999', { subjectToThresholding: true }), pageReport('900', { dataLossFromOtherRow: true })],
+      [pageReport('900', sample), audienceReport('0'), pageReport('900', sample)],
+      [pageReport('900', sample), audienceReport('999', { dataTruncationReasons: [{}] }), pageReport('900', sample)],
+      [pageReport('7'), audienceReport('21'), pageReport('7')],
+      [pageReport('900', sample), audienceReport('999', { subjectToThresholding: true }), pageReport('900', sample)],
+    ]
+    const request = vi.fn(async (url: string, options?: RequestInit) => {
+      expect(url).toBe('https://analyticsdata.googleapis.com/v1beta/properties/123:batchRunReports')
+      const { requests } = JSON.parse(options!.body as string)
+      expect(requests.every((report: { dateRanges: unknown }) => JSON.stringify(report.dateRanges) === JSON.stringify(requests[0].dateRanges))).toBe(true)
+      return Response.json({ reports: reports.shift() })
+    })
+    vi.stubGlobal('fetch', request)
+    vi.setSystemTime(new Date('2026-10-14T12:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'CONNECTED' })
+    const first = await loadSiteConnectionViews(connection.projectId)
+    const firstAudience = first.facts.find(fact => fact.kind === 'analytics_site')!
+    expect(firstAudience).toMatchObject({ sessions: 19, contextState: 'current', periodEnd: '2026-10-13T00:00:00.000Z' })
+
+    vi.setSystemTime(new Date('2026-10-15T12:00:00Z'))
+    const secondSync = await syncGoogleConnection(input)
+    const second = await loadSiteConnectionViews(connection.projectId)
+    const secondPage = second.facts.find(fact => fact.kind === 'analytics_page' && fact.pagePath === '/')!
+    expect(secondPage).toMatchObject({ sessions: 0, pageViews: 0, contextState: 'current', periodEnd: '2026-10-14T00:00:00.000Z' })
+    expect(second.facts.find(fact => fact.pagePath === '/previous')).toMatchObject({ pageViews: 4, contextState: 'stale' })
+    expect(second.facts.find(fact => fact.kind === 'analytics_site')).toMatchObject({
+      sessions: 19, periodStart: firstAudience.periodStart, periodEnd: firstAudience.periodEnd,
+      observedAt: firstAudience.observedAt, contextState: 'stale',
+    })
+    expect(secondSync).toMatchObject({ status: 'CONNECTED', detail: expect.stringContaining('Some Analytics context') })
+
+    vi.setSystemTime(new Date('2026-10-16T12:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'CONNECTED', detail: expect.stringContaining('Some Analytics context') })
+    const third = await loadSiteConnectionViews(connection.projectId)
+    expect(third.facts.find(fact => fact.kind === 'analytics_page' && fact.pagePath === '/')).toMatchObject({
+      pageViews: 0, periodStart: secondPage.periodStart, periodEnd: secondPage.periodEnd,
+      observedAt: secondPage.observedAt, contextState: 'stale',
+    })
+    expect(third.facts.find(fact => fact.kind === 'analytics_site')).toMatchObject({ sessions: 0, contextState: 'current' })
+    vi.setSystemTime(new Date('2026-10-17T12:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'UNAVAILABLE', detail: expect.stringContaining('usable counts') })
+    expect((await loadSiteConnectionViews(connection.projectId)).facts).toEqual(expect.arrayContaining(third.facts.map(fact => ({
+      ...fact, contextState: 'unavailable',
+    }))))
+    vi.setSystemTime(new Date('2026-10-18T12:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'CONNECTED' })
+    const recovered = (await loadSiteConnectionViews(connection.projectId)).facts
+    expect(recovered).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'analytics_page', pagePath: '/', pageViews: 7, periodEnd: '2026-10-17T00:00:00.000Z', contextState: 'current' }),
+      expect.objectContaining({ kind: 'analytics_site', sessions: 21, periodEnd: '2026-10-17T00:00:00.000Z', contextState: 'current' }),
+    ]))
+    vi.setSystemTime(new Date('2026-10-19T12:00:00Z'))
+    expect(await syncGoogleConnection(input)).toMatchObject({ status: 'UNAVAILABLE' })
+    expect((await loadSiteConnectionViews(connection.projectId)).facts).toEqual(expect.arrayContaining(recovered.map(fact => ({
+      ...fact, contextState: 'unavailable',
+    }))))
+    await expect(syncGoogleConnection({ ...input, propertyId: 'properties/999' })).rejects.toThrow('connection changed')
+    expect(request).toHaveBeenCalledTimes(6)
+  })
+
+  it.each([false, true])('refuses an older successful Analytics report after a newer unavailable attempt commits (scheduled: %s)', async scheduled => {
+    enableGoogleFixture()
+    const earlierTime = new Date('2026-10-14T00:00:00Z')
+    vi.setSystemTime(earlierTime)
+    const initial = await connectionFixture()
+    const connection = await prisma.siteConnection.update({ where: { id: initial.id },
+      data: { propertyId: 'properties/123', tokenExpiresAt: new Date(earlierTime.getTime() + 3_600_000) } })
+    if (scheduled) await prisma.project.update({ where: { id: initial.projectId },
+      data: { watchInterval: 'WEEKLY', watchNextRunAt: earlierTime } })
+    let entered!: () => void, finish!: (report: AnalyticsReport) => void
+    const started = new Promise<void>(resolve => { entered = resolve })
+    const waiting = new Promise<AnalyticsReport>(resolve => { finish = resolve })
+    const queryAnalytics = vi.fn<GoogleConnectionClient['queryAnalytics']>().mockImplementationOnce(() => { entered(); return waiting })
+      .mockResolvedValueOnce({ pages: [], audience: {} })
+    const client = { ...liveGoogleClient(), findAnalyticsProperty: async () => ({
+      propertyId: 'properties/123', label: 'Site', streamUrls: ['https://example.com/'],
+    }), queryAnalytics }
+    const input = { userId, connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS' as const, host: 'example.com',
+      propertyId: connection.propertyId, accessToken: 'fixture-expired-access', client }
+    const earlier = scheduled ? refreshDueGoogleContexts(earlierTime, 1, { client }) : syncGoogleConnection(input)
+    const settlement = Promise.allSettled([earlier])
+    try {
+      await Promise.race([started, settlement.then(() => { throw new Error('Refresh finished before reading the report') })])
+      const later = new Date('2026-10-14T00:01:00Z')
+      vi.setSystemTime(later)
+      const outcome = await syncGoogleConnection(input)
+      expect(outcome.status).toBe('UNAVAILABLE')
+      finish({ pages: [], audience: { sessions: 100 } })
+      expect((await settlement)[0]).toMatchObject({ status: scheduled ? 'fulfilled' : 'rejected' })
+      expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } }))
+        .toMatchObject({ status: 'UNAVAILABLE', statusDetail: outcome.detail, lastSyncAttemptAt: later, lastSyncedAt: null })
+      expect(await prisma.siteConnectionFact.count({ where: { connectionId: connection.id } })).toBe(0)
+    } finally { finish({ pages: [], audience: {} }); await settlement }
+  })
+
   it('collects actual page views for saved watched pages outside the top rows without counting overlapping rows twice', async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'fixture-client')
     vi.stubEnv('GOOGLE_CLIENT_SECRET', 'fixture-secret')
     const connection = await connectionFixture()
     const siteUrl = 'https://example.com/entry'
     await prisma.project.update({ where: { id: connection.projectId }, data: { url: siteUrl } })
-    await prisma.sitePage.createMany({ data: ['/watched', '/top-0', '/missing'].map(path => ({ projectId: connection.projectId, url: 'https://example.com' + path, path })) })
+    await prisma.sitePage.createMany({ data: ['/watched', '/top-0', '/top-1', '/missing'].map(path => ({ projectId: connection.projectId, url: 'https://example.com' + path, path })) })
     await prisma.sitePage.create({ data: { projectId: connection.projectId, url: 'https://other.example/foreign', path: '/foreign' } })
     const transport = vi.fn(async (_target: string, options?: RequestInit) => {
       const query = JSON.parse(options!.body as string)
       expect(query.requests).toHaveLength(3)
       const expressions = query.requests[2].dimensionFilter.andGroup.expressions
       expect(expressions[0]).toEqual(query.requests[0].dimensionFilter)
-      expect(expressions[1].filter.inListFilter.values.sort()).toEqual(['/entry', '/missing', '/top-0', '/watched'])
+      expect(expressions[1].filter.inListFilter.values.sort()).toEqual(['/entry', '/missing', '/top-0', '/top-1', '/watched'])
       expect(query.requests[2].dateRanges).toEqual(query.requests[0].dateRanges)
       const header = { dimensionHeaders: [{ name: 'pagePath' }], metricHeaders: [{ name: 'screenPageViews' }, { name: 'sessions' }] }
       return new Response(JSON.stringify({ reports: [
@@ -440,6 +651,7 @@ run('Google credential ownership during refresh', () => {
           { dimensionValues: [{ value: '/entry' }], metricValues: [{ value: '3' }, { value: '1' }] },
           { dimensionValues: [{ value: '/watched' }], metricValues: [{ value: '9' }, { value: '2' }] },
           { dimensionValues: [{ value: '/top-0' }], metricValues: [{ value: '200' }, { value: '100' }] },
+          { dimensionValues: [{ value: '/top-1' }], metricValues: [] },
           { dimensionValues: [{ value: '/missing' }], metricValues: [] },
         ] },
       ] }))
@@ -451,6 +663,7 @@ run('Google credential ownership during refresh', () => {
     const saved = await prisma.siteConnectionFact.findMany({ where: { connectionId: connection.id } })
     expect(saved.filter(fact => fact.pagePath === '/top-0')).toHaveLength(1)
     expect(saved.find(fact => fact.pagePath === '/top-0')).toMatchObject({ pageViews: 200, sessions: 100 })
+    expect(saved.find(fact => fact.pagePath === '/top-1')).toMatchObject({ pageViews: 199, sessions: 99 })
     expect(saved.find(fact => fact.pagePath === '/watched')).toMatchObject({ pageViews: 9, sessions: 2, periodStart: expect.any(Date), periodEnd: expect.any(Date) })
     expect(saved.find(fact => fact.kind === 'analytics_site')).toMatchObject({ pageViews: 1000, activeUsers: 20, sessions: 500 })
     const view = await loadSiteConnectionViews(connection.projectId)

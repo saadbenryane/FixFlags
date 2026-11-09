@@ -15,7 +15,7 @@ export function useUptimeHistory(siteId: string, window: UptimeHistory['window']
   // receipt across period changes, scoped to the same Site, target and source.
   const context = useMemo(() => ({ siteId, target, source, latest: null as UptimeHistory | null }), [siteId, target, source])
   const owner = useMemo(() => ({ siteId: context.siteId, window, source: context.source, active: false,
-    request: null as AbortController | null, data: null as UptimeHistory | null, error: null as Failure }), [context, window])
+    request: null as AbortController | null, data: null as UptimeHistory | null, error: null as Failure, restart: false }), [context, window])
   const [snapshot, setSnapshot] = useState({ owner, data: owner.data, loading: false, error: owner.error })
   useLayoutEffect(() => {
     owner.active = open
@@ -28,7 +28,7 @@ export function useUptimeHistory(siteId: string, window: UptimeHistory['window']
   }, [owner, open])
   const load = useCallback(async (kind: 'refresh' | 'more') => {
     if (!owner.active || owner.request) return
-    const previous = owner.data
+    const previous = owner.restart ? null : owner.data
     const cursor = kind === 'more' ? previous?.nextCursor : null
     if (kind === 'more' && !cursor) return
     const request = new AbortController()
@@ -40,28 +40,39 @@ export function useUptimeHistory(siteId: string, window: UptimeHistory['window']
       let data: UptimeHistory
       if (owner.source) data = uptimeHistorySchema.parse(owner.source(owner.window))
       else {
-        const query = new URLSearchParams({ window: owner.window })
-        if (cursor) query.set('cursor', cursor)
-        const { response, body } = await fetchJsonWithDeadline(`/api/sites/${encodeURIComponent(owner.siteId)}/uptime?${query}`,
-          { cache: 'no-store', signal: request.signal }, 15_000)
-        if (cursor && response.status === 400) failure = 'refresh'
+        const read = (continuation?: string) => {
+          const query = new URLSearchParams({ window: owner.window })
+          if (continuation) query.set('cursor', continuation)
+          return fetchJsonWithDeadline(`/api/sites/${encodeURIComponent(owner.siteId)}/uptime?${query}`,
+            { cache: 'no-store', signal: request.signal }, 15_000)
+        }
+        let result = await read(cursor ?? undefined)
+        if (cursor && result.response.status === 400 && owner.active && !request.signal.aborted && owner.request === request) {
+          failure = 'refresh'
+          owner.restart = true
+          result = await read()
+        }
+        const { response, body } = result
         if (!response.ok || !body || typeof body !== 'object' || !('siteId' in body) || body.siteId !== owner.siteId) throw new Error('Uptime history unavailable')
         data = uptimeHistorySchema.parse(body)
       }
       if (data.window !== owner.window) throw new Error('Uptime history window changed')
       if (context.target && data.targetUrl !== context.target) throw new Error('Uptime history target changed')
       if (!owner.active || request.signal.aborted || owner.request !== request) return
-      if (kind === 'more' && previous) {
+      if (owner.restart) owner.data = data
+      else if (kind === 'more' && previous) {
         failure = 'refresh'
         owner.data = appendUptimeHistory(previous, data)
       } else owner.data = refreshUptimeHistory(previous, data)
+      owner.restart = false
       if (data.historyScope && (!context.latest || Date.parse(data.historyScope.through) >= Date.parse(context.latest.historyScope!.through))) context.latest = data
     } catch {
       if (owner.active && !request.signal.aborted && owner.request === request) owner.error = failure
     } finally {
       if (owner.request === request) {
         owner.request = null
-        if (owner.active && !request.signal.aborted) setSnapshot({ owner, data: owner.data, loading: false, error: owner.error })
+        if (owner.active && !request.signal.aborted) setSnapshot({ owner,
+          data: owner.restart && owner.data ? { ...owner.data, nextCursor: null } : owner.data, loading: false, error: owner.error })
       }
     }
   }, [owner, context])

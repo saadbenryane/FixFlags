@@ -73,7 +73,8 @@ function rankable(
 describe('iframe axe scoping', () => {
   it('detects iframe paths in axe targets', () => {
     expect(isIframeAxeTarget(['iframe', 'button.ytmVideoInfoLink'])).toBe(true)
-    expect(isIframeAxeTarget(['html', 'body', 'main', 'button.cta'])).toBe(false)
+    expect(isIframeAxeTarget(['html > body > main > button.cta'])).toBe(false)
+    expect(isIframeAxeTarget([['main-widget', 'button.cta']])).toBe(false)
   })
 
   it('strips iframe-only nodes and drops empty violations', () => {

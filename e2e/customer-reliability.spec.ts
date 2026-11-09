@@ -6,15 +6,23 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { loadEnvConfig } from '@next/env'
 import AxeBuilder from '@axe-core/playwright'
 import { SITE_BOARD_COPY } from '../lib/marketing/copy/terminology'
+import { SITE_DASHBOARD_COPY } from '../lib/marketing/copy/site-dashboard'
+import { AUTH } from '../lib/marketing/copy/auth'
+import { COPIED_HANDOFF_CLIENT } from '../lib/improvements/handoff-contract'
+import { readOutcomeIncident } from '../lib/sites/domain/outcome-incident'
+import { PUBLIC_SITE_COPY } from '../lib/marketing/copy/public-site'
+import type { SiteHomeView } from '../lib/sites/application/queries'
+import { verifyClaimSignup } from './support/verify-claim-signup'
 
 test.use({ ignoreHTTPSErrors: true })
 
-test('controlled customer Flag, unresolved verification, repair, recovery and private evidence', async ({ page, browser, baseURL }) => {
+test('controlled checkout Flag, native handoff, independent recovery and recurrence', async ({ page, browser, baseURL }, testInfo) => {
   test.skip(process.env.FIXFLAGS_LOCAL_RELIABILITY_PROOF !== '1', 'Explicit isolated local proof only')
   test.setTimeout(900_000)
   loadEnvConfig(process.cwd())
   if (!baseURL || !['127.0.0.1', 'localhost'].includes(new URL(baseURL).hostname)) throw new Error('Local app required')
-  if (!['127.0.0.1', 'localhost'].includes(new URL(process.env.DATABASE_URL!).hostname)) throw new Error('Local database required')
+  const database = new URL(process.env.DATABASE_URL!)
+  if (!['127.0.0.1', 'localhost'].includes(database.hostname) || !/^\/fixflags_category_journey_[a-f0-9]+$/.test(database.pathname)) throw new Error('Disposable journey database required')
   const runtime = JSON.parse(await readFile('.cache/customer-reliability-runtime.json', 'utf8'))
   const control = async (data?: object) => {
     const response = data ? await page.request.post(`${runtime.fixtureOrigin}/control`, { headers: { Authorization: `Bearer ${runtime.token}` }, data }) : await page.request.get(`${runtime.fixtureOrigin}/control`, { headers: { Authorization: `Bearer ${runtime.token}` } })
@@ -23,19 +31,16 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
   const db = new PrismaClient()
   const nonce = randomBytes(8).toString('hex')
   const email = `reliability-${nonce}@example.invalid`, password = `Ff!${randomBytes(18).toString('base64url')}`
-  const output = process.env.FIXFLAGS_EXPERIENCE_CAPTURE === '1' ? '.agents/artifacts/product-experience-completion/customer' : '.agents/artifacts/customer-reliability'; await mkdir(output, { recursive: true })
+  const output = testInfo.outputPath('observations')
+  await mkdir(output, { recursive: true })
   const proof: Record<string, unknown> = { environment: 'local production web + real queue/worker/Chromium/PostgreSQL; controlled HTTP, email and S3-compatible protocol transports; not external provider or production proof' }
-  const user = await db.user.create({ data: { email, name: 'Reliability <fixture>', emailVerified: true, auditsUsed: 3 } })
-  await db.account.create({ data: { userId: user.id, accountId: user.id, providerId: 'credential', password: await hashPassword(password) } })
-  let projectId: string | undefined
-  const auditIds: string[] = []
   try {
     if (process.env.FIXFLAGS_PUBLIC_FIXTURE_PROOF === '1') {
     // Reproduce the previous public example.com findings without mapping its transport.
     await page.setExtraHTTPHeaders({ 'x-forwarded-for': `2001:db8:${nonce.slice(0, 4)}:${nonce.slice(4, 8)}::2` })
     const initial = await page.request.post('/api/checks', { headers: { 'x-forwarded-for': `2001:db8:${nonce.slice(0, 4)}:${nonce.slice(4, 8)}::2` }, data: { url: `https://example.com/?reliability=${nonce}` } })
     expect(initial.ok(), await initial.text()).toBe(true)
-    const publicAuditId = (await initial.json()).reportId; auditIds.push(publicAuditId)
+    const publicAuditId = (await initial.json()).reportId
     await expect.poll(async () => (await db.audit.findUnique({ where: { id: publicAuditId } }))?.status, { timeout: 180000, intervals: [1500] }).toBe('COMPLETED')
     const publicAudit = await db.audit.findUnique({ where: { id: publicAuditId }, include: { flags: true, screenshots: true } })
     await writeFile(`${output}/public-fixture-findings.json`, JSON.stringify({ auditId: publicAuditId, flags: publicAudit!.flags.map(({ id, checkId, problem, evidence, fix, severity, confidence, pageUrl }) => ({ id, checkId, problem, evidence, fix, severity, confidence, pageUrl })), metadata: publicAudit!.htmlMetadata }, null, 2))
@@ -46,14 +51,62 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
 
     }
 
-    // Account and Site setup are disposable fixtures; execution and verdicts are the real product.
-    const signedIn = await page.request.post('/api/auth/sign-in/email', { headers: { Origin: baseURL }, data: { email, password } })
-    expect(signedIn.ok(), await signedIn.text()).toBe(true)
-    const target = `https://example.com${runtime.prefix}`
-    const project = await db.project.create({ data: { userId: user.id, canonicalHost: 'example.com', url: target, name: 'Trail Supply fixture', notificationLevel: 'FLAGS', notifyOnRecovery: true } }); projectId = project.id
-    await control({ fixtureEnabled: true, broken: false })
-    // This preconfigured Checkout is authorized only for the controlled no-order fixture.
-    const outcome = await db.siteOutcome.create({ data: { projectId, name: 'Checkout', slug: 'checkout', kind: 'CHECKOUT', expectation: 'A customer can reach checkout from the product page.', criticality: 'CRITICAL', inferenceSource: 'user', confirmedAt: new Date(), bindings: { create: { key: 'checkout', mechanism: 'BROWSER_JOURNEY', required: true, config: { startUrl: target, safety: 'stop-at-checkout', steps: [{ action: 'click', role: 'link', name: 'Buy now' }], goal: { type: 'url_pattern', pattern: '/checkout' }, goalAfterStep: 1 }, scope: { pageUrl: target, device: 'mobile' } } } } })
+    const target = `https://example.com${runtime.prefix}/products/trail-pack`
+    const siteOrigin = new URL(target).origin
+    await control({ fixtureEnabled: true, broken: false, checkoutForm: true })
+    await page.goto('/new')
+    const entryConsent = page.getByRole('button', { name: 'Only necessary', exact: true })
+    if (await entryConsent.isVisible()) await entryConsent.click()
+    await page.getByLabel('Website URL').first().fill(target)
+    await page.getByRole('button', { name: PUBLIC_SITE_COPY.analyze, exact: true }).first().click()
+    await page.waitForURL(/\/sites\//)
+    const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
+    const getSiteHome = () => page.evaluate(async id => {
+      const response = await fetch(`/api/sites/${id}`, { cache: 'no-store' })
+      return { status: response.status, body: await response.json() as SiteHomeView }
+    }, siteId)
+    await expect.poll(async () => {
+      const response = await getSiteHome()
+      return response.status === 200 ? response.body.audit?.status : `HTTP ${response.status}`
+    }, { timeout: 150_000, intervals: [1000] }).toBe('COMPLETED')
+    const original = (await getSiteHome()).body
+    expect(original.site.userId).toBeNull()
+    expect(original.site.url).toBe(siteOrigin)
+    const originalAuditId = original.audit?.id
+    if (!originalAuditId) throw new Error('Anonymous analysis has no completed report')
+    const originalCheckout = original.outcomes.find(item => item.slug === 'checkout')
+    if (!originalCheckout) throw new Error('Checkout was not inferred from the product page')
+    await page.getByRole('button', { name: 'Open Search', exact: true }).click()
+    await page.getByRole('dialog').locator('summary').filter({ hasText: SITE_DASHBOARD_COPY.checkDetails }).click()
+    await page.getByRole('dialog').getByRole('button', { name: /^Check(?: Search)? again$/ }).last().click()
+    const userId = await verifyClaimSignup({ page, db, email, password, origin: new URL(baseURL).origin,
+      messages: async () => (await control()).messages,
+      stillAnonymous: async () => { expect((await getSiteHome()).body.site.userId).toBeNull() },
+    })
+    await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'search')
+    const claimed = (await getSiteHome()).body
+    const projectId = claimed.site.projectId
+    if (!projectId) throw new Error('Signup did not claim the analyzed Site')
+    expect(claimed.site).toMatchObject({ userId, url: siteOrigin })
+    expect(await db.user.findUniqueOrThrow({ where: { id: userId }, select: { emailVerified: true } })).toEqual({ emailVerified: true })
+    expect(await db.audit.findUniqueOrThrow({ where: { id: originalAuditId }, select: { userId: true, projectId: true, url: true } }))
+      .toEqual({ userId, projectId, url: target })
+    expect(claimed.monitoringHistory).toEqual(expect.arrayContaining([expect.objectContaining({ id: originalAuditId })]))
+    expect(await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { watchInterval: true, watchNextRunAt: true } }))
+      .toEqual({ watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date) })
+    await expect.poll(() => db.uptimeMonitor.findUnique({ where: { projectId }, select: { enabled: true, targetUrl: true } }))
+      .toEqual({ enabled: true, targetUrl: new URL(siteOrigin).href })
+    const outcome = await db.siteOutcome.findFirstOrThrow({ where: { projectId, kind: 'CHECKOUT', slug: 'checkout' }, include: { bindings: true } })
+    expect(outcome).toMatchObject({ id: originalCheckout.id, inferenceSource: 'browser', confirmedAt: expect.any(Date),
+      bindings: [expect.objectContaining({ key: 'checkout-browser-v1', required: true, config: expect.objectContaining({ startUrl: target, safety: 'stop-at-checkout' }) })] })
+    const settings = await page.request.patch(`/api/sites/${projectId}/settings`, { data: { notificationLevel: 'FLAGS', notifyOnRecovery: true } })
+    expect(settings.ok(), await settings.text()).toBe(true)
+    proof.claim = { siteId, projectId, originalAuditId, outcomeId: outcome.id, signupVerified: true, defaultWeeklyWatch: true, defaultUptimeEnabled: true, checkoutInferred: true }
+    const firstWatch = () => db.runRequest.findFirst({ where: { projectId, source: 'WATCH' }, orderBy: { requestedAt: 'asc' },
+      select: { id: true, status: true, assessments: { select: { outcomeId: true, state: true } } } })
+    await expect.poll(firstWatch, { timeout: 150_000, intervals: [1000] }).toMatchObject({ status: 'COMPLETED',
+      assessments: expect.arrayContaining([expect.objectContaining({ outcomeId: outcome.id, state: 'CLEAR' })]) })
+    proof.automaticFirstWatch = { runId: (await firstWatch())!.id, checkoutResult: 'CLEAR' }
     const run = async (label: string) => {
       const response = await page.request.post(`/api/sites/${projectId}/runs`, { headers: { 'Idempotency-Key': `reliability:${nonce}:${label}` }, data: { outcomeIds: [outcome.id] } })
       expect([200, 202], await response.text()).toContain(response.status()); return response.json()
@@ -67,14 +120,11 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
       const finished = await (await page.request.get(`/api/sites/${projectId}/runs/${runId}`)).json(); expect(finished.result).toBe(result)
       return (await db.runRequest.findUnique({ where: { id: runId } }))!
     }
+    await control({ checkoutForm: false })
+    const unavailableCheckout = await run('empty-checkout'); await waitRun(unavailableCheckout.runId, 'COULD_NOT_VERIFY')
+    await control({ checkoutForm: true })
     const baseline = await run('baseline'); const baselineRecord = await waitRun(baseline.runId, 'CLEAR')
     proof.checkoutBaseline = { runId: baseline.runId, auditId: baselineRecord.auditId, result: 'CLEAR' }
-    // Activate existing weekly monitoring; this also preserves the Checkout coverage.
-    const activated = await page.request.post(`/api/sites/${projectId}/watch/activate`, { data: { interval: 'weekly' } })
-    expect(activated.ok(), await activated.text()).toBe(true)
-    const activation = await activated.json(); expect(activation.firstCheck).toBe('requested')
-    const firstPageRun = await db.runRequest.findFirst({ where: { projectId, id: { not: baseline.runId } }, orderBy: { requestedAt: 'desc' } })
-    expect(firstPageRun).toBeTruthy(); await waitRun(firstPageRun!.id, 'CLEAR')
     if (process.env.FIXFLAGS_EXPERIENCE_CAPTURE === '1') {
       for (const [name, width] of [['desktop', 1440], ['mobile', 390]] as const) {
         await page.setViewportSize({ width, height: 900 })
@@ -89,17 +139,27 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
       }
       await page.setViewportSize({ width: 1440, height: 900 })
     }
-    // Resume this fixture through the owner command; refuse to process other Sites.
-    expect(await db.project.count({ where: { id: { not: projectId }, watchInterval: { not: null }, watchNextRunAt: { lte: new Date() } } })).toBe(0)
-    await control({ broken: true, rejectNextEmail: true })
-    for (const action of ['pause', 'resume']) {
-      const changed = await page.request.post(`/api/sites/${projectId}/watch`, { data: { action } })
-      expect(changed.status(), await changed.text()).toBe(200)
+    const requestDueWatch = async () => {
+      // Resume this fixture through the owner command to make the cadence due.
+      for (const action of ['pause', 'resume']) {
+        const changed = await page.request.post(`/api/sites/${projectId}/watch`, { data: { action } })
+        expect(changed.status(), await changed.text()).toBe(200)
+      }
+      // The isolated runtime owns scheduler invocation and rejects unrelated due Sites.
+      const scheduled = await page.request.post(`${runtime.fixtureOrigin}/tick`, { headers: { Authorization: `Bearer ${runtime.token}` }, data: { projectId } })
+      expect(scheduled.ok(), await scheduled.text()).toBe(true)
+      return await scheduled.json() as { runId: string }
     }
-    // The isolated runtime owns scheduler invocation, rather than the shared worker.
-    const scheduled = await page.request.post(`${runtime.fixtureOrigin}/tick`, { headers: { Authorization: `Bearer ${runtime.token}` }, data: { projectId } })
-    expect(scheduled.ok(), await scheduled.text()).toBe(true)
-    const watch = await scheduled.json(); const failedRecord = await waitRun(watch.runId, 'FLAG')
+    await control({ broken: true, rejectCheckoutOutcomeId: outcome.id })
+    const watch = await requestDueWatch()
+    const failedRecord = await waitRun(watch.runId, 'FLAG')
+    const alertMessages = async () => (await control()).messages.filter((message: { tags?: { name: string; value: string }[] }) =>
+      message.tags?.some(tag => tag.name === 'audit_id' && tag.value === failedRecord.auditId))
+    await expect.poll(async () => (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))?.improvementProjectedAt).not.toBeNull()
+    // The isolated runtime invokes delivery scheduling explicitly, just as it
+    // invokes the Watch scheduler above. Classification alone does not send.
+    const delivered = await page.request.post(`${runtime.fixtureOrigin}/retry`, { headers: { Authorization: `Bearer ${runtime.token}` } })
+    expect(delivered.ok(), await delivered.text()).toBe(true)
     await expect.poll(async () => (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))?.watchNotificationStatus).toBe('FAILED')
     const firstFailure = await db.audit.findUniqueOrThrow({ where: { id: failedRecord.auditId! } })
     expect(firstFailure.watchNotificationNextAttemptAt).not.toBeNull()
@@ -108,23 +168,46 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     const premature = await page.request.post(`${runtime.fixtureOrigin}/retry`, { headers: { Authorization: `Bearer ${runtime.token}` } })
     expect(premature.ok()).toBe(true)
     expect((await db.audit.findUniqueOrThrow({ where: { id: failedRecord.auditId! } })).watchNotificationAttempts).toBe(firstFailure.watchNotificationAttempts)
-    expect((await control()).messages).toHaveLength(0)
+    expect(await alertMessages()).toHaveLength(0)
     // Observe the persisted backoff in real time. Never rewrite its due time or the clock.
     await expect.poll(() => Date.now(), { timeout: 360_000, intervals: [1000] }).toBeGreaterThanOrEqual(retryDueAt)
     const retried = await page.request.post(`${runtime.fixtureOrigin}/retry`, { headers: { Authorization: `Bearer ${runtime.token}` } })
     expect(retried.ok()).toBe(true)
     await expect.poll(async () => (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))?.watchNotificationStatus).toBe('SENT')
-    const state = await control(); expect(state.messages).toHaveLength(1)
-    expect(state.messages[0].to).toBe(email)
-    expect(state.messages[0].html).toContain('Reliability &lt;fixture&gt;')
-    expect(state.messages[0].html).toContain(`/sites/${projectId}/flags/`)
-    await writeFile(`${output}/notification.html`, state.messages[0].html)
+    const messages = await alertMessages(); expect(messages).toHaveLength(1)
+    expect(messages[0].to).toBe(email)
+    expect(messages[0].html).toContain(`/sites/${projectId}/flags/`)
+    await writeFile(`${output}/notification.html`, messages[0].html)
     await page.request.post(`${runtime.fixtureOrigin}/retry`, { headers: { Authorization: `Bearer ${runtime.token}` } })
-    expect((await control()).messages).toHaveLength(1)
-    const inbox = await browser.newPage(); await inbox.setContent(state.messages[0].html); await inbox.screenshot({ path: `${output}/notification.png`, fullPage: true }); await inbox.close()
-    const destination = state.messages[0].html.match(/href="([^"]+)"/)[1]
+    expect(await alertMessages()).toHaveLength(1)
+    const inbox = await browser.newPage(); await inbox.setContent(messages[0].html); await inbox.screenshot({ path: `${output}/notification.png`, fullPage: true }); await inbox.close()
+    const destination = messages[0].html.match(/href="([^"]+)"/)[1]
+    const emailDestination = new URL(destination)
+    expect(emailDestination.origin).toBe(new URL(baseURL).origin)
+    expect(emailDestination.pathname).toMatch(new RegExp(`^/sites/${projectId}/flags/[^/]+$`))
+    const notificationPath = emailDestination.pathname + emailDestination.search
+    const emailContext = await browser.newContext()
+    try {
+      const emailPage = await emailContext.newPage()
+      await emailPage.goto(destination, { waitUntil: 'networkidle' })
+      await expect(emailPage).toHaveURL(url => url.pathname === '/sign-in' && url.searchParams.get('next') === notificationPath)
+      const privateEndpoint = '/api' + emailDestination.pathname
+      expect((await emailPage.request.get(privateEndpoint)).status()).toBe(404)
+      const consent = emailPage.getByRole('button', { name: 'Only necessary', exact: true })
+      if (await consent.isVisible()) await consent.click()
+      await emailPage.getByLabel('Email').fill(email)
+      await emailPage.getByLabel('Password', { exact: true }).fill(password)
+      await emailPage.getByRole('button', { name: AUTH.signIn.cta, exact: true }).click()
+      await emailPage.waitForURL(url => url.pathname + url.search === notificationPath)
+      await expect(emailPage.getByRole('heading', { level: 1 }).first()).toBeVisible()
+      const returned = await emailPage.request.get(privateEndpoint)
+      expect(returned.status(), await returned.text()).toBe(200)
+      expect((await returned.json()).flag.sourceAuditId).toBe(failedRecord.auditId)
+      proof.notificationReturn = { signedOutDestination: notificationPath, privateBeforeSignIn: true,
+        exactFlagAfterSignIn: true, sourceAuditId: failedRecord.auditId }
+    } finally { await emailContext.close() }
     await page.goto(destination, { waitUntil: 'networkidle' }); await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-    proof.notification = { transport: 'real Resend SDK to local controlled inbox', attempts: (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))!.watchNotificationAttempts, acceptedMessages: state.messages.length, retryDueAt: new Date(retryDueAt).toISOString(), observedAfterDueAt: new Date().toISOString(), prematureRetryConsumedNoAttempt: true }
+    proof.notification = { transport: 'real Resend SDK to local controlled inbox', attempts: (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))!.watchNotificationAttempts, acceptedMessages: messages.length, retryDueAt: new Date(retryDueAt).toISOString(), observedAfterDueAt: new Date().toISOString(), prematureRetryConsumedNoAttempt: true }
     const home = await (await page.request.get(`/api/sites/${projectId}`)).json()
     const checkout = home.outcomes.find((item: { id: string }) => item.id === outcome.id)
     expect(checkout.state).toBe('FLAG'); expect(checkout.flagId).toBeTruthy()
@@ -141,8 +224,24 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     const exactCapture = (await evidenceImage.getAttribute('src'))!
     const capturedResponse = await page.request.get(exactCapture); expect(capturedResponse.status()).toBe(200)
     await writeFile(`${output}/checkout-failure.png`, await capturedResponse.body())
-    const handoff = await page.request.post(`/api/sites/${projectId}/flags/${flagId}/fix`, { data: { action: 'copy' } }); expect(handoff.ok()).toBe(true)
-    const guidance = await handoff.json(); expect(guidance.prompt).toContain(flag.problem); expect(guidance.prompt).toContain(flag.evidence)
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseURL })
+    await page.getByLabel(SITE_DASHBOARD_COPY.promptPreview, { exact: true }).click()
+    const preview = page.getByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel, exact: true })
+    await expect(preview).toBeVisible()
+    const instructions = await preview.inputValue()
+    expect(instructions).toContain(flag.problem)
+    expect(instructions).toContain(flag.evidence)
+    const copyRecorded = page.waitForResponse(response => response.url().endsWith(`/flags/${flagId}/fix`) &&
+      response.request().method() === 'POST' && response.request().postDataJSON().action === 'copy')
+    await page.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt, exact: true }).click()
+    await expect(page.getByRole('button', { name: SITE_BOARD_COPY.copyPromptCopied, exact: true })).toBeVisible()
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(instructions)
+    const handoff = await copyRecorded
+    expect(handoff.ok(), await handoff.text()).toBe(true)
+    const copyEvent = await db.improvementCycleEvent.findFirstOrThrow({
+      where: { cycle: { projectId, sourceAuditId: failedRecord.auditId! }, type: 'HANDOFF_COPIED', client: COPIED_HANDOFF_CLIENT },
+    })
+    proof.handoff = { eventId: copyEvent.id, previewMatchesClipboard: true, nativeReceipt: true }
     expect((await (await page.request.get(`/api/sites/${projectId}`)).json()).outcomes.find((item: { id: string }) => item.id === outcome.id).state).toBe('FLAG')
     await page.screenshot({ path: `${output}/desktop-flag.png`, fullPage: true })
     await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${output}/mobile-flag.png`, fullPage: true })
@@ -150,8 +249,9 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
     await writeFile(`${output}/accessibility.json`, JSON.stringify(a11y.violations, null, 2)); expect(a11y.violations).toEqual([])
 
-    // Private, captured screenshot bytes: owner can read; strangers cannot.
-    const audit = await db.audit.findUnique({ where: { id: failedRecord.auditId! }, include: { screenshots: true } })
+    // The claimed discovery capture retains its original source. The separate
+    // failure image above belongs to this checkout attempt's journey evidence.
+    const audit = await db.audit.findUnique({ where: { id: originalAuditId }, include: { screenshots: true } })
     expect(audit!.isPublic).toBe(false); expect(audit!.screenshots.length).toBeGreaterThan(0)
     const storedCapture = audit!.screenshots.find(capture => capture.device === 'DESKTOP')
     expect(storedCapture).toBeTruthy()
@@ -179,23 +279,27 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     expect((await page.request.get(`${runtime.fixtureOrigin}/evidence/${objectKey}`)).status()).toBe(403)
     proof.privateEvidence = 'actual worker capture -> signed S3 SDK PUT -> private object -> owner-authorized GET; anonymous Site/screenshot and unsigned object access denied'
 
-    const verify = async () => {
-      await page.reload({ waitUntil: 'networkidle' })
-      const currentResponse = await page.request.get(`/api/sites/${projectId}/flags/${flagId}`)
+    const verify = async (referenceFlagId: string) => {
+      await page.goto(`/sites/${projectId}/flags/${referenceFlagId}`, { waitUntil: 'networkidle' })
+      const currentResponse = await page.request.get(`/api/sites/${projectId}/flags/${referenceFlagId}`)
       expect(currentResponse.ok()).toBe(true)
-      const current = await currentResponse.json()
-      const sourceFlagId = current.flag.sourceFlagId ?? current.flag.id
+      expect((await currentResponse.json()).flag).toBeTruthy()
       await expect(page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true })).toBeEnabled()
       await page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
-      const responseWait = page.waitForResponse(response => response.url().endsWith(`/flags/${sourceFlagId}/verify`) && response.request().method() === 'POST')
+      const responseWait = page.waitForResponse(response => response.url().endsWith(`/flags/${referenceFlagId}/verify`) && response.request().method() === 'POST')
       await page.getByRole('dialog').getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
       const response = await responseWait
-      expect(response.status(), await response.text()).toBe(202); return response.json()
+      expect(response.status(), await response.text()).toBe(202)
+      const accepted = await response.json(); expect(accepted.flagId).toBe(referenceFlagId); return accepted
     }
-    const unresolved = await verify(); await waitRun(unresolved.runId, 'FLAG')
+    const unresolved = await verify(flagId); await waitRun(unresolved.runId, 'FLAG')
     proof.unresolvedVerification = { runId: unresolved.runId, result: 'FLAG' }
-    await control({ broken: false })
-    const recovered = await verify(); const recoveredRecord = await waitRun(recovered.runId, 'CLEAR')
+    await control({ broken: false, checkoutForm: false })
+    const incomplete = await verify(flagId); await waitRun(incomplete.runId, 'COULD_NOT_VERIFY')
+    await expect.poll(async () => (await db.improvementAttempt.findUnique({ where: { id: incomplete.attemptId } }))?.outcome).toBe('INCONCLUSIVE')
+    proof.incompleteVerification = { runId: incomplete.runId, result: 'COULD_NOT_VERIFY' }
+    await control({ checkoutForm: true })
+    const recovered = await verify(flagId); const recoveredRecord = await waitRun(recovered.runId, 'CLEAR')
     const after = await (await page.request.get(`/api/sites/${projectId}`)).json()
     expect(after.outcomes.find((item: { id: string }) => item.id === outcome.id).state).toBe('CLEAR')
     proof.recoveryExecution = { runId: recovered.runId, auditId: recoveredRecord.auditId, result: 'CLEAR' }
@@ -205,6 +309,29 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     await page.screenshot({ path: `${output}/mobile-recovery.png`, fullPage: true })
     await page.setViewportSize({ width: 1440, height: 1000 }); await page.screenshot({ path: `${output}/desktop-recovery.png`, fullPage: true })
     proof.recovery = { runId: recovered.runId, auditId: recoveredRecord.auditId, result: 'CLEAR', customerStatus: 'Recovered' }
+    await control({ broken: true })
+    const recurrence = await requestDueWatch()
+    expect(recurrence.runId).not.toBe(watch.runId)
+    expect(await waitRun(recurrence.runId, 'FLAG')).toMatchObject({ source: 'WATCH' })
+    const recurringAssessment = await db.outcomeAssessment.findUniqueOrThrow({
+      where: { runRequestId_outcomeId: { runRequestId: recurrence.runId, outcomeId: outcome.id } },
+    })
+    const incident = readOutcomeIncident(recurringAssessment.evidence)
+    expect(incident?.transition).toBe('regression')
+    expect(incident?.flagIds).toHaveLength(1)
+    const recurringFlagId = incident!.flagIds[0]
+    expect(recurringFlagId).not.toBe(flagId)
+    expect(await db.flag.findUnique({ where: { id: recurringFlagId }, select: { status: true } })).toEqual({ status: 'REGRESSED' })
+    await control({ broken: false })
+    const secondRepair = await verify(recurringFlagId)
+    const secondRecovery = await waitRun(secondRepair.runId, 'CLEAR')
+    await expect.poll(async () => (await db.flag.findUnique({ where: { id: recurringFlagId } }))?.resolvedInId).toBe(secondRecovery.auditId)
+    const firstRecovery = await db.outcomeAssessment.findUniqueOrThrow({
+      where: { runRequestId_outcomeId: { runRequestId: recovered.runId, outcomeId: outcome.id } },
+    })
+    expect(readOutcomeIncident(firstRecovery.evidence)?.transition).toBe('recovery')
+    proof.recurrence = { runId: recurrence.runId, flagId: recurringFlagId, previousAssessmentId: incident!.previousAssessmentId }
+    proof.secondRecovery = { runId: secondRepair.runId, auditId: secondRecovery.auditId }
     const attempts = await db.outcomeBindingAttempt.findMany({ where: { outcomeId: outcome.id }, orderBy: { createdAt: 'asc' } })
     proof.bindingAttempts = attempts.map(({ auditId, disposition, reason, detail }) => ({ auditId, disposition, reason, detail }))
     proof.history = await db.improvementAttempt.findMany({ where: { improvement: { projectId, outcomeId: outcome.id } }, select: { outcome: true, comparable: true, verificationAuditId: true, changeSummary: true } })
@@ -219,11 +346,7 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
   } finally {
     await writeFile(`${output}/run-${nonce}-proof.json`, JSON.stringify(proof, null, 2))
     if (proof.recovery || !proof.checkoutBaseline) await writeFile(`${output}/real-path-proof.json`, JSON.stringify(proof, null, 2))
-    if (projectId) {
-      // A failing test must let its own accepted work finish before deleting its ledger.
-      await expect.poll(async () => db.audit.count({ where: { projectId, status: { notIn: ['COMPLETED', 'FAILED'] } } }), { timeout: 180000, intervals: [1500] }).toBe(0)
-      await db.project.update({ where: { id: projectId }, data: { watchInterval: null, watchNextRunAt: null } }); await db.audit.deleteMany({ where: { projectId } }); await db.project.delete({ where: { id: projectId } }) }
-    for (const id of auditIds) { await db.provisionalSite.deleteMany({ where: { primaryAuditId: id } }); await db.audit.deleteMany({ where: { id } }) }
-    await db.user.delete({ where: { id: user.id } }); await db.$disconnect()
+    // The isolated runner owns the database and removes it after stopping the worker.
+    await db.$disconnect()
   }
 })

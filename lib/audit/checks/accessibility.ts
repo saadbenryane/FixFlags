@@ -1,3 +1,4 @@
+import { severityRank } from '@/lib/utils'
 import { PageMetadata } from '../metadata'
 import { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
@@ -67,9 +68,6 @@ function buildAxeFix(violation: AxeViolation): string {
   const nodeCount = violation.nodes.length
   const example = violation.nodes[0]
   const selector = example ? axeTargetSelector(example.target) : 'unknown element'
-  const checkId = axeRuleToCheckId(violation.id)
-  const safeNameFix = ACCESSIBLE_NAME_FIX_BY_CHECK_ID[checkId]
-
   const lines = [
     violation.help,
     '',
@@ -85,10 +83,6 @@ function buildAxeFix(violation: AxeViolation): string {
 
   if (nodeCount > 3) {
     lines.push(`  ... and ${nodeCount - 3} more`)
-  }
-
-  if (safeNameFix) {
-    lines.push('', safeNameFix)
   }
 
   return lines.join('\n')
@@ -112,29 +106,41 @@ export function runAccessibilityChecks(
     ? []
     : ownedDocuments ? axeViolations : filterOutIframeAxeViolations(axeViolations)
   if (!axeUnavailable && scopedAxeViolations.length > 0) {
-    const processedCheckIds = new Set<string>()
-
+    const groups = new Map<string, AxeViolation[]>()
     for (const violation of scopedAxeViolations) {
       const checkId = axeRuleToCheckId(violation.id)
-
-      // Deduplicate by resolved check ID (e.g., multiple image-alt violations -> one flag)
-      if (processedCheckIds.has(checkId)) continue
-      processedCheckIds.add(checkId)
-
-      const nodeCount = violation.nodes.length
-      const evidence = violation.nodes
-        .slice(0, 3)
-        .map((node) => `${axeTargetSelector(node.target)}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
-        .join('\n')
+      const group = groups.get(checkId)
+      if (group) group.push(violation)
+      else groups.set(checkId, [violation])
+    }
+    for (const [checkId, group] of groups) {
+      // Keep one durable Flag while retaining the evidence and guidance for each rule.
+      group.sort((a, b) => severityRank(axeImpactToSeverity(a.impact)) - severityRank(axeImpactToSeverity(b.impact)) || a.id.localeCompare(b.id))
+      const primary = group[0]
+      const grouped = group.length > 1
+      const nodeCount = grouped
+        ? new Set(group.flatMap(violation => violation.nodes.map(node => JSON.stringify(node.target)))).size
+        : primary.nodes.length
+      const evidence = group.map(violation => {
+        const facts = [`Rule: ${violation.id}`]
+        if (!grouped) facts.push(`Affected elements: ${nodeCount}`)
+        return facts.concat(violation.nodes.slice(0, 3)
+          .map(node => `${axeTargetSelector(node.target)}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
+        ).join('\n')
+      }).join('\n\n')
+      const elementCount = `${nodeCount} element${nodeCount === 1 ? '' : 's'}`
+      const fixes = group.map(buildAxeFix)
+      const safeNameFix = ACCESSIBLE_NAME_FIX_BY_CHECK_ID[checkId]
+      if (safeNameFix) fixes.push(safeNameFix)
 
       findings.push({
         checkId,
         rubric: 'EXPERIENCE',
         impactTag: 'ACCESSIBILITY',
-        severity: axeImpactToSeverity(violation.impact),
-        problem: `${violation.help} (${nodeCount} element${nodeCount > 1 ? 's' : ''})`,
-        evidence: `Rule: ${violation.id}\nAffected elements: ${nodeCount}${evidence ? '\n' + evidence : ''}`,
-        fix: buildAxeFix(violation),
+        severity: axeImpactToSeverity(primary.impact),
+        problem: grouped ? `${primary.help} and related failures (${elementCount})` : `${primary.help} (${elementCount})`,
+        evidence: grouped ? `Affected elements: ${nodeCount}\n\n${evidence}` : evidence,
+        fix: fixes.join('\n\n'),
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
