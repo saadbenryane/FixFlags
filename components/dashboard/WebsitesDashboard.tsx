@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
 import { SitesOverviewGrid } from '@/components/sites/SitesOverviewGrid'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
@@ -15,8 +16,10 @@ import styles from './WebsitesDashboard.module.css'
 
 type RetryFocus = { owner: object; button: HTMLButtonElement; restore: boolean }
 
-export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl }: {
+export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl, atSiteLimit = false }: {
   initialSites: SiteSummary[]; ownerId: string; readAt: number; resumedUrl: string | null;
+  /** The plan already holds its websites, so adding one would be refused. */
+  atSiteLimit?: boolean;
 }) {
   const { user, isLoading: accountLoading, refresh: refreshUser } = useMe()
   const initial = useMemo(() => ({ ownerId, sites: initialSites, readAt }), [ownerId, initialSites, readAt])
@@ -64,8 +67,9 @@ export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl }:
   const handoff = user?.id === ownerId ? resumedUrl : null
   return <div ref={dashboard} key={user?.id} className="space-y-6">
     {feedback}
-    <SitesOverviewGrid sites={sites} action={<Button asChild variant="outline" size="sm"><a href="#analyze-heading"><Plus aria-hidden />{C.analyzeTitle}</a></Button>} />
-    <section aria-labelledby="analyze-heading" className={styles.entry} data-first={firstWebsite}>
+    <SitesOverviewGrid sites={sites} action={atSiteLimit ? undefined : <Button asChild variant="outline" size="sm"><a href="#analyze-heading"><Plus aria-hidden />{C.analyzeTitle}</a></Button>} />
+    {atSiteLimit && !firstWebsite ? <PlanLimitNotice kind="site-limit" /> : null}
+    {atSiteLimit && !firstWebsite ? null : <section aria-labelledby="analyze-heading" className={styles.entry} data-first={firstWebsite}>
       <h2 id="analyze-heading" tabIndex={-1} className={`${styles.title} scroll-mt-24 rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{firstWebsite ? C.firstTitle : C.analyzeTitle}</h2>
       <p className={styles.description}>{handoff ? SCAN_HANDOFF.resuming(handoff) : C.analyzeBody}</p>
       <AuditInput idSuffix="-dashboard" source="dashboard" initialUrl={handoff ?? undefined} autoStart={Boolean(handoff)} />
@@ -73,6 +77,6 @@ export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl }:
         <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
         <div><h3>{step.title}</h3><p>{step.body}</p></div>
       </li>)}</ol> : null}
-    </section>
+    </section>}
   </div>
 }

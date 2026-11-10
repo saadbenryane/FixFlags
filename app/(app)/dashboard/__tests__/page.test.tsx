@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MeProvider } from '@/hooks/useMe'
 import DashboardPage from '@/app/(app)/dashboard/page'
 import { WEBSITES_COPY } from '@/lib/marketing/copy/terminology'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   }),
   loadSiteSummaries: vi.fn(),
   startScanWithHandoff: vi.fn(),
+  loadSiteCapacity: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -25,6 +27,7 @@ vi.mock('@/lib/auth/app-viewer', () => ({ getAppViewer: mocks.getAppViewer }))
 vi.mock('@/lib/sites/application/list-sites', () => ({
   loadSiteSummaries: mocks.loadSiteSummaries,
 }))
+vi.mock('@/lib/billing/product-capacity', () => ({ loadSiteCapacity: mocks.loadSiteCapacity }))
 vi.mock('@/lib/analytics/events', () => ({ trackEvent: vi.fn() }))
 vi.mock('@/lib/audit/start-scan-handoff', () => ({
   startScanWithHandoff: mocks.startScanWithHandoff,
@@ -55,6 +58,7 @@ describe('/dashboard handoff', () => {
     mocks.startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site-1' })
     mocks.getAppViewer.mockResolvedValue({ user: { id: 'owner-1' } })
     mocks.loadSiteSummaries.mockResolvedValue([])
+    mocks.loadSiteCapacity.mockResolvedValue({ limit: 1, used: 0, atLimit: false })
   })
 
   it('redirects an unauthenticated viewer to sign-in', async () => {
@@ -120,5 +124,14 @@ describe('/dashboard handoff', () => {
     expect(screen.getByRole('heading', { name: WEBSITES_COPY.analyzeTitle })).toBeVisible()
     expect(screen.queryByRole('heading', { name: WEBSITES_COPY.firstTitle })).not.toBeInTheDocument()
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  })
+  it('replaces an add form the plan would refuse with the one plan-limit notice', async () => {
+    mocks.loadSiteSummaries.mockResolvedValue([{ id: 'fixture-site', name: 'Example', hostname: 'example.com',
+      presentation: siteViewFixture().presentation, lastUsefulChangeAt: '2026-11-03T00:00:00Z' }])
+    mocks.loadSiteCapacity.mockResolvedValue({ limit: 1, used: 1, atLimit: true })
+    await renderPage({})
+    expect(screen.getByText(PLAN_LIMIT_NOTICE.copy['site-limit'].title)).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Website URL' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: WEBSITES_COPY.analyzeTitle })).not.toBeInTheDocument()
   })
 })

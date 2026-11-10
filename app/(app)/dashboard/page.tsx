@@ -7,6 +7,7 @@ import { Container } from '@/components/ui/container'
 import { getAppViewer } from '@/lib/auth/app-viewer'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
+import { loadSiteCapacity } from '@/lib/billing/product-capacity'
 
 /**
  * The sign-up handoff lands here as `?url=`. The signup gate sends the visitor
@@ -31,9 +32,10 @@ export default async function DashboardPage({
   const viewer = await getAppViewer()
   if (!viewer) redirect('/sign-in')
   const readAt = Date.now()
-  const [sites, params] = await Promise.all([
+  const [sites, params, capacity] = await Promise.all([
     loadSiteSummaries(viewer.user.id),
     searchParams,
+    loadSiteCapacity(viewer.user.id),
   ])
   const resumedUrl = handoffUrl(params?.url)
 
@@ -47,7 +49,7 @@ export default async function DashboardPage({
       </Suspense>
 
       <PageHeader title="Websites" />
-      <WebsitesDashboard initialSites={sites} ownerId={viewer.user.id} readAt={readAt} resumedUrl={resumedUrl} />
+      <WebsitesDashboard initialSites={sites} ownerId={viewer.user.id} readAt={readAt} resumedUrl={resumedUrl} atSiteLimit={capacity.atLimit} />
     </Container>
   )
 }
