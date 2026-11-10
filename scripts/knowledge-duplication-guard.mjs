@@ -41,6 +41,8 @@ const RULES = [
       'docs/stripe-setup.md',
       'docs/year-1-operating-plan.md',
       'lib/billing/codemap.md',
+      // Competitor prices and packaging hypotheses awaiting an owner decision, not current tiers.
+      'docs/growth/fixflags-master-plan.md',
     ],
   },
 
