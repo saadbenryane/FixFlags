@@ -8,13 +8,13 @@ Use a page visitors can open without signing in. If your website is still only o
 
 1. Open [Add website](/new), or use the address field on the homepage.
 2. Paste your website address and select **Check your website**.
-3. Stay on the results page while FixFlags checks your website.
+3. Create a free account while FixFlags checks your website. Your results open as soon as you sign in.
 
 The results are grouped into areas such as Pages, Search, and Performance. A **Flag** is a problem that needs attention. Open one to see what happened and how to fix it.
 
 **Not checked yet** means results are not available for that area. No Flags means no problems were found in the checks that finished, so read any limits shown beside the results.
 
-To keep your results, sign in or create an account from this page. This saves the website as a **Site** in your account. [Help with saving your website](/help/getting-started/save-your-site).
+Signing in saves the website as a **Site** in your account. [Help with saving your website](/help/getting-started/save-your-site).
 
 ## Fix a problem
 

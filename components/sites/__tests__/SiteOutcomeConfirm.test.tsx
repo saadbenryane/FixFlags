@@ -33,7 +33,8 @@ describe('Outcome confirmation', () => {
   it('offers the watchable kinds that need no separate setup, from the capability contract', () => {
     expect(watchableOutcomeKinds()).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
     expect(confirmableKinds({ kind: 'GENERIC' })).toEqual(['CHECKOUT', 'AVAILABILITY'])
-    render(<OutcomeConfirmControl siteId="site-1" outcome={inferred()} />)
+    expect(confirmableKinds({ kind: 'GENERIC' }, true)).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred()} />)
     expect(screen.getAllByRole('button').map(button => button.textContent))
       .toEqual([OUTCOME_KIND_LABELS.CHECKOUT, OUTCOME_KIND_LABELS.AVAILABILITY])
   })
@@ -41,7 +42,7 @@ describe('Outcome confirmation', () => {
   it('sends the chosen kind and refreshes both the live Site resource and the page', async () => {
     const fetchMock = vi.fn().mockResolvedValue(respond({ ok: true }))
     vi.stubGlobal('fetch', fetchMock)
-    render(<OutcomeConfirmControl siteId="site-1" outcome={inferred()} onRefresh={onRefresh} />)
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred()} onRefresh={onRefresh} />)
     fireEvent.click(screen.getByRole('button', { name: OUTCOME_KIND_LABELS.CHECKOUT }))
 
     expect(await screen.findByText(OUTCOME_CONFIRMATION.saved)).toBeVisible()
@@ -56,7 +57,7 @@ describe('Outcome confirmation', () => {
   it('shows the route’s reason a confirmation was refused and claims nothing changed', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       respond({ code: 'OUTCOME_KIND_UNWATCHABLE', message: OUTCOME_CONFIRMATION.kindUnwatchable }, 400)))
-    render(<OutcomeConfirmControl siteId="site-1" outcome={inferred()} onRefresh={onRefresh} />)
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred()} onRefresh={onRefresh} />)
     fireEvent.click(screen.getByRole('button', { name: OUTCOME_KIND_LABELS.AVAILABILITY }))
 
     expect(await screen.findByText(OUTCOME_CONFIRMATION.kindUnwatchable)).toBeVisible()
@@ -67,30 +68,44 @@ describe('Outcome confirmation', () => {
 
   it('falls back to a plain failure when the route gives no reason or cannot be reached', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond({}, 500)))
-    const { unmount } = render(<OutcomeConfirmControl siteId="site-1" outcome={inferred()} />)
+    const { unmount } = render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred()} />)
     fireEvent.click(screen.getByRole('button', { name: OUTCOME_KIND_LABELS.AVAILABILITY }))
     expect(await screen.findByText(OUTCOME_CONFIRMATION.saveFailed)).toBeVisible()
     unmount()
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
-    render(<OutcomeConfirmControl siteId="site-1" outcome={inferred()} />)
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred()} />)
     fireEvent.click(screen.getByRole('button', { name: OUTCOME_KIND_LABELS.AVAILABILITY }))
     expect(await screen.findByText(OUTCOME_CONFIRMATION.saveFailed)).toBeVisible()
   })
 
   it('leads with the kind the site already told FixFlags, rather than re-asking', () => {
-    render(<OutcomeConfirmControl siteId="site-1" outcome={inferred({ kind: 'CHECKOUT' })} />)
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred({ kind: 'CHECKOUT' })} />)
     expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual([OUTCOME_KIND_LABELS.CHECKOUT])
   })
 
-  it('does not offer a different kind for a Signup Outcome, which account checks cover', () => {
-    render(<OutcomeConfirmControl siteId="site-1" outcome={inferred({ kind: 'SIGNUP' })} />)
+  it('confirms a Signup Outcome with the current authorized fixture and ignores stale ones', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respond({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    const base = { name: 'Signup verification', targetUrl: 'https://example.com/signup', fieldMapping: {}, successCriterion: {},
+      resetUrl: 'https://example.com/reset', cleanupUrl: 'https://example.com/cleanup', lastDryRunAt: null, lastDryRunResult: null,
+      enabled: true, hasValues: true, hasHookSecret: true }
+    const stale = { ...base, id: 'stale', version: 3, lastDryRunVersion: 2, authorizedAt: '2026-11-01T00:00:00.000Z' }
+    const current = { ...base, id: 'current', version: 2, lastDryRunVersion: 2, authorizedAt: '2026-11-01T00:00:00.000Z' }
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[stale, current] as never} outcome={inferred({ kind: 'SIGNUP' })} />)
+    fireEvent.click(screen.getByRole('button', { name: OUTCOME_KIND_LABELS.SIGNUP }))
+    expect(await screen.findByText(OUTCOME_CONFIRMATION.saved)).toBeVisible()
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ outcomeId: 'out-1', confirmed: true, kind: 'SIGNUP', fixtureId: 'current' })
+  })
+
+  it('does not offer a different kind for a Signup Outcome without a usable fixture', () => {
+    render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred({ kind: 'SIGNUP' })} />)
     expect(screen.getByText(OUTCOME_CONFIRMATION.unsupportedNote)).toBeVisible()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('renders nothing once the Outcome is confirmed', () => {
-    const { container } = render(<OutcomeConfirmControl siteId="site-1" outcome={inferred({ confirmedAt: '2026-09-29T00:00:00.000Z' })} />)
+    const { container } = render(<OutcomeConfirmControl siteId="site-1" fixtures={[]} outcome={inferred({ confirmedAt: '2026-09-29T00:00:00.000Z' })} />)
     expect(container).toBeEmptyDOMElement()
   })
 })

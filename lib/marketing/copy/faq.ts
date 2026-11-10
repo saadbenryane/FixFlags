@@ -30,7 +30,7 @@ export function faqEntryAnchor(question: string): string {
 export const FAQ: readonly FaqEntry[] = [
   {
     question: 'How do I start?',
-    answer: 'Enter your website address for a free check. Save it to your account to keep the results, get fix instructions you can copy and paste, and start scheduled checks. If you previously paused this website’s checks, they stay paused.',
+    answer: 'Enter your website address for a free check. Create a free account to see and keep the results, get fix instructions you can copy and paste, and start scheduled checks. If you previously paused this website’s checks, they stay paused.',
     learnMore: { href: '/docs/getting-started', label: 'Get started' },
   },
   {
@@ -158,7 +158,7 @@ export const CHANGELOG_ENTRIES = [
     items: [
       'Monitoring starts after a schedule is saved, with the next check shown in Site settings',
       'Choose Flags, Critical only, or Off, with recovery notices controlled separately',
-      'Shopify links to an owned Site and adds purchase-path context to its existing cards and Flags',
+      'Shopify links to an owned Site and adds purchase-path context to its existing cards and Flags (Shopify setup has since moved to coming soon)',
       'Watch notifications return to the exact owned Flag when one needs attention',
     ],
   },

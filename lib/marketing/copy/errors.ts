@@ -93,6 +93,7 @@ export const WATCH_OFFER = {
  * confirmation is refused rather than accepted and ignored.
  */
 export const OUTCOME_CONFIRMATION = {
+  signupFixture: 'Signup test setup',
   kindRequired:
     'FixFlags cannot watch this yet. Confirm what should keep working: a purchase or that the page loads.',
   /**

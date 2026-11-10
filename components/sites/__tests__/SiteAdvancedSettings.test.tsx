@@ -50,8 +50,7 @@ it('defers actual advanced form requests until opening and retains edits and loa
 
 it.each(['scan-access', 'account-checks', 'signup-setup', 'research'])('opens an initial recovery link and focuses its mounted section: %s', async hash => {
   window.history.replaceState(null, '', `#${hash}`)
-  const id = hash === 'signup-setup' ? 'account-checks' : hash
-  render(<SiteAdvancedSettings><SiteSettingsSection id={id}>Requested setting</SiteSettingsSection></SiteAdvancedSettings>)
+  render(<SiteAdvancedSettings><SiteSettingsSection id={hash}>Requested setting</SiteSettingsSection></SiteAdvancedSettings>)
   expect(summary().closest('details')).toHaveAttribute('open')
   const target = screen.getByText('Requested setting')
   await waitFor(() => expect(target).toHaveFocus())

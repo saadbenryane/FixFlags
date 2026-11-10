@@ -114,7 +114,7 @@ export const CARE_HOME = {
       { name: 'Can customers reach checkout?', scope: 'Product → cart → checkout. No payment or order.', status: '1 Flag', state: 'problem', last: '14 Sep · 09:00 UTC' },
     ],
     unconfiguredTitle: 'Signup is not being watched',
-    unconfiguredBody: 'Automatic account checks use a FixFlags test identity when the service and website support them. Unsupported signup flows remain unverified.',
+    unconfiguredBody: 'Set up a synthetic test account in Settings to check signup. Automatic account checks are coming soon.',
     notScheduled: 'Not scheduled',
     note: 'Scheduled checks can find problems at the next check, not the moment they happen. The other analysis areas have their own scope and check times.',
     setup: 'FixFlags checks supported website behavior automatically. This sample schedule does not run from this page; your available schedule depends on your plan.',
@@ -230,9 +230,9 @@ export const CARE_HOME = {
     label: 'What FixFlags watches',
     title: 'Check the things your visitors use.',
     body: 'From opening a page to adding a product to the cart, see which steps we can check on your live website.',
-    analysisLabel: 'Also analyzed',
+    analysisLabel: 'Also checked',
     analysis: ['Performance', 'Accessibility', 'Search', 'Security', 'Tracking', 'Layout'],
-    boundary: 'Automatic account checks use a reusable FixFlags identity and a separate disposable account for signup and deletion. Unsupported authentication flows remain unverified.',
+    boundary: 'Signup is checked with a synthetic test account you authorize in Settings. Automatic account checks, including signed-in pages, are coming soon.',
     setupNote: 'Public-page analysis needs no installation. Additional account and signup coverage depends on supported behavior and any required authorization.',
     audiences: [
       {

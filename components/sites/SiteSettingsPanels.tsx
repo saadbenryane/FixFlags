@@ -2,7 +2,8 @@
 
 import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Bell, ChevronDown, Clock3, UserRound, type LucideIcon } from 'lucide-react'
+import { Bell, ChevronDown, ClipboardCheck, Clock3, Rocket, UserRound, type LucideIcon } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SiteSettingsSection } from './SiteSettingsSection'
@@ -11,6 +12,8 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy-barrel'
 import { MONITORING_SCHEDULE_COPY as M } from '@/lib/marketing/copy/monitoring'
 import { ACCOUNT_CHECK_COPY as A } from '@/lib/marketing/copy/account-checks'
 import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
+import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
+import { SafeFormFixtures } from './SafeFormFixtures'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import styles from './SiteSettingsPanels.module.css'
 
@@ -86,15 +89,34 @@ export function SiteRemovalSettingsPanel({ busy = false, onRemove }: { busy?: bo
   return <section className={styles.removal}><div><h2>{S.remove}</h2><p>{S.removeBody}</p></div><Button variant="destructive" disabled={busy || !onRemove} onClick={onRemove}>{S.remove}</Button></section>
 }
 
+/** The deploy hook needs a key with Run checks permission; nothing else in the app links to keys. */
+export function SiteDeployChecksPanel() {
+  return <SiteSettingsSection id="deploy-checks">
+    <PanelHeading icon={Rocket} title={S.deploy.title} description={S.deploy.body} />
+    <div className={styles.actions}>
+      <Button asChild variant="outline"><Link href="/settings/api-keys">{S.deploy.keys}</Link></Button>
+      <Button asChild variant="ghost"><Link href="/docs/site-care#check-after-every-deploy">{S.deploy.guide}</Link></Button>
+    </div>
+  </SiteSettingsSection>
+}
+
+/** Signup verification with a synthetic, reversible test account the owner authorizes. */
+export function SiteSignupSetupPanel({ siteId, fixtures }: { siteId: string; fixtures: OutcomeFixtureView[] }) {
+  return <SiteSettingsSection id="signup-setup">
+    <PanelHeading icon={ClipboardCheck} title={S.signupSetup} description={S.signupBody} />
+    <SafeFormFixtures siteId={siteId} initial={fixtures} />
+  </SiteSettingsSection>
+}
+
 export function SiteAdvancedSettings({ children }: { children: ReactNode }) {
   const disclosure = useRef<HTMLDetailsElement>(null)
   const [visited, setVisited] = useState(false)
   const [destination, setDestination] = useState<{ id: string } | null>(null)
   useEffect(() => {
     const reveal = (hash: string) => {
-      if (!['#signup-setup', '#account-checks', '#scan-access', '#research'].includes(hash) || !disclosure.current) return
+      if (!['#deploy-checks', '#signup-setup', '#account-checks', '#scan-access', '#research'].includes(hash) || !disclosure.current) return
       setVisited(true)
-      setDestination({ id: hash === '#signup-setup' ? 'account-checks' : hash.slice(1) })
+      setDestination({ id: hash.slice(1) })
       disclosure.current.open = true
     }
     const fromLocation = () => reveal(window.location.hash)

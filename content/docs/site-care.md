@@ -69,7 +69,9 @@ Results appear on your Site like any other check.
 
 ## Automatic account checks
 
-If **Settings** offers automatic account checks, you can enable tests of signup and signed-in pages. FixFlags keeps one test account for later checks and uses a separate temporary account for signup and deletion tests.
+Automatic account checks are coming soon. Until then, open **Settings**, then **Advanced settings**, then **Signup test setup** to check signup with a synthetic test account: add its signup page and reset and cleanup hooks, run a dry run, and authorize it. Then confirm the Signup Outcome on its page.
+
+When **Settings** offers automatic account checks, you can enable tests of signup and signed-in pages. FixFlags keeps one test account for later checks and uses a separate temporary account for signup and deletion tests.
 
 Regular monitoring reuses the saved test account. New signup tests run at setup, after significant signup-form changes, or when requested. Some sign-in methods cannot be tested. FixFlags shows those limits and reports whether cleanup deleted its test accounts.
 

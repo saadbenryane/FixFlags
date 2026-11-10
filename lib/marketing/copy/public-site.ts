@@ -12,7 +12,7 @@ export const PUBLIC_SITE_COPY = {
     title: 'Find what’s broken. Hand your AI the fix. Prove it worked.',
     body: 'FixFlags checks your live website in a real browser, gives you fix instructions for the AI tool you build with, and rechecks the same page to confirm the fix.',
     steps: [
-      { id: 'check', label: PRODUCT_STORY.loop[0], title: 'Enter your website.', body: 'We check your public pages for free. Save your website to keep getting scheduled checks.' },
+      { id: 'check', label: PRODUCT_STORY.loop[0], title: 'Enter your website.', body: 'We check your homepage for free. Save your website to check more of its pages and keep getting scheduled checks.' },
       { id: 'flag', label: PRODUCT_STORY.loop[1], title: 'See what needs fixing.', body: 'See broken pages, slow loading, and other problems. Each problem, called a Flag, shows what happened and where.' },
       { id: 'fix', label: PRODUCT_STORY.loop[2], title: 'Copy and paste the fix.', body: 'Paste the instructions where you built your website. Review and publish the update.' },
     ],
