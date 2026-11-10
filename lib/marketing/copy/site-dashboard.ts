@@ -1,4 +1,6 @@
 export const SITE_DASHBOARD_COPY = {
+  openInCursor: 'Open in Cursor',
+  openInCursorNote: 'Cursor shows the instructions and waits for you to send them.',
   verifiedReceipt: {
     stamp: 'Verified',
     label: 'Verified receipt',
