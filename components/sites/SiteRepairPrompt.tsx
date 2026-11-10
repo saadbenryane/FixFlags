@@ -94,8 +94,9 @@ function RepairPromptContent({ scope, availability, label, flagTitle, compact = 
       {feedback}
     </div> : <span className={`inline-flex flex-col items-start${isFlag ? '' : ' gap-2'}`}>
       <span className="inline-flex flex-wrap items-center gap-1">
+        {/* Row copy actions stay visible but quiet; the view's primary actions keep their weight. */}
         <Button type="button" data-site-return-focus="copy" size={isFlag ? iconOnly ? 'icon' : compact ? 'sm' : 'default' : 'sm'}
-          variant={isFlag ? iconOnly ? 'ghost' : compact ? 'outline' : 'default' : scope.area ? 'outline' : 'default'}
+          variant={isFlag ? iconOnly || compact ? 'ghost' : 'default' : scope.area ? 'outline' : 'default'}
           disabled={busy || scopeTooLarge} loading={isFlag && busy && !copied} loadingLabel={downloading ? H.fileDownloading : undefined} aria-busy={busy || undefined}
           aria-label={iconOnly || flagTitle ? namedLabel : undefined} title={isFlag ? iconOnly ? namedLabel : undefined : C.bundleBody} onClick={() => void copy()}>
           {copied ? <Check aria-hidden /> : !isFlag || !busy ? <Copy aria-hidden /> : null}{iconOnly ? null : currentLabel}
