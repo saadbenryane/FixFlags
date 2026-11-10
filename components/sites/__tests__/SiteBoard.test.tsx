@@ -152,7 +152,7 @@ async function openCategoryCheckDetails() {
 const push = vi.hoisted(() => vi.fn())
 
 // The builder question makes its own request; it is covered in SiteBuilderQuestion.test.tsx.
-vi.mock('@/components/sites/SiteBuilderQuestion', () => ({ SiteBuilderQuestion: () => null }))
+vi.mock('@/components/sites/SiteBuilderQuestion', () => ({ SiteBuilderQuestion: () => <p>builder question</p> }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh: vi.fn() }),
   usePathname: () => SITE_PATH,
@@ -1725,4 +1725,14 @@ it.each(['category', 'flag'] as const)('returns from a $0 dialog after live reco
       expect(document.getElementById('category-conversion')).toHaveFocus()
     }
   } finally { rendered.unmount(); vi.unstubAllGlobals() }
+})
+
+describe('builder question placement', () => {
+  it('asks where the Site was built only beside a fix to hand off', () => {
+    const quiet = render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={boardView()} /></MeProvider>)
+    expect(screen.queryByText('builder question')).not.toBeInTheDocument()
+    quiet.unmount()
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={boardView({ flags: [openFlag()] })} /></MeProvider>)
+    expect(screen.getByText('builder question')).toBeInTheDocument()
+  })
 })

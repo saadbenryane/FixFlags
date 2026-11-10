@@ -188,7 +188,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
         {!checking && primaryProblem ? <SiteTopProblem siteId={siteId} flag={primaryProblem} copyAvailability={view.actions.copy}
           copyReady={view.actions.copy !== 'available' || Boolean(primaryProblem.fix.trim())} technologies={technologies} reportedBuilder={reportedBuilder} onOpen={openFlag} /> : null}
-        {ownsSite && !detectedBuilder(technologies) ? <SiteBuilderQuestion siteId={siteId} onAnswer={setReportedBuilder} /> : null}
+        {/* The answer points fix instructions at the owner's tool, so ask only beside a fix to hand off. */}
+        {ownsSite && !checking && primaryProblem && !detectedBuilder(technologies) ? <SiteBuilderQuestion siteId={siteId} onAnswer={setReportedBuilder} /> : null}
         <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
           notice={checking && !disconnected && !currentReadUnavailable ? liveActivityLine(view.executionProgress?.tasks) ?? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
