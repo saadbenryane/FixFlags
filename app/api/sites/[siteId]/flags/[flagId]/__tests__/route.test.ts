@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from '../route'
 const mocks = vi.hoisted(() => ({ access: vi.fn(), flag: vi.fn(), verification: vi.fn() }))
-vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.access }))
+vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.access }))
 vi.mock('@/lib/sites/application/queries', () => ({ loadSiteBoardFlag: mocks.flag }))
 vi.mock('@/lib/sites/application/flag-verification-state', () => ({ loadSiteFlagVerification: mocks.verification }))
 const context = { params: Promise.resolve({ siteId: 'visitor', flagId: 'flag-1' }) }
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.access.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'resolved-site' } } })
+  // requireSiteOwner refuses the visitor who started the check until signup.
+  mocks.access.mockResolvedValue({ ok: false, status: 401, message: 'Sign in required' })
   mocks.flag.mockResolvedValue({ site: { userId: 'private-user' }, flag: {
     id: 'flag-1', sourceAuditId: 'audit', problem: 'Problem', evidence: 'Observation', evidenceMissing: false,
     checkId: null,
@@ -20,7 +21,7 @@ beforeEach(() => {
 describe('dashboard Flag evidence access', () => {
   it('returns only the exact repair activity to the resolved owner', async () => {
     const request = new Request('https://fixflags.com/?verification=check-1')
-    expect((await GET(request, context)).status).toBe(404)
+    expect((await GET(request, context)).status).toBe(401)
     expect(mocks.verification).not.toHaveBeenCalled()
     const site = { siteId: 'resolved-site', projectId: 'resolved-project' }
     mocks.access.mockResolvedValue({ ok: true, decision: { role: 'owner', site } })
@@ -37,19 +38,11 @@ describe('dashboard Flag evidence access', () => {
     expect((await GET(new Request('https://fixflags.com'), context)).status).toBe(404)
     expect(mocks.flag).not.toHaveBeenCalled()
   })
-  it('allows authorized scan visitors and returns only public evidence fields', async () => {
+  it('asks the visitor who started the check to sign in before reading any evidence', async () => {
     const response = await GET(new Request('https://fixflags.com'), context)
-    expect(response.status).toBe(200)
-    expect(mocks.flag).toHaveBeenCalledWith('resolved-site', 'flag-1', { siteId: 'resolved-site' })
-    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
-    const body = await response.json()
-    expect(body.flag.evidence).toBe('Observation')
-    expect(body.flag.fix).toBe('')
-    expect(body.flag.repairGuidance).toBe('unavailable')
-    expect(body.flag.verificationFeedback).toBeNull()
-    expect(body.site).toBeUndefined()
-    expect(body.flag.attempts).toBeUndefined()
-    expect(JSON.stringify(body)).not.toContain('private-user')
+    expect(response.status).toBe(401)
+    expect(mocks.flag).not.toHaveBeenCalled()
+    expect(JSON.stringify(await response.json())).not.toContain('Observation')
   })
   it('includes repair guidance only for the resolved owner', async () => {
     mocks.access.mockResolvedValue({ ok: true, decision: { role: 'owner', site: { siteId: 'resolved-site' } } })
@@ -58,7 +51,10 @@ describe('dashboard Flag evidence access', () => {
     expect(body.flag.fix).toBe('Guidance')
     expect(body.flag.repairGuidance).toBe('ready')
     expect(body.flag.verificationFeedback).toEqual({ result: 'still_open', checkedAt: '2026-11-03T00:00:00.000Z' })
+    expect(body.flag.evidence).toBe('Observation')
+    expect(body.site).toBeUndefined()
     expect(body.flag.attempts).toBeUndefined()
     expect(JSON.stringify(body)).not.toContain('not-exposed')
+    expect(JSON.stringify(body)).not.toContain('private-user')
   })
 })

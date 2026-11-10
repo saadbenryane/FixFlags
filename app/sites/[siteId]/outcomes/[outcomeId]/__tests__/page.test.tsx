@@ -26,6 +26,11 @@ vi.mock('@/lib/sites/outcomes', () => ({
   loadSiteOutcomeDetail: mocks.loadSiteOutcomeDetail,
 }))
 
+vi.mock('next/navigation', () => ({
+  notFound: () => { throw new Error('NEXT_NOT_FOUND') },
+  redirect: (href: string) => { throw new Error('NEXT_REDIRECT:' + href) },
+}))
+
 vi.mock('@/components/sites/SiteShell', () => ({
   SiteShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
@@ -45,7 +50,7 @@ describe('Outcome proof card', () => {
   beforeEach(() => {
     mocks.requireSiteAccess.mockResolvedValue({
       ok: true,
-      decision: { role: 'viewer', site: { siteId: 'site-1' } },
+      decision: { role: 'owner', site: { siteId: 'site-1' } },
     })
     mocks.loadSiteHome.mockResolvedValue({
       site: { siteId: 'site-1' },

@@ -18,6 +18,7 @@ import { presentationAttentionPolicy } from '@/lib/audit/search/policy'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { customerSiteIdForAudit } from '@/lib/sites/site-id-for-audit'
+import { resultsRequireSignIn } from '@/lib/audit/anonymous-results-gate'
 
 const NON_TERMINAL = new Set([
   'QUEUED',
@@ -70,6 +71,14 @@ export async function GET(
       : null
 
     const effectiveStatus = refreshed?.status ?? audit.status
+
+    // An anonymous creator follows progress only; results open after signup.
+    if (resultsRequireSignIn(access)) {
+      const siteId = await customerSiteIdForAudit({ id: audit.id, projectId: audit.projectId })
+      if (await resolveAuditAccess(audit, session?.user, store.get(SHARE_GRANT_COOKIE)?.value, readAnonAuditIdsFromStore(store)) !== access)
+        return apiError('Report not found', 404)
+      return NextResponse.json({ id: audit.id, url: audit.url, status: effectiveStatus, progress: audit.progress, siteId, resultsRequireSignIn: true })
+    }
 
     const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
     const screenshotCapture = deriveScreenshotCaptureStatus(

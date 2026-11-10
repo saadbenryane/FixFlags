@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportWorkspaceState } from '@/components/report/ReportWorkspaceState'
 import { BRAND, REPORT_COPY, SITE_URL } from '@/lib/marketing/copy-barrel'
-import { getProgressiveAuditForRequest } from '@/lib/audit/fetch-audit'
+import type { Route } from 'next'
+import { redirect } from 'next/navigation'
+import { anonymousResultsRedirectForRequest, getProgressiveAuditForRequest } from '@/lib/audit/fetch-audit'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { CompletedReportView } from './CompletedReportView'
 import { loadReportRouteState } from './load-report-route-state'
@@ -68,6 +70,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export async function ReportRoute({ params, shareToken }: Props & { shareToken?: string }) {
+  if (!shareToken) {
+    // An anonymous check's results open after signup on its Site.
+    const gate = await anonymousResultsRedirectForRequest((await params).id)
+    if (gate) redirect(gate as Route)
+  }
   const state = await loadReportRouteState(params, shareToken)
   if (state.kind === 'forbidden') {
     return (

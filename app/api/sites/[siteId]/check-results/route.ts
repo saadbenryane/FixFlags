@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSiteOwner } from '@/lib/sites/request-access'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import { resolveLatestAudit } from '@/lib/sites/application/site-execution'
 import { apiError, handleRouteError } from '@/lib/api/errors'
@@ -14,7 +14,8 @@ const querySchema = z.object({ area: z.enum(SITE_CARD_AREAS).optional(), pageUrl
 export async function GET(request: Request, context: { params: Promise<{ siteId: string }> }) {
   try {
     const { siteId } = await context.params
-    const access = await requireSiteAccess(siteId)
+    // Results require the account that owns the Site.
+    const access = await requireSiteOwner(siteId)
     if (!access.ok) return apiError(access.message, access.status)
     const params = new URL(request.url).searchParams
     const filter = querySchema.safeParse({ area: params.get('area') ?? undefined, pageUrl: params.get('pageUrl') ?? undefined })

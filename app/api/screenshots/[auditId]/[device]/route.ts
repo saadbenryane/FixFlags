@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { resolveAuditAccess } from '@/lib/audit/access'
+import { resultsRequireSignIn } from '@/lib/audit/anonymous-results-gate'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { readAnonAuditIdsFromStore } from '@/lib/audit/usage'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
@@ -37,7 +38,8 @@ export async function GET(
       store.get(SHARE_GRANT_COOKIE)?.value,
       readAnonAuditIdsFromStore(store)
     )
-    if (access === 'denied') {
+    // Captures are results; an anonymous creator sees them after signup.
+    if (access === 'denied' || resultsRequireSignIn(access)) {
       return apiError('Audit not found', 404)
     }
 

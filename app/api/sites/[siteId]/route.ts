@@ -5,6 +5,7 @@ import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
 import { readSiteEvidence } from '@/lib/sites/application/site-evidence-read'
+import { loadSiteResultsGate } from '@/lib/sites/application/results-gate'
 
 export async function GET(
   request: Request,
@@ -31,8 +32,10 @@ async function readSite(request: Request, context: { params: Promise<{ siteId: s
       hostname: new URL(access.decision.site.url).hostname.replace(/^www\./, '') }))
     return NextResponse.json(identity)
   }
-  const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated, site: access.decision.site,
-    readScope: scope === 'settings' && access.decision.role === 'owner' ? 'settings' : 'overview' })
+  // A non-owner sees where the check is, never what it found.
+  if (access.decision.role !== 'owner') return NextResponse.json(await loadSiteResultsGate(access.decision.site, Boolean(access.decision.authenticated)))
+  const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: true, viewerAuthenticated: access.decision.authenticated, site: access.decision.site,
+    readScope: scope === 'settings' ? 'settings' : 'overview' })
   return home ? NextResponse.json(home) : apiError(SITE_ERRORS.notFound, 404)
 }
 

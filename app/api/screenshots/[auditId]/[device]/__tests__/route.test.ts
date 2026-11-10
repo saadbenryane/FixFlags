@@ -41,7 +41,7 @@ describe('private screenshot delivery', () => {
     }
     expect(mocks.read).not.toHaveBeenCalled()
   })
-  it('keeps initial captures private before signup while their creator can inspect them', async () => {
+  it('keeps initial captures private until signup, including from their creator', async () => {
     mocks.audit.mockResolvedValue({ id: 'private-audit', userId: null, projectId: null, user: null, isPublic: false })
     for (const session of [null, { user: { id: 'stranger' } }]) {
       mocks.session.mockResolvedValue(session)
@@ -50,8 +50,8 @@ describe('private screenshot delivery', () => {
     expect(mocks.read).not.toHaveBeenCalled()
     mocks.session.mockResolvedValue(null)
     mocks.claimIds.mockReturnValue(['private-audit'])
-    expect((await read()).status).toBe(200)
-    expect(mocks.read).toHaveBeenCalledWith('private-audit', 'desktop', null)
+    expect((await read()).status).toBe(404)
+    expect(mocks.read).not.toHaveBeenCalled()
   })
   it('preserves previously public screenshot access', async () => {
     mocks.audit.mockResolvedValue({ id: 'private-audit', userId: null, isPublic: true })

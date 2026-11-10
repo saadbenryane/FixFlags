@@ -1,4 +1,4 @@
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSiteOwner } from '@/lib/sites/request-access'
 import { apiError } from '@/lib/api/errors'
 import { decodeEventCursor, encodeEventCursor, readSiteEvents } from '@/lib/sites/application/execution-progress'
 import { projectionNoticeSchema } from '@/lib/sites/execution-events'
@@ -9,7 +9,8 @@ export const maxDuration = 60
 
 export async function GET(request: Request, context: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await context.params
-  const access = await requireSiteAccess(siteId)
+  // Result notices require the account that owns the Site.
+  const access = await requireSiteOwner(siteId)
   if (!access.ok) return apiError(access.message, access.status)
   let cursor: bigint
   try { cursor = decodeEventCursor(siteId, request.headers.get('last-event-id') ?? new URL(request.url).searchParams.get('after')) }
@@ -25,7 +26,7 @@ export async function GET(request: Request, context: { params: Promise<{ siteId:
         if (stopped) return
         try {
           // Recheck permission/session on every bounded read, including revocation.
-          const current = await requireSiteAccess(siteId)
+          const current = await requireSiteOwner(siteId)
           if (stopped) return
           if (!current.ok) { controller.enqueue(encoder.encode('event: access-expired\ndata: {}\n\n')); close!(); return }
           const rows = await readSiteEvents(current.decision.site, cursor)

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { loadSiteOutcomeDetail, setSiteOutcomeEnabled } from '@/lib/sites/outcomes'
-import { requireSiteAccess, requireSiteOwner } from '@/lib/sites/request-access'
+import { requireSiteOwner } from '@/lib/sites/request-access'
 import { requestOutcomeRun } from '@/lib/sites/application/run-requests'
 
 const patchSchema = z.object({ enabled: z.boolean() }).strict()
@@ -10,7 +10,8 @@ const patchSchema = z.object({ enabled: z.boolean() }).strict()
 export async function GET(_request: Request, context: { params: Promise<{ siteId: string; outcomeId: string }> }) {
   try {
     const { siteId, outcomeId } = await context.params
-    const access = await requireSiteAccess(siteId)
+    // Results require the account that owns the Site.
+    const access = await requireSiteOwner(siteId)
     if (!access.ok) return apiError(access.message, access.status)
     const outcome = await loadSiteOutcomeDetail(access.decision.site, outcomeId)
     if (!outcome) return apiError('Outcome not found', 404)

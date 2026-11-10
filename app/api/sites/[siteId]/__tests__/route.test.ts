@@ -1,9 +1,10 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
-const mocks = vi.hoisted(() => ({ access: vi.fn(), home: vi.fn(), owner: vi.fn() }))
+const mocks = vi.hoisted(() => ({ access: vi.fn(), home: vi.fn(), owner: vi.fn(), gate: vi.fn() }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.access }))
 vi.mock('@/lib/sites/application/queries', () => ({ loadSiteHome: mocks.home }))
+vi.mock('@/lib/sites/application/results-gate', () => ({ loadSiteResultsGate: mocks.gate }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: mocks.owner } } }))
 vi.mock('@/lib/sites/application/settings-commands', () => ({ removeSite: vi.fn(), siteRemovalSchema: { safeParse: vi.fn() } }))
 import { GET } from '../route'
@@ -34,6 +35,17 @@ it('retains signed provisional access without requiring an owned project or crea
   expect(await response.json()).toEqual({ siteId: 'request-alias', hostname: 'preview.example' })
   expect(mocks.owner).not.toHaveBeenCalled()
   expect(mocks.home).not.toHaveBeenCalled()
+})
+
+it('gives the visitor who started the check its progress, never the Site board', async () => {
+  const site = { ...siteViewFixture().site, kind: 'provisional', projectId: null, userId: null, url: 'https://preview.example/path' }
+  mocks.access.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', authenticated: false, site } })
+  mocks.gate.mockResolvedValue({ kind: 'results_gate', siteId: 'request-alias', host: 'preview.example', state: 'ready', stage: 3, continuation: 'sign_in' })
+  const response = await GET(request(''), context)
+  expect(await response.json()).toEqual({ kind: 'results_gate', siteId: 'request-alias', host: 'preview.example', state: 'ready', stage: 3, continuation: 'sign_in' })
+  expect(mocks.gate).toHaveBeenCalledWith(site, false)
+  expect(mocks.home).not.toHaveBeenCalled()
+  expect(response.headers.get('Cache-Control')).toBe('private, no-store')
 })
 
 it('withholds identity for an inaccessible Site without exposing whether it exists', async () => {

@@ -11,7 +11,7 @@ import { readMonitoringHealth } from '@/lib/health/monitoring'
 import { fixedClock } from '@/lib/time/clock'
 import { executeUptimeProbe, scheduleUptimeProbes } from '@/lib/uptime/service'
 import { loadUptimeSummary } from '@/lib/uptime/queries'
-import { UPTIME_CONFIRMATION_MS, uptimeSlotStart } from '@/lib/uptime/domain'
+import { UPTIME_CONFIRMATION_MS, UPTIME_INTERVAL_MS, uptimeSlotStart } from '@/lib/uptime/domain'
 import { setProjectWatch } from '../monitoring-settings'
 
 const uptimeQueue = vi.hoisted(() => ({ enqueue: vi.fn(async () => {}) }))
@@ -92,7 +92,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
   })
 
   it.each(['missing', 'overdue', 'inconclusive'] as const)('excludes an explicitly paused Site from %s uptime obligations without losing its evidence', async state => {
-    const now = new Date(), old = new Date(now.getTime() - 15 * 60_000)
+    const now = new Date(), old = new Date(now.getTime() - 3 * UPTIME_INTERVAL_MS)
     await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
     const sessionId = randomUUID()
     await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
@@ -127,7 +127,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
   })
 
   it('detects sustained inconclusive uptime without calling it an outage or an overdue execution', async () => {
-    const now = new Date(), before = new Date(now.getTime() - 15 * 60_000)
+    const now = new Date(), before = new Date(now.getTime() - 3 * UPTIME_INTERVAL_MS)
     await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
     const sessionId = randomUUID()
     await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
@@ -135,7 +135,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: new Date(now.getTime() + 86400_000) } })
     const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, state: 'unknown',
       lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 5 * 60_000) } })
-    await prisma.uptimeProbe.createMany({ data: [before, new Date(now.getTime() - 5 * 60_000), now].map(observedAt => ({
+    await prisma.uptimeProbe.createMany({ data: [before, new Date(now.getTime() - UPTIME_INTERVAL_MS), now].map(observedAt => ({
       monitorId: monitor.id, version: 1, targetUrl: url, scheduledAt: observedAt, observedAt, attempt: 1,
       result: 'UNKNOWN', reason: 'probe_unavailable', statusCode: null, durationMs: 5,
     })) })
@@ -198,7 +198,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
   })
 
   it('requires sustained current-target evidence and refuses old-generation or future conclusive probes', async () => {
-    const now = new Date(), old = new Date(now.getTime() - 15 * 60_000)
+    const now = new Date(), old = new Date(now.getTime() - 3 * UPTIME_INTERVAL_MS)
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: new Date(now.getTime() + 86400_000) } })
     const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, version: 2, state: 'unknown',
       lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 5 * 60_000) } })
@@ -271,7 +271,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
   })
 
   it('detects an overdue inactive monitor for committed care and recovers through ordinary uptime admission', async () => {
-    const now = new Date(), overdue = new Date(now.getTime() - 6 * 60_000)
+    const now = new Date(), overdue = new Date(now.getTime() - UPTIME_INTERVAL_MS - 60_000)
     await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
     const sessionId = randomUUID()
     await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
@@ -295,7 +295,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
   })
 
   it('keeps a recently due inactive monitor in grace and excludes obsolete activation after care is turned off', async () => {
-    const now = new Date(), overdue = new Date(now.getTime() - 6 * 60_000)
+    const now = new Date(), overdue = new Date(now.getTime() - UPTIME_INTERVAL_MS - 60_000)
     await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY', watchNextRunAt: null, createdAt: overdue } })
     const monitor = await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: url, enabled: false,
       state: 'paused', nextProbeAt: new Date(now.getTime() - 60_000) } })
@@ -330,7 +330,7 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(Date.now() + 3600_000) } })
     const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: new Date() }
     const scheduled = await prisma.project.update({ where: { id: projectId }, data: { watchInterval: 'WEEKLY',
-      watchNextRunAt: new Date(Date.now() - 6 * 60_000), watchLastError: null, watchConsecutiveFailures: 0 } })
+      watchNextRunAt: new Date(Date.now() - UPTIME_INTERVAL_MS - 60_000), watchLastError: null, watchConsecutiveFailures: 0 } })
     expect((await loadOperations(actor, { queue: 'schedules' })).rows.map(row => row.id)).toContain(projectId)
     const home = await loadSiteHome(projectId)
     expect(home?.watch.state).toBe('delayed')

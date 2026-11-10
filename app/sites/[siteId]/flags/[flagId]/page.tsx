@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, History } from 'lucide-react'
 import { RecordedPageLink } from '@/components/sites/RecordedPageLink'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
-import { requireSitePageAccess } from '@/lib/sites/page-access'
+import { requireSiteResultsPage } from '@/lib/sites/page-access'
 import { Button } from '@/components/ui/button'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
@@ -56,7 +56,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const { siteId, flagId } = await params
   const origin = await searchParams
   const { source } = origin
-  const access = await requireSitePageAccess(siteId, `/sites/${encodeURIComponent(siteId)}/flags/${encodeURIComponent(flagId)}`)
+  const access = await requireSiteResultsPage(siteId, `/sites/${encodeURIComponent(siteId)}/flags/${encodeURIComponent(flagId)}`)
 
   const resolvedId = access.decision.site.siteId
   const ownsSite = access.decision.role === 'owner'

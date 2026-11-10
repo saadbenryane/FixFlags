@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ access: vi.fn(), events: vi.fn() }))
-vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.access }))
+vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.access }))
 vi.mock('@/lib/sites/application/execution-progress', async () => ({
   ...await vi.importActual('@/lib/sites/application/execution-progress'), readSiteEvents: mocks.events,
 }))

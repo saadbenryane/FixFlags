@@ -7,7 +7,6 @@ import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { verificationResultLabel } from '@/lib/sites/presentation'
 import SiteFlagPage from '../page'
-import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
 const ATTEMPTED = '2026-09-23T22:57:11.000Z'
@@ -208,7 +207,7 @@ describe('Flag verification attempts', () => {
     expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.fixStep })).toBeVisible()
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Check now' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Recheck' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
     expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-site', 'site-1')
     expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-flag', 'flag-1')
@@ -311,23 +310,12 @@ describe('Flag verification attempts', () => {
     } else expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.verificationHistory })).not.toBeInTheDocument()
   })
 
-  it('keeps anonymous evidence visible while requiring sign-in for fixes and private attempts', async () => {
-    const detail = await mocks.loadSiteBoardFlag()
-    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
-      verificationFeedback: { result: 'still_open', checkedAt: '2026-11-03T00:00:00.000Z' } } })
-    mocks.loadSiteHome.mockResolvedValue({ ...siteViewFixture(), actions: siteViewerActions(false) })
+  it('sends the visitor who started the check back to the Site results gate before reading the Flag', async () => {
     mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'site-1' } } })
-    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
-    expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
-    expect(screen.getByText('The cart stayed empty.')).toBeVisible()
-    expect(screen.queryByText('Repair Add to cart.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Copy fix prompt' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Verification history' })).not.toBeInTheDocument()
-    expect(screen.queryByText(C.flagVerificationStillOpen, { exact: false })).not.toBeInTheDocument()
-    for (const label of [SITE_BOARD_COPY.copyPrompt, SITE_BOARD_COPY.viewPrompt]) {
-      expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
-    }
+    mocks.loadSiteBoardFlag.mockClear()
+    await expect(SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+      .rejects.toThrow('NEXT_REDIRECT:/sites/site-1')
+    expect(mocks.loadSiteBoardFlag).not.toHaveBeenCalled()
   })
 
   it('retains its recorded primary page when no additional affected paths were projected', async () => {

@@ -15,6 +15,8 @@ import { PublicResponseBodyError } from '@/lib/audit/http-evidence'
 import * as betaPolicy from '@/lib/billing/beta-policy'
 
 const fixture = vi.hoisted(() => ({ db: null as PrismaClient | null, enqueue: vi.fn() }))
+/** One fifth of a probe interval, so scenarios written as five-minute slots follow the cadence. */
+const SLOT_MINUTE_MS = UPTIME_INTERVAL_MS / 5
 const databaseUrl = process.env.UPTIME_TEST_DATABASE_URL
 vi.mock('@/lib/db', async () => {
   if (!process.env.UPTIME_TEST_DATABASE_URL) return { prisma: {} }
@@ -217,8 +219,8 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
 
   it('publishes the current slot after a dispatch claim crosses the slot boundary', async () => {
     const { monitor, project } = await monitorFixture()
-    const selectedAt = new Date(originTime.getTime() + 4 * 60_000 + 59_000)
-    const publishedAt = new Date(originTime.getTime() + 5 * 60_000 + 1000)
+    const selectedAt = new Date(originTime.getTime() + UPTIME_INTERVAL_MS - 1000)
+    const publishedAt = new Date(originTime.getTime() + UPTIME_INTERVAL_MS + 1000)
     vi.setSystemTime(selectedAt)
     const original = db().$executeRaw.bind(db())
     const boundary = vi.spyOn(db(), '$executeRaw').mockImplementationOnce(async (query, ...values) => {
@@ -228,7 +230,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     })
     try {
       await scheduleUptimeProbes(systemClock, 1, project.id)
-      const job = { monitorId: monitor.id, version: 1, scheduledAt: new Date(originTime.getTime() + 5 * 60_000).toISOString(), attempt: 1 as const }
+      const job = { monitorId: monitor.id, version: 1, scheduledAt: new Date(originTime.getTime() + UPTIME_INTERVAL_MS).toISOString(), attempt: 1 as const }
       expect(fixture.enqueue).toHaveBeenCalledExactlyOnceWith(job, publishedAt)
       expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } }))
         .toMatchObject({ lastDispatchAttemptAt: selectedAt })
@@ -240,7 +242,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
 
   it.each(['ONLINE', 'FAILED'] as const)('keeps the next slot due when a late %s probe crosses its boundary', async result => {
     const { project, monitor, job } = await monitorFixture()
-    const nextSlot = new Date(originTime.getTime() + 5 * 60_000)
+    const nextSlot = new Date(originTime.getTime() + UPTIME_INTERVAL_MS)
     const completedAt = new Date(nextSlot.getTime() + 2_000)
     const nextJob = { ...job, scheduledAt: nextSlot.toISOString() }
     vi.setSystemTime(new Date(nextSlot.getTime() - 2_000))
@@ -319,7 +321,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
       notifications: [expect.objectContaining({ kind: 'DOWN', status: 'PENDING' })] })])
   })
 
-  it.each([60_000, 6 * 60_000])('refreshes probe admission after a %s ms authority read', async delay => {
+  it.each([60_000, UPTIME_INTERVAL_MS + 60_000])('refreshes probe admission after a %s ms authority read', async delay => {
     const fixture = await monitorFixture(), read = db().project.findUnique.bind(db().project)
     const lookup = vi.spyOn(db().project, 'findUnique').mockImplementation(async input => {
       const value = await read(input)
@@ -333,8 +335,8 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     })
     try {
       await executeUptimeProbe(fixture.job, observe)
-      expect(observe).toHaveBeenCalledTimes(delay < 5 * 60_000 ? 1 : 0)
-      expect(await db().uptimeProbe.count({ where: { monitorId: fixture.monitor.id } })).toBe(delay < 5 * 60_000 ? 1 : 0)
+      expect(observe).toHaveBeenCalledTimes(delay < UPTIME_INTERVAL_MS ? 1 : 0)
+      expect(await db().uptimeProbe.count({ where: { monitorId: fixture.monitor.id } })).toBe(delay < UPTIME_INTERVAL_MS ? 1 : 0)
     } finally { lookup.mockRestore() }
   })
 
@@ -512,7 +514,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
       url: 'https://confirm.example.com/', watchInterval: 'WEEKLY', watchNextRunAt: originTime } })
     const pendingSlotAt = new Date(originTime.getTime() - 30_000)
     const confirmation = await db().uptimeMonitor.create({ data: { projectId: site.id, targetUrl: site.url,
-      nextProbeAt: new Date(originTime.getTime() + 300_000), pendingSlotAt, pendingFailureAt: pendingSlotAt, confirmationDueAt: originTime } })
+      nextProbeAt: new Date(originTime.getTime() + UPTIME_INTERVAL_MS), pendingSlotAt, pendingFailureAt: pendingSlotAt, confirmationDueAt: originTime } })
     fixture.enqueue.mockRejectedValueOnce(new Error('Controlled earlier dispatch failure'))
     await scheduleUptimeProbes(fixedClock(originTime), 1)
     await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 1000)), 1)
@@ -622,7 +624,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     expect(otherOwner.isError).toBe(true)
     const originalIncident = await db().uptimeIncident.findFirstOrThrow()
     const originalNotification = await db().uptimeNotification.findFirstOrThrow()
-    vi.setSystemTime(new Date(originTime.getTime() + 5 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 5 * SLOT_MINUTE_MS))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, async () => ({ ...online, result: 'UNKNOWN', reason: 'access_blocked' }))
     expect(await loadUptimeSummary(uptimeReadSite(project))).toMatchObject({ state: 'unknown', openIncidentCount: 1 })
     await expectCurrentHealth('flags', 'Needs attention')
@@ -630,19 +632,19 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { enabled: false } })
     await expectCurrentHealth('flags', 'Needs attention')
     await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { enabled: true } })
-    vi.setSystemTime(new Date(originTime.getTime() + 16 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 16 * SLOT_MINUTE_MS))
     await expectCurrentHealth('flags', 'Needs attention')
     expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: originalIncident.id } })).toEqual(originalIncident)
     expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: originalNotification.id } })).toEqual(originalNotification)
     expect(await db().uptimeNotification.count()).toBe(1)
-    vi.setSystemTime(new Date(originTime.getTime() + 20 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 20 * SLOT_MINUTE_MS))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, async () => online)
     const recovered = await db().uptimeIncident.findFirstOrThrow()
-    expect(recovered.recoveredAt).toEqual(new Date(originTime.getTime() + 20 * 60_000))
+    expect(recovered.recoveredAt).toEqual(new Date(originTime.getTime() + 20 * SLOT_MINUTE_MS))
     expect(await db().uptimeNotification.count()).toBe(2)
     // HTTP recovery cannot establish the unrelated public analysis capabilities.
     await expectCurrentHealth('could_not_verify')
-    const recurrenceAt = new Date(originTime.getTime() + 25 * 60_000)
+    const recurrenceAt = new Date(originTime.getTime() + 25 * SLOT_MINUTE_MS)
     vi.setSystemTime(recurrenceAt)
     await executeUptimeProbe({ ...job, scheduledAt: recurrenceAt.toISOString() }, async () => failed)
     expect(await db().uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(1)
@@ -677,7 +679,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
         headers: { 'content-type': 'text/html' }, redirects: [] }, new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } }))
     })
     await executeUptimeProbe(job, interrupted)
-    vi.setSystemTime(new Date(originTime.getTime() + 5 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 5 * SLOT_MINUTE_MS))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, interrupted)
     expect(await db().uptimeIncident.count()).toBe(0)
     expect(await db().uptimeNotification.count()).toBe(0)
@@ -685,25 +687,25 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
       expect.objectContaining({ result: 'UNKNOWN', statusCode: 200, finalUrl: online.finalUrl }),
       expect.objectContaining({ result: 'UNKNOWN', statusCode: 200, finalUrl: online.finalUrl }),
     ])
-    vi.setSystemTime(new Date(originTime.getTime() + 10 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 10 * SLOT_MINUTE_MS))
     const failedJob = { ...job, scheduledAt: new Date().toISOString() }
     await executeUptimeProbe(failedJob, interruptedFailure)
     vi.setSystemTime(new Date(Date.now() + 30_000))
     await executeUptimeProbe({ ...failedJob, attempt: 2 }, interruptedFailure)
     const incident = await db().uptimeIncident.findFirstOrThrow()
     expect(await db().uptimeNotification.count()).toBe(1)
-    vi.setSystemTime(new Date(originTime.getTime() + 15 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 15 * SLOT_MINUTE_MS))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, interrupted)
     expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toEqual(incident)
     expect(await db().uptimeNotification.count()).toBe(1)
-    vi.setSystemTime(new Date(originTime.getTime() + 20 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 20 * SLOT_MINUTE_MS))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, async () => online)
     expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } }))
       .toMatchObject({ recoveredAt: new Date() })
     expect(await db().uptimeIncident.count()).toBe(1)
     expect(await db().uptimeNotification.count({ where: { kind: 'RECOVERED' } })).toBe(1)
     const recoveredAt = new Date()
-    vi.setSystemTime(new Date(originTime.getTime() + 25 * 60_000))
+    vi.setSystemTime(new Date(originTime.getTime() + 25 * SLOT_MINUTE_MS))
     const recurringJob = { ...job, scheduledAt: new Date().toISOString() }
     await executeUptimeProbe(recurringJob, interruptedFailure)
     vi.setSystemTime(new Date(Date.now() + 30_000))
@@ -931,7 +933,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
 
   it('shares scheduled slot coverage across summary and history without collapsing retained rows', async () => {
     const { project, monitor } = await monitorFixture()
-    await db().uptimeProbe.createMany({ data: [-25, -20, -15, -10, -5, -1].map(minutes => {
+    await db().uptimeProbe.createMany({ data: [-20, -10, -1].map(minutes => {
       const at = new Date(originTime.getTime() + minutes * 60_000)
       return { monitorId: monitor.id, version: monitor.version, targetUrl: project.url,
         scheduledAt: at, observedAt: at, attempt: 1, result: 'ONLINE', reason: 'response_received', durationMs: 10, confirmed: false }
@@ -939,8 +941,8 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     const site = uptimeReadSite(project)
     const summary = await loadUptimeSummary(site, originTime)
     const history = await loadUptimeHistory(site, '24h', null, originTime)
-    expect(history!.probes).toHaveLength(6)
+    expect(history!.probes).toHaveLength(3)
     expect(history!.segments).toEqual(summary!.segments)
-    expect(history!.segments.at(-1)).toMatchObject({ state: 'unknown', checked: 5, expected: 6 })
+    expect(history!.segments.at(-1)).toMatchObject({ state: 'unknown', checked: 2, expected: 3 })
   })
 })

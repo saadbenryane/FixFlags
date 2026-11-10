@@ -476,7 +476,7 @@ function transitionFacts(label: string): Fact[] {
   if (opened.event !== 'opened' || opened.state !== 'offline' || recovered.event !== 'recovered' || again.event !== 'opened') throw new Error(label + ' uptime transition changed')
   const identity = 'uptime:opened'
   const fresh = currentUptimeState({ enabled: true, state: 'online', lastCheckedAt: NOW, now: NOW })
-  const stale = currentUptimeState({ enabled: true, state: 'online', lastCheckedAt: new Date(NOW.getTime() - 11 * 60_000), now: NOW })
+  const stale = currentUptimeState({ enabled: true, state: 'online', lastCheckedAt: new Date(NOW.getTime() - 21 * 60_000), now: NOW })
   return [
     { scenario: 'working', verdict: fresh === 'online' ? 'observed' : 'failed', identity: 'uptime:online' },
     { scenario: 'failing', verdict: 'failed', identity },

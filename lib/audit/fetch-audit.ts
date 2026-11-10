@@ -27,6 +27,7 @@ import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-hi
 import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
+import { anonymousResultsGatePath, resultsRequireSignIn } from '@/lib/audit/anonymous-results-gate'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
 import { presentationAttentionPolicy } from '@/lib/audit/search/policy'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
@@ -217,6 +218,14 @@ export function redactCompletedPrivateReportData<
   }
 }
 
+/** The Site results gate for the signed anonymous creator of this check. */
+export async function anonymousResultsRedirectForRequest(id: string): Promise<string | null> {
+  const session = await resolveSessionUser()
+  if (!resultsRequireSignIn(await resolveAccessForCookies({ id }, session?.user))) return null
+  const audit = await prisma.audit.findUnique({ where: { id }, select: { id: true, projectId: true } })
+  return audit ? anonymousResultsGatePath(audit) : null
+}
+
 async function resolveAccessForCookies(
   audit: { id: string; userId?: string | null; isPublic?: boolean },
   sessionUser: { id: string } | null | undefined
@@ -258,6 +267,8 @@ export async function getProgressiveAuditForRequest(id: string) {
   if (!audit) return { kind: 'not_found' as const }
   if (workId !== id) accessContext = await resolveAccessForCookies(audit, session?.user)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
+  // Results require an account; the anonymous creator continues on the Site gate.
+  if (resultsRequireSignIn(accessContext)) return { kind: 'forbidden' as const }
   const capabilities = resolveReviewCapabilities({
     visibility: accessContext,
     isAuthenticated: Boolean(session?.user),
@@ -333,6 +344,8 @@ export async function getGatedAuditForRequest(id: string) {
   }
   if (workId !== id) accessContext = await resolveAccessForCookies(audit, session?.user)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
+  // Results require an account; the anonymous creator continues on the Site gate.
+  if (resultsRequireSignIn(accessContext)) return { kind: 'forbidden' as const }
   const capabilities = resolveReviewCapabilities({
     visibility: accessContext,
     isAuthenticated: Boolean(session?.user),

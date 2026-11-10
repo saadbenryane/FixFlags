@@ -17,7 +17,6 @@ import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
 import { SiteFixBundleButton } from './SiteFixBundleButton'
 import { SitePages } from './SitePages'
 import { SiteShell } from '@/components/sites/SiteShell'
-import { SiteSignupPrompt } from '@/components/sites/SiteSignupPrompt'
 import { SiteActionRecovery } from './SiteActionFeedback'
 import { SiteActionContinuation } from './SiteActionContinuation'
 import { Button } from '@/components/ui/button'
@@ -238,7 +237,6 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'integrations' ? <section id="integrations" aria-labelledby="integrations-heading"><div><h2 id="integrations-heading" className="sr-only">Integrations</h2><p className="mt-1 text-sm text-muted-foreground">{B.integrationsBody}</p></div><SiteIntegrationsControls key={siteId} siteId={siteId} initial={view.settings} onRefresh={refresh} /></section> : null}
 
-      <SiteSignupPrompt key={view.audit.id ?? siteId} siteId={siteId} auditId={view.audit.id} checking={view.presentation.run.state === 'running'} paused={Boolean(selectedCard || selectedFlag) || viewMode !== 'home'} />
       {selected ? <SiteCategoryDetails selected={selected} selectedFlags={selectedFlags} selectedRecommendations={selectedRecommendations}
         confirmedOutcomes={confirmedOutcomes} findingPages={findingPages} siteId={siteId} view={view} busy={busy}
         checkAction={checkAction} verifyOutcome={verifyOutcome} onOpenFlag={openFlag} onClose={() => selectCategory(null)} restoreFocus={() => restoreWorkspaceFocus(opener.current, document.getElementById(`category-${selected.id}`))} /> : null}

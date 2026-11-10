@@ -23,8 +23,8 @@ import { UPTIME_INTERVAL_MS, type ProbeObservation } from './domain'
 import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 
 const db = () => fixture.db!
-const now = new Date('2026-10-12T12:05:01.000Z')
-const scheduledAt = new Date('2026-10-12T12:05:00.000Z')
+const now = new Date('2026-10-12T12:10:01.000Z')
+const scheduledAt = new Date('2026-10-12T12:10:00.000Z')
 const clock = fixedClock(now)
 const online: ProbeObservation = { result: 'ONLINE', reason: 'response_received', statusCode: 200,
   durationMs: 50, finalUrl: 'https://example.com/' }
@@ -112,7 +112,7 @@ describe.skipIf(!databaseUrl)('Uptime reconciliation with concurrent observation
       await scheduleUptimeProbes(clock, 1, project.id)
       expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({
         state: result === 'ONLINE' ? 'online' : 'checking', lastCheckedAt: now, lastScheduledAt: scheduledAt,
-        nextProbeAt: new Date('2026-10-12T12:10:00.000Z'),
+        nextProbeAt: new Date(scheduledAt.getTime() + UPTIME_INTERVAL_MS),
         pendingFailureAt: result === 'FAILED' ? now : null,
         confirmationDueAt: result === 'FAILED' ? new Date(now.getTime() + 30_000) : null,
       })

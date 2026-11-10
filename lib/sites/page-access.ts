@@ -14,6 +14,14 @@ export async function requireSitePageAccess(siteId: string, fallbackPath: string
   return access.ok ? access : continueDeniedPage(fallbackPath)
 }
 
+/** Result-bearing pages: a non-owner returns to the Site, where the results
+ * gate shows the check and the signup continuation. */
+export async function requireSiteResultsPage(siteId: string, fallbackPath: string) {
+  const access = await requireSitePageAccess(siteId, fallbackPath)
+  if (access.decision.role !== 'owner') redirect(`/sites/${encodeURIComponent(access.decision.site.siteId)}`)
+  return access
+}
+
 export async function requireSiteOwnerPage(siteId: string, fallbackPath: string) {
   const access = await requireSiteOwner(siteId)
   return access.ok ? access : continueDeniedPage(fallbackPath)

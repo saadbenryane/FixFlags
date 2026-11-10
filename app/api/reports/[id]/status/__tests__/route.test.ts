@@ -184,8 +184,15 @@ describe('GET /api/reports/[id]/status', () => {
     ).toBe(false)
   })
 
+  it('gives an anonymous creator progress only until signup', async () => {
+    resolveAuditAccess.mockResolvedValue('anonymous_teaser')
+    const response = await GET(getReq(), { params: Promise.resolve({ id: 'audit-1' }) })
+    const body = await response.json()
+    expect(body).toMatchObject({ resultsRequireSignIn: true })
+    expect(Object.keys(body).sort()).toEqual(['id', 'progress', 'resultsRequireSignIn', 'siteId', 'status', 'url'])
+  })
+
   it.each([
-    'anonymous_teaser',
     'public_viewer',
     'share_grant',
   ])(

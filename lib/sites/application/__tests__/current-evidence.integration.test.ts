@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { UPTIME_INTERVAL_MS } from '@/lib/uptime/domain'
 import type { Prisma } from '@prisma/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as accountSettings from '@/lib/sites/accounts/store'
@@ -540,7 +541,7 @@ run('current Site evidence publication in PostgreSQL', () => {
       status: 'COMPLETED', source: 'SYSTEM', detail: { kind: 'flag-comparison', version: 1, auditId, parentAuditId: null,
         summary: { newIssues: [], unchanged: [], regressed: [], fixed: [], inconclusive: [] } } } })
     if (state !== 'missing') await prisma.uptimeMonitor.create({ data: { projectId, targetUrl: 'https://example.com/',
-      state: state === 'stale' ? 'online' : state, lastCheckedAt: new Date(now.getTime() - (state === 'stale' ? 11 * 60_000 : 1000)),
+      state: state === 'stale' ? 'online' : state, lastCheckedAt: new Date(now.getTime() - (state === 'stale' ? 2 * UPTIME_INTERVAL_MS + 60_000 : 1000)),
       nextProbeAt: new Date(now.getTime() + 5 * 60_000) } })
     const expected = state === 'online' ? 'clear' : state === 'offline' ? 'flags' : 'could_not_verify'
     const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
