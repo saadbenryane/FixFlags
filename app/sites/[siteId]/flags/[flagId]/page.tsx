@@ -274,7 +274,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </h2>
               </div>
               {flag.attempts.length === 0 ? (
-                <div className="mt-4 rounded-[13px] bg-muted p-4">
+                <div className="mt-4 rounded-card bg-muted p-4">
                   <p className="text-sm font-medium">{SITE_BOARD_COPY.noVerificationYet}</p>
                   <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.noVerificationBody}</p>
                 </div>

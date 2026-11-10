@@ -12,7 +12,7 @@ import type { SiteHomeView } from '@/lib/sites/application/queries'
 
 function ProofNote({ heading, proof, note, current = false }: { heading: string; proof: FlagProofNote; note?: string; current?: boolean }) {
   return (
-    <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="flag-proof-heading">
+    <section className="mt-4 rounded-board-panel bg-background p-5 shadow-board" aria-labelledby="flag-proof-heading">
       <h2 id="flag-proof-heading" className={current ? 'font-medium text-success' : 'font-medium'}>
         {heading}
       </h2>
@@ -40,7 +40,7 @@ export function FlagResolutionPanel({ resolution, siteId, flagId, referenceFlagI
         : <ProofNote heading={SITE_BOARD_COPY.flagRecovered} proof={resolution.proof} current /> : null}
       {resolution.kind === 'verifying' && resolution.proof ? <ProofNote heading={SITE_BOARD_COPY.flagProofLastCheck} proof={resolution.proof} note={resolution.runningNote} /> : null}
       {resolution.kind === 'unproven' ? (
-        <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="flag-proof-missing-heading">
+        <section className="mt-4 rounded-board-panel bg-background p-5 shadow-board" aria-labelledby="flag-proof-missing-heading">
           <h2 id="flag-proof-missing-heading" className="font-medium">
             {resolution.statusLabel}
           </h2>

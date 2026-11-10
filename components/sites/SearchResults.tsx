@@ -32,7 +32,7 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
             <h4 className="text-sm font-medium">{label}</h4>
             <ul className="space-y-3">{items.slice(0, limit).map(({ result, executions }) => {
               const item = result.search!
-              return <li key={result.id} data-continuation-item tabIndex={-1} className="rounded-control border border-border p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
+              return <li key={result.id} data-continuation-item tabIndex={-1} className="rounded-control bg-muted/35 p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="font-medium">{item.name}</span>
                   <span className="text-xs text-muted-foreground">{C.statuses[item.disposition]}</span>

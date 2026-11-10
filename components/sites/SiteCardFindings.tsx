@@ -90,7 +90,7 @@ function SiteCardFindingsContent({ siteId, flags, recommendations, copyAvailabil
     }}>{items.map((flag) => {
       const title = boardFindingTitle(flag.problem, flag.checkId)
       return <li key={flag.id}>
-        <div className={`${styles.row} min-h-20 rounded-card border border-border p-3`}>
+        <div className={`${styles.row} min-h-20 rounded-card bg-muted/35 p-3`}>
           <SiteFlagSelectionCheckbox flagId={flag.id} title={title} />
           <div className={styles.body}>
             <Icon className="mt-3 h-5 w-5 shrink-0 text-brand" aria-hidden />

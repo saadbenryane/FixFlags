@@ -72,7 +72,7 @@ export function OutcomeSummaryCard({
     </section>
   }
   return (
-    <section className={compact ? styles.card : 'rounded-2xl border border-border/80 bg-background p-5 sm:p-6'}>
+    <section className={compact ? styles.card : 'rounded-board-panel bg-background p-5 shadow-board sm:p-6'}>
       <div className={cn('flex flex-wrap items-start justify-between gap-4', compact && 'h-full w-full flex-col')}>
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
