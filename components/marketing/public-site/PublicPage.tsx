@@ -5,16 +5,17 @@ import { Button } from '@/components/ui/button'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { BrandClosing } from '@/components/marketing/BrandClosing'
+import { MarketingSectionHeader } from '@/components/marketing/MarketingSectionHeader'
 import { PUBLIC_SITE_COPY as C } from '@/lib/marketing/copy/public-site'
 import { PublicLink } from './PublicInteraction'
 
-export function PublicPageIntro({ page, label, title, body, children }: {
-  page: string; label: string; title: string; body: string; children?: React.ReactNode
+export function PublicPageIntro({ page, label, title, lines, body, children }: {
+  page: string; label: string; title: string; lines?: readonly [string, string]; body: string; children?: React.ReactNode
 }) {
   return <>
     <MarketingPageViewTracker page={page} />
     <Container variant="marketing">
-      <MarketingPageHeader eyebrow={label} title={title} description={body}>{children}</MarketingPageHeader>
+      <MarketingPageHeader eyebrow={label} title={title} lines={lines} description={body}>{children}</MarketingPageHeader>
     </Container>
   </>
 }
@@ -27,12 +28,11 @@ export function PublicPageActions() {
 }
 
 export function PublicPageNextStep() {
-  return <Section spacing="tight" tint="subtle">
+  return <Section spacing="marketing" tint="subtle" aria-labelledby="public-next-step">
     <Container variant="marketing">
       <BrandClosing>
-      <h2 className="text-balance font-display text-3xl font-semibold tracking-display">{C.nextTitle}</h2>
-      <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">{C.nextBody}</p>
-      <PublicPageActions />
+        <MarketingSectionHeader id="public-next-step" lines={C.nextTitleLines} lede={C.nextBody} />
+        <PublicPageActions />
       </BrandClosing>
     </Container>
   </Section>

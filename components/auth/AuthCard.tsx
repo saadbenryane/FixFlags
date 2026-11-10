@@ -13,11 +13,11 @@ export function AuthCard({ title, subtitle, trustLine, children, footer }: AuthC
   return (
     <div className="w-full max-w-sm space-y-4">
       <div className="space-y-1 text-center">
-        <h1 className="font-sans text-xl font-semibold tracking-heading">{title}</h1>
+        <h1 className="text-balance font-sans text-2xl font-semibold tracking-heading">{title}</h1>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         {trustLine && <Muted className="text-xs">{trustLine}</Muted>}
       </div>
-      <Card variant="subtle">
+      <Card variant="subtle" className="rounded-[20px] border-0 bg-[hsl(var(--window))] shadow-[var(--shadow-window)]">
         <CardContent className="space-y-4 pt-6">{children}</CardContent>
       </Card>
       {footer}

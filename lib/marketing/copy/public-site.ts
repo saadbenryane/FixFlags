@@ -6,10 +6,12 @@ export const PUBLIC_SITE_COPY = {
   coverage: 'What FixFlags checks',
   guide: 'Read the guide',
   nextTitle: 'See how your website is doing.',
+  nextTitleLines: ['See how your website', 'is doing.'] as const,
   nextBody: 'Start with a free check. Save your website to get copy-and-paste fix instructions and scheduled checks.',
   howItWorks: {
     label: 'Product',
     title: 'Find what’s broken. Hand your AI the fix. Prove it worked.',
+    titleLines: ['Find what’s broken. Hand your AI the fix.', 'Prove it worked.'] as const,
     body: 'FixFlags checks your live website in a real browser, gives you fix instructions for the AI tool you build with, and rechecks the same page to confirm the fix.',
     steps: [
       { id: 'check', label: PRODUCT_STORY.loop[0], title: 'Enter your website.', body: 'We check your homepage for free. Save your website to check more of its pages and keep getting scheduled checks.' },
@@ -69,6 +71,7 @@ export const PUBLIC_SITE_COPY = {
   samplePage: {
     label: 'Product sample',
     title: 'See a problem. Copy the fix.',
+    titleLines: ['See a problem.', 'Copy the fix.'] as const,
     body: 'Try a recorded demo. See what went wrong and copy the instructions to fix it.',
     demoLabel: 'Demo website',
     scopeLabel: 'What was checked',
@@ -136,6 +139,7 @@ export const PUBLIC_SITE_COPY = {
   useCasesPage: {
     label: 'Use cases',
     title: 'You built it. Let’s look after it.',
+    titleLines: ['You built it.', 'Let’s look after it.'] as const,
     body: 'Your first website, your growing app, your store, or a client’s next launch. Find problems and get fix instructions to copy and paste.',
     checksLabel: 'What gets checked',
     evidenceLabel: 'Your next step',

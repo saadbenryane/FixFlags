@@ -31,7 +31,7 @@ export default async function AiBuilderToolPage({ params }: Props) {
   const others = AI_BUILDER_TOOLS.filter(other => other.slug !== tool.slug)
   return <>
     <MarketingPageViewTracker page={`/ai-builders/${tool.slug}`} />
-    <PublicPageIntro page={`/ai-builders/${tool.slug}`} label={C.tool.label(tool.name)} title={C.tool.title(tool.name)} body={tool.summary}>
+    <PublicPageIntro page={`/ai-builders/${tool.slug}`} label={C.tool.label(tool.name)} title={C.tool.title(tool.name)} lines={C.tool.titleLines(tool.name)} body={tool.summary}>
       <div className={s.entry}><AuditInput variant="landing" idSuffix={`-ai-${tool.slug}`} ctaPlacement="hero" showLandingExtras={false} submitLabel={C.tool.cta} /></div>
     </PublicPageIntro>
     <Section spacing="overview"><Container variant="marketing" className={s.stack}>

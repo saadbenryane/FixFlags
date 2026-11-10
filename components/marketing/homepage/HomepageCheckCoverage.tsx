@@ -7,7 +7,7 @@ import { Activity, ArrowRight, ArrowUpRight, Check, CircleAlert, Code2, FileText
 import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
-import { HomepageSectionHeader } from './HomepagePrimitives'
+import { MarketingSectionHeader } from '../MarketingSectionHeader'
 import s from './CareHomepage.module.css'
 import t from './HomepageCheckCoverage.module.css'
 
@@ -34,7 +34,7 @@ export function HomepageCheckCoverage() {
   const opener = useRef<HTMLElement | null>(null)
   const area = C.checks.areas.find(item => item.id === selected)
   return <><section className={`${s.section} ${t.coverage}`} id="flag-example" aria-labelledby="check-coverage-title">
-    <HomepageSectionHeader id="check-coverage-title" index="01" label={C.checks.label} lines={C.checks.titleLines} lede={C.checks.body} align="split" />
+    <MarketingSectionHeader id="check-coverage-title" index="01" label={C.checks.label} lines={C.checks.titleLines} lede={C.checks.body} align="split" />
     <div className={t.checkGrid}>{C.checks.areas.map(area => {
       const Icon = AREA_ICONS[area.id]
       return <article className={t.checkCard} data-area={area.id} key={area.id}>

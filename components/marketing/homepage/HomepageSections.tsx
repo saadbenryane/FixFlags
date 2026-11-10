@@ -7,7 +7,8 @@ import { ArrowRight, Bell, ChevronDown } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { BrandClosing } from '@/components/marketing/BrandClosing'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
-import { HomepageSectionHeader, HomepageUrlEntry } from './HomepagePrimitives'
+import { HomepageUrlEntry } from './HomepagePrimitives'
+import { MarketingSectionHeader } from '../MarketingSectionHeader'
 import s from './CareHomepage.module.css'
 import t from './HomepageSections.module.css'
 
@@ -18,7 +19,7 @@ export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTML
   return <section className={s.section} aria-labelledby="homepage-loop-heading">
     <div className={t.monitoringGrid}>
       <div className={t.monitoringIntro}>
-        <HomepageSectionHeader id="homepage-loop-heading" index="04" label={C.notifications.label} lines={C.notifications.titleLines} lede={C.notifications.body} />
+        <MarketingSectionHeader id="homepage-loop-heading" index="04" label={C.notifications.label} lines={C.notifications.titleLines} lede={C.notifications.body} />
         <details className={t.monitoringDetails}>
           <summary>{C.notifications.detailTitle}<ChevronDown size={16} aria-hidden="true" /></summary>
           <p>{C.notifications.detailBody}</p>

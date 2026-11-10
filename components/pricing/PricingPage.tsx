@@ -14,7 +14,7 @@ export function PricingPage() {
   return <Section spacing="overview" className={s.page}>
     <PricingViewTracker />
     <Container variant="marketing" className={s.container}>
-      <MarketingPageHeader eyebrow={PRICING.label} title={<>{PRICING.headlineLead}{' '}<span className={s.betaHeadline}>{PRICING.headlineAccent}</span></>} description={PRICING.subhead}>
+      <MarketingPageHeader eyebrow={PRICING.label} lines={[PRICING.headlineLead, PRICING.headlineAccent]} description={PRICING.subhead}>
         <Button asChild variant="brand" size="lg"><Link prefetch={false} href={PRICING.signupHref}>{PRICING.signupCta}<ArrowRight aria-hidden size={16} /></Link></Button>
         <p className={s.signupNote}>{PRICING.signupNote}</p>
       </MarketingPageHeader>

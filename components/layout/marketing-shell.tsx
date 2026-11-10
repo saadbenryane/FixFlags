@@ -20,7 +20,7 @@ export function MarketingShell({
       headerRight={focused ? null : <MarketingHeaderAuth />}
       showHeaderNavigation={!focused}
       showSupport={showSupport}
-      backdrop={focused ? 'minimal' : 'full'}
+      backdrop={focused ? 'off' : 'full'}
       showFooter={footer !== 'none'}
       footer={footer === 'minimal' ? 'minimal' : 'default'}
     >

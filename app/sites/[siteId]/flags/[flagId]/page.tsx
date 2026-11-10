@@ -13,6 +13,7 @@ import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SiteFlagDetailRefresh } from '@/components/sites/SiteFlagDetailRefresh'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
+import { FLAG_PAGE_COPY, flagDeviceLabel } from '@/lib/marketing/copy/flag-page'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { siteDetailContextHref, siteDetailReturnDestination, type SiteDetailOriginParams } from '@/lib/sites/workspace-location'
 import { customerAttemptSource } from '@/lib/sites/flag-label'
@@ -150,7 +151,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     : customerFindingLabel(flag)
 
   return (
-    <SiteShell actions={home.actions} siteId={resolvedId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
+    <SiteShell actions={home.actions} siteId={resolvedId} activeRoute={returnDestination.view} title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
       <SiteFlagDetailRefresh key={`${resolvedId}:${flagId}`} siteId={resolvedId} flagId={flagId} sourceFlagId={actionFlagId} initial={home} />
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -161,13 +162,13 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             </Link>
           </Button>
           <p className="text-xs text-muted-foreground">
-            {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
+            {FLAG_PAGE_COPY.where(affectedPaths.length === 1 ? recordedPathLabel(affectedPaths[0]) : CARD_CATALOG[flag.area].name, flagDeviceLabel(flag.viewport))}
           </p>
         </div>
         <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} verificationFeedback={ownsSite && !['DISMISSED', 'IGNORED'].includes(flag.status) ? flag.verificationFeedback : null} receipt={{ page: flag.pageUrl, foundAt: flag.latestOccurrenceAt }}>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              Affects{' '}
+              {FLAG_PAGE_COPY.affects}{' '}
               <Link href={siteDetailContextHref(`/sites/${resolvedId}/outcomes/${encodeURIComponent(relatedOutcome.id)}`, returnDestination.origin) as Route} className="inline-flex min-h-11 max-w-full items-center font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
                 {relatedOutcome.name}
               </Link>
@@ -196,7 +197,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     <dl className="mt-3 space-y-3 text-xs text-muted-foreground">
                       <div><dt>{SITE_ACTION_COPY.flagEvidence.source}</dt><dd>{SITE_ACTION_COPY.flagEvidence.sources[flag.evidenceContext.source as keyof typeof SITE_ACTION_COPY.flagEvidence.sources] ?? SITE_ACTION_COPY.flagEvidence.unknown}</dd></div>
                       {flag.evidenceContext.recordedAt ? <div><dt>{SITE_ACTION_COPY.flagEvidence.recorded}</dt><dd><time dateTime={flag.evidenceContext.recordedAt}>{formatEvidenceTimestamp(flag.evidenceContext.recordedAt)}</time></dd></div> : null}
-                      {flag.evidenceContext.references.length ? <div><dt>{SITE_ACTION_COPY.flagEvidence.references}</dt><dd><ul className="mt-2 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words">{[reference.label, reference.selector, reference.device].filter(Boolean).join(' · ')}</li>)}</ul></dd></div> : null}
+                      {flag.evidenceContext.references.length ? <div><dt>{SITE_ACTION_COPY.flagEvidence.references}</dt><dd><ul className="mt-2 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words">{[reference.label, reference.selector, reference.device].filter(Boolean).join(', ')}</li>)}</ul></dd></div> : null}
                     </dl>
                   </details> : null}
                   {flag.performanceEvidenceSource ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
@@ -204,7 +205,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     {flag.performanceEvidence?.length ? <details>
                       <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.conditions}</summary>
                       <ul className="space-y-3">{flag.performanceEvidence.map((measurement, index) => <li key={index}>
-                        <p>{[measurement.strategy, measurement.formFactor, measurement.throttlingMethod, measurement.lighthouseVersion ? `Lighthouse ${measurement.lighthouseVersion}` : null].filter(Boolean).join(' · ')}</p>
+                        <p>{[measurement.strategy, measurement.formFactor, measurement.throttlingMethod, measurement.lighthouseVersion ? FLAG_PAGE_COPY.lighthouse(measurement.lighthouseVersion) : null].filter(Boolean).join(', ')}</p>
                         <p className="text-xs text-muted-foreground">{measurement.measuredAt ? SITE_ACTION_COPY.flagEvidence.measured : SITE_ACTION_COPY.flagEvidence.received}: <time dateTime={measurement.measuredAt ?? measurement.receivedAt}>{formatEvidenceTimestamp(measurement.measuredAt ?? measurement.receivedAt)}</time></p>
                       </li>)}</ul>
                     </details> : <p className="text-xs text-muted-foreground">{SITE_ACTION_COPY.flagEvidence.conditionsUnknown}</p>}
@@ -215,23 +216,23 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     <h3 className="text-xs font-medium text-muted-foreground">{SITE_BOARD_COPY.flagScope}</h3>
                     <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
                       <div className={flag.viewport ? '' : 'sm:col-span-2'}>
-                        <dt className="text-xs text-muted-foreground">{(flag.affectedPageCount ?? affectedPaths.length) > 1 ? 'Affected pages' : 'Page'}</dt>
+                        <dt className="text-xs text-muted-foreground">{(flag.affectedPageCount ?? affectedPaths.length) > 1 ? FLAG_PAGE_COPY.affectedPages : FLAG_PAGE_COPY.page}</dt>
                         <dd className="mt-1 min-w-0 break-words font-medium">
                           {affectedPaths.length === 1 ? (
                             <RecordedPageLink url={affectedPaths[0]} className="inline-flex min-h-11 max-w-full items-start gap-1.5 rounded-control break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{recordedPathLabel(affectedPaths[0])}</RecordedPageLink>
                           ) : affectedPaths.length > 1 ? (
                             <details>
-                              <summary className="min-h-11 cursor-pointer py-2 text-sm">View all {affectedPaths.length} pages</summary>
+                              <summary className="min-h-11 cursor-pointer py-2 text-sm">{FLAG_PAGE_COPY.viewAll(affectedPaths.length)}</summary>
                               <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><RecordedPageLink url={path} className="inline-flex min-h-11 max-w-full items-start gap-1.5 rounded-control break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{recordedPathLabel(path)}</RecordedPageLink></li>)}</ul>
                             </details>
                           ) : (
-                            'This Site, page not recorded'
+                            FLAG_PAGE_COPY.pageNotRecorded
                           )}
                         </dd>
                       </div>
                       {flag.viewport ? (
                         <div>
-                          <dt className="text-xs text-muted-foreground">Viewport</dt>
+                          <dt className="text-xs text-muted-foreground">{FLAG_PAGE_COPY.screen}</dt>
                           <dd className="mt-1 font-medium">{flag.viewport}</dd>
                         </div>
                       ) : null}
@@ -242,8 +243,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
               {connectionContext.length > 0 ? (
                 <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6">
-                  <h2 className="font-semibold">Connected context</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">These numbers come from an account connected to this Site. They sit beside the Flag.</p>
+                  <h2 className="font-semibold">{FLAG_PAGE_COPY.connectedTitle}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{FLAG_PAGE_COPY.connectedBody}</p>
                   <ul className="mt-3 space-y-2 text-sm">
                     {connectionContext.map((line) => (
                       <li key={line}>{line}</li>
@@ -286,9 +287,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                         <AttemptIcon attempt={attempt} />
                         <div className="min-w-0">
                           <p className="font-medium">{attemptLabel(attempt)}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {when ? <time dateTime={attempt.createdAt}>{when}</time> : 'Time not recorded'}
-                            {' · '}
+                          <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                            {when ? <time dateTime={attempt.createdAt}>{when}</time> : <span>{FLAG_PAGE_COPY.timeNotRecorded}</span>}
                             <span>{customerAttemptSource(attempt.builder)}</span>
                           </p>
                           {attempt.changeSummary?.trim() ? <p className="mt-2 text-sm text-muted-foreground">{attempt.changeSummary}</p> : null}

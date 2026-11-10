@@ -16,7 +16,7 @@ export default function ForAgenciesPage() {
       <section aria-labelledby="agency-steps-title">
         <h2 id="agency-steps-title" className={s.heading}>{C.stepsTitle}</h2>
         <ol className={s.loop}>{C.steps.map((step, index) => <li key={step.title}>
-          <p className={s.loopHead}><span aria-hidden="true">{index + 1}</span>{step.title}</p>
+          <p className={s.loopHead}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{step.title}</p>
           <p>{step.body}</p>
         </li>)}</ol>
       </section>

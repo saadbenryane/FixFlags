@@ -89,6 +89,7 @@ export function aiBuilderExamplePrompt(tool: AiBuilderTool) {
 export const AI_BUILDERS_PAGE = {
   label: 'For AI builders',
   title: 'Built with AI? Check what your visitors get.',
+  titleLines: ['Built with AI?', 'Check what your visitors get.'] as const,
   body: 'AI tools build fast and check their own preview. FixFlags checks your live site in a real browser, hands your tool the fix, and rechecks to prove it worked.',
   toolsTitle: 'Pick your tool',
   builders: 'App builders',
@@ -109,6 +110,7 @@ export const AI_BUILDERS_PAGE = {
     back: 'All AI tools',
     label: (name: string) => `FixFlags for ${name}`,
     title: (name: string) => `Find what’s broken. Hand ${name} the fix.`,
+    titleLines: (name: string) => ['Find what’s broken.', `Hand ${name} the fix.`] as const,
     stepsTitle: 'How it works',
     steps: (tool: AiBuilderTool) => [
       { title: 'Check your live site', body: 'Paste your published URL into FixFlags. Nothing to install, and no signup to start.' },

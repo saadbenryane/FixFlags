@@ -35,7 +35,7 @@ export default async function SamplesPage({ searchParams }: {
   const separateChange = Boolean(flag.fix?.trim()) && flag.fix?.trim() !== prompt.trim()
 
   return <>
-    <PublicPageIntro page="/samples" label={C.label} title={C.title} body={C.body} />
+    <PublicPageIntro page="/samples" label={C.label} title={C.title} lines={C.titleLines} body={C.body} />
     <Section spacing="overview"><Container variant="marketing">
       <article data-testid="sample-site" data-observation={audit.id} className="space-y-9">
         <div><p className="section-label">{C.demoLabel}</p><h2 className="mt-3 font-display text-3xl font-semibold tracking-display">{title}</h2></div>

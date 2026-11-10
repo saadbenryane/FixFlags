@@ -2,6 +2,7 @@
 export const FREE_TOOLS_PAGE = {
   label: 'Free tools',
   title: 'Small checks. No signup.',
+  titleLines: ['Small checks.', 'No signup.'] as const,
   body: 'Each tool checks one thing on one page and answers in seconds. When you want the whole site tried like a visitor, run a full check.',
   seo: {
     title: 'Free website tools | FixFlags',

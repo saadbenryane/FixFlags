@@ -1,5 +1,4 @@
 .container { max-width: 1168px; }
-.betaHeadline { display: block; color: hsl(var(--brand)); }
 .signupNote { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
 .sections { display: grid; gap: 64px; }
 .comparison { scroll-margin-top: var(--header-offset); }

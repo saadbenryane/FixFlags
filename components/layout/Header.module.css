@@ -21,6 +21,9 @@
   }
 }
 
+/* Marketing pages sit on the warm canvas; frost with it instead of white. */
+.surface[data-surface='frosted'][data-tone='canvas'] { background: hsl(var(--canvas) / .86); }
+
 @media (prefers-reduced-motion: reduce) {
   .surface { transition: none; }
 }

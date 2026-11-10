@@ -19,7 +19,8 @@ const sectionVariants = cva("", {
     },
     tint: {
       none: '',
-      subtle: 'bg-muted/20',
+      /** Marketing band on the warm canvas. */
+      subtle: 'bg-[hsl(var(--canvas-deep))]',
     },
   },
   defaultVariants: {

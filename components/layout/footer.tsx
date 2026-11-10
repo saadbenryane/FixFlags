@@ -9,7 +9,7 @@ import { FOOTER_COLUMNS } from '@/lib/site/nav'
 
 export function Footer() {
   return (
-    <footer className="bg-background">
+    <footer>
       <Container
         variant="marketing"
         className="px-5 pb-7 pt-12 sm:px-6 sm:pb-8 sm:pt-16 lg:px-12 lg:pb-9 lg:pt-20"

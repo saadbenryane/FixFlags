@@ -54,7 +54,7 @@ export function SiteShell({
     <div
       className={cn(
         'relative flex min-h-screen flex-col',
-        variant === 'marketing' && 'bg-background',
+        variant === 'marketing' && 'bg-[hsl(var(--canvas))]',
       )}
     >
       {resolvedBackdrop !== 'off' && <GlobalMeshBackdrop fixed intensity={resolvedBackdrop} />}

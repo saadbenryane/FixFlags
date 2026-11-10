@@ -9,7 +9,8 @@ import { InteractiveButton, InteractiveTextarea } from '@/components/ui/interact
 import { EditorMark } from '@/components/brand/EditorMarks'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
-import { HOMEPAGE_EVIDENCE, HomepageSectionHeader } from './HomepagePrimitives'
+import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
+import { MarketingSectionHeader } from '../MarketingSectionHeader'
 import type { HomepageCopyResult, HomepageCopySource } from './HomepageSections'
 import s from './CareHomepage.module.css'
 import t from './HomepageStorySections.module.css'
@@ -19,10 +20,10 @@ const PROOF = C.independent
 
 export function HomepageProofSection() {
   return <section className={`${s.section} ${t.proof}`} aria-labelledby="proof-title">
-    <HomepageSectionHeader id="proof-title" index="03" label={PROOF.label} lines={PROOF.titleLines} lede={PROOF.body}>
+    <MarketingSectionHeader id="proof-title" index="03" label={PROOF.label} lines={PROOF.titleLines} lede={PROOF.body}>
       <ul className={t.points}>{PROOF.points.map(point => <li key={point}><Check size={16} aria-hidden="true" />{point}</li>)}</ul>
       <Link href="/how-it-works" className={t.textLink}>{PROOF.action}<ArrowRight size={16} aria-hidden="true" /></Link>
-    </HomepageSectionHeader>
+    </MarketingSectionHeader>
     <figure className={t.captures}>
       <div className={t.capturePair}>
         <div className={t.capture} data-state="before">
@@ -54,7 +55,7 @@ export function HomepageBuiltForAiSection({ onCopy, copyResult, manualPrompt }: 
     document.getElementById(`${id}-tool-${next}`)?.focus()
   }
   return <section className={`${s.section} ${t.ai}`} aria-labelledby="built-for-ai-title">
-    <div className={t.aiCopy}><HomepageSectionHeader id="built-for-ai-title" index="02" label={AI.label} lines={AI.titleLines} lede={AI.body} /></div>
+    <div className={t.aiCopy}><MarketingSectionHeader id="built-for-ai-title" index="02" label={AI.label} lines={AI.titleLines} lede={AI.body} /></div>
     <div className={t.aiDemo}>
       <div className={t.toolTabs} role="tablist" aria-label={AI.toolsLabel}>
         {AI.tools.map((item, index) => <button key={item.key} id={`${id}-tool-${index}`} type="button" role="tab" aria-selected={index === active}
@@ -86,7 +87,7 @@ export function HomepageBuiltForAiSection({ onCopy, copyResult, manualPrompt }: 
 
 export function HomepageCompareSection() {
   return <section className={`${s.section} ${t.compare}`} aria-labelledby="compare-title">
-    <HomepageSectionHeader id="compare-title" index="05" label={C.compare.label} lines={C.compare.titleLines} align="split"
+    <MarketingSectionHeader id="compare-title" index="05" label={C.compare.label} lines={C.compare.titleLines} align="split"
       lede={<Link href="/coverage" className={t.textLink}>{C.compare.action}<ArrowRight size={16} aria-hidden="true" /></Link>} />
     <ul className={t.compareList}>{C.compare.items.map((item, index) => <li key={item.title}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><h3>{item.title}</h3><p>{item.body}</p></li>)}</ul>
   </section>

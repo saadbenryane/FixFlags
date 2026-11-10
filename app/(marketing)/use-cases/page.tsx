@@ -15,7 +15,7 @@ const CASE_ICONS = { founders: Code2, ecommerce: ShoppingBag, agencies: PanelsTo
 
 export default function UseCasesPage() {
   return <div className={s.page}>
-    <PublicPageIntro page="/use-cases" label={C.label} title={C.title} body={C.body}><PublicPageActions /></PublicPageIntro>
+    <PublicPageIntro page="/use-cases" label={C.label} title={C.title} lines={C.titleLines} body={C.body}><PublicPageActions /></PublicPageIntro>
     <Section spacing="overview"><Container variant="marketing">
       <nav aria-label={C.label} className={s.navigation}>
         {C.cases.map(item => {

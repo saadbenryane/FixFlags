@@ -26,7 +26,7 @@ export default function AiBuildersPage() {
   const agents = AI_BUILDER_TOOLS.filter(tool => tool.kind === 'agent')
   return <>
     <MarketingPageViewTracker page="/ai-builders" />
-    <PublicPageIntro page="/ai-builders" label={C.label} title={C.title} body={C.body}><PublicPageActions /></PublicPageIntro>
+    <PublicPageIntro page="/ai-builders" label={C.label} title={C.title} lines={C.titleLines} body={C.body}><PublicPageActions /></PublicPageIntro>
     <Section spacing="overview"><Container variant="marketing" className={s.stack}>
       <section aria-labelledby="ai-tools-title">
         <h2 id="ai-tools-title" className={s.heading}>{C.toolsTitle}</h2>
@@ -37,7 +37,7 @@ export default function AiBuildersPage() {
       </section>
       <section aria-labelledby="ai-loop-title">
         <h2 id="ai-loop-title" className={s.heading}>{C.loopTitle}</h2>
-        <ol className={s.loop}>{C.loop.map((step, index) => <li key={step.label}><p className={s.loopHead}><span aria-hidden="true">{index + 1}</span>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}</ol>
+        <ol className={s.loop}>{C.loop.map((step, index) => <li key={step.label}><p className={s.loopHead}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}</ol>
       </section>
       <section className={s.why} aria-labelledby="ai-why-title">
         <h2 id="ai-why-title" className={s.heading}>{C.why.title}</h2>

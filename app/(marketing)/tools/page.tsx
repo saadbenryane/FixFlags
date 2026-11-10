@@ -12,7 +12,7 @@ export const metadata = buildPageMetadata('freeTools', '/tools')
 
 export default function FreeToolsPage() {
   return <>
-    <PublicPageIntro page="/tools" label={C.label} title={C.title} body={C.body} />
+    <PublicPageIntro page="/tools" label={C.label} title={C.title} lines={C.titleLines} body={C.body} />
     <Section spacing="overview"><Container variant="marketing" className={s.stack}>
       <ul className={s.toolGrid} aria-label={C.label}>
         {C.tools.map(tool => <li key={tool.href}><Link href={tool.href as Route} className={s.toolCard} aria-label={C.open(tool.name)}>

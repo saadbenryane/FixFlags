@@ -1,25 +1,27 @@
-.stack { display: grid; gap: 64px; }
-.heading { font-family: var(--font-display), sans-serif; font-size: clamp(24px, 2.6vw, 32px); font-weight: 600; letter-spacing: -.035em; line-height: 1.2; }
+.stack { display: grid; gap: clamp(72px, 9vw, 120px); }
+.heading { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 500; letter-spacing: -.045em; line-height: 1.06; text-wrap: balance; }
 .groupTitle { margin: 24px 0 12px; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 600; }
 .toolGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
 .toolCard {
-  position: relative; display: grid; gap: 8px; height: 100%; min-height: 44px; padding: 20px 44px 20px 20px; border-radius: 18px;
-  background: hsl(var(--muted) / .4); color: hsl(var(--foreground)); transition: background-color 180ms;
+  position: relative; display: grid; gap: 8px; height: 100%; min-height: 44px; padding: 22px 48px 22px 22px; border-radius: 20px;
+  background: hsl(var(--window)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 10px 30px -18px hsl(30 15% 20% / .22);
+  transition: box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
-.toolCard:hover { background: hsl(var(--muted) / .7); }
+.toolCard:hover { transform: translateY(-2px); box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 18px 40px -18px hsl(30 15% 20% / .3); }
 .toolCard:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .toolMark { display: inline-flex; width: 22px; height: 22px; color: hsl(var(--brand)); }
 .toolMark svg { width: 100%; height: 100%; }
-.toolName { font-size: 16px; font-weight: 650; }
+.toolName { font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
 .toolSummary { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.55; }
 .toolArrow { position: absolute; top: 22px; right: 18px; color: hsl(var(--brand)); }
 
 .loop { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 20px 0 0; padding: 0; list-style: none; counter-reset: none; }
-.loop li { padding: 20px; border-radius: 18px; background: hsl(var(--muted) / .35); }
+.loop li { padding: 24px; border-radius: 20px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 10px 30px -18px hsl(30 15% 20% / .22); }
 .loopHead { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; }
 .loop .loopHead { margin-top: 0; color: hsl(var(--foreground)); }
-.loopHead > span { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 13px; font-weight: 700; }
-.loop h3 { margin-top: 14px; font-size: 16px; font-weight: 650; }
+/* Steps use the section kicker's mono index, not filled badges. */
+.loopHead > span { color: hsl(var(--brand)); font-family: var(--font-mono), monospace; font-size: 12px; font-weight: 500; }
+.loop h3 { margin-top: 18px; font-family: var(--font-display), sans-serif; font-size: 20px; font-weight: 500; letter-spacing: -.025em; }
 .loop p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
 
 .why { max-width: 720px; }
@@ -30,7 +32,7 @@
 .back:hover { color: hsl(var(--foreground)); }
 
 .example { max-width: 760px; }
-.window { overflow: hidden; margin: 20px 0 0; border-radius: 18px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); }
+.window { overflow: hidden; margin: 20px 0 0; border-radius: 20px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); box-shadow: var(--shadow-window); }
 .windowBar { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 0 16px; background: hsl(var(--stage-raised)); font-size: 13px; font-weight: 600; }
 .windowBar small { margin-left: auto; overflow: hidden; color: hsl(var(--stage-muted)); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .prompt { margin: 0; padding: 20px; font-family: var(--font-mono), monospace; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
@@ -47,5 +49,5 @@
 .tip p { font-size: 15px; line-height: 1.6; }
 
 .otherTools { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
-.otherTools a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: hsl(var(--muted) / .5); font-size: 14px; font-weight: 550; }
-.otherTools a:hover { background: hsl(var(--muted)); }
+.otherTools a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 6px 16px -8px hsl(30 15% 20% / .3); font-size: 14px; font-weight: 550; }
+.otherTools a:hover { color: hsl(var(--brand-strong)); }

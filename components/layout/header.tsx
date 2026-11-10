@@ -83,6 +83,7 @@ export function Header({
     <header
       data-primary-navigation
       data-surface={isMarketing && !scrolled ? 'clear' : 'frosted'}
+      data-tone={isMarketing ? 'canvas' : undefined}
       className={cn(
         'sticky top-0 z-navbar border-0',
         styles.surface,
