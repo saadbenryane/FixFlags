@@ -82,7 +82,7 @@ export const SITE_BOARD_COPY = {
   fixAndVerify: 'Fix this problem',
   fixStep: 'Apply the fix',
   fixStepBody: 'Paste the fix instructions where you built your website, or send them to someone who can help.',
-  readFixGuidance: 'Read fix instructions',
+  readFixGuidance: 'Fix it yourself',
   verifyStep: 'Check the fix',
   verifyStepBody: 'Publish your changes, then check the same page and action again.',
   copyDoesNotResolve: 'After publishing the fix, check this page again to confirm it works.',
