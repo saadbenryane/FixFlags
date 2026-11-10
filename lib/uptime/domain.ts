@@ -120,12 +120,16 @@ export function uptimeTimelineBounds(now: Date, window: UptimeHistory['window'])
 
 export type UptimePeriodEvidence = { checked: number; failed: boolean; allOnline: boolean }
 
-/** A period is healthy only when each due slot has successful evidence. */
-export function uptimeTimelineSegments(bounds: ReturnType<typeof uptimeTimelineBounds>, periods: ReadonlyMap<number, UptimePeriodEvidence>): UptimeSegment[] {
+/** A period is healthy only when each due slot has successful evidence. Slots
+ * before monitoring began are not due, so a new Site's history starts empty
+ * (expected 0) instead of reporting unknown availability it never promised.
+ * Omit `monitoredFrom` for a timeline that is fully due. */
+export function uptimeTimelineSegments(bounds: ReturnType<typeof uptimeTimelineBounds>, periods: ReadonlyMap<number, UptimePeriodEvidence>, monitoredFrom?: number): UptimeSegment[] {
+  const firstSlot = monitoredFrom === undefined ? -Infinity : uptimeSlotStart(monitoredFrom)
   return Array.from({ length: bounds.count }, (_, index) => {
     const from = bounds.start + index * bounds.span, to = from + bounds.span
     const { checked = 0, failed = false, allOnline = false } = periods.get(from) ?? {}
-    const expected = (Math.min(to, bounds.dueThrough) - from) / UPTIME_INTERVAL_MS
+    const expected = Math.max(0, (Math.min(to, bounds.dueThrough) - Math.max(from, firstSlot)) / UPTIME_INTERVAL_MS)
     return { startAt: new Date(from).toISOString(), endAt: new Date(to).toISOString(),
       state: failed ? 'offline' : checked === expected && expected > 0 && allOnline ? 'online' : 'unknown', checked, expected }
   })

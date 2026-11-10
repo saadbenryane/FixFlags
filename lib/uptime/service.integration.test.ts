@@ -933,6 +933,8 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
 
   it('shares scheduled slot coverage across summary and history without collapsing retained rows', async () => {
     const { project, monitor } = await monitorFixture()
+    // The retained probes below predate the fixture's creation time.
+    await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { createdAt: new Date(originTime.getTime() - 86400_000) } })
     await db().uptimeProbe.createMany({ data: [-20, -10, -1].map(minutes => {
       const at = new Date(originTime.getTime() + minutes * 60_000)
       return { monitorId: monitor.id, version: monitor.version, targetUrl: project.url,

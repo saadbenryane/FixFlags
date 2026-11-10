@@ -10,7 +10,7 @@ type MonitorStatus = Pick<UptimeMonitor, 'version' | 'targetUrl' | 'enabled' | '
 
 /** Read unresolved incident scope with status, without loading probe history. */
 export const uptimeStatusMonitorSelect = {
-  version: true, targetUrl: true, enabled: true, state: true, lastCheckedAt: true, nextProbeAt: true, confirmationDueAt: true,
+  version: true, targetUrl: true, enabled: true, state: true, lastCheckedAt: true, nextProbeAt: true, confirmationDueAt: true, createdAt: true,
   incidents: { where: { recoveredAt: null, supersededAt: null }, select: { version: true, targetUrl: true, confirmedAt: true } },
 } as const
 

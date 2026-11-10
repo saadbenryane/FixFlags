@@ -100,7 +100,7 @@ async function readUptime(projectId: string, window: UptimeHistory['window'], cu
     if (!project || project.deletedAt) return null
     if (cursor) throw new InvalidUptimeCursorError()
     return { project, monitor: null, value: { ...projectUptimeStatus(project, null, now), openIncidentCount: 0,
-      segments: uptimeTimelineSegments(bounds, new Map()), window, probes: [], incidents: [], nextCursor: null } }
+      segments: uptimeTimelineSegments(bounds, new Map(), Infinity), window, probes: [], incidents: [], nextCursor: null } }
   }
   if (monitor.project.deletedAt) return null
   const target = normalizeAuditUrl(monitor.project.url)
@@ -134,7 +134,7 @@ async function readUptime(projectId: string, window: UptimeHistory['window'], cu
   const lastProbe = rows.length > 100 ? probes.at(-1) : undefined
   const value = uptimeHistorySchema.parse({ ...projectUptimeStatus(monitor.project, monitor, now), openIncidentCount,
     historyScope: { key: `${monitor.id}:${monitor.version}`, from: from.toISOString(), through: now.toISOString() },
-    segments: uptimeTimelineSegments(bounds, periods),
+    segments: uptimeTimelineSegments(bounds, periods, monitor.createdAt.getTime()),
     window, probes, incidents: incidents.map(row => ({ id: row.id, targetUrl: row.targetUrl, reason: row.reason, failureOrigin: row.failureOrigin,
       startedAt: row.startedAt.toISOString(), confirmedAt: row.confirmedAt.toISOString(), recoveredAt: row.recoveredAt?.toISOString() ?? null, supersededAt: row.supersededAt?.toISOString() ?? null })),
     nextCursor: lastProbe ? `u1.${lastProbe.id}.${cursorSignature(scope, window, lastProbe.id)}` : null })

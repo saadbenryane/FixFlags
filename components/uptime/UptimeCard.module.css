@@ -11,6 +11,7 @@
 .marks { display: flex; gap: 3px; align-items: center; height: 30px; }
 .marks span { flex: 1; min-width: 0; height: 22px; border-radius: 3px; background: hsl(var(--muted-foreground) / .13); }
 .marks span[data-state='online'] { background: hsl(var(--success) / .65); }
+.marks span[data-state='none'] { background: hsl(var(--muted-foreground) / .05); }
 .marks span[data-state='offline'] { background: hsl(var(--brand)); }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 12px; color: hsl(var(--muted-foreground)); font-size: 11px; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }

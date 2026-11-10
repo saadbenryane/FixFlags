@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentUptimeState, uptimeTimeline, uptimeTransition, UPTIME_CONFIRMATION_MS } from './domain'
+import { currentUptimeState, uptimeTimeline, uptimeTimelineBounds, uptimeTimelineSegments, uptimeTransition, UPTIME_CONFIRMATION_MS } from './domain'
 
 const now = new Date('2026-10-12T12:30:00.000Z')
 describe('recorded Uptime transitions', () => {
@@ -52,5 +52,14 @@ describe('recorded Uptime transitions', () => {
     expect(uptimeTimeline([first], at).at(-1)).toMatchObject({ state: 'unknown', checked: 1, expected: 2 })
     expect(uptimeTimeline([first, { ...first, scheduledAt: at.toISOString(), observedAt: at.toISOString() }], at).at(-1))
       .toMatchObject({ state: 'online', checked: 2, expected: 2 })
+  })
+
+  it('starts a new Site history when monitoring began, without unknown periods before it', () => {
+    const bounds = uptimeTimelineBounds(now, '24h')
+    const segments = uptimeTimelineSegments(bounds, new Map(), new Date('2026-10-12T12:05:00.000Z').getTime())
+    expect(segments.slice(0, -1).every(segment => segment.expected === 0 && segment.state === 'unknown')).toBe(true)
+    expect(segments.at(-1)).toMatchObject({ startAt: '2026-10-12T12:00:00.000Z', expected: 3 })
+    expect(uptimeTimelineSegments(bounds, new Map(), Infinity).every(segment => segment.expected === 0)).toBe(true)
+    expect(uptimeTimelineSegments(bounds, new Map())[0].expected).toBe(3)
   })
 })

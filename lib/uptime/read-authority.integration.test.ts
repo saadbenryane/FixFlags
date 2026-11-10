@@ -23,8 +23,9 @@ run('Uptime private read authority', () => {
     try {
       const project = await prisma.project.create({ data: { userId: owner.id, name: 'Uptime history fixture',
         canonicalHost: 'example.com', url: 'https://example.com/', watchInterval: 'WEEKLY' } })
+      // The monitor has existed for the whole retained month of evidence.
       const monitor = await prisma.uptimeMonitor.create({ data: { projectId: project.id, targetUrl: project.url,
-        state: 'online', lastCheckedAt: now, nextProbeAt: new Date(lastSlot + UPTIME_INTERVAL_MS) } })
+        state: 'online', lastCheckedAt: now, nextProbeAt: new Date(lastSlot + UPTIME_INTERVAL_MS), createdAt: new Date(now.getTime() - 40 * 86400_000) } })
       const site = uptimeReadSite(project)
       const probe = (at: number, result = 'ONLINE') => ({ monitorId: monitor.id, version: monitor.version, targetUrl: project.url,
         scheduledAt: new Date(at), observedAt: new Date(at + 1000), attempt: 1, result,

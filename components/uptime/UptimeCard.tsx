@@ -14,11 +14,14 @@ import { boardCardFreshnessText } from '@/lib/sites/board-card'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import styles from './UptimeCard.module.css'
 
+const segmentSummary = (segment: UptimeSegment) => segment.expected === 0 ? C.notMonitored
+  : C.periodSummary(segment.checked, segment.expected, C.states[segment.state])
+
 function PeriodStrip({ segments }: { segments: readonly UptimeSegment[] }) {
   return <div>
     <div className={styles.marks} role="img" aria-label={C.timeline}>
-      {segments.map(segment => <span key={segment.startAt} data-state={segment.state} aria-hidden
-        title={`${formatEvidenceTimestamp(segment.startAt)}: ${C.periodSummary(segment.checked, segment.expected, C.states[segment.state])}`} />)}
+      {segments.map(segment => <span key={segment.startAt} data-state={segment.expected === 0 ? 'none' : segment.state} aria-hidden
+        title={`${formatEvidenceTimestamp(segment.startAt)}: ${segmentSummary(segment)}`} />)}
     </div>
     <div className={styles.legend}>{(['online', 'offline', 'unknown'] as const).map(state => <span key={state}><i data-state={state} aria-hidden />{C.states[state]}</span>)}</div>
   </div>
@@ -141,7 +144,7 @@ export function UptimeCard({ siteId, summary, summaryReadAt, verification, histo
         <details className={styles.periods}><summary>{C.checkDetails}<ChevronDown size={15} aria-hidden /></summary>
           <p className={styles.scope}>{C.scope} {C.limitation}</p>
           {verification ? <details className={styles.periods}><summary>{C.renderedVerification}</summary><p>{C.renderedLimitation}</p>{verification}</details> : null}
-          {validHistory ? <details className={styles.periods}><summary>{C.recordedPeriods}</summary><ul>{validHistory.segments.map(segment => <li key={segment.startAt}><time dateTime={segment.startAt}>{formatEvidenceTimestamp(segment.startAt)}</time><span>{C.periodSummary(segment.checked, segment.expected, C.states[segment.state])}</span></li>)}</ul></details> : null}
+          {validHistory ? <details className={styles.periods}><summary>{C.recordedPeriods}</summary><ul>{validHistory.segments.map(segment => <li key={segment.startAt}><time dateTime={segment.startAt}>{formatEvidenceTimestamp(segment.startAt)}</time><span>{segmentSummary(segment)}</span></li>)}</ul></details> : null}
         </details>
     </ResponsiveDepth>
   </>

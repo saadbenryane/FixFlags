@@ -23,6 +23,7 @@ export const UPTIME_COPY = {
   confirmationPending: 'Confirmation pending', recovered: 'Back online', incidentOpen: 'Confirmed unavailable',
   targetChanged: 'Target changed. Recovery was not verified.', lastChecked: 'Last checked', checked: 'Checked',
   openIncidents: (count: number) => `${count} open ${count === 1 ? 'incident' : 'incidents'}`,
+  notMonitored: 'Not monitored yet.',
   periodSummary: (checked: number, expected: number, state: string) => `${checked} of ${expected} scheduled checks recorded. ${state}.`,
   observedDuration: (minutes: number) => `Observed incident duration: ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,
   eventDown: 'Website reachability failed', eventRecovered: 'Website reachability recovered',

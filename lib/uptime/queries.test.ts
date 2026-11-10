@@ -55,7 +55,7 @@ describe('Uptime summary reads', () => {
   })
   it('withholds earlier observations from a suspended owner', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
-    db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url,
+    db.monitor.mockResolvedValue({ id: 'monitor_1', createdAt: new Date('2026-10-01T00:00:00Z'), version: 1, targetUrl: project.url,
       project: { ...project, user: { ...project.user, lifecycleStatus: 'SUSPENDED' } },
       enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null, incidents: [] })
     db.authorize.mockResolvedValue(null)
@@ -63,7 +63,7 @@ describe('Uptime summary reads', () => {
   })
   it('uses the same facts as history without loading detailed probes or incidents', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
-    db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url, project,
+    db.monitor.mockResolvedValue({ id: 'monitor_1', createdAt: new Date('2026-10-01T00:00:00Z'), version: 1, targetUrl: project.url, project,
       enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null, incidents: [] })
     const startAt = new Date(now.getTime() - 30 * 60_000)
     db.periods.mockResolvedValue([{ startAt, checked: 3, allOnline: true, failed: false }])
@@ -85,7 +85,7 @@ describe('Uptime summary reads', () => {
   it('keeps an open incident visible when the Site URL has not yet retargeted the monitor', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
     const previous = 'https://previous.example/'
-    db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: previous, project,
+    db.monitor.mockResolvedValue({ id: 'monitor_1', createdAt: new Date('2026-10-01T00:00:00Z'), version: 1, targetUrl: previous, project,
       enabled: true, state: 'offline', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null,
       incidents: [{ version: 1, targetUrl: previous, confirmedAt: now }] })
     db.incidents.mockResolvedValue([{ id: 'incident_1', targetUrl: previous, reason: 'response_error',
