@@ -279,6 +279,7 @@ export function fullCommands({ websiteOnly = false } = {}) {
     command('test:coverage', 'npm', ['run', websiteOnly ? 'test:coverage:website' : 'test:coverage']),
     command('accuracy:eval', 'npm', ['run', 'accuracy:eval']),
     command('build', 'node', ['scripts/next-build.mjs']),
+    command('perf:js-budget', 'npm', ['run', 'perf:js-budget']),
     command('worker:build', 'npm', ['run', 'worker:build']),
   ]
 }

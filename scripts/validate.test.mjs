@@ -122,6 +122,7 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('db:drift'))
       assert.ok(labels.includes('build'))
       assert.ok(labels.includes('worker:build'))
+      assert.ok(labels.indexOf('perf:js-budget') === labels.indexOf('build') + 1)
       assert.deepEqual(plan.commands.find((item) => item.label === 'build'), {
         label: 'build',
         executable: 'node',

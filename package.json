@@ -33,6 +33,7 @@
     "skills:validate": "node scripts/skill-validator.mjs",
     "brand:icons": "node scripts/generate-brand-icons.mjs && tsx scripts/generate-social-card.mts && node --test scripts/brand-assets.test.mjs",
     "seo:guard": "node scripts/seo-guard.mjs",
+    "perf:js-budget": "node scripts/marketing-js-budget.mjs",
     "metadata:route-guard": "node scripts/metadata-route-guard.mjs",
     "security:audit": "node scripts/security-audit.mjs",
     "copy-drift-check": "tsx scripts/copy-drift-check.ts",

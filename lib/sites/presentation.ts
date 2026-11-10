@@ -188,18 +188,34 @@ export function resultPresentation(input: {
   return { state, label: SITE_PRESENTATION_COPY.result[state] }
 }
 
+/** Something a visitor tried to do failed: a journey, a button, a form, or a page that would not open. */
+const VISITOR_ACTION_CHECK = /^(journey-|flow-|form-|outcome-|checkout-|overlay-blocks-|auth-page-broken|cta-dead-link|dead-link|broken-internal-links|page-http-error|page-redirect-loop)/
+/** A measurement of speed or code weight. Real, but not something a visitor could not do. */
+const METRIC_CHECK = /^(lcp-|cls-|inp-|perf-score-|mobile-perf-|mobile-lcp-|unused-js|unused-css|render-blocking|unoptimized-images)/
+
+export function flagActionKind(checkId: string | null | undefined): 'visitor_action' | 'metric' | 'other' {
+  const id = (checkId ?? '').split('::page:')[0]
+  if (VISITOR_ACTION_CHECK.test(id)) return 'visitor_action'
+  if (METRIC_CHECK.test(id)) return 'metric'
+  return 'other'
+}
+
 export function flagPriority(input: {
   severity: string
   confidence?: number | null
   affectedPageCount?: number
   outcomeId?: string | null
+  checkId?: string | null
 }): { band: FlagPriorityBand; score: number } {
   const severity = input.severity.toUpperCase()
   const severityScore = severity === 'CRITICAL' ? 100 : severity === 'IMPORTANT' ? 55 : 25
   const confidenceScore = Math.round(Math.max(0, Math.min(1, input.confidence ?? 0)) * 20)
   const scopeScore = Math.min(20, Math.max(0, input.affectedPageCount ?? 1) * 4)
   const outcomeScore = input.outcomeId ? 20 : 0
-  const score = severityScore + confidenceScore + scopeScore + outcomeScore
+  // A broken action outranks a slow image: action failures lead, metrics follow at equal severity.
+  const kind = flagActionKind(input.checkId)
+  const actionScore = kind === 'visitor_action' ? 50 : kind === 'metric' ? -20 : 0
+  const score = severityScore + confidenceScore + scopeScore + outcomeScore + actionScore
   return { band: score >= 90 ? 'fix_first' : 'other', score }
 }
 

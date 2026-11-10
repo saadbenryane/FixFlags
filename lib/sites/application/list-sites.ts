@@ -223,13 +223,13 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       if (!occurrence || !isCustomerFlag(occurrence)) return []
       const affectedPageCount = incidentAffectedPaths(active).length
       return [{ problem: occurrence.problem, severity: occurrence.severity, checkId: occurrence.checkId, rubric: occurrence.rubric, impactTag: occurrence.impactTag,
-        priority: flagPriority({ severity: occurrence.severity, confidence: occurrence.confidence, affectedPageCount, outcomeId: improvement.outcomeId }) }]
+        priority: flagPriority({ severity: occurrence.severity, confidence: occurrence.confidence, affectedPageCount, outcomeId: improvement.outcomeId, checkId: occurrence.checkId }) }]
     })
     const currentUnbound = (currentUnboundByProject.get(project.id) ?? []).map(withCurrentEvidence)
     if (currentUnbound.some(hasUnresolvedFlagEvidence)) evidenceComplete = false
     const unprojected = currentUnbound.filter(isCustomerFlag)
       .map((flag) => ({ problem: flag.problem, severity: flag.severity, checkId: flag.checkId, rubric: flag.rubric, impactTag: flag.impactTag,
-        priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: incidentAffectedPaths([flag]).length }) }))
+        priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: incidentAffectedPaths([flag]).length, checkId: flag.checkId }) }))
     const customerFlags = [...durableFlags, ...unprojected]
 
     const { coverage: facts, coverageMaxAgeMs, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({

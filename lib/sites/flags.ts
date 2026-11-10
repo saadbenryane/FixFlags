@@ -128,6 +128,7 @@ function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
     confidence: flag.confidence,
     affectedPageCount: affectedPaths.length,
     outcomeId: flag.relatedOutcome?.id,
+    checkId: flag.checkId,
   })
   const definition = resolveRepairDefinition({ ...flag, supportingEvidenceUnreadable })
   const repairDefinition = definition && !supportingEvidenceUnreadable && definition.kind !== 'evidence-recovery' && flag.scopedRepairGuidance
