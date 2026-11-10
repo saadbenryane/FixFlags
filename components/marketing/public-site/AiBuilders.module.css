@@ -1,0 +1,49 @@
+.stack { display: grid; gap: 64px; }
+.heading { font-family: var(--font-display), sans-serif; font-size: clamp(24px, 2.6vw, 32px); font-weight: 600; letter-spacing: -.035em; line-height: 1.2; }
+.groupTitle { margin: 24px 0 12px; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 600; }
+.toolGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.toolCard {
+  position: relative; display: grid; gap: 8px; height: 100%; min-height: 44px; padding: 20px 44px 20px 20px; border-radius: 18px;
+  background: hsl(var(--muted) / .4); color: hsl(var(--foreground)); transition: background-color 180ms;
+}
+.toolCard:hover { background: hsl(var(--muted) / .7); }
+.toolCard:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.toolMark { display: inline-flex; width: 22px; height: 22px; color: hsl(var(--brand)); }
+.toolMark svg { width: 100%; height: 100%; }
+.toolName { font-size: 16px; font-weight: 650; }
+.toolSummary { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.55; }
+.toolArrow { position: absolute; top: 22px; right: 18px; color: hsl(var(--brand)); }
+
+.loop { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 20px 0 0; padding: 0; list-style: none; counter-reset: none; }
+.loop li { padding: 20px; border-radius: 18px; background: hsl(var(--muted) / .35); }
+.loop li > span { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 13px; font-weight: 700; }
+.loop h3 { margin-top: 14px; font-size: 16px; font-weight: 650; }
+.loop p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
+
+.why { max-width: 720px; }
+.why p { margin-top: 12px; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.7; }
+
+.entry { width: min(100%, 560px); margin: 8px auto 0; }
+.back { display: inline-flex; align-items: center; gap: 8px; justify-self: start; min-height: 44px; color: hsl(var(--muted-foreground)); font-size: 14px; font-weight: 550; }
+.back:hover { color: hsl(var(--foreground)); }
+
+.example { max-width: 760px; }
+.window { overflow: hidden; margin: 20px 0 0; border-radius: 18px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); }
+.windowBar { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 0 16px; background: hsl(var(--stage-raised)); font-size: 13px; font-weight: 600; }
+.windowBar small { margin-left: auto; overflow: hidden; color: hsl(var(--stage-muted)); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.prompt { margin: 0; padding: 20px; font-family: var(--font-mono), monospace; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+.note { margin-top: 10px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.copy {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; padding: 0 18px; border: 0; border-radius: var(--radius-control);
+  background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.copy:hover { background: hsl(var(--brand-hover)); }
+.manual { width: 100%; margin-top: 12px; font-family: var(--font-mono), monospace; font-size: 12px; }
+
+.tip { display: flex; align-items: flex-start; gap: 12px; max-width: 760px; padding: 18px 20px; border-radius: 16px; background: hsl(var(--brand-muted)); }
+.tip svg { flex-shrink: 0; margin-top: 2px; color: hsl(var(--brand-strong)); }
+.tip p { font-size: 15px; line-height: 1.6; }
+
+.otherTools { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.otherTools a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: hsl(var(--muted) / .5); font-size: 14px; font-weight: 550; }
+.otherTools a:hover { background: hsl(var(--muted)); }

@@ -19,13 +19,13 @@ type HeaderAuthProps = {
 };
 
 function AnalyzeAction({ mode, onNavigate }: HeaderAuthProps) {
-  return <Button variant="brand" size="sm" className={cn(mode === "mobileSheet" && "w-full")} asChild>
+  return <Button variant="brand" size="sm" className={cn("whitespace-nowrap", mode === "mobileSheet" && "w-full")} asChild>
     <PublicLink href="/new" target="analyze" onClick={onNavigate}>{REVIEW_ENTRY.compactCta}</PublicLink>
   </Button>;
 }
 
 function SignedOutActions({ mode = "desktop", onNavigate, signInHref }: HeaderAuthProps & { signInHref: Route }) {
-  const signIn = <Link prefetch={false} href={signInHref} onClick={onNavigate} className="inline-flex min-h-11 min-w-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{AUTH.signIn.cta}</Link>;
+  const signIn = <Link prefetch={false} href={signInHref} onClick={onNavigate} className="inline-flex min-h-11 min-w-11 items-center whitespace-nowrap rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{AUTH.signIn.cta}</Link>;
   if (mode === "mobileTop") return signIn;
   return <div className={cn("flex items-center gap-2", mode === "mobileSheet" && "flex-col items-stretch")}>
     {mode === "mobileSheet" ? <Button variant="outline" size="sm" className="w-full" asChild><Link prefetch={false} href={signInHref} onClick={onNavigate}>{AUTH.signIn.cta}</Link></Button> : signIn}

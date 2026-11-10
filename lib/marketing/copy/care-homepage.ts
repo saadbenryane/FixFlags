@@ -23,7 +23,8 @@ export const CARE_HOME = {
     body: PRODUCT_STORY.description,
     setup: PRODUCT_STORY.setup,
     cta: PRODUCT_STORY.action,
-    sampleAction: 'See a sample report',
+    sampleAction: 'Try the interactive sample',
+    sampleHref: '/how-it-works#sample',
     placeholder: 'yourwebsite.com',
     benefits: [
       { title: 'Checks on your schedule' },
@@ -98,7 +99,7 @@ export const CARE_HOME = {
   conversionFlags: [
     { id: 'checkout-flag', title: 'Checkout is unavailable', href: '#flag-example' },
   ],
-  performanceFlags: [{ id: 'perf-1', title: 'Campaign page is slow', href: '#product' }],
+  performanceFlags: [{ id: 'perf-1', title: 'Campaign page is slow', href: '#sample' }],
   monitoring: {
     label: 'Daily monitoring active',
     summary: 'Pricing page, contact page, and checkout',
@@ -137,10 +138,46 @@ export const CARE_HOME = {
   },
   checks: HOMEPAGE_CHECK_COVERAGE,
   independent: {
-    label: 'A second pair of eyes',
-    title: 'Know the fix worked.',
-    body: 'Publish your changes, then check the same page and action again. See whether the problem is gone.',
-    action: 'See how we check',
+    label: 'Proof, not promises',
+    title: 'A receipt, not a rescan.',
+    body: 'The tool that made the change never certifies it. FixFlags opens the same page, repeats the same action on your live site, and keeps the before and after.',
+    points: [
+      'Same page and action, rechecked on the live site',
+      'Before and after captures kept with the Flag',
+      'Marked Verified only when the recheck passes',
+    ],
+    beforeLabel: 'Before', beforeTitle: 'Add to cart did nothing',
+    beforeAlt: 'Canvas Tote product page on a phone. Add to cart was selected, the cart shows 0 items, and checkout stays closed.',
+    afterLabel: 'After', afterTitle: 'Canvas Tote in the cart',
+    afterAlt: 'Canvas Tote product page on a phone after the fix. The cart shows 1 item and Checkout is available.',
+    sampleNote: 'Captures from a controlled demo store. No payment or order was made.',
+    action: 'See how verification works',
+  },
+  builtForAi: {
+    label: 'Built for your AI',
+    title: 'Hand the fix to the tool you build with.',
+    body: 'Every Flag comes with fix instructions: the page, what happened, what should happen, and how to confirm it. Paste them into your AI tool. Nothing to install.',
+    toolsLabel: 'AI tools',
+    sampleLabel: 'Sample fix instructions',
+    guideAction: (tool: string) => `Using FixFlags with ${tool}`,
+    tools: [
+      { key: 'claude-code', label: 'Claude Code', surface: 'terminal', where: 'Paste into a Claude Code session in your project folder.' },
+      { key: 'cursor', label: 'Cursor', surface: 'chat', where: 'Paste into the Agent chat with your project open.' },
+      { key: 'lovable', label: 'Lovable', surface: 'chat', where: 'Paste into the chat for your Lovable project.' },
+      { key: 'bolt', label: 'Bolt', surface: 'chat', where: 'Paste into the chat for your Bolt project.' },
+      { key: 'replit', label: 'Replit', surface: 'chat', where: 'Paste into Replit Agent for your app.' },
+    ],
+    chatPlaceholder: (tool: string) => `Ask ${tool}…`,
+  },
+  compare: {
+    label: 'How it compares',
+    title: 'Not another score report.',
+    items: [
+      { title: 'Not a page score', body: 'Scanners grade pages. FixFlags tries what visitors do, like opening pages and adding to cart, and tells you what broke.' },
+      { title: 'Not session replay', body: 'No tracking tag and no traffic needed. Your first check works on launch day.' },
+      { title: 'Not just uptime', body: 'A page can load while checkout fails. FixFlags checks the steps, not only the response.' },
+    ],
+    action: 'See everything we check',
   },
   story: {
     label: 'Website checks',
@@ -195,8 +232,8 @@ export const CARE_HOME = {
   },
   notifications: {
     label: 'Email alerts',
-    title: 'Get notified. Keep building.',
-    body: 'We check on your schedule and email you when something needs attention or a fix is confirmed.',
+    title: 'Keep watching after launch.',
+    body: 'Scheduled checks and uptime keep an eye on your live site. You get an email when something breaks, when a fix is confirmed, and when a fixed problem comes back.',
     detailTitle: 'What gets checked?',
     detailBody: 'Save your website to start scheduled checks. You can see what’s checked, change the schedule, and choose your email alerts in Settings. New problems can be found at the next scheduled check.',
     sampleLabel: 'Example email · Sample data',
@@ -266,7 +303,7 @@ export const CARE_HOME = {
     added: 'Added',
     action: 'Explore integrations',
   },
-  close: { title: 'Give your website a little care.', body: 'Find what needs attention. Get fix instructions to copy and paste. Start free.', pricing: 'What’s included for free' },
+  close: { title: 'Check your website before your visitors do.', body: 'See what’s broken, hand your AI the fix, and prove it worked. Start free.', pricing: 'What’s included for free' },
 } as const
 
 /** Illustrative analysis snapshot, not a customer assessment or live schedule. */

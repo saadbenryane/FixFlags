@@ -14,8 +14,10 @@ describe('shared product story contracts', () => {
     expect(CARE_HOME.workflow.steps[2].body).toContain('Check now')
     expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your website.*scheduled checks/i)
     expect(SEO.home.description).toBe(PRODUCT_STORY.description)
-    expect(SEO.home.description).toMatch(/email alerts/i)
-    expect(SEO.home.description).toMatch(/fix instructions you can copy and paste/i)
+    expect(SEO.home.description).toMatch(/real browser/i)
+    expect(SEO.home.description).toMatch(/hands your AI the fix/i)
+    expect(SEO.home.description).toMatch(/rechecks to prove it worked/i)
+    expect(SEO.home.title).toBe(`FixFlags | ${PRODUCT_STORY.summary}`)
   })
   it('keeps the hero and social artwork on the same product promise', () => {
     expect(CARE_HOME.hero.headline.join(' ')).toBe(BRAND.tagline)

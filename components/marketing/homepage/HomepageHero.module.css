@@ -1,11 +1,11 @@
-.hero { position: relative; isolation: isolate; overflow: clip; padding: clamp(64px, 8.5vw, 132px) 24px 112px; }
-.layout { position: relative; max-width: 1280px; margin-inline: auto; }
-.copy { position: relative; z-index: 1; width: 61%; min-width: 0; padding-block: 20px; }
-.hero h1 { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(45px, 5.2vw, 76px); font-weight: 650; letter-spacing: -.055em; line-height: 1.04; }
+.hero { padding: clamp(48px, 6vw, 96px) 24px clamp(56px, 7vw, 104px); }
+.layout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: clamp(32px, 4vw, 64px); max-width: 1280px; margin-inline: auto; }
+.copy { min-width: 0; }
+.hero h1 { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(42px, 4.6vw, 68px); font-weight: 650; letter-spacing: -.05em; line-height: 1.04; text-wrap: balance; }
 .hero h1 > span { display: block; }
 .period { color: hsl(var(--brand)); }
-.description { max-width: 570px; margin-top: 24px; color: hsl(var(--muted-foreground)); font-size: clamp(16px, 1.5vw, 20px); line-height: 1.6; }
-.hero .entry { max-width: 640px; margin: 32px 0 0; }
+.description { max-width: 540px; margin-top: 22px; color: hsl(var(--muted-foreground)); font-size: clamp(16px, 1.35vw, 19px); line-height: 1.6; }
+.hero .entry { max-width: 560px; margin: 30px 0 0; }
 .hero .entry :global([data-audit-entry]) { border-color: hsl(var(--border) / .8); border-radius: calc(var(--radius-control) + 6px); box-shadow: 0 6px 24px hsl(var(--foreground) / .035); }
 .hero .entry :global([data-audit-entry]:focus-within) { border-color: hsl(var(--brand) / .7); box-shadow: 0 0 0 3px hsl(var(--brand) / .12); }
 .hero .entry :global([data-audit-entry] input) { height: 52px; min-height: 52px; font-size: 16px; }
@@ -13,42 +13,25 @@
 .note { display: flex; flex-wrap: wrap; align-items: center; gap: 0 24px; margin-top: 10px; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.5; }
 .note a { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; color: hsl(var(--foreground)); font-weight: 500; }
 .note a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.product { width: min(100% - 48px, 1248px); margin-inline: auto; padding-block: 64px 88px; scroll-margin-top: 90px; }
-.productIntro { max-width: 720px; margin: 0 auto 24px; text-align: center; }
-.productIntro h2 { font-family: var(--font-display), sans-serif; font-size: clamp(32px, 3.6vw, 46px); font-weight: 600; line-height: 1.15; letter-spacing: -.04em; }
-.productIntro p { max-width: 560px; margin: 18px auto 0; color: hsl(var(--muted-foreground)); font-size: 18px; line-height: 1.7; }
-.productIntro a { margin-top: 12px; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; color: hsl(var(--foreground)); font-weight: 550; }
-.benefits { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 40px; margin: 0 0 40px; padding: 0; list-style: none; }
-.benefits li { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 500; color: hsl(var(--muted-foreground)); }
-.benefits svg { flex-shrink: 0; color: hsl(var(--brand)); }
+.sequence { min-width: 0; }
 
-@media (max-width: 1023px) and (min-width: 768px) {
-  .copy { width: 62%; }
-  .hero h1 { font-size: clamp(42px, 5.5vw, 56px); }
-  .description { font-size: 16px; }
+@media (max-width: 1179px) {
+  .layout { grid-template-columns: minmax(0, 1fr); max-width: 760px; }
+  .copy { text-align: left; }
 }
 
 @media (max-width: 767px) {
-  .hero { padding: 40px 20px 300px; }
-  .copy { width: 100%; padding-block: 0; }
-  .hero h1 { font-size: clamp(34px, 7.5vw, 56px); letter-spacing: -.05em; }
-  .description { max-width: 430px; margin-top: 20px; font-size: 16px; }
+  .hero { padding: 36px 16px 48px; }
+  .hero h1 { font-size: clamp(34px, 9vw, 48px); }
+  .description { margin-top: 18px; font-size: 16px; }
   .hero .entry { margin-top: 24px; }
   .note { gap: 0 16px; font-size: 12px; }
-  .product { width: calc(100% - 32px); padding-block: 40px 56px; }
-  .productIntro { margin-bottom: 20px; }
-  .productIntro p { font-size: 16px; }
-  .benefits { gap: 12px 20px; margin-bottom: 24px; }
-}
-
-@media (max-width: 639px) {
-  .benefits { flex-direction: column; align-items: center; gap: 14px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .copy { animation: hero-copy-arrive 500ms var(--ease-out) both; }
-  .note a svg, .productIntro a svg { transition: transform var(--motion-fast) var(--ease-out); }
-  .note a:is(:hover, :focus-visible) svg, .productIntro a:is(:hover, :focus-visible) svg { transform: translateX(3px); }
+  .note a svg { transition: transform var(--motion-fast) var(--ease-out); }
+  .note a:is(:hover, :focus-visible) svg { transform: translateX(3px); }
 }
 /* Keep copy and controls legible throughout the entrance motion. */
 @keyframes hero-copy-arrive {

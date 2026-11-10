@@ -68,8 +68,7 @@
       "contentBearing": false,
       "requiredTerms": [],
       "consumers": [
-        "components/marketing/BrandClosing.tsx",
-        "components/marketing/homepage/GlassHeroMark.module.css"
+        "components/marketing/BrandClosing.tsx"
       ],
       "replaces": []
     },
@@ -83,8 +82,7 @@
       "contentBearing": false,
       "requiredTerms": [],
       "consumers": [
-        "components/marketing/BrandClosing.tsx",
-        "components/marketing/homepage/GlassHeroMark.module.css"
+        "components/marketing/BrandClosing.tsx"
       ],
       "replaces": []
     }

@@ -5,7 +5,7 @@ export const SITE_DASHBOARD_COPY = {
   affectedPages: (count: number) => `${count} affected pages`,
   open: (name: string) => `Open ${name}`,
   sampleBundleIntro: 'Illustrative FixFlags sample. These are not results from a real website.',
-  sampleReference: 'Sample reference: https://fixflags.com/#product',
+  sampleReference: 'Sample reference: https://fixflags.com/how-it-works#sample',
   pages: 'Pages',
   categoryDescription: 'Recorded results for this category.',
   moreFlags: (count: number) => `View ${count} more ${count === 1 ? 'Flag' : 'Flags'}`,

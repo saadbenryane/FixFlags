@@ -188,9 +188,6 @@
     "Account settings",
     "Recheck website"
   ],
-  "components/marketing/homepage/HomepageHero.tsx": [
-    "What FixFlags does"
-  ],
   "components/marketing/tools/MetaPreviewClient.tsx": [
     "Social preview"
   ],

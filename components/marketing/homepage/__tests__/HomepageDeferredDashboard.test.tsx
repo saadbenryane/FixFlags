@@ -1,9 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HomepageDeferredDashboard } from '../HomepageDeferredDashboard'
-import { HERO_STUDIO_IMAGE } from '../hero-assets'
 
 vi.mock('../HomepageDashboardPreview', () => ({ HomepageDashboardPreview: () => <div role="region" aria-label="Sample dashboard" /> }))
 
@@ -47,10 +44,4 @@ describe('deferred homepage dashboard', () => {
     expect(await screen.findByRole('region', { name: 'Sample dashboard' })).toBeInTheDocument()
   })
 
-  it('preloads the same hero image the stylesheet paints', () => {
-    const css = readFileSync(join(__dirname, '../GlassHeroMark.module.css'), 'utf8')
-    expect(css).toContain(`url('${HERO_STUDIO_IMAGE}')`)
-    const page = readFileSync(join(process.cwd(), 'app/(marketing)/page.tsx'), 'utf8')
-    expect(page).toMatch(/preload\(HERO_STUDIO_IMAGE, \{ as: 'image', fetchPriority: 'high' \}\)/)
-  })
 })

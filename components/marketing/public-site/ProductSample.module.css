@@ -1,0 +1,4 @@
+.sample { scroll-margin-top: 90px; }
+.intro { max-width: 640px; margin: 0 auto 28px; text-align: center; }
+.intro h2 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 600; line-height: 1.15; letter-spacing: -.04em; }
+.intro p { margin-top: 14px; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.65; }

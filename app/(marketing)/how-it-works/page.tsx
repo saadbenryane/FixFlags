@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { PublicPageIntro, PublicPageActions } from '@/components/marketing/public-site/PublicPage'
 import { HowItWorksWalkthrough } from '@/components/marketing/public-site/HowItWorksWalkthrough'
+import { ProductSample } from '@/components/marketing/public-site/ProductSample'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { HOMEPAGE_CHECK_COVERAGE } from '@/lib/marketing/copy/check-coverage'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
@@ -17,6 +18,7 @@ const REPEAT_ICONS = [Code2, Check, RefreshCw]
 export default function HowItWorksPage() {
   return <>
     <PublicPageIntro page="/how-it-works" label={C.label} title={C.title} body={C.body}><PublicPageActions /></PublicPageIntro>
+    <Section spacing="overview"><Container variant="marketing"><ProductSample /></Container></Section>
     <Section spacing="overview"><Container variant="marketing" className={s.content}>
       <HowItWorksWalkthrough areas={HOMEPAGE_CHECK_COVERAGE.areas.map(({ id, name }) => ({ id, name }))} />
       <section className={s.repeat} aria-labelledby="repeat-title">
@@ -33,7 +35,7 @@ export default function HowItWorksPage() {
     <Section spacing="marketing" tint="subtle"><Container variant="marketing" className={s.setup}>
       <h2>{C.setupTitle}</h2>
       <p>{C.setupBody}</p>
-      <div className={s.entry}><AuditInput variant="landing" idSuffix="-how-it-works" ctaPlacement="final" showLandingExtras={false} submitLabel={PUBLIC_SITE_COPY.analyze} /></div>
+      <div className={s.entry} id="analyze"><AuditInput variant="landing" idSuffix="-how-it-works" ctaPlacement="final" showLandingExtras={false} submitLabel={PUBLIC_SITE_COPY.analyze} /></div>
       <Link href="/coverage">{C.setupLink}<span className={s.linkArrow}><ArrowRight aria-hidden size={18} /></span></Link>
     </Container></Section>
   </>

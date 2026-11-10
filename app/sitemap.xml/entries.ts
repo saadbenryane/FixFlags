@@ -1,4 +1,5 @@
 import { WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
+import { AI_BUILDER_TOOLS } from '@/lib/marketing/copy/ai-builders'
 import { guideContentModifiedAt } from '@/lib/marketing/copy/destination-study'
 import type { MetadataRoute } from 'next'
 import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy-barrel'
@@ -46,6 +47,10 @@ export async function buildPublicSitemap(): Promise<SitemapEntry[]> {
       changeFrequency: 'monthly',
       priority: 0.5,
     })
+  }
+
+  for (const tool of AI_BUILDER_TOOLS) {
+    pages.push({ url: `${baseUrl}/ai-builders/${tool.slug}`, changeFrequency: 'monthly', priority: 0.8 })
   }
 
   for (const guide of WEBSITE_GUIDES) {

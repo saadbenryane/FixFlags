@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-10
+reviewed_at: 2026-11-10
 supersedes: []
 ---
 
@@ -13,15 +13,19 @@ Exact rendered strings live in `lib/marketing/copy/` and their tests. Product di
 
 ## Audience and position
 
-FixFlags is for people responsible for live websites and software. They may be founders, ecommerce operators, growth teams, agencies, or developers. Write for people with no technical background. Lead with what happened, why it matters, and the next action. Keep technical evidence available in details.
+FixFlags is for people shipping websites with AI builders and coding agents first, then agencies maintaining client sites. Many are not engineers. Write so a non-technical builder understands the headline and a developer trusts the details. Lead with what happened, why it matters, and the next action. Keep technical evidence (metrics, response codes, selectors) one click down.
 
 Describe the affected feature and its behavior. Do not imply that the reader personally clicked, submitted, ordered, or paid. Say a feature stopped working only when an earlier working result is recorded.
 
 FixFlags independently observes important live behavior, raises meaningful Flags, supports a fix, and verifies the result with fresh evidence. It reduces uncertainty; it does not promise omniscience, guaranteed revenue, or prevention of every failure.
 
-The customer loop is Monitor → Flag → Fix → Monitor. Monitor includes initial analysis, configured scheduled checks, and post-fix verification. Verification remains the proof required for recovery. An immediate check does not turn on scheduled monitoring or alter its cadence.
+The public story is Check, Flag, Fix, Verify. The customer loop underneath is Monitor → Flag → Fix → Monitor. Monitor includes initial analysis, configured scheduled checks, and post-fix verification. Verification remains the proof required for recovery. An immediate check does not turn on scheduled monitoring or alter its cadence.
 
 ## Voice
+
+The personality is a sharp, calm engineer friend who shows you the receipt. Short sentences. Specific nouns. Lead with the finding and put the limits in the details. No cute filler, and no "website care" language.
+
+Flag titles say what a visitor cannot do ("Add to cart didn't add the product"), not what a metric did. Metric names belong in the evidence, not the headline.
 
 Use language that is:
 
@@ -58,6 +62,8 @@ When the user supplies exact wording, use that wording. Do not paraphrase it or 
 | Monitoring | Scheduled independent execution. |
 | Coverage | What was evaluated, when, and with what limits. |
 | Check | A technical evidence producer, usually internal rather than a customer object. |
+
+Public copy uses one vocabulary: Site, Check, Flag, Fix instructions, Recheck, Verified, Watch. "Fix instructions" is the only public name for the handoff text (never "fix prompt"). The primary action is "Check your website". Retire Audit, Review, Analyze, Finding and Outcome from public marketing copy; Outcome remains an in-product term where the Site owns it.
 
 Prefer the concrete Outcome or result over abstract internal nouns. Do not create parallel customer taxonomies such as monitors, objectives, tasks, issues, warnings, alerts, and checks when the existing objects communicate the state.
 

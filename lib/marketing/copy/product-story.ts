@@ -1,8 +1,8 @@
 /** Shared public promise for the homepage, metadata, and social artwork. */
 export const PRODUCT_STORY = {
-  headline: ['Your website is live.', 'Is everything working?'],
-  description: 'Catch broken pages, slow load times, and buttons that fail. Get email alerts and fix instructions you can copy and paste.',
-  summary: 'Find problems. Get alerts. Copy the fix.',
+  headline: ['Your AI built it.', 'FixFlags makes sure it works.'],
+  description: 'Paste your URL. FixFlags checks your live site in a real browser, flags what’s broken with evidence, hands your AI the fix, and rechecks to prove it worked.',
+  summary: 'Find what’s broken. Hand your AI the fix. Prove it worked.',
   action: 'Check your website',
-  setup: 'Start with a free check.',
+  setup: 'No install. No signup to start.',
 } as const

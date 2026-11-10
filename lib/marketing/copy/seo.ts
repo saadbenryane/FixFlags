@@ -2,6 +2,7 @@ import { GUIDES_PAGE } from './guides'
 import { WEBSITE_PROMISE } from './care-homepage'
 import { PUBLIC_OFFER } from './public-offer'
 import { PRODUCT_STORY } from './product-story'
+import { AI_BUILDERS_PAGE } from './ai-builders'
 import { AI_CONNECTION_COPY } from './ai-connection'
 
 export const SEO = {
@@ -19,8 +20,12 @@ export const SEO = {
     title: 'Website monitoring use cases | FixFlags',
     description: 'Keep building your website or app. Get website checks, email alerts, and copy-and-paste fix instructions. For builders, store owners, and agencies.',
   },
+  aiBuilders: {
+    title: AI_BUILDERS_PAGE.seo.title,
+    description: AI_BUILDERS_PAGE.seo.description,
+  },
   home: {
-    title: `FixFlags | ${PRODUCT_STORY.headline.join(' ')}`,
+    title: `FixFlags | ${PRODUCT_STORY.summary}`,
     description:
       WEBSITE_PROMISE,
   },
@@ -43,9 +48,9 @@ export const SEO = {
     description: [PUBLIC_OFFER.paid, PUBLIC_OFFER.availability].join(' '),
   },
   howItWorks: {
-    title: 'How FixFlags Works',
+    title: 'FixFlags product | How checks, Flags, fixes and verification work',
     description:
-      'Enter your website. Find problems. Copy and paste the fix instructions, then check that your update worked.',
+      'See how FixFlags checks your live website in a real browser, hands your AI the fix instructions, and rechecks the same page to prove the fix worked. Try the interactive sample.',
   },
   samples: {
     title: 'Sample Site and Flag',

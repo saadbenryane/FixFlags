@@ -6,12 +6,12 @@ export const BRAND = {
   domain: 'fixflags.com',
   tagline: PRODUCT_STORY.headline.join(' '),
   footerDescription:
-    'Find website problems. Copy and paste the fix instructions. Keep building.',
+    PRODUCT_STORY.summary,
   trademarkNotice:
     'Third-party trademarks and logos belong to their respective owners. Their use does not imply affiliation with or endorsement of FixFlags.',
-  category: 'Independent website monitoring.',
+  category: 'Independent checks for websites built with AI.',
   oneLiner:
-    'FixFlags checks your website, emails you about problems, and gives you fix instructions to copy and paste.',
+    'FixFlags checks your live website in a real browser, gives your AI the fix instructions, and rechecks to prove the fix worked.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
@@ -21,7 +21,7 @@ export const BRAND = {
 export const SOCIAL_CARD = {
   headline: PRODUCT_STORY.headline,
   description: PRODUCT_STORY.summary,
-  label: 'Checks on your schedule',
+  label: 'Check. Flag. Fix. Verify.',
   workflow: 'Monitor. Flag. Fix.',
 } as const
 

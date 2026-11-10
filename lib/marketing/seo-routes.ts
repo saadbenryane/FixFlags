@@ -1,4 +1,5 @@
 import { WEBSITE_GUIDES } from './copy/guides'
+import { AI_BUILDER_TOOLS } from './copy/ai-builders'
 import { SEO } from './copy'
 import { PUBLIC_OFFER } from './copy/public-offer'
 import { PUBLIC_RESEARCH_COPY } from './copy/research'
@@ -22,6 +23,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/security', seoKey: 'security', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/use-cases', seoKey: 'useCases', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
+  { path: '/ai-builders', seoKey: 'aiBuilders', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/request-demo', seoKey: 'requestDemo', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },
@@ -61,13 +63,15 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   {
     title: 'Product',
     links: [
-      { path: '/', label: 'Home', note: 'Your website, looked after' },
-      { path: '/connect-ai', label: 'FixFlags and your AI', note: 'Independent checks and focused fix prompts. New direct connections are coming soon.' },
+      { path: '/', label: 'Home', note: 'Find what’s broken. Hand your AI the fix. Prove it worked.' },
+      { path: '/ai-builders', label: 'For AI builders', note: 'Check the live site your AI tool built and hand it the fix' },
+      ...AI_BUILDER_TOOLS.map(tool => ({ path: `/ai-builders/${tool.slug}`, label: `FixFlags for ${tool.name}`, note: tool.summary })),
+      { path: '/connect-ai', label: 'FixFlags and your AI', note: 'Independent checks and focused fix instructions to copy and paste' },
       { path: '/integrations', label: 'Integrations', note: 'GitHub authorization available; every other connection coming soon' },
       { path: '/coverage', label: 'What FixFlags checks', note: 'Coverage, setup, and evidence limits' },
       { path: '/security', label: 'Privacy and security', note: 'Evidence access, AI processing, and control' },
       { path: '/use-cases', label: 'Use cases', note: 'For people responsible for websites' },
-      { path: '/how-it-works', label: 'How it works', note: 'URL in, Site board, Flags, Verify, Watch' },
+      { path: '/how-it-works', label: 'Product', note: 'URL in, Site board, Flags, Verify, Watch, and the interactive sample' },
       { path: '/pricing', label: 'Pricing', note: PUBLIC_OFFER.free },
       { path: '/request-demo', label: 'Request a demo', note: 'A walkthrough of checks, evidence, and next steps for your website' },
       { path: '/docs', label: 'Documentation', note: 'Site checks, Flags, Verify, and Watch' },
@@ -77,7 +81,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
         note: 'Enter a URL and open the Site board',
       },
       { path: '/docs/site-care', label: 'Site care', note: 'Coverage, evidence, Verify, and Watch' },
-      { path: '/docs/fix-with-ai', label: 'Fix with your AI', note: 'Use a fix prompt and learn about MCP' },
+      { path: '/docs/fix-with-ai', label: 'Fix with your AI', note: 'Use fix instructions with your AI tool' },
       { path: '/docs/integrations', label: 'Integration guides' },
       { path: '/docs/integrations/github', label: 'GitHub', note: 'Account authorization and independent website verification' },
       { path: '/docs/integrations/shopify', label: 'Shopify', note: 'Coming soon: store and selected product-path context' },

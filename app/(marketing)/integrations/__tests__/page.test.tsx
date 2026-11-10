@@ -48,7 +48,7 @@ describe('integrations marketing page', () => {
     expect(metadata.robots).toMatchObject({ index: true, follow: true })
     expect(INDEXABLE_ROUTES.some(route => route.path === '/integrations' && route.seoKey === 'integrations')).toBe(true)
     expect(LLMS_SECTIONS.flatMap(section => section.links).some(link => link.path === '/integrations')).toBe(true)
-    expect(MARKETING_LINKS).toContainEqual({ href: '/integrations', label: 'Integrations' })
+    expect(MARKETING_LINKS.some(link => link.href === '/integrations')).toBe(false)
     expect(MARKETING_LINKS.some(link => link.label === 'For Shopify')).toBe(false)
     expect(FOOTER_COLUMNS.product).toContainEqual({ href: '/integrations', label: 'Integrations' })
     expect(FOOTER_COLUMNS.product.some(link => link.label === 'Shopify')).toBe(false)

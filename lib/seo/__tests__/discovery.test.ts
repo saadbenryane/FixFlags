@@ -1,4 +1,5 @@
 import { WEBSITE_GUIDES, GUIDE_REVIEWED_AT } from '@/lib/marketing/copy/guides'
+import { AI_BUILDER_TOOLS } from '@/lib/marketing/copy/ai-builders'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -89,6 +90,7 @@ describe('technical discovery', () => {
       ...HELP_ARTICLES.map((article) => helpArticlePath(article.categoryId, article.slug)),
       ...BLOG_POSTS.map((post) => `/blog/${post.slug}`),
       ...WEBSITE_GUIDES.map(guide => `/guides/${guide.slug}`),
+      ...AI_BUILDER_TOOLS.map(tool => `/ai-builders/${tool.slug}`),
     ])
     const links = [...buildLlmsTxt().matchAll(/\]\(([^)]+)\)/g)]
     expect(links.length).toBeGreaterThan(0)

@@ -67,7 +67,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
     return <Frame key={card.id} aria-label={layout === 'card' ? card.name : undefined}><BoardCard compact name={card.name} status={card.status} state={card.state} answer={card.answer} detail={layout === 'row' ? card.context : undefined} icon={card.id} flagCount={card.flagCount} freshness={S.freshness}
     showFlagPreview={layout === 'card' && card.flagCount > 0}
     onOpenFlag={(id, trigger) => onOpenFlag(card, id as SampleFlagId, trigger, 'home')}
-    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, priorityBand: flag === 'contact' ? 'other' : 'fix_first', href: '#product', copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`${S.sampleCopy} for ${SAMPLE_FLAGS[flag].title}`} title={S.sampleCopy} onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={trigger => onOpen(card.id, trigger)} layout={layout} /></Frame>
+    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, priorityBand: flag === 'contact' ? 'other' : 'fix_first', href: '#sample', copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`${S.sampleCopy} for ${SAMPLE_FLAGS[flag].title}`} title={S.sampleCopy} onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={trigger => onOpen(card.id, trigger)} layout={layout} /></Frame>
   }
 
   function updateConnection(provider: GoogleProvider, connected: boolean) {

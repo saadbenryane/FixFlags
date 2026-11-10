@@ -8,9 +8,9 @@ export const PUBLIC_SITE_COPY = {
   nextTitle: 'See how your website is doing.',
   nextBody: 'Start with a free check. Save your website to get copy-and-paste fix instructions and scheduled checks.',
   howItWorks: {
-    label: 'How it works',
-    title: 'A better website starts with a check.',
-    body: 'Find the problems. Copy and paste the fix instructions. Get back to building.',
+    label: 'Product',
+    title: 'Find what’s broken. Hand your AI the fix. Prove it worked.',
+    body: 'FixFlags checks your live website in a real browser, gives you fix instructions for the AI tool you build with, and rechecks the same page to confirm the fix.',
     steps: [
       { id: 'monitor', label: 'Check', title: 'Enter your website.', body: 'We check your public pages for free. Save your website to keep getting scheduled checks.' },
       { id: 'flag', label: 'Find', title: 'See what needs fixing.', body: 'See broken pages, slow loading, and other problems. Each problem, called a Flag, shows what happened and where.' },

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
-import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy-barrel'
+import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS } from '@/lib/marketing/copy/care-homepage'
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
@@ -48,7 +48,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('switches between matching desktop and mobile sample captures', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     const preview = within(board).getByRole('region', { name: 'Website preview' })
     fireEvent.click(within(preview).getByRole('button', { name: 'Mobile' }))
@@ -64,7 +64,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('pairs findings with the capture and puts actionable Flags before monitoring and other checks', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Pages', 'Conversion', 'Uptime', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility'])
     const findings = within(board).getByRole('region', { name: 'Findings summary' })
@@ -72,8 +72,6 @@ describe('comprehensive homepage experience', () => {
     expect(capture.compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     const uptime = within(board).getByRole('article', { name: 'Uptime' })
     expect(uptime.compareDocumentPosition(within(board).getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    const coverage = screen.getByRole('region', { name: C.checks.title })
-    expect(within(coverage).getAllByRole('button')[0]).toHaveAccessibleName(C.checks.explore('Uptime'))
     expect(SITE_CARD_AREAS[0]).toBe('uptime')
   })
 
@@ -98,7 +96,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('opens sample Flags from their category without leaving the dashboard', async () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     for (const category of S.categories.filter(card => card.flagCount > 0)) {
       const dialog = openCategory(category.name)
       const result = category.results.find(result => result.status === 'Flag')!
@@ -113,7 +111,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('returns to the same page result and scroll position after reading a Flag', async () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const dialog = openCategory('Pages')
     const scrollBody = dialog.querySelector<HTMLElement>('[data-dialog-scroll]')!
     scrollBody.scrollTop = 320
@@ -146,7 +144,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('keeps keyboard focus in the board when a detected tool opens Integrations', async () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'View detected tools' }))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Shopify: Detected' }))
@@ -157,7 +155,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('opens the Flag list from the website count and category details from category counts', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'Open Pages' }))
     expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Pages' })).toBeVisible()
@@ -168,7 +166,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('discloses the header schedule and preserves custom sample changes', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     const monitoring = within(board).getByRole('button', { name: 'Monitoring: Daily' })
     expect(monitoring).toHaveAttribute('aria-expanded', 'false')
@@ -194,7 +192,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('opens cart evidence and detected-page details from the overview', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     let dialog = openCategory('Conversion')
     fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for Add to cart' }))
     dialog = screen.getByRole('dialog')
@@ -208,16 +206,20 @@ describe('comprehensive homepage experience', () => {
     expect(within(pages).getByRole('button', { name: `Open ${SAMPLE_FLAGS.checkout.title}` })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Add signup monitoring/ })).not.toBeInTheDocument()
   })
-  it('keeps the brand, two URL entries and the sample-to-analysis path', () => {
+  it('leads with the promise, two URL entries, and the sample sequence instead of the dashboard', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('heading', { level: 1, name: /Your website is live\.\s*Is everything working\?/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: C.hero.sampleAction })).toHaveAttribute('href', '#product')
+    expect(screen.getByRole('heading', { level: 1, name: /Your AI built it\.\s*FixFlags makes sure it works\./ })).toBeVisible()
+    expect(screen.getByRole('link', { name: C.hero.sampleAction })).toHaveAttribute('href', '/how-it-works#sample')
     expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
     expect(screen.getByText(C.hero.body)).toBeVisible()
-    const benefits = screen.getByRole('list', { name: 'What FixFlags does' })
-    for (const benefit of C.hero.benefits) expect(within(benefits).getByText(benefit.title)).toBeVisible()
-    expect(screen.getAllByRole('link', { name: S.exploreAction })).toHaveLength(1)
+    expect(screen.getByText(C.hero.setup)).toBeVisible()
+    expect(screen.getByRole('figure', { name: 'Sample check on a controlled demo store' })).toBeVisible()
+    expect(screen.queryByRole('region', { name: C.boardAria })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('keeps the sample board complete', () => {
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     for (const card of S.categories.filter(card => card.id !== 'uptime')) expect(within(board).getByRole('button', { name: `Open ${card.name}` })).toBeVisible()
     expect(within(board).getByRole('button', { name: 'Uptime details' })).toBeVisible()
@@ -247,7 +249,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('returns Flag counters to the categorized Overview without a duplicate list', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: '3 Flags', exact: true }))
     expect(within(board).getByRole('button', { name: 'Open Pages' })).toBeVisible()
@@ -256,7 +258,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('shows complete mobile and desktop performance results', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const dialog = openCategory('Performance')
     expect(within(dialog).getByText('Mobile')).toBeVisible()
     expect(within(dialog).getByText('Desktop')).toBeVisible()
@@ -265,7 +267,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('shows a complete illustrative website report', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     for (const card of S.categories.filter(card => card.id !== 'uptime')) expect(within(board).getByRole('button', { name: `Open ${card.name}` })).toBeVisible()
     expect(within(board).getByRole('button', { name: 'Uptime details' })).toBeVisible()
@@ -278,7 +280,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('keeps healthy results bounded to their evidence scope', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const dialog = openCategory('Search')
     expect(within(dialog).getByText('Page titles')).toBeVisible()
     expect(within(dialog).getByText('Search rankings')).toBeVisible()
@@ -288,7 +290,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('shows the matching pricing capture in Pages and its Flag, with no Analyze promotion in either', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     let dialog = openCategory('Pages')
     expect(within(dialog).getByRole('img', { name: S.availabilityAlt })).toHaveAttribute('src', SAMPLE_FLAGS.availability.image)
     expect(within(dialog).getByRole('img', { name: 'Preview of /contact: No screenshot recorded' })).toBeVisible()
@@ -304,7 +306,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('keeps Signup unconfigured and shows scoped checkout recovery only for Checkout', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     let dialog = openCategory('Conversion')
     expect(within(dialog).getByText('Signup')).toBeVisible()
     expect(within(dialog).getByText('Not verified')).toBeVisible()
@@ -319,7 +321,7 @@ describe('comprehensive homepage experience', () => {
   it('opens and copies the second Pages issue independently without a sample recheck promotion', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     let dialog = openCategory('Pages')
     expect(within(dialog).queryByRole('link', { name: 'Recheck Pages' })).not.toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.contact.title}` }))
@@ -336,7 +338,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('keeps concise scope in category depth', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const dialog = openCategory('Pages')
     expect(within(dialog).getByText(S.categories[0].scope)).not.toBeVisible()
     fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
@@ -347,7 +349,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('shows dated sample scheduling and never suggests a UI control runs verification', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     expect(within(board).queryByText(C.monitoring.summary)).not.toBeInTheDocument()
     expect(within(board).queryByRole('button', { name: C.monitoring.action })).not.toBeInTheDocument()
@@ -364,12 +366,8 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByText('Just now')).not.toBeInTheDocument()
   })
 
-  it('links the intro to the walkthrough and provides settings in the sample navigation', () => {
-    render(<CareHomepage />)
-    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true }).parentElement).toHaveTextContent(S.subtitle)
-    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true })).toHaveAttribute('href', '/how-it-works')
-    expect(screen.getByText(C.hero.body)).toBeVisible()
-    expect(screen.getByText(C.hero.setup)).toBeVisible()
+  it('provides settings in the sample navigation', () => {
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     const nav = within(board).getByRole('navigation', { name: S.navigationLabel })
     expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Overview', 'Pages', 'Timeline', 'Integrations', 'Settings'])
@@ -382,7 +380,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('opens the sample integration list from the board navigation', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: S.navigation.integrations }))
     expect(within(board).getByRole('heading', { name: S.navigation.integrations })).toBeVisible()
@@ -398,7 +396,7 @@ describe('comprehensive homepage experience', () => {
 
   it('uses the real integration controls with local sample connections', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: S.navigation.integrations }))
     expect(within(board).getByText('This connection is part of the preview. Changes stay in this sample.')).toBeVisible()
@@ -412,7 +410,7 @@ describe('comprehensive homepage experience', () => {
 
   it('keeps sample settings across navigation without calling the signed-in APIs', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'Settings', exact: true }))
     fireEvent.change(within(board).getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
@@ -437,7 +435,7 @@ describe('comprehensive homepage experience', () => {
 
   it('previews selected page fixes through the shared selection UI without production requests', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'Pages', exact: true }))
     fireEvent.click(within(board).getByRole('button', { name: 'Select Flags' }))
@@ -451,7 +449,7 @@ describe('comprehensive homepage experience', () => {
 
   it('opens the shared uptime history and changes periods using sample observations', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'Uptime details' }))
     const dialog = screen.getByRole('dialog')
@@ -466,7 +464,7 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('opens a Flag from its check in the monitoring timeline', () => {
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: S.navigation.timeline, exact: true }))
     fireEvent.click(within(board).getByRole('button', { name: SAMPLE_FLAGS.contact.title }))
@@ -476,7 +474,7 @@ describe('comprehensive homepage experience', () => {
   it('copies scoped guidance without resolving the Flag and restores the category opener', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(<><CareHomepage /><Toaster /></>)
+    render(<><CareHomepage dashboardOnly /><Toaster /></>)
     const opener = screen.getByRole('button', { name: 'Open Pages' }); opener.focus()
     let dialog = openCategory('Pages')
     fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
@@ -495,7 +493,7 @@ describe('comprehensive homepage experience', () => {
   it('copies directly from a Flag shortcut and offers the public prompt guide', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(<><CareHomepage /><Toaster /></>)
+    render(<><CareHomepage dashboardOnly /><Toaster /></>)
     const dialog = openCategory('Pages')
     fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
@@ -505,27 +503,38 @@ describe('comprehensive homepage experience', () => {
     expect(screen.getByRole('dialog')).toBeVisible()
   })
 
-  it('copies from Beyond the Flags and links to public guidance without requiring sign-in', async () => {
+  it('shows the same fix instructions in each AI tool and links to its guide', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
-    const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
-    expect(within(handoff).getByRole('link', { name: C.actions.guidanceAction })).toHaveAttribute('href', '/docs/fix-with-ai')
-    fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
-    expect(await screen.findByRole('link', { name: 'How to use these instructions' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    const section = screen.getByRole('region', { name: C.builtForAi.title })
+    const tabs = within(section).getAllByRole('tab')
+    expect(tabs.map(tab => tab.textContent)).toEqual(C.builtForAi.tools.map(tool => tool.label))
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+    expect(within(section).getByRole('tabpanel')).toHaveTextContent(C.workflow.instructions)
+    expect(within(section).getByRole('link', { name: C.builtForAi.guideAction('Claude Code') })).toHaveAttribute('href', '/ai-builders/claude-code')
+    fireEvent.click(within(section).getByRole('tab', { name: 'Lovable' }))
+    expect(within(section).getByRole('tab', { name: 'Lovable' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(section).getByRole('tabpanel')).toHaveTextContent(C.workflow.instructions)
+    expect(within(section).getByText(C.builtForAi.tools[2].where)).toBeVisible()
+    fireEvent.keyDown(within(section).getByRole('tab', { name: 'Lovable' }), { key: 'ArrowRight' })
+    expect(within(section).getByRole('tab', { name: 'Bolt' })).toHaveFocus()
+    fireEvent.click(within(section).getByRole('button', { name: C.story.copy }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(C.workflow.instructions))
+    expect(await within(section).findByRole('status')).toHaveTextContent(S.guidanceCopied)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('provides readable guidance if clipboard access fails', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
-    render(<CareHomepage />)
+    render(<CareHomepage dashboardOnly />)
     const dialog = openCategory('Pages')
     fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(within(dialog).getByRole('textbox', { name: S.guidanceLabel })).toHaveValue(S.availabilityPrompt))
   })
 
-  it('explains all eight product areas immediately after the sample without disclaimer rows', () => {
+  it('explains all eight product areas immediately after the hero without disclaimer rows', () => {
     render(<CareHomepage />)
     const coverage = screen.getByRole('region', { name: C.checks.title })
     expect(C.checks.areas.map(area => area.id).sort()).toEqual([...SITE_CARD_AREAS].sort())
@@ -549,7 +558,7 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByText('Illustrative check examples')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: C.story.title })).not.toBeInTheDocument()
     expect(screen.queryByText(C.story.example.failedTitle)).not.toBeInTheDocument()
-    expect(document.getElementById('product')?.nextElementSibling).toBe(coverage)
+    expect(screen.getByRole('heading', { level: 1 }).closest('section')?.nextElementSibling).toBe(coverage)
   })
 
   it('opens complete marketing coverage for every area instead of sample results', () => {
@@ -582,58 +591,29 @@ describe('comprehensive homepage experience', () => {
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
-  it('copies the displayed pricing-page guidance without resolving the sample Flag', async () => {
-    let finishCopy!: () => void
-    const clipboardResult = new Promise<void>(resolve => { finishCopy = resolve })
-    const writeText = vi.fn().mockReturnValue(clipboardResult)
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(<CareHomepage />)
-    const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
-    for (const fact of C.actions.promptFacts) expect(within(handoff).getByText(fact.value)).toBeVisible()
-    expect(within(handoff).getByRole('heading', { name: C.actions.promptTitle })).toBeVisible()
-    fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
-    expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt)
-    expect(within(handoff).queryByRole('status')).not.toBeInTheDocument()
-    await act(async () => { finishCopy() })
-    expect(await within(handoff).findByRole('status')).toHaveTextContent(C.story.copied)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '3 Flags', exact: true })).toBeVisible()
-  })
-
-  it('keeps the handoff prompt available inline when clipboard access fails', async () => {
+  it('keeps the AI handoff available inline when clipboard access fails', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
     render(<CareHomepage />)
-    const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
-    fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
-    await waitFor(() => expect(within(handoff).getByRole('textbox', { name: S.guidanceLabel })).toHaveValue(S.availabilityPrompt))
-    expect(within(handoff).getByRole('status')).toHaveTextContent(S.copyFailed)
+    const section = screen.getByRole('region', { name: C.builtForAi.title })
+    fireEvent.click(within(section).getByRole('button', { name: C.story.copy }))
+    await waitFor(() => expect(within(section).getByRole('textbox', { name: S.guidanceLabel })).toHaveValue(C.workflow.instructions))
+    expect(within(section).getByRole('status')).toHaveTextContent(S.copyFailed)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('keeps the hero focused on entry and places editor guides with fix guidance', () => {
+  it('shows real before and after captures as proof, then an honest comparison, in storyboard order', () => {
     render(<CareHomepage />)
-    const guides = screen.getByRole('list', { name: C.actions.editorGuidesLabel })
-    expect(within(guides).getAllByRole('link')).toHaveLength(8)
-    expect(within(guides).getByRole('link', { name: 'Cursor' })).toHaveAttribute('href', '/docs/integrations#cursor')
-    expect(within(guides).getByRole('link', { name: 'Codex' })).toHaveAttribute('href', '/docs/integrations#codex')
-    const entry = document.getElementById('analyze')!
-    const hero = entry.closest('section')!
-    const product = document.getElementById('product')!
-    const intro = within(product).getByRole('heading', { name: S.title }).parentElement!
-    const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
-    expect(guides.closest('section')).toBe(handoff)
-    expect(within(hero).queryByRole('list', { name: C.actions.editorGuidesLabel })).not.toBeInTheDocument()
-    expect(intro).toHaveTextContent(S.subtitle)
-    expect(within(intro).getByRole('link', { name: C.workflow.action })).toHaveAttribute('href', '/how-it-works')
-    expect(entry.nextElementSibling).toHaveTextContent(C.hero.setup)
-    expect(entry.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.queryByText('No credit card required')).not.toBeInTheDocument()
-    const benefits = screen.getByRole('list', { name: 'What FixFlags does' })
-    expect(benefits.closest('section')).toBe(product)
-    expect(intro.nextElementSibling).toBe(benefits)
-    expect(benefits.nextElementSibling).toBe(screen.getByRole('region', { name: C.boardAria }))
-    expect(benefits.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(benefits.compareDocumentPosition(screen.getByRole('region', { name: C.boardAria }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    const proof = screen.getByRole('region', { name: C.independent.title })
+    expect(within(proof).getByRole('img', { name: C.independent.beforeAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-broken.png')
+    expect(within(proof).getByRole('img', { name: C.independent.afterAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-verified.png')
+    expect(within(proof).getByText(C.independent.sampleNote)).toBeVisible()
+    for (const point of C.independent.points) expect(within(proof).getByText(point)).toBeVisible()
+    const compare = screen.getByRole('region', { name: C.compare.title })
+    for (const item of C.compare.items) expect(within(compare).getByRole('heading', { name: item.title })).toBeVisible()
+    const order = [C.checks.title, C.builtForAi.title, C.independent.title, C.notifications.title, C.compare.title]
+      .map(name => screen.getByRole('region', { name }))
+    for (let index = 1; index < order.length; index++) expect(order[index - 1].compareDocumentPosition(order[index])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
   })
 
   it('labels the email example and opens matching evidence with focus restored', async () => {
@@ -654,27 +634,12 @@ describe('comprehensive homepage experience', () => {
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
-  it('shows the current and proposed integrations and opens their details', () => {
-    render(<CareHomepage />)
-    const section = screen.getByRole('region', { name: C.integrations.title })
-    const summary = within(section).getByText(C.integrations.detailsAction)
-    expect(summary.closest('details')).not.toHaveAttribute('open')
-    expect(within(section).getByRole('link', { name: /GitHub/ })).not.toBeVisible()
-    fireEvent.click(summary)
-    expect(INTEGRATIONS_PAGE.items).toHaveLength(10)
-    for (const item of INTEGRATIONS_PAGE.items) {
-      const link = within(section).getByRole('link', { name: new RegExp(item.title) })
-      expect(link).toHaveAttribute('href', `/integrations#${item.id}`)
-      expect(link).toHaveTextContent(item.status === 'available' ? INTEGRATIONS_PAGE.availableLabel : INTEGRATIONS_PAGE.proposedLabel)
-    }
-  })
-
 })
 
 
-it.each([true, false])('offers all fixes and manual copying in the shared preview (dashboardOnly=%s)', async dashboardOnly => {
+it('offers all fixes and manual copying in the shared preview', async () => {
   Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
-  render(<CareHomepage dashboardOnly={dashboardOnly} />)
+  render(<CareHomepage dashboardOnly />)
   fireEvent.click(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll }))
   const dialog = await screen.findByRole('dialog')
   expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain('These are not results from a real website.')
@@ -684,7 +649,7 @@ it.each([true, false])('offers all fixes and manual copying in the shared previe
 it('previews the entire homepage fix prompt before copying anything', async () => {
   const writeText = vi.fn()
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-  render(<CareHomepage />)
+  render(<CareHomepage dashboardOnly />)
   const board = screen.getByRole('region', { name: C.boardAria })
   expect(within(board).getByText('Checked 15 minutes ago')).toBeVisible()
   fireEvent.click(within(board).getByRole('button', { name: 'View instructions' }))

@@ -23,10 +23,12 @@ import type { SampleFlagOpener } from './HomepageDashboardPreview'
 import { HomepageDeferredDashboard } from './HomepageDeferredDashboard'
 import { SITE_ROUTES, type SiteRoute } from '@/components/sites/SiteWorkspaceNavigation'
 import { HomepageCheckCoverage } from './HomepageCheckCoverage'
-import { HomepageFinalSection, HomepageHandoffSection, HomepageIndependentSection, HomepageIntegrationsSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
+import { HomepageFinalSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
+import { HomepageBuiltForAiSection, HomepageCompareSection, HomepageProofSection } from './HomepageStorySections'
 import s from './CareHomepage.module.css'
 
-export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolean } = {}) {
+/** `dashboardOnly` renders just the interactive sample; `lazy` defers it until it nears the viewport. */
+export function CareHomepage({ dashboardOnly = false, lazy = false }: { dashboardOnly?: boolean; lazy?: boolean } = {}) {
   const [selected, setSelected] = useState<HomepageDetailCard | null>(null)
   const [flag, setFlag] = useState<SampleFlagId | null>(null)
   const [flagOrigin, setFlagOrigin] = useState<SiteRoute | null>(null)
@@ -85,7 +87,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
       showFixPromptCopied()
       setCopyResult({ source, message: source === 'share' ? C.story.copied : S.guidanceCopied })
     } catch {
-      if (selected === null && source !== 'share' && source !== 'all') {
+      if (selected === null && source === 'read') {
         if (card && id) openSampleFlag(card, id)
         else { openCard('conversion'); setFlag('checkout') }
       }
@@ -105,15 +107,15 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
   const returnLabel = flagOrigin ? SITE_ROUTES.find(([id]) => id === flagOrigin)?.[1] : selectedCard?.name ?? 'area'
 
   return <div className={s.home}>
-    {dashboardOnly ? <HomepageDeferredDashboard eager {...previewActions} /> : <HomepageHero {...previewActions} />}
-    {!dashboardOnly ? <>
+    {dashboardOnly ? <HomepageDeferredDashboard eager={!lazy} {...previewActions} /> : <>
+    <HomepageHero />
     <HomepageCheckCoverage />
-    <HomepageIndependentSection />
+    <HomepageBuiltForAiSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
+    <HomepageProofSection />
     <HomepageLoopSection onOpenFlag={trigger => { openCard('site'); setFlag('availability'); opener.current = trigger }} />
-    <HomepageHandoffSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
-    <HomepageIntegrationsSection />
+    <HomepageCompareSection />
     <HomepageFinalSection />
-    </> : null}
+    </>}
     <ResponsiveDepth header={<>
       {flag ? <InteractiveButton type="button" className={s.backButton} onClick={returnFromFlag}><ArrowLeft size={16} aria-hidden="true" />Back to {returnLabel}</InteractiveButton> : null}
       <div className={s.modalHeading}><DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>{!selectedFlag && selectedCard?.id === 'site' ? <span>{selectedCard.context}</span> : null}</div>

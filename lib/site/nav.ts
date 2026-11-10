@@ -1,18 +1,19 @@
 import { BRAND } from '@/lib/marketing/copy/brand'
 
 export const MARKETING_LINKS = [
-  { href: '/how-it-works', label: 'How it works' },
-  { href: '/use-cases', label: 'Use cases' },
-  { href: '/integrations', label: 'Integrations' },
+  { href: '/how-it-works', label: 'Product' },
+  { href: '/ai-builders', label: 'For AI builders' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
+  { href: '/changelog', label: 'Changelog' },
 ] as const
 
 export const MARKETING_NAV = [...MARKETING_LINKS] as const
 
 export const FOOTER_COLUMNS = {
   product: [
-    { href: '/how-it-works', label: 'How it works' },
+    { href: '/how-it-works', label: 'Product' },
+    { href: '/ai-builders', label: 'For AI builders' },
     { href: '/coverage', label: 'What it checks' },
     { href: '/samples', label: 'Product sample' },
     { href: '/use-cases', label: 'Use cases' },
