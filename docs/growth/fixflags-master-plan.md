@@ -60,11 +60,16 @@ A second pass compared every public and in-product surface against the adopted v
 6. `/compare` (Elu, Lighthouse and PageSpeed Insights, uptime monitors, Checkly, each sourced and checked November 10), `/for-agencies` (what works today, with the one-website beta limit stated once) and `/tools` are live in the sitemap, llms.txt and the footer.
 7. Fix instructions lead with the change where the check records the problem itself (positive tabindex, tap targets, titles, missing analytics, overlong opening headings). Contextual observations keep their conditional inspection on purpose: `prescription-policy` requires it because a recorded position or phrase does not establish a failure, and leading with a change would claim one.
 
+8. Terms and Privacy match the product. They said a URL could be analyzed without an account; they now say anyone can start a check without one, and seeing results, saving the Site, rechecking and watching require signing in. "Analyze" became "check", both pages show November 2026, and no obligations changed. Have counsel read the two changed sentences before the next legal review.
+9. Every advertised feature was audited against its code path and tests. Checkout entry, Recheck, scheduled watch, ten-minute uptime, regression and recovery emails, the deploy hook, GitHub, per-tool fix instructions and the free tools are backed. MCP, the CLI and the planned integrations are gated and say so. Four gaps were closed:
+   - Signup monitoring had no customer path after the fixture editor was removed, because automatic account checks are off in production. The editor is back in Site Settings and the Outcome confirm control offers Signup with an authorized fixture.
+   - Automatic account checks were presented as current. They are now labelled coming soon on the homepage, the coverage list and the docs.
+   - Docs and the FAQ implied anonymous results were visible. They now match the results gate, and the first free check is described as the homepage.
+   - The deploy hook needs an API key, but nothing in the app linked to API keys. Site Settings now does.
+
 **Still needs the owner**
 
-1. Real-path proof of the first check. Run `npm run db:deploy` (nine local migrations are pending; the agent's permission check blocks it), start the worker, then walk URL → sign-up gate → board → Flag → fix instructions → Recheck on desktop and phone.
-2. Legal review of the Terms and Privacy wording (`lib/marketing/copy/legal.ts`). It still says "analyze" four times, and the accounts section says a URL can be analyzed without an account, which the signup gate changes. Proposed wording for review: "You can start a check of a public URL without an account. Seeing its results, saving the Site, rechecking fixes and watching it require signing in." Elsewhere, "analyzes" becomes "checks" and "When you Analyze a URL" becomes "When you check a URL".
-3. The owner's new bar, that every advertised and competitive feature works, needs its own audit against PRODUCT.md once the first-check walk runs on real infrastructure.
+The first-check walk on real infrastructure. On November 10 the local walk reached the provisional Site board and the signup gate: the check was created (201) and the board showed progress and the gate. The worker then failed because the local database lacks nine migrations (`audits.prescriptionHandoffRetryAt`, `email_provider_events.discardedAt` and `uptime_incidents.tlsFailureOrigin` are missing). The agent's permission check blocks `npm run db:deploy`. Run it, start `npm run worker`, then walk sign-up → board → Flag → fix instructions → Recheck on desktop and phone. Production configuration (Resend, storage, PageSpeed keys) is outside the code and was not verified.
 
 ## The short version
 
