@@ -56,7 +56,7 @@ export const PUBLIC_SITE_COPY = {
       body: 'After your update is live, we check the same page or button again and keep the before and after together.',
       steps: [
         { title: 'Publish the update', body: 'Review the change and make it live on your website.' },
-        { title: 'Select Check now', body: 'Open the problem in FixFlags. We mark it fixed only after a new check confirms it works.' },
+        { title: 'Select Recheck', body: 'Open the problem in FixFlags. We mark it fixed only after a new check confirms it works.' },
         { title: 'Keep building', body: 'Scheduled checks keep running. We can email you if something needs attention.' },
       ],
       uncertainty: 'If a check is blocked or incomplete, you’ll see Couldn’t verify.',
@@ -81,7 +81,7 @@ export const PUBLIC_SITE_COPY = {
     copied: 'Fix instructions copied',
     copyFallback: 'Select and copy the instructions below.',
     verification: 'How to check that it worked',
-    verificationBody: 'After publishing, open the problem in FixFlags and select Check now. We check the same page at the same screen size. This demo does not run a check or mark anything fixed.',
+    verificationBody: 'After publishing, open the problem in FixFlags and select Recheck. We check the same page at the same screen size. This demo does not run a check or mark anything fixed.',
     provenance: 'About this demo',
     provenanceBody: 'This example comes from a recorded demo check, with its original screenshot and results. It is not a customer story or a live result for your website.',
     captured: 'Recorded on',

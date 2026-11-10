@@ -50,7 +50,7 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'How do I know a fix worked?',
-    answer: 'Publish the update, open the problem in FixFlags, and select Check now. We mark it fixed only when a fresh check confirms the same page or action works. Your scheduled checks keep running too.',
+    answer: 'Publish the update, open the problem in FixFlags, and select Recheck. We mark it fixed only when a fresh check confirms the same page or action works. Your scheduled checks keep running too.',
     learnMore: { href: '/docs/fix-with-ai', label: 'Check a fix' },
   },
   {

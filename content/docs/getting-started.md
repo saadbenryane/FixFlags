@@ -21,7 +21,7 @@ To keep your results, sign in or create an account from this page. This saves th
 1. Open a Flag and read the problem.
 2. Copy the fix instructions and paste them where you built your website, or send them to someone who can help.
 3. Review and publish the change to your live website.
-4. Return to the same Flag and select **Check now**.
+4. Return to the same Flag and select **Recheck**.
 
 FixFlags checks the affected page or action again. Copying a fix does not mark the problem as solved. If the check cannot finish, the Flag stays unverified.
 

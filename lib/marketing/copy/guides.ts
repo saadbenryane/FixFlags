@@ -69,7 +69,7 @@ export const WEBSITE_GUIDES: WebsiteGuide[] = [
         'Nothing needs to be installed for a public-page check. Pages behind a login and actions such as signup have different requirements. Read the coverage details before relying on a check for those steps.',
       ], sourceIds: [0] },
       { id: 'publish-and-check', title: 'Copy, paste, and check the update', paragraphs: [
-        'Copy the fix instructions and paste them into the chat where you built your website. You can also send them to a developer. Review the change and publish it. Then open the problem in FixFlags and select Check now.',
+        'Copy the fix instructions and paste them into the chat where you built your website. You can also send them to a developer. Review the change and publish it. Then open the problem in FixFlags and select Recheck.',
         'We check the live website again to see if the problem is gone. That is independent verification: a new check of the result, rather than relying on a message saying the edit is done. Save your website to keep getting scheduled checks.',
       ] },
       { id: 'read-unknowns', title: 'Know what couldn’t be checked', paragraphs: [
@@ -154,7 +154,7 @@ export const WEBSITE_GUIDES: WebsiteGuide[] = [
       ], sourceIds: [0] },
       { id: 'focused-prompt', title: 'Copy the instructions into Lovable', paragraphs: [
         'Open a problem in FixFlags and copy its fix instructions. Paste them into your project’s Lovable chat, just as you would ask for another change. The instructions include the page, what went wrong, and what should happen instead. Keep passwords and private customer data out of the chat.',
-        'Review the change and publish it. Then return to the problem in FixFlags and select Check now. This gives you independent verification of the live result, rather than relying on the preview or a message saying the change is done.',
+        'Review the change and publish it. Then return to the problem in FixFlags and select Recheck. This gives you independent verification of the live result, rather than relying on the preview or a message saying the change is done.',
       ] },
       { id: 'limits', title: 'Keep important limits in mind', paragraphs: [
         'Public website checks do not confirm every account permission or database access rule. Those need their own review. A page that could not be reached stays Couldn’t verify, rather than passing.',

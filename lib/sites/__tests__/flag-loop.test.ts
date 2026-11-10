@@ -8,7 +8,7 @@ describe('Monitor. Flag. Fix. loop contract', () => {
     expect(ANALYZE_CTA).toBe('Check your website')
     expect(CORE_LOOP_LABEL).toBe('Monitor. Flag. Fix.')
     expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix instructions')
-    expect(SITE_BOARD_COPY.verifyFix).toBe('Check now')
+    expect(SITE_BOARD_COPY.verifyFix).toBe('Recheck')
     expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Verified')
     expect(FLAG_STATUS_LABELS.FIXED.description).toMatch(/Independent check/)
     expect(FLAG_STATUS_LABELS.FIXED.description).not.toMatch(/no longer observes|not observed/i)

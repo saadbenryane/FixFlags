@@ -14,7 +14,7 @@ The homepage uses example instructions. [Check your own website](/new) to get in
 
 ## Check that it worked
 
-After publishing, return to the same problem and select **Check now**. We check the page or action again to see whether it works.
+After publishing, return to the same problem and select **Recheck**. We check the page or action again to see whether it works.
 
 If we cannot confirm the result, you’ll see **Couldn't verify**. A problem is marked fixed only after a new check confirms it. Your scheduled checks keep running too.
 

@@ -31,7 +31,7 @@ You may also see **Recommendations**, suggestions for improvements. These do not
 
 ## Verify
 
-After publishing a fix, return to the Flag and select **Check now**. FixFlags checks the same page or action again and keeps the result with the original problem.
+After publishing a fix, return to the Flag and select **Recheck**. FixFlags checks the same page or action again and keeps the result with the original problem.
 
 - **Recovered**: a fresh check verified recovery for the original required scope.
 - **Needs a fix**: an observed problem remains.

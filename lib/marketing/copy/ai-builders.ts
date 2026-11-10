@@ -50,7 +50,7 @@ export const AI_BUILDER_TOOLS: readonly AiBuilderTool[] = [
     where: 'Open your app in Replit and paste the fix instructions into Agent.',
     publish: 'Test the change, then republish your app from Replit.',
     example: { flag: 'Contact form shows no confirmation', page: '/contact', observed: 'After submitting, the form stays on screen with no message.', expected: 'A confirmation appears after the form is submitted.' },
-    tip: 'After you republish, select Check now in FixFlags to recheck the same page and action.',
+    tip: 'After you republish, select Recheck in FixFlags to check the same page and action again.',
   },
   {
     slug: 'cursor', name: 'Cursor', mark: 'Cursor', kind: 'agent',
@@ -99,7 +99,7 @@ export const AI_BUILDERS_PAGE = {
     { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
     { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
     { label: PRODUCT_STORY.loop[2], title: 'Hand your AI the fix', body: 'Copy the fix instructions into the tool you build with. Review the change and publish.' },
-    { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Check now. FixFlags rechecks the same page and action on the live site.' },
+    { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Recheck. FixFlags checks the same page and action on the live site.' },
   ],
   why: {
     title: 'Why an independent check',
@@ -114,7 +114,7 @@ export const AI_BUILDERS_PAGE = {
       { title: 'Check your live site', body: 'Paste your published URL into FixFlags. Nothing to install, and no signup to start.' },
       { title: 'Open a Flag and copy the fix', body: 'Each Flag shows what happened, what should happen, and the evidence. Copy its fix instructions.' },
       { title: `Paste it into ${tool.name}`, body: tool.where },
-      { title: 'Publish, then prove it', body: `${tool.publish} Then select Check now in FixFlags to recheck the same page and action.` },
+      { title: 'Publish, then prove it', body: `${tool.publish} Then select Recheck in FixFlags to check the same page and action again.` },
     ],
     exampleTitle: 'Example fix instructions',
     exampleNote: 'Sample Flag. Your instructions come from your own check.',

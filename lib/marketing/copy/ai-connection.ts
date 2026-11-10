@@ -55,7 +55,7 @@ export const AI_CONNECTION_COPY = {
     steps: [
       { title: 'Find the problem', body: 'Enter your website in FixFlags. Save it to get fix instructions and scheduled checks.' },
       { title: 'Copy and paste the fix', body: 'Paste the fix instructions where you built your website, or send them to someone who can help.' },
-      { title: 'Check the update', body: 'Review and publish the change. Open the same problem in FixFlags and select Check now.' },
+      { title: 'Check the update', body: 'Review and publish the change. Open the same problem in FixFlags and select Recheck.' },
     ],
   },
 } as const

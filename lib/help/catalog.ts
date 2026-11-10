@@ -71,7 +71,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: "Get fix instructions to paste where you built your website.",
     searchTokens: ['fix', 'prompt', 'coding ai', 'handoff'], updatedAt: '2026-10-13', estimatedReadMinutes: 2,
     body: [
-      { type: "steps", items: ["Open the problem and copy its fix instructions.", "Paste them into the chat where you built your website, or send them to someone who can help.", "Review and publish the update.", "Return to the same problem in FixFlags and select Check now."] },
+      { type: "steps", items: ["Open the problem and copy its fix instructions.", "Paste them into the chat where you built your website, or send them to someone who can help.", "Review and publish the update.", "Return to the same problem in FixFlags and select Recheck."] },
       { type: "p", text: "The instructions describe what went wrong and what needs to change. Copying them alone does not change your website. You choose when to publish the update." },
     ], related: ['read-a-flag', 'verify-a-flag'], relatedDocs: ['site-care'],
   },
@@ -80,7 +80,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: "Check whether a published fix worked.", popular: true,
     searchTokens: ['verify', 'recheck', 'fixed', 'regressed', 'inconclusive'], updatedAt: '2026-10-13', estimatedReadMinutes: 3,
     body: [
-      { type: "p", text: "After publishing your change, open the same Flag and select Check now. FixFlags checks the affected page or action again and saves the result with the original problem." },
+      { type: "p", text: "After publishing your change, open the same Flag and select Recheck. FixFlags checks the affected page or action again and saves the result with the original problem." },
       { type: "ul", items: ["Verified: the new check confirms the fix worked.", "Still open: the problem remains.", "Regressed: the result got worse.", "Could not verify: FixFlags could not confirm the result, for example because the page was blocked."] },
       { type: "callout", text: "Copying a prompt or changing code does not close the Flag. A fresh check must confirm the fix." },
     ], related: ['read-a-flag', 'check-failed-or-stuck'], relatedDocs: ['site-care'],

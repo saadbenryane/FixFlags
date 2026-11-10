@@ -32,7 +32,7 @@ export const NURTURE_EMAILS = {
     html: (name: string, unsubscribeUrl?: string) =>
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
-  <p>Made changes since your last website check? Open a Flag and select Check now to check it again.</p>
+  <p>Made changes since your last website check? Open a Flag and select Recheck.</p>
   <p>We’ll show whether the fix worked, still needs attention, or needs another check.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Open your Sites</a></p>
 `, { preferencesUrl: unsubscribeUrl, preferencesLabel: NOTIFICATIONS_COPY.unsubscribe.action }),

@@ -5,7 +5,7 @@ Check your live website, see what needs attention, and get help fixing it.
 1. [Enter your website address](/new) and select **Check your website**. You can try this before creating an account.
 2. Wait for the results. FixFlags groups them by area, such as Pages, Search, and Performance.
 3. Open a **Flag**, a problem FixFlags found. Copy the fix instructions and paste them where you built your website, or send them to someone who can help.
-4. Publish the change, then return to the Flag and select **Check now** to see whether it worked.
+4. Publish the change, then return to the Flag and select **Recheck** to see whether it worked.
 
 Start with [Getting started](/docs/getting-started) for a walkthrough.
 
