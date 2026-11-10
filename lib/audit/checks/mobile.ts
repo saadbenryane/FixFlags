@@ -49,7 +49,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null, pageUrl?: string
       severity: 'IMPORTANT',
       problem: 'Some mobile controls are too small or too close together',
       evidence: `Lighthouse mobile audit ${tapTargets.id}: ${tapTargets.title}${itemCount}. The measured controls fail this audit's size or spacing criteria.`,
-      fix: '1. Review the controls identified by the mobile audit\n2. Increase their size or spacing to meet its criteria, aiming for 48x48px touch areas where practical\n3. Use min-height, min-width and padding to keep controls easy to tap on small screens',
+      fix: '1. Make the flagged controls at least 48x48px, or add spacing between them\n2. Use min-height, min-width and padding so they stay easy to tap on small screens\n3. Recheck the page on a phone-sized screen',
       confidence: 1.0,
       source: 'DETERMINISTIC',
       ...(mobile.tapTargetAudits?.some(audit => audit.score !== null && audit.score < 1) ? {

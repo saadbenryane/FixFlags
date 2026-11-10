@@ -17,7 +17,7 @@ export function runMeasurementChecks(meta: Pick<PageMetadata, 'hasAnalytics'>): 
       problem: 'No web analytics detected in the page HTML',
       evidence:
         'No analytics snippet (GA4, GTM, PostHog, Segment, Plausible, Vercel, etc.) was found in the page HTML. If you load analytics through a tag manager, a first-party proxy, or after cookie consent, it may not appear here.',
-      fix: '1. If you have no analytics yet, add one (GA4, PostHog, or Plausible are common)\n2. Put the snippet in the <head> of every page\n3. Confirm events fire in the browser Network tab',
+      fix: '1. Add an analytics tool such as GA4, PostHog, or Plausible\n2. Put its snippet in the <head> of every page\n3. Confirm events fire in the browser Network tab',
       confidence: 0.6,
       source: 'DETERMINISTIC',
     })

@@ -98,7 +98,7 @@ export function runVisualHierarchyChecks(
       severity: 'POLISH',
       problem: 'Review the length of the sampled opening headings',
       evidence: `The H1 and first two H2 headings total ${headingWordCount} words (review threshold 80). Physical first-screen density and comprehension were not measured.`,
-      fix: '1. Review the H1 and first two H2 headings together\n2. Shorten repetition where useful while preserving the audience and page purpose\n3. Inspect their actual rendered placement before moving or removing content',
+      fix: '1. Shorten the H1 and first two H2 headings so each one says something new\n2. Keep the audience and page purpose clear in what remains\n3. Check their rendered placement before moving or removing content',
       confidence: 0.7,
       source: 'DETERMINISTIC',
     })

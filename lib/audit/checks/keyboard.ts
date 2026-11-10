@@ -58,7 +58,7 @@ export function runKeyboardChecks(evidence: KeyboardEvidence): { flags: Determin
   if (reversed.length) flags.push({ checkId: 'keyboard-tab-order', rubric: 'EXPERIENCE', severity: 'POLISH',
     problem: 'Positive tabindex changes the observed keyboard sequence',
     evidence: `Tab visited ${targets.slice(0, 8).map(step => step.label || step.selector).join(' → ')}. Positive tabindex caused a backward jump in document order. This is a navigation-order heuristic, not a claim about the intended reading order.`,
-    fix: '1. Review the recorded sequence against the visible reading and action order.\n2. Prefer native controls and tabindex="0" over positive tabindex.\n3. Put controls in a logical DOM order and repeat Tab navigation.',
+    fix: '1. Replace positive tabindex values with native controls or tabindex="0".\n2. Order controls in the DOM to match the visible reading and action order.\n3. Tab through the page again and confirm focus follows that order.',
     confidence: 0.8, source: 'DETERMINISTIC', pageUrl, verificationRule, evidenceTargets: locations(targets) })
   function assertion(key: string, name: string, expected: string, observed: string, passed: boolean) {
     const targetsForAssertion = targets.map(step => ({ selector: step.selector, label: step.label || 'Keyboard control', context: scopedContext() }))

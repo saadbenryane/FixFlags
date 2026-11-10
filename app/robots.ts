@@ -8,7 +8,6 @@ const PRIVATE_PREFIXES = [
   '/dashboard',
   '/settings',
   '/billing',
-  '/compare',
   '/sign-in',
   '/sign-up',
   '/forgot-password',

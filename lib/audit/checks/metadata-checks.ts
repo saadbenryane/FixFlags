@@ -86,7 +86,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'POLISH',
       problem: `Page title may be verbose (${meta.title.length} characters)`,
       evidence: `Title is ${meta.title.length} characters: "${meta.title}". Search display depends on device width; there is no fixed character limit.`,
-      fix: '1. Review whether the title clearly describes this page\n2. Put its most useful information first\n3. Remove unnecessary repetition; displayed title links may be shortened or rewritten',
+      fix: '1. Rewrite the title so it describes this page, with the most useful words first\n2. Remove repeated words and site-wide filler\n3. Expect search results to shorten or rewrite displayed titles',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
