@@ -11,6 +11,26 @@ Written November 10, 2026 at the owner's request. It brings together the [websit
 
 This is a proposal. It changes direction in several canonical places (positioning in [the vision](../../knowledge/vision.md), the hero contract in [DESIGN.md](../../DESIGN.md), packaging in [strategy](../../knowledge/strategy.md), and the "marketing and branding remain outside this work" line in the [completion plan](../product-masterplan.md)). Each needs an owner decision, listed in [Decisions needed now](#decisions-needed-now). Public copy may still only claim shipped behavior.
 
+## Status, November 10
+
+On November 10 the owner asked to finish the rest of the plan. The recommended options for decisions 1, 2, 3 and 5 below (customer, differentiation, headline, hero contract) were adopted as defaults in the website and remain reversible. Everything listed as built is committed in the repository; it is live only after deploy.
+
+**Built**
+
+- Phase 0: homepage JavaScript reduced (homepage-only code 53 KB gzip, shared shell 165 KB) with a budget enforced in full validation; one action label and one term for fix instructions; "coming soon" collapsed; `/connect-ai` leads with what works; changelog updated; weekly scoreboard with verified fixes as the North Star; `analyze_started` records first checks.
+- Phase 1: new hero with the Check, Flag, Fix, Verify sequence on the product stage; homepage sections in storyboard order; interactive sample moved to the Product page; navigation (Product, For AI builders, Pricing, Docs, Changelog); For AI builders hub and pages for Lovable, Bolt, v0, Replit, Cursor and Claude Code; comparison guide against Lighthouse; DESIGN.md hero contract and voice guide updated.
+- Phase 2: "Fix this first" card; visitor actions ranked above speed metrics; Verified receipt with time to fix; "Where did you build this site?" question; builder-aware handoff hint; live "what we're trying" status; outcome-led summary email subjects; Integrations folded into Settings; finding-quality review tool (`npm run quality:review`); anonymous key-page depth behind `ANONYMOUS_REVIEW_DEPTH` (off until cost is measured).
+- Phase 3: generic deploy hook (`/api/webhooks/deploy`) for any host or CI, with docs; read-only keys can no longer start deployment runs; "Open in Cursor" through its documented local deeplink.
+- Phase 4: free broken link checker; guides for a checkout broken by a deploy and an AI-built site launch.
+- Phase 5: measured cost per check and per active Site on admin analytics.
+
+**Needs the owner or real people**
+
+- Decisions 4, 6, 7, 8 and 9: operating model, MCP discovery after actual-client acceptance, the concierge repair pilot, the fix gate experiment (it changes what is server-gated, so it needs an explicit go-ahead and a security review), and pricing.
+- Customer conversations, design partners, usability sessions, the weekly finding-quality labeling, the Lovable and Vercel marketplace applications, launch week, community presence and founding-member payments.
+- Turning on `ANONYMOUS_REVIEW_DEPTH=2` after reviewing measured cost; lowering the JavaScript budget after the shell is slimmed.
+- Phase 6 hosted repair starts from concierge data, by this plan's own order. Phase 7 is 2027.
+
 ## The short version
 
 1. **We are not losing to Elu's product. We are losing on conviction and distribution.** Elu ships a confident story, a one-command install, proof signals and a sales motion. FixFlags has a fast, real, installation-free product that almost nobody sees, explained by a website that sells gentle "website care".

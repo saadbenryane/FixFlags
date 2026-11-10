@@ -110,6 +110,19 @@ export const CHANGELOG_PAGE = {
 export const CHANGELOG_ENTRIES = [
   {
     date: '2026-11-10',
+    title: 'Built for AI builders: fix it, then prove it',
+    items: [
+      'A new homepage shows one Flag from check to fix to verified recheck, using a real capture from our demo store',
+      'Pages for Lovable, Bolt, v0, Replit, Cursor and Claude Code show where to paste fix instructions',
+      'Your Site leads with the problem to fix first, and broken buttons and journeys now rank above slow-loading pages',
+      'A fix confirmed by a recheck shows a Verified receipt with when it was found, when it was confirmed, and how long it took',
+      'Check your Site after every deploy with one request from GitHub Actions, Vercel, Netlify or any script',
+      'Open fix instructions directly in Cursor, and see what a running check is trying right now',
+      'A free broken link checker, plus guides for a checkout that broke after a deploy, an AI-built site launch, and how FixFlags compares with Lighthouse',
+    ],
+  },
+  {
+    date: '2026-11-10',
     title: 'Clearer summaries, reports, and guides',
     items: [
       'Daily and weekly summary emails preview what needs attention and link to the fix instructions',
