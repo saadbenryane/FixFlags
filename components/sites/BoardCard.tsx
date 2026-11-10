@@ -247,7 +247,10 @@ export function BoardCard({
   }
 
   if (compact && count === 0) {
-    const description = [...new Set([status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail].filter(Boolean))].join('. ')
+    // While a check runs, describe only the running work. The previous result's
+    // gaps belong to that result, not to the check in progress.
+    const description = [...new Set((checking ? [status ?? SITE_BOARD_COPY.checking, detail]
+      : [status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail]).filter(Boolean))].join('. ')
     const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}><span className={styles.compactStatus}>{checking ? SITE_BOARD_COPY.checking : state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}</span>
       <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
     const compactClass = `${styles.card} ${styles.compactSummary}`

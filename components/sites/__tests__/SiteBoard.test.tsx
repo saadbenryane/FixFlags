@@ -1141,6 +1141,8 @@ describe('SiteBoard chrome', () => {
     expect(within(conversion).getByText('Headline does not convey usage context')).toBeVisible()
     expect(within(screen.getByRole('article', { name: 'Performance' })).queryByText(/running/)).not.toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Performance' })).getByRole('button', { name: 'Open Performance' })).toHaveAccessibleDescription(/Waiting/)
+    // A running check is not described with the previous result's gaps.
+    for (const button of screen.getAllByRole('button', { name: /^Open / })) expect(button).not.toHaveAccessibleDescription(/Couldn’t verify|Limited evidence/)
     expect(screen.queryByText('No completed check')).not.toBeInTheDocument()
     const header = screen.getByRole('heading', { name: 'example.com', level: 1 }).closest('header')!
     const status = within(header).getByRole('status')
