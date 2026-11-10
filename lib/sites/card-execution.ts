@@ -40,6 +40,7 @@ export function cardExecution(area: SiteCardArea, progress: ExecutionProgress | 
   const label = task.module ? copy.modules[task.module as keyof typeof copy.modules] : undefined
   return {
     status: task.state === 'RUNNING' ? copy.runningStatus : task.state === 'RETRY_WAIT' ? copy.retryingStatus : copy.waitingStatus,
-    detail: [label ?? copy.kinds[task.kind as keyof typeof copy.kinds] ?? copy.title, task.device ? copy.devices[task.device] : null].filter(Boolean).join(' · '),
+    // One phrase, no separator: "Rendered content and semantics on a phone".
+    detail: (work => task.device ? copy.now.device(work, task.device) : work)(label ?? copy.kinds[task.kind as keyof typeof copy.kinds] ?? copy.title),
   }
 }
