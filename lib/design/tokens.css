@@ -181,6 +181,13 @@
   --terminal-muted: 220 5% 40%;
   --terminal-border: 240 4% 90%;
 
+  /* Marketing canvas: a warm paper tone so white product windows read as objects on a desk. */
+  --canvas: 40 23% 97%;
+  --canvas-deep: 38 18% 94%;
+  --window: 0 0% 100%;
+  --window-chrome: 40 14% 95%;
+  --shadow-window: 0 1px 2px hsl(30 10% 20% / .06), 0 24px 60px -24px hsl(30 15% 20% / .22);
+
   /* Product stage: a deep ink surface that frames product close-ups on a light page. */
   --stage: 240 10% 7%;
   --stage-raised: 240 7% 12%;
@@ -274,6 +281,12 @@
   --terminal-foreground: 210 10% 80%;
   --terminal-muted: 240 5% 56%;
   --terminal-border: 220 6% 18%;
+
+  --canvas: 240 8% 5%;
+  --canvas-deep: 240 8% 7%;
+  --window: 240 7% 10%;
+  --window-chrome: 240 7% 13%;
+  --shadow-window: 0 1px 0 hsl(0 0% 100% / .04) inset, 0 24px 60px -24px hsl(0 0% 0% / .7);
 
   --stage: 240 9% 9%;
   --stage-raised: 240 7% 14%;

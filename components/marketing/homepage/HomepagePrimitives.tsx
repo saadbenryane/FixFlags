@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import s from './CareHomepage.module.css'
@@ -11,6 +11,18 @@ export const HOMEPAGE_EVIDENCE = {
   site: '/marketing/evidence/site-home.png',
   siteMobile: '/marketing/evidence/site-home-mobile.png',
 } as const
+
+/** The one homepage section header: mono index and label, a statement, its muted follow-through, an optional lede. */
+export function HomepageSectionHeader({ id, index, label, lines, lede, align = 'start', children }: {
+  id: string; index: string; label: string; lines: readonly [string, string]; lede?: ReactNode; align?: 'start' | 'center' | 'split'; children?: ReactNode
+}) {
+  return <div className={s.header} data-align={align}>
+    <p className={s.kicker}><span>{index}</span>{label}</p>
+    <h2 id={id}><span>{lines[0]}</span> <span>{lines[1]}</span></h2>
+    {lede ? <p className={s.lede}>{lede}</p> : null}
+    {children}
+  </div>
+}
 
 export function HomepageIntro({ label, title, body }: { label?: string; title: string; body?: React.ReactNode }) {
   return <div className={s.intro}>{label && <p className={s.eyebrow}>{label}</p>}<h2>{title}</h2>{body && <p>{body}</p>}</div>

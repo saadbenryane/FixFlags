@@ -20,7 +20,8 @@ export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
   hero: {
     headline: PRODUCT_STORY.headline,
-    body: PRODUCT_STORY.description,
+    body: PRODUCT_STORY.lede,
+    eyebrow: 'Open beta',
     setup: PRODUCT_STORY.setup,
     cta: PRODUCT_STORY.action,
     sampleAction: 'Try the interactive sample',
@@ -140,6 +141,7 @@ export const CARE_HOME = {
   independent: {
     label: 'Proof, not promises',
     title: 'A receipt, not a rescan.',
+    titleLines: ['A receipt,', 'not a rescan.'] as const,
     body: 'The tool that made the change never certifies it. FixFlags opens the same page, repeats the same action on your live site, and keeps the before and after.',
     points: [
       'Same page and action, rechecked on the live site',
@@ -156,6 +158,7 @@ export const CARE_HOME = {
   builtForAi: {
     label: 'Built for your AI',
     title: 'Hand the fix to the tool you build with.',
+    titleLines: ['Copy the fix.', 'Paste it into your AI.'] as const,
     body: 'Every Flag comes with fix instructions: the page, what happened, what should happen, and how to confirm it. Paste them into your AI tool. Nothing to install.',
     toolsLabel: 'AI tools',
     sampleLabel: 'Sample fix instructions',
@@ -172,6 +175,7 @@ export const CARE_HOME = {
   compare: {
     label: 'How it compares',
     title: 'Not another score report.',
+    titleLines: ['Not another', 'score report.'] as const,
     items: [
       { title: 'Not a page score', body: 'Scanners grade pages. FixFlags tries what visitors do, like opening pages and adding to cart, and tells you what broke.' },
       { title: 'Not session replay', body: 'No tracking tag and no traffic needed. Your first check works on launch day.' },
@@ -231,8 +235,9 @@ export const CARE_HOME = {
     instructions: CART_EXAMPLE.prompt,
   },
   notifications: {
-    label: 'Email alerts',
+    label: 'After launch',
     title: 'Keep watching after launch.',
+    titleLines: ['Ship all day.', 'We keep watching.'] as const,
     body: 'Scheduled checks and uptime keep an eye on your live site. You get an email when something breaks, when a fix is confirmed, and when a fixed problem comes back.',
     detailTitle: 'What gets checked?',
     detailBody: 'Save your website to start scheduled checks. You can see what’s checked, change the schedule, and choose your email alerts in Settings. New problems can be found at the next scheduled check.',
@@ -303,7 +308,7 @@ export const CARE_HOME = {
     added: 'Added',
     action: 'Explore integrations',
   },
-  close: { title: 'Check your website before your visitors do.', body: 'See what’s broken, hand your AI the fix, and prove it worked. Start free.', pricing: 'What’s included for free' },
+  close: { titleLines: ['Check your website', 'before your visitors do.'] as const, title: 'Check your website before your visitors do.', body: 'See what’s broken, hand your AI the fix, and prove it worked. Start free.', pricing: 'What’s included for free' },
 } as const
 
 /** Illustrative analysis snapshot, not a customer assessment or live schedule. */

@@ -7,7 +7,7 @@ import { ArrowRight, Bell, ChevronDown } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { BrandClosing } from '@/components/marketing/BrandClosing'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
-import { HomepageUrlEntry } from './HomepagePrimitives'
+import { HomepageSectionHeader, HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 import t from './HomepageSections.module.css'
 
@@ -18,9 +18,7 @@ export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTML
   return <section className={`${s.section} ${t.loopSection}`} aria-labelledby="homepage-loop-heading">
     <div className={t.monitoringGrid}>
       <div className={t.monitoringIntro}>
-        <p className={s.eyebrow}>{C.notifications.label}</p>
-        <h2 id="homepage-loop-heading">{C.notifications.title}</h2>
-        <p>{C.notifications.body}</p>
+        <HomepageSectionHeader id="homepage-loop-heading" index="04" label={C.notifications.label} lines={C.notifications.titleLines} lede={C.notifications.body} />
         <details className={t.monitoringDetails}>
           <summary>{C.notifications.detailTitle}<ChevronDown size={16} aria-hidden="true" /></summary>
           <p>{C.notifications.detailBody}</p>
@@ -39,13 +37,12 @@ export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTML
     <ol className={t.loop}>
       {C.workflow.steps.map(step => <li key={step.id}><p className={t.loopLabel}>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}
     </ol>
-    <Link href="/how-it-works" className={t.loopLink}>{C.workflow.action}<ArrowRight size={16} aria-hidden="true" /></Link>
   </section>
 }
 
 export function HomepageFinalSection() {
-  return <section className={`${s.section} ${s.final}`} id="plans"><BrandClosing>
-    <h2>{C.close.title}</h2><p className={s.finalBody}>{C.close.body}</p><HomepageUrlEntry final />
+  return <section className={`${s.section} ${s.final}`} id="plans" aria-labelledby="final-title"><BrandClosing>
+    <h2 id="final-title" className={s.finalTitle}><span>{C.close.titleLines[0]}</span> <span>{C.close.titleLines[1]}</span></h2><p className={s.finalBody}>{C.close.body}</p><HomepageUrlEntry final />
     <Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link>
   </BrandClosing></section>
 }

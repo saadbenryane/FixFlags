@@ -19,7 +19,8 @@ describe('signature sequence', () => {
     stubMotion(false)
     render(<SignatureSequence />)
     const stage = screen.getByRole('figure', { name: C.label })
-    expect(within(stage).getAllByRole('tab').map(tab => tab.textContent)).toEqual(['1Check', '2Flag', '3Fix', '4Verify'])
+    expect(within(stage).getAllByRole('tab').map(tab => tab.textContent)).toEqual(C.steps.map((step, index) => `0${index + 1}${step.tab}.${step.caption}`))
+    expect(screen.getByRole('img', { name: C.browser.captureAlt })).toBeVisible()
     expect(selected()).toHaveTextContent('Check')
     expect(screen.getByRole('img', { name: C.browser.captureAlt })).toHaveAttribute('data-src', C.browser.capture)
     expect(screen.getByText(C.sampleNote)).toBeVisible()
@@ -37,6 +38,7 @@ describe('signature sequence', () => {
     expect(selected()).toHaveTextContent('Verify')
     expect(screen.getByRole('heading', { name: C.receipt.title })).toBeVisible()
     expect(screen.getByText(C.receipt.note)).toBeVisible()
+    expect(screen.getByRole('img', { name: C.browser.afterAlt })).toHaveAttribute('data-src', C.browser.after)
 
     act(() => { vi.advanceTimersByTime(SIGNATURE_STEP_MS * 3) })
     expect(selected()).toHaveTextContent('Verify')

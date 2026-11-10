@@ -53,7 +53,8 @@ const AREAS = [
 export const HOMEPAGE_CHECK_COVERAGE = {
   label: 'What we check',
   title: `Your website, checked across ${AREAS.length} areas.`,
-  body: 'Does it load? Do the buttons work? Can people use it on their phone? See what we look for.',
+  titleLines: ['Up isn’t the same', 'as working.'] as const,
+  body: `A page can load while its checkout is broken. We check ${AREAS.length} areas the way visitors use your site: does it load, do the buttons work, can people use it on a phone.`,
   explore: (name: string) => `Explore ${name} checks`,
   detailTitle: (name: string) => `${name} checks`,
   detailAction: 'Check your website',

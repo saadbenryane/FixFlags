@@ -31,7 +31,7 @@ function openCategory(name: string) {
 describe('comprehensive homepage experience', () => {
   it('explains how to confirm a fix without requiring technical setup', () => {
     render(<CareHomepage />)
-    const section = screen.getByRole('region', { name: C.independent.title })
+    const section = screen.getByRole('region', { name: C.independent.titleLines.join(' ') })
     expect(within(section).getByText(C.independent.body)).toBeVisible()
     expect(within(section).getAllByRole('link')).toHaveLength(1)
     expect(within(section).getByRole('link', { name: C.independent.action })).toHaveAttribute('href', '/how-it-works')
@@ -208,7 +208,7 @@ describe('comprehensive homepage experience', () => {
   })
   it('leads with the promise, two URL entries, and the sample sequence instead of the dashboard', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('heading', { level: 1, name: /Your AI built it\.\s*FixFlags makes sure it works\./ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: /Your AI built it\.\s*We make sure it works\./ })).toBeVisible()
     expect(screen.getByRole('link', { name: C.hero.sampleAction })).toHaveAttribute('href', '/how-it-works#sample')
     expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
     expect(screen.getByText(C.hero.body)).toBeVisible()
@@ -507,7 +507,7 @@ describe('comprehensive homepage experience', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
-    const section = screen.getByRole('region', { name: C.builtForAi.title })
+    const section = screen.getByRole('region', { name: C.builtForAi.titleLines.join(' ') })
     const tabs = within(section).getAllByRole('tab')
     expect(tabs.map(tab => tab.textContent)).toEqual(C.builtForAi.tools.map(tool => tool.label))
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
@@ -536,7 +536,7 @@ describe('comprehensive homepage experience', () => {
 
   it('explains all eight product areas immediately after the hero without disclaimer rows', () => {
     render(<CareHomepage />)
-    const coverage = screen.getByRole('region', { name: C.checks.title })
+    const coverage = screen.getByRole('region', { name: C.checks.titleLines.join(' ') })
     expect(C.checks.areas.map(area => area.id).sort()).toEqual([...SITE_CARD_AREAS].sort())
     expect(C.checks.areas).toHaveLength(8)
     expect(C.checks.title).toContain(`${C.checks.areas.length} areas`)
@@ -594,7 +594,7 @@ describe('comprehensive homepage experience', () => {
   it('keeps the AI handoff available inline when clipboard access fails', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
     render(<CareHomepage />)
-    const section = screen.getByRole('region', { name: C.builtForAi.title })
+    const section = screen.getByRole('region', { name: C.builtForAi.titleLines.join(' ') })
     fireEvent.click(within(section).getByRole('button', { name: C.story.copy }))
     await waitFor(() => expect(within(section).getByRole('textbox', { name: S.guidanceLabel })).toHaveValue(C.workflow.instructions))
     expect(within(section).getByRole('status')).toHaveTextContent(S.copyFailed)
@@ -603,14 +603,14 @@ describe('comprehensive homepage experience', () => {
 
   it('shows real before and after captures as proof, then an honest comparison, in storyboard order', () => {
     render(<CareHomepage />)
-    const proof = screen.getByRole('region', { name: C.independent.title })
+    const proof = screen.getByRole('region', { name: C.independent.titleLines.join(' ') })
     expect(within(proof).getByRole('img', { name: C.independent.beforeAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-broken.png')
     expect(within(proof).getByRole('img', { name: C.independent.afterAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-verified.png')
     expect(within(proof).getByText(C.independent.sampleNote)).toBeVisible()
     for (const point of C.independent.points) expect(within(proof).getByText(point)).toBeVisible()
-    const compare = screen.getByRole('region', { name: C.compare.title })
+    const compare = screen.getByRole('region', { name: C.compare.titleLines.join(' ') })
     for (const item of C.compare.items) expect(within(compare).getByRole('heading', { name: item.title })).toBeVisible()
-    const order = [C.checks.title, C.builtForAi.title, C.independent.title, C.notifications.title, C.compare.title]
+    const order = [C.checks, C.builtForAi, C.independent, C.notifications, C.compare].map(section => section.titleLines.join(' '))
       .map(name => screen.getByRole('region', { name }))
     for (let index = 1; index < order.length; index++) expect(order[index - 1].compareDocumentPosition(order[index])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
@@ -618,7 +618,7 @@ describe('comprehensive homepage experience', () => {
 
   it('labels the email example and opens matching evidence with focus restored', async () => {
     render(<CareHomepage />)
-    const section = screen.getByRole('region', { name: C.notifications.title })
+    const section = screen.getByRole('region', { name: C.notifications.titleLines.join(' ') })
     expect(within(section).getByText(C.notifications.sampleLabel)).toBeVisible()
     const details = within(section).getByText(C.notifications.detailTitle).closest('details')!
     expect(details).not.toHaveAttribute('open')

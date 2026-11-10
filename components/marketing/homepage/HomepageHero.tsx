@@ -10,17 +10,17 @@ import s from './HomepageHero.module.css'
 
 export type HomepageDetailCard = SiteCardArea
 
-/** The product is the hero: the promise and URL entry beside one sample Flag from check to verified fix. */
+/** The promise and URL entry, then the product itself: one sample Flag from check to verified fix. */
 export function HomepageHero() {
+  const [lead, follow] = C.hero.headline
   return <section className={s.hero}>
-    <div className={s.layout}>
-      <div className={s.copy}>
-        <h1><span>{C.hero.headline[0]}</span>{' '}<span>{C.hero.headline[1].slice(0, -1)}<span className={s.period}>{C.hero.headline[1].slice(-1)}</span></span></h1>
-        <p className={s.description}>{C.hero.body}</p>
-        <HomepageUrlEntry className={s.entry} />
-        <p className={s.note}>{C.hero.setup}<Link href={C.hero.sampleHref}>{C.hero.sampleAction}<ArrowRight size={14} aria-hidden="true" /></Link></p>
-      </div>
-      <div className={s.sequence}><SignatureSequence /></div>
+    <div className={s.copy}>
+      <p className={s.eyebrow}><span aria-hidden="true" />{C.hero.eyebrow}</p>
+      <h1><span>{lead}</span>{' '}<span className={s.follow}>{follow.slice(0, -1)}<span className={s.period}>{follow.slice(-1)}</span></span></h1>
+      <p className={s.description}>{C.hero.body}</p>
+      <HomepageUrlEntry className={s.entry} />
+      <p className={s.note}>{C.hero.setup}<Link href={C.hero.sampleHref}>{C.hero.sampleAction}<ArrowRight size={14} aria-hidden="true" /></Link></p>
     </div>
+    <div className={s.sequence}><SignatureSequence /></div>
   </section>
 }
