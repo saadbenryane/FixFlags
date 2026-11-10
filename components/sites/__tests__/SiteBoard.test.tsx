@@ -151,6 +151,8 @@ async function openCategoryCheckDetails() {
 
 const push = vi.hoisted(() => vi.fn())
 
+// The builder question makes its own request; it is covered in SiteBuilderQuestion.test.tsx.
+vi.mock('@/components/sites/SiteBuilderQuestion', () => ({ SiteBuilderQuestion: () => null }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh: vi.fn() }),
   usePathname: () => SITE_PATH,

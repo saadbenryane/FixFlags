@@ -24,21 +24,27 @@ export function detectedBuilder(technologies: readonly { name: string }[]) {
   return AI_BUILDER_TOOLS.find(tool => tool.kind === 'builder' && names.has(tool.name.toLowerCase())) ?? null
 }
 
+/** The owner's answer wins over detection; detection covers owners who have not answered. */
+export function handoffTool(technologies: readonly { name: string }[], reported?: string | null) {
+  return AI_BUILDER_TOOLS.find(tool => tool.slug === reported) ?? detectedBuilder(technologies)
+}
+
 function pathOf(url: string | null) {
   if (!url) return null
   try { return new URL(url).pathname || '/' } catch { return url.startsWith('/') ? url : null }
 }
 
-export function SiteTopProblem({ siteId, flag, copyAvailability, copyReady, technologies, onOpen }: {
+export function SiteTopProblem({ siteId, flag, copyAvailability, copyReady, technologies, reportedBuilder, onOpen }: {
   siteId: string
   flag: SiteFlagSeed
   copyAvailability: SiteActionAvailability
   copyReady: boolean
   technologies: readonly { name: string }[]
+  reportedBuilder?: string | null
   onOpen: (id: string, trigger: HTMLElement) => void
 }) {
   const path = pathOf(flag.pageUrl)
-  const builder = detectedBuilder(technologies)
+  const builder = handoffTool(technologies, reportedBuilder)
   return <section aria-labelledby="top-problem-title" className="rounded-card bg-brand-muted/60 p-5">
     <p className="flex items-center gap-2 text-xs font-semibold text-foreground"><Flag size={14} className="text-brand" aria-hidden="true" />{C.label}</p>
     <h2 id="top-problem-title" className="mt-2 text-xl font-semibold tracking-tight text-foreground">{flag.problem}</h2>
@@ -49,7 +55,7 @@ export function SiteTopProblem({ siteId, flag, copyAvailability, copyReady, tech
       </InteractiveButton>
       {copyReady ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.problem} availability={copyAvailability} /> : null}
     </div>
-    {builder ? <p className="mt-3 text-sm text-muted-foreground">{C.builder(builder.name)}{' '}
+    {builder ? <p className="mt-3 text-sm text-muted-foreground">{builder.where}{' '}
       <Link href={`/ai-builders/${builder.slug}` as Route} className="font-medium text-foreground underline-offset-4 hover:underline">{C.builderGuide(builder.name)}</Link></p> : null}
   </section>
 }

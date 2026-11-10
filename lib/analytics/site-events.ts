@@ -27,6 +27,7 @@ export const SITE_LIFECYCLE_EVENTS = [
   'outcome_run_requested',
   'outcome_run_result',
   'outcome_recovered',
+  'builder_reported',
 ] as const
 
 export type SiteLifecycleEventName = (typeof SITE_LIFECYCLE_EVENTS)[number]

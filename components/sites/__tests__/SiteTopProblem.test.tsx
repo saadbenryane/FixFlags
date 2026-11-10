@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { SiteTopProblem, detectedBuilder, topProblem } from '../SiteTopProblem'
+import { SiteTopProblem, detectedBuilder, handoffTool, topProblem } from '../SiteTopProblem'
+import { getAiBuilderTool } from '@/lib/marketing/copy/ai-builders'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 
@@ -29,6 +30,9 @@ describe('top problem', () => {
   it('detects an AI builder from the Site technologies', () => {
     expect(detectedBuilder([{ name: 'Next.js' }, { name: 'Lovable' }])?.slug).toBe('lovable')
     expect(detectedBuilder([{ name: 'Next.js' }])).toBeNull()
+    expect(handoffTool([{ name: 'Lovable' }], 'claude-code')?.slug).toBe('claude-code')
+    expect(handoffTool([{ name: 'Lovable' }], 'no-ai')?.slug).toBe('lovable')
+    expect(handoffTool([], null)).toBeNull()
   })
 
   it('shows the Flag, its page, the copy action and a builder hint, and opens the Flag', () => {
@@ -38,6 +42,7 @@ describe('top problem', () => {
     expect(screen.getByText(C.label)).toBeVisible()
     expect(screen.getByText(C.page('/products/tote'))).toBeVisible()
     expect(screen.getByRole('button', { name: /Copy fix instructions/ })).toBeVisible()
+    expect(screen.getByText(getAiBuilderTool('lovable')!.where, { exact: false })).toBeVisible()
     expect(screen.getByRole('link', { name: C.builderGuide('Lovable') })).toHaveAttribute('href', '/ai-builders/lovable')
     fireEvent.click(screen.getByRole('button', { name: C.view }))
     expect(onOpen).toHaveBeenCalledWith('flag-1', expect.any(HTMLElement))
