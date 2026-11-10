@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation'
 import { Container } from '@/components/ui/container'
 import { GuideActions } from '@/components/marketing/guides/GuideActions'
 import { guideMetadata, guideSchema } from '@/components/marketing/guides/guide-seo'
-import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES, getWebsiteGuide } from '@/lib/marketing/copy/guides'
+import { GUIDES_PAGE, WEBSITE_GUIDES, getWebsiteGuide, guideReviewedAt } from '@/lib/marketing/copy/guides'
 import { guideDestinationStudy } from '@/lib/marketing/copy/destination-study'
 import s from '@/components/marketing/guides/Guide.module.css'
 
@@ -34,7 +34,7 @@ export default async function GuidePage({ params }: Props) {
       <header className={s.header}>
         <h1 className={s.title}>{guide.title}</h1>
         <p className={s.description}>{guide.description}</p>
-        <p className={s.date}>{GUIDES_PAGE.reviewed}: <time dateTime={GUIDE_REVIEWED_AT}>{GUIDE_REVIEWED_AT}</time></p>
+        <p className={s.date}>{GUIDES_PAGE.reviewed}: <time dateTime={guideReviewedAt(guide)}>{guideReviewedAt(guide)}</time></p>
         <p className={s.decision}>{guide.decision}</p>
       </header>
       <div className={s.layout}>

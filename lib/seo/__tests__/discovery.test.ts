@@ -1,4 +1,4 @@
-import { WEBSITE_GUIDES, GUIDE_REVIEWED_AT } from '@/lib/marketing/copy/guides'
+import { WEBSITE_GUIDES, guideReviewedAt } from '@/lib/marketing/copy/guides'
 import { AI_BUILDER_TOOLS } from '@/lib/marketing/copy/ai-builders'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -31,7 +31,7 @@ describe('technical discovery', () => {
     try {
       const entries = await sitemap()
       for (const guide of WEBSITE_GUIDES) {
-        expect(entries).toContainEqual(expect.objectContaining({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(GUIDE_REVIEWED_AT) }))
+        expect(entries).toContainEqual(expect.objectContaining({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(guideReviewedAt(guide)) }))
         expect(buildLlmsTxt()).toContain(`](${baseUrl}/guides/${guide.slug})`)
       }
     } finally {

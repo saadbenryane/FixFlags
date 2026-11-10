@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import GuidesPage, { metadata } from '../page'
 import GuidePage, { generateMetadata, generateStaticParams } from '../[slug]/page'
-import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
+import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES, guideReviewedAt } from '@/lib/marketing/copy/guides'
 import { WEBSITE_GUIDE_SLUGS } from '@/lib/analytics/guide-entry'
 import receipt from '@/lib/growth/evidence/destination-study-serving-base-2026-11-09.json'
 import { DESTINATION_STUDY_EDITION_SHA256, destinationStudyDiscoveryVerified, inspectDestinationStudyPublication } from '@/lib/growth/destination-study-publication'
@@ -34,7 +34,7 @@ describe('website buyer guides', () => {
         expect(document.getElementById(section.id)).toHaveTextContent(section.paragraphs[0])
       }
       expect(screen.getByText(GUIDES_PAGE.exampleLabel)).toBeInTheDocument()
-      expect(screen.getByText(GUIDE_REVIEWED_AT)).toHaveAttribute('dateTime', GUIDE_REVIEWED_AT)
+      expect(screen.getByText(guideReviewedAt(guide))).toHaveAttribute('dateTime', guideReviewedAt(guide))
       for (const source of guide.sources) {
         expect(screen.getAllByRole('link', { name: source.title }).every(link => link.getAttribute('href') === source.href)).toBe(true)
         expect(screen.getByText(source.supports)).toBeInTheDocument()

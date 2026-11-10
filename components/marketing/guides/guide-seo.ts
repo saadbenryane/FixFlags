@@ -1,6 +1,6 @@
 import { buildIndexableMetadata } from '@/lib/marketing/metadata'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy/brand'
-import { GUIDE_REVIEWED_AT, GUIDES_PAGE, type WebsiteGuide } from '@/lib/marketing/copy/guides'
+import { GUIDES_PAGE, guideReviewedAt, type WebsiteGuide } from '@/lib/marketing/copy/guides'
 import { guideContentModifiedAt, guideDestinationStudy } from '@/lib/marketing/copy/destination-study'
 
 export function guideMetadata(guide: WebsiteGuide) {
@@ -9,7 +9,7 @@ export function guideMetadata(guide: WebsiteGuide) {
     description: guide.description,
     path: `/guides/${guide.slug}`,
     openGraphType: 'article',
-    publishedTime: GUIDE_REVIEWED_AT,
+    publishedTime: guideReviewedAt(guide),
     modifiedTime: guideContentModifiedAt(guide.slug),
   })
 }
@@ -26,8 +26,8 @@ export function guideSchema(guide: WebsiteGuide) {
         headline: guide.title,
         description: guide.description,
         mainEntityOfPage: url,
-        datePublished: GUIDE_REVIEWED_AT,
-        dateModified: study?.contentModifiedAt ?? GUIDE_REVIEWED_AT,
+        datePublished: guideReviewedAt(guide),
+        dateModified: study?.contentModifiedAt ?? guideReviewedAt(guide),
         author: { '@type': 'Organization', name: BRAND.name, url: SITE_URL },
         publisher: { '@type': 'Organization', name: BRAND.name, url: SITE_URL },
         citation: [...guide.sources, ...(study?.sources ?? [])].map(source => source.href.startsWith('/') ? `${SITE_URL}${source.href}` : source.href),

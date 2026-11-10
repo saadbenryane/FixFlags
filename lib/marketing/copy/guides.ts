@@ -34,6 +34,12 @@ export type WebsiteGuide = {
   example: { title: string; paragraphs: string[] }
   sources: GuideSource[]
   related: string[]
+  /** Set when a guide was written or re-reviewed after the shared review date. */
+  reviewedAt?: string
+}
+
+export function guideReviewedAt(guide: Pick<WebsiteGuide, 'reviewedAt'>): string {
+  return guide.reviewedAt ?? GUIDE_REVIEWED_AT
 }
 
 const coverage: GuideSource = { title: 'FixFlags: coverage and limits', href: '/coverage', supports: 'Current public checks, configured journeys, evidence scope, and incomplete results.' }
@@ -41,6 +47,8 @@ const mdn: GuideSource = { title: 'MDN: 200 OK', href: 'https://developer.mozill
 const lovable: GuideSource = { title: 'Lovable: publish your project', href: 'https://docs.lovable.dev/features/publish', supports: 'Publishing deploys a snapshot to a live URL. Later edits require publishing changes.' }
 const uptime: GuideSource = { title: 'UptimeRobot: monitor types', href: 'https://help.uptimerobot.com/en/articles/11358441-understanding-uptimerobot-monitor-types-a-guide-to-essential-services', supports: 'HTTP status checks, keyword checks, and other distinct monitor types.' }
 const api: GuideSource = { title: 'UptimeRobot: API monitoring', href: 'https://help.uptimerobot.com/en/articles/13628553-uptimerobot-api-monitoring', supports: 'API monitoring can assert response fields, headers, status codes, and response bodies.' }
+const stripeKeys: GuideSource = { title: 'Stripe: API keys', href: 'https://docs.stripe.com/keys', supports: 'Sandbox and live mode each have their own API keys, and objects in one mode are not accessible to the other.' }
+const stripeWebhooks: GuideSource = { title: 'Stripe: receive events in your webhook endpoint', href: 'https://docs.stripe.com/webhooks', supports: 'Webhook endpoints are registered at a public HTTPS URL, each endpoint has its own signing secret, and redirects count as failed deliveries.' }
 const checkly: GuideSource = { title: 'Checkly: browser checks overview', href: 'https://www.checklyhq.com/docs/detect/synthetic-monitoring/browser-checks/overview/', supports: 'Playwright browser scripts can interact with pages, assert outcomes, collect results, and trigger alerts.' }
 
 export const WEBSITE_GUIDES: WebsiteGuide[] = [
@@ -211,6 +219,64 @@ export const WEBSITE_GUIDES: WebsiteGuide[] = [
       'In this controlled illustration, a demo app has a public signup button and an approval form inside a private account. They need different checks.',
       'A public check can confirm where the signup button leads. The private approval step needs its own authorized test, safe test data, and a way to clean up. Passing one does not prove the other works.',
     ] }, sources: [coverage, checkly], related: ['fixflags-vs-uptime-monitoring', 'monitoring-ai-built-websites'],
+  },
+  {
+    slug: 'checkout-broken-after-deploy',
+    title: 'Checkout broke after a deploy. What now?',
+    description: 'The usual reasons checkout stops working right after you ship, and how to confirm the fix on your live site.',
+    decision: 'Reproduce it on the live site first, then compare what changed between your preview and production.',
+    reviewedAt: '2026-11-10',
+    sections: [
+      { id: 'reproduce', title: 'Reproduce it on the live site', paragraphs: [
+        'Open the product page your customers use, not a preview. Add an item, open the cart, and continue to checkout. Stop before entering payment details or placing an order. Write down the exact step where it fails and what you see: an error message, a button that does nothing, or a page that never loads.',
+        'Open the browser developer tools and look at the console and network tabs while you repeat the step. A failed request to your own server or to the payment provider usually points straight at the cause.',
+      ] },
+      { id: 'keys-and-modes', title: 'Check keys and environment settings', paragraphs: [
+        'The most common cause after a deploy is configuration, not code. Payment providers such as Stripe keep separate keys for testing and for live payments, and objects created in one mode are not visible in the other. A production build that picked up a test key, an empty environment variable, or a key that was rotated will fail even though the code is unchanged.',
+        'Compare the environment variables your host uses for production with the ones your preview used. Check that the publishable key in the page and the secret key on the server come from the same mode and the same account.',
+      ], sourceIds: [1] },
+      { id: 'urls-and-webhooks', title: 'Check addresses and webhooks', paragraphs: [
+        'Checkout often depends on addresses that change between environments: the page customers return to after paying, and the endpoint that receives payment events. If those still point at a preview domain, or the webhook endpoint was not registered for the production address, orders can look broken after payment even when the payment went through.',
+        'Webhook endpoints are registered at a public HTTPS address, and each endpoint has its own signing secret. A redirect on that address counts as a failed delivery. After a domain or host change, confirm the endpoint address and its secret.',
+      ], sourceIds: [2] },
+      { id: 'fix-and-verify', title: 'Fix it, then prove it on the live site', paragraphs: [
+        'Give your AI tool or developer the exact failing step, the error, and what should happen instead. Review the change, publish it, then check the same step again on the live site. FixFlags can reach checkout from the product page without paying, record where it stops, and run the same check again after your fix as independent verification.',
+        'If a check cannot reach the step, for example because the page is blocked, the result is Couldn’t verify rather than fixed. Keep the problem open until a check confirms checkout opens again, and add a check after every deploy so the next regression is caught before customers find it.',
+      ], sourceIds: [0] },
+    ],
+    example: { title: 'A checkout that broke on the live site only', paragraphs: [
+      'In this controlled illustration, a demo store works in its preview. After publishing, the product page loads, but selecting checkout returns an error because the production build is missing a payment key.',
+      'After the key is set and the site is published again, a new check reaches checkout from the product page. No payment or order is made, so the check confirms checkout opens, not that payments settle.',
+    ] }, sources: [coverage, stripeKeys, stripeWebhooks], related: ['website-online-but-not-working', 'checking-after-publishing'],
+  },
+  {
+    slug: 'ai-built-site-launch-checklist',
+    title: 'A launch checklist for websites built with AI',
+    description: 'What to check on the live site before you share a website you built with Lovable, Bolt, v0, Replit or a coding agent.',
+    decision: 'Check the published address on a phone and a laptop, follow every main button once, then set up checks for what comes next.',
+    reviewedAt: '2026-11-10',
+    sections: [
+      { id: 'publish', title: 'Check the published site, not the preview', paragraphs: [
+        'AI builders show a preview while you work. Visitors see the published version, which can differ: a change you made after publishing is not live until you publish again, and settings such as your domain and environment values belong to the published site. Open the address you will share, on the device your visitors use most.',
+        'Make sure the address loads over HTTPS with your own domain if you have one, and that the page title and link preview look right when you paste the link into a message.',
+      ], sourceIds: [1] },
+      { id: 'buttons-and-pages', title: 'Follow every main button once', paragraphs: [
+        'Generated sites often include buttons and links that were placeholders when the page was created: a pricing link to a page that does not exist, a sign-up button with nothing behind it, a footer full of links to nowhere. Select each main button and menu item and see where it goes.',
+        'Look for leftover sample text, such as Lorem ipsum or Your company name, and for pages that load blank. These are easy to miss when you only look at the page you were editing.',
+      ] },
+      { id: 'phones-and-forms', title: 'Try it on a phone and submit a form', paragraphs: [
+        'Open the menu on a phone. Check that popups and banners do not cover the main button, that text is readable without zooming, and that forms show a clear message after you submit them. Use a test entry rather than real customer details.',
+        'If you take payments or sign-ups, go as far as you safely can: open the cart and checkout, or start the sign-up flow, and stop before paying or creating a real account unless you have a safe test setup.',
+      ] },
+      { id: 'after-launch', title: 'Keep checking after launch', paragraphs: [
+        'Every new prompt can change more than you asked for. FixFlags checks the published site in a real browser, hands your AI tool fix instructions for anything broken, and checks the same page again after you publish the fix as independent verification. A check that cannot reach a page reports Couldn’t verify rather than guessing.',
+        'Save the website to keep scheduled checks running, and send a check after each deploy so a regression shows up before your visitors find it.',
+      ], sourceIds: [0] },
+    ],
+    example: { title: 'A pricing link that only worked in the preview', paragraphs: [
+      'In this controlled illustration, a demo site built with an AI tool has a pricing button that works in the preview. The published site still points at a page that was renamed, so the button opens a not found page.',
+      'The fix instructions name the page, the button and the expected result. After the change is published, a new check opens the pricing page from the homepage button.',
+    ] }, sources: [coverage, lovable], related: ['monitoring-ai-built-websites', 'checking-after-publishing'],
   },
 ]
 

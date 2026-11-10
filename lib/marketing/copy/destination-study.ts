@@ -1,5 +1,5 @@
 import receipt from '@/lib/growth/evidence/destination-study-serving-base-2026-11-09.json'
-import { GUIDE_REVIEWED_AT } from './guides'
+import { GUIDE_REVIEWED_AT, WEBSITE_GUIDES, guideReviewedAt } from './guides'
 
 // Change only with explicit publication approval for the reviewed study.
 const PUBLICATION_APPROVED = false
@@ -61,5 +61,6 @@ export function guideDestinationStudy(slug: string) {
 }
 
 export function guideContentModifiedAt(slug: string) {
-  return guideDestinationStudy(slug)?.contentModifiedAt ?? GUIDE_REVIEWED_AT
+  const guide = WEBSITE_GUIDES.find(item => item.slug === slug)
+  return guideDestinationStudy(slug)?.contentModifiedAt ?? (guide ? guideReviewedAt(guide) : GUIDE_REVIEWED_AT)
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES, getWebsiteGuide } from '@/lib/marketing/copy/guides'
+import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES, getWebsiteGuide, guideReviewedAt } from '@/lib/marketing/copy/guides'
 import { PUBLIC_OFFER } from '@/lib/marketing/copy/public-offer'
 import { guideMetadata, guideSchema } from '@/components/marketing/guides/guide-seo'
 import { SITE_URL } from '@/lib/marketing/copy/brand'
@@ -7,13 +7,13 @@ import { buildPublicSitemap as sitemap } from '@/app/sitemap.xml/entries'
 
 vi.mock('@/lib/graph/queries', () => ({ getIndexableIssueCheckIds: async () => [] }))
 
-const primaryHosts = ['developer.mozilla.org', 'docs.lovable.dev', 'help.uptimerobot.com', 'www.checklyhq.com']
+const primaryHosts = ['developer.mozilla.org', 'docs.lovable.dev', 'help.uptimerobot.com', 'www.checklyhq.com', 'docs.stripe.com']
 
 describe('buyer guide content and evidence contracts', () => {
-  it('covers six distinct decisions with substantive original outlines', () => {
-    expect(WEBSITE_GUIDES).toHaveLength(6)
-    expect(new Set(WEBSITE_GUIDES.map(guide => guide.slug)).size).toBe(6)
-    expect(new Set(WEBSITE_GUIDES.map(guide => guide.decision)).size).toBe(6)
+  it('covers eight distinct decisions with substantive original outlines', () => {
+    expect(WEBSITE_GUIDES).toHaveLength(8)
+    expect(new Set(WEBSITE_GUIDES.map(guide => guide.slug)).size).toBe(8)
+    expect(new Set(WEBSITE_GUIDES.map(guide => guide.decision)).size).toBe(8)
     for (const guide of WEBSITE_GUIDES) {
       const body = [...guide.sections.flatMap(section => section.paragraphs), ...guide.example.paragraphs].join(' ')
       expect(body.split(/\s+/).length).toBeGreaterThanOrEqual(250)
@@ -66,9 +66,9 @@ describe('buyer guide content and evidence contracts', () => {
   it('gives every guide canonical article metadata and breadcrumb schema', () => {
     for (const guide of WEBSITE_GUIDES) {
       const metadata = guideMetadata(guide)
-      const modifiedTime = guide.slug === 'website-online-but-not-working' ? '2026-11-09' : GUIDE_REVIEWED_AT
+      const modifiedTime = guide.slug === 'website-online-but-not-working' ? '2026-11-09' : guideReviewedAt(guide)
       expect(metadata.alternates?.canonical).toBe(`${SITE_URL}/guides/${guide.slug}`)
-      expect(metadata.openGraph).toMatchObject({ type: 'article', publishedTime: GUIDE_REVIEWED_AT, modifiedTime })
+      expect(metadata.openGraph).toMatchObject({ type: 'article', publishedTime: guideReviewedAt(guide), modifiedTime })
       const graph = guideSchema(guide)['@graph']
       expect(graph).toEqual(expect.arrayContaining([
         expect.objectContaining({ '@type': 'Article', headline: guide.title, dateModified: modifiedTime }),

@@ -6,6 +6,8 @@ export const WEBSITE_GUIDE_SLUGS = [
   'checking-lovable-websites',
   'fixflags-vs-uptime-monitoring',
   'fixflags-vs-scripted-browser-monitoring',
+  'checkout-broken-after-deploy',
+  'ai-built-site-launch-checklist',
 ] as const
 
 export const GUIDE_INDEX_ENTRY = 'guides-index'
