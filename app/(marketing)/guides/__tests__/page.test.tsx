@@ -4,7 +4,7 @@ import GuidesPage, { metadata } from '../page'
 import GuidePage, { generateMetadata, generateStaticParams } from '../[slug]/page'
 import { GUIDE_REVIEWED_AT, GUIDES_PAGE, WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
 import { WEBSITE_GUIDE_SLUGS } from '@/lib/analytics/guide-entry'
-import receipt from '@/docs/growth/metrics/destination-study-serving-base-2026-11-09.json'
+import receipt from '@/lib/growth/evidence/destination-study-serving-base-2026-11-09.json'
 import { DESTINATION_STUDY_EDITION_SHA256, destinationStudyDiscoveryVerified, inspectDestinationStudyPublication } from '@/lib/growth/destination-study-publication'
 import { destinationStudyEdition } from '@/lib/marketing/copy/destination-study'
 

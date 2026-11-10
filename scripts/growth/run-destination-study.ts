@@ -88,7 +88,7 @@ const root = new URL('../../', import.meta.url)
 const selectedSourceFiles = ['lib/audit/open-check.ts', 'lib/audit/soft-404.ts', 'lib/audit/html-document.ts']
 const comparisonReceipt = 'docs/growth/metrics/destination-page-response-comparison-2026-11-09.json'
 const worktreeReceipt = 'docs/growth/metrics/destination-study-2026-11-09.json'
-const servingBaseReceipt = 'docs/growth/metrics/destination-study-serving-base-2026-11-09.json'
+const servingBaseReceipt = 'lib/growth/evidence/destination-study-serving-base-2026-11-09.json'
 const servingBaseRevision = '3e7453bc20d3d79c3e72730c64ee90d0af9c4ed7'
 const archiveRevisionEnv = 'FIXFLAGS_DESTINATION_STUDY_ARCHIVE_REVISION'
 const htmlHeaders = { 'content-type': 'text/html; charset=utf-8' }

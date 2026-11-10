@@ -1,4 +1,4 @@
-import receipt from '@/docs/growth/metrics/destination-study-serving-base-2026-11-09.json'
+import receipt from '@/lib/growth/evidence/destination-study-serving-base-2026-11-09.json'
 import { GUIDE_REVIEWED_AT } from './guides'
 
 // Change only with explicit publication approval for the reviewed study.

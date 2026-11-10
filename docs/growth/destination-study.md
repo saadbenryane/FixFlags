@@ -5,7 +5,7 @@ study. Publication requires approval.
 
 The development guide preview is at
 `/guides/website-online-but-not-working#http-200-booking-study`. Its table
-reads the [serving-base replay](metrics/destination-study-serving-base-2026-11-09.json).
+reads the [serving-base replay](../../lib/growth/evidence/destination-study-serving-base-2026-11-09.json).
 The production approval flag in
 `lib/marketing/copy/destination-study.ts` defaults to false. Production
 withholds the table, study citations, and revised article and sitemap dates
@@ -126,7 +126,7 @@ with `complete: false` when it reaches the byte limit. Its destination
 adapter does not pass that value to the classifier on the ordinary
 document return path. The newer worktree passes completeness through.
 
-The [serving-base receipt](metrics/destination-study-serving-base-2026-11-09.json)
+The [serving-base receipt](../../lib/growth/evidence/destination-study-serving-base-2026-11-09.json)
 now supplies the proposed guide table. It shows the reachable verdict and
 the body limit together. The original receipt stays available as evidence
 for the newer evaluator behavior. The two reports used controlled inputs.
