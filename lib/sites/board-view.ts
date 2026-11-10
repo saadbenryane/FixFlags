@@ -48,7 +48,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     detail: pagesNeedingAttention ? SITE_DASHBOARD_COPY.pagesWithFlags(pagesNeedingAttention) : undefined, state: pagesNeedingAttention ? 'attention' : quietState })
   const technologies: ToolItem[] = (view.technology?.items ?? []).map(item => ({
     name: item.name,
-    status: view.technology?.status === 'complete' ? 'Detected' : 'Detected in partial check',
+    status: view.technology?.status === 'complete' ? 'Detected' : 'Detected in an incomplete check',
     state: view.technology?.status === 'complete' ? 'healthy' : 'attention',
   }))
   const trend = siteTrendChecks(view.monitoringTrend)
@@ -63,7 +63,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     title: item.afterFix ? B.history.afterFix : item.executionState === 'COMPLETED' ? B.complete : B.incomplete,
     detail: item.scope ? [item.trigger === 'SCHEDULED' ? B.history.scheduled : item.trigger === 'MANUAL' ? B.history.manual : item.trigger === 'OTHER' ? B.history.other : null,
       item.scope === 'SITE' ? B.history.site : item.scope === 'CATEGORY' ? item.targetLabel ?? B.history.unknown : item.scope === 'OUTCOMES' ? B.history.outcomes : item.scope === 'DIAGNOSTIC' ? B.history.diagnostic : B.history.unknown,
-      item.scope === 'CATEGORY' ? null : item.targetLabel].filter(Boolean).join(' · ') : undefined,
+      item.scope === 'CATEGORY' ? null : item.targetLabel].filter(Boolean).join(', ') : undefined,
     resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
     time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
     dateTime: item.checkedAt,

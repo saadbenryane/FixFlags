@@ -1057,7 +1057,7 @@ describe('SiteBoard chrome', () => {
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="timeline" /></MeProvider>)
     expect(screen.getByRole('img', { name: 'Flag count across 2 checks' })).toBeVisible()
     const event = screen.getByText('Check after a fix').closest('li')!
-    expect(within(event).getByText('Manual check · Selected visitor actions · Reach checkout')).toBeVisible()
+    expect(within(event).getByText('Manual check, Selected visitor actions, Reach checkout')).toBeVisible()
     expect(within(event).getByText('Fix verified')).toBeVisible()
     expect(within(event).queryByText('0 Flags')).not.toBeInTheDocument()
   })

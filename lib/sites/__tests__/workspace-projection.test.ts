@@ -19,9 +19,9 @@ describe('workspace projections', () => {
       { ...entry, id: 'outcome', scope: 'OUTCOMES', targetLabel: 'Reach checkout' },
     ]
     const events = projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents
-    expect(events.find(item => item.id === 'category')?.detail).toBe(`${B.history.manual} · Performance`)
-    expect(events.find(item => item.id === 'diagnostic')?.detail).toBe(`${B.history.manual} · ${B.history.diagnostic} · /pricing`)
-    expect(events.find(item => item.id === 'outcome')?.detail).toBe(`${B.history.manual} · ${B.history.outcomes} · Reach checkout`)
+    expect(events.find(item => item.id === 'category')?.detail).toBe(`${B.history.manual}, Performance`)
+    expect(events.find(item => item.id === 'diagnostic')?.detail).toBe(`${B.history.manual}, ${B.history.diagnostic}, /pricing`)
+    expect(events.find(item => item.id === 'outcome')?.detail).toBe(`${B.history.manual}, ${B.history.outcomes}, Reach checkout`)
   })
   it('keeps a recovered repair in the Timeline alongside other findings from that run', () => {
     const view = siteViewFixture()

@@ -69,9 +69,9 @@ A second pass compared every public and in-product surface against the adopted v
 
 10. A reachability scan from every route, the worker and the scripts found modules production stopped calling. Dedupe, plan-limit application, two unwired execution modules, the feedback digest and an unused primitive are removed, and the architecture and code maps name current files. Search Console checks stay as parked capabilities for that integration.
 
-**Still needs the owner**
+**The first-check walk, November 10 (night)**
 
-The first-check walk on real infrastructure. On November 10 the local walk reached the provisional Site board and the signup gate: the check was created (201) and the board showed progress and the gate. The worker then failed because the local database lacks nine migrations (`audits.prescriptionHandoffRetryAt`, `email_provider_events.discardedAt` and `uptime_incidents.tlsFailureOrigin` are missing). The agent's permission check blocks `npm run db:deploy`. Run it, start `npm run worker`, then walk sign-up → board → Flag → fix instructions → Recheck on desktop and phone. Production configuration (Resend, storage, PageSpeed keys) is outside the code and was not verified.
+The nine missing migrations were applied to the local database and the web app ran with the worker. A real anonymous check of example.com went through the results gate, signup, claim and the owner's board on desktop and phone. The fixes it led to are listed under "End-to-end walk and gap plan" below. Still open: the demo-store leg (Flag, fix instructions, Recheck) needs a worker started with `DEV_ALLOW_LOCALHOST=true` (stop the leftover worker, PID 73551, first) and a funded local OpenAI key. Production configuration (Resend, storage, PageSpeed and OpenAI keys) is outside the code and was not verified.
 
 ### End-to-end walk and gap plan, November 10 (night)
 
