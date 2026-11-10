@@ -4,8 +4,14 @@ import { PUBLIC_OFFER } from './public-offer'
 import { PRODUCT_STORY } from './product-story'
 import { AI_BUILDERS_PAGE } from './ai-builders'
 import { AI_CONNECTION_COPY } from './ai-connection'
+import { COMPARE_PAGE } from './compare'
+import { FREE_TOOLS_PAGE } from './free-tools'
+import { AGENCIES_PAGE } from './agencies'
 
 export const SEO = {
+  compare: { title: COMPARE_PAGE.seo.title, description: COMPARE_PAGE.seo.description },
+  freeTools: { title: FREE_TOOLS_PAGE.seo.title, description: FREE_TOOLS_PAGE.seo.description },
+  agencies: { title: AGENCIES_PAGE.seo.title, description: AGENCIES_PAGE.seo.description },
   connectAi: { title: AI_CONNECTION_COPY.metadataTitle, description: AI_CONNECTION_COPY.description },
   guides: { title: GUIDES_PAGE.metadataTitle, description: GUIDES_PAGE.description },
   coverage: {

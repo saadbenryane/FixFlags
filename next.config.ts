@@ -61,7 +61,7 @@ const nextConfig: NextConfig = {
       // Retired page addresses keep working for bookmarks, backlinks and old emails.
       { source: '/examples', destination: '/samples', permanent: true },
       { source: '/samples/details', destination: '/samples', permanent: true },
-      { source: '/partners', destination: '/use-cases#agencies', permanent: true },
+      { source: '/partners', destination: '/for-agencies', permanent: true },
       { source: '/docs/cli', destination: '/docs/mcp', permanent: true },
       { source: '/docs/mcp/tools', destination: '/docs/mcp', permanent: true },
       { source: '/compare/:id', destination: '/report/:id', permanent: true },

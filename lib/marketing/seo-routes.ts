@@ -24,6 +24,8 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/use-cases', seoKey: 'useCases', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/ai-builders', seoKey: 'aiBuilders', priority: 0.9, changeFrequency: 'monthly' },
+  { path: '/for-agencies', seoKey: 'agencies', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/compare', seoKey: 'compare', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/request-demo', seoKey: 'requestDemo', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },
@@ -44,6 +46,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/samples', seoKey: 'samples', priority: 0.7, changeFrequency: 'weekly' },
   { path: '/privacy', seoKey: 'privacy', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', seoKey: 'terms', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/tools', seoKey: 'freeTools', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/meta-preview', seoKey: 'metaPreview', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/broken-link-checker', seoKey: 'brokenLinks', priority: 0.6, changeFrequency: 'monthly' },
@@ -67,6 +70,8 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/', label: 'Home', note: 'Find what’s broken. Hand your AI the fix. Prove it worked.' },
       { path: '/ai-builders', label: 'For AI builders', note: 'Check the live site your AI tool built and hand it the fix' },
       ...AI_BUILDER_TOOLS.map(tool => ({ path: `/ai-builders/${tool.slug}`, label: `FixFlags for ${tool.name}`, note: tool.summary })),
+      { path: '/for-agencies', label: 'For agencies', note: 'Check client websites without installing anything and prove each fix' },
+      { path: '/compare', label: 'Compare', note: 'FixFlags beside Elu, Lighthouse, uptime monitors, and Checkly, with sources' },
       { path: '/connect-ai', label: 'FixFlags and your AI', note: 'Independent checks and focused fix instructions to copy and paste' },
       { path: '/integrations', label: 'Integrations', note: 'GitHub authorization available; every other connection coming soon' },
       { path: '/coverage', label: 'What FixFlags checks', note: 'Coverage, setup, and evidence limits' },
@@ -108,6 +113,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   {
     title: 'Free Tools',
     links: [
+      { path: '/tools', label: 'Free tools', note: 'All single-page checks in one place' },
       { path: '/tools/meta-preview', label: 'Meta Preview Tool', note: 'Check social preview tags on any URL' },
       { path: '/tools/placeholder-detector', label: 'Placeholder Copy Detector', note: 'Find lorem ipsum, TODOs, AI template artifacts' },
       { path: '/tools/broken-link-checker', label: 'Broken link checker', note: 'Find same-site links that return errors or do not respond' },

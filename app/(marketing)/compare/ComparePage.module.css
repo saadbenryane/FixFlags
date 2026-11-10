@@ -1,0 +1,9 @@
+.entry { display: grid; gap: 16px; max-width: 820px; scroll-margin-top: 96px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 0; }
+.facts > div { padding: 20px; border-radius: 18px; background: hsl(var(--muted) / .35); }
+.facts dt { color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 650; }
+.facts dd { margin: 8px 0 0; font-size: 15px; line-height: 1.6; }
+.choose { font-size: 15px; font-weight: 550; line-height: 1.6; }
+.source { color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.6; }
+.source a { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 3px; }
+.source a:hover { color: hsl(var(--brand-strong)); }

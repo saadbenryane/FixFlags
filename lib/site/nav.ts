@@ -14,10 +14,12 @@ export const FOOTER_COLUMNS = {
   product: [
     { href: '/how-it-works', label: 'Product' },
     { href: '/ai-builders', label: 'For AI builders' },
+    { href: '/for-agencies', label: 'For agencies' },
     { href: '/coverage', label: 'What it checks' },
     { href: '/samples', label: 'Product sample' },
     { href: '/use-cases', label: 'Use cases' },
     { href: '/integrations', label: 'Integrations' },
+    { href: '/compare', label: 'Compare' },
     { href: '/pricing', label: 'Pricing' },
   ],
   resources: [
@@ -27,9 +29,7 @@ export const FOOTER_COLUMNS = {
     { href: '/faq', label: 'FAQ' },
     { href: '/blog', label: 'Blog' },
     { href: '/guides', label: 'Website guides' },
-    { href: '/tools/meta-preview', label: 'Link preview checker' },
-    { href: '/tools/placeholder-detector', label: 'Placeholder copy detector' },
-    { href: '/tools/broken-link-checker', label: 'Broken link checker' },
+    { href: '/tools', label: 'Free tools' },
   ],
   company: [
     { href: '/blog/introducing-fixflags', label: 'Why we built FixFlags' },
