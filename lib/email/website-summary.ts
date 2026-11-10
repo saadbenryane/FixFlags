@@ -51,5 +51,13 @@ ${preview.length ? `<p style="margin:0 0 8px;font-size:13px;font-weight:600;">${
     more ? `<p style="font-size:14px;">${more}</p>` : '',
     input.totalSites > 1 ? `<p style="margin:24px 0 0;font-size:14px;"><a href="${escape(dashboard)}" style="color:${brandLight.link};">${C.summary.action}</a></p>` : '',
   ].join(''), { preview: `${heading}. ${C.summary.intro}`, preferencesUrl })
-  return { subject: C.summary.subject(input.cadence), ...emailContent(html) }
+  return { subject: summarySubject(input.cadence, input.sites), ...emailContent(html) }
+}
+
+/** The subject states the result. "No problems found" needs a fresh, complete check of every website. */
+export function summarySubject(cadence: 'DAILY' | 'WEEKLY', sites: readonly SummarySite[]) {
+  const problems = sites.reduce((total, site) => total + site.problems, 0)
+  if (problems > 0) return C.summary.subjectProblems(cadence, problems)
+  const fresh = sites.length > 0 && sites.every(site => site.checkedAt && !site.incomplete && !site.failed && !site.offline && !site.stale && !site.urgentOnly)
+  return fresh ? C.summary.subjectQuiet(cadence) : C.summary.subject(cadence)
 }

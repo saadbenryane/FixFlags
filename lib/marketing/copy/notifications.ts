@@ -38,6 +38,8 @@ export const NOTIFICATIONS_COPY = {
   },
   summary: {
     subject: (cadence: 'DAILY' | 'WEEKLY') => `Your ${cadence === 'DAILY' ? 'daily' : 'weekly'} website update`,
+    subjectProblems: (cadence: 'DAILY' | 'WEEKLY', count: number) => `${cadence === 'DAILY' ? 'Daily' : 'Weekly'} summary: ${count} ${count === 1 ? 'problem' : 'problems'} to review`,
+    subjectQuiet: (cadence: 'DAILY' | 'WEEKLY') => `${cadence === 'DAILY' ? 'Daily' : 'Weekly'} summary: no problems found`,
     heading: (cadence: 'DAILY' | 'WEEKLY') => `Your ${cadence === 'DAILY' ? 'daily' : 'weekly'} website summary`,
     intro: 'A short look at your latest website checks.',
     action: 'View all websites', siteAction: 'View website',
