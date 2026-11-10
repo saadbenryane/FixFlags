@@ -8,9 +8,10 @@
 /* The composer: the URL entry presented as the place you hand the agent its task, with a living glow edge. */
 .entry::before { content: ''; position: absolute; inset: -3px; z-index: 0; border-radius: 21px; pointer-events: none;
   background: conic-gradient(from var(--composer-angle), hsl(var(--brand) / 0), hsl(var(--brand) / .75), hsl(36 100% 60% / .7), hsl(var(--brand) / 0) 45%, hsl(222 80% 70% / .35) 70%, hsl(var(--brand) / 0));
-  filter: blur(14px); opacity: .95; transition: opacity var(--motion-fast) var(--ease-out); }
+  filter: blur(16px); opacity: .55; transition: opacity var(--motion-fast) var(--ease-out); }
+.entry:focus-within::before { opacity: .9; }
 .entry::after { content: ''; position: absolute; inset: -1px; z-index: 0; border-radius: 19px; padding: 1px; pointer-events: none;
-  background: conic-gradient(from var(--composer-angle), hsl(var(--brand) / .15), hsl(var(--brand) / .9), hsl(36 100% 60% / .8), hsl(var(--brand) / .15) 50%, hsl(var(--brand) / .15));
+  background: conic-gradient(from var(--composer-angle), hsl(var(--brand) / .1), hsl(var(--brand) / .7), hsl(36 100% 60% / .55), hsl(var(--brand) / .1) 50%, hsl(var(--brand) / .1));
   -webkit-mask: linear-gradient(hsl(0 0% 0%) 0 0) content-box, linear-gradient(hsl(0 0% 0%) 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 .entry > * { position: relative; z-index: 1; }
 .entry :global([data-audit-entry]) { border-color: transparent; border-radius: 18px; padding: 8px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 24px 60px -24px hsl(30 15% 20% / .35); }
@@ -30,7 +31,20 @@
 .final h2 { font-size: clamp(30px, 3.7vw, 48px); font-weight: 600; letter-spacing: -.04em; line-height: 1.14; }
 .board { position: relative; container: sample-board / inline-size; display: grid; grid-template-columns: var(--site-account-rail-width) minmax(0, 1fr); overflow: hidden; border: 0; border-radius: 20px; background: hsl(var(--background)); box-shadow: var(--shadow-board); }
 /* Reserves the sample dashboard's rendered height while its code loads, so nothing below it moves. */
-.boardPlaceholder { min-height: 1240px; border-radius: 20px; background: hsl(var(--background)); box-shadow: var(--shadow-board); }
+.boardPlaceholder { display: grid; align-content: start; gap: 28px; min-height: 1240px; padding: 32px; border-radius: 20px; background: hsl(var(--background)); box-shadow: var(--shadow-board); }
+.boardPlaceholder span { display: block; border-radius: 12px; background: hsl(var(--muted) / .7); }
+.placeholderHeader { display: grid; gap: 10px; }
+.placeholderHeader span:first-child { width: 180px; height: 22px; }
+.placeholderHeader span:last-child { width: 120px; height: 12px; }
+.placeholderSummary { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; }
+.placeholderSummary span:first-child { aspect-ratio: 16 / 11; border-radius: 16px; }
+.placeholderSummary span:last-child { height: 120px; }
+.placeholderRows { display: grid; gap: 14px; }
+.placeholderRows span { height: 76px; border-radius: 16px; background: hsl(var(--muted) / .45); }
+@media (prefers-reduced-motion: no-preference) {
+  .boardPlaceholder span { animation: placeholder-breathe 1.8s ease-in-out infinite alternate; }
+}
+@keyframes placeholder-breathe { to { opacity: .55; } }
 .board :is(h2, h3) { font-family: var(--font-sans), sans-serif; text-wrap: initial; }
 .boardMain { min-width: 0; padding: 24px var(--site-content-gutter); }
 .sampleIdentity { min-width: 0; }
@@ -90,7 +104,8 @@
 }
 @media (max-width: 767px) {
   .board { grid-template-columns: minmax(0, 1fr); }
-  .boardPlaceholder { min-height: 2300px; border-radius: 16px; }
+  .boardPlaceholder { min-height: 2300px; padding: 20px; border-radius: 16px; }
+  .placeholderSummary { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 479px) {
   .boardHeader { gap: 6px; }
@@ -148,7 +163,7 @@
 /* Closing: the same two-tone statement as every section, with the brand mark beside it. */
 .home .finalTitle { margin: 0; font-size: clamp(34px, 3.9vw, 54px); font-weight: 500; line-height: 1.02; letter-spacing: -.05em; }
 .finalTitle > span { display: block; }
-.finalTitle > span + span { padding-bottom: .06em; background: linear-gradient(100deg, hsl(var(--muted-foreground) / .9) 15%, hsl(var(--brand) / .85) 70%, hsl(36 100% 52% / .9) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.finalTitle > span + span { color: hsl(var(--muted-foreground) / .78); }
 
 /* Sections rise in as they enter, driven by scroll alone: no JavaScript, still for reduced motion. */
 @supports (animation-timeline: view()) {

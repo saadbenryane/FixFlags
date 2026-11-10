@@ -1,4 +1,6 @@
 .sample { scroll-margin-top: 90px; }
-.intro { max-width: 640px; margin: 0 auto 28px; text-align: center; }
-.intro h2 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 600; line-height: 1.15; letter-spacing: -.04em; }
-.intro p { margin-top: 14px; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.65; }
+.intro { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; margin: 0 0 18px; }
+/* The page title is the statement; the sample's intro is a quiet label above its window. */
+.intro h2 { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.intro h2::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--brand)); }
+.intro p { margin: 0; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }

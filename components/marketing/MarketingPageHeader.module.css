@@ -1,8 +1,12 @@
-.header { padding-block: clamp(36px, 4.5vw, 60px) 48px; text-align: center; }
+.header { position: relative; isolation: isolate; padding-block: clamp(48px, 6vw, 88px) clamp(40px, 4.5vw, 64px); text-align: center; }
+/* A still trace of the homepage atmosphere: a faint dot field and warm light behind the title. */
+.header::before { content: ''; position: absolute; inset: 0 8% 10%; z-index: -1; pointer-events: none;
+  background: radial-gradient(42% 52% at 50% 38%, hsl(var(--brand) / .09), transparent 72%), radial-gradient(hsl(var(--foreground) / .055) 1px, transparent 1.2px) 0 0 / 22px 22px;
+  mask-image: radial-gradient(60% 70% at 50% 40%, hsl(0 0% 0%) 20%, transparent 75%); }
 .eyebrow { margin-bottom: 18px; color: hsl(var(--foreground)); }
-.title { max-width: 880px; margin-inline: auto; font-family: var(--font-display), sans-serif; font-size: clamp(42px, 5.6vw, 80px); font-weight: 500; line-height: 1; letter-spacing: -.052em; text-wrap: balance; overflow-wrap: anywhere; }
+.title { max-width: 820px; margin-inline: auto; font-family: var(--font-display), sans-serif; font-size: clamp(40px, 4.8vw, 68px); font-weight: 500; line-height: 1.02; letter-spacing: -.048em; text-wrap: balance; overflow-wrap: anywhere; }
 .title > span { display: block; }
-.title > span + span { color: hsl(var(--muted-foreground) / .85); }
+.title > span + span { color: hsl(var(--muted-foreground) / .78); }
 .description { max-width: 620px; margin: 24px auto 0; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.7; text-wrap: pretty; }
 .actions { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 28px; }
 .actions > div { justify-content: center; margin-top: 0; }

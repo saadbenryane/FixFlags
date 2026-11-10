@@ -7,8 +7,13 @@ import s from './CareHomepage.module.css'
 
 type PreviewProps = ComponentProps<typeof HomepageDashboardPreview>
 
+/** The board's own outline while the sample loads: header, capture and summary, then rows. */
 function DashboardPlaceholder() {
-  return <div className={s.boardPlaceholder} data-testid="dashboard-placeholder" aria-hidden="true" />
+  return <div className={s.boardPlaceholder} data-testid="dashboard-placeholder" aria-hidden="true">
+    <div className={s.placeholderHeader}><span /><span /></div>
+    <div className={s.placeholderSummary}><span /><span /></div>
+    <div className={s.placeholderRows}><span /><span /><span /><span /></div>
+  </div>
 }
 
 const LazyDashboardPreview = dynamic(

@@ -90,7 +90,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
     <div className={s.boardMain} data-site-content>
       <div className={s.boardHeader}><SiteWorkspaceHeader
         identity={<div className={s.sampleIdentity}><strong className={workspace.domain}>{C.boardLabel}</strong><small>{S.freshness}</small></div>}
-        navigation={<SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} renderItem={({ id, label, selected, className, content }) => <InteractiveButton key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</InteractiveButton>} />}
+        navigation={<SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} foldIntegrations renderItem={({ id, label, selected, className, content }) => <InteractiveButton key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</InteractiveButton>} />}
         heading={view !== 'home' ? <h3>{SITE_ROUTES.find(([id]) => id === view)?.[1]}</h3> : null}
         actions={<><SiteMonitoringMenu label={paused ? 'Paused' : scheduleLabel(schedule)} state={schedule && !paused ? 'healthy' : 'unknown'} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} onManage={() => { setView('settings'); setScheduleOpen(true) }} />{view !== 'home' ? siteActions : null}</>} />
       </div>
@@ -103,7 +103,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
           onSelectSummary={item => {
             if (item.id === 'pages') { setView('pages'); requestAnimationFrame(() => navigationItems.current.get('pages')?.focus()) }
             else { setView('home'); document.getElementById('sample-website-checks')?.focus() }
-          }} onSelectTechnology={() => { setView('integrations'); requestAnimationFrame(() => navigationItems.current.get('integrations')?.focus()) }} />}
+          }} onSelectTechnology={() => { setView('settings'); requestAnimationFrame(() => { navigationItems.current.get('settings')?.focus(); document.getElementById('sample-integrations')?.scrollIntoView({ block: 'start' }) }) }} />}
           trend={<SiteMonitoringHistory variant="overview" points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} />}
           items={S.categories.filter(card => card.id !== 'uptime').map(card => ({ id: card.id, flagCount: card.flagCount,
             render: layout => renderCard(card, layout) }))}
@@ -114,17 +114,16 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
         const category = S.categories.find(card => sampleFlagsForCategory(card).includes(id))
         if (category) onOpenFlag(category, id, trigger, 'pages')
       })} /></SampleFlagSelection></section> : null}
-      {view === 'integrations' ? <section className={s.boardPane} aria-label={S.navigation.integrations}><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>
-        <SiteIntegrationsPanel github={{ configured: true, status: 'not_connected', login: null }} shopify={{ configured: true, state: shopConnected ? 'connected' : 'not_connected', domain: shopConnected ? shop : null }} searchConsole={connections.SEARCH_CONSOLE} analytics={connections.ANALYTICS}
-          onDisconnectShopify={() => { setShopConnected(false); setIntegrationMessage(P.disconnected('Shopify')) }}
-          onDisconnectGoogle={provider => updateConnection(provider, false)}
-          feedback={integrationMessage ? <p role="status" className={s.sampleNotice}>{integrationMessage}</p> : null} />
-      </section> : null}
       {view === 'settings' ? <section className={s.boardPane} aria-label={S.navigation.settings}><p className={s.paneDescription}>{Settings.description}</p><p className={s.sampleNotice}>{P.sample}</p>
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <SiteMonitoringSettingsPanel target={`https://${C.boardLabel}/`} label={scheduleLabel(schedule)} paused={paused} scheduled={Boolean(schedule)} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} lastCheck={formatEvidenceTimestamp(P.checkedAt)} onEdit={() => setScheduleOpen(true)} onPause={setPaused} />
           <SiteNotificationSettingsPanel level={notifications} recovery={recovery} onChange={(level, nextRecovery) => { setNotifications(level); setRecovery(nextRecovery) }} />
           <SiteAdvancedSettings><SiteAccountChecksPanel initial={accountChecks} enabled={accountChecks.enabled} onToggle={enabled => setAccountChecks(current => ({ ...current, enabled }))} onRequest={requestAccountCheck} feedback={accountMessage ? <p role="status" className={s.sampleNotice}>{accountMessage}</p> : null} /></SiteAdvancedSettings>
+          <section id="sample-integrations" aria-label={S.navigation.integrations} className="scroll-mt-6 space-y-3"><h3 className="text-lg font-semibold">{S.navigation.integrations}</h3><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>
+        <SiteIntegrationsPanel github={{ configured: true, status: 'not_connected', login: null }} shopify={{ configured: true, state: shopConnected ? 'connected' : 'not_connected', domain: shopConnected ? shop : null }} searchConsole={connections.SEARCH_CONSOLE} analytics={connections.ANALYTICS}
+          onDisconnectShopify={() => { setShopConnected(false); setIntegrationMessage(P.disconnected('Shopify')) }}
+          onDisconnectGoogle={provider => updateConnection(provider, false)}
+          feedback={integrationMessage ? <p role="status" className={s.sampleNotice}>{integrationMessage}</p> : null} /></section>
           <SiteRemovalSettingsPanel />
         </div>
       </section> : null}

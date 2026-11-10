@@ -143,15 +143,16 @@ describe('comprehensive homepage experience', () => {
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  it('keeps keyboard focus in the board when a detected tool opens Integrations', async () => {
+  it('keeps keyboard focus in the board when a detected tool opens Settings, where integrations live', async () => {
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'View detected tools' }))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Shopify: Detected' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    const integrations = within(board).getByRole('button', { name: S.navigation.integrations })
-    await waitFor(() => expect(integrations).toHaveFocus())
-    expect(integrations).toHaveAttribute('aria-pressed', 'true')
+    const settings = within(board).getByRole('button', { name: S.navigation.settings, exact: true })
+    await waitFor(() => expect(settings).toHaveFocus())
+    expect(settings).toHaveAttribute('aria-pressed', 'true')
+    expect(within(board).getByRole('heading', { name: S.navigation.integrations })).toBeVisible()
   })
 
   it('opens the Flag list from the website count and category details from category counts', () => {
@@ -370,7 +371,7 @@ describe('comprehensive homepage experience', () => {
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     const nav = within(board).getByRole('navigation', { name: S.navigationLabel })
-    expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Overview', 'Pages', 'Timeline', 'Integrations', 'Settings'])
+    expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Overview', 'Pages', 'Timeline', 'Settings'])
     fireEvent.click(within(nav).getByRole('button', { name: 'Settings', exact: true }))
     expect(within(board).getByRole('heading', { name: 'Settings' })).toBeVisible()
     fireEvent.change(within(board).getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
@@ -379,10 +380,10 @@ describe('comprehensive homepage experience', () => {
     expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Check frequency' })).toHaveValue('daily')
   })
 
-  it('opens the sample integration list from the board navigation', () => {
+  it('lists sample integrations inside Settings, as the real Site does', () => {
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    fireEvent.click(within(board).getByRole('button', { name: S.navigation.integrations }))
+    fireEvent.click(within(board).getByRole('button', { name: S.navigation.settings, exact: true }))
     expect(within(board).getByRole('heading', { name: S.navigation.integrations })).toBeVisible()
     expect(within(board).getByText('Shopify')).toBeVisible()
     fireEvent.click(within(board).getByText('More integrations'))
@@ -398,7 +399,7 @@ describe('comprehensive homepage experience', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    fireEvent.click(within(board).getByRole('button', { name: S.navigation.integrations }))
+    fireEvent.click(within(board).getByRole('button', { name: S.navigation.settings, exact: true }))
     expect(within(board).getByText('This connection is part of the preview. Changes stay in this sample.')).toBeVisible()
     expect(within(board).getAllByText('Coming soon')).toHaveLength(9)
     expect(within(board).getByRole('link', { name: 'Manage GitHub connection' })).toHaveAttribute('href', '/settings/integrations')
