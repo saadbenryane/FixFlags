@@ -42,7 +42,7 @@ const applicability: Record<CoverageConfiguration, string> = {
   signup_fixture: 'A current authorized reversible fixture, demonstrated success condition, and recorded cleanup.',
   availability: 'An owned enabled availability binding and the account-permitted monitoring cadence.',
   automatic_accounts: 'An owned private Site, enabled preference, verified mailbox infrastructure and supported same-origin account lifecycle.',
-  uptime_probes: 'An owned Site with monitoring enabled, its current public URL generation and recorded five-minute HTTP observations.',
+  uptime_probes: 'An owned Site with monitoring enabled, its current public URL generation and recorded ten-minute HTTP observations.',
 }
 
 /** Acceptance requirements are obligations, never evidence that a scenario passed. */
@@ -144,7 +144,7 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['accessibility.tab-order'], ['page:keyboard'], 'public', 'heuristic', 'Records the exercised Tab sequence and detects positive-tabindex backward jumps. Intended reading order and unopened interaction states require separate review.'),
   ...entries(['uptime.response', 'uptime.errors', 'uptime.provenance'], ['task:bindings', 'projection:uptime'], 'uptime_probes', 'checked_scope', 'Recorded public HTTP observations remain separate from configured rendered-page verification.'),
   ...entries(['uptime.console'], ['page:console']),
-  ...entries(['uptime.schedule', 'uptime.incidents', 'uptime.history', 'uptime.recovery'], ['projection:uptime'], 'uptime_probes', 'checked_scope', 'Recorded five-minute public HTTP probes, confirmation and incident history. Missing periods remain unknown; rendered-page verification is separate.'),
+  ...entries(['uptime.schedule', 'uptime.incidents', 'uptime.history', 'uptime.recovery'], ['projection:uptime'], 'uptime_probes', 'checked_scope', 'Recorded ten-minute public HTTP probes, confirmation and incident history. Missing periods remain unknown; rendered-page verification is separate.'),
 ]
 
 export function validateAdvertisedCoverage(definitions: readonly AdvertisedCoverage[] = ADVERTISED_COVERAGE) {

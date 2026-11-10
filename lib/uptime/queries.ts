@@ -73,7 +73,7 @@ async function readTimelinePeriods(scope: ProbeScope,
   bounds: ReturnType<typeof uptimeTimelineBounds>, now: Date) {
   const start = new Date(bounds.start).toISOString()
   // Choose each exact observation's last valid attempt before consolidating
-  // retained off-cadence timestamps into their shared five-minute slot.
+  // retained off-cadence timestamps into their shared ten-minute slot.
   const rows = await prisma.$queryRaw<Array<UptimePeriodEvidence & { startAt: Date }>>`
     WITH observations AS (
       SELECT DISTINCT ON ("scheduledAt") "scheduledAt", result, confirmed

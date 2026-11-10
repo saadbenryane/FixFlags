@@ -1,4 +1,5 @@
-export const UPTIME_INTERVAL_MS = 5 * 60_000
+/** Ten minutes keeps probe load bounded while every account is free. */
+export const UPTIME_INTERVAL_MS = 10 * 60_000
 export const UPTIME_SWEEP_INTERVAL_MS = 30_000
 export const UPTIME_CONFIRMATION_MS = 30_000
 export const UPTIME_STALE_MS = 2 * UPTIME_INTERVAL_MS

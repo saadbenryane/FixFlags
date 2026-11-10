@@ -20,33 +20,33 @@ describe('recorded Uptime transitions', () => {
     }
   })
   it('shows stale observations as unknown and disabled monitoring as paused', () => {
-    expect(currentUptimeState({ enabled: true, state: 'online', lastCheckedAt: new Date(now.getTime() - 11 * 60_000), now })).toBe('unknown')
+    expect(currentUptimeState({ enabled: true, state: 'online', lastCheckedAt: new Date(now.getTime() - 21 * 60_000), now })).toBe('unknown')
     expect(currentUptimeState({ enabled: false, state: 'online', lastCheckedAt: now, now })).toBe('paused')
   })
   it('keeps missing periods unknown and consolidates confirmation attempts into their original slot', () => {
-    const probes = Array.from({ length: 6 }, (_, index) => ({ scheduledAt: new Date(now.getTime() - (6 - index) * 5 * 60_000).toISOString(),
-      observedAt: new Date(now.getTime() - (6 - index) * 5 * 60_000).toISOString(), attempt: 1, result: 'ONLINE' as const, confirmed: false }))
+    const probes = Array.from({ length: 3 }, (_, index) => ({ scheduledAt: new Date(now.getTime() - (3 - index) * 10 * 60_000).toISOString(),
+      observedAt: new Date(now.getTime() - (3 - index) * 10 * 60_000).toISOString(), attempt: 1, result: 'ONLINE' as const, confirmed: false }))
     const complete = uptimeTimeline(probes, now)
     expect(complete).toHaveLength(48)
-    expect(complete.at(-1)).toMatchObject({ state: 'online', checked: 6 })
+    expect(complete.at(-1)).toMatchObject({ state: 'online', checked: 3 })
     expect(complete[0].state).toBe('unknown')
     expect(uptimeTimeline(probes.slice(1), now).at(-1)?.state).toBe('unknown')
-    expect(uptimeTimeline([...probes, { ...probes[0], attempt: 2, result: 'FAILED', confirmed: true }], now).at(-1)).toMatchObject({ state: 'offline', checked: 6 })
+    expect(uptimeTimeline([...probes, { ...probes[0], attempt: 2, result: 'FAILED', confirmed: true }], now).at(-1)).toMatchObject({ state: 'offline', checked: 3 })
   })
 
-  it('cannot fill a missed five-minute slot with a second retained timestamp in another slot', () => {
-    const probes = [-25, -20, -15, -10, -5, -1].map(minutes => {
+  it('cannot fill a missed ten-minute slot with a second retained timestamp in another slot', () => {
+    const probes = [-20, -10, -1].map(minutes => {
       const scheduledAt = new Date(now.getTime() + minutes * 60_000).toISOString()
       return { scheduledAt, observedAt: scheduledAt, attempt: 1, result: 'ONLINE' as const, confirmed: false }
     })
-    expect(uptimeTimeline(probes, now).at(-1)).toMatchObject({ state: 'unknown', checked: 5, expected: 6 })
+    expect(uptimeTimeline(probes, now).at(-1)).toMatchObject({ state: 'unknown', checked: 2, expected: 3 })
     const confirmed = { ...probes.at(-1)!, result: 'FAILED' as const, confirmed: true }
     expect(uptimeTimeline([...probes.slice(0, -1), confirmed], now).at(-1))
-      .toMatchObject({ state: 'offline', checked: 5, expected: 6 })
+      .toMatchObject({ state: 'offline', checked: 2, expected: 3 })
   })
 
   it('counts a slot starting exactly at the read time in the current partial period', () => {
-    const at = new Date('2026-10-12T12:05:00.000Z')
+    const at = new Date('2026-10-12T12:10:00.000Z')
     const first = { scheduledAt: '2026-10-12T12:00:00.000Z', observedAt: '2026-10-12T12:00:01.000Z',
       attempt: 1, result: 'ONLINE' as const, confirmed: false }
     expect(uptimeTimeline([first], at).at(-1)).toMatchObject({ state: 'unknown', checked: 1, expected: 2 })

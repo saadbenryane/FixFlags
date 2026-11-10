@@ -24,9 +24,16 @@ On November 10 the owner asked to finish the rest of the plan. The recommended o
 - Phase 4: free broken link checker; guides for a checkout broken by a deploy and an AI-built site launch.
 - Phase 5: measured cost per check and per active Site on admin analytics.
 
+**Owner decisions, November 10 (evening)**
+
+- Operating model: no eight-week tracks or capacity split. Do the work now.
+- Concierge repair pilot: not now. The priority is an app where every advertised feature, and every feature needed to compete, works.
+- Signup gate: anyone can enter a URL and start a check without an account; seeing the results requires signing in or signing up. This replaces the fix gate experiment. Free accounts get every feature.
+- Pricing: paid plans stay "Coming soon". Free is the lead engine. Uptime probes run every ten minutes instead of five to bound load, and rechecks stay unlimited.
+
 **Needs the owner or real people**
 
-- Decisions 4, 6, 7, 8 and 9: operating model, MCP discovery after actual-client acceptance, the concierge repair pilot, the fix gate experiment (it changes what is server-gated, so it needs an explicit go-ahead and a security review), and pricing.
+- MCP discovery after actual-client acceptance (decision 6).
 - Customer conversations, design partners, usability sessions, the weekly finding-quality labeling, the Lovable and Vercel marketplace applications, launch week, community presence and founding-member payments.
 - Turning on `ANONYMOUS_REVIEW_DEPTH=2` after reviewing measured cost; lowering the JavaScript budget after the shell is slimmed.
 - Phase 6 hosted repair starts from concierge data, by this plan's own order. Phase 7 is 2027.

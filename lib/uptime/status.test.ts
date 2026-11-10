@@ -14,7 +14,7 @@ const base = { inFlight: false, finished: true, hasLastKnown: true, flags: [], n
 
 it('retains an unresolved current incident as attention while current reachability is unknown', () => {
   const incident = { version: 1, targetUrl: project.url, confirmedAt: new Date(now.getTime() - 60_000) }
-  for (const observation of [{ state: 'unknown', lastCheckedAt: now }, { state: 'offline', lastCheckedAt: new Date(now.getTime() - 11 * 60_000) }]) {
+  for (const observation of [{ state: 'unknown', lastCheckedAt: now }, { state: 'offline', lastCheckedAt: new Date(now.getTime() - 21 * 60_000) }]) {
     const status = projectUptimeStatus(project, { ...monitor, ...observation, incidents: [incident] }, now)
     expect(status).toMatchObject({ state: 'unknown', incidentOpen: true })
     const health = siteCardHealth({ ...base, uptime: status })
@@ -48,12 +48,12 @@ it.each(['offline', 'online', 'checking', 'unknown'])('projects the same current
   expect(status.state).toBe(state)
   const assessed = uptimeAssessment(status, now)
   expect(assessed?.state).toBe(state === 'offline' ? 'FLAG' : state === 'online' ? 'CLEAR' : 'COULD_NOT_VERIFY')
-  expect(assessed?.validUntil?.getTime()).toBe(now.getTime() + 10 * 60_000)
+  expect(assessed?.validUntil?.getTime()).toBe(now.getTime() + 20 * 60_000)
 })
 
 it('requires current-target evidence and preserves pauses and account lifecycle eligibility', () => {
   for (const old of [null, { ...monitor, targetUrl: 'https://old.example/' }, { ...monitor, enabled: false },
-    { ...monitor, lastCheckedAt: new Date(now.getTime() - 11 * 60_000) }])
+    { ...monitor, lastCheckedAt: new Date(now.getTime() - 21 * 60_000) }])
     expect(uptimeAssessment(projectUptimeStatus(project, old, now), now)?.state).toBe('COULD_NOT_VERIFY')
   for (const stopped of [{ ...project, watchInterval: null }, { ...project, deletedAt: now },
     { ...project, user: { ...project.user, lifecycleStatus: 'SUSPENDED' as const } }]) {

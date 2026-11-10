@@ -169,7 +169,7 @@ describe('recorded uptime reporting', () => {
 
   it.each(['online', 'offline', 'checking'] as const)('lets an expired %s observation become unknown in both views while retaining incident and probe evidence', async state => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date(state === 'checking' ? '2026-11-03T12:04:30Z' : '2026-11-03T12:09:30Z'))
+    vi.setSystemTime(new Date(state === 'checking' ? '2026-11-03T12:09:30Z' : '2026-11-03T12:19:30Z'))
     const at = '2026-11-03T12:00:00.000Z'
     const current = { ...summary, state, lastCheckedAt: at, openIncidentCount: state === 'offline' ? 1 : 0, incidentOpen: state === 'offline' }
     const result = state === 'online' ? 'ONLINE' : 'FAILED'
@@ -206,10 +206,10 @@ describe('recorded uptime reporting', () => {
 
   it('uses new evidence after expiry without remounting the card', () => {
     const expired = { ...summary, state: 'online' as const, lastCheckedAt: '2026-11-03T12:00:00.000Z' }
-    const page = render(<UptimeCard siteId="site-1" summary={expired} referenceTime={Date.parse('2026-11-03T12:11:00Z')} />)
+    const page = render(<UptimeCard siteId="site-1" summary={expired} referenceTime={Date.parse('2026-11-03T12:21:00Z')} />)
     const trigger = screen.getByRole('button', { name: C.details })
     expect(trigger).toHaveTextContent(C.states.unknown)
-    page.rerender(<UptimeCard siteId="site-1" summary={{ ...expired, lastCheckedAt: '2026-11-03T12:11:00.000Z' }} referenceTime={Date.parse('2026-11-03T12:11:00Z')} />)
+    page.rerender(<UptimeCard siteId="site-1" summary={{ ...expired, lastCheckedAt: '2026-11-03T12:21:00.000Z' }} referenceTime={Date.parse('2026-11-03T12:21:00Z')} />)
     expect(trigger).toHaveTextContent(C.states.online)
   })
 
@@ -298,7 +298,7 @@ describe('recorded uptime reporting', () => {
       const trigger = screen.getByRole('button', { name: 'Uptime details' })
       expect(within(trigger).getByText('Checked 5 minutes ago')).toHaveAttribute('datetime', '2026-10-24T12:00:00Z')
       expect(trigger).toHaveTextContent('Online')
-      expect(screen.queryByText('Every 5 minutes')).not.toBeInTheDocument()
+      expect(screen.queryByText('Every 10 minutes')).not.toBeInTheDocument()
     } finally { now.mockRestore() }
   })
 

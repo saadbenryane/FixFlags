@@ -66,12 +66,12 @@ describe('Uptime summary reads', () => {
     db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url, project,
       enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null, incidents: [] })
     const startAt = new Date(now.getTime() - 30 * 60_000)
-    db.periods.mockResolvedValue([{ startAt, checked: 6, allOnline: true, failed: false }])
+    db.periods.mockResolvedValue([{ startAt, checked: 3, allOnline: true, failed: false }])
     db.probes.mockResolvedValue([{ id: 'probe_1', targetUrl: project.url, scheduledAt: startAt, observedAt: startAt,
       attempt: 1, result: 'ONLINE', confirmed: false, reason: 'response_received', statusCode: 200, durationMs: 50, finalUrl: project.url }])
     const summary = await loadUptimeSummary(uptimeReadSite(project), now)
     expect(summary).toMatchObject({ enabled: true, state: 'online', lastCheckedAt: now.toISOString(), openIncidentCount: 0 })
-    expect(summary?.segments.at(-1)).toMatchObject({ state: 'online', checked: 6, expected: 6 })
+    expect(summary?.segments.at(-1)).toMatchObject({ state: 'online', checked: 3, expected: 3 })
     expect(db.periods).toHaveBeenCalledOnce()
     expect(db.probes).not.toHaveBeenCalled()
     expect(db.incidents).not.toHaveBeenCalled()
