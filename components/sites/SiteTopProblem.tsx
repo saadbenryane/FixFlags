@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import type { Route } from 'next'
 import { ArrowRight, Flag } from 'lucide-react'
-import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
 import { compareFlagPriority } from '@/lib/sites/presentation'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -50,10 +50,11 @@ export function SiteTopProblem({ siteId, flag, copyAvailability, copyReady, tech
     <h2 id="top-problem-title" className="mt-2 text-xl font-semibold tracking-tight text-foreground">{flag.problem}</h2>
     {path ? <p className="mt-1 text-sm text-muted-foreground">{C.page(path)}</p> : null}
     <div className="mt-4 flex flex-wrap items-center gap-2">
-      <InteractiveButton type="button" className="inline-flex min-h-11 items-center gap-2 rounded-control bg-foreground px-4 text-sm font-semibold text-background hover:bg-foreground/90" onClick={event => onOpen(flag.id, event.currentTarget)}>
-        {C.view}<ArrowRight size={15} aria-hidden="true" />
-      </InteractiveButton>
+      {/* Handing the fix to the AI is the one primary action; reading the Flag is secondary. */}
       {copyReady ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.problem} availability={copyAvailability} /> : null}
+      <Button type="button" variant={copyReady ? 'outline' : 'default'} className="min-h-11" onClick={event => onOpen(flag.id, event.currentTarget)}>
+        {C.view}<ArrowRight size={15} aria-hidden="true" />
+      </Button>
     </div>
     {builder ? <p className="mt-3 text-sm text-muted-foreground">{builder.where}{' '}
       <Link href={`/ai-builders/${builder.slug}` as Route} className="font-medium text-foreground underline-offset-4 hover:underline">{C.builderGuide(builder.name)}</Link></p> : null}

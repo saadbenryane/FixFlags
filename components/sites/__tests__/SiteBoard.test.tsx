@@ -355,7 +355,8 @@ describe('SiteBoard chrome', () => {
     try {
       render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
       const retry = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })
-      expect(retry).toHaveAttribute('title', SITE_BOARD_COPY.checkAreaAgain('Search'))
+      // The quiet control shows its action instead of relying on an icon and tooltip.
+      expect(retry).toHaveTextContent(SITE_BOARD_COPY.checkAgain)
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       fireEvent.click(retry)
       expect(await screen.findByText('Please try again.')).toBeVisible()

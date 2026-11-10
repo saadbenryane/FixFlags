@@ -115,8 +115,8 @@ export const SITE_ACTION_COPY = {
     defaults: { name: 'Signup verification', emailLabel: 'Email', passwordLabel: 'Password', submitName: 'Create account' },
   },
 
-  recovery: { access: 'Review access and visitor-action setup', connections: 'Review connections', support: 'Get help with this check',
-    inspect: 'Inspect the recorded limitations', setupBody: 'This scope needs setup or supported evidence before it can be checked again.' },
+  recovery: { access: 'Set up website access', connections: 'Review connections', support: 'Get help with this check',
+    inspect: 'See what couldn’t be checked', setupBody: 'This area needs setup before it can be checked again.' },
   execution: {
     availabilityAccess: { summary: 'Public access was restricted, so availability is unverified.',
       recovery: 'Verify again when public access is available.' },
