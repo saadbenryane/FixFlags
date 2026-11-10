@@ -82,6 +82,10 @@ export const SEO = {
     description:
       'Check the image, title, and description people see when you share a page. Free link preview tool from FixFlags.',
   },
+  brokenLinks: {
+    title: 'Free broken link checker | FixFlags',
+    description: 'Paste a URL to find links on the page that return errors or don’t respond. Free, no signup. Then run a full check of your website.',
+  },
   placeholderDetector: {
     title: 'Placeholder Copy Detector – FixFlags',
     description:

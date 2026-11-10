@@ -13,6 +13,20 @@ export const TOOL_EDUCATION = {
       { href: '/coverage#search', label: 'Understand search coverage' },
     ],
   },
+  'broken-links': {
+    title: 'Fix the links that lead nowhere',
+    sections: [
+      { title: 'What this tool checks', body: 'We open your page, collect links to other pages on the same site, and request each one. A link is broken when it returns an error such as 404 or 500, or does not respond.' },
+      { title: 'Why some links are not checked', body: 'One free check covers the first 40 links on the page. Links to other websites, email links and phone links are not checked.' },
+      { title: 'What should I do with a broken link?', body: 'Restore the missing page, point the link at the right page, or remove it. Publish the update, then check the page again.' },
+      { title: 'Do working links mean the page works?', body: 'No. A link can open while the button next to it fails. The full website check tries buttons, forms and key pages, and gives you fix instructions for your AI tool.' },
+    ],
+    links: [
+      { href: '/guides/checking-after-publishing', label: 'Check the published website' },
+      { href: '/tools/meta-preview', label: 'Check the link preview' },
+      { href: '/ai-builders', label: 'Fix it with your AI tool' },
+    ],
+  },
   'placeholder-detector': {
     title: 'Find the unfinished text you missed',
     sections: [

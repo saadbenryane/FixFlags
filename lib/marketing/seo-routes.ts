@@ -46,6 +46,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/terms', seoKey: 'terms', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/tools/meta-preview', seoKey: 'metaPreview', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/tools/broken-link-checker', seoKey: 'brokenLinks', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/issues', seoKey: 'issues', priority: 0.6, changeFrequency: 'weekly' },
 
 ] as const
@@ -109,6 +110,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     links: [
       { path: '/tools/meta-preview', label: 'Meta Preview Tool', note: 'Check social preview tags on any URL' },
       { path: '/tools/placeholder-detector', label: 'Placeholder Copy Detector', note: 'Find lorem ipsum, TODOs, AI template artifacts' },
+      { path: '/tools/broken-link-checker', label: 'Broken link checker', note: 'Find same-site links that return errors or do not respond' },
     ],
   },
   {

@@ -81,7 +81,7 @@ export const RETIRED_FUNNEL_EVENTS = [
   'remember_shown',
 ] as const satisfies readonly FunnelEvent[]
 
-export type AcquisitionTool = 'meta-preview' | 'placeholder-detector'
+export type AcquisitionTool = 'meta-preview' | 'placeholder-detector' | 'broken-links'
 export type ToolResultOutcome =
   | 'succeeded'
   | 'api_error'
