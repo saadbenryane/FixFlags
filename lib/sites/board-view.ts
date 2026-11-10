@@ -36,13 +36,16 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     return rank[left.state] - rank[right.state]
   })
   const pagesNeedingAttention = new Set(view.flags.flatMap(flag => flag.affectedPaths.length ? flag.affectedPaths : [flag.pageUrl ?? view.site.url])).size
+  // A complete clean result is good news; zero Flags from a partial check is not.
+  const clean = !checking && view.presentation.result.state === 'clear'
+  const quietState = clean ? 'healthy' as const : 'unknown' as const
   const summaryItems: BoardSummaryItem[] = [
     { id: 'flags', value: view.presentation.flags.count, interactive: view.presentation.flags.count > 0,
-      label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : B.flags(view.presentation.flags.count).replace(/^\d+ /, ''), state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
+      label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : B.flags(view.presentation.flags.count).replace(/^\d+ /, ''), state: view.presentation.flags.count > 0 ? 'attention' as const : quietState },
   ]
   const recordedPageCount = view.counts.recordedPages
   if (recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: SITE_DASHBOARD_COPY.pageLabel(recordedPageCount),
-    detail: pagesNeedingAttention ? SITE_DASHBOARD_COPY.pagesWithFlags(pagesNeedingAttention) : undefined, state: pagesNeedingAttention ? 'attention' : 'unknown' })
+    detail: pagesNeedingAttention ? SITE_DASHBOARD_COPY.pagesWithFlags(pagesNeedingAttention) : undefined, state: pagesNeedingAttention ? 'attention' : quietState })
   const technologies: ToolItem[] = (view.technology?.items ?? []).map(item => ({
     name: item.name,
     status: view.technology?.status === 'complete' ? 'Detected' : 'Detected in partial check',

@@ -91,3 +91,16 @@ describe('workspace projections', () => {
     expect(board.monitoringPoints[0].flagCount).toBeNull()
   })
 })
+
+describe('board summary tone', () => {
+  it('reads a complete clean result as healthy and a partial or running one as unknown', () => {
+    const view = siteViewFixture({ flags: [] })
+    const tone = (state: string, checking = false) => projectSiteBoard({ ...view, presentation: { ...view.presentation,
+      flags: { ...view.presentation.flags, count: 0 }, result: { ...view.presentation.result, state } } } as typeof view,
+      view.site.siteId, true, checking, null).summaryItems.find(item => item.id === 'flags')?.state
+    expect(tone('clear')).toBe('healthy')
+    expect(tone('could_not_verify')).toBe('unknown')
+    expect(tone('clear', true)).toBe('unknown')
+  })
+})
+
