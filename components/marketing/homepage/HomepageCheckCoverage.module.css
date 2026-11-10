@@ -4,7 +4,7 @@
 .intro > p:last-child { max-width: 560px; margin: 18px auto 0; font-size: 18px; line-height: 1.7; color: hsl(var(--muted-foreground)); }
 .checkGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
 .checkCard { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; gap: 10px 24px; min-width: 0; padding: 28px; border-radius: 20px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 10px 30px -18px hsl(30 15% 20% / .22); transition: box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out); }
-.checkCard:hover { transform: translateY(-2px); box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 18px 40px -18px hsl(30 15% 20% / .3); }
+.checkCard:hover { transform: translateY(-2px); box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 18px 40px -18px hsl(30 15% 20% / .3), 0 0 0 1px hsl(var(--brand) / .18), 0 24px 60px -30px hsl(var(--brand) / .35); }
 .checkCard:focus-within { box-shadow: 0 5px 20px hsl(var(--foreground) / .05); }
 .checkCard:has(button:focus-visible) { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }
 .checkCard h3 { grid-column: 1; }

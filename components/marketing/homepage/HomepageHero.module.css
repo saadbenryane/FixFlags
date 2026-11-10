@@ -1,27 +1,59 @@
 .hero {
-  position: relative; isolation: isolate; padding: clamp(56px, 8vw, 120px) 24px clamp(64px, 8vw, 120px);
-  background: radial-gradient(60% 46% at 50% 62%, hsl(var(--brand) / .07), transparent 70%);
+  position: relative; isolation: isolate; overflow: hidden; padding: clamp(56px, 8vw, 120px) 24px clamp(64px, 8vw, 120px);
 }
-.copy { display: grid; justify-items: center; max-width: 880px; margin-inline: auto; text-align: center; }
+
+/* Atmosphere: a slow warm aurora over a faint dot field. Decorative, CSS only, still for reduced motion. */
+.atmosphere { position: absolute; inset: 0 0 auto; z-index: -1; height: min(980px, 100%); pointer-events: none;
+  background-image: radial-gradient(hsl(var(--foreground) / .07) 1px, transparent 1.2px); background-size: 22px 22px;
+  mask-image: radial-gradient(70% 60% at 50% 28%, hsl(0 0% 0%) 30%, transparent 78%); }
+.atmosphere span { position: absolute; border-radius: 999px; filter: blur(64px); opacity: .55; }
+.atmosphere span:nth-child(1) { top: 6%; left: 18%; width: 38vw; max-width: 560px; aspect-ratio: 1; background: hsl(var(--brand) / .32); }
+.atmosphere span:nth-child(2) { top: 14%; right: 14%; width: 30vw; max-width: 440px; aspect-ratio: 1; background: hsl(36 100% 62% / .3); }
+.atmosphere span:nth-child(3) { top: 34%; left: 40%; width: 26vw; max-width: 380px; aspect-ratio: 1; background: hsl(222 80% 70% / .16); }
+
+.copy { position: relative; display: grid; justify-items: center; max-width: 880px; margin-inline: auto; text-align: center; }
 .eyebrow {
-  display: inline-flex; align-items: center; gap: 8px; margin: 0 0 28px; padding: 6px 12px; border-radius: 999px;
-  background: hsl(var(--window)); color: hsl(var(--muted-foreground)); font-size: 12.5px; font-weight: 550;
-  box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 4px 14px -6px hsl(30 15% 20% / .18);
+  display: inline-flex; align-items: center; gap: 8px; margin: 0 0 28px; padding: 6px 12px 6px 10px; border-radius: 999px;
+  background: hsl(var(--window) / .82); color: hsl(var(--muted-foreground)); font-size: 12.5px; font-weight: 550;
+  box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 4px 14px -6px hsl(30 15% 20% / .18); backdrop-filter: blur(8px);
 }
-.eyebrow span { width: 6px; height: 6px; border-radius: 999px; background: hsl(var(--brand)); }
+.eyebrow span { position: relative; width: 6px; height: 6px; border-radius: 999px; background: hsl(var(--brand)); }
+.eyebrow span::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; background: hsl(var(--brand) / .35); opacity: 0; }
 .hero h1 { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(46px, 6.6vw, 96px); font-weight: 500; letter-spacing: -.058em; line-height: .98; text-wrap: balance; }
 .hero h1 > span { display: block; }
-.follow { color: hsl(var(--muted-foreground) / .82); }
-.period { color: hsl(var(--brand)); }
+.follow { background: linear-gradient(100deg, hsl(var(--muted-foreground) / .9) 10%, hsl(var(--brand) / .85) 62%, hsl(36 100% 52% / .9) 95%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .06em; }
+.period { color: hsl(var(--brand)); -webkit-text-fill-color: hsl(var(--brand)); }
 .description { max-width: 560px; margin: 28px 0 0; color: hsl(var(--muted-foreground)); font-size: clamp(17px, 1.4vw, 20px); line-height: 1.55; }
-.hero .entry { width: 100%; max-width: 560px; margin: 36px 0 0; }
-.hero .entry :global([data-audit-entry]) { border-color: transparent; border-radius: 16px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 16px 40px -18px hsl(30 15% 20% / .3); }
-.hero .entry :global([data-audit-entry]:focus-within) { border-color: hsl(var(--brand) / .7); box-shadow: 0 0 0 4px hsl(var(--brand) / .12), 0 16px 40px -18px hsl(30 15% 20% / .3); }
-.hero .entry :global([data-audit-entry] input) { height: 54px; min-height: 54px; font-size: 16px; }
-.hero .entry button[type='submit'] { height: 46px; min-height: 46px; min-width: 186px; padding-inline: 18px; border-radius: 11px; font-size: 14.5px; }
-.note { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0 22px; margin: 12px 0 0; color: hsl(var(--muted-foreground)); font-size: 13px; }
+
+.hero .entry { max-width: 620px; margin: 36px 0 0; }
+.hero .entry :global([data-audit-entry] input) { height: 58px; min-height: 58px; font-size: 17px; }
+.hero .entry button[type='submit'] { height: 50px; min-height: 50px; min-width: 196px; padding-inline: 20px; }
+
+/* One agent step at a time, as it would stream in a real check. */
+.run { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; max-width: 620px; min-height: 44px; margin: 14px 0 0; padding: 0 14px;
+  border-radius: 12px; background: hsl(var(--window) / .6); backdrop-filter: blur(8px); text-align: left; }
+.runLabel { flex: none; color: hsl(var(--muted-foreground)); font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.runSteps { position: relative; flex: 1; min-width: 0; height: 22px; margin: 0; padding: 0; list-style: none; }
+.runSteps li { position: absolute; inset: 0; display: flex; align-items: center; gap: 9px; opacity: 0; }
+.runSteps li:last-child { opacity: 1; }
+.runIcon { display: inline-grid; flex: none; place-items: center; width: 18px; height: 18px; border-radius: 999px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.runIcon i { width: 6px; height: 6px; border-radius: 999px; background: hsl(var(--brand)); }
+.runSteps li[data-kind='flag'] .runIcon { background: hsl(var(--brand) / .14); color: hsl(var(--brand)); }
+.runSteps li[data-kind='fix'] .runIcon { background: hsl(36 100% 55% / .16); color: hsl(28 90% 42%); }
+.runSteps li[data-kind='verified'] .runIcon { background: hsl(var(--success) / .14); color: hsl(var(--success)); }
+.runText { overflow: hidden; color: hsl(var(--foreground)); font-family: var(--font-mono), monospace; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+
+.note { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0 22px; margin: 10px 0 0; color: hsl(var(--muted-foreground)); font-size: 13px; }
 .note a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: hsl(var(--foreground)); font-weight: 550; }
 .note a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.worksWith { display: grid; justify-items: center; gap: 12px; margin-top: 30px; }
+.worksWith p { margin: 0; color: hsl(var(--muted-foreground)); font-size: 12.5px; }
+.worksWith ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin: 0; padding: 0; list-style: none; }
+.worksWith li { display: inline-flex; align-items: center; gap: 7px; color: hsl(var(--muted-foreground)); font-size: 13.5px; font-weight: 550; }
+.toolMark { width: 16px; height: 16px; flex: none; color: hsl(var(--foreground) / .7); }
+
 .sequence { max-width: 1120px; margin: clamp(56px, 7vw, 96px) auto 0; }
 
 @media (max-width: 767px) {
@@ -30,6 +62,12 @@
   .hero h1 { font-size: clamp(40px, 11vw, 56px); letter-spacing: -.05em; }
   .description { margin-top: 20px; font-size: 16px; }
   .hero .entry { margin-top: 28px; }
+  .run { padding: 0 12px; }
+  .runLabel { display: none; }
+  .runSteps { height: 38px; }
+  .runText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; line-height: 1.45; white-space: normal; }
+  .run { min-height: 52px; }
+  .worksWith ul { gap: 8px 14px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -39,6 +77,20 @@
   .copy > :nth-child(n + 4) { animation-delay: 180ms; }
   .note a svg { transition: transform var(--motion-fast) var(--ease-out); }
   .note a:is(:hover, :focus-visible) svg { transform: translateX(3px); }
+  .eyebrow span::after { animation: pulse 2.4s var(--ease-out) infinite; }
+  .atmosphere span:nth-child(1) { animation: drift-a 22s ease-in-out infinite alternate; }
+  .atmosphere span:nth-child(2) { animation: drift-b 26s ease-in-out infinite alternate; }
+  .atmosphere span:nth-child(3) { animation: drift-c 30s ease-in-out infinite alternate; }
+  .runSteps li, .runSteps li:last-child { opacity: 0; animation: step calc(var(--steps) * 1.9s) var(--ease-out) infinite both; animation-delay: calc(var(--i) * 1.9s); }
 }
 /* Copy and controls stay legible throughout the entrance. */
 @keyframes arrive { from { transform: translateY(10px); } to { transform: none; } }
+@keyframes pulse { 0% { opacity: .9; transform: scale(.6); } 70%, 100% { opacity: 0; transform: scale(1.8); } }
+@keyframes drift-a { to { transform: translate(6vw, 4vh) scale(1.08); } }
+@keyframes drift-b { to { transform: translate(-5vw, 6vh) scale(.94); } }
+@keyframes drift-c { to { transform: translate(-4vw, -3vh) scale(1.1); } }
+@keyframes step {
+  0% { opacity: 0; transform: translateY(8px); }
+  2.5%, 14% { opacity: 1; transform: none; }
+  16.5%, 100% { opacity: 0; transform: translateY(-8px); }
+}

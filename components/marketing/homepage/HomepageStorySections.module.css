@@ -9,7 +9,7 @@
 .points svg { flex-shrink: 0; margin-top: 3px; color: hsl(var(--brand)); }
 .captures { margin: 0; }
 .capturePair { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); justify-content: center; gap: 16px; }
-.capture { overflow: hidden; border-radius: 20px; background: hsl(var(--window)); box-shadow: var(--shadow-window); }
+.capture { overflow: hidden; border-radius: 20px; background: hsl(var(--window)); box-shadow: var(--shadow-window), 0 40px 90px -40px hsl(var(--brand) / .35); }
 .capture p { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 12px 14px; font-size: 14px; font-weight: 600; }
 .capture p span { color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
 .capture[data-state='before'] p span { color: hsl(var(--brand-strong)); }
@@ -31,11 +31,13 @@
 .toolMark { display: inline-flex; width: 16px; height: 16px; flex-shrink: 0; }
 .toolMark svg, .windowMark svg { width: 100%; height: 100%; }
 .toolPanel { margin-top: 16px; }
-.window { overflow: hidden; border-radius: 20px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); box-shadow: var(--shadow-window); }
+.window { overflow: hidden; border-radius: 20px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); box-shadow: var(--shadow-window), 0 40px 90px -36px hsl(var(--brand) / .45); }
 .windowBar { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; background: hsl(var(--stage-raised)); color: hsl(var(--stage-foreground)); font-size: 13px; font-weight: 600; }
 .windowBar small { margin-left: auto; color: hsl(var(--stage-muted)); font-size: 12px; font-weight: 500; }
 .windowMark { display: inline-flex; width: 16px; height: 16px; }
 .terminalText { margin: 0; padding: 20px; color: hsl(var(--stage-foreground)); font-family: var(--font-mono), monospace; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+/* A caret after the instructions: they read as typed into the agent, waiting for Enter. */
+.terminalText::after { content: ''; display: inline-block; width: .55em; height: 1.1em; margin-left: 3px; vertical-align: text-bottom; border-radius: 2px; background: hsl(var(--brand)); }
 .terminalText span { color: hsl(var(--brand)); }
 .chat { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
 .bubble { align-self: flex-end; max-width: 88%; margin: 0; padding: 14px 16px; border-radius: 16px 16px 4px 16px; background: hsl(var(--stage-raised)); color: hsl(var(--stage-foreground)); font-size: 14px; line-height: 1.6; }
@@ -54,8 +56,10 @@
 
 /* Compare */
 /* Compare: the page's one dark beat. */
-.compare { background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); }
-.compare :global(h2) > span + span { color: hsl(var(--stage-muted)) !important; }
+.compare { position: relative; isolation: isolate; overflow: hidden; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); }
+.compare::before { content: ''; position: absolute; inset: -20% -10% auto; z-index: -1; height: 80%; pointer-events: none;
+  background: radial-gradient(40% 50% at 22% 30%, hsl(var(--brand) / .22), transparent 70%), radial-gradient(34% 44% at 80% 20%, hsl(36 100% 60% / .14), transparent 70%); filter: blur(20px); }
+.compare :global(h2) > span + span { background: linear-gradient(100deg, hsl(var(--stage-muted)) 15%, hsl(var(--brand)) 70%, hsl(36 100% 60%) 100%); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
 .compare p { color: hsl(var(--stage-muted)); }
 .compare .textLink { color: hsl(var(--stage-foreground)); }
 .compareList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 56px 0 0; padding: 0; list-style: none; }
@@ -78,3 +82,8 @@
   .bubble { max-width: 100%; font-size: 13px; }
   .windowBar small { display: none; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .terminalText::after { animation: caret 1.1s steps(1) infinite; }
+}
+@keyframes caret { 50% { opacity: 0; } }

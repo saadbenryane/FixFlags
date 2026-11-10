@@ -27,6 +27,20 @@ export const CARE_HOME = {
     sampleAction: 'Try the interactive sample',
     sampleHref: '/how-it-works#sample',
     placeholder: 'yourwebsite.com',
+    /** A sample run of the agent, shown under the entry. Each step is something a real check does. */
+    run: {
+      label: 'Sample run',
+      steps: [
+        { kind: 'working', text: 'Opening everydaygoods.example on a phone' },
+        { kind: 'working', text: 'Tapping Add to cart' },
+        { kind: 'flag', text: 'Cart stayed empty. Flag raised with evidence' },
+        { kind: 'fix', text: 'Writing the fix for Lovable' },
+        { kind: 'working', text: 'Rechecking the live site' },
+        { kind: 'verified', text: 'Verified. Add to cart works' },
+      ],
+    },
+    worksWith: 'Hands the fix to the AI you build with',
+    tools: ['Lovable', 'Bolt', 'Replit', 'Cursor', 'Claude Code', 'Windsurf'],
     benefits: [
       { title: 'Checks on your schedule' },
       { title: 'Email alerts' },

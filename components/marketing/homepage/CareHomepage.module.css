@@ -4,11 +4,24 @@
 .home p { text-wrap: pretty; }
 .home a, .home button, .dialog a, .dialog button { -webkit-tap-highlight-color: transparent; transition: color 180ms, background-color 180ms, border-color 180ms; }
 .home a:focus-visible, .home button:focus-visible, .dialog a:focus-visible, .dialog button:focus-visible, .dialog textarea:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }
-.entry { max-width: 620px; margin: 30px auto 0; scroll-margin-top: 105px; }
-.entry :global([data-audit-entry]) { border-color: hsl(var(--brand) / .45); box-shadow: 0 8px 28px hsl(var(--foreground) / .05); }
-.entry :global([data-audit-entry]:focus-within) { border-color: hsl(var(--brand)); animation: none; box-shadow: 0 0 0 3px hsl(var(--brand) / .18), 0 12px 32px hsl(var(--brand) / .12); }
-.entry :global([data-audit-entry] input) { height: 44px; min-height: 44px; }
-.entry button[type='submit'] { height: 44px; min-height: 44px; min-width: 132px; padding-inline: 14px; gap: 8px; border-radius: calc(var(--radius-inner) - .375rem - 1px); font-size: 15.2px; font-weight: 600; color: hsl(var(--primary-foreground)); }
+.entry { position: relative; width: 100%; max-width: 620px; margin: 30px auto 0; scroll-margin-top: 105px; }
+/* The composer: the URL entry presented as the place you hand the agent its task, with a living glow edge. */
+.entry::before { content: ''; position: absolute; inset: -3px; z-index: 0; border-radius: 21px; pointer-events: none;
+  background: conic-gradient(from var(--composer-angle), hsl(var(--brand) / 0), hsl(var(--brand) / .75), hsl(36 100% 60% / .7), hsl(var(--brand) / 0) 45%, hsl(222 80% 70% / .35) 70%, hsl(var(--brand) / 0));
+  filter: blur(14px); opacity: .95; transition: opacity var(--motion-fast) var(--ease-out); }
+.entry::after { content: ''; position: absolute; inset: -1px; z-index: 0; border-radius: 19px; padding: 1px; pointer-events: none;
+  background: conic-gradient(from var(--composer-angle), hsl(var(--brand) / .15), hsl(var(--brand) / .9), hsl(36 100% 60% / .8), hsl(var(--brand) / .15) 50%, hsl(var(--brand) / .15));
+  -webkit-mask: linear-gradient(hsl(0 0% 0%) 0 0) content-box, linear-gradient(hsl(0 0% 0%) 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.entry > * { position: relative; z-index: 1; }
+.entry :global([data-audit-entry]) { border-color: transparent; border-radius: 18px; padding: 8px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 24px 60px -24px hsl(30 15% 20% / .35); }
+.entry :global([data-audit-entry]:focus-within) { border-color: hsl(var(--brand) / .55); animation: none; box-shadow: 0 0 0 4px hsl(var(--brand) / .12), 0 24px 60px -24px hsl(30 15% 20% / .35); }
+.entry :global([data-audit-entry] input) { height: 52px; min-height: 52px; font-size: 16px; }
+.entry button[type='submit'] { height: 46px; min-height: 46px; min-width: 186px; padding-inline: 18px; gap: 8px; border-radius: 12px; font-size: 15px; font-weight: 600; color: hsl(var(--primary-foreground)); }
+@property --composer-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@media (prefers-reduced-motion: no-preference) {
+  .entry::before, .entry::after { animation: composer-orbit 9s linear infinite; }
+}
+@keyframes composer-orbit { to { --composer-angle: 360deg; } }
 .entry button[type='submit']:hover { background: hsl(var(--brand)); }
 .textLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; font-weight: 550; }
 .textLink:hover { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 4px; }
@@ -135,4 +148,12 @@
 /* Closing: the same two-tone statement as every section, with the brand mark beside it. */
 .home .finalTitle { margin: 0; font-size: clamp(34px, 3.9vw, 54px); font-weight: 500; line-height: 1.02; letter-spacing: -.05em; }
 .finalTitle > span { display: block; }
-.finalTitle > span + span { color: hsl(var(--muted-foreground) / .85); }
+.finalTitle > span + span { padding-bottom: .06em; background: linear-gradient(100deg, hsl(var(--muted-foreground) / .9) 15%, hsl(var(--brand) / .85) 70%, hsl(36 100% 52% / .9) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Sections rise in as they enter, driven by scroll alone: no JavaScript, still for reduced motion. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home > section:not(:first-child) > * { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
+  }
+}
+@keyframes rise { from { opacity: .001; transform: translateY(28px); } to { opacity: 1; transform: none; } }
