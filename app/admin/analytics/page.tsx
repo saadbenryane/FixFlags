@@ -17,6 +17,7 @@ import {
 import { SITE_LIFECYCLE_EVENTS } from '@/lib/analytics/site-events'
 import { loadSiteFirstValueFunnel } from '@/lib/analytics/site-first-value-funnel'
 import { loadWatchLaunchReadiness } from '@/lib/analytics/watch-launch-readiness'
+import { loadWeeklyScoreboard, type ScoreboardStage } from '@/lib/analytics/weekly-scoreboard'
 import { ADMIN_COPY } from '@/lib/marketing/copy/admin'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
@@ -54,6 +55,15 @@ const WATCH_GATE_LABELS = {
   flagDeduplication: 'Flag deduplication',
   economics: 'Daily-care economics',
 } as const
+
+const SCOREBOARD_COLUMNS: [ScoreboardStage, string][] = [
+  ['checks', 'First checks'],
+  ['claimed', 'Sites claimed'],
+  ['fixHandoffs', 'Fixes copied'],
+  ['rechecks', 'Rechecks'],
+  ['verifiedFixes', 'Verified fixes'],
+  ['watchEnabled', 'Watch turned on'],
+]
 
 export default async function AdminAnalyticsPage() {
   await requireAdminPage()
@@ -151,6 +161,7 @@ export default async function AdminAnalyticsPage() {
     trafficSources,
     siteLifecycleCounts,
     firstValueFunnel,
+    weeklyScoreboard,
   ] = await Promise.all([
     prisma.user.findMany({
       where: { plan: { not: 'FREE' }, subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
@@ -191,6 +202,7 @@ export default async function AdminAnalyticsPage() {
       where: { createdAt: { gte: monthAgo } },
     }),
     loadSiteFirstValueFunnel(monthAgo),
+    loadWeeklyScoreboard(),
   ])
 
   const mrr = activePaidUsers.reduce(
@@ -267,6 +279,37 @@ export default async function AdminAnalyticsPage() {
           Waitlist trends
         </Link>
       </nav>
+      <section className="space-y-4" aria-labelledby="weekly-scoreboard-heading">
+        <SectionTitle id="weekly-scoreboard-heading">Weekly scoreboard</SectionTitle>
+        <p className="max-w-4xl text-sm text-muted-foreground">
+          The North Star is verified fixes: an independent recheck confirmed the change. Weeks start
+          Monday UTC and the first row is the current, partial week.
+        </p>
+        <div className="overflow-x-auto rounded-card bg-muted/30 p-4">
+          <div role="table" aria-labelledby="weekly-scoreboard-heading" className="min-w-[640px] space-y-1 text-sm">
+            <div role="row" className="grid grid-cols-7 gap-4 pb-2 text-xs font-medium text-muted-foreground">
+              <span role="columnheader">Week of</span>
+              {SCOREBOARD_COLUMNS.map(([, label]) => (
+                <span key={label} role="columnheader" className="text-right">{label}</span>
+              ))}
+            </div>
+            {weeklyScoreboard.map((week) => (
+              <div key={week.weekStart} role="row" className="grid grid-cols-7 gap-4">
+                <span role="rowheader" className="text-muted-foreground">{week.weekStart}</span>
+                {SCOREBOARD_COLUMNS.map(([stage]) => (
+                  <span
+                    key={stage}
+                    role="cell"
+                    className={`text-right font-mono tabular-nums${stage === 'verifiedFixes' ? ' font-semibold text-foreground' : ''}`}
+                  >
+                    {week[stage].toLocaleString()}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
       <section className="space-y-4">
         <SectionTitle>Watch launch evidence</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">

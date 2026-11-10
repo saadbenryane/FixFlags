@@ -675,6 +675,7 @@ export async function createAndEnqueueAudit(
     properties: {
       anonymous: !userId,
       trigger: options.recheckTrigger ?? 'manual',
+      firstCheck: !options.parentId,
       journeyId: options.attribution?.journeyId ?? undefined,
       guideEntry: !userId && !options.parentId ? options.attribution?.guideEntry : undefined,
     },
