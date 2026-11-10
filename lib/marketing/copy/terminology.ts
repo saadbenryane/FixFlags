@@ -38,7 +38,9 @@ export const SITE_BOARD_COPY = {
   watchOff: 'Not monitored',
   watchSetup: 'Set up monitoring',
   reviewIncomplete: 'Prioritization couldn’t finish',
-  cardCheckIncomplete: 'Limited evidence',
+  cardCheckIncomplete: 'Some checks didn’t finish',
+  /** A partial area with no Flags: never "0 Flags", which claims a clean result. */
+  partialNoFlags: 'No Flags in what finished',
   cardRetryExplanation: 'The saved results are still available. A new check will try the missing work again.',
   watchCard: 'Monitoring',
   watchCardOff: 'Off',
@@ -258,7 +260,7 @@ export const SITE_PRESENTATION_COPY = {
     regressed: 'Regressed',
     could_not_verify: 'Couldn’t verify',
     missing_evidence: 'Missing evidence',
-    incomparable_scope: 'Incomparable scope',
+    incomparable_scope: 'Couldn’t compare',
   },
   flags: (count: number) => `${count} ${count === 1 ? 'Flag' : 'Flags'}`,
   pages: (reached: number, expected: number) => {

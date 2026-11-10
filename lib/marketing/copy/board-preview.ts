@@ -44,8 +44,8 @@ export const BOARD_PREVIEW_COPY = {
   incomplete: 'Check incomplete',
   history: {
     scheduled: 'Scheduled check', manual: 'Manual check', other: 'Triggered check', afterFix: 'Check after a fix',
-    site: 'Whole-Site check', outcomes: 'Selected visitor actions', diagnostic: 'Targeted page check', unknown: 'Scope unavailable',
-    clear: 'Clear for this scope', recovered: 'Recovery verified for this scope', flagged: 'Flag found in this scope', uncertain: 'Couldn’t verify',
+    site: 'Website check', outcomes: 'Selected visitor actions', diagnostic: 'Targeted page check', unknown: 'Scope unavailable',
+    clear: 'No Flags', recovered: 'Fix verified', flagged: 'Flag found', uncertain: 'Couldn’t verify',
   },
   noFlags: '0 Flags',
   noHistory: 'Check history appears after the first check.',

@@ -61,13 +61,13 @@ export function SiteCategoryContent({ selected, selectedFlags, selectedRecommend
           state={outcome.state}
           validUntil={outcome.validUntil}
           running={outcome.running}
-          label={outcome.enabled ? SITE_BOARD_COPY.websiteCheck : 'Paused'}
+          label={outcome.enabled ? SITE_BOARD_COPY.websiteCheck : SITE_BOARD_COPY.watchCardPaused}
           layout="row"
           actions={(
             <div className="flex flex-wrap gap-2">
               {outcome.state === 'FLAG' && outcome.flagId ? <><SitePromptCopyButton siteId={siteId} flagId={outcome.flagId} availability={view.actions.copy} compact /><Button size="sm" variant="outline" asChild><Link href={siteDetailContextHref(`/sites/${siteId}/flags/${encodeURIComponent(outcome.flagId)}`, origin) as Route}>{C.viewFlag}</Link></Button></> : null}
               {view.actions.check !== 'available' ? <SiteActionContinuation availability={view.actions.check} destination={siteDetailContextHref(`/sites/${siteId}/outcomes/${encodeURIComponent(outcome.id)}`, origin)} action="check" compact /> : !outcome.running ? <Button size="sm" variant={outcome.state === 'FLAG' ? 'default' : 'outline'} disabled={busy || !outcome.enabled || !outcome.bindings.some((binding) => binding.required)} onClick={() => void verifyOutcome(outcome.id)}>
-                Check again
+                {SITE_ACTION_COPY.outcome.verify}
               </Button> : null}
             </div>
           )}

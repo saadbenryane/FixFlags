@@ -576,10 +576,10 @@ describe('SiteBoard chrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     await screen.findByRole('dialog')
-    fireEvent.click(within(screen.getByRole('heading', { name: 'Checkout' }).closest('section')!).getByRole('button', { name: 'Check again' }))
+    fireEvent.click(within(screen.getByRole('heading', { name: 'Checkout' }).closest('section')!).getByRole('button', { name: 'Check now' }))
     expect(await screen.findByText(SITE_BOARD_COPY.connectionInterrupted)).toBeVisible()
     expect(await screen.findByText('Checkout did not open')).toBeVisible()
-    expect(within(screen.getByRole('heading', { name: 'Checkout' }).closest('section')!).getByRole('button', { name: 'Check again' })).toBeEnabled()
+    expect(within(screen.getByRole('heading', { name: 'Checkout' }).closest('section')!).getByRole('button', { name: 'Check now' })).toBeEnabled()
     vi.unstubAllGlobals()
   })
   it('leads with the Checkout result and links to its complete details', async () => {
@@ -672,7 +672,7 @@ describe('SiteBoard chrome', () => {
     expect(within(outcome).getByRole('status')).toHaveTextContent('Checking…')
     expect(within(outcome).getByText(summary)).toBeVisible()
     expect(within(outcome).getByText(/Previous evidence · Last verified/)).toBeVisible()
-    expect(within(outcome).queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument()
+    expect(within(outcome).queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
   })
 
   it('tells Home that a stale Clear needs a fresh verification', async () => {
@@ -1058,7 +1058,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('img', { name: 'Flag count across 2 checks' })).toBeVisible()
     const event = screen.getByText('Check after a fix').closest('li')!
     expect(within(event).getByText('Manual check · Selected visitor actions · Reach checkout')).toBeVisible()
-    expect(within(event).getByText('Recovery verified for this scope')).toBeVisible()
+    expect(within(event).getByText('Fix verified')).toBeVisible()
     expect(within(event).queryByText('0 Flags')).not.toBeInTheDocument()
   })
 
@@ -1142,7 +1142,7 @@ describe('SiteBoard chrome', () => {
     expect(within(screen.getByRole('article', { name: 'Performance' })).queryByText(/running/)).not.toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Performance' })).getByRole('button', { name: 'Open Performance' })).toHaveAccessibleDescription(/Waiting/)
     // A running check is not described with the previous result's gaps.
-    for (const button of screen.getAllByRole('button', { name: /^Open / })) expect(button).not.toHaveAccessibleDescription(/Couldn’t verify|Limited evidence/)
+    for (const button of screen.getAllByRole('button', { name: /^Open / })) expect(button).not.toHaveAccessibleDescription(/Couldn’t verify|didn’t finish/)
     expect(screen.queryByText('No completed check')).not.toBeInTheDocument()
     const header = screen.getByRole('heading', { name: 'example.com', level: 1 }).closest('header')!
     const status = within(header).getByRole('status')
