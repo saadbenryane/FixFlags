@@ -5,6 +5,7 @@ import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { ProductBoardCard } from '@/components/sites/BoardCard'
 import { SiteOverview } from '@/components/sites/SiteOverview'
+import { SiteTopProblem, topProblem } from '@/components/sites/SiteTopProblem'
 import { SiteOverviewWorkspace } from '@/components/sites/SiteOverviewWorkspace'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
@@ -151,6 +152,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
     monitoring: view.presentation.monitoring,
     disconnected,
   })
+  const primaryProblem = topProblem(view.flags)
   const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
 
   return (
@@ -182,6 +184,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
+        {!checking && primaryProblem ? <SiteTopProblem siteId={siteId} flag={primaryProblem} copyAvailability={view.actions.copy}
+          copyReady={view.actions.copy !== 'available' || Boolean(primaryProblem.fix.trim())} technologies={technologies} onOpen={openFlag} /> : null}
         <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
           notice={checking && !disconnected && !currentReadUnavailable ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {

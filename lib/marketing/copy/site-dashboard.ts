@@ -1,4 +1,21 @@
 export const SITE_DASHBOARD_COPY = {
+  verifiedReceipt: {
+    stamp: 'Verified',
+    label: 'Verified receipt',
+    page: 'Page',
+    found: 'Found',
+    verified: 'Verified',
+    fixedIn: 'Fixed in',
+    duration: (value: number, unit: 'minute' | 'hour' | 'day') => `${value} ${unit}${value === 1 ? '' : 's'}`,
+    independent: 'An independent FixFlags recheck of the same page confirmed it.',
+  },
+  topProblem: {
+    label: 'Fix this first',
+    page: (path: string) => `On ${path}`,
+    view: 'View Flag',
+    builder: (tool: string) => `Built with ${tool}? Paste the fix instructions into the ${tool} chat.`,
+    builderGuide: (tool: string) => `Using FixFlags with ${tool}`,
+  },
   overview: 'Overview', backTo: (place: string) => `Back to ${place}`,
   viewFlag: 'View Flag', flagPriority: 'Flag priority', suggestions: 'Suggestions', previous: 'Previous', next: 'Next',
   range: (start: number, end: number, total: number) => `${start}–${end} of ${total}`,

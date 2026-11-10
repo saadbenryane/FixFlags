@@ -164,7 +164,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
-        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} verificationFeedback={ownsSite && !['DISMISSED', 'IGNORED'].includes(flag.status) ? flag.verificationFeedback : null}>
+        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} verificationFeedback={ownsSite && !['DISMISSED', 'IGNORED'].includes(flag.status) ? flag.verificationFeedback : null} receipt={{ page: flag.pageUrl, foundAt: flag.latestOccurrenceAt }}>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}

@@ -5,6 +5,7 @@ import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagProofNote, FlagResolution, FlagVerificationFeedback } from '@/lib/sites/flag-resolution'
 import { FlagVerificationNotice } from './FlagVerificationNotice'
+import { VerifiedReceipt } from './VerifiedReceipt'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { cn } from '@/lib/utils'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
@@ -25,7 +26,7 @@ function ProofNote({ heading, proof, note, current = false }: { heading: string;
 }
 
 /** Status, recorded proof, or the honest missing-proof next step for one Flag. */
-export function FlagResolutionPanel({ resolution, siteId, flagId, referenceFlagId, initial, children, repairGuidance, verificationFeedback }: { resolution: FlagResolution; siteId: string; flagId: string; referenceFlagId?: string; initial: SiteHomeView; children?: ReactNode; repairGuidance: RepairGuidanceState; verificationFeedback?: FlagVerificationFeedback | null }) {
+export function FlagResolutionPanel({ resolution, siteId, flagId, referenceFlagId, initial, children, repairGuidance, verificationFeedback, receipt }: { resolution: FlagResolution; siteId: string; flagId: string; referenceFlagId?: string; initial: SiteHomeView; children?: ReactNode; repairGuidance: RepairGuidanceState; verificationFeedback?: FlagVerificationFeedback | null; receipt?: { page: string | null; foundAt: string | null } }) {
   return (
     <>
       <p role="status" className={cn('inline-flex min-h-8 items-center gap-2 rounded-full border bg-background px-3 text-sm font-medium', resolution.kind === 'proven' ? 'border-success text-success' : resolution.kind === 'unproven' ? 'border-border text-muted-foreground' : 'border-brand text-foreground')}>
@@ -34,7 +35,9 @@ export function FlagResolutionPanel({ resolution, siteId, flagId, referenceFlagI
       </p>
       {resolution.kind === 'open' && verificationFeedback ? <div className="mt-4"><FlagVerificationNotice feedback={verificationFeedback} /></div> : null}
       {children}
-      {resolution.kind === 'proven' ? <ProofNote heading={SITE_BOARD_COPY.flagRecovered} proof={resolution.proof} current /> : null}
+      {resolution.kind === 'proven' ? receipt
+        ? <VerifiedReceipt heading={SITE_BOARD_COPY.flagRecovered} proof={resolution.proof} page={receipt.page} foundAt={receipt.foundAt} />
+        : <ProofNote heading={SITE_BOARD_COPY.flagRecovered} proof={resolution.proof} current /> : null}
       {resolution.kind === 'verifying' && resolution.proof ? <ProofNote heading={SITE_BOARD_COPY.flagProofLastCheck} proof={resolution.proof} note={resolution.runningNote} /> : null}
       {resolution.kind === 'unproven' ? (
         <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="flag-proof-missing-heading">
