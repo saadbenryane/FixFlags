@@ -321,7 +321,7 @@ export const HOMEPAGE_SAMPLE = {
     { name: 'Google Analytics', detail: 'Planned audience context. Connection setup is coming soon.', status: 'Coming soon', state: 'attention', suggested: true },
     { name: 'Google Search Console', detail: 'Planned search context. Connection setup is coming soon.', status: 'Coming soon', state: 'attention', suggested: true },
   ],
-  analyzeAction: 'Analyze your website',
+  analyzeAction: 'Check your website',
   resultsTitle: 'Results in this area',
   evidenceAction: 'What we checked and found',
   detailAction: 'View Flag',

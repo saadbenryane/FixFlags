@@ -12,7 +12,7 @@ export function requiresPrescriptionPageContext(flags: readonly { source?: strin
 
 export const LEGACY_LOCKED_PROMPT_TEXT = [
   'Sign up',
-  'Create a free account to see evidence and fix prompts.',
+  'Create a free account to see evidence and fix instructions.',
   'Sign up to see why this matters and get a fix prompt for your editor.',
   'Sign up to get the fix prompt.',
   'Sign up to see verification steps.',

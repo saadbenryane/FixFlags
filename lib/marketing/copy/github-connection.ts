@@ -3,7 +3,7 @@ export const GITHUB_CONNECTION_COPY = {
   back: 'Back to Site integrations', connect: 'Connect GitHub', reconnect: 'Reconnect GitHub', disconnect: 'Disconnect GitHub',
   confirm: 'Confirm disconnect', cancel: 'Keep connection', saving: 'Disconnecting…',
   permissions: 'GitHub requests the repo permission, which grants access to public and private repositories. Review this permission on GitHub before authorizing.',
-  behavior: 'Connecting saves your encrypted authorization. FixFlags does not scan repositories or open pull requests in the website beta. Copy a Flag’s fix prompt into your code workflow, then verify the deployed change on your Site.',
+  behavior: 'Connecting saves your encrypted authorization. FixFlags does not scan repositories or open pull requests in the website beta. Copy a Flag’s fix instructions into your code workflow, then verify the deployed change on your Site.',
   signingIn: 'GitHub sign-in is managed separately in account settings.', account: 'Account settings',
   connected: (login: string) => `Connected as ${login}.`, disconnected: 'No GitHub account connected.',
   revoked: 'This authorization was revoked. Reconnect to replace it.',

@@ -116,7 +116,7 @@ describe('dashboard reading and handoff', () => {
     rendered.rerender(<SiteFixBundleButton siteId="site" flagIds={flagIds.slice(0, MAX_REPAIR_TASKS)} availability="available" />)
     expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(MAX_REPAIR_TASKS) })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'View instructions' })).toBeEnabled()
-    expect(screen.queryByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one fix prompt.`)).not.toBeInTheDocument()
+    expect(screen.queryByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one set of fix instructions.`)).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
   it('keeps an oversized expanded prompt disabled without preparing an unsupported scope', () => {
@@ -125,7 +125,7 @@ describe('dashboard reading and handoff', () => {
     const flagIds = Array.from({ length: MAX_REPAIR_TASKS + 1 }, (_, index) => `flag-${index}`)
     render(<SiteFixBundleButton siteId="site" flagIds={flagIds} availability="available" presentation="preview" />)
     expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(flagIds.length) })).toBeDisabled()
-    expect(screen.getAllByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one fix prompt.`)[0]).toBeVisible()
+    expect(screen.getAllByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one set of fix instructions.`)[0]).toBeVisible()
     expect(fetch).not.toHaveBeenCalled()
   })
 

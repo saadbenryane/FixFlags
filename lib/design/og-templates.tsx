@@ -131,7 +131,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             fontFamily: ogFontFamilies.sans,
           }}
         >
-          fix prompts included
+          fix instructions included
         </div>
       </div>
     </div>

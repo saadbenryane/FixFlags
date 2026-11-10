@@ -4,7 +4,7 @@ import { rankFlagsByPriority, type RankableFlag } from './priority-flags'
 
 /** Internal verdict copy written by the audit pipeline - not user-facing summaries. */
 export const DETERMINISTIC_SCAN_VERDICT =
-  'Deterministic scan complete. Create a free account for AI review, fix prompts, and rubric analysis.'
+  'Deterministic scan complete. Create a free account for AI review, fix instructions, and rubric analysis.'
 
 export const AI_SUMMARY_UNAVAILABLE_VERDICT =
   'AI summary unavailable, deterministic checks and screenshots are shown below.'

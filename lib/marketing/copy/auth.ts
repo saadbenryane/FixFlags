@@ -14,19 +14,19 @@ export const AUTH = {
     title: 'Your site check is underway',
     subtitle: (hostname?: string | null) =>
       hostname
-        ? `Create a free account to save ${hostname}, get fix prompts, and set a monitoring schedule.`
-        : 'Create a free account to save your website, get fix prompts, and set a monitoring schedule.',
+        ? `Create a free account to save ${hostname}, get fix instructions, and set a monitoring schedule.`
+        : 'Create a free account to save your website, get fix instructions, and set a monitoring schedule.',
     preparingOptions: 'Preparing sign-in options',
     backHome: 'Back to home',
     exit: 'Leave this Site',
     saving: 'Saving your Site',
-    savingBody: 'Your account is ready. We’re saving your website and preparing its fix prompts.',
+    savingBody: 'Your account is ready. We’re saving your website and preparing its fix instructions.',
   },
   reportContext: {
     regionLabel: 'Site being saved',
     title: (hostname: string) => `Save ${hostname}`,
     loadingTitle: 'Save this Site',
-    body: 'Save your results, get fix prompts, and keep your website checked on a schedule.',
+    body: 'Save your results, get fix instructions, and keep your website checked on a schedule.',
     backCta: 'Back to Site',
     saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your Site',
     unlocking: 'Preparing your Flags',
@@ -256,7 +256,7 @@ export const AUTH = {
   },
   valueProps: [
     { icon: 'history' as const, text: 'Keep your website’s evidence and history' },
-    { icon: 'reports' as const, text: 'Get fix prompts for your AI or developer' },
+    { icon: 'reports' as const, text: 'Get fix instructions for your AI or developer' },
     { icon: 'recheck' as const, text: 'Set a schedule and get email alerts' },
   ],
   passkeyErrors: {
@@ -341,13 +341,13 @@ export const SHARE_COPY = {
 
 export const LOCKED_INSPECTION = {
   headline: 'Sign in to inspect this Flag',
-  body: 'This report includes evidence, screenshots, and fix prompts for every flag.',
+  body: 'This report includes evidence, screenshots, and fix instructions for every flag.',
   features: [
     'Screenshot evidence with interactive pins',
     'Detailed explanation of the Flag',
     'Why this matters for your users',
     'How to verify the fix',
-    'Fix prompt for your editor',
+    'Fix instructions for your editor',
   ],
   primaryCta: 'Sign in',
   secondaryCta: 'Create free account',
@@ -364,14 +364,14 @@ export const SAMPLE_FIX = {
   label: 'Example fix',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, and choose any supported monitoring schedule on one website during beta.`,
+  subtext: (n: number) => `One sample fix below. Create a free account to see fix instructions for all ${n} Flags, save this Site, and choose any supported monitoring schedule on one website during beta.`,
   primaryCta: 'Create free account',
 } as const
 
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: 'A free account adds fix prompts, saved results, and scheduled monitoring on one website. All supported features are free during open beta.',
+    body: 'A free account adds fix instructions, saved results, and scheduled monitoring on one website. All supported features are free during open beta.',
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',

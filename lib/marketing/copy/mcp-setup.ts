@@ -15,7 +15,7 @@ export const MCP_SETUP_COPY = {
   verifyLabel: 'Connection check prompt',
   verifyPrompt: 'Use FixFlags MCP. Call fixflags.get_connection_info and confirm authentication.authenticated is true. Report permissions.allowedTools so I can see what this key permits. Then call fixflags.list_sites. Show my Sites and their IDs. Do not start a check or record a fix.',
   workTitle: 'Use a Flag’s repair brief',
-  workDescription: 'Open a Flag in FixFlags, preview its fix prompt, and paste it into your agent. It includes a recorded task, a versioned JSON URL, and an MCP request for the same evidence.',
+  workDescription: 'Open a Flag in FixFlags, preview its fix instructions, and paste them into your agent. It includes a recorded task, a versioned JSON URL, and an MCP request for the same evidence.',
   workDetail: 'Your agent reads the brief, inspects your code, and applies the fix. After you deploy, it can record the change, request verification, and follow the returned next step until FixFlags reports a result.',
   privacy: 'Private reports stay private. MCP uses the agent’s connection. Direct JSON requests use a developer key in an Authorization: Bearer header, or the owner’s browser session. A report URL by itself does not grant access.',
   troubleshooting: 'If connection fails',

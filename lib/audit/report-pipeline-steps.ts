@@ -64,7 +64,7 @@ export function buildPipelineSteps({
         detail: String(flagCount),
         state: flagCount > 0 ? 'active' : 'done',
       },
-      { id: 'prompts', label: 'Fix', detail: 'Fix prompts', state: 'pending' },
+      { id: 'prompts', label: 'Fix', detail: 'Fix instructions', state: 'pending' },
     ]
   }
 
@@ -81,7 +81,7 @@ export function buildPipelineSteps({
     {
       id: 'prompts',
       label: 'Fix',
-      detail: 'Fix prompts',
+      detail: 'Fix instructions',
       state: fixesDone ? 'done' : 'pending',
     },
   ]

@@ -25,12 +25,12 @@ export const NOTIFICATION_EMAIL_COPY = {
     : `An independent check verified ${recovered === 1 ? 'a recovery' : `${recovered} recoveries`} on ${host}.`,
   more: (count: number) => `${count} more updates on your website’s page.`,
   repair: {
-    heading: 'Fix prompt',
+    heading: 'Fix instructions',
     nextSteps: 'Next steps',
     recheckIntro: 'Check this page again before making changes. The prompt below explains what is missing.',
     intro: 'Copy the whole prompt below into your AI tool, or send it to your developer. It includes the problem, the fix steps, and the report link.',
-    attachment: (filename: string) => `The complete fix prompt is attached as ${filename}. Open it, then copy the text into your AI tool or send it to your developer.`,
-    attachedPrompts: 'Open an attached fix prompt to copy the complete instructions into your AI tool or share them with your developer.',
+    attachment: (filename: string) => `The complete fix instructions are attached as ${filename}. Open the file, then copy the text into your AI tool or send it to your developer.`,
+    attachedPrompts: 'Open the attached fix instructions to copy the complete instructions into your AI tool or share them with your developer.',
     attachmentLabel: (filename: string) => `Attached as ${filename}.`,
     remainingAttachment: (filename: string) => `Instructions for the other problems in this update are attached as ${filename}. The website owner can open each problem in FixFlags and download its complete instructions for a developer or AI.`,
     remainingPrompt: (appUrl: string, siteId: string, ids: readonly string[]) => [

@@ -219,7 +219,7 @@
   ],
   "components/report/FlagDetailPanel.tsx": [
     "Current social preview",
-    "Generating enhanced fix prompt.",
+    "Generating enhanced fix instructions.",
     "Image unavailable",
     "This is how your page appears when shared on Slack, LinkedIn, or iMessage.",
     "What this means"

@@ -196,7 +196,7 @@ export const UPSELLS = {
     secondaryCta: 'See paid plans',
   },
   signedInAiPending: {
-    headline: 'Fix prompts on the way',
+    headline: 'Fix instructions on the way',
     body: 'Evidence and fix steps are below. Enhanced prompts for your editor usually finish within a minute.',
   },
   signedInAiDegraded: {

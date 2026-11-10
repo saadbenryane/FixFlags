@@ -321,7 +321,7 @@ describe('AuditInput scan handoff', () => {
     expect(input).toHaveValue('https://example.com')
     expect(input).toHaveAttribute('aria-invalid', 'false')
     expect(input).not.toHaveAttribute('aria-describedby')
-    const retryButton = screen.getByRole('button', { name: /Check website/i })
+    const retryButton = screen.getByRole('button', { name: /Check your website/i })
     expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
 
@@ -507,7 +507,7 @@ describe('AuditInput scan handoff', () => {
       await screen.findAllByText('Create a free account to continue')
     ).not.toHaveLength(0)
     expect(
-      screen.getAllByText(/A free account adds fix prompts, saved results, and scheduled monitoring/i).length
+      screen.getAllByText(/A free account adds fix instructions, saved results, and scheduled monitoring/i).length
     ).toBeGreaterThan(0)
   })
 
@@ -538,9 +538,9 @@ describe('AuditInput scan handoff', () => {
       </MeProvider>,
     )
 
-    const submit = await screen.findByRole('button', { name: /Check website/i })
+    const submit = await screen.findByRole('button', { name: /Check your website/i })
     expect(submit.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
-    expect(submit.textContent).toMatch(/Check website/)
+    expect(submit.textContent).toMatch(/Check your website/)
   })
 })
 

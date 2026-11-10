@@ -613,7 +613,7 @@ function buildFixFirstReply(input: ChatProductQuestionInput): ProductAnswer {
   if (top.fix) {
     lines.push(`Fix: ${top.fix}`)
   } else {
-    lines.push('No fix prompt was generated for this flag yet.')
+    lines.push('No fix instructions were generated for this flag yet.')
   }
   if (ranked.length > 1) {
     const next = ranked.slice(1, 3).map(

@@ -18,7 +18,7 @@ export const AI_CONNECTION_COPY = {
     },
     {
       title: 'Give your AI a clear starting point',
-      body: 'Each fix prompt brings the page, the problem, and the expected result together. Your AI can focus on that problem instead of starting with a broad “check everything” request.',
+      body: 'Each set of fix instructions brings the page, the problem, and the expected result together. Your AI can focus on that problem instead of starting with a broad “check everything” request.',
     },
   ],
   connection: {
@@ -34,14 +34,14 @@ export const AI_CONNECTION_COPY = {
     },
     unavailable: {
       title: 'Direct connections are coming soon.',
-      body: 'New MCP connections are not available in this beta. You can use fix prompts today by copying and pasting them, with nothing to connect.',
+      body: 'New MCP connections are not available in this beta. You can use fix instructions today by copying and pasting them, with nothing to connect.',
       action: 'How to copy and paste a fix',
       existing: 'Already connected to FixFlags?',
       existingBody: 'This prompt checks an existing connection. It does not install a connection, start a website check, or make changes.',
     },
     privacy: 'Approve access in FixFlags and keep connection keys in your agent’s private settings. Never paste a key into a chat or commit it with your website.',
     workTitle: 'Once connected, start with a problem.',
-    workBody: 'Copy a fix prompt from FixFlags into your agent. It can read the recorded details and help make the change. After you review and publish the update, it can ask FixFlags to check the result. The problem is only marked fixed after a fresh check confirms it.',
+    workBody: 'Copy fix instructions from FixFlags into your agent. It can read the recorded details and help make the change. After you review and publish the update, it can ask FixFlags to check the result. The problem is only marked fixed after a fresh check confirms it.',
   },
   prompt: {
     label: 'Connection check prompt',
@@ -53,7 +53,7 @@ export const AI_CONNECTION_COPY = {
   current: {
     title: 'Copy and paste works today.',
     steps: [
-      { title: 'Find the problem', body: 'Enter your website in FixFlags. Save it to get fix prompts and scheduled checks.' },
+      { title: 'Find the problem', body: 'Enter your website in FixFlags. Save it to get fix instructions and scheduled checks.' },
       { title: 'Copy and paste the fix', body: 'Paste the fix instructions where you built your website, or send them to someone who can help.' },
       { title: 'Check the update', body: 'Review and publish the change. Open the same problem in FixFlags and select Check now.' },
     ],

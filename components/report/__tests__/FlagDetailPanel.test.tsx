@@ -137,7 +137,7 @@ describe('FlagDetailPanel', () => {
         aiEnhancementPending
       />
     )
-    expect(screen.getByText('Generating enhanced fix prompt.')).toBeInTheDocument()
+    expect(screen.getByText('Generating enhanced fix instructions.')).toBeInTheDocument()
   })
 
   it('renders shareable social preview for og checks with previewMeta', () => {

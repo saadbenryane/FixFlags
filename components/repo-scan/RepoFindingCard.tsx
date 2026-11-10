@@ -181,7 +181,7 @@ export function RepoFindingCard({
                       </p>
                     )}
                     {!patchable && (
-                      <p>No code changes are made - the PR description carries the fix prompt above for your own agent to apply.</p>
+                      <p>No code changes are made - the PR description carries the fix instructions above for your own agent to apply.</p>
                     )}
                     <div className="flex gap-2 pt-1">
                       <Button

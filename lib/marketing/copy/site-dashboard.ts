@@ -68,7 +68,7 @@ export const SITE_DASHBOARD_COPY = {
   bundleCopied: 'Fixes copied',
   bundleEmpty: 'There are no open Flags in this scope.',
   bundleNotReady: 'This bundle includes Flags without usable fix instructions. Ready individual fixes are available inside each Flag.',
-  bundleTooLarge: (limit: number) => `Select up to ${limit} Flags to prepare one fix prompt.`,
+  bundleTooLarge: (limit: number) => `Select up to ${limit} Flags to prepare one set of fix instructions.`,
   bundleChanged: 'The Flags changed while preparing the prompt. Try again for the latest fixes.',
   bundleSelectionChanged: 'Some selected Flags are no longer open in this scope. Review the selection and try again.',
   bundleRecordFailed: 'The prompt was copied, but we couldn’t record every handoff. Your Flags remain open.',

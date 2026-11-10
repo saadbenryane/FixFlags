@@ -4,7 +4,7 @@
  * Monitor. Flag. Fix. is the customer loop. Verification supplies recovery proof.
  */
 
-export const ANALYZE_CTA = 'Check website'
+export const ANALYZE_CTA = 'Check your website'
 
 export const SITE_ACTIVITY_COPY = {
   milestones: ['Reached', 'Captured', 'Checked', 'Reviewed', 'Saved'],

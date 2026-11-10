@@ -30,7 +30,7 @@ export const SITE_ACTION_COPY = {
   signInAction: 'Sign in again',
   access: {
     save: 'Save this Site', signIn: 'Sign in', claim: 'Save this Site to your account',
-    check: 'Sign in to check again', copy: 'Sign in to copy the fix prompt',
+    check: 'Sign in to check again', copy: 'Sign in to copy the fix instructions',
     monitoring: 'Sign in to set up monitoring', integrations: 'Sign in to manage integrations',
     history: 'Sign in to track progress',
     historyTitle: 'See how your website improves',
@@ -44,7 +44,7 @@ export const SITE_ACTION_COPY = {
   sessionPending: 'Checking your session…',
   signupPrompt: {
     title: 'Save your website. Start monitoring.',
-    body: 'Create a free account for fix prompts, scheduled checks, and email alerts.',
+    body: 'Create a free account for fix instructions, scheduled checks, and email alerts.',
     email: 'Sign up with email', signIn: 'Sign in with email', skip: 'Skip for now',
   },
   configurationUnknown: 'Previous evidence does not verify the current configuration. Run a fresh verification.',

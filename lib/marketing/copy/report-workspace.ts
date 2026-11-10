@@ -152,7 +152,7 @@ export const REPORT_COPY = {
       send: "Send",
       unavailable: "Could not reach FixFlags chat right now.",
       notConfigured:
-        "Live chat is off for this review. Use a quick prompt below for an instant answer, or open a Flag in the fix list for its evidence and fix prompt.",
+        "Live chat is off for this review. Use a quick prompt below for an instant answer, or open a Flag in the fix list for its evidence and fix instructions.",
       replyFallback:
         "I could not generate a reply. Try asking about a specific Flag.",
       notSignedIn: "Sign in to chat",
@@ -163,7 +163,7 @@ export const REPORT_COPY = {
       cannedFirst: "What should I fix first?",
       cannedUnresolved: "What's still open?",
       cannedHint:
-        "Quick prompts give instant answers while live chat is off. Open a Flag in the fix list for its evidence and fix prompt.",
+        "Quick prompts give instant answers while live chat is off. Open a Flag in the fix list for its evidence and fix instructions.",
       suggestionsLabel: "Suggested questions",
       capReached: (cap: number) =>
         `Free-form chat is capped at ${cap} replies for this review. Open a Flag in the fix list for its evidence and fix prompt, or use the quick prompts below.`,
@@ -283,14 +283,14 @@ export const REPORT_COPY = {
   lovableBolt: {
     heroTitle: "Paste this into Lovable or Bolt",
     heroBody:
-      "One click copies a fix prompt tuned for your builder. Publish the change, then run an update review here.",
+      "One click copies fix instructions tuned for your builder. Publish the change, then run an update review here.",
     defaultToolHint:
       "Choose your builder, copy the fix, paste it into your AI editor.",
   },
   sampleFocused: {
     eyebrow: "Sample fix list",
     title: "See what FixFlags found",
-    body: "A reviewed DemoSite report with real evidence and one complete fix prompt.",
+    body: "A reviewed DemoSite report with real evidence and one complete set of fix instructions.",
     detailsCta: "View the sample report",
   },
   progressive: {
@@ -319,7 +319,7 @@ export const REPORT_COPY = {
   recheckHint: {
     title: "Next: verify the published change",
     bodyPrefix:
-      "Paste the fix prompts into your editor, publish the changes, then select",
+      "Paste the fix instructions into your editor, publish the changes, then select",
     bodySuffix:
       "above to get an independent result for each attempted Improvement.",
   },
@@ -343,7 +343,7 @@ export const REPORT_COPY = {
   },
   sampleCta: {
     title: "Run the same check on your site",
-    body: "Paste a URL. See Flags across three rubrics. Sign up for fix prompts you can paste into your editor.",
+    body: "Paste a URL. See Flags across three rubrics. Sign up for fix instructions you can paste into your editor.",
   },
   noFlags: {
     title: "No flags found",
@@ -420,9 +420,9 @@ export const REPORT_COPY = {
     copyCta: "Copy All Prompts",
     copyLabel: "All fixes",
     previewToggle: "Preview prompt",
-    generating: "Generating fix prompts for every Flag…",
+    generating: "Generating fix instructions for every Flag…",
     demonstratedNote:
-      "Create a free account to get fix prompts for this report.",
+      "Create a free account to get fix instructions for this report.",
   },
   sectionTitles: {
     allFixes: "All fixes",
@@ -473,7 +473,7 @@ export const REPORT_COPY = {
     allPages: "All Pages",
     noMatchFilter: "No flags match this filter.",
     checkingIssues: "Checking for Flags…",
-    selectFlag: "Select a flag to see evidence and the fix prompt.",
+    selectFlag: "Select a flag to see evidence and the fix instructions.",
     flagsAppear: "Flags appear here as the review finishes.",
     noFlagsNice: "No flags. Nice work.",
     moreChecks: "More checks",

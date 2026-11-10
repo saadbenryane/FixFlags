@@ -86,7 +86,7 @@ describe('combined Site notification', () => {
     expect(message.attachments?.map(file => Buffer.from(file.content, 'base64').toString('utf8')))
       .toEqual(findings.map(finding => finding.repairPrompt))
     for (const finding of findings) expect(message.html).toContain('/flags/' + finding.id + '?source=watch-email')
-    expect(message.text.match(/Open an attached fix prompt/g)).toHaveLength(1)
+    expect(message.text.match(/Open the attached fix instructions/g)).toHaveLength(1)
     expect(Buffer.byteLength(message.html)).toBeLessThan(16_000)
   })
   it.each([[8, 8], [9, 6]])('preserves all %i sources with %i frozen tasks', (count, visible) => {

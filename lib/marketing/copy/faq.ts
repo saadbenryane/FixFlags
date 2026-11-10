@@ -112,7 +112,7 @@ export const CHANGELOG_ENTRIES = [
     date: '2026-11-10',
     title: 'Clearer summaries, reports, and guides',
     items: [
-      'Daily and weekly summary emails preview what needs attention and link to the fix prompts',
+      'Daily and weekly summary emails preview what needs attention and link to the fix instructions',
       'Confirmed results no longer show as incomplete when optional AI explanations are unavailable',
       'Website reports are simpler, with clearer report and timeline states',
       'New guides on keeping a website working after you publish it',

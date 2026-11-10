@@ -246,7 +246,7 @@ export function FlagPromptRow({
   let row: ReactNode
   if (aiEnhancementPending && !flag.fixPrompt && !aiLocked) {
     row = (
-      <p className="px-1 text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
+      <p className="px-1 text-sm text-muted-foreground">Generating enhanced fix instructions.</p>
     )
   } else if (aiLocked || flag.hasFixPrompt) {
     row = (

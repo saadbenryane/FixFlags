@@ -38,7 +38,7 @@ The foundations underneath are also real: persistent Sites, evidence-bound Flags
 | The company runs on process, not momentum | About 160 internal documents (roughly 317,000 words), 647 acceptance obligations in the completion ledger, 65 copy files. Changelog last updated October 11. | Every change pays a heavy tax. The public sees a product that looks quiet. |
 | The identity is split | Vision: "The independent monitor for software that acts." Homepage: "Your website is live. Is everything working?" Pricing: "Look after your website." Final CTA: "Give your website a little care." Connect page: "Your AI fixes. FixFlags checks." | Five promises means no promise. Visitors cannot repeat what we do. |
 | The website sells the wrong thing to the wrong person | The hero reads like an uptime monitor for small business owners. Half the hero is a glass F render that says nothing about the product. The real edge (AI fix handoff and independent verification) appears in section four. | Developers and AI builders bounce before the part made for them. |
-| Our homepage fails our own check | FixFlags flagged its own homepage: mobile Largest Contentful Paint 6.74s against a 2.5s target. The homepage loads about 1.3 MB of JavaScript (about 440 KB compressed) across 44 script requests, and the interactive sample dashboard is most of the homepage's own share. In our full-page capture, lazy-loaded images below the fold rendered as empty boxes, which says more about our capture than the page (see Phase 0). | A website-quality product with a slow homepage undercuts every claim. |
+| Our homepage fails our own check | FixFlags flagged its own homepage: mobile Largest Contentful Paint 6.74s against a 2.5s target. The homepage loads about 1.3 MB of JavaScript (about 440 KB compressed) across 44 script requests, and the interactive sample dashboard is most of the homepage's own share. Blank boxes seen in our own audit screenshots were lazy-loaded images that had not loaded yet when the screenshot ran; real visitors see them. | A website-quality product with a slow homepage undercuts every claim. |
 | Too much "coming soon" | 9 of 10 integrations are planned, both paid plans are waitlist-only, MCP is built but hidden while `/connect-ai` leads with "coming soon". | It reads as unfinished. Elu shows a full integration wall and a "Book a demo" button. |
 | In-product language hedges at the moment of truth | "Expected: PageSpeed Insights mobile LCP should be under 2.5s." Explanations ending in "visitor understanding was not measured." The same action is called "fix instructions" and "fix prompt". Public terms drift between Flag, Finding, Outcome, Check, Review, Analyze and Audit. | Honesty belongs in the details. The headline of a Flag must be plain, specific and confident. |
 | Findings skew generic | On fixflags.com, 5 of 6 Flags were performance metrics and only 1 page was checked. | Generic performance Flags feel like a Lighthouse wrapper, and they are exactly what the $15 clones also produce. The Flags that sell are broken journeys: a cart that does not add, a pricing page that 404s, a signup that errors, a button hidden on mobile. |
@@ -159,8 +159,8 @@ Rules for the next eight weeks:
 ### Stop the leaks (all small, all this week)
 
 1. Make the homepage pass our own check: render the sample dashboard statically and hydrate only on interaction, move the hero render off the critical path, and set a homepage JavaScript budget (under 200 KB compressed for the first view). Target mobile LCP under 2.0s, CLS under 0.05.
-2. Make our own full-page captures wait for lazy-loaded images. The blank sample capture and blank logo plates we saw on fixflags.com were capture artifacts (both load for real visitors), so customer captures likely show the same gaps. This is Truth-track work. The consent banner was checked at 375x667 and does not cover the primary action.
-3. Decide whether `/roast` stays. (`/demo` and `/demo/v1` are already blocked in robots.txt, and `/demo` is noindex; `/demo/v1` keeps `index` on purpose as the improved scanner fixture.)
+2. Blank images and the consent banner. Checked November 10: the blank sample capture and logo plates came from the audit's own browser screenshots taken before lazy images loaded. Product captures record the viewport only, so customer captures are not affected. The consent banner was checked at 375x667 and does not cover the primary action. Done.
+3. `/roast` stays as an unlinked, noindex tool and can join the free tools in Phase 4. `/demo` and `/demo/v1` are already blocked in robots.txt, and `/demo` is noindex; `/demo/v1` keeps `index` on purpose as the improved scanner fixture. Done.
 4. Collapse "coming soon" integrations into one quiet line. Show only what works.
 5. Stop pitching MCP on `/connect-ai` until it ships, or ship it (Phase 3).
 6. Unify the primary action label ("Check your site" or the owner's pick) and the term for fix instructions everywhere.
@@ -441,7 +441,7 @@ Review it every Monday in 30 minutes: the numbers, three user quotes, the one th
 9. MCP actual-client acceptance for Claude Code started.
 10. Ten design partners recruited for concierge repair.
 11. Cost per check measured on recent real runs.
-12. "Coming soon" collapsed, terms unified, captures wait for lazy images.
+12. "Coming soon" collapsed and terms unified.
 
 ## Evidence behind this plan
 

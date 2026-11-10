@@ -28,7 +28,7 @@ export const AUDIT_ERRORS = {
   partialAiReviewContract:
     'Some fix guidance failed a quality check and was not saved. The recorded evidence is still available.',
   triageDegradedAnonymous:
-    'Automated checks are complete. AI summary was unavailable for this run. Sign up to retry with full AI review and fix prompts.',
+    'Automated checks are complete. AI summary was unavailable for this run. Sign up to retry with full AI review and fix instructions.',
   triageDegradedSignedIn:
     'Automated checks are complete. AI summary was unavailable for this run. Deterministic flags and screenshots are shown below.',
   triageDegradedTimeout:

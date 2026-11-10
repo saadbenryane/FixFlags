@@ -117,7 +117,7 @@ export class AuditLimitError extends Error {
     const message =
       options?.message ??
       (code === 'AUTH_REQUIRED'
-        ? 'You’ve used your free scan. Create a free account for fix prompts and more checks.'
+        ? 'You’ve used your free scan. Create a free account for fix instructions and more checks.'
         : code === 'UPGRADE_REQUIRED'
           ? 'New URL check limit reached. Upgrade to continue.'
           : 'New URL check limit reached. Buy credits or upgrade your plan to continue.')
