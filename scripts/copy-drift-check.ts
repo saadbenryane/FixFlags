@@ -24,7 +24,6 @@ const CUSTOMER_SURFACES = [
   'app/(auth)',
   'app/(docs)',
   'app/(marketing)',
-  'app/compare',
   'app/demo',
   'app/new',
   'app/report',

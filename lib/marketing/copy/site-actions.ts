@@ -68,7 +68,7 @@ export const SITE_ACTION_COPY = {
   retryResults: 'Try loading results again',
   resultsBounded: 'This portion contains no matching results. Continue to inspect the remaining recorded scope.',
   noRecordedResults: 'No recorded results in this scope yet.', resultsExhausted: 'All available results in this scope are shown.',
-  refreshPending: 'The action was saved. Refresh to see the latest state.',
+
   updatesDisconnected: 'Updates disconnected. Your last recorded evidence is still shown.',
   outcome: {
     noVerification: 'No completed verification yet', lastAttempted: (when: string) => `Last attempted ${when}`,
@@ -90,16 +90,11 @@ export const SITE_ACTION_COPY = {
   performanceGrouping: 'Results are grouped by page and device. Each problem has its own fix and check. Two slow results may have different causes.',
   pageEvidenceScope: 'Page results from the selected check. Areas without sufficient evidence remain unverified.',
   historicalCheck: 'This historical identity has no supported assertion contract. Its recorded execution is retained, not converted into a successful check.',
+  refreshPending: 'The action was saved. Refresh to see the latest state.',
   fixtures: {
     configurationRequired: 'Replace this fixture’s configuration before running or authorizing it.',
-    saved: 'Fixture saved. Run it safely before authorizing it.',
-    dryRun: 'Dry run queued. Its result and cleanup will appear here.',
-    pending: 'Dry run in progress. Authorization waits for a recorded result and successful cleanup.',
-    recovering: 'Dry run interrupted. Checking cleanup before retrying safely.',
-    incomplete: 'The dry run could not establish a result. Authorization remains unavailable.',
-    authorized: 'Fixture authorized for Signup verification.', revoked: 'Fixture authorization revoked.', deleted: 'Fixture deleted.',
-    deleteConfirmation: 'Delete this fixture and disable the Outcome method that uses it?',
   },
+
   recovery: { access: 'Review access and visitor-action setup', connections: 'Review connections', support: 'Get help with this check',
     inspect: 'Inspect the recorded limitations', setupBody: 'This scope needs setup or supported evidence before it can be checked again.' },
   execution: {

@@ -11,6 +11,7 @@ import { useSharedSiteResource } from './SiteResourceBoundary'
 import { VerifyOutcomeButton } from './VerifyOutcomeButton'
 import { OutcomeEnabledControl, type OutcomeEnabledReceipt } from './OutcomeEnabledControl'
 import { OutcomeNameControl } from './OutcomeNameControl'
+import { OutcomeConfirmControl } from './SiteOutcomeConfirm'
 import { SiteActionContinuation } from './SiteActionContinuation'
 
 function detailRevision(view: SiteHomeView, outcome: SiteOutcomeView) {
@@ -69,5 +70,6 @@ export function SiteOutcomeActions({ siteId, initial, initialView }: { siteId: s
         // Pausing future checks does not cancel an accepted verification.
         verificationQueued: receipt.verificationQueued || Boolean(previous?.source === source && previous.verificationQueued) }))} /> : null}
     {view.actions.ownership === 'owner' ? <OutcomeNameControl siteId={siteId} outcomeId={outcome.id} name={outcome.name} onRefresh={refresh} /> : null}
+    {view.actions.ownership === 'owner' ? <OutcomeConfirmControl siteId={siteId} outcome={outcome} onRefresh={refresh} /> : null}
   </>
 }

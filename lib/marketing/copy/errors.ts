@@ -112,12 +112,8 @@ export const OUTCOME_CONFIRMATION = {
   proposeHeading: 'Confirm what FixFlags should watch',
   proposeBody:
     'FixFlags read this from your site. Choose what it should keep checking, and FixFlags will verify it on every check.',
-  inferredNote: 'Read from your site. Not being watched yet.',
   unsupportedNote: 'FixFlags recognized this Outcome, but cannot safely watch it yet.',
-  confirmedNote: 'Confirmed by you. FixFlags checks it on every run.',
-  confirmedBadge: 'Confirmed',
   nameLabel: 'Outcome name',
-  noneConfirmed: 'No Outcome has been confirmed for this Site yet.',
   edit: 'Edit',
   save: 'Save',
   cancel: 'Cancel',

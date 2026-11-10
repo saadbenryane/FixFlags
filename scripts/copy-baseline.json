@@ -62,9 +62,6 @@
     "Saved observations",
     "This saved report shows what an earlier check found. The website may have changed since\n            then. Run a new website check for current results and next steps."
   ],
-  "app/report/[id]/details/loading.tsx": [
-    "Opening report"
-  ],
   "app/report/[id]/page.tsx": [
     "Check this website"
   ],
@@ -210,37 +207,11 @@
   "components/sites/FlagResolutionPanel.tsx": [
     "Check details"
   ],
-  "components/sites/SafeFormFixtures.tsx": [
-    "1. Define a reversible test",
-    "2. Run it and inspect cleanup",
-    "3. Authorize this version",
-    "Add Safe Form fixture",
-    "Cleanup hook URL",
-    "Dry run",
-    "Email field label",
-    "Exact URL",
-    "Fixture name",
-    "Hook bearer secret",
-    "Password field label",
-    "Replace configuration",
-    "Reset hook URL",
-    "Signup page URL",
-    "Signup setup steps",
-    "Submit button name",
-    "Success check",
-    "Synthetic email",
-    "Synthetic password",
-    "Use a dedicated synthetic account. FixFlags resets it, submits once, checks the result, and cleans it up on every run.",
-    "Visible text"
-  ],
   "components/sites/SiteCategoryContent.tsx": [
     "Check again"
   ],
   "components/sites/SiteCheckResults.tsx": [
     "Recorded execution"
-  ],
-  "components/sites/SiteOutcomeConfirm.tsx": [
-    "Safe Signup fixture"
   ],
   "components/sites/SiteResourceBoundary.tsx": [
     "new Set"
