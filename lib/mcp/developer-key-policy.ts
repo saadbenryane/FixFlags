@@ -10,7 +10,7 @@ export const DEVELOPER_KEY_SCOPE_PRESETS = [
   {
     id: 'run_checks',
     label: 'Run checks',
-    description: 'Read evidence and start independent Outcome runs. Cannot record or verify a fix.',
+    description: 'Read evidence and start independent checks, including checks after a deploy. Cannot record or verify a fix.',
     scopes: ['sites:read', 'runs:read', 'runs:write', 'flags:read'],
   },
   {

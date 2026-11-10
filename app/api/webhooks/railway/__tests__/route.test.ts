@@ -64,6 +64,16 @@ describe('POST /api/webhooks/railway', () => {
     mockRecordProductReleaseForReview.mockResolvedValue({ id: 'release-1' })
   })
 
+  it('refuses a read-only evidence key before resolving any Site', async () => {
+    mockValidateApiKey.mockResolvedValue({ user: { id: 'user-1' }, apiKey: { id: 'k', client: 'cursor', scopes: ['sites:read', 'flags:read'], audience: null } })
+    const res = await POST(request('http://localhost/api/webhooks/railway', {
+      headers: { authorization: 'Bearer ff_live_test', 'x-fixflags-check-url': 'https://my-app.up.railway.app' },
+    }))
+    expect(res.status).toBe(403)
+    expect(mockProjectFindFirst).not.toHaveBeenCalled()
+    expect(mockRequestSiteRun).not.toHaveBeenCalled()
+  })
+
   it('starts an Outcome run for an owned Site using header credentials', async () => {
     const res = await POST(request('http://localhost/api/webhooks/railway', {
       headers: {

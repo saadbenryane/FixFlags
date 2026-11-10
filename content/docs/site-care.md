@@ -50,6 +50,24 @@ Choose which Flag emails you want in Settings. You can also choose emails when a
 
 <!-- generated:public-offer -->
 
+## Check after every deploy
+
+FixFlags can check your Site each time you ship. After a production deploy, send one request to FixFlags from your deploy pipeline. If the Site has confirmed Outcomes, FixFlags verifies them. Otherwise it checks the whole Site again, which also rechecks its open Flags.
+
+1. Open [API keys](/settings/api-keys) and create a key with **Run checks** permission. Store it as a secret in your CI or host, for example `FIXFLAGS_API_KEY`.
+2. Add a step that runs after your production deploy succeeds:
+
+```bash
+curl -X POST https://fixflags.com/api/webhooks/deploy \
+  -H "Authorization: Bearer $FIXFLAGS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://yourwebsite.com","deployment":"'"$GITHUB_SHA"'"}'
+```
+
+The `url` must belong to a Site you own. `deployment` is optional. Send the same value again and FixFlags reuses the run instead of starting a second one. The key is sent only in the `Authorization` header, never in the URL.
+
+Results appear on your Site like any other check.
+
 ## Automatic account checks
 
 If **Settings** offers automatic account checks, you can enable tests of signup and signed-in pages. FixFlags keeps one test account for later checks and uses a separate temporary account for signup and deletion tests.

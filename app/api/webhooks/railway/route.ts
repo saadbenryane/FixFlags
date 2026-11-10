@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey } from '@/lib/mcp/tools'
+import { credentialAllows } from '@/lib/mcp/oauth'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/db'
@@ -52,6 +53,9 @@ export async function POST(req: NextRequest) {
     }
     if (authContext.apiKey.audience) {
       return apiError('Deployment checks use a FixFlags API key, not an MCP access token.', 403)
+    }
+    if (!credentialAllows(authContext.apiKey, 'runs:write')) {
+      return apiError('This API key cannot start checks. Create a key that can run checks.', 403)
     }
 
     const host = canonicalProductHost(normalized.url)
