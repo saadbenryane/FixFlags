@@ -114,8 +114,9 @@ browser visit, original-control replay and reached-document observations. The
 original control, URL, capture and access comparability rules still decide repair.
 The shared action scorer now recognizes Subscribe links and buttons while keeping
 Unsubscribe and email actions out of primary page navigation. Focused contracts
-pass; the complete corrected native cycle remains open after the retained
-deadline failure and an import-only interrupted retry under host contention.
+pass, and four corrected native repair cycles pass with their original deadlines.
+The earlier deadline failure, import-only interruption and stopped-infrastructure
+retry remain retained. These local fixtures do not establish production capacity.
 [Destination-content evidence](../test-results/runtime/destination-content-catalog-20261109/verification.json)
 
 Delivery accounting includes the persisted task identity prefix required by the
