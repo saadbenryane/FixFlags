@@ -188,24 +188,6 @@ export const BILLING_ACTION_COPY = {
   },
 } as const
 
-export const UPSELLS = {
-  anon: {
-    headline: 'Save this Site',
-    body: 'Keep your results, get fix instructions to copy and paste, and start scheduled checks. Free during open beta on one website.',
-    primaryCta: 'Create free account',
-    secondaryCta: 'See paid plans',
-  },
-  signedInAiPending: {
-    headline: 'Fix instructions on the way',
-    body: 'Evidence and fix steps are below. Enhanced prompts for your editor usually finish within a minute.',
-  },
-  signedInAiDegraded: {
-    headline: 'Fix steps are below',
-    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Select Check now to retry the AI pass.',
-  },
-  atLimit: 'Plan limit reached. Join the waitlist to continue',
-} as const
-
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You have reached this period\u2019s limit',
