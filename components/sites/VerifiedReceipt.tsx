@@ -24,22 +24,21 @@ function pathOf(url: string | null) {
 export function VerifiedReceipt({ heading, proof, page, foundAt }: { heading: string; proof: FlagProofNote; page: string | null; foundAt: string | null }) {
   const path = pathOf(page)
   const fixedIn = fixedInLabel(foundAt, proof.observedAt)
-  const rows = [
-    path ? { label: C.page, value: path } : null,
-    foundAt ? { label: C.found, value: <time dateTime={foundAt}>{formatEvidenceTimestamp(foundAt)}</time> } : null,
-    proof.observedAt ? { label: C.verified, value: <time dateTime={proof.observedAt}>{formatEvidenceTimestamp(proof.observedAt)}</time> } : null,
-    fixedIn ? { label: C.fixedIn, value: fixedIn } : null,
-  ].filter((row): row is { label: string; value: React.ReactNode } => row !== null)
+  const rows: { label: string; value: React.ReactNode }[] = []
+  if (path) rows.push({ label: C.page, value: path })
+  if (foundAt) rows.push({ label: C.found, value: <time dateTime={foundAt}>{formatEvidenceTimestamp(foundAt)}</time> })
+  if (proof.observedAt) rows.push({ label: C.verified, value: <time dateTime={proof.observedAt}>{formatEvidenceTimestamp(proof.observedAt)}</time> })
+  if (fixedIn) rows.push({ label: C.fixedIn, value: fixedIn })
   return <section className="mt-4 rounded-2xl bg-success-muted p-5" aria-labelledby="flag-proof-heading">
     <p className="inline-flex -rotate-2 items-center gap-1.5 rounded-md bg-background px-2.5 py-1 text-xs font-bold tracking-wide text-foreground shadow-sm" aria-label={C.label}>
       <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} aria-hidden="true" />{C.stamp}
     </p>
-    <h2 id="flag-proof-heading" className="mt-3 font-display text-lg font-semibold text-foreground">{heading}</h2>
+    <h2 id="flag-proof-heading" className="mt-3 text-lg font-semibold text-foreground">{heading}</h2>
     {rows.length ? <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-sm">
       {rows.map(row => <div key={row.label} className="contents"><dt className="text-muted-foreground">{row.label}</dt><dd className="font-medium text-foreground">{row.value}</dd></div>)}
     </dl> : null}
     <p className="mt-3 text-sm text-muted-foreground">{proof.observation}</p>
     <p className="mt-1 text-xs text-muted-foreground">{C.independent}</p>
-    {proof.showAuditId ? <details className="mt-2 text-xs text-muted-foreground"><summary className="min-h-11 cursor-pointer py-3">Check details</summary><p className="break-all">Check reference: {proof.auditId}</p></details> : null}
+    {proof.showAuditId ? <details className="mt-2 text-xs text-muted-foreground"><summary className="min-h-11 cursor-pointer py-3">{SITE_DASHBOARD_COPY.checkDetails}</summary><p className="break-all">{C.reference(proof.auditId)}</p></details> : null}
   </section>
 }

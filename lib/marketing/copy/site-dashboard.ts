@@ -8,6 +8,7 @@ export const SITE_DASHBOARD_COPY = {
     fixedIn: 'Fixed in',
     duration: (value: number, unit: 'minute' | 'hour' | 'day') => `${value} ${unit}${value === 1 ? '' : 's'}`,
     independent: 'An independent FixFlags recheck of the same page confirmed it.',
+    reference: (auditId: string) => `Check reference: ${auditId}`,
   },
   topProblem: {
     label: 'Fix this first',
