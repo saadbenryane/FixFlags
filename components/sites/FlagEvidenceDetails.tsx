@@ -62,7 +62,7 @@ export function FlagEvidenceDetails({ observed, expected, diagnosis, supportingO
         {item.pageUrl ? <p className="break-words text-xs text-muted-foreground">{item.pageUrl}</p> : null}
         <ObservedFact text={item.evidence} />
         {item.recordedAt ? <time className="text-xs text-muted-foreground" dateTime={item.recordedAt}>{formatEvidenceTimestamp(item.recordedAt)}</time> : null}
-        {item.references.length ? <p className="break-words text-xs text-muted-foreground">{item.references.map(reference => [reference.label, reference.selector, reference.device].filter(Boolean).join(' · ')).join('; ')}</p> : null}
+        {item.references.length ? <p className="break-words text-xs text-muted-foreground">{item.references.map(reference => [reference.label, reference.selector, reference.device].filter(Boolean).join(', ')).join('; ')}</p> : null}
       </li>)}</ul>
     </details> : null}
     {children}

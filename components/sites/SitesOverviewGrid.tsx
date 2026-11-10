@@ -52,7 +52,7 @@ export function SitesOverviewGrid({ sites, action }: { sites: SiteSummary[]; act
                 <strong>{site.hostname || site.name}</strong>
                 <span className={styles.context}>
                   <span>{site.presentation.coverage.label}</span>
-                  {showFreshness ? <><span aria-hidden="true">·</span>{site.presentation.freshness.checkedAt
+                  {showFreshness ? <>{site.presentation.freshness.checkedAt
                     ? <SiteEvidenceTime checkedAt={site.presentation.freshness.checkedAt} label={site.presentation.freshness.label} />
                     : <span>{site.presentation.freshness.label}</span>}</> : null}
                 </span>

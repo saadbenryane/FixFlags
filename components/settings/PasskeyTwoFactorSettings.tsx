@@ -289,8 +289,7 @@ export function PasskeyTwoFactorSettings({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{sec.passkeyItem}</p>
                       <p className="text-xs text-muted-foreground">
-                        {created ? `${created} · ${location}` : location}
-                        {passkey.deviceType ? ` · ${passkey.deviceType}` : ''}
+                        {[created, location, passkey.deviceType].filter(Boolean).join(', ')}
                       </p>
                     </div>
                     <Button

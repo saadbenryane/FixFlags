@@ -281,12 +281,12 @@ function ApiKeyManagerContent({ ownerId, client = 'other', headingAs: KeysHeadin
               <li key={key.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{key.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {key.prefix}…{key.lastFour} · {developerKeyScopeLabel(key.scopes)}
+                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                    <span>{key.prefix}…{key.lastFour}</span><span>{developerKeyScopeLabel(key.scopes)}</span>
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {key.lastUsed ? `Last used ${formatEvidenceTimestamp(key.lastUsed)}` : 'Never used'} ·{' '}
-                    {key.expiresAt ? `Expires ${formatEvidenceTimestamp(key.expiresAt)}` : 'Legacy key with no expiry'}
+                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                    <span>{key.lastUsed ? `Last used ${formatEvidenceTimestamp(key.lastUsed)}` : 'Never used'}</span>
+                    <span>{key.expiresAt ? `Expires ${formatEvidenceTimestamp(key.expiresAt)}` : 'Legacy key with no expiry'}</span>
                   </p>
                 </div>
                 <Button

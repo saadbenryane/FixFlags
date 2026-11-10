@@ -69,10 +69,10 @@ function SitePreviewContent({ host, captures, availability, priority, collection
       <span className={styles.enlarge}><Maximize2 size={16} aria-hidden /></span>
     </InteractiveButton> : <div className={`${styles.empty} ${!showDevices ? styles.emptySolo : ''}`}><Globe2 size={24} aria-hidden /><div><p role="status">{capture || disposition === 'unavailable' ? C.captureUnavailable : disposition === 'pending' ? C.capturePending : C.noCapture}</p>
       {capture ? <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => { focusAfterRetry.current = true; setFailure(null); setAttempt(value => value + 1) }}>{C.retryCapture}</Button> : null}</div></div>}
-    {available && capture.previous ? <p className="px-4 pb-3 text-xs text-muted-foreground">{C.previousCapture} · {capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}
-      {disposition === 'pending' ? ` · ${C.capturePending}` : disposition === 'unavailable' ? ` · ${C.latestCaptureUnavailable}` : ''}</p> : null}
+    {available && capture.previous ? <p className="flex flex-wrap gap-x-3 px-4 pb-3 text-xs text-muted-foreground"><span>{C.previousCapture}</span><span>{capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}</span>
+      {disposition === 'pending' ? <span>{C.capturePending}</span> : disposition === 'unavailable' ? <span>{C.latestCaptureUnavailable}</span> : null}</p> : null}
     <ResponsiveDepth header={<DialogTitle>{host}</DialogTitle>} open={Boolean(inspection)} onOpenChange={open => { if (!open) setInspection(null) }} onCloseAutoFocus={event => { event.preventDefault(); (opener.current ?? root.current)?.focus() }} className="max-w-4xl">
-      {inspected ? <><DialogDescription>{inspectedPrevious ? C.previousCapture : C.latestCapture} · {inspected.pageUrl} · {inspected.viewport} · {inspected.recordedAt ? formatEvidenceTimestamp(inspected.recordedAt) : C.timeUnknown}</DialogDescription>
+      {inspected ? <><DialogDescription className="flex flex-wrap gap-x-3"><span>{inspectedPrevious ? C.previousCapture : C.latestCapture}</span><span className="break-all">{inspected.pageUrl}</span><span>{inspected.viewport}</span><span>{inspected.recordedAt ? formatEvidenceTimestamp(inspected.recordedAt) : C.timeUnknown}</span></DialogDescription>
         {inspection?.failed ? (
           <div className="space-y-3">
             <p role="status" className="text-sm text-muted-foreground">{C.captureUnavailable}</p>

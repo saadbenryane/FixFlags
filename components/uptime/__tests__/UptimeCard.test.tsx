@@ -35,7 +35,7 @@ describe('recorded uptime reporting', () => {
     const incident = (await screen.findByText(C.incidentOpen, { selector: 'strong' })).closest('li')!
     fireEvent.click(within(incident).getByText(C.probeDetails, { selector: 'summary' }))
     expect(within(incident).getByText(summary.targetUrl)).toBeVisible()
-    expect(within(incident).getByText(C.reasons[reason] + ' · ' + failureOrigin)).toBeVisible()
+    expect(within(incident).getByText(C.reasonAt(C.reasons[reason], failureOrigin))).toBeVisible()
   })
 
   it.each(['recovered', 'paused'] as const)('updates an open history dialog from the newer %s Site snapshot without replacing recorded checks', async change => {
@@ -197,7 +197,7 @@ describe('recorded uptime reporting', () => {
       const dialog = screen.getByRole('dialog')
       expect(within(dialog).getByText(C.states[state], { selector: '[data-state]' })).toBeVisible()
       fireEvent.click(within(dialog).getByText(C.history, { selector: 'summary' }))
-      if (state === 'checking') expect(within(dialog).getByText(`${C.results.FAILED} · ${C.confirmationPending}`)).toBeVisible()
+      if (state === 'checking') expect(within(dialog).getByText(`${C.results.FAILED}, ${C.confirmationPending}`)).toBeVisible()
       await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
       expect(trigger).toHaveTextContent(C.states.unknown)
       expect(trigger).not.toHaveTextContent(C.states[state])
@@ -206,7 +206,7 @@ describe('recorded uptime reporting', () => {
         expect(screen.getByText(C.openIncidents(1))).toBeInTheDocument()
         expect(within(dialog).getByText(C.incidentOpen)).toBeVisible()
       }
-      expect(within(dialog).queryByText(`${C.results.FAILED} · ${C.confirmationPending}`)).not.toBeInTheDocument()
+      expect(within(dialog).queryByText(`${C.results.FAILED}, ${C.confirmationPending}`)).not.toBeInTheDocument()
       expect(within(dialog).getByText(C.results[result])).toBeVisible()
       expect(within(dialog).getByText(state === 'online' ? /HTTP 200/ : /HTTP 503/)).toBeVisible()
     } finally { page.unmount(); vi.useRealTimers() }

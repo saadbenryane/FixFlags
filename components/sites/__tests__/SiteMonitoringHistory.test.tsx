@@ -72,7 +72,7 @@ describe('monitoring evidence chart', () => {
     ]} emptyMessage="No history" />)
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByText('1 Flag', { selector: 'strong' })).toBeVisible()
-    expect(screen.getByText('Latest website check · Oct 12')).toBeVisible()
+    expect(screen.getByText('Latest website check: Oct 12')).toBeVisible()
     expect(screen.getByText(/Your first website check is the starting point/)).toBeVisible()
     const timeline = screen.getByRole('list', { name: 'Check history' })
     expect(within(timeline).getByRole('link', { name: 'Pricing page failed' })).toHaveAttribute('href', '/sites/site-1/flags/flag-1')

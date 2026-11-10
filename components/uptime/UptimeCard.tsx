@@ -124,7 +124,7 @@ export function UptimeCard({ siteId, summary, summaryReadAt, verification, histo
             <dl className={styles.incidentTimes}><div><dt>{C.confirmed}</dt><dd><time dateTime={incident.confirmedAt}>{formatEvidenceTimestamp(incident.confirmedAt)}</time></dd></div>
               {incident.recoveredAt ? <div><dt>{C.recovered}</dt><dd><time dateTime={incident.recoveredAt}>{formatEvidenceTimestamp(incident.recoveredAt)}</time></dd></div> : null}</dl>
             <details className={styles.probeDetails}><summary>{C.probeDetails}</summary><p>{incident.targetUrl}</p>
-              <p>{C.reasons[incident.reason as keyof typeof C.reasons] ?? C.states.unknown}{incident.failureOrigin ? ` · ${incident.failureOrigin}` : ''}</p>
+              <p>{incident.failureOrigin ? C.reasonAt(C.reasons[incident.reason as keyof typeof C.reasons] ?? C.states.unknown, incident.failureOrigin) : C.reasons[incident.reason as keyof typeof C.reasons] ?? C.states.unknown}</p>
             </details>
           </li>)}</ul> : <p className="text-sm text-muted-foreground">{C.noIncidents}</p>}
         </section>
@@ -134,8 +134,8 @@ export function UptimeCard({ siteId, summary, summaryReadAt, verification, histo
               probe.targetUrl === detailStatus?.targetUrl && probe.observedAt === detailStatus.lastCheckedAt
             return <li key={probe.id} tabIndex={-1}>
               <time dateTime={probe.observedAt}>{formatEvidenceTimestamp(probe.observedAt)}</time>
-              <span>{C.results[probe.result]}{pending ? ` · ${C.confirmationPending}` : ''}</span>
-              <small>{C.reasons[probe.reason as keyof typeof C.reasons] ?? C.states.unknown}{probe.statusCode ? ` · HTTP ${probe.statusCode}` : ''} · {probe.durationMs} ms</small>
+              <span>{[C.results[probe.result], pending ? C.confirmationPending : null].filter(Boolean).join(', ')}</span>
+              <small>{[C.reasons[probe.reason as keyof typeof C.reasons] ?? C.states.unknown, probe.statusCode ? `HTTP ${probe.statusCode}` : null, `${probe.durationMs} ms`].filter(Boolean).join(', ')}</small>
               <small>{probe.finalUrl ?? probe.targetUrl}</small><small>{C.scheduled} {formatEvidenceTimestamp(probe.scheduledAt)}</small>
             </li>
           })}</ul>

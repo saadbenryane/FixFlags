@@ -45,7 +45,7 @@ export function OutcomeSummaryCard({
   const recovery = nextStep ?? (state === 'STALE' ? staleOutcomeRecovery() : undefined)
   const result = answer && answer !== expectation ? answer : null
   const StateIcon = state === 'CLEAR' ? Check : state === 'FLAG' ? CircleAlert : state === 'STALE' ? Clock3 : CircleHelp
-  const evidenceTime = running && result ? `${SITE_ACTION_COPY.previousResults} · ${freshness}` : freshness
+  const evidenceTime = running && result ? `${SITE_ACTION_COPY.previousResults}, ${freshness}` : freshness
   const status = <span className={cn(
     'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
     !running && state === 'CLEAR' && 'border-success/30 text-success',

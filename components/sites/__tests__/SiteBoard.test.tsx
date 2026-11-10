@@ -671,7 +671,7 @@ describe('SiteBoard chrome', () => {
     const outcome = screen.getByRole('heading', { name: 'Page availability' }).closest('section')!
     expect(within(outcome).getByRole('status')).toHaveTextContent('Checking…')
     expect(within(outcome).getByText(summary)).toBeVisible()
-    expect(within(outcome).getByText(/Previous evidence · Last verified/)).toBeVisible()
+    expect(within(outcome).getByText(/Previous evidence, Last verified/)).toBeVisible()
     expect(within(outcome).queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
   })
 

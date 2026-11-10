@@ -39,7 +39,7 @@ export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, s
       </li>)}</ul> : <p>{C.noPages}</p> : null}
     </section> : null}
     <dl className={styles.provenance}>
-      {sources?.length ? <div><dt>{C.sources}</dt><dd>{[...new Set(sources)].join(' · ')}</dd></div> : null}
+      {sources?.length ? <div><dt>{C.sources}</dt><dd>{[...new Set(sources)].join(', ')}</dd></div> : null}
       <div><dt>{checkedLabel}</dt><dd>{checkedAt && formatEvidenceTimestamp(checkedAt) ? <time dateTime={checkedAt}>{formatEvidenceTimestamp(checkedAt)}</time> : C.noFreshness}</dd></div>
     </dl>
     {children}

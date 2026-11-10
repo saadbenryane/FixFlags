@@ -82,7 +82,7 @@ export function SiteMonitoringHistory({ points, events, emptyMessage, variant = 
       <div className={styles.chartIntro}><div className={styles.header}><div><h2>{C.flagTrend}</h2><p>{C.checksCount(points.length)}</p></div></div>
       {!compact ? <div className={styles.summary}>
         <strong className={styles.latest} data-attention={latest?.flagCount != null && latest.flagCount > 0}>{latest?.flagCount == null ? C.incomplete : C.flags(latest.flagCount)}</strong>
-        <span>{C.latestCheck} · {latest?.label}</span>
+        <span>{C.latestCheck}: {latest?.label}</span>
       </div> : null}
       {!compact || !showPlot ? <p className={styles.explanation}>{!hasCompleteCheck ? C.awaitingCompleteCheck : points.length === 1 ? C.firstCheck : C.trendHelp}</p> : null}
       {!compact && latest?.flagCount === 0 ? <p className={styles.explanation}>{C.zeroFlagsScope}</p> : null}

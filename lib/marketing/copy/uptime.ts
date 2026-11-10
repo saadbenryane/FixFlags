@@ -8,6 +8,7 @@ export const UPTIME_COPY = {
   description: 'Recorded availability checks for the public website URL.',
   cadence: 'Every 10 minutes', scope: 'HTTP reachability from one monitoring location.',
   states: { online: 'Online', offline: 'Offline', checking: 'Checking', unknown: 'Unknown', paused: 'Paused' },
+  reasonAt: (reason: string, origin: string) => `${reason} at ${origin}`,
   offlineNext: 'Your website is not responding. Check your host, domain, and certificate, then FixFlags confirms recovery on the next check.',
   firstCheck: 'No checks recorded yet.', paused: 'Availability checks are paused with site monitoring.',
   gap: 'Unrecorded periods remain unknown.', limitation: 'Each result describes an observed response. Checks do not establish continuous availability or verify rendered page content.',

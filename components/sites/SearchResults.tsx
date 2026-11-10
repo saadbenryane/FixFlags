@@ -38,7 +38,7 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
                   <span className="text-xs text-muted-foreground">{C.statuses[item.disposition]}</span>
                 </div>
                 <p className="mt-2 break-words">{item.observed}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{C.sources[item.source]} · <time dateTime={item.collectedAt}>{formatEvidenceTimestamp(item.collectedAt)}</time></p>
+                <p className="mt-2 flex flex-wrap gap-x-3 text-xs text-muted-foreground"><span>{C.sources[item.source]}</span><time dateTime={item.collectedAt}>{formatEvidenceTimestamp(item.collectedAt)}</time></p>
                 <p className="mt-1 break-all text-xs text-muted-foreground"><RecordedPageLink url={item.pageUrl} className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></p>
                 <details className="mt-2">
                   <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{C.evidence}</summary>
@@ -51,7 +51,7 @@ export function SearchResults({ results }: { results: SiteCheckResult[] }) {
                   </dl> : null}
                   <dl className="mt-3 space-y-2 text-xs">
                     {item.evidence.map((evidence, index) => <div key={index}>
-                      <dt className="font-medium">{C.sources[evidence.source]} · {evidence.locator}</dt>
+                      <dt className="font-medium">{C.sources[evidence.source]}: {evidence.locator}</dt>
                       <dd className="mt-1 break-all"><RecordedPageLink url={evidence.url} className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></dd>
                       <dd className="mt-1 whitespace-pre-wrap break-words">{evidence.excerpt}</dd>
                     </div>)}

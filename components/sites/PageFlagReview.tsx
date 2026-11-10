@@ -141,7 +141,7 @@ export function PageFlagReview({ pages, ...renderers }: { pages: readonly PageRe
   const [selectedPage, setSelectedPage] = useState<string | null>(null)
   const page = pages.find(item => item.url === selectedPage) ?? pages.find(item => item.flags.length) ?? pages[0]
   return <div className={s.pages}>
-    <div className={s.pageHeading}>{pages.length > 1 ? <label><Globe2 size={15} aria-hidden /><select aria-label={C.choosePage} value={page?.url} onChange={event => setSelectedPage(event.target.value)}>{pages.map(item => <option key={item.url} value={item.url}>{item.label} · {C.flags(item.flags.length)}</option>)}</select></label> : <span>{C.page}</span>}<span>{C.pageResults(pages.length)}</span></div>
+    <div className={s.pageHeading}>{pages.length > 1 ? <label><Globe2 size={15} aria-hidden /><select aria-label={C.choosePage} value={page?.url} onChange={event => setSelectedPage(event.target.value)}>{pages.map(item => <option key={item.url} value={item.url}>{item.label} ({C.flags(item.flags.length)})</option>)}</select></label> : <span>{C.page}</span>}<span>{C.pageResults(pages.length)}</span></div>
     {page ? <PageFlagStrip key={page.url} page={page} {...renderers} /> : <p role="status">{C.noPages}</p>}
   </div>
 }
