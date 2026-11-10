@@ -12,8 +12,6 @@ import GlobalError from '@/app/global-error'
 import BillingError from '@/app/(app)/billing/error'
 import ProductError from '@/app/(app)/products/[id]/error'
 import ReportError from '@/app/report/[id]/error'
-import RepoError from '@/app/report/repo/[id]/error'
-import CompareError from '@/app/compare/[id]/error'
 import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 vi.mock('@/components/layout/site-shell', () => ({
@@ -27,7 +25,6 @@ describe('RouteErrorPage', () => {
     { name: 'root', Component: RootError }, { name: 'app', Component: AppError },
     { name: 'auth', Component: AuthError }, { name: 'billing', Component: BillingError },
     { name: 'legacy Site', Component: ProductError }, { name: 'report', Component: ReportError },
-    { name: 'repository report', Component: RepoError }, { name: 'comparison', Component: CompareError },
     { name: 'documentation', Component: DocsError }, { name: 'admin', Component: AdminError },
   ])('uses the native refetching retry for $name recovery', ({ Component }) => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)

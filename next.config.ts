@@ -58,6 +58,16 @@ const nextConfig: NextConfig = {
         destination: '/help',
         permanent: true,
       },
+      // Retired page addresses keep working for bookmarks, backlinks and old emails.
+      { source: '/examples', destination: '/samples', permanent: true },
+      { source: '/samples/details', destination: '/samples', permanent: true },
+      { source: '/partners', destination: '/use-cases#agencies', permanent: true },
+      { source: '/docs/cli', destination: '/docs/mcp', permanent: true },
+      { source: '/docs/mcp/tools', destination: '/docs/mcp', permanent: true },
+      { source: '/compare/:id', destination: '/report/:id', permanent: true },
+      { source: '/report/:id/details', destination: '/report/:id', permanent: true },
+      { source: '/share/:token/details', destination: '/share/:token', permanent: true },
+      { source: '/admin/inbox', destination: '/admin/feedback?tab=conversations', permanent: false },
     ]
   },
   async rewrites() {

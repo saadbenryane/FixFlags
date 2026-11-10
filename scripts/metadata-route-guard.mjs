@@ -41,7 +41,6 @@ const ROUTE_TO_PAGE = {
   '/tools/placeholder-detector': 'app/(marketing)/tools/placeholder-detector/page.tsx',
   '/tools/broken-link-checker': 'app/(marketing)/tools/broken-link-checker/page.tsx',
   '/issues': 'app/(marketing)/issues/page.tsx',
-  '/partners': 'app/(marketing)/partners/page.tsx',
   '/roast': 'app/(marketing)/roast/page.tsx',
 }
 

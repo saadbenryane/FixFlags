@@ -56,7 +56,7 @@ if (sample.includes("from '@/lib/db'") || sample.includes('prisma.audit')) {
 
 const reportRoute = read('app/report/[id]/page.tsx')
 const completedReport = read('app/report/[id]/CompletedReportView.tsx')
-const detailsRoute = read('app/report/[id]/details/page.tsx')
+const nextConfig = read('next.config.ts')
 if (!reportRoute.includes('CompletedReportView')) {
   violations.push('app/report/[id]/page.tsx: canonical completed report view missing')
 }
@@ -72,8 +72,8 @@ if (
 ) {
   violations.push('app/report/[id]/CompletedReportView.tsx: sanitized evidence adapter missing')
 }
-if (!detailsRoute.includes('redirect(`/report/${id}`)')) {
-  violations.push('app/report/[id]/details/page.tsx: legacy details route must redirect')
+if (!nextConfig.includes("source: '/report/:id/details', destination: '/report/:id'")) {
+  violations.push('next.config.ts: legacy report details address must redirect to the report')
 }
 
 const quality = read('QUALITY.md')

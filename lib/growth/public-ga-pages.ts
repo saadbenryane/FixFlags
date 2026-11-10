@@ -6,7 +6,7 @@ const paths = new Set([
   ...INDEXABLE_ROUTES.map(route => route.path),
   ...LLMS_SECTIONS.flatMap(section => section.links.map(link => link.path)),
   ...BLOG_POSTS.map(post => `/blog/${post.slug}`),
-  '/new', '/sign-in', '/sign-up', '/post-login', '/two-factor', '/samples/details',
+  '/new', '/sign-in', '/sign-up', '/post-login', '/two-factor',
 ])
 
 export const FIXFLAGS_PUBLIC_GA_PAGES = [...paths]
