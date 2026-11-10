@@ -34,6 +34,7 @@ export async function buildSummaryPayload(receipt: SummaryReceipt, now: Date, cu
       return { id: site.id, url: project.url, checkedAt,
         urgentOnly: project.notificationLevel === 'CRITICAL_ONLY',
         problems: project.notificationLevel === 'CRITICAL_ONLY' ? site.notification.criticalCount : facts.flags.count,
+        issuePreview: site.notification.preview,
         incomplete: site.notification.incomplete, stale: facts.freshness.stale, failed: ['failed', 'interrupted'].includes(facts.run.state),
         unchanged: !!(checkedAt && previous && checkedAt <= previous.scheduledAt), offline: site.notification.offline }
     }) })

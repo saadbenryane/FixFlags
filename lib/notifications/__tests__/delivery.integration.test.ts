@@ -167,6 +167,8 @@ run('summary delivery using real database claims', () => {
       problem: 'Controlled problem', evidence: 'Fixture', whyItMatters: 'Fixture', fix: 'Fixture' })) })
     await deliverWebsiteSummaries(now)
     expect(provider.send.mock.calls[0][0].text).toContain('1 urgent problem to review')
+    expect(provider.send.mock.calls[0][0].text).toContain('- Controlled problem')
+    expect(provider.send.mock.calls[0][0].html).toContain('View fix prompts</a>')
     expect(provider.send.mock.calls[0][0].text).not.toContain('Some checks could not finish.')
   })
   it('keeps existing website problems after a newer targeted check completes', async () => {
@@ -181,6 +183,7 @@ run('summary delivery using real database claims', () => {
       executionSpec: { version: 1, scope: 'CATEGORY', environment: 'production' } } })
     await deliverWebsiteSummaries(now)
     expect(provider.send.mock.calls[0][0].text).toContain('1 problem to review')
+    expect(provider.send.mock.calls[0][0].text).toContain('- Still needs fixing')
     expect(provider.send.mock.calls[0][0].text).not.toContain('No problems to review')
   })
   it('fences a preference change while the delivery body is being prepared', async () => {

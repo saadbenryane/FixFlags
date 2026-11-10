@@ -48,7 +48,7 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
+import { loadSiteSummaries, loadSiteNotificationSummaries } from '@/lib/sites/application/list-sites'
 vi.mock('@/lib/sites/application/summary-references', () => ({ loadSiteSummaryReferences: async () => [
   { projectId: 'site-1', latestAuditId: 'audit-1', completedAuditId: 'audit-1', screenshotId: null },
   { projectId: 'site-2', latestAuditId: 'audit-2', completedAuditId: 'audit-2', screenshotId: null },
@@ -141,6 +141,30 @@ describe('loadSiteSummaries', () => {
         expect(site.presentation.run).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
       } else if ('failedModules' in overrides) expect(site.presentation.run).toMatchObject({ state: 'idle', recoveryAction: null })
     }
+  })
+
+  it('previews distinct current problems by priority and respects urgent-only emails', async () => {
+    const audit = completedAudit()
+    mocks.auditFindMany.mockReset().mockResolvedValue([audit])
+    const base = { status: 'OPEN', audit: { projectId: 'site-1' }, auditId: audit.id, confidence: 1,
+      pageUrl: 'https://one.example/', rubric: 'REACH', impactTag: 'SEO' }
+    mocks.flagFindMany.mockResolvedValue([
+      { ...base, id: 'minor', severity: 'MINOR', checkId: 'custom', problem: 'A small recorded problem' },
+      { ...base, id: 'image', severity: 'IMPORTANT', checkId: 'unoptimized-images', problem: 'Images are not optimized (2048KB savings)' },
+      { ...base, id: 'image-copy', severity: 'IMPORTANT', checkId: 'unoptimized-images', problem: 'Images are not optimized (4096KB savings)' },
+      { ...base, id: 'urgent', severity: 'CRITICAL', checkId: 'custom-urgent', problem: 'The sign-up page does not open' },
+      { ...base, id: 'extra', severity: 'MINOR', checkId: 'custom-extra', problem: 'Fourth distinct problem' },
+      { ...base, id: 'ignored', status: 'IGNORED', severity: 'CRITICAL', checkId: 'ignored', problem: 'Ignored problem' },
+    ])
+    const summary = (await loadSiteNotificationSummaries('user-1')).find(site => site.id === 'site-1')!
+    expect(summary.notification.preview).toEqual([
+      'The sign-up page does not open', 'Images take too much time to load', 'A small recorded problem',
+    ])
+    expect(summary.notification.criticalCount).toBe(1)
+    mocks.projectFindMany.mockResolvedValue((await mocks.projectFindMany.mock.results[0].value)
+      .map((project: object) => ({ ...project, notificationLevel: 'CRITICAL_ONLY' })))
+    expect((await loadSiteNotificationSummaries('user-1')).find(site => site.id === 'site-1')!.notification.preview)
+      .toEqual(['The sign-up page does not open'])
   })
 
   it('keeps failed pages incomplete and confirmed Flags actionable', async () => {

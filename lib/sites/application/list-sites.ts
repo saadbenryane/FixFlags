@@ -29,6 +29,7 @@ import { loadCurrentFindingSources } from './current-finding-sources'
 import { executionPageCoverage } from '../page-coverage'
 import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/status'
 import { loadOutcomeSummaryReferencesForProjects } from './outcome-references'
+import { customerFindingLabel } from '../finding-label'
 
 export type SiteSummary = {
   id: string
@@ -65,7 +66,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
 }
 
 export type SiteNotificationSummary = SiteSummary & {
-  notification: { criticalCount: number; incomplete: boolean; offline: boolean }
+  notification: { criticalCount: number; incomplete: boolean; offline: boolean; preview: string[] }
 }
 
 export async function loadSiteNotificationSummaries(userId: string, now = new Date()): Promise<SiteNotificationSummary[]> {
@@ -89,6 +90,7 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       watchNextRunAt: true,
       watchLastError: true,
       watchConsecutiveFailures: true,
+      notificationLevel: true,
     },
   })
   if (projects.length === 0) return []
@@ -184,12 +186,12 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
   const currentEvidence = []
   for (let offset = 0; offset < selectedIds.length; offset += 128) currentEvidence.push(...await prisma.flag.findMany({
     where: { id: { in: selectedIds.slice(offset, offset + 128) }, audit: { projectId: { in: projectIds } } },
-    select: { id: true, supportingObservations: true },
+    select: { id: true, problem: true, supportingObservations: true },
   }))
   const evidenceById = new Map(currentEvidence.map(flag => [flag.id, flag]))
   const withCurrentEvidence = <T extends { id: string }>(flag: T) => evidenceById.has(flag.id)
-    ? { ...flag, supportingObservations: evidenceById.get(flag.id)!.supportingObservations }
-    : { ...flag, supportingEvidenceUnreadable: true }
+    ? { ...flag, problem: evidenceById.get(flag.id)!.problem, supportingObservations: evidenceById.get(flag.id)!.supportingObservations }
+    : { ...flag, problem: '', supportingEvidenceUnreadable: true }
   const outcomesByProject = groupBy(outcomes, outcome => outcome.projectId)
   const currentAssessments = new Map(outcomes.map((outcome, index) => [outcome, currentOutcomeAssessment({
     assessment: outcome.assessments[0] ?? null, bindings: bindingRevisions[index], environment: outcome.environment,
@@ -220,13 +222,13 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       if (occurrence && hasUnresolvedFlagEvidence(occurrence)) evidenceComplete = false
       if (!occurrence || !isCustomerFlag(occurrence)) return []
       const affectedPageCount = incidentAffectedPaths(active).length
-      return [{ severity: occurrence.severity, checkId: occurrence.checkId, rubric: occurrence.rubric, impactTag: occurrence.impactTag,
+      return [{ problem: occurrence.problem, severity: occurrence.severity, checkId: occurrence.checkId, rubric: occurrence.rubric, impactTag: occurrence.impactTag,
         priority: flagPriority({ severity: occurrence.severity, confidence: occurrence.confidence, affectedPageCount, outcomeId: improvement.outcomeId }) }]
     })
     const currentUnbound = (currentUnboundByProject.get(project.id) ?? []).map(withCurrentEvidence)
     if (currentUnbound.some(hasUnresolvedFlagEvidence)) evidenceComplete = false
     const unprojected = currentUnbound.filter(isCustomerFlag)
-      .map((flag) => ({ severity: flag.severity, checkId: flag.checkId, rubric: flag.rubric, impactTag: flag.impactTag,
+      .map((flag) => ({ problem: flag.problem, severity: flag.severity, checkId: flag.checkId, rubric: flag.rubric, impactTag: flag.impactTag,
         priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: incidentAffectedPaths([flag]).length }) }))
     const customerFlags = [...durableFlags, ...unprojected]
 
@@ -312,6 +314,11 @@ async function loadAccountSiteSummaryFacts(userId: string, now = new Date()): Pr
       presentation,
       lastUsefulChangeAt: presentation.identity.preview?.recordedAt ?? checkedAt ?? project.updatedAt.toISOString(),
       notification: { criticalCount: customerFlags.filter(flag => flag.severity === 'CRITICAL').length,
+        preview: [...new Set(customerFlags
+          .filter(flag => project.notificationLevel !== 'CRITICAL_ONLY' || flag.severity === 'CRITICAL')
+          .sort((a, b) => b.priority.score - a.priority.score)
+          .map(flag => customerFindingLabel({ checkId: flag.checkId, problem: flag.problem ?? '' }).replace(/\s+/g, ' ').trim())
+          .filter(Boolean))].slice(0, 3),
         incomplete: health.assessment.completeness !== 'FULL',
         offline: health.uptime?.state === 'FLAG' },
     }
