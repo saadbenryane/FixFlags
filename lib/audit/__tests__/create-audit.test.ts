@@ -502,7 +502,7 @@ describe('createAndEnqueueAudit', () => {
       parentId: null,
       siteId: 'project-1',
     })
-    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock)
+    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock, { startsWithCheck: true })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           userId: 'user-1',
@@ -730,7 +730,7 @@ describe('createAndEnqueueAudit', () => {
     url: AUDIT_URL,
     userId: 'user-1' })
 
-    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock)
+    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock, { startsWithCheck: true })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: 'user-1',

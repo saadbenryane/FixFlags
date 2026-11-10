@@ -36,7 +36,7 @@ describe('ensureProductProject', () => {
 
     const project = await ensureProductProject('user-1', 'https://example.com/path')
     expect(project.id).toBe('anchor-1')
-    expect(ensureDefaultMonitoring).toHaveBeenCalledWith(prismaMock, 'anchor-1', 'user-1')
+    expect(ensureDefaultMonitoring).toHaveBeenCalledWith(prismaMock, 'anchor-1', 'user-1', undefined, {})
     expect(assertCanCreateProduct).toHaveBeenCalledWith(prismaMock, 'user-1')
     expect(prismaMock.project.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -56,6 +56,6 @@ describe('ensureProductProject', () => {
     expect(assertCanCreateProduct).not.toHaveBeenCalled()
     expect(prismaMock.project.upsert).not.toHaveBeenCalled()
     expect(prismaMock.project.update).not.toHaveBeenCalled()
-    expect(ensureDefaultMonitoring).toHaveBeenCalledWith(prismaMock, 'anchor-1', 'user-1')
+    expect(ensureDefaultMonitoring).toHaveBeenCalledWith(prismaMock, 'anchor-1', 'user-1', undefined, {})
   })
 })

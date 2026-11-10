@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { resolveEffectiveEntitlements, type EffectiveEntitlements } from '@/lib/billing/effective-entitlements'
-import { toStoredWatchInterval, fromStoredWatchInterval } from '@/lib/audit/watch-interval'
+import { calcWatchNextRun, toStoredWatchInterval, fromStoredWatchInterval, type WatchInterval } from '@/lib/audit/watch-interval'
 import { bindingForConfirmedKind } from '@/lib/sites/outcomes'
 import { expectationForKind } from '@/lib/sites/outcome-kinds'
 import { outcomeFreshnessMinutes } from '../evidence-freshness'
@@ -22,8 +22,31 @@ function defaultCadence(policy: EffectiveEntitlements) {
     ? 'daily' : policy.watchIntervals.includes('weekly') ? 'weekly' : null
 }
 
+type DefaultMonitoringOptions = {
+  restored?: boolean
+  /** The caller is admitting the Site's first check now; that check is the first run. */
+  startsWithCheck?: boolean
+}
+
+/**
+ * The owner's latest check is monitoring's first run. A check that is running
+ * or finished completely moves the first scheduled run one cadence later, so a
+ * new owner reads the results they signed up for instead of a repeat check.
+ * A failed or partial check, or none, leaves the first run due now.
+ */
+async function firstScheduledRunAt(tx: Prisma.TransactionClient, projectId: string, cadence: WatchInterval, now: Date, startsWithCheck: boolean) {
+  if (startsWithCheck) return calcWatchNextRun(cadence, now)
+  const latest = await tx.audit.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' },
+    select: { status: true, completedAt: true, reportCompleteness: true } })
+  if (!latest || latest.status === 'FAILED') return now
+  if (latest.status !== 'COMPLETED') return calcWatchNextRun(cadence, now)
+  if (latest.reportCompleteness !== 'FULL' || !latest.completedAt) return now
+  const next = calcWatchNextRun(cadence, latest.completedAt)
+  return next > now ? next : now
+}
+
 /** Public availability needs no privileged consent. Persist defaults with Site identity. */
-export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, projectId: string, userId: string, now = new Date(), options: { restored?: boolean } = {}) {
+export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, projectId: string, userId: string, now = new Date(), options: DefaultMonitoringOptions = {}) {
   const project = await tx.project.findFirst({
     where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     select: { id: true, url: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true, watchPausedAt: true,
@@ -67,6 +90,8 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
     update: {},
   })
   if (!project.watchInterval || policyHalted) {
+    const firstRunAt = options.restored || policyHalted ? now
+      : await firstScheduledRunAt(tx, projectId, cadence, now, options.startsWithCheck === true)
     const changed = await tx.project.updateMany({
       where: { id: projectId, userId, url: project.url, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: project.watchInterval, watchNextRunAt: null,
         watchPausedAt: project.watchPausedAt ?? null,
@@ -74,7 +99,7 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
         watchLastRunAt: options.restored || policyHalted ? project.watchLastRunAt : null,
         watchLastError: options.restored || policyHalted ? project.watchLastError : null,
         ...(policyHalted ? { watchEveryMinutes: project.watchEveryMinutes, watchLeaseUntil: project.watchLeaseUntil } : {}) },
-      data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: now, watchPausedAt: null,
+      data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: firstRunAt, watchPausedAt: null,
         ...(policyHalted ? { watchLeaseUntil: null, watchLastError: null } : {}),
         ...(options.restored ? { watchEveryMinutes: null, watchLeaseUntil: null, watchLastError: null, watchConsecutiveFailures: 0 } : {}),
         ...(project.monitoringSetupRetryAt ? { monitoringSetupRetryAt: null } : {}),

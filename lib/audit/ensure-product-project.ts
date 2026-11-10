@@ -21,6 +21,7 @@ export async function ensureProductProject(
   userId: string,
   auditUrl: string,
   transaction?: Prisma.TransactionClient,
+  options: { startsWithCheck?: boolean } = {},
 ): Promise<{ id: string; productIntelligence: ProductIntelligence | null }> {
   const canonicalHost = canonicalProductHost(auditUrl)
   if (!canonicalHost) throw new Error('A valid Product hostname is required')
@@ -35,7 +36,7 @@ export async function ensureProductProject(
     })
     if (existing) {
       if (!existing.deletedAt) {
-        await ensureDefaultMonitoring(tx, existing.id, userId)
+        await ensureDefaultMonitoring(tx, existing.id, userId, undefined, options)
         return existing
       }
       await assertCanCreateProduct(tx, userId)
@@ -61,7 +62,7 @@ export async function ensureProductProject(
       update: { deletedAt: null },
       select: { id: true, productIntelligence: true },
     })
-    await ensureDefaultMonitoring(tx, project.id, userId)
+    await ensureDefaultMonitoring(tx, project.id, userId, undefined, options)
     return project
   }
   const project = transaction

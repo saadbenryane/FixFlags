@@ -7,7 +7,7 @@ const project = { id: 'site', url: 'http://example.com:8080', watchInterval: nul
   watchEveryMinutes: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null,
   user: { id: 'owner', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE', lifecycleStatus: 'ACTIVE',
     auditsLimit: 3, deepReviewsLimit: 1, licensedSiteQuantity: 0, entitlementGrants: [] } }
-const tx = { project: { findFirst: vi.fn(), updateMany: vi.fn() }, siteOutcome: { upsert: vi.fn() },
+const tx = { project: { findFirst: vi.fn(), updateMany: vi.fn() }, audit: { findFirst: vi.fn() }, siteOutcome: { upsert: vi.fn() },
   outcomeExecutionBinding: { findFirst: vi.fn() }, uptimeMonitor: { createMany: vi.fn() } }
 
 beforeEach(() => {
@@ -15,6 +15,7 @@ beforeEach(() => {
   tx.project.findFirst.mockResolvedValue(project)
   tx.project.updateMany.mockResolvedValue({ count: 1 })
   tx.outcomeExecutionBinding.findFirst.mockResolvedValue(null)
+  tx.audit.findFirst.mockResolvedValue(null)
 })
 const ensure = () => ensureDefaultMonitoring(tx as unknown as Prisma.TransactionClient, 'site', 'owner', now)
 const grant = { id: 'grant', userId: 'owner', operationId: 'grant-operation', grantedBy: 'operator', plan: 'TEAM',
@@ -22,6 +23,25 @@ const grant = { id: 'grant', userId: 'owner', operationId: 'grant-operation', gr
   expiresAt: new Date(now.getTime() + 60_000), revokedAt: null, createdAt: now }
 
 describe('automatic public monitoring defaults', () => {
+  const week = 7 * 24 * 60 * 60_000
+  const firstRun = () => tx.project.updateMany.mock.calls.at(-1)?.[0].data.watchNextRunAt
+  it.each([
+    ['a complete check', { status: 'COMPLETED', reportCompleteness: 'FULL', completedAt: new Date(now.getTime() - 60_000) }, new Date(now.getTime() - 60_000 + week)],
+    ['a running check', { status: 'CHECKING', reportCompleteness: 'UNKNOWN', completedAt: null }, new Date(now.getTime() + week)],
+    ['a partial check', { status: 'COMPLETED', reportCompleteness: 'PARTIAL', completedAt: now }, now],
+    ['a failed check', { status: 'FAILED', reportCompleteness: 'UNKNOWN', completedAt: now }, now],
+  ])('treats %s as the first run when a claimed Site starts monitoring', async (_label, latest, expected) => {
+    tx.audit.findFirst.mockResolvedValue(latest)
+    expect(await ensure()).toBe(true)
+    expect(tx.audit.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'site' }, orderBy: { createdAt: 'desc' } }))
+    expect(firstRun()).toEqual(expected)
+  })
+  it('counts a check being admitted now as the first run', async () => {
+    expect(await ensureDefaultMonitoring(tx as unknown as Prisma.TransactionClient, 'site', 'owner', now, { startsWithCheck: true })).toBe(true)
+    expect(tx.audit.findFirst).not.toHaveBeenCalled()
+    expect(firstRun()).toEqual(new Date(now.getTime() + week))
+  })
+
   it('retains an explicit pause even when its displayed error was cleared', async () => {
     tx.project.findFirst.mockResolvedValue({ ...project, watchInterval: 'WEEKLY', watchPausedAt: now })
     expect(await ensure()).toBe(false)

@@ -344,11 +344,11 @@ export async function createAndEnqueueAudit(
         if (!cleanup && canonicalProductHost(url) !== (ownedProject.canonicalHost ?? canonicalProductHost(ownedProject.url)))
           throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
         projectId = ownedProject.id
-        if (!cleanup && await ensureDefaultMonitoring(tx, projectId, userId) &&
+        if (!cleanup && await ensureDefaultMonitoring(tx, projectId, userId, undefined, { startsWithCheck: true }) &&
           executionSpec.scope === 'SITE' && executionSpec.environment === 'production') monitoringSite = ownedProject
       } else if (!cleanup) {
         try {
-          const ownedProject = await ensureProductProject(userId, url, tx)
+          const ownedProject = await ensureProductProject(userId, url, tx, { startsWithCheck: true })
           if (options.parentId && projectId && projectId !== ownedProject.id) {
             throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
           }
