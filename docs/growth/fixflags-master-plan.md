@@ -103,6 +103,18 @@ Progress the same night: items 1 to 4 and 8 are built. For item 3, a provider ou
 7. *No separators.* Replace visible "·" joins (Flag page, uptime card, preview card, Websites grid, card execution, minimal footer) with spacing, weight or a sentence. Replace outlined rows and one-off radii with the shared card surfaces.
 8. *One marketing system.* Extract `HomepageSectionHeader` into a shared marketing section header; move the page header to the homepage hero type with two-tone lines; paint the marketing shell, header frost and footer with the canvas; give cards the window surface; use marketing section spacing; share the closing band and text link; give sign-in and sign-up the canvas instead of the app grid.
 
+### Owner's-eye review, November 10 (late)
+
+The signed-in product was read screen by screen on desktop and a 375px phone, using the demo Site from the walk: board, Flag page, Settings, Timeline, Pages, Websites and the homepage. No page overflows horizontally. Fixed in this pass:
+
+- *One primary action.* Fix this first showed View Flag and Copy fix instructions as two equal black buttons. Copy fix instructions is now the primary action and View Flag is secondary.
+- *No bare icons.* An incomplete area's recheck was a lone refresh icon; it now says Check again.
+- *Plain recovery words.* "Review access and visitor-action setup" and "Inspect the recorded limitations" became Set up website access and See what couldn't be checked.
+- *Phone navigation in one row.* The five Site destinations wrapped to three and two; they now fit one row and still wrap for enlarged text.
+- *One name per thing.* The Flag page's inline human steps were Read fix instructions beside View instructions (the AI brief); they are now Fix it yourself. The signup setup speaks of a signup test, not a Safe Form fixture.
+- *Old records read like new ones.* A data migration rewrites Recheck reasons already stored with the retired "update Review" wording.
+- *No action the plan would refuse.* At its website limit, the Websites page offered Add a website and a form that returned 402. It now shows the one plan-limit notice, using the same capacity rule as admission.
+
 ## The short version
 
 1. **We are not losing to Elu's product. We are losing on conviction and distribution.** Elu ships a confident story, a one-command install, proof signals and a sales motion. FixFlags has a fast, real, installation-free product that almost nobody sees, explained by a website that sells gentle "website care".
