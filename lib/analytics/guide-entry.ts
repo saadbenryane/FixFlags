@@ -8,6 +8,7 @@ export const WEBSITE_GUIDE_SLUGS = [
   'fixflags-vs-scripted-browser-monitoring',
   'checkout-broken-after-deploy',
   'ai-built-site-launch-checklist',
+  'fixflags-vs-lighthouse',
 ] as const
 
 export const GUIDE_INDEX_ENTRY = 'guides-index'

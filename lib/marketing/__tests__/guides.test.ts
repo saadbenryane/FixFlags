@@ -7,13 +7,13 @@ import { buildPublicSitemap as sitemap } from '@/app/sitemap.xml/entries'
 
 vi.mock('@/lib/graph/queries', () => ({ getIndexableIssueCheckIds: async () => [] }))
 
-const primaryHosts = ['developer.mozilla.org', 'docs.lovable.dev', 'help.uptimerobot.com', 'www.checklyhq.com', 'docs.stripe.com']
+const primaryHosts = ['developer.mozilla.org', 'docs.lovable.dev', 'help.uptimerobot.com', 'www.checklyhq.com', 'docs.stripe.com', 'developer.chrome.com', 'developers.google.com']
 
 describe('buyer guide content and evidence contracts', () => {
-  it('covers eight distinct decisions with substantive original outlines', () => {
-    expect(WEBSITE_GUIDES).toHaveLength(8)
-    expect(new Set(WEBSITE_GUIDES.map(guide => guide.slug)).size).toBe(8)
-    expect(new Set(WEBSITE_GUIDES.map(guide => guide.decision)).size).toBe(8)
+  it('covers nine distinct decisions with substantive original outlines', () => {
+    expect(WEBSITE_GUIDES).toHaveLength(9)
+    expect(new Set(WEBSITE_GUIDES.map(guide => guide.slug)).size).toBe(9)
+    expect(new Set(WEBSITE_GUIDES.map(guide => guide.decision)).size).toBe(9)
     for (const guide of WEBSITE_GUIDES) {
       const body = [...guide.sections.flatMap(section => section.paragraphs), ...guide.example.paragraphs].join(' ')
       expect(body.split(/\s+/).length).toBeGreaterThanOrEqual(250)

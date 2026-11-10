@@ -49,6 +49,8 @@ const uptime: GuideSource = { title: 'UptimeRobot: monitor types', href: 'https:
 const api: GuideSource = { title: 'UptimeRobot: API monitoring', href: 'https://help.uptimerobot.com/en/articles/13628553-uptimerobot-api-monitoring', supports: 'API monitoring can assert response fields, headers, status codes, and response bodies.' }
 const stripeKeys: GuideSource = { title: 'Stripe: API keys', href: 'https://docs.stripe.com/keys', supports: 'Sandbox and live mode each have their own API keys, and objects in one mode are not accessible to the other.' }
 const stripeWebhooks: GuideSource = { title: 'Stripe: receive events in your webhook endpoint', href: 'https://docs.stripe.com/webhooks', supports: 'Webhook endpoints are registered at a public HTTPS URL, each endpoint has its own signing secret, and redirects count as failed deliveries.' }
+const lighthouse: GuideSource = { title: 'Chrome for Developers: Lighthouse overview', href: 'https://developer.chrome.com/docs/lighthouse/overview', supports: 'Lighthouse audits one page per run for performance, accessibility, SEO and more, from DevTools, the command line or PageSpeed Insights.' }
+const pagespeed: GuideSource = { title: 'Google for Developers: about PageSpeed Insights', href: 'https://developers.google.com/speed/docs/insights/v5/about', supports: 'PageSpeed Insights reports lab data from Lighthouse and field data from real Chrome users, for mobile and desktop.' }
 const checkly: GuideSource = { title: 'Checkly: browser checks overview', href: 'https://www.checklyhq.com/docs/detect/synthetic-monitoring/browser-checks/overview/', supports: 'Playwright browser scripts can interact with pages, assert outcomes, collect results, and trigger alerts.' }
 
 export const WEBSITE_GUIDES: WebsiteGuide[] = [
@@ -277,6 +279,34 @@ export const WEBSITE_GUIDES: WebsiteGuide[] = [
       'In this controlled illustration, a demo site built with an AI tool has a pricing button that works in the preview. The published site still points at a page that was renamed, so the button opens a not found page.',
       'The fix instructions name the page, the button and the expected result. After the change is published, a new check opens the pricing page from the homepage button.',
     ] }, sources: [coverage, lovable], related: ['monitoring-ai-built-websites', 'checking-after-publishing'],
+  },
+  {
+    slug: 'fixflags-vs-lighthouse',
+    title: 'FixFlags or Lighthouse and PageSpeed Insights?',
+    description: 'What a page score tells you, what it leaves out, and when you need both.',
+    decision: 'Use Lighthouse to tune one page you are working on. Use FixFlags to find what is broken across the live site and prove a fix worked.',
+    reviewedAt: '2026-11-10',
+    sections: [
+      { id: 'what-lighthouse-does', title: 'What Lighthouse and PageSpeed Insights do well', paragraphs: [
+        'Lighthouse audits one page per run for performance, accessibility, search basics and good practices. You can run it in Chrome DevTools, from the command line, or through PageSpeed Insights. It is free, well documented, and the right tool when you are tuning a specific page.',
+        'PageSpeed Insights adds field data from real Chrome users when a page has enough traffic, next to the Lighthouse lab result, for mobile and desktop. That makes it a good reference for how fast a page feels to real visitors.',
+      ], sourceIds: [1, 2] },
+      { id: 'what-a-score-leaves-out', title: 'What a page score leaves out', paragraphs: [
+        'A score describes the page it was given. It does not follow your pricing link, add a product to the cart, open the menu on a phone and try the next page, or notice that a button now leads to a page that does not exist. A fast page can still have a checkout that fails.',
+        'Scores also move between runs because the test conditions change. That is fine for tuning, but a score going up after a deploy does not prove that a specific problem is gone.',
+      ] },
+      { id: 'what-fixflags-adds', title: 'What FixFlags adds', paragraphs: [
+        'FixFlags checks the live website in a real browser and follows what visitors do: the main buttons, key pages, forms and the cart where it can do so safely. It still measures speed, but a broken action ranks above a slow image. Each problem becomes a Flag with the page, what happened, what should happen and the evidence, plus fix instructions for the AI tool you build with.',
+        'After you publish a fix, FixFlags checks the same page and action again as independent verification. If it cannot reach them, the result is Couldn’t verify, not fixed.',
+      ], sourceIds: [0] },
+      { id: 'use-both', title: 'When to use each', paragraphs: [
+        'Use Lighthouse or PageSpeed Insights while you work on one page and want detailed performance advice. Use FixFlags to check the whole live site after you publish, to hand your AI tool a specific fix, and to keep watching after launch. Many teams use both: FixFlags tells you which page and action broke, and Lighthouse helps you tune that page.',
+      ] },
+    ],
+    example: { title: 'A good score and a broken signup', paragraphs: [
+      'In this controlled illustration, a demo homepage scores well for performance. Its signup button points at a page that was removed in the last update, so visitors who select it land on a not found page.',
+      'A page score for the homepage does not show this. A FixFlags check follows the button, flags the missing page with the evidence, and confirms the fix after the link is corrected and published.',
+    ] }, sources: [coverage, lighthouse, pagespeed], related: ['fixflags-vs-uptime-monitoring', 'website-online-but-not-working'],
   },
 ]
 
