@@ -512,7 +512,6 @@ program
         const result = await checkAndPlan(call, url, {
           wait: options.wait,
           single: Boolean(options.single),
-          apiBase: API_BASE,
           scanAccess,
         })
 
@@ -529,12 +528,12 @@ program
         }
         if (!options.wait) {
           console.log(`Check queued: ${result.reportId}`)
-          console.log(`Report: ${result.reportUrl}`)
+          console.log(`Site: ${result.siteUrl}`)
           return
         }
 
         console.log(chalk.bold.cyan('FixFlags Check'))
-        console.log(`Report: ${result.reportUrl}`)
+        console.log(`Site: ${result.siteUrl}`)
         if (result.score != null) console.log(`Score: ${result.score}`)
         if (result.verdict) console.log(`Verdict: ${result.verdict}`)
         if (result.technologyProfile?.technologies.length) {
@@ -632,9 +631,9 @@ program
 
 program
   .command('recheck <reportId>', { noHelp: true })
-  .description('Run a fresh update review and show what improved or regressed')
-  .option('--wait', 'Wait for the completed update review', true)
-  .option('--no-wait', 'Return as soon as the update review is queued')
+  .description('Run a recheck and show what improved or regressed')
+  .option('--wait', 'Wait for the completed recheck', true)
+  .option('--no-wait', 'Return as soon as the recheck is queued')
   .option('--diff', 'Show the verification diff', true)
   .option('--all', 'Print the complete remaining Fix List instead of the next Finish Plan')
   .option('--limit <count>', 'Print only the first count remaining fixes')
@@ -654,14 +653,14 @@ program
       ) => {
         const jsonMode = isJsonMode(options.json, command)
       const spinner = ora({
-        text: 'Running update review...',
+        text: 'Running recheck...',
         isEnabled: !jsonMode,
         isSilent: jsonMode,
       }).start()
       try {
         const apiKey = await getCredential()
         if (!apiKey)
-          throw new Error('Update review requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
+          throw new Error('Recheck requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
         const result = await recheckAndDiff(createMcpCaller(apiKey), reportId, {
           wait: options.wait,
         })
@@ -676,12 +675,12 @@ program
           return
         }
         if (!options.wait) {
-          console.log(`Update review queued: ${result.reportId}`)
+          console.log(`Recheck queued: ${result.reportId}`)
           return
         }
 
-        console.log(chalk.bold.cyan('FixFlags update review'))
-        console.log(`Report: ${result.reportUrl || `${API_BASE}/report/${result.reportId}`}`)
+        console.log(chalk.bold.cyan('FixFlags recheck'))
+        console.log(`Site: ${result.siteUrl}`)
         if (options.diff && result.diff) {
           console.log('')
           console.log(chalk.bold('Verification'))

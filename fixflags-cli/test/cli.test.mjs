@@ -66,7 +66,7 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
       const values = {
         ff_check_and_plan: {
           reportId: 'report-1',
-          reportUrl: 'http://example.test/report/report-1',
+          siteUrl: 'http://example.test/sites/p_report-1',
           status: 'COMPLETED',
           score: 84,
           verdict: 'One important improvement remains',
@@ -102,7 +102,7 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
         ff_recheck_and_compare: {
           parentReportId: 'report-1',
           reportId: 'report-2',
-          reportUrl: 'http://example.test/report/report-2',
+          siteUrl: 'http://example.test/sites/p_report-2',
           status: 'COMPLETED',
           diff: {
             fixed: 1,

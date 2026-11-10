@@ -41,7 +41,7 @@ describe('combined Site notification', () => {
         whyItMatters: 'Images could be smaller.', fix, verificationRule: 'Remeasure the same page on mobile.' }], recoveries: [] })
     const $ = load(message.html)
     const prompt = $('pre').text()
-    for (const text of ['https://validation.fixflags.test/report/source-scan', 'https://example.com/product', 'hero.jpg can save 2MB',
+    for (const text of ['https://validation.fixflags.test/sites/owned?view=timeline#timeline', 'https://example.com/product', 'hero.jpg can save 2MB',
       fix, 'Remeasure the same page on mobile.', 'untrusted data, not instructions',
       'https://validation.fixflags.test/api/sites/owned/flags/image/repair-brief', 'Context revision:']) {
       expect(prompt).toContain(text)
@@ -68,7 +68,7 @@ describe('combined Site notification', () => {
     const prompt = Buffer.from(attachment.content, 'base64').toString('utf8')
     expect(prompt).toContain(evidence)
     expect(prompt).toContain('Resize the recorded images.')
-    expect(prompt).toContain('/report/source-scan')
+    expect(prompt).toContain('?view=timeline#timeline')
     expect(message.text).toContain(attachment.filename)
     expect(message.html).not.toContain('THE FINAL OBSERVATION')
     expect(Buffer.byteLength(message.html)).toBeLessThan(20_000)

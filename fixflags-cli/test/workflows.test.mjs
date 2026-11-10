@@ -21,7 +21,7 @@ test('checkAndPlan preserves distinct complete Fix List and bounded Finish Plan 
   const mock = caller({
     ff_check_and_plan: {
       reportId: 'report-1',
-      reportUrl: 'https://fixflags.com/report/report-1',
+      siteUrl: 'https://fixflags.com/sites/p_report-1',
       status: 'COMPLETED',
       score: 82,
       verdict: 'Clear path, weak proof',
@@ -44,7 +44,6 @@ test('checkAndPlan preserves distinct complete Fix List and bounded Finish Plan 
   const result = await checkAndPlan(mock.call, 'https://example.com', {
     wait: true,
     single: false,
-    apiBase: 'https://fixflags.com',
   })
 
   assert.equal(result.reportId, 'report-1')
@@ -61,17 +60,16 @@ test('checkAndPlan preserves distinct complete Fix List and bounded Finish Plan 
 
 test('checkAndPlan returns the authoritative queued outcome without coordinating extra calls', async () => {
   const mock = caller({
-    ff_check_and_plan: { reportId: 'report-2', status: 'QUEUED' },
+    ff_check_and_plan: { reportId: 'report-2', siteUrl: 'https://fixflags.com/sites/p_report-2', status: 'QUEUED' },
   })
 
   const result = await checkAndPlan(mock.call, 'https://example.com', {
     wait: false,
     single: true,
-    apiBase: 'https://fixflags.com/',
   })
 
   assert.equal(result.status, 'QUEUED')
-  assert.equal(result.reportUrl, 'https://fixflags.com/report/report-2')
+  assert.equal(result.siteUrl, 'https://fixflags.com/sites/p_report-2')
   assert.equal(
     mock.calls.length,
     1
@@ -82,13 +80,13 @@ test('checkAndPlan continues through status and completed report after the serve
   const mock = caller({
     ff_check_and_plan: {
       reportId: 'report-running',
-      reportUrl: 'https://fixflags.com/report/report-running',
+      siteUrl: 'https://fixflags.com/sites/p_report-running',
       status: 'CHECKING',
     },
     ff_get_check_status: [{ reportId: 'report-running', status: 'CHECKING' }, { reportId: 'report-running', status: 'COMPLETED' }],
     ff_get_report: {
       reportId: 'report-running',
-      reportUrl: 'https://fixflags.com/report/report-running',
+      siteUrl: 'https://fixflags.com/sites/p_report-running',
       status: 'COMPLETED',
       finishPlan: { reportId: 'report-running', items: [] },
     },
@@ -97,7 +95,6 @@ test('checkAndPlan continues through status and completed report after the serve
   const result = await checkAndPlan(mock.call, 'https://example.com', {
     wait: true,
     single: false,
-    apiBase: 'https://fixflags.com',
     pollIntervalMs: 0,
     maxWaitMs: 100,
   })
@@ -112,7 +109,7 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
     ff_recheck_and_compare: {
       parentReportId: 'parent-1',
       reportId: 'child-1',
-      reportUrl: 'https://fixflags.com/report/child-1',
+      siteUrl: 'https://fixflags.com/sites/p_child-1',
       status: 'COMPLETED',
       nextFixList: {
         reportId: 'child-1',
@@ -231,13 +228,13 @@ test('checkAndPlan surfaces failedModules from the completed report after the wa
   const mock = caller({
     ff_check_and_plan: {
       reportId: 'report-slow',
-      reportUrl: 'https://fixflags.com/report/report-slow',
+      siteUrl: 'https://fixflags.com/sites/p_report-slow',
       status: 'CHECKING',
     },
     ff_get_check_status: [{ reportId: 'report-slow', status: 'CHECKING' }, { reportId: 'report-slow', status: 'COMPLETED' }],
     ff_get_report: {
       reportId: 'report-slow',
-      reportUrl: 'https://fixflags.com/report/report-slow',
+      siteUrl: 'https://fixflags.com/sites/p_report-slow',
       status: 'COMPLETED',
       failedModules: ['accessibility', 'layout'],
       fixList: {
@@ -251,7 +248,6 @@ test('checkAndPlan surfaces failedModules from the completed report after the wa
   const result = await checkAndPlan(mock.call, 'https://example.com', {
     wait: true,
     single: false,
-    apiBase: 'https://fixflags.com',
     pollIntervalMs: 0,
     maxWaitMs: 100,
   })

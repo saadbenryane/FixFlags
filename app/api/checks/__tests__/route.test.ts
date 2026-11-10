@@ -77,7 +77,6 @@ describe('POST /api/checks - billing gating enforcement', () => {
     getSession.mockResolvedValue(null)
     checkAndPlan.mockResolvedValue({
       reportId: 'audit-1',
-      reportUrl: 'https://fixflags.com/report/audit-1',
       siteId: 'project-1',
       siteUrl: 'https://fixflags.com/sites/project-1',
       status: 'QUEUED',
@@ -225,7 +224,6 @@ describe('POST /api/checks - billing gating enforcement', () => {
   it('returns reused true when an anonymous check resumes a last-hour public report', async () => {
     checkAndPlan.mockResolvedValue({
       reportId: 'recent-public',
-      reportUrl: 'https://fixflags.com/report/recent-public',
       siteId: 'project-1',
       siteUrl: 'https://fixflags.com/sites/project-1',
       status: 'COMPLETED',

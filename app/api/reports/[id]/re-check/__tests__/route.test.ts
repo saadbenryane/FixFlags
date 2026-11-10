@@ -69,7 +69,6 @@ describe('POST /api/reports/[id]/re-check', () => {
     recheckAndCompare.mockResolvedValue({
       parentReportId: 'parent-1',
       reportId: 'child-1',
-      reportUrl: 'https://fixflags.com/report/child-1',
       siteId: 'project-1',
       siteUrl: 'https://fixflags.com/sites/project-1',
       status: 'QUEUED',
@@ -98,7 +97,6 @@ describe('POST /api/reports/[id]/re-check', () => {
     const body = await res.json()
     expect(body).toEqual({
       reportId: 'child-1',
-      reportUrl: '/report/child-1',
       siteId: 'project-1',
       siteUrl: '/sites/project-1',
       status: 'QUEUED',
@@ -118,7 +116,6 @@ describe('POST /api/reports/[id]/re-check', () => {
     recheckAndCompare.mockResolvedValueOnce({
       parentReportId: null,
       reportId: 'active-review',
-      reportUrl: 'https://fixflags.com/report/active-review',
       siteId: 'project-1',
       siteUrl: 'https://fixflags.com/sites/project-1',
       status: 'CHECKING',
@@ -131,7 +128,6 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({
       reportId: 'active-review',
-      reportUrl: '/report/active-review',
       siteId: 'project-1',
       siteUrl: '/sites/project-1',
       status: 'CHECKING',

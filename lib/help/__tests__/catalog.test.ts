@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import {
-  HELP_ARTICLES,
-  HELP_CATEGORIES,
-  getHelpArticle,
-  helpHrefForFailureCode,
-  helpHrefForLimitAction,
-  helpHrefForSurface,
-  searchHelpArticles,
-  SUPPORT_WELCOME_MESSAGE,
-} from '@/lib/help'
+import { HELP_ARTICLES, HELP_CATEGORIES } from '@/lib/help/catalog'
+import { getHelpArticle, searchHelpArticles } from '@/lib/help/search'
+import { helpHrefForFailureCode, helpHrefForLimitAction, helpHrefForSurface } from '@/lib/help/contextual'
+import { SUPPORT_WELCOME_MESSAGE } from '@/lib/help/sla'
 import { SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
 
 describe('help catalog', () => {

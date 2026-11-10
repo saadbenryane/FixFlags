@@ -1,4 +1,5 @@
 import { getAppUrl } from '@/lib/get-app-url'
+import { siteWorkspaceHref } from '@/lib/sites/workspace-location'
 import { brandLight } from '@/lib/design/brand-spec'
 import { NOTIFICATION_EMAIL_COPY as C } from '@/lib/marketing/copy/notification-emails'
 import { emailButtonStyle, emailLayout, escapeEmailHtml, formatEmailDate } from './layout'
@@ -33,7 +34,7 @@ export function siteNotificationEmail(input: {
   const attachments: { filename: string; content: string; contentType: 'text/plain' }[] = []
   const regressions = visibleRegressions.map((flag, index) => {
     const problem = flag.problem || C.missingProblem
-    const report = flag.sourceAuditId ? `${appUrl}/report/${encodeURIComponent(flag.sourceAuditId)}` : `${appUrl}/sites/${encodeURIComponent(input.projectId)}`
+    const report = `${appUrl}${siteWorkspaceHref(input.projectId, flag.sourceAuditId ? 'timeline' : 'home')}`
     const task = flag.repairPrompt
     const prompt = task || [
       `${C.repair.report}: ${report}`, `${C.repair.finding}: ${href(flag.id)}`,

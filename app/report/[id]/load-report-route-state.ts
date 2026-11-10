@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import {
   getGatedAuditForRequest,
@@ -20,6 +21,7 @@ import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-pr
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { previousScoreFromHistory } from '@/lib/audit/update-review-progress'
 import { resolveAuditAccess } from '@/lib/audit/access'
+import { customerSiteIdForAudit, siteBoardPath } from '@/lib/sites/site-id-for-audit'
 
 const MAX_REVIEW_HISTORY_HOPS = 60
 
@@ -111,6 +113,12 @@ export async function loadCompletedReviewHistoryRows(input: {
   return [...rows.values()]
 }
 
+/** The live Site board for an owner, or null when this check never belonged to a Site. */
+async function ownerSitePath(audit: { id: string; projectId: string | null }): Promise<string | null> {
+  const siteId = await customerSiteIdForAudit(audit)
+  return siteId === audit.id ? null : siteBoardPath(siteId)
+}
+
 export async function loadReportRouteState(
   params: Promise<{ id: string }>,
   shareToken?: string
@@ -132,86 +140,15 @@ export async function loadReportRouteState(
   }
 
   if (progressive.kind === 'progressive') {
-    if (
-      !shareToken &&
-      progressive.accessContext === 'owner' &&
-      progressive.audit.projectId
-    ) {
-      redirect(`/sites/${encodeURIComponent(progressive.audit.projectId)}`)
+    if (!shareToken && progressive.accessContext === 'owner') {
+      const sitePath = await ownerSitePath(progressive.audit)
+      if (sitePath) redirect(sitePath as Route)
     }
-    const progressiveUser = progressive.session?.user
-      ? await prisma.user.findUnique({
-          where: { id: progressive.session.user.id },
-          select: {
-            id: true,
-            plan: true,
-            role: true,
-            subscriptionStatus: true,
-            auditsUsed: true,
-            auditsLimit: true,
-          },
-        })
-      : null
-    const progressivePending = progressiveUser
-      ? await getPendingCheckCount(progressiveUser.id)
-      : 0
-    const progressiveEffectiveLimit = progressiveUser
-      ? getEffectiveScanLimit(progressiveUser)
-      : 3
-    const progressiveIsEffectivelyFree =
-      progressiveUser?.plan === 'FREE' ||
-      (progressiveUser
-        ? hasRevokedSubscriptionStatus(progressiveUser.subscriptionStatus)
-        : true)
-    const progressiveAtAuditLimit =
-      progressiveIsEffectivelyFree &&
-      !!progressiveUser &&
-      !isUnlimitedScanLimit(progressiveEffectiveLimit) &&
-      isAtCheckLimit(progressiveUser.auditsUsed, progressivePending, progressiveEffectiveLimit)
-
-    const routeKind: 'failed' | 'running' =
-      progressive.audit.status === 'FAILED' ? 'failed' : 'running'
-    const projection = buildReviewWorkspaceProjection({
-      kind: routeKind,
-      explorer: buildPartialExplorerModel({
-        url: progressive.audit.url,
-        pageType: progressive.audit.pageType,
-        score: progressive.audit.score,
-        flags: progressive.audit.flags,
-        screenshots: progressive.audit.screenshots,
-        rubrics: progressive.audit.rubrics,
-        promptAccess: progressive.capabilities.canViewPromptBodies ? 'all' : 'none',
-      }),
-      visibility: progressive.accessContext,
-      isAuthenticated: Boolean(progressive.session?.user),
-      reviewId: progressive.audit.id,
-      parentId: progressive.audit.parentId,
-      url: progressive.audit.url,
-      pageType: progressive.audit.pageType,
-      loading: progressive.audit.status !== 'FAILED',
-      agentMessages: buildFixFlagsScanMessages({
-        id: progressive.audit.id,
-        url: progressive.audit.url,
-        status: progressive.audit.status,
-        progress: progressive.audit.progress,
-        startedAt: progressive.audit.startedAt,
-        completedAt: progressive.audit.completedAt,
-        failureCode: progressive.audit.failureCode,
-        reportCompleteness: progressive.audit.reportCompleteness,
-        flags: progressive.audit.flags,
-        pages: progressive.audit.pages,
-      }),
-    })
     return {
-      kind: routeKind,
-      projection,
+      kind: progressive.audit.status === 'FAILED' ? 'failed' as const : 'running' as const,
       id: progressive.audit.id,
-      audit: {
-        ...progressive.audit,
-        accessContext: progressive.accessContext,
-      },
+      audit: { url: progressive.audit.url },
       session: progressive.session,
-      atAuditLimit: progressiveAtAuditLimit,
     }
   }
 
@@ -240,8 +177,9 @@ export async function loadReportRouteState(
   const isOwner = accessContext === 'owner'
   const isMarketingSample = false
 
-  if (!shareToken && isOwner && audit.projectId) {
-    redirect(`/sites/${encodeURIComponent(audit.projectId)}`)
+  if (!shareToken && isOwner) {
+    const sitePath = await ownerSitePath(audit)
+    if (sitePath) redirect(sitePath as Route)
   }
 
   const [

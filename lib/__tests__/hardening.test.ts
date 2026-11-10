@@ -11,7 +11,6 @@ import {
   normalizeJudgeRawOutput,
   validateJudgeOutput,
 } from '@/lib/audit/validate-judge-output'
-import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import {
   SCORE_FORMULA_VERSION,
   calculateOverallScore,
@@ -20,7 +19,6 @@ import {
 import { flagFingerprint } from '@/lib/audit/deduplicate'
 import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
 import { isPublicIp, normalizeAuditUrl } from '@/lib/audit/url'
-import { statusToStageIndex, getStageProgress } from '@/lib/audit/progress-ui'
 import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'
 
 const baseJudgeOutput = {
@@ -98,22 +96,6 @@ describe('canScanRepositories', () => {
 describe('plan limits', () => {
   it('sets Free to 3 checks per monthly usage period', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
-  })
-})
-
-describe('resolveFreeUserUpgradeMoment', () => {
-  it('prefers audit limit moment when at cap', () => {
-    assert.equal(
-      resolveFreeUserUpgradeMoment({ atAuditLimit: true }),
-      'audit_limit_reached'
-    )
-  })
-
-  it('defaults to builder teaser when under audit limit', () => {
-    assert.equal(
-      resolveFreeUserUpgradeMoment({ atAuditLimit: false }),
-      'free_default'
-    )
   })
 })
 
@@ -238,21 +220,6 @@ describe('production hardening primitives', () => {
       flagFingerprint({ rubric: 'REACH', problem: 'Missing title', checkId: 'seo-title' }),
       flagFingerprint({ rubric: 'REACH', problem: 'Different wording', checkId: 'seo-title' })
     )
-  })
-})
-
-describe('progress UI stage mapping', () => {
-  it('maps FINALIZING to the preparing-report stage', () => {
-    assert.equal(statusToStageIndex('FINALIZING'), 4)
-    const progress = getStageProgress('FINALIZING')
-    assert.equal(progress.current, 5)
-    assert.equal(progress.total, 5)
-  })
-
-  it('marks completed audits as step 5 of 5', () => {
-    const progress = getStageProgress('COMPLETED')
-    assert.equal(progress.current, 5)
-    assert.equal(progress.percent, 100)
   })
 })
 

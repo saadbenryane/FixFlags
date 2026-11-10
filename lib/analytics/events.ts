@@ -83,6 +83,11 @@ export const RETIRED_FUNNEL_EVENTS = [
   'report_auth_gate_viewed',
   'report_auth_gate_completed',
   'report_upgrade_gate_viewed',
+  // Emitted only by the removed progressive report workspace; Site events record the same moments.
+  'first_finding_viewed',
+  'report_progress_viewed',
+  'polish_pass_copied',
+  'flag_detail_viewed',
 ] as const satisfies readonly FunnelEvent[]
 
 export type AcquisitionTool = 'meta-preview' | 'placeholder-detector' | 'broken-links'
@@ -168,7 +173,7 @@ type EventParams = {
   clicked_sample_cta: { placement: 'hero' | 'how_it_works' | 'sample_section' }
   audit_intent: { cta_placement: 'hero' | 'final'; from: 'hero' | 'final' }
   report_signup_cta_clicked: {
-    from: 'value_strip' | 'sample_fix' | 'limit_gate'
+    from: 'value_strip' | 'sample_fix' | 'limit_gate' | 'results_gate'
   }
   report_auth_gate_viewed: { audit_id?: string }
   report_auth_method_selected: { audit_id?: string; method?: string; mode?: string }

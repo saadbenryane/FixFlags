@@ -5,6 +5,7 @@ const getGatedAuditForRequest = vi.hoisted(() => vi.fn())
 const resolveActiveAttachedWorkId = vi.hoisted(() => vi.fn())
 const auditFindMany = vi.hoisted(() => vi.fn())
 const auditFindUnique = vi.hoisted(() => vi.fn())
+const provisionalFindFirst = vi.hoisted(() => vi.fn())
 const redirect = vi.hoisted(() =>
   vi.fn((href: string) => {
     throw new Error(`NEXT_REDIRECT:${href}`)
@@ -22,6 +23,7 @@ vi.mock('@/lib/audit/access', async original => ({ ...await original<typeof impo
 vi.mock('@/lib/db', () => ({
   prisma: {
     user: { findUnique: vi.fn() },
+    provisionalSite: { findFirst: provisionalFindFirst },
     audit: {
       findFirst: vi.fn(),
       findMany: auditFindMany,
@@ -48,6 +50,7 @@ describe('loadReportRouteState progressive handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resolveActiveAttachedWorkId.mockImplementation(async (id: string) => id)
+    provisionalFindFirst.mockResolvedValue(null)
   })
 
   it('redirects a parent bookmark to the in-flight attached Update review', async () => {
@@ -80,19 +83,28 @@ describe('loadReportRouteState progressive handoff', () => {
 
     const state = await loadReportRouteState(Promise.resolve({ id: 'audit-1' }))
 
-    expect(state).toMatchObject({
+    expect(state).toEqual({
       kind: 'running',
       id: 'audit-1',
-      audit: { ...audit, accessContext: 'owner' },
+      audit: { url: 'https://example.com/' },
       session,
-      atAuditLimit: false,
-      projection: {
-        kind: 'running',
-        visibility: 'owner',
-        review: { id: 'audit-1' },
-      },
     })
     expect(getGatedAuditForRequest).not.toHaveBeenCalled()
+  })
+
+  it('sends a signed-out owner to the provisional Site board while the check runs', async () => {
+    provisionalFindFirst.mockResolvedValueOnce({ id: 'visitor-site' })
+    getProgressiveAuditForRequest.mockResolvedValue({
+      kind: 'progressive',
+      audit: { id: 'audit-anon', url: 'https://example.com/', status: 'CAPTURING', projectId: null },
+      session: null,
+      accessContext: 'owner',
+      capabilities: { canViewPromptBodies: false },
+    })
+
+    await expect(
+      loadReportRouteState(Promise.resolve({ id: 'audit-anon' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/sites/p_visitor-site')
   })
 
   it('redirects a signed-in owner with a Site to /sites/{id}', async () => {

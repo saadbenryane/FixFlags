@@ -147,7 +147,6 @@ describe('task contracts', () => {
       evidence: 'The button says Continue',
       verification: 'The CTA names the outcome.',
       selectedTool: 'universal',
-      reportUrl: expect.stringContaining('/report/report-1'),
     })
   })
 

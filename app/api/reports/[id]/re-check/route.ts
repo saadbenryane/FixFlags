@@ -60,7 +60,6 @@ export async function POST(
     return NextResponse.json(
       {
         reportId: workReportId,
-        reportUrl: `/report/${encodeURIComponent(workReportId)}`,
         siteId: outcome.siteId,
         siteUrl: `/sites/${encodeURIComponent(outcome.siteId)}`,
         status: outcome.status,

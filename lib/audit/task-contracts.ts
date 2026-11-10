@@ -48,7 +48,6 @@ export interface TaskFinishPlanItem {
   protectedScope: string | null
   verification: string | null
   pageUrl: string | null
-  reportUrl: string
   selectedTool: PromptToolKey
   selectedPrompt: string | null
   fixPrompt: string | null
@@ -67,7 +66,6 @@ export interface TaskFixList extends TaskFinishPlan {
 
 export interface CheckAndPlanOutcome {
   reportId: string
-  reportUrl: string
   siteId: string
   siteUrl: string
   status: string
@@ -102,7 +100,6 @@ export interface RecheckAndCompareOutcome {
   /** The parent persisted on the returned Review. Null when a first Review was resumed. */
   parentReportId: string | null
   reportId: string
-  reportUrl: string
   siteId: string
   siteUrl: string
   status: string
@@ -151,11 +148,6 @@ interface TaskQueueOptions {
   delayMs?: number
   signal?: AbortSignal
   tool?: PromptToolKey
-}
-
-function reportUrl(reportId: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
-  return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
 }
 
 async function siteFieldsForAudit(audit: {
@@ -208,7 +200,6 @@ function toTaskItems(
       protectedScope: item.protectedScope,
       verification: item.verificationRule ?? null,
       pageUrl: item.pageUrl ?? null,
-      reportUrl: reportUrl(reportId),
       selectedTool: tool,
       selectedPrompt,
       fixPrompt: selectedPrompt,
@@ -382,8 +373,7 @@ export async function loadCompletedTaskOutcome(
     if (audit.status === 'FAILED') {
       return {
         reportId,
-        reportUrl: reportUrl(reportId),
-        ...site,
+          ...site,
         status: audit.status,
         error: {
           code: 'AUDIT_FAILED',
@@ -395,7 +385,6 @@ export async function loadCompletedTaskOutcome(
     }
     return {
       reportId,
-      reportUrl: reportUrl(reportId),
       ...site,
       status: audit.status,
       nextAction: {
@@ -413,7 +402,7 @@ export async function loadCompletedTaskOutcome(
     access?.demonstratedFlag,
     access?.finishPlanLimit
   )
-  const report = { reportId, reportUrl: reportUrl(reportId), ...site, status: 'COMPLETED', ...completed }
+  const report = { reportId, ...site, status: 'COMPLETED', ...completed }
   if (!audit.parentId) return report
   const recheck = { ...report, parentReportId: audit.parentId, nextFixList: completed.fixList, nextFinishPlan: completed.finishPlan }
   const comparison = await readReportComparisonWithRecovery(audit.parentId, reportId)
@@ -516,7 +505,6 @@ export async function checkAndPlan(options: TaskQueueOptions & {
 
   const base = {
     reportId: auditId,
-    reportUrl: reportUrl(auditId),
     siteId,
     siteUrl: siteBoardUrl(siteId),
     status,
@@ -600,7 +588,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
   const base = {
     parentReportId: comparisonParentId,
     reportId,
-    reportUrl: reportUrl(reportId),
     siteId,
     siteUrl: siteBoardUrl(siteId),
     status,

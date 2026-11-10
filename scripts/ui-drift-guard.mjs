@@ -163,20 +163,14 @@ for (const removedPath of [
   'components/report/ScanTimeline.tsx',
   'lib/report/observation-snapshot.ts',
   'app/api/reports/[id]/observation/route.ts',
+  'components/audit/AuditReportProgressive.tsx',
+  'components/audit/LiveReportExplorer.tsx',
+  'components/report/ReportExplorer.tsx',
+  'components/report/ReportWorkspaceSplitShell.tsx',
+  'components/report/WorkspaceChatPanel.tsx',
 ]) {
   if (existsSync(join(ROOT, removedPath))) {
     violations.push(`${removedPath}: obsolete parallel Review architecture returned`)
-  }
-}
-
-const outcomeHeader = readFileSync(join(ROOT, 'components/report/ReportOutcomeBar.tsx'), 'utf8')
-for (const [pattern, reason] of [
-  [/ScoreRingGauge/, 'circular score gauge returned'],
-  [/nextStepHint|Start with the top Flag/, 'duplicated next-step instruction returned'],
-  [/criticalCount|showCriticalFlags/, 'duplicated Critical shortcut returned'],
-]) {
-  if (pattern.test(outcomeHeader)) {
-    violations.push(`components/report/ReportOutcomeBar.tsx: ${reason}`)
   }
 }
 
@@ -185,12 +179,6 @@ if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.incl
   violations.push('app/(marketing)/samples/page.tsx: unknown curated observations must fail closed')
 }
 
-const workspaceAdapters = readFileSync(join(ROOT, 'lib/report/workspace-adapters.ts'), 'utf8')
-for (const required of ["kind: 'sample'", "visibility: 'curated_sample'"]) {
-  if (!workspaceAdapters.includes(required)) {
-    violations.push(`lib/report/workspace-adapters.ts: curated sample projection drift (${required})`)
-  }
-}
 const reviewProjection = readFileSync(
   join(ROOT, 'lib/report/review-workspace-projection.ts'),
   'utf8'
@@ -217,20 +205,6 @@ if (
   !captureScript.includes('.webp(')
 ) {
   violations.push('scripts/capture-sample-screenshots.ts: versioned real-WebP sample generation drifted')
-}
-
-// The Report pane measures the pane, never the viewport: no 100vh caps, no
-// page-header sticky offsets, no card shell fighting the pane.
-const explorer = readFileSync(join(ROOT, 'components/report/ReportExplorer.tsx'), 'utf8')
-for (const [pattern, reason] of [
-  [/100vh/, 'viewport height inside the Report pane (size against the pane)'],
-  [/sticky[^"']*--header-offset/, 'page-header sticky offset inside the Report pane'],
-  [/overflow-clip/, 'overflow-clip shell breaks pane scrolling'],
-  [/\blg:/, 'viewport breakpoint inside the Report pane (use @[..]/pane container queries)'],
-]) {
-  if (pattern.test(explorer)) {
-    violations.push(`components/report/ReportExplorer.tsx: ${reason}`)
-  }
 }
 
 if (violations.length) {

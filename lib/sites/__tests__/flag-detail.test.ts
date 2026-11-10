@@ -174,7 +174,7 @@ it.each([
   if (fix.trim()) expect(detail?.fix).toBe(fix.trim())
   else {
     expect(detail?.fix).toContain('reproduce the problem')
-    expect(buildSiteRepairHandoff('site-1', { ...detail!, verificationRule: null }, 'https://fixflags.test').prompt).toContain('/report/audit-1')
+    expect(buildSiteRepairHandoff('site-1', { ...detail!, verificationRule: null }, 'https://fixflags.test').prompt).toContain('/sites/site-1?view=timeline#timeline')
     expect(recorded.fix).toBe('Restore checkout')
   }
 })

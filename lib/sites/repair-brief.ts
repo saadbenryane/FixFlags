@@ -10,6 +10,7 @@ import { readSupportingObservationView } from '@/lib/audit/flag-observations'
 import { SiteRunRefusal } from './application/run-refusal'
 import { MAX_REPAIR_BRIEF_BYTES, MAX_REPAIR_PROMPT_BYTES } from './repair-budgets'
 import { repairFileTaskSchema } from './repair-file-contract'
+import { siteWorkspaceHref } from './workspace-location'
 
 /** Complete customer-safe projection. Transport limits belong to repair-delivery,
  * so valid source evidence also remains available to revision checks and copy. */
@@ -79,7 +80,7 @@ export function prepareSiteRepairBrief(siteId: string, flag: SiteFlagDetail, app
   const verification = { ...context.verification, afterDeployment: { ...context.verification.afterDeployment,
     arguments: { ...context.verification.afterDeployment.arguments, expectedContextHash: contextHash } } }
   const sourceLinks = { flag: `${base}${scope}`,
-    report: flag.sourceAuditId ? `${base}/report/${encodeURIComponent(flag.sourceAuditId)}` : null,
+    report: flag.sourceAuditId ? `${base}${siteWorkspaceHref(siteId, 'timeline')}` : null,
     evidence: `${base}/api${scope}/repair-brief?contextHash=${contextHash}&includeEvidence=true` }
   return {
     contextHash,

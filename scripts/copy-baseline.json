@@ -101,28 +101,6 @@
   "components/audit/AuditInput.tsx": [
     "Website URL"
   ],
-  "components/audit/AuditReportProgressive.tsx": [
-    "Checks are still running. New Flags appear as they are confirmed.",
-    "Still preparing"
-  ],
-  "components/audit/FixPromptBlock.tsx": [
-    "Fix prompt",
-    "No validated prompt is available for this builder. Choose another builder."
-  ],
-  "components/audit/ReadyToVerifyButton.tsx": [
-    "Commit, pull request, or deployment URL",
-    "Deployment reference",
-    "Mark the implemented change ready to verify",
-    "Ready to verify",
-    "Restored the signup action and preserved existing account access.",
-    "This records your change, not a successful result. A fresh update Review decides whether it worked.",
-    "What changed?"
-  ],
-  "components/audit/ScreenshotWithHighlights.tsx": [
-    "Close evidence",
-    "Screenshot unavailable",
-    "The capture could not be loaded right now."
-  ],
   "components/auth/AuthFlow.tsx": [
     "Privacy Policy",
     "Terms of Service"
@@ -130,11 +108,6 @@
   "components/cli/CliAuthorizeCard.tsx": [
     "Approve connection",
     "Checking authorization request"
-  ],
-  "components/dashboard/ProductSignalsSetup.tsx": [
-    "Hide one-time key",
-    "Observations include routes without queries, error types, outcomes, and performance values.\n        FixFlags does not collect DOM text, input values, request bodies, or identity. Raw Signals expire\n        after 30 days and remain observational context, never verification evidence.",
-    "Product Signal keys"
   ],
   "components/demo/DemoLanding.tsx": [
     "Accept cookies",
@@ -203,51 +176,9 @@
   "components/pricing/PricingCTAButton.tsx": [
     "Sign up first"
   ],
-  "components/repo-scan/RepoFindingCard.tsx": [
-    "Copy branch prompt",
-    "Create fix PR",
-    "Opens branch",
-    "Since this is an exposed secret in a committed"
-  ],
-  "components/repo-scan/RepoScanReport.tsx": [
-    "Checking the codebase. Flags appear here as they are verified.",
-    "No Flags found",
-    "The deterministic code checks did not flag anything in this repository."
-  ],
-  "components/report/FlagDetailPanel.tsx": [
-    "Current social preview",
-    "Generating enhanced fix instructions.",
-    "Image unavailable",
-    "This is how your page appears when shared on Slack, LinkedIn, or iMessage.",
-    "What this means"
-  ],
   "components/report/NotFoundContent.tsx": [
     "Go home",
     "Page not found"
-  ],
-  "components/report/ReportExplorerDetail.tsx": [
-    "Filter by rubric",
-    "Flag navigation",
-    "Next flag",
-    "Previous flag",
-    "void\n  counts: Record"
-  ],
-  "components/report/ReportFixLoop.tsx": [
-    "Report Flags"
-  ],
-  "components/report/ReportOutcomeBar.tsx": [
-    "How scores work",
-    "Scan progress"
-  ],
-  "components/report/ScoreHistoryChart.tsx": [
-    "Check history",
-    "Check in progress",
-    "Live check in progress",
-    "No observations yet",
-    "No score history available"
-  ],
-  "components/report/WorkspaceChatPanel.tsx": [
-    "Agent messages"
   ],
   "components/settings/AccountSettingsForms.tsx": [
     "A password is set for this account.",

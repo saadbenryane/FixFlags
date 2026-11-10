@@ -24,7 +24,6 @@ describe('startScanWithHandoff', () => {
         reportId: 'report-1',
         siteId: 'site-1',
         siteUrl: '/sites/site-1',
-        reportUrl: '/report/report-1',
         status: 'QUEUED',
       }),
     }))
@@ -93,7 +92,6 @@ describe('startScanWithHandoff', () => {
         parentReportId: 'parent-1',
         siteId: 'site-1',
         siteUrl: '/sites/site-1',
-        reportUrl: '/report/child-1',
         status: 'QUEUED',
       }),
     }))
@@ -114,7 +112,6 @@ describe('startScanWithHandoff', () => {
       ok: true,
       json: async () => ({
         reportId: 'report-1',
-        reportUrl: '/report/report-1',
         status: 'QUEUED',
       }),
     }))

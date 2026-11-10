@@ -27,7 +27,7 @@ export interface FixList extends FinishPlan {
 
 export interface CheckResult {
   reportId: string
-  reportUrl: string
+  siteUrl: string
   status: string
   score?: number | null
   verdict?: string | null
@@ -51,7 +51,7 @@ export interface CheckResult {
 export interface RecheckResult {
   parentReportId: string
   reportId: string
-  reportUrl: string
+  siteUrl: string
   status: string
   diff?: {
     fixed: number
@@ -97,7 +97,6 @@ interface WaitOptions {
 
 interface CheckOptions extends WaitOptions {
   single: boolean
-  apiBase: string
   scanAccess?: Record<string, unknown>
 }
 
@@ -193,7 +192,7 @@ function parseFailedModules(value: unknown, tool: string): string[] | undefined 
   return value.filter((item): item is string => typeof item === 'string')
 }
 
-function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult {
+function parseCheck(value: unknown, tool: string): CheckResult {
   const outcome = record(value, tool)
   const reportId = requiredString(outcome.reportId, 'reportId', tool)
   const status = requiredString(outcome.status, 'status', tool)
@@ -213,9 +212,7 @@ function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult 
       : (() => { throw new Error(`Malformed response from ${tool}: rubrics must be an array`) })()
   return {
     reportId,
-    reportUrl: typeof outcome.reportUrl === 'string'
-      ? outcome.reportUrl
-      : `${apiBase.replace(/\/$/, '')}/report/${reportId}`,
+    siteUrl: requiredString(outcome.siteUrl, 'siteUrl', tool),
     status,
     score: optionalNumber(outcome.score, 'score', tool),
     verdict: typeof outcome.verdict === 'string' || outcome.verdict === null ? outcome.verdict : undefined,
@@ -270,13 +267,13 @@ function parseDiff(value: unknown, tool: string): RecheckResult['diff'] {
   }
 }
 
-function parseRecheck(value: unknown, tool: string, apiBase: string, fallbackParent: string): RecheckResult {
+function parseRecheck(value: unknown, tool: string, fallbackParent: string): RecheckResult {
   const outcome = record(value, tool)
   const reportId = requiredString(outcome.reportId, 'reportId', tool)
   return {
     parentReportId: typeof outcome.parentReportId === 'string' ? outcome.parentReportId : fallbackParent,
     reportId,
-    reportUrl: typeof outcome.reportUrl === 'string' ? outcome.reportUrl : `${apiBase.replace(/\/$/, '')}/report/${reportId}`,
+    siteUrl: requiredString(outcome.siteUrl, 'siteUrl', tool),
     status: requiredString(outcome.status, 'status', tool),
     diff: parseDiff(outcome.diff, tool),
     nextFixList: parseFixList(outcome.nextFixList, tool),
@@ -330,10 +327,10 @@ export async function checkAndPlan(call: McpCaller, url: string, options: CheckO
     waitForCompletion: options.wait,
     mode: options.single ? 'single' : 'critical_path',
     ...(options.scanAccess ? { scanAccess: options.scanAccess } : {}),
-  }), 'ff_check_and_plan', options.apiBase)
+  }), 'ff_check_and_plan')
   if (result.status === 'FAILED') throw new Error(`Check ${result.reportId} failed`)
   if (options.wait && result.status !== 'COMPLETED') {
-    result = parseCheck(await waitForReport(call, result.reportId, options), 'ff_get_report', options.apiBase)
+    result = parseCheck(await waitForReport(call, result.reportId, options), 'ff_get_report')
   }
   return result
 }
@@ -341,16 +338,15 @@ export async function checkAndPlan(call: McpCaller, url: string, options: CheckO
 export async function recheckAndDiff(
   call: McpCaller,
   parentReportId: string,
-  options: WaitOptions & { apiBase?: string }
+  options: WaitOptions
 ): Promise<RecheckResult> {
-  const apiBase = options.apiBase ?? 'https://fixflags.com'
   let result = parseRecheck(await call('ff_recheck_and_compare', {
     parentReportId,
     waitForCompletion: options.wait,
-  }), 'ff_recheck_and_compare', apiBase, parentReportId)
-  if (result.status === 'FAILED') throw new Error(`Re-check ${result.reportId} failed`)
+  }), 'ff_recheck_and_compare', parentReportId)
+  if (result.status === 'FAILED') throw new Error(`Recheck ${result.reportId} failed`)
   if (options.wait && result.status !== 'COMPLETED') {
-    result = parseRecheck(await waitForReport(call, result.reportId, options), 'ff_get_report', apiBase, parentReportId)
+    result = parseRecheck(await waitForReport(call, result.reportId, options), 'ff_get_report', parentReportId)
   }
   return result
 }

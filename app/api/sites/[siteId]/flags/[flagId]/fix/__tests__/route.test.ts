@@ -95,7 +95,7 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(body.prompt).toContain('FixFlags Flag: Checkout button is hidden')
     expect(body.sourceFlagId).toBe('flag-1')
     expect(body.prompt).toContain('/api/sites/site-1/flags/improvement-1/repair-brief?contextHash=')
-    expect(body.prompt).toContain('/report/audit-1')
+    expect(body.prompt).toContain('/sites/site-1?view=timeline#timeline')
     expect(body.prompt).toContain('owner’s authenticated session')
     expect(body.referenceFlagId).toBe('improvement-1')
     expect(body.bundlePrompt).toBeUndefined()

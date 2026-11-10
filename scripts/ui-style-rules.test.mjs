@@ -31,7 +31,7 @@ test('continues rejecting arbitrary micro sizes in product components', () => {
 test('rejects grouping lines in component classes, email HTML and CSS', () => {
   for (const [file, source] of [
     ['components/live-support/SupportWidget.tsx', '<header className="border-b border-border p-4" />'],
-    ['components/report/workspace-geometry.ts', "const chrome = 'border-r border-border px-3'"],
+    ['components/sites/workspace-geometry.ts', "const chrome = 'border-r border-border px-3'"],
     ['components/uptime/UptimeCard.module.css', '.rows li { border-bottom: 1px solid currentColor; }'],
     ['lib/email/layout.ts', '<hr style="border-top:1px solid gray">'],
     ['components/marketing/Section.tsx', '<div className="divide-y divide-border" />'],

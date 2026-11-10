@@ -179,7 +179,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         reportId: outcome.reportId,
-        reportUrl: outcome.reportUrl,
         siteId: outcome.siteId,
         siteUrl: outcome.siteUrl,
         status: outcome.status,
