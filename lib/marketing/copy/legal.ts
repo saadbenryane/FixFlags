@@ -5,8 +5,8 @@ import { PUBLIC_OFFER } from './public-offer'
  */
 
 export const LEGAL_PAGE_META = {
-  termsUpdated: 'October 2026',
-  privacyUpdated: 'October 2026',
+  termsUpdated: 'November 2026',
+  privacyUpdated: 'November 2026',
 } as const
 
 export const ANALYTICS_CONSENT_COPY = {
@@ -22,12 +22,12 @@ export const TERMS_SECTIONS = {
   service: {
     title: 'Service',
     body:
-      'FixFlags analyzes a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. GitHub authorization is available. Other integrations are coming soon. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
+      'FixFlags checks a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. GitHub authorization is available. Other integrations are coming soon. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
   },
   accountsAndBilling: {
     title: 'Accounts and billing',
     body:
-      `You can analyze a public URL without an account. Signing in lets you save the Site, verify fixes, and keep watching. ${PUBLIC_OFFER.free} ${PUBLIC_OFFER.paid} ${PUBLIC_OFFER.availability} ${PUBLIC_OFFER.usage} Existing subscribers can manage their subscription in the Stripe portal and keep their existing billing terms.`,
+      `You can start a check of a public URL without an account. Seeing its results, saving the Site, rechecking fixes, and keeping watch require signing in. ${PUBLIC_OFFER.free} ${PUBLIC_OFFER.paid} ${PUBLIC_OFFER.availability} ${PUBLIC_OFFER.usage} Existing subscribers can manage their subscription in the Stripe portal and keep their existing billing terms.`,
   },
   discountTiers: {
     title: 'Launch discount tiers',
@@ -65,12 +65,12 @@ export const PRIVACY_SECTIONS = {
   collect: {
     title: 'What we collect',
     body:
-      'When you Analyze a URL, we store that URL, the public pages our browser opened, screenshots and browser evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you connect it, we store the shop identity, authorization needed for background work, and purchase-path evidence. Shopify privacy-request records keep the request identity and processing result rather than unnecessary customer data. Authorized Google connections can store matching page-traffic and search reports. If you join a waitlist, we store the plan and email to notify.',
+      'When you check a URL, we store that URL, the public pages our browser opened, screenshots and browser evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you connect it, we store the shop identity, authorization needed for background work, and purchase-path evidence. Shopify privacy-request records keep the request identity and processing result rather than unnecessary customer data. Authorized Google connections can store matching page-traffic and search reports. If you join a waitlist, we store the plan and email to notify.',
   },
   use: {
     title: 'How we use it',
     body:
-      'We use this data to analyze the live website, raise Flags, Verify fixes, watch scheduled Sites, answer Site-scoped Agent questions, provide support, operate waitlists, measure reliability and cost, and improve the product. AI providers receive bounded context needed for the requested analysis or answer, not an unrestricted copy of your account. We do not sell your personal data.',
+      'We use this data to check the live website, raise Flags, verify fixes, watch scheduled Sites, answer Site-scoped Agent questions, provide support, operate waitlists, measure reliability and cost, and improve the product. AI providers receive bounded context needed for the requested check or answer, not an unrestricted copy of your account. We do not sell your personal data.',
   },
   reportAccess: {
     title: 'Access and sharing',
