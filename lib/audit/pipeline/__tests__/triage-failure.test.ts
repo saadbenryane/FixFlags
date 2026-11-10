@@ -46,7 +46,7 @@ describe('parseTriageFailure', () => {
 
   it('does not reintroduce retry for typed credit failure through the legacy 429 message path', () => {
     const error = Object.assign(new Error('429 Provider credit unavailable'), { status: 429, code: 'credit_balance_exhausted' })
-    assert.deepEqual(parseTriageFailure(error), { reason: 'provider_exhausted', message: error.message, retryable: false })
+    assert.deepEqual(parseTriageFailure(error), { reason: 'provider_rejected', message: error.message, retryable: false })
   })
 
   it('falls back to unknown for anything else', () => {
@@ -62,7 +62,8 @@ describe('triageFailureCode', () => {
     assert.equal(triageFailureCode('no_provider_keys'), 'AI_PROVIDER_NOT_CONFIGURED')
     assert.equal(triageFailureCode('deadline_exhausted'), 'AUDIT_TIMEOUT')
     assert.equal(triageFailureCode('contract_invalid'), 'AI_CONTRACT_INVALID')
-    assert.equal(triageFailureCode('provider_exhausted'), 'AUDIT_PIPELINE_FAILED')
+    assert.equal(triageFailureCode('provider_exhausted'), 'AI_PROVIDER_UNAVAILABLE')
+    assert.equal(triageFailureCode('provider_rejected'), 'AI_PROVIDER_REJECTED')
     assert.equal(triageFailureCode('unknown'), 'AUDIT_PIPELINE_FAILED')
   })
 })

@@ -77,7 +77,7 @@ const discoverySchema = discoveryCoverageSchema.extend({ flags: z.array(flagSche
 const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), bindingKey: z.string() }).strict()
 const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), assessments: z.array(journeyAssessmentSchema).max(6).optional(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional(), observationProgress: observationProgressSchema.optional() }).strict()
 const judgeSchema = z.object({ triage: z.object({ output: triageOutputSchema, usage: llmUsageSchema, assessment: triageAssessmentSchema.optional() }).strict().optional(),
-  triageFailure: z.object({ reason: z.enum(['no_provider_keys', 'deadline_exhausted', 'provider_exhausted', 'budget_unavailable', 'contract_invalid', 'unknown']),
+  triageFailure: z.object({ reason: z.enum(['no_provider_keys', 'deadline_exhausted', 'provider_exhausted', 'provider_rejected', 'budget_unavailable', 'contract_invalid', 'unknown']),
     message: z.string(), retryable: z.boolean() }).strict().optional() }).strict()
 const finalSchema = z.object({ status: z.literal('COMPLETED'), partial: z.boolean() }).strict()
 

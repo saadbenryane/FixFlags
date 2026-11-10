@@ -17,6 +17,7 @@ import { DETERMINISTIC_SCAN_VERDICT } from '@/lib/audit/verdict'
 import type { TriageFailureReason } from '@/lib/audit/pipeline/triage-failure'
 import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { scheduleAiOutageRecheck } from '@/lib/sites/application/ai-outage-recheck'
 
 type FinalizeBaseInput = {
   auditId: string
@@ -310,6 +311,13 @@ export async function finalizeTriageDegraded(
     errorMsg: input.errorMsg,
     failureCode,
     failureStage: 'judging',
+  })
+
+  // A rejected account (quota, credentials, permission) degrades every check
+  // until an operator acts, so it is logged at error level for alerting.
+  if (input.reason === 'provider_rejected') logger.error('AI provider rejected requests; check credits and credentials', { auditId: input.auditId, failureCode })
+  await scheduleAiOutageRecheck(input.auditId, input.reason).catch(err => {
+    logger.error('AI outage recheck could not be scheduled', err, { auditId: input.auditId })
   })
 
   await completeImprovementProjection(input.auditId, audit.parentId)

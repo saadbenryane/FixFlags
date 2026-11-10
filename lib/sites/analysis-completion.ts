@@ -5,6 +5,8 @@ export function hasEnrichmentFailure(input: { failureCode?: string | null; failu
     case 'AI_PROVIDER_NOT_CONFIGURED':
     case 'AI_CONTRACT_INVALID':
     case 'AI_BUDGET_UNAVAILABLE':
+    case 'AI_PROVIDER_UNAVAILABLE':
+    case 'AI_PROVIDER_REJECTED':
     case 'AI_REVIEW_FAILED':
       return true
     case 'AUDIT_TIMEOUT':

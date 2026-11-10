@@ -25,6 +25,8 @@ export const AUDIT_ERRORS = {
   aiReviewFailed: 'AI review could not finish. Try again.',
   partialAiReview:
     'Some fix guidance could not be written. The recorded evidence is still available.',
+  aiReviewUnavailable:
+    'Our AI review was unavailable during this check, so some areas are only partly checked. Your recorded results are below. The next check completes them.',
   partialAiReviewContract:
     'Some fix guidance failed a quality check and was not saved. The recorded evidence is still available.',
   triageDegradedAnonymous:

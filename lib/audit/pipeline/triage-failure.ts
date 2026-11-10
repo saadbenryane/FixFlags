@@ -6,6 +6,8 @@ export type TriageFailureReason =
   | 'no_provider_keys'
   | 'deadline_exhausted'
   | 'provider_exhausted'
+  /** The provider refused the account: quota, credentials or permission. An operator must act. */
+  | 'provider_rejected'
   | 'budget_unavailable'
   | 'contract_invalid'
   | 'unknown'
@@ -36,8 +38,12 @@ export function parseTriageFailure(error: unknown): TriageFailure {
     return { reason: 'contract_invalid', message, retryable: false }
   }
 
-  if (classifyJudgeProviderFailure(error) === 'budget_unavailable') {
+  const providerFailure = classifyJudgeProviderFailure(error)
+  if (providerFailure === 'budget_unavailable') {
     return { reason: 'budget_unavailable', message, retryable: false }
+  }
+  if (providerFailure === 'quota_exhausted' || providerFailure === 'authentication_rejected' || providerFailure === 'permission_denied') {
+    return { reason: 'provider_rejected', message, retryable: false }
   }
   if (classifyJudgeProviderFailure(error)) {
     return { reason: 'provider_exhausted', message, retryable: isRetryableJudgeError(error) }
@@ -71,6 +77,9 @@ export function triageFailureCode(reason: TriageFailureReason): string {
     case 'budget_unavailable':
       return 'AI_BUDGET_UNAVAILABLE'
     case 'provider_exhausted':
+      return 'AI_PROVIDER_UNAVAILABLE'
+    case 'provider_rejected':
+      return 'AI_PROVIDER_REJECTED'
     case 'unknown':
     default:
       return 'AUDIT_PIPELINE_FAILED'
