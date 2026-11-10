@@ -150,21 +150,21 @@ export function assessVerificationCoverage(input: {
   if (requiresOriginalScope && !recordedCondition) {
     const gap = recordedObservationGap(input.originalFlag!, input.executionSpec)
     return { comparable: false, reason: gap ? VERIFICATION_EVIDENCE_COPY[gap]
-      : 'The update Review did not establish the original finding’s verification scope.', coverage }
+      : VERIFICATION_EVIDENCE_COPY.recheck.scopeUnknown, coverage }
   }
   if (!completeReview && !recordedCondition && !((isSearch || isExactCheck) && input.status === 'COMPLETED')) {
-    return { comparable: false, reason: 'The update Review was partial or incomplete.', coverage }
+    return { comparable: false, reason: VERIFICATION_EVIDENCE_COPY.recheck.partial, coverage }
   }
   if (!evidenceComparable) {
-    return { comparable: false, reason: 'The update Review did not capture comparable evidence.', coverage }
+    return { comparable: false, reason: VERIFICATION_EVIDENCE_COPY.recheck.noComparableEvidence, coverage }
   }
   if (!relevantPageCovered) {
-    return { comparable: false, reason: 'The update Review did not complete the affected page.', coverage }
+    return { comparable: false, reason: VERIFICATION_EVIDENCE_COPY.recheck.pageIncomplete, coverage }
   }
   if (failedModules.length > 0 && !recordedCondition && !isSearch && !isExactCheck) {
     return {
       comparable: false,
-      reason: `The update Review was degraded because these modules failed: ${failedModules.join(', ')}.`,
+      reason: VERIFICATION_EVIDENCE_COPY.recheck.degraded(failedModules.join(', ')),
       coverage,
     }
   }
@@ -172,25 +172,25 @@ export function assessVerificationCoverage(input: {
     return {
       comparable: false,
       reason: targetExecution?.status === 'FAILED'
-        ? 'The exact applicable verifier failed.'
+        ? VERIFICATION_EVIDENCE_COPY.recheck.checkFailed
         : targetExecution?.status === 'NOT_APPLICABLE'
-          ? 'The exact verifier was not applicable to the captured scope.'
+          ? VERIFICATION_EVIDENCE_COPY.recheck.checkNotApplicable
           : !targetExecution
-            ? 'The update Review has no positive execution record for the exact verifier and scope.'
+            ? VERIFICATION_EVIDENCE_COPY.recheck.noResult
             : !targetExecution.evidenceReference
-              ? 'The exact verifier completed without a durable evidence reference.'
+              ? VERIFICATION_EVIDENCE_COPY.recheck.noEvidence
               : isJourney
-                ? 'The applicable journey verification did not complete.'
+                ? VERIFICATION_EVIDENCE_COPY.recheck.journeyIncomplete
                 : isAi
-                  ? 'The applicable AI assessment did not complete.'
-                  : 'The applicable verifier did not complete.',
+                  ? VERIFICATION_EVIDENCE_COPY.recheck.assessmentIncomplete
+                  : VERIFICATION_EVIDENCE_COPY.recheck.checkIncomplete,
       coverage,
     }
   }
   return {
     comparable: true,
     verdict: recordedVerdict ?? (isExactCheck ? exactCheck.data.verdict : isSearch && search.data.verdict !== 'unknown' ? search.data.verdict : null),
-    reason: 'The fresh update Review completed comparable verification coverage.',
+    reason: VERIFICATION_EVIDENCE_COPY.recheck.comparable,
     coverage,
   }
 }

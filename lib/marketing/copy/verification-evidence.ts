@@ -1,5 +1,24 @@
 /** Missing comparison evidence must never sound like a verified recovery. */
 export const VERIFICATION_EVIDENCE_COPY = {
+  /** Why a Recheck could or could not be compared with the original Flag. Shown in verification history. */
+  recheck: {
+    scopeUnknown: 'The recheck could not confirm what the original Flag covered.',
+    partial: 'The recheck was partial or incomplete.',
+    noComparableEvidence: 'The recheck did not capture evidence comparable to the original.',
+    pageIncomplete: 'The recheck did not finish the affected page.',
+    degraded: (checks: string) => `The recheck was incomplete because these checks failed: ${checks}.`,
+    checkFailed: 'The same check failed to run in the recheck.',
+    checkNotApplicable: 'The same check did not apply to what the recheck captured.',
+    noResult: 'The recheck has no completed result for the same check and scope.',
+    noEvidence: 'The same check finished without recorded evidence.',
+    journeyIncomplete: 'The visitor journey in the recheck did not finish.',
+    assessmentIncomplete: 'The AI assessment in the recheck did not finish.',
+    checkIncomplete: 'The check in the recheck did not finish.',
+    comparable: 'The recheck covered the same page and check as the original Flag.',
+    repairScopeLost: 'The recheck did not keep the original repair scope.',
+    noFingerprint: 'The original AI observation has no stable fingerprint to compare.',
+    noContinuation: 'The recheck could not match this Flag to the original finding.',
+  },
   UNREADABLE_RECHECK: "This recheck's recorded scope could not be read. The original Flag remains unverified.",
   UNMEASURED: 'This recommendation has no measurable condition that this recheck can independently verify. Review the new evidence before deciding whether the change addresses it.',
   UNREADABLE: 'The original supporting evidence could not be read. This recheck cannot establish a verified recovery.',

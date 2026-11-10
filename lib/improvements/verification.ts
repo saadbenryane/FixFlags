@@ -1,4 +1,5 @@
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { VERIFICATION_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
 import {
 mutateProjectIntelligence
 } from '@/lib/audit/ensure-product-project'
@@ -221,7 +222,7 @@ export async function reconcileImprovementVerification(input: {
       // Every selected capture must recover. A comparable remaining failure
       // still proves the repair incomplete when another capture is unavailable.
       if (!complete) coverageDecision = { ...coverageDecision, comparable: false, verdict: null,
-        reason: 'The update Review did not retain the original selected repair scope.' }
+        reason: VERIFICATION_EVIDENCE_COPY.recheck.repairScopeLost }
       else if (failure) {
         coverageDecision = failure.decision
         assessedSource = failure.source
@@ -282,8 +283,8 @@ export async function reconcileImprovementVerification(input: {
       // sibling or ambiguous Flag cannot supply its missing conclusion.
       const unknownLegacyContinuation = !outcomeRun && verificationVerdict == null && candidates.length > 0 && !linkedFailure
       const comparable = coverageDecision.comparable && stableAiIdentity && !unknownLegacyContinuation
-      const reason = !stableAiIdentity ? 'The original AI observation has no stable evidence fingerprint for comparison.'
-        : coverageDecision.comparable && unknownLegacyContinuation ? 'The update Review did not identify a comparable continuation of the original finding.'
+      const reason = !stableAiIdentity ? VERIFICATION_EVIDENCE_COPY.recheck.noFingerprint
+        : coverageDecision.comparable && unknownLegacyContinuation ? VERIFICATION_EVIDENCE_COPY.recheck.noContinuation
           : coverageDecision.reason
       const outcome: VerificationOutcome = !comparable ? 'INCONCLUSIVE'
         : verificationVerdict === 'passed' ? 'IMPROVED'

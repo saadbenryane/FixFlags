@@ -132,7 +132,7 @@ describe('assessVerificationCoverage', () => {
 
   it('rejects an omitted or unregistered exact verifier', () => {
     expect(assessVerificationCoverage({ ...complete, verifierExecutions: [] }))
-      .toMatchObject({ comparable: false, reason: expect.stringMatching(/no positive execution record/i) })
+      .toMatchObject({ comparable: false, reason: expect.stringMatching(/no completed result for the same check/i) })
   })
 
   it('does not allow Product Signals to substitute for verifier execution', () => {
