@@ -97,14 +97,14 @@ function SiteShellContent({
     event.preventDefault()
     onWorkspaceNavigate(route)
   }
-  const navigation = (label: string, close?: () => void) => <SiteWorkspaceNavigation activeRoute={activeRoute} label={label} showSettings={showSettings} helpHref={coverageHelpHref}
+  const navigation = (label: string, close?: () => void) => <SiteWorkspaceNavigation activeRoute={activeRoute} label={label} showSettings={showSettings} foldIntegrations helpHref={coverageHelpHref}
     renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} prefetch={onWorkspaceNavigate && id !== 'settings' ? false : undefined} onClick={event => openWorkspace(event, id, close)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
 
   const analyzing = presentation.run.state === 'queued' || presentation.run.state === 'running'
 
   return <SiteWorkspaceFrame mobileHeader={<><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
       <ReportMobileNav showAdmin={user?.isAdmin} />
-    </>} mobileNavigation={<SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} helpHref={coverageHelpHref} mobile className={cn(customerMobileBarClass, 'md:hidden')}
+    </>} mobileNavigation={<SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} foldIntegrations helpHref={coverageHelpHref} mobile className={cn(customerMobileBarClass, 'md:hidden')}
       renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} prefetch={onWorkspaceNavigate && id !== 'settings' ? false : undefined} onClick={event => openWorkspace(event, id)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />}
     overlay={<LazySiteChat key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
       host={host} ownsSite={ownsSite} ownerId={ownsSite ? user?.id ?? null : null} flagId={chatFlag?.id} flagTitle={chatFlag?.title} />}>

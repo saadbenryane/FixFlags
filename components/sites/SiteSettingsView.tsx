@@ -7,6 +7,8 @@ import { SiteResearchConsentSettings } from '@/components/sites/SiteResearchCons
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { SiteResourceBoundary, useSharedSiteResource } from './SiteResourceBoundary'
 import { SiteShell } from '@/components/sites/SiteShell'
+import { SiteIntegrationsControls } from '@/components/sites/SiteIntegrationsControls'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 
 export function SiteSettingsView(props: { siteId: string; view: SiteHomeView }) {
@@ -29,6 +31,10 @@ function SiteSettingsContent({ siteId }: { siteId: string }) {
       <SiteSettingsControls key={`monitoring:${siteId}`} target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh}>
         {view.site.projectId ? <SiteScanAccessSettings key={`scan-access:${view.site.projectId}`} siteId={siteId} /> : null}
         <SiteResearchConsentSettings key={`research:${siteId}`} siteId={siteId} />
+        <section id="integrations" aria-labelledby="settings-integrations-heading" className="space-y-3">
+          <h2 id="settings-integrations-heading" className="text-lg font-semibold">{SITE_WORKSPACE_COPY.navigation.integrations}</h2>
+          <SiteIntegrationsControls key={`integrations:${siteId}`} siteId={siteId} initial={view.settings} onRefresh={refresh} showUpcoming={false} />
+        </section>
       </SiteSettingsControls>
     </SiteShell>
   )

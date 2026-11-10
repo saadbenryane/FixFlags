@@ -15,8 +15,8 @@ import styles from './SiteIntegrationsPanel.module.css'
 
 export type GoogleProvider = 'SEARCH_CONSOLE' | 'ANALYTICS'
 
-export function SiteIntegrationsPanel({ github, shopify, searchConsole, analytics, busy = false, onDisconnectShopify, onDisconnectGoogle, feedback, siteId }: {
-  siteId?: string; github?: SiteHomeView['settings']['github'];
+export function SiteIntegrationsPanel({ github, shopify, searchConsole, analytics, busy = false, onDisconnectShopify, onDisconnectGoogle, feedback, siteId, showUpcoming = true }: {
+  siteId?: string; github?: SiteHomeView['settings']['github']; showUpcoming?: boolean;
   shopify: SiteHomeView['settings']['shopify']; searchConsole: PublicConnection; analytics: PublicConnection; busy?: boolean;
   onDisconnectShopify: () => void; onDisconnectGoogle: (provider: GoogleProvider) => void;
   feedback?: ReactNode;
@@ -46,7 +46,7 @@ export function SiteIntegrationsPanel({ github, shopify, searchConsole, analytic
   }
   return <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
     {primary.map(renderIntegration)}
-    {upcoming.length ? <details className={styles.more}><summary>{C.moreIntegrations}<span>{upcoming.length}</span></summary><div>{upcoming.map(renderIntegration)}</div></details> : null}
+    {showUpcoming && upcoming.length ? <details className={styles.more}><summary>{C.moreIntegrations}<span>{upcoming.length}</span></summary><div>{upcoming.map(renderIntegration)}</div></details> : null}
     {feedback}
   </div>
 }

@@ -891,7 +891,7 @@ describe('SiteBoard chrome', () => {
   it('keeps findings inside Overview categories and provides Help in the navigation', async () => {
     renderBoard(signedInUser)
     const rail = screen.getByRole('navigation', { name: 'Site' })
-    expect(within(rail).getAllByRole('link').map(link => link.textContent?.trim())).toEqual(['Overview', 'Pages', 'Timeline', 'Integrations', 'Settings', 'Help'])
+    expect(within(rail).getAllByRole('link').map(link => link.textContent?.trim())).toEqual(['Overview', 'Pages', 'Timeline', 'Settings', 'Help'])
     expect(within(rail).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help/sites-and-coverage/read-site-coverage')
     expect(within(screen.getByRole('navigation', { name: 'Mobile Site' })).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help/sites-and-coverage/read-site-coverage')
     expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
@@ -903,7 +903,7 @@ describe('SiteBoard chrome', () => {
     expect(document.title).toBe('example.com · FixFlags')
     const rail = screen.getByRole('navigation', { name: 'Site' })
     const timeline = within(rail).getByRole('link', { name: 'Timeline' })
-    const integrations = within(rail).getByRole('link', { name: 'Integrations' })
+    expect(within(rail).queryByRole('link', { name: 'Integrations' })).not.toBeInTheDocument()
     const settings = within(rail).getByRole('link', { name: 'Settings' })
     expect(timeline).toHaveAttribute('href', '/sites/p_example?view=timeline#timeline')
     expect(settings).toHaveAttribute('href', '/sites/p_example/settings')
@@ -923,21 +923,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByRole('button', { name: 'Open Pages' })).not.toBeInTheDocument()
     expect(timeline).toHaveAttribute('aria-current', 'page')
     expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/p_example?view=timeline#timeline')
-    integrations.focus()
-    fireEvent.click(integrations)
-    expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Integrations', level: 1 })).toHaveFocus()
-    expect(window.location.hash).toBe('#integrations')
-    expect(document.title).toBe('Integrations · example.com · FixFlags')
-    fireEvent.click(screen.getByRole('link', { name: 'example.com' }))
-    expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
-    expect(window.location.pathname + window.location.search + window.location.hash).toBe('/sites/p_example')
-    expect(document.title).toBe('example.com · FixFlags')
-    within(rail).getByRole('link', { name: 'Overview' }).focus()
-    window.history.back()
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible())
-    expect(screen.getByRole('heading', { name: 'Integrations', level: 1 })).toHaveFocus()
-    expect(document.title).toBe('Integrations · example.com · FixFlags')
+    // Integrations live in Settings while GitHub is the only live connection.
   })
 
   it('opens the shared schedule editor for the owner and saves an allowed cadence', async () => {
@@ -1229,6 +1215,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByRole('heading', { name: 'Search Console', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Analytics', level: 3 })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove Site' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 2 }).at(-1)).toHaveTextContent('Remove Site')
   })
 

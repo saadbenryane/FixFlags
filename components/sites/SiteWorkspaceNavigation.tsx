@@ -18,17 +18,20 @@ export const SITE_ROUTES = [
   ['settings', SITE_WORKSPACE_COPY.navigation.settings, Settings2],
 ] as const
 
-export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = true, mobile = false, className, renderItem, helpHref }: {
+export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = true, mobile = false, className, renderItem, helpHref, foldIntegrations = false }: {
   activeRoute: SiteRoute; label: string; showSettings?: boolean; mobile?: boolean; className?: string; helpHref?: Route;
+  /** While only one integration is live, owners find it in Settings rather than a separate tab. */
+  foldIntegrations?: boolean;
   renderItem: (item: { id: SiteRoute; label: string; selected: boolean; className: string; content: ReactNode; icon: LucideIcon }) => ReactNode;
 }) {
+  const folded = foldIntegrations && showSettings
   const root = useRef<HTMLElement>(null)
   useFixedBottomNotice(root, mobile, -10)
   return <nav ref={root} aria-label={label} className={cn(mobile ? styles.mobileNavigation : styles.navigation, className, mobile && 'grid text-2xs')}>
-    {SITE_ROUTES.filter(([id]) => id !== 'settings' || showSettings).map(([id, label, Icon]) => renderItem({ id, label, icon: Icon, selected: activeRoute === id,
-      className: mobile ? cn('flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center text-2xs [overflow-wrap:anywhere]', activeRoute === id ? 'text-foreground' : 'text-muted-foreground') : cn(styles.navLink, activeRoute === id && styles.selected),
+    {SITE_ROUTES.filter(([id]) => (id !== 'settings' || showSettings) && !(id === 'integrations' && folded)).map(([id, label, Icon]) => { const selected = activeRoute === id || (folded && id === 'settings' && activeRoute === 'integrations'); return renderItem({ id, label, icon: Icon, selected,
+      className: mobile ? cn('flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center text-2xs [overflow-wrap:anywhere]', selected ? 'text-foreground' : 'text-muted-foreground') : cn(styles.navLink, selected && styles.selected),
       content: <><Icon className="shrink-0" size={mobile ? 20 : 17} aria-hidden /><span className="min-w-0 max-w-full">{label}</span></>,
-    }))}
+    }) })}
     {helpHref ? <Link href={helpHref} className={mobile ? 'flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center text-2xs text-muted-foreground' : styles.navLink}>
       <CircleHelp size={mobile ? 20 : 17} className="shrink-0" aria-hidden /><span>{SITE_ACTION_COPY.help}</span>
     </Link> : null}

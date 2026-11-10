@@ -8,8 +8,8 @@ import { useSiteAction } from '@/hooks/useSiteAction'
 import { SiteActionFeedback } from './SiteActionFeedback'
 
 
-export function SiteIntegrationsControls({ siteId, initial, onRefresh }: {
-  siteId: string; initial: SiteHomeView['settings']; onRefresh: () => Promise<unknown>
+export function SiteIntegrationsControls({ siteId, initial, onRefresh, showUpcoming = true }: {
+  siteId: string; initial: SiteHomeView['settings']; onRefresh: () => Promise<unknown>; showUpcoming?: boolean
 }) {
   const { busy, message, error, submit } = useSiteAction({ scope: siteId })
   async function disconnectShopify() {
@@ -24,7 +24,7 @@ export function SiteIntegrationsControls({ siteId, initial, onRefresh }: {
     }, 'acknowledgement'), () => C.settings.googleDisconnected(provider), onRefresh)
   }
 
-  return <SiteIntegrationsPanel github={initial.github} siteId={siteId} shopify={initial.shopify} searchConsole={initial.searchConsole} analytics={initial.analytics} busy={busy}
+  return <SiteIntegrationsPanel github={initial.github} siteId={siteId} shopify={initial.shopify} searchConsole={initial.searchConsole} analytics={initial.analytics} busy={busy} showUpcoming={showUpcoming}
     onDisconnectShopify={() => void disconnectShopify()} onDisconnectGoogle={provider => void disconnectGoogle(provider)}
     feedback={<SiteActionFeedback message={message} error={error} siteId={siteId} />} />
 }
