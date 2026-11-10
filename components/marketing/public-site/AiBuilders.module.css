@@ -16,7 +16,9 @@
 
 .loop { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 20px 0 0; padding: 0; list-style: none; counter-reset: none; }
 .loop li { padding: 20px; border-radius: 18px; background: hsl(var(--muted) / .35); }
-.loop li > span { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 13px; font-weight: 700; }
+.loopHead { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; }
+.loop .loopHead { margin-top: 0; color: hsl(var(--foreground)); }
+.loopHead > span { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 13px; font-weight: 700; }
 .loop h3 { margin-top: 14px; font-size: 16px; font-weight: 650; }
 .loop p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
 

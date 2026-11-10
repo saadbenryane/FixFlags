@@ -47,16 +47,16 @@ describe('open beta pricing parity', () => {
     expect(PLANS[2].href).toBe('/waitlist/studio')
     expect(PLANS[1].href).toBe('/waitlist/pro')
   })
-  it('marks update-triggered checks as planned and integration-dependent', () => {
+  it('includes the shipped deploy hook wherever deploy checks are offered', () => {
     const updates = PRICING_COMPARISON.rows.find(row => row.id === 'updates')!
-    expect(updates.studio.value).toBe('Planned')
-    expect(updates.studio.note).toMatch(/connected integration/)
+    expect(updates.feature).toBe('Checks after every deploy')
+    expect(updates.free).toMatchObject({ value: 'Included', kind: 'included' })
+    expect(updates.studio).toMatchObject({ value: 'Included', kind: 'included' })
     expect(updates.pro.kind).toBe('excluded')
-    expect(updates.free.value).toBe('Planned')
-    const answer = PRICING_FAQ.find(entry => entry.question.includes('GitHub'))!.answer
-    expect(answer).toMatch(/published changes/)
-    expect(answer).toMatch(/same 90-check allowance/)
-    expect(answer).toMatch(/not available yet/)
+    const answer = PRICING_FAQ.find(entry => entry.question.includes('every deploy'))!
+    expect(answer.answer).toMatch(/same 90-check allowance/)
+    expect(answer.learnMore?.href).toBe('/docs/site-care#check-after-every-deploy')
+    expect(JSON.stringify({ PRICING, PRICING_FAQ })).not.toMatch(/not available yet|Update-triggered/)
   })
   it('does not imply unlimited websites or immediate paid access', () => {
     const surface = JSON.stringify({ PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ })

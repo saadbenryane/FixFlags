@@ -23,6 +23,7 @@ export default function HowItWorksPage() {
       <HowItWorksWalkthrough areas={HOMEPAGE_CHECK_COVERAGE.areas.map(({ id, name }) => ({ id, name }))} />
       <section className={s.repeat} aria-labelledby="repeat-title">
         <span className={s.returnIcon}><RefreshCw aria-hidden size={28} strokeWidth={1.5} /></span>
+        <p className={s.repeatLabel}><small aria-hidden>04</small>{C.repeat.label}</p>
         <h2 id="repeat-title">{C.repeat.title}</h2>
         <p className={s.repeatBody}>{C.repeat.body}</p>
         <div className={s.repeatSteps}>{C.repeat.steps.map((step, index) => {

@@ -16,7 +16,7 @@ function pointLabel(point: ReportWorkspaceHistoryPoint, index: number, total: nu
   const status = point.status === 'partial' ? 'Partial capture' : point.status === 'degraded' ? 'Degraded capture' : point.status === 'failed' ? 'Failed capture' : 'Completed'
   const score = point.score == null ? 'score unavailable' : `score ${Math.round(point.score)}`
   const fullDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(point.checkedAt)
-  return `Review ${index + 1} of ${total}, ${kind}, ${fullDate}, ${status}, ${score}`
+  return `Check ${index + 1} of ${total}, ${kind}, ${fullDate}, ${status}, ${score}`
 }
 
 function scrollHistoryToLatest(scroller: HTMLDivElement) {
@@ -32,7 +32,7 @@ export function ScoreHistoryChart({ history, currentAuditId, className, isLoadin
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   // Chronology stays oldest → newest (left → right). Pin the viewport to the
-  // latest end so long Review history opens on the current observation.
+  // latest end so long check history opens on the current observation.
   useLayoutEffect(() => {
     const scroller = scrollerRef.current
     if (!scroller) return
@@ -46,8 +46,8 @@ export function ScoreHistoryChart({ history, currentAuditId, className, isLoadin
 
   if (history.length === 0 && !isLoading) return <p role="status" aria-label="No score history available" className={cn('text-sm text-muted-foreground', className)}>No observations yet</p>
   return (
-    <nav className={cn('min-w-0', className)} aria-label="Review history">
-      <p className="mb-1 text-2xs font-medium uppercase tracking-label text-muted-foreground">Review history</p>
+    <nav className={cn('min-w-0', className)} aria-label="Check history">
+      <p className="mb-1 text-2xs font-medium uppercase tracking-label text-muted-foreground">Check history</p>
       <div ref={scrollerRef} className="w-full min-w-0 overflow-x-auto [scrollbar-width:thin]">
         <ol className="flex min-w-max items-start pb-1">
           {history.map((point, index) => {
@@ -81,7 +81,7 @@ export function ScoreHistoryChart({ history, currentAuditId, className, isLoadin
               </li>
             )
           })}
-          {isLoading ? <li className="relative flex w-20 shrink-0 justify-center pt-1 before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border"><span role="status" className="relative z-10 grid h-7 w-7 animate-pulse place-items-center rounded-full border border-brand/40 bg-card font-mono text-xs text-brand" aria-label="Review in progress"><span aria-hidden>…</span><span className="sr-only">Live review in progress</span></span></li> : null}
+          {isLoading ? <li className="relative flex w-20 shrink-0 justify-center pt-1 before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border"><span role="status" className="relative z-10 grid h-7 w-7 animate-pulse place-items-center rounded-full border border-brand/40 bg-card font-mono text-xs text-brand" aria-label="Check in progress"><span aria-hidden>…</span><span className="sr-only">Live check in progress</span></span></li> : null}
         </ol>
       </div>
     </nav>

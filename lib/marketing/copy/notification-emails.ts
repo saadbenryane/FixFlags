@@ -27,8 +27,8 @@ export const NOTIFICATION_EMAIL_COPY = {
   repair: {
     heading: 'Fix instructions',
     nextSteps: 'Next steps',
-    recheckIntro: 'Check this page again before making changes. The prompt below explains what is missing.',
-    intro: 'Copy the whole prompt below into your AI tool, or send it to your developer. It includes the problem, the fix steps, and the report link.',
+    recheckIntro: 'Check this page again before making changes. The fix instructions below explain what is missing.',
+    intro: 'Copy the fix instructions below into your AI tool, or send them to your developer. It includes the problem, the fix steps, and the report link.',
     attachment: (filename: string) => `The complete fix instructions are attached as ${filename}. Open the file, then copy the text into your AI tool or send it to your developer.`,
     attachedPrompts: 'Open the attached fix instructions to copy the complete instructions into your AI tool or share them with your developer.',
     attachmentLabel: (filename: string) => `Attached as ${filename}.`,

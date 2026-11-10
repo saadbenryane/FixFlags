@@ -79,6 +79,10 @@ export const RETIRED_FUNNEL_EVENTS = [
   'report_prompts_unlocked',
   'product_contract_saved',
   'remember_shown',
+  // The legacy report gate tracker was never mounted; Site signup and claim events replace these.
+  'report_auth_gate_viewed',
+  'report_auth_gate_completed',
+  'report_upgrade_gate_viewed',
 ] as const satisfies readonly FunnelEvent[]
 
 export type AcquisitionTool = 'meta-preview' | 'placeholder-detector' | 'broken-links'

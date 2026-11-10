@@ -11,7 +11,7 @@ const activity: SiteActivity = {
 describe('visible check progress', () => {
   it('shows one answer and recovery, with pipeline detail only in Activity', () => {
     const { container } = render(<SiteActivityPanel activity={activity} disconnected={false}><p>Recorded results remain available.</p></SiteActivityPanel>)
-    expect(screen.getByRole('status')).toHaveTextContent('Analysis incomplete')
+    expect(screen.getByRole('status')).toHaveTextContent('Check incomplete')
     expect(screen.queryByText('Reached')).not.toBeInTheDocument()
     expect(screen.queryByText('24 pages reached')).not.toBeInTheDocument()
     expect(screen.getByText('Recorded results remain available.')).toBeVisible()
@@ -32,6 +32,6 @@ describe('visible check progress', () => {
     render(<SiteActivityPanel activity={activity} disconnected={false} onRetry={onRetry} />)
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
     expect(onRetry).toHaveBeenCalledOnce()
-    expect(screen.getByRole('status')).toHaveTextContent('Analysis incomplete')
+    expect(screen.getByRole('status')).toHaveTextContent('Check incomplete')
   })
 })

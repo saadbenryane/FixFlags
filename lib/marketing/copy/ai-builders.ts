@@ -1,4 +1,5 @@
 import type { EditorMarkName } from '@/lib/integrations/editor-catalog'
+import { PRODUCT_STORY } from './product-story'
 
 /**
  * For AI builders: one hub and one page per tool. Each page describes the copy-and-paste
@@ -95,10 +96,10 @@ export const AI_BUILDERS_PAGE = {
   open: (name: string) => `FixFlags for ${name}`,
   loopTitle: 'The loop, in any tool',
   loop: [
-    { title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
-    { title: 'Copy the fix', body: 'Each Flag has fix instructions: the page, what happened, what should happen.' },
-    { title: 'Paste it where you build', body: 'Your AI tool makes the change. You review and publish.' },
-    { title: 'Prove it worked', body: 'Select Check now. FixFlags rechecks the same page and action on the live site.' },
+    { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
+    { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
+    { label: PRODUCT_STORY.loop[2], title: 'Hand your AI the fix', body: 'Copy the fix instructions into the tool you build with. Review the change and publish.' },
+    { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Check now. FixFlags rechecks the same page and action on the live site.' },
   ],
   why: {
     title: 'Why an independent check',

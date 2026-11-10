@@ -1,8 +1,3 @@
-import { REPORT_COPY } from './report-workspace'
-
-/** Workspace chrome copy extracted from report surfaces. */
-export const WORKSPACE_COPY = REPORT_COPY.workspace
-
 export const OUTCOME_DETAIL_COPY = {
   back: 'Back to Site home',
   state: 'Current answer',
@@ -55,8 +50,8 @@ export const SITE_WORKSPACE_COPY = {
   attempts: (count: number) => `${count} ${count === 1 ? 'attempt' : 'attempts'}`,
   remaining: (count: number) => `${count} ${count === 1 ? 'task' : 'tasks'} remaining`,
   milestones: { done: 'Recorded', current: 'In progress', pending: 'Queued', partial: 'Incomplete' },
-  disconnected: 'Updates disconnected', queued: 'Queued', analyzing: 'Analyzing',
-  analysisFinished: 'Analysis finished.',
+  disconnected: 'Updates disconnected', queued: 'Queued', analyzing: 'Checking',
+  analysisFinished: 'Check finished.',
   retryUpdates: 'Retry updates',
   findings: 'Findings',
   siteMenu: 'Website navigation', accountMenu: 'Account navigation',

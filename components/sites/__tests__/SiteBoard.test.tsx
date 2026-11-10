@@ -214,7 +214,7 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
       result: { state: 'flags', label: 'Flags found' },
       monitoring: { state: 'not_monitored', label: 'Not monitored' },
       coverage: { pagesReached: 0, pagesExpected: 0, label: '0 pages', complete: false },
-      freshness: { checkedAt: null, stale: false, label: 'No completed analysis' },
+      freshness: { checkedAt: null, stale: false, label: 'No completed check' },
       flags: { count: 0, label: '0 Flags', fixFirstCount: 0 },
       run: { state: 'idle', label: 'Run details', auditId: 'audit-1', recoveryAction: null },
       categories: [],
@@ -508,7 +508,7 @@ describe('SiteBoard chrome', () => {
     const uptime = screen.getByRole('article', { name: 'Uptime' })
     expect(conversion.compareDocumentPosition(uptime)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(uptime.compareDocumentPosition(screen.getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    const findings = screen.getByRole('region', { name: 'Findings summary' })
+    const findings = screen.getByRole('region', { name: 'Flags summary' })
     expect(screen.getByRole('region', { name: 'Website preview' }).compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
@@ -637,7 +637,7 @@ describe('SiteBoard chrome', () => {
       lastVerifiedAt: null, latestRunId: null,
     })] })
     view.presentation.run.state = 'running'
-    view.presentation.result = { state: 'checking', label: 'Analyzing' }
+    view.presentation.result = { state: 'checking', label: 'Checking' }
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
 
 
@@ -1141,12 +1141,12 @@ describe('SiteBoard chrome', () => {
     expect(within(conversion).getByText('Headline does not convey usage context')).toBeVisible()
     expect(within(screen.getByRole('article', { name: 'Performance' })).queryByText(/running/)).not.toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Performance' })).getByRole('button', { name: 'Open Performance' })).toHaveAccessibleDescription(/Waiting/)
-    expect(screen.queryByText('No completed analysis')).not.toBeInTheDocument()
+    expect(screen.queryByText('No completed check')).not.toBeInTheDocument()
     const header = screen.getByRole('heading', { name: 'example.com', level: 1 }).closest('header')!
     const status = within(header).getByRole('status')
-    expect(status).toHaveTextContent('Analyzing')
+    expect(status).toHaveTextContent('Checking')
     expect(status.querySelector('svg')).not.toBeNull()
-    expect(screen.getAllByText('Analyzing')).toHaveLength(1)
+    expect(within(header).getAllByText('Checking')).toHaveLength(1)
     expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
     expect(within(header).queryByText('0 pages')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Checking' })).not.toBeInTheDocument()

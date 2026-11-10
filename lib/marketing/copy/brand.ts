@@ -159,17 +159,6 @@ export const ROAST_COPY = {
   },
 } as const
 
-/** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
-export const OFFER = {
-  line: 'Start with a free website analysis. Keep one Site watching when you are ready.',
-  short: 'Start with a free website analysis.',
-  /** Privacy page / FAQ only. Do not render on marketing heroes. */
-  privacy:
-    'We visit your storefront as a shopper. We record our own walk, not your customers. We stop before payment.',
-  reportAccess:
-    'Verification video and screenshots are of the FixFlags walk. They stay in your Shopify app.',
-} as const
-
 /** User-facing score explanation. Must match lib/audit/scoring.ts. */
 export const SCORE_HELP = {
   diagnostic:
@@ -180,7 +169,7 @@ export const SCORE_HELP = {
     'An issue-weighted summary of this Review. It is not a prediction of conversion or revenue. Each rubric starts at 100. Critical Flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
   comparableLabel: "On last Review's Flags",
   comparableHelp:
-    'Same scoring formula, only on Flags this update review already knew. New observations stay in the full score.',
+    'Same scoring formula, only on Flags this recheck already knew. New observations stay in the full score.',
   /** Canonical deep link via lib/help contextual surfaces */
   faqHref: helpHrefForSurface('score_help'),
 } as const
@@ -222,13 +211,6 @@ export const SUPPORT_CHAT = {
   readError: 'Could not load the latest messages.',
   retryMessages: 'Try loading messages again',
   loadingMessages: 'Loading messages…',
-} as const
-
-/** Strict severity meanings (enum stays CRITICAL | IMPORTANT | POLISH). */
-export const SEVERITY_MEANINGS = {
-  CRITICAL: 'Prevents a core user outcome (blocking).',
-  IMPORTANT: 'A consequential problem supported by the recorded observation.',
-  POLISH: 'Meaningful improvement or best practice.',
 } as const
 
 export function severityLabel(severity: string): string {

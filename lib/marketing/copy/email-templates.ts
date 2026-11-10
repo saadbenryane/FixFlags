@@ -32,7 +32,7 @@ export const NURTURE_EMAILS = {
     html: (name: string, unsubscribeUrl?: string) =>
       layout(`
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
-  <p>Made changes since your last website check? Open a problem and choose Verify to check it again.</p>
+  <p>Made changes since your last website check? Open a Flag and select Check now to check it again.</p>
   <p>We’ll show whether the fix worked, still needs attention, or needs another check.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Open your Sites</a></p>
 `, { preferencesUrl: unsubscribeUrl, preferencesLabel: NOTIFICATIONS_COPY.unsubscribe.action }),
@@ -50,7 +50,7 @@ export const NURTURE_EMAILS = {
     <li>Any proof you show is accurate and supports its claim</li>
     <li>The opening copy explains what the page is for</li>
   </ul>
-  <p>${BRAND.name} checks your website and keeps evidence with each finding. Confirm important results before you share the link.</p>
+  <p>${BRAND.name} checks your website and keeps evidence with each Flag. Confirm important results before you share the link.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Review before you publish</a></p>
 `, { preferencesUrl: unsubscribeUrl, preferencesLabel: NOTIFICATIONS_COPY.unsubscribe.action }),
   },

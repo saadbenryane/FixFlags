@@ -55,9 +55,9 @@
     "Skip to content"
   ],
   "app/report/[id]/CompletedReportView.tsx": [
-    "Analyze a website",
+    "Check your website",
     "Evidence from an earlier FixFlags check",
-    "How Site care works",
+    "How it works",
     "No customer Flag was preserved for this earlier check. That does not prove the Site is healthy today.",
     "Saved observations",
     "This saved report shows what an earlier check found. The website may have changed since\n            then. Run a new website check for current results and next steps."
@@ -66,7 +66,7 @@
     "Opening report"
   ],
   "app/report/[id]/page.tsx": [
-    "Analyze this website"
+    "Check this website"
   ],
   "app/shopify/ShopifyAppLoader.tsx": [
     "Try again"
@@ -240,11 +240,11 @@
     "Scan progress"
   ],
   "components/report/ScoreHistoryChart.tsx": [
-    "Live review in progress",
+    "Check history",
+    "Check in progress",
+    "Live check in progress",
     "No observations yet",
-    "No score history available",
-    "Review history",
-    "Review in progress"
+    "No score history available"
   ],
   "components/report/WorkspaceChatPanel.tsx": [
     "Agent messages"
@@ -310,12 +310,6 @@
   ],
   "components/sites/SiteOutcomeConfirm.tsx": [
     "Safe Signup fixture"
-  ],
-  "components/sites/SiteOverview.tsx": [
-    "Findings summary"
-  ],
-  "components/sites/SiteResolvedFlagRow.tsx": [
-    "View proof"
   ],
   "components/sites/SiteResourceBoundary.tsx": [
     "new Set"

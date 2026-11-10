@@ -67,7 +67,7 @@ describe('comprehensive homepage experience', () => {
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Pages', 'Conversion', 'Uptime', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility'])
-    const findings = within(board).getByRole('region', { name: 'Findings summary' })
+    const findings = within(board).getByRole('region', { name: 'Flags summary' })
     const capture = within(board).getByRole('region', { name: 'Website preview' })
     expect(capture.compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     const uptime = within(board).getByRole('article', { name: 'Uptime' })

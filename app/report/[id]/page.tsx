@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${hostname} saved evidence · ${BRAND.name}`
   const description = topIssue
     ? `${topIssue}. Run your own check at ${BRAND.name}.`
-    : `Saved observations from an earlier FixFlags check. Analyze the website again for current evidence.`
+    : `Saved observations from an earlier FixFlags check. Check the website again for current evidence.`
 
   return {
     title,
@@ -91,10 +91,10 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
           title={failed ? 'This earlier check could not finish' : 'This earlier check is still running'}
           description={
             failed
-              ? 'Analyze the website again to create a current Site with fresh evidence and a clear recovery path.'
-              : 'This link points to an earlier check. Analyze the website again to continue in the current FixFlags Site experience.'
+              ? 'Check the website again to create a current Site with fresh evidence and a clear recovery path.'
+              : 'This link points to an earlier check. Check the website again to continue in your FixFlags Site.'
           }
-          actionLabel="Analyze this website"
+          actionLabel="Check this website"
           actionHref={`/?url=${encodeURIComponent(state.audit.url)}`}
         />
       </AuditShell>

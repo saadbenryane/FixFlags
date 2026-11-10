@@ -339,33 +339,11 @@ export const SHARE_COPY = {
   },
 } as const
 
-export const LOCKED_INSPECTION = {
-  headline: 'Sign in to inspect this Flag',
-  body: 'This report includes evidence, screenshots, and fix instructions for every flag.',
-  features: [
-    'Screenshot evidence with interactive pins',
-    'Detailed explanation of the Flag',
-    'Why this matters for your users',
-    'How to verify the fix',
-    'Fix instructions for your editor',
-  ],
-  primaryCta: 'Sign in',
-  secondaryCta: 'Create free account',
-} as const
-
 export const LOCKED_CONTENT_TEASER = {
   defaultLabel: 'Sign up to view',
-  fixPromptLabel: 'Create a free account to get the fix prompt for this flag',
+  fixPromptLabel: 'Create a free account to get the fix instructions for this Flag',
   primaryCta: 'Create free account',
   secondaryCta: 'Sign in',
-} as const
-
-export const SAMPLE_FIX = {
-  label: 'Example fix',
-  fixTitle: 'Fix',
-  signInCta: 'Sign in',
-  subtext: (n: number) => `One sample fix below. Create a free account to see fix instructions for all ${n} Flags, save this Site, and choose any supported monitoring schedule on one website during beta.`,
-  primaryCta: 'Create free account',
 } as const
 
 export const SCAN_LIMIT_GATE = {
@@ -391,7 +369,7 @@ export const SCAN_LIMIT_GATE = {
  * scan they asked for continues without being asked for again.
  */
 export const SCAN_HANDOFF = {
-  resuming: (url: string) => `Resuming the scan for ${url}`,
+  resuming: (url: string) => `Resuming the check for ${url}`,
 } as const
 
 /**
@@ -412,15 +390,15 @@ export const PLAN_LIMIT_NOTICE = {
       body: 'Open beta includes one website. Join the paid-plan waitlist if you need another website. Your existing website keeps full beta access.',
     },
     'check-limit': {
-      title: 'This period\u2019s analyses are used up',
-      body: 'The next analysis starts when the current period renews, or right away on a plan that includes more.',
+      title: 'This period\u2019s checks are used up',
+      body: 'The next check starts when the current period renews, or right away on a plan that includes more.',
     },
     'claim-limit': {
       title: 'This Site could not be saved',
       body: 'Open beta includes one website, so this Site could not be added. Join the paid-plan waitlist if you need another website.',
     },
     'anon-scan-limit': {
-      title: 'Your next scan is next week',
+      title: 'Your next check is next week',
       body: 'Signed out, FixFlags checks one website a week. A free account checks deeper, keeps the history, and watches for changes on its own.',
     },
   },
@@ -429,11 +407,3 @@ export const PLAN_LIMIT_NOTICE = {
 } as const
 
 export type PlanLimitKind = keyof typeof PLAN_LIMIT_NOTICE.copy
-
-export const REPORT_UPGRADE_GATE = {
-  title: 'Upgrade to keep this website monitored',
-  body: 'You have reached this period\u2019s limit. Join the waitlist if you need another website.',
-  primaryCta: 'Join waitlist',
-  saving: 'Opening waitlist',
-  savingBody: 'Taking you to the waitlist.',
-} as const

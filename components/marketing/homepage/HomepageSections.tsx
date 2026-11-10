@@ -15,7 +15,7 @@ export type HomepageCopySource = 'read' | 'share' | 'ai' | 'all'
 export type HomepageCopyResult = { source: HomepageCopySource; message: string } | null
 
 export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTMLButtonElement) => void }) {
-  return <section className={`${s.section} ${t.loopSection}`} aria-labelledby="homepage-loop-heading">
+  return <section className={s.section} aria-labelledby="homepage-loop-heading">
     <div className={t.monitoringGrid}>
       <div className={t.monitoringIntro}>
         <HomepageSectionHeader id="homepage-loop-heading" index="04" label={C.notifications.label} lines={C.notifications.titleLines} lede={C.notifications.body} />
@@ -34,9 +34,6 @@ export function HomepageLoopSection({ onOpenFlag }: { onOpenFlag: (trigger: HTML
         </div>
       </figure>
     </div>
-    <ol className={t.loop}>
-      {C.workflow.steps.map(step => <li key={step.id}><p className={t.loopLabel}>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}
-    </ol>
   </section>
 }
 

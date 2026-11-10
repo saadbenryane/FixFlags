@@ -1,18 +1,18 @@
 /**
  * Canonical customer-facing terminology. Wire marketing, product UI, and help from here.
- * Internal code may still use re-check, scan, audit, journey enums.
+ * Internal code may still use recheck, scan, audit, journey enums.
  * Monitor. Flag. Fix. is the customer loop. Verification supplies recovery proof.
  */
 
 export const ANALYZE_CTA = 'Check your website'
 
 export const SITE_ACTIVITY_COPY = {
-  milestones: ['Reached', 'Captured', 'Checked', 'Reviewed', 'Saved'],
-  partial: 'Review incomplete',
-  partialHint: 'Results saved. Review incomplete.',
-  stages: ['Waiting to start', 'Capturing pages', 'Running checks', 'Reviewing findings', 'Saving results', 'Check finished'],
-  recorded: ['Check accepted', 'Page captures recorded', 'Check results recorded', 'Review findings recorded', 'Results recorded', 'Check finished'],
-  interrupted: ['Check could not start', 'Page capture interrupted', 'Checks interrupted', 'Review interrupted', 'Results could not be saved', 'Check interrupted'],
+  milestones: ['Reached', 'Captured', 'Checked', 'Prioritized', 'Saved'],
+  partial: 'Prioritization incomplete',
+  partialHint: 'Results saved. Prioritization incomplete.',
+  stages: ['Waiting to start', 'Capturing pages', 'Running checks', 'Prioritizing Flags', 'Saving results', 'Check finished'],
+  recorded: ['Check accepted', 'Page captures recorded', 'Check results recorded', 'Flag priorities recorded', 'Results recorded', 'Check finished'],
+  interrupted: ['Check could not start', 'Page capture interrupted', 'Checks interrupted', 'Prioritization interrupted', 'Results could not be saved', 'Check interrupted'],
 } as const
 
 export const REVIEW_ENTRY = {
@@ -37,7 +37,7 @@ export const SITE_BOARD_COPY = {
   smallTouchTargets: 'Hard-to-tap controls',
   watchOff: 'Not monitored',
   watchSetup: 'Set up monitoring',
-  reviewIncomplete: 'Review couldn’t finish',
+  reviewIncomplete: 'Prioritization couldn’t finish',
   cardCheckIncomplete: 'Limited evidence',
   cardRetryExplanation: 'The saved results are still available. A new check will try the missing work again.',
   watchCard: 'Monitoring',
@@ -47,7 +47,7 @@ export const SITE_BOARD_COPY = {
   watchCardPaused: 'Paused',
   watchCardDelayed: 'Delayed',
   watchCardQuota: 'Needs attention',
-  watchNext: (when: string) => `Next analysis ${when}`,
+  watchNext: (when: string) => `Next check ${when}`,
   siteFlagCount: (count: number) => `${count} ${count === 1 ? 'Flag' : 'Flags'}`,
   siteCoverageIncomplete: 'Coverage incomplete',
   siteChecking: 'Checking',
@@ -57,10 +57,11 @@ export const SITE_BOARD_COPY = {
     other: 'Other Flags',
     recommendations: 'Suggestions',
   },
-  findingPriority: 'Finding priority',
+  findingPriority: 'Flag priority',
   findingLocationUnknown: 'Page not recorded',
   findingEvidence: 'Evidence and scope',
-  findingPageScope: (count: number) => `Findings on ${count} ${count === 1 ? 'page' : 'pages'}`,
+  flagsSummary: 'Flags summary',
+  findingPageScope: (count: number) => `Flags on ${count} ${count === 1 ? 'page' : 'pages'}`,
   settingsActionsBody: 'Choose the visitor actions FixFlags should verify. Each card records what happened and whether it still works.',
   viewDetails: 'View details',
   checkedScope: 'What was checked',
@@ -223,12 +224,12 @@ export const SITE_BOARD_COPY = {
  */
 export const SITE_PRESENTATION_COPY = {
   result: {
-    checking: 'Analyzing',
+    checking: 'Checking',
     flags: 'Flags found',
     clear: 'Clear',
     could_not_verify: 'Couldn’t verify',
     stale: 'Out of date',
-    failed: 'Analysis incomplete',
+    failed: 'Check incomplete',
   },
   monitoring: {
     not_monitored: 'Not monitored',
@@ -242,11 +243,11 @@ export const SITE_PRESENTATION_COPY = {
   },
   run: {
     idle: 'Run details',
-    queued: 'Analysis queued',
-    running: 'Analyzing',
-    partial: 'Analysis incomplete',
-    failed: 'Analysis could not start',
-    interrupted: 'Analysis interrupted',
+    queued: 'Check queued',
+    running: 'Checking',
+    partial: 'Check incomplete',
+    failed: 'Check could not start',
+    interrupted: 'Check interrupted',
     paused: 'Updates paused',
     disconnected: 'Updates disconnected',
   },
@@ -267,7 +268,7 @@ export const SITE_PRESENTATION_COPY = {
   },
   coverageIncomplete: 'Coverage incomplete',
   freshness: {
-    none: 'No completed analysis',
+    none: 'No completed check',
     now: 'Just now',
     minutes: (count: number) => `${count} min ago`,
     hours: (count: number) => `${count} hr ago`,
@@ -314,16 +315,14 @@ export const API_KEY_COPY = {
 } as const
 
 export const CUSTOMER_TERMS = {
-  category: 'Website care',
-  categoryLine: 'Your website, looked after.',
   tagline: 'Know how your website is doing, what needs attention, and what to do next.',
   primaryCta: ANALYZE_CTA,
   compactPrimaryCta: ANALYZE_CTA,
   productReview: 'Site check',
   productReviews: 'Site checks',
   productReviewTitle: 'Site',
-  updateReview: 'Update review',
-  updateReviews: 'Update reviews',
+  updateReview: 'Recheck',
+  updateReviews: 'Rechecks',
   watchRun: 'Watch run',
   watchReview: 'Watch check',
   funnel: 'Path',
@@ -352,7 +351,8 @@ export const PRICING_COPY = {
 export const CORE_LOOP_LABEL = 'Monitor. Flag. Fix.'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
-export const BANNED_CUSTOMER_PHRASES = [/\bre-checks?\b/i, /\bunlimited re-checks?\b/i, /\bnew URL checks?\b/i, /\bjourneys per month\b/i, /\bjourneys \/ month\b/i, /\bpolish pass\b/i, /\bpolish scan\b/i] as const
+/** Recheck is the public word for a fresh check of a fix (docs/voice-and-copy.md); only its unlimited claim is banned. */
+export const BANNED_CUSTOMER_PHRASES = [/\bunlimited rechecks?\b/i, /\bnew URL checks?\b/i, /\bjourneys per month\b/i, /\bjourneys \/ month\b/i, /\bpolish pass\b/i, /\bpolish scan\b/i] as const
 export const CLIPBOARD_COPY = {
   success: 'Copied to clipboard',
   failure: 'Could not copy to clipboard',

@@ -15,7 +15,7 @@ Keys inherit your account access and never open another account's Sites. Manage 
 
 ## Give the agent a repair brief
 
-Open a Site Flag, preview its fix prompt, then paste it into your coding agent. The prompt includes the recorded task, a report link, a focused JSON URL, and a call to `fixflags.get_flag` for that same evidence.
+Open a Site Flag, preview its fix instructions, then paste them into your coding agent. The instructions include the recorded task, a report link, a focused JSON URL, and a call to `fixflags.get_flag` for that same evidence.
 
 The versioned brief includes the original Flag and scan IDs, problem and impact, affected pages, recorded devices and selectors, supporting observations, confidence and cause certainty when recorded, suggested repair, expected behavior, verification rule, and explicit evidence limitations. It does not include account credentials, fixture secrets, or raw page content.
 

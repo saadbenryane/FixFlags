@@ -1,6 +1,6 @@
 ## Site board
 
-Your **Site** is your website and its saved results in FixFlags. **Overview** groups results into areas such as Pages, Conversion, Security, Search, Performance, and Tracking. Open an area to see its findings and what was checked.
+Your **Site** is your website and its saved results in FixFlags. **Overview** groups results into areas such as Pages, Conversion, Security, Search, Performance, and Tracking. Open an area to see its Flags and what was checked.
 
 Check the date and any limits beside a result. The labels mean different things:
 
@@ -26,7 +26,7 @@ The Timeline graph shows Flag counts from website-wide checks. Your first check 
 
 ## Flags and evidence
 
-A **Flag** is a problem FixFlags found that needs attention. Open it to see the affected page, what happened, when it was checked, why it matters, and a suggested fix. Screenshots and check details help you understand the finding.
+A **Flag** is a problem FixFlags found that needs attention. Open it to see the affected page, what happened, when it was checked, why it matters, and a suggested fix. Screenshots and check details help you understand the Flag.
 
 You may also see **Recommendations**, suggestions for improvements. These do not count as Flags or trigger Flag emails.
 

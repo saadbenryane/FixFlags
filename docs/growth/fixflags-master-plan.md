@@ -31,6 +31,30 @@ On November 10 the owner asked to finish the rest of the plan. The recommended o
 - Turning on `ANONYMOUS_REVIEW_DEPTH=2` after reviewing measured cost; lowering the JavaScript budget after the shell is slimmed.
 - Phase 6 hosted repair starts from concierge data, by this plan's own order. Phase 7 is 2027.
 
+### Completeness audit, November 10
+
+A second pass compared every public and in-product surface against the adopted vocabulary and the shipped code.
+
+**Fixed in this pass**
+
+- One loop everywhere. `PRODUCT_STORY.loop` (Check, Flag, Fix, Verify) now names the steps on the homepage sequence, the Product page and For AI builders. The duplicate three-step list (with "Find" in place of Flag) left the homepage.
+- Pricing stopped understating shipped work. Checks after every deploy are marked included, and the FAQ links to the deploy hook docs. "Look after your website" is gone.
+- In-product words. Status, progress and timeline labels say Check, Checking, Prioritizing Flags and Recheck instead of Analysis, Analyzing, AI review, Funnel review and Update review. The legacy report pages, emails, plan-limit notices and public docs use the same words. The copy guard no longer bans "recheck", which the voice guide adopts.
+- The sample page uses the board's customer headline ("The main button is off-screen on phones") and states the change once, inside the fix instructions.
+- Removed 16 unused components and 11 unused copy exports. Three analytics events were satisfied only by an unmounted tracker, so they are now marked retired.
+
+**Still to do, in order**
+
+1. Real-path proof of the first check. Apply local migrations, run the worker, and walk URL → board → Flag → fix instructions → Check now on desktop and phone. Nothing in this pass replaces that walk.
+2. Retire `/report` from new paths. `/api/checks` and the CLI still return `reportUrl`. Sign-up from a running report uses `next=/report/…`, and chat history and claim links point at `/report`. Point all of them at the Site.
+3. Remove redirect-only routes that nothing links to (`/compare/[id]`, `/report/[id]/details`, `/report/repo/[id]`, `/share/[token]/details`, `/docs/cli`, `/docs/mcp/tools`, `/dashboard/mcp-analytics`, `/admin/inbox`, `/examples`, `/samples/details`, `/design/homepage`). Keep `/partners` as a config redirect until search traffic moves.
+4. Mount or delete the Safe Signup fixture and Outcome confirmation UI (`SafeFormFixtures`, `SiteOutcomeConfirm`). Both are tested but rendered nowhere, so owners have no path to authorize Safe Signup.
+5. Collapse "coming soon" to one line per surface. Pricing repeats it six or more times, and it also repeats on Integrations, `/connect-ai`, Site Settings, docs and help.
+6. Decide one name for the recheck action. The app button says "Check now", while the homepage sample and the voice guide say Recheck. Then align the remaining "problem" and "Monitoring" wording with Flag and Watch.
+7. Add the missing IA pages: For agencies, Compare (Elu, uptime monitors, Checkly) and a free tools index.
+8. Flag text for people. Some prescriptions still read as hedged inspection plans ("Review the recorded mobile action… If this is the intended primary action…"). Rewrite them so the first line states the change, as part of the finding-quality review.
+9. Legal text still says "Analyze a URL". It needs an owner or legal review, not a copy edit.
+
 ## The short version
 
 1. **We are not losing to Elu's product. We are losing on conviction and distribution.** Elu ships a confident story, a one-command install, proof signals and a sales motion. FixFlags has a fast, real, installation-free product that almost nobody sees, explained by a website that sells gentle "website care".

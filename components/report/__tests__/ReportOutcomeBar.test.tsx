@@ -74,12 +74,12 @@ function buildModel(): ReportWorkspaceModel {
 }
 
 describe('ReportOutcomeBar', () => {
-  it('shows the score and chronological Review history without Product identity', () => {
+  it('shows the score and chronological check history without Product identity', () => {
     render(<ReportOutcomeBar model={buildModel()} />)
 
     expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
     expect(screen.getByLabelText(/^Score 70/)).toBeVisible()
-    expect(screen.getByRole('navigation', { name: 'Review history' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Check history' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'How scores work' })).toBeInTheDocument()
     expect(screen.getAllByRole('link')).toHaveLength(3)
     expect(screen.queryByText('example.com')).not.toBeInTheDocument()
@@ -130,7 +130,7 @@ describe('ReportOutcomeBar', () => {
     }
     render(<ReportOutcomeBar model={model} />)
 
-    expect(screen.getByRole('region', { name: 'See what changed in this update review' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'See what changed in this recheck' })).toBeInTheDocument()
     expect(screen.getByText('Fixed')).toBeVisible()
     expect(screen.getByText('New')).toBeVisible()
     expect(
@@ -166,6 +166,6 @@ describe('ReportOutcomeBar', () => {
     render(<ReportOutcomeBar model={model} />)
 
     expect(screen.getByLabelText(/^Score unavailable/)).toBeVisible()
-    expect(screen.queryByRole('navigation', { name: 'Review history' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Check history' })).not.toBeInTheDocument()
   })
 })

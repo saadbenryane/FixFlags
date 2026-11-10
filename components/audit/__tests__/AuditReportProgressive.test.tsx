@@ -333,7 +333,7 @@ describe('AuditReportProgressive', () => {
       />
     )
     expect(screen.getAllByText(/Starting AI review/).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/Preparing Funnel review/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Checking the main visitor path/)).not.toBeInTheDocument()
   })
 
   it('keeps the Funnel substep on full pipeline scans', () => {
@@ -345,7 +345,7 @@ describe('AuditReportProgressive', () => {
         isTeaser={false}
       />
     )
-    expect(screen.getAllByText(/Preparing Funnel review/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Checking the main visitor path/).length).toBeGreaterThan(0)
   })
 
   it('parks Timeline playback for an owner while keeping the Report available', () => {

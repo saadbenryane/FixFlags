@@ -19,7 +19,8 @@ describe('/samples', () => {
 
     expect(screen.getByTestId('sample-site')).toHaveAttribute('data-observation', 'curated-sample-v0')
     expect(screen.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.title })).toBeInTheDocument()
-    expect(screen.getByText('Primary CTA is hidden below the fold on mobile')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'The main button is off-screen on phones' })).toBeInTheDocument()
+    expect(screen.queryByText('Primary CTA is hidden below the fold on mobile')).not.toBeInTheDocument()
     expect(screen.queryByText(/score/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/report workspace/i)).not.toBeInTheDocument()
     expect(decodeURIComponent(screen.getByRole('img', { name: PUBLIC_SITE_COPY.samplePage.imageAlt }).getAttribute('src')!)).toContain('/samples/observations/curated-sample-v0/mobile.webp')

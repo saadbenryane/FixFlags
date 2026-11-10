@@ -21,9 +21,10 @@ function walk(dir: string, acc: string[] = []): string[] {
 }
 
 describe('audit progress copy', () => {
-  it('uses product-review terminology for in-progress labels', () => {
-    assert.match(AUDIT_PROGRESS.inProgress, /Analyzing/i)
-    assert.match(AUDIT_PROGRESS.submitLoading, /Analyzing/i)
+  it('uses Check terminology for in-progress labels', () => {
+    assert.match(AUDIT_PROGRESS.inProgress, /^Checking/)
+    assert.match(AUDIT_PROGRESS.submitLoading, /^Checking/)
+    assert.doesNotMatch(JSON.stringify(AUDIT_PROGRESS), /Analy[sz]|Funnel review|AI review/)
   })
 
   it('does not expose queue-position phrasing in audit UI components', () => {

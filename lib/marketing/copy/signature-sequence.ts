@@ -1,3 +1,7 @@
+import { PRODUCT_STORY } from './product-story'
+
+const [CHECK, FLAG, FIX, VERIFY] = PRODUCT_STORY.loop
+
 /** The homepage signature sequence: one sample Flag on a controlled demo store, from check to verified fix. */
 export const SIGNATURE_SEQUENCE = {
   label: 'Sample check on a controlled demo store',
@@ -16,10 +20,10 @@ export const SIGNATURE_SEQUENCE = {
     afterLabel: 'Recheck on the live site',
   },
   steps: [
-    { id: 'check', tab: 'Check', caption: 'We open your live site and try it like a visitor.' },
-    { id: 'flag', tab: 'Flag', caption: 'Anything broken gets a Flag, with the evidence.' },
-    { id: 'fix', tab: 'Fix', caption: 'Paste the fix instructions into your AI tool.' },
-    { id: 'verify', tab: 'Verify', caption: 'We recheck the live site and keep the receipt.' },
+    { id: 'check', tab: CHECK, caption: 'We open your live site and try it like a visitor.' },
+    { id: 'flag', tab: FLAG, caption: 'Anything broken gets a Flag, with the evidence.' },
+    { id: 'fix', tab: FIX, caption: 'Paste the fix instructions into your AI tool.' },
+    { id: 'verify', tab: VERIFY, caption: 'We recheck the live site and keep the receipt.' },
   ],
   flag: {
     label: 'Flag',

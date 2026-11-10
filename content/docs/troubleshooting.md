@@ -1,4 +1,4 @@
-## Analysis did not finish
+## A check did not finish
 
 Open your website in FixFlags and read the message beside the results. Use the retry action shown there to try again. Your saved website and earlier results stay available.
 

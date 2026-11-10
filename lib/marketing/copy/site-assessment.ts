@@ -35,7 +35,7 @@ export const SITE_ASSESSMENT_COPY = {
     FAILED: 'These account checks did not finish.',
   },
   checkingCategory: (name: string) => `Checking ${name.toLowerCase()}`,
-  categoryIncomplete: 'This category check did not establish all required evidence. Previous findings remain available.',
+  categoryIncomplete: 'This category check did not establish all required evidence. Previous Flags remain available.',
   invalidSelection: 'Select a website check, one supported category, or valid Outcomes.',
   signInToRun: 'Sign in to start a website check.',
   claimToRun: 'Claim this Site before starting a check.',

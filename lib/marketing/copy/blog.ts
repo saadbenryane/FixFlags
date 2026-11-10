@@ -23,7 +23,7 @@ export interface BlogPost {
   relatedDocs: readonly DocsPageKey[]
 }
 
-export const BLOG_SERIES_COVER: BlogCover = {
+const BLOG_SERIES_COVER: BlogCover = {
   src: '/marketing/blog/website-quality-cover-v2.webp',
   width: 1600,
   height: 800,

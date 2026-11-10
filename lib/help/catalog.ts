@@ -20,7 +20,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     searchTokens: ['start', 'url', 'scan', 'audit', 'site'], updatedAt: '2026-10-16', estimatedReadMinutes: 2,
     body: [
       { type: "p", text: "You can try your first check before creating an account. Use a live webpage that visitors can open without signing in." },
-      { type: "p", text: "No installation needed for public-page analysis." },
+      { type: "p", text: "No installation needed for public pages." },
       { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Check your website.", "Open a problem, called a Flag, to see what went wrong and how to fix it. If we couldn’t check an area, the result tells you why."] },
       { type: "callout", text: "A Flag is a problem that needs attention. Not checked yet means results are not available for that area." },
     ], related: ['save-your-site', 'read-site-coverage', 'verify-a-flag'], relatedDocs: ['getting-started'],
@@ -110,7 +110,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: 'Planned store context. Existing connection cleanup remains available.', popular: true,
     searchTokens: ['shopify', 'install', 'connect', 'store'], updatedAt: '2026-10-14', estimatedReadMinutes: 2,
     body: [
-      { type: 'p', text: 'Shopify is coming soon until its connection and execution are tested and validated. GitHub account authorization is available. Website analysis and monitoring work independently.' },
+      { type: 'p', text: 'Shopify is coming soon until its connection and execution are tested and validated. GitHub account authorization is available. Website checks and monitoring work independently.' },
       { type: 'p', text: 'New setup, refresh, and reconnection are unavailable. A previously saved connection can still be disconnected from the Site’s Integrations. Uninstall any existing FixFlags Shopify app separately to revoke its external access.' },
       { type: 'link', text: 'Read the Shopify integration status', href: '/docs/integrations/shopify' },
     ], related: ['shopify-access-and-removal', 'read-site-coverage'], relatedDocs: ['shopify'],

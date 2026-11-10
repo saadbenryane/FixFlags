@@ -77,12 +77,11 @@ describe('/pricing', () => {
     expect(studio.getByText('$99')).toBeVisible()
     expect(studio.getByText('90 / month')).toBeVisible()
     expect(studio.getByText('Custom')).toBeVisible()
-    expect(studio.getByText('Requires a connected integration')).toBeVisible()
-    expect(studio.getByText('Planned')).toBeVisible()
+    expect(studio.getByText('Checks after every deploy')).toBeVisible()
     expect(studio.getByRole('link', { name: 'Join Studio waitlist' })).toBeVisible()
     for (const plan of [free, pro, studio]) {
       expect(plan.getByText('Uptime monitoring')).toBeVisible()
-      expect(plan.getByText('Included')).toBeVisible()
+      expect(plan.getAllByText('Included')[0]).toBeVisible()
     }
     const included = screen.getByRole('region', { name: PRICING.sharedTitle })
     for (const feature of PRICING.sharedFeatures) expect(within(included).getByText(feature)).toBeVisible()

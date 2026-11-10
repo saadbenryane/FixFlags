@@ -4,15 +4,17 @@ import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { REVIEW_ENTRY } from '@/lib/marketing/copy/terminology'
 import { BRAND, SOCIAL_CARD } from '@/lib/marketing/copy/brand'
 import { PRODUCT_STORY } from '@/lib/marketing/copy/product-story'
+import { SIGNATURE_SEQUENCE } from '@/lib/marketing/copy/signature-sequence'
+import { AI_BUILDERS_PAGE } from '@/lib/marketing/copy/ai-builders'
 
 /** Rendered narrative coverage lives in PublicPages and CareHomepage component tests. */
 describe('shared product story contracts', () => {
-  it('uses the same three responsibilities in the homepage and public explanation', () => {
-    const expected = ['monitor', 'flag', 'fix']
-    expect(CARE_HOME.workflow.steps.map(step => step.id)).toEqual(expected)
-    expect(PUBLIC_SITE_COPY.howItWorks.steps.map(step => step.id)).toEqual(expected)
-    expect(CARE_HOME.workflow.steps[2].body).toContain('Check now')
-    expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your website.*scheduled checks/i)
+  it('names one loop, in one order, on every surface that shows its steps', () => {
+    expect(PRODUCT_STORY.loop).toEqual(['Check', 'Flag', 'Fix', 'Verify'])
+    expect(SIGNATURE_SEQUENCE.steps.map(step => step.tab)).toEqual(PRODUCT_STORY.loop)
+    expect([...PUBLIC_SITE_COPY.howItWorks.steps.map(step => step.label), PUBLIC_SITE_COPY.howItWorks.repeat.label]).toEqual(PRODUCT_STORY.loop)
+    expect(AI_BUILDERS_PAGE.loop.map(step => step.label)).toEqual(PRODUCT_STORY.loop)
+    expect(PUBLIC_SITE_COPY.howItWorks.steps[0].body).toMatch(/save your website.*scheduled checks/i)
     expect(SEO.home.description).toBe(PRODUCT_STORY.description)
     expect(SEO.home.description).toMatch(/real browser/i)
     expect(SEO.home.description).toMatch(/hands your AI the fix/i)

@@ -175,7 +175,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     source: 'troubleshooting.md',
     order: 8,
     headings: [
-      { id: 'analysis-did-not-finish', title: 'Analysis did not finish' },
+      { id: 'a-check-did-not-finish', title: 'A check did not finish' },
       { id: 'site-could-not-be-reached', title: 'Site could not be reached' },
       { id: 'page-asks-for-a-password-or-human-check', title: 'Page asks for a password or human check' },
       { id: 'verify-is-still-in-progress', title: 'Verify is still in progress' },

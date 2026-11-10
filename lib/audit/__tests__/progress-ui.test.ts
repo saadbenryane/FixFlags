@@ -39,7 +39,7 @@ describe('getStagePresentation', () => {
   it('does not leak journey substeps into late JUDGING', () => {
     const presentation = getStagePresentation('JUDGING', PIPELINE_PROGRESS.JUDGING)
     assert.equal(presentation.detail, AUDIT_PROGRESS.stages.find((s) => s.status === 'JUDGING')?.subtitle)
-    assert.equal(presentation.scanningLabel, 'AI review')
+    assert.equal(presentation.scanningLabel, 'Prioritizing Flags')
   })
 
   it('surfaces journey substeps while status is JUDGING but progress is still in the journey band', () => {

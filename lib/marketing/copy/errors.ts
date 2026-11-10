@@ -4,7 +4,7 @@ export const AUDIT_ERRORS = {
   retryCta: 'Retry',
   checkAnotherSite: 'Check another site',
   goHome: 'Go home',
-  startCheck: 'Check My Site',
+  startCheck: 'Check your website',
   reportNotFoundTitle: 'Saved evidence not found',
   reportNotFoundBody: 'This saved evidence does not exist or has been removed.',
   accessDeniedTitle: 'Access denied',
@@ -219,35 +219,35 @@ export const SYSTEM_COPY = {
 } as const
 
 export const AUDIT_PROGRESS = {
-  inProgress: 'Analyzing your website...',
-  submitLoading: 'Analyzing…',
-  bannerScanning: 'Analyzing',
+  inProgress: 'Checking your website…',
+  submitLoading: 'Checking…',
+  bannerScanning: 'Checking',
   workerQueuedWarningDev:
     'Report is still preparing. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:
-    'Review workers are restarting. Your report will continue automatically.',
+    'Check workers are restarting. Your check will continue automatically.',
   workerBacklogWarningProd:
-    'Still preparing your report. It will continue shortly.',
+    'Still preparing your check. It will continue shortly.',
   stages: [
-    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review…' },
+    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your check…' },
     { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views…' },
-    { status: 'CHECKING', label: 'Running checks', subtitle: 'Message, Experience, and Reach…' },
-    { status: 'JUDGING', label: 'AI review', subtitle: 'Prioritizing Flags from evidence…' },
-    { status: 'FINALIZING', label: 'Preparing review', subtitle: 'Scoring rubrics and packaging results…' },
+    { status: 'CHECKING', label: 'Running checks', subtitle: 'Pages, actions, speed, and search…' },
+    { status: 'JUDGING', label: 'Prioritizing Flags', subtitle: 'Ranking Flags from the evidence…' },
+    { status: 'FINALIZING', label: 'Saving results', subtitle: 'Packaging results…' },
   ],
   /** Shown only when pipeline progress crosses the matching real substep anchor. */
   substeps: {
     CAPTURE_DONE: 'Capture finished. Starting deterministic checks…',
-    CHECKS_DONE: 'Checks finished. Preparing Funnel review…',
-    FLOW_RUNNING: 'Reviewing the primary customer path…',
-    JOURNEY_START: 'Walking the primary Funnel path…',
-    JOURNEY_DONE: 'Funnel review finished. Starting AI review…',
+    CHECKS_DONE: 'Checks finished. Checking the main visitor path…',
+    FLOW_RUNNING: 'Checking the main visitor path…',
+    JOURNEY_START: 'Walking the main visitor path…',
+    JOURNEY_DONE: 'Visitor path checked. Prioritizing Flags…',
   },
   formatStageStep: (current: number, total: number, label: string) =>
     `Step ${current} of ${total} · ${label}`,
-  scanningBadge: (label: string) => `Analyzing · ${label}`,
-  ariaScanning: 'Analyzing',
-  ariaScanningPercent: (percent: number) => `Analyzing, ${percent} percent`,
+  scanningBadge: (label: string) => `Checking · ${label}`,
+  ariaScanning: 'Checking',
+  ariaScanningPercent: (percent: number) => `Checking, ${percent} percent`,
   ariaScore: (score: number) => `Score ${score} percent`,
   ariaScoreUnavailable: 'Score unavailable',
   scoreNa: 'N/A',
@@ -264,10 +264,6 @@ export function formatQueueWaitHint(seconds: number): string {
     return `About ${Math.ceil(seconds / 60)} min before the review starts.`
   }
   return `About ${Math.max(1, Math.round(seconds))}s before the review starts.`
-}
-
-export function formatQueuePosition(position: number): string {
-  return `Queue position ${position}.`
 }
 
 export const SITE_ERRORS = {

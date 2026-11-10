@@ -132,17 +132,8 @@
 .emailFinding > span:last-child { grid-column: 2; font-size: 11px; color: hsl(var(--muted-foreground)); }
 .emailAction { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 100%; margin-top: 16px; color: hsl(var(--foreground)); font-size: 12px; font-weight: 600; }
 .emailAction:hover { text-decoration: underline; text-underline-offset: 4px; }
-.loop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-block: 64px 24px; text-align: left; }
-.loop li { min-width: 0; }
-.loop h3 { margin-block: 12px; font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 620; line-height: 1.2; letter-spacing: -.035em; text-wrap: balance; }
-.loop li > p:last-child { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.7; }
-.loopLabel { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
-.loopLabel::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: hsl(var(--brand)); }
-.loopLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
-.loopLink svg { color: hsl(var(--brand)); }
 @media (max-width: 767px) {
   .monitoringGrid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .loop { grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 40px; }
 }
 
 @media (max-width: 767px) {

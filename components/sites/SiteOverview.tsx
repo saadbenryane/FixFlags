@@ -3,6 +3,7 @@ import { BoardSummaryStrip, type BoardSummaryItem } from './BoardCard'
 import { type ToolItem } from './SiteTooling'
 import { DetectedToolsCard } from './DetectedToolsCard'
 import styles from './SiteOverview.module.css'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { SiteCaptureAvailability, CaptureCollectionState } from '@/lib/sites/captures'
 
 export function SiteOverview({ host, captures, captureAvailability, capturePriority = false, collectionState, summaryItems, summaryLabel, notice, technologies, onSelectSummary, onSelectTechnology }: {
@@ -23,7 +24,7 @@ export function SiteOverview({ host, captures, captureAvailability, capturePrior
     <div className={styles.layout}>
       <SitePreviewCard host={host} captures={captures} availability={captureAvailability} priority={capturePriority} collectionState={collectionState} />
       <div className={styles.summaries}>
-        <section className={styles.findings} aria-label="Findings summary">
+        <section className={styles.findings} aria-label={SITE_BOARD_COPY.flagsSummary}>
           <BoardSummaryStrip items={summaryItems} label={summaryLabel} onSelect={onSelectSummary} />
         </section>
         <DetectedToolsCard items={technologies} onSelect={onSelectTechnology} />

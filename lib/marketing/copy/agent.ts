@@ -61,8 +61,8 @@ export const AGENT_SCAN_COPY = {
         `${counts.inconclusive} ${counts.inconclusive === 1 ? 'Flag could not be compared' : 'Flags could not be compared'}`
       )
     }
-    if (parts.length === 0) return 'This update review matches the last snapshot.'
-    return `Update review: ${parts.join(', ')}.`
+    if (parts.length === 0) return 'This recheck matches the last snapshot.'
+    return `Recheck: ${parts.join(', ')}.`
   },
   noAttention: (observationCount: number) =>
     observationCount > 0

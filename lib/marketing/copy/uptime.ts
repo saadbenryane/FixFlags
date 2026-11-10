@@ -2,7 +2,7 @@ import { TLS_CERTIFICATE_LABELS } from './tls'
 
 export const UPTIME_COPY = {
   checkDetails: 'Check details', probeDetails: 'Details', incidentDuration: (minutes: number) => `${minutes} min`,
-  renderedVerification: 'Rendered-page verification', renderedLimitation: 'Existing page verification uses separate browser evidence. Availability probes do not verify or recover these findings.',
+  renderedVerification: 'Rendered-page verification', renderedLimitation: 'Existing page verification uses separate browser evidence. Availability probes do not verify or recover these Flags.',
   confirmed: 'Confirmed', scheduled: 'Scheduled',
   title: 'Uptime', details: 'Uptime details',
   description: 'Recorded availability checks for the public website URL.',

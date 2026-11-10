@@ -75,8 +75,8 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
         )}
 
         <div className="flex flex-wrap gap-3 pt-6">
-          <Button asChild><Link href="/new">Analyze a website</Link></Button>
-          <Button asChild variant="outline"><Link href="/docs/site-care">How Site care works</Link></Button>
+          <Button asChild><Link href="/new">Check your website</Link></Button>
+          <Button asChild variant="outline"><Link href="/how-it-works">How it works</Link></Button>
         </div>
       </main>
     </AuditShell>

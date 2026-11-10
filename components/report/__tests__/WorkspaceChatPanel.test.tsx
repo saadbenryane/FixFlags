@@ -75,7 +75,7 @@ describe('WorkspaceChatPanel', () => {
     render(<WorkspaceChatPanel auditId="a1" capabilities={capabilities(false)} gateReason="sign-in" />)
     fireEvent.click(screen.getByRole('button', { name: 'New review' }))
     fireEvent.change(screen.getByLabelText('URL to review'), { target: { value: 'example.com:8443/plans/?return=/account/#/pricing/' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start check' }))
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
     expect(startScanWithHandoff).toHaveBeenCalledWith(expect.objectContaining({
       url: 'https://example.com:8443/plans/?return=/account/#/pricing/',
@@ -92,16 +92,16 @@ describe('WorkspaceChatPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New review' }))
     fireEvent.change(screen.getByLabelText('URL to review'), { target: { value: 'https://first.example.com' } })
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Start check' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Start check' }))
     })
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
     const options = startScanWithHandoff.mock.calls[0][0]
     view.rerender(panel('a2'))
     expect(options.signal.aborted).toBe(true)
-    expect(screen.getByRole('button', { name: 'Start review' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Start check' })).toBeEnabled()
     fireEvent.change(screen.getByLabelText('URL to review'), { target: { value: 'https://second.example.com' } })
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start review' })) })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start check' })) })
     expect(screen.getByText('The new request can be retried.')).toBeVisible()
     await act(async () => {
       options.navigate('/sites/retired-site')
@@ -205,8 +205,8 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getByRole('button', { name: 'Review history' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'New review' }))
 
-    expect(screen.getByLabelText('URL to review')).toHaveAttribute('placeholder', 'Paste a URL to review')
-    expect(screen.getByRole('button', { name: 'Start review' })).toBeDisabled()
+    expect(screen.getByLabelText('URL to review')).toHaveAttribute('placeholder', 'Paste a URL to check')
+    expect(screen.getByRole('button', { name: 'Start check' })).toBeDisabled()
     expect(screen.queryByText('Chat with FixFlags')).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -329,7 +329,7 @@ describe('WorkspaceChatPanel', () => {
     fireEvent.change(screen.getByLabelText('URL to review'), {
       target: { value: 'https://other.com' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start check' }))
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalled())
     expect((await screen.findAllByText('Create a free account to continue')).length).toBeGreaterThan(0)
     expect(screen.getByLabelText('URL to review')).toHaveValue('https://other.com')

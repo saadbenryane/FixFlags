@@ -67,13 +67,13 @@ describe('ScoreHistoryChart', () => {
 
     const links = screen.getAllByRole('link')
     expect(links[0]).toHaveAccessibleName(
-      'Review 1 of 3, Site, Jul 21, 2026, Completed, score 60',
+      'Check 1 of 3, Site, Jul 21, 2026, Completed, score 60',
     )
     expect(links[1]).toHaveAccessibleName(
-      'Review 2 of 3, Update review, Jul 25, 2026, Partial capture, score 65',
+      'Check 2 of 3, Recheck, Jul 25, 2026, Partial capture, score 65',
     )
     expect(links[2]).toHaveAccessibleName(
-      'Review 3 of 3, Watch run, Jul 28, 2026, Degraded capture, score 70',
+      'Check 3 of 3, Watch run, Jul 28, 2026, Degraded capture, score 70',
     )
   })
 
@@ -102,7 +102,7 @@ describe('ScoreHistoryChart', () => {
       />,
     )
     expect(screen.getAllByRole('link')).toHaveLength(1)
-    expect(screen.getByRole('status')).toHaveTextContent('Live review in progress')
+    expect(screen.getByRole('status')).toHaveTextContent('Live check in progress')
   })
 
   it('scrolls the history scroller to the latest (right) end on mount', () => {

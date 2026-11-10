@@ -8,7 +8,7 @@ import s from './PricingComparisonTable.module.css'
 const PLAN_KEYS = { FREE: 'free', BUILDER: 'pro', TEAM: 'studio' } as const
 const PLAN_ICONS = { FREE: ShieldCheck, BUILDER: Flag, TEAM: Users }
 const ROW_ICONS = { checks: ListChecks, uptime: Activity, scheduling: CalendarClock, updates: Zap }
-type Cell = (typeof C.rows)[number]['free' | 'pro' | 'studio']
+type Cell = { value: string; note: string; kind: 'included' | 'unlimited' | 'pending' | 'excluded' | 'allowance' | 'value' }
 
 function CellValue({ cell }: { cell: Cell }) {
   return <div className={s.value} data-kind={cell.kind}>

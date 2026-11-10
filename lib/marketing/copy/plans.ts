@@ -27,8 +27,8 @@ export const PLANS = [
   {
     name: 'Studio', plan: 'TEAM' as const, ...PLANNED_PAID_PRICING.TEAM,
     persona: 'More checks for websites that change often',
-    outcome: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} website checks per month, with planned checks after published updates`, audits: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} website checks per month`, products: 'Billed per website',
-    features: ['90 website checks per month', 'Uptime monitoring included separately', 'Custom automatic scheduling', 'Planned checks after published updates with an integration'],
+    outcome: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} website checks per month, including checks after every deploy`, audits: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} website checks per month`, products: 'Billed per website',
+    features: ['90 website checks per month', 'Uptime monitoring included separately', 'Custom automatic scheduling', 'Checks after every deploy'],
     cta: 'Join Studio waitlist', href: '/waitlist/studio', highlight: false, badge: 'Coming soon',
     availability: 'Join the waitlist', priceLabel: 'Planned pricing',
     accountModel: 'Billed per website when paid plans open.',
@@ -53,10 +53,10 @@ export const PRICING_COMPARISON = {
       free: { value: 'Custom', note: 'Any supported schedule during beta', kind: 'value' },
       pro: { value: 'Custom', note: 'Within your monthly allowance', kind: 'value' },
       studio: { value: 'Custom', note: 'Within your monthly allowance', kind: 'value' } },
-    { id: 'updates', feature: 'Checks after published updates',
-      free: { value: 'Planned', note: 'Included during beta when available', kind: 'pending' },
+    { id: 'updates', feature: 'Checks after every deploy',
+      free: { value: 'Included', note: 'Deploy hook from any host or CI', kind: 'included' },
       pro: { value: 'Not included', note: 'Check manually or use your schedule', kind: 'excluded' },
-      studio: { value: 'Planned', note: 'Requires a connected integration', kind: 'pending' } },
+      studio: { value: 'Included', note: 'Uses the same allowance', kind: 'included' } },
     { id: 'websites', feature: 'Websites',
       free: { value: '1 website', note: '', kind: 'value' },
       pro: { value: 'Per website', note: '', kind: 'value' },
@@ -65,11 +65,11 @@ export const PRICING_COMPARISON = {
 } as const
 
 export const PRICING_FAQ: readonly FaqEntry[] = [
-  { question: 'What do I get during open beta?', answer: 'All supported features on one website, with no usage limits and any supported monitoring schedule. Paid-plan allowances do not apply during beta. Update-triggered checks are still planned.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'The beta offer' } },
+  { question: 'What do I get during open beta?', answer: 'All supported features on one website, with no usage limits and any supported monitoring schedule. Paid-plan allowances do not apply during beta. Checks after every deploy are included.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'The beta offer' } },
   { question: 'What counts as a website check?', answer: 'One run checks the pages and actions available for your website and setup. It can find several problems and tells you what it couldn’t check. That counts as one website check, not one check per problem.', learnMore: { href: '/coverage', label: 'What FixFlags checks' } },
-  { question: 'Do scheduled and manual checks share the allowance?', answer: 'Yes. The planned Pro allowance is 30 website checks per website per month. Studio includes 90. Scheduled and manual checks use the same allowance, so you choose how to use it. Both plans support custom automatic scheduling. Studio’s planned update-triggered checks use that same allowance.', learnMore: { href: '/docs/site-care', label: 'Monitoring coverage' } },
+  { question: 'Do scheduled and manual checks share the allowance?', answer: 'Yes. The planned Pro allowance is 30 website checks per website per month. Studio includes 90. Scheduled and manual checks use the same allowance, so you choose how to use it. Both plans support custom automatic scheduling. On Studio, checks after a deploy use that same allowance.', learnMore: { href: '/docs/site-care', label: 'Monitoring coverage' } },
   { question: 'Does uptime use my website-check allowance?', answer: 'No. Uptime monitoring is included separately on every plan, including Free. Its checks run on the configured schedule and do not use the allowance for complete website checks.', learnMore: { href: '/coverage#uptime', label: 'Uptime coverage' } },
-  { question: 'Can Studio check after a GitHub push or website update?', answer: 'This is planned and requires a supported repository or deployment integration. Checks target published changes on the live website. Each triggered website check uses the same 90-check allowance. This automation is not available yet.', learnMore: { href: '/integrations#github', label: 'Planned integrations' } },
+  { question: 'Can FixFlags check my site after every deploy?', answer: 'Yes. Add one request to your deploy pipeline, from GitHub Actions, Vercel, Netlify or a shell script, and FixFlags checks your live Site after each production deploy, including its open Flags. It is included on Free during open beta. On Studio, each deploy check uses the same 90-check allowance.', learnMore: { href: '/docs/site-care#check-after-every-deploy', label: 'Check after every deploy' } },
   { question: 'What counts as one website?', answer: 'Pages on the same domain count as one website. For example, yourwebsite.com and yourwebsite.com/pricing belong together. A separate subdomain, such as app.yourwebsite.com, counts as another website. Adding www does not make a separate website.', learnMore: { href: '/docs/getting-started', label: 'Getting started' } },
   { question: 'What if I need another website?', answer: 'Join the Pro or Studio waitlist. Joining records your interest and does not add a website, start a subscription, or charge you. You can keep using your existing website during beta.', learnMore: { href: '/waitlist', label: 'Join the waitlist' } },
   { question: 'What happens when beta ends?', answer: 'The full-access beta promotion is temporary. We plan to keep a useful Free plan with uptime monitoring. Paid plans add monthly website-check allowances. We’ll tell you before the beta offer changes. Paid plans require you to opt in; there is no automatic charge.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'Free and future paid plans' } },
@@ -77,8 +77,8 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
 ] as const
 
 export const PRICING = {
-  plansTitle: 'Plans', label: 'Open beta', headline: 'Look after your website. Free during open beta.',
-  headlineLead: 'Look after your website.', headlineAccent: 'Free during open beta.',
+  plansTitle: 'Plans', label: 'Open beta', headline: 'Find it. Fix it. Prove it. Free during open beta.',
+  headlineLead: 'Find it. Fix it. Prove it.', headlineAccent: 'Free during open beta.',
   subhead: 'One website. All supported features and schedules. No usage limits during beta.',
   signupCta: 'Start free', signupHref: '/sign-up', signupNote: 'No credit card. No automatic charge.',
   trustBadge: 'Full access on one website',
@@ -89,7 +89,7 @@ export const PRICING = {
   sharedNote: 'See what needs attention, how to fix it, and whether the fix worked.',
   compareTitle: 'Compare plans', compareLabel: 'Available now and coming soon',
   compareBody: 'Start free on one website. Paid plans for more websites are coming soon.',
-  compareNote: 'During open beta, all supported features and schedules are free on one website, with no usage limits. Pro and Studio show the planned paid offer. Update-triggered checks require an integration and are not available yet.',
+  compareNote: 'During open beta, all supported features and schedules are free on one website, with no usage limits. Pro and Studio show the planned paid offer.',
   coverageLink: 'See what gets checked', connectionsLink: 'See optional connections', faqTitle: 'Pricing questions',
   upgradeSteps: 'Join the waitlist. No subscription or charge.', upgradeStepsLoggedIn: 'Join the waitlist. No subscription or charge.', checkoutRedirecting: 'Opening waitlist…',
   allPlansInclude: 'All supported features are included during open beta.',
@@ -138,7 +138,7 @@ export const WAITLIST_PAGE = {
   planStudioLabel: 'Studio',
   planProDetail: 'Planned: $49 per website/month, 30 website checks and custom scheduling',
   planStudioDetail:
-    'Planned: $99 per website/month, 90 website checks, custom scheduling, and checks after published updates with an integration',
+    'Planned: $99 per website/month, 90 website checks, custom scheduling, and checks after every deploy',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -201,7 +201,7 @@ export const UPSELLS = {
   },
   signedInAiDegraded: {
     headline: 'Fix steps are below',
-    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Run an update review to retry the AI pass.',
+    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Select Check now to retry the AI pass.',
   },
   atLimit: 'Plan limit reached. Join the waitlist to continue',
 } as const
@@ -216,14 +216,14 @@ export const UPGRADE_MOMENTS = {
   compare_improved: {
     headline: (scoreDelta: number) => {
       void scoreDelta
-      return 'Update review complete'
+      return 'Recheck complete'
     },
     body: 'Join the waitlist if you need another website.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   compare_flat: {
-    headline: 'Still Flags after your update review',
+    headline: 'Flags remain after your recheck',
     body: 'Use the full report to close what remains, then verify on the live URL.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,

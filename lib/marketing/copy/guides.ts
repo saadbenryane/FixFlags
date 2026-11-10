@@ -5,7 +5,7 @@ export const GUIDE_REVIEWED_AT = '2026-10-20'
 
 export const GUIDES_PAGE = {
   eyebrow: 'Website guides',
-  title: 'A little help looking after your website.',
+  title: 'Find it, fix it, and know it worked.',
   description: 'Plain-language guides to checking your website, copying a fix, and knowing it worked.',
   metadataTitle: 'Website checking and monitoring guides | FixFlags',
   start: 'Check your website',

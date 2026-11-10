@@ -64,7 +64,7 @@ export const REPORT_COPY = {
         "Install this once on the reviewed origin. The write key is shown only now.",
       copySnippet: "Copy snippet",
       observedContext: "Observed product context",
-      verificationPending: "Run an update review for independent verification.",
+      verificationPending: "Run a recheck for independent verification.",
       openReport: "Open Site",
       openProductAria: (name: string) => `Open Site ${name}.`,
       scoreTrend: (from: number, to: number) =>
@@ -84,7 +84,7 @@ export const REPORT_COPY = {
       reviewToFind: "Review this Product to find what deserves attention.",
       olderReviews: "Older reviews",
       reviewFailedFallback:
-        "The latest review did not finish. Start an Update review to try again.",
+        "The latest review did not finish. Start a recheck to try again.",
       understanding: "Product Intelligence",
       whatWeKnow: "What we know",
       memoryGrows:
@@ -143,7 +143,7 @@ export const REPORT_COPY = {
       sharedBody:
         "The link may have expired, been revoked, or no longer be eligible for sharing. Ask the owner for a new link.",
       returnHome: "Return home",
-      reviewSite: "Analyze a website",
+      reviewSite: "Check your website",
     },
     chat: {
       title: "Agent",
@@ -166,7 +166,7 @@ export const REPORT_COPY = {
         "Quick prompts give instant answers while live chat is off. Open a Flag in the fix list for its evidence and fix instructions.",
       suggestionsLabel: "Suggested questions",
       capReached: (cap: number) =>
-        `Free-form chat is capped at ${cap} replies for this review. Open a Flag in the fix list for its evidence and fix prompt, or use the quick prompts below.`,
+        `Free-form chat is capped at ${cap} replies for this check. Open a Flag in the fix list for its evidence and fix instructions, or use the quick prompts below.`,
       historyLabel: "Review history",
       historyTooltip: "History",
       historyDescription: "Return to an earlier product review.",
@@ -181,9 +181,9 @@ export const REPORT_COPY = {
       newScanInstruction: "Paste the page you want me to review.",
       preparing: "I’m preparing this review.",
       loadingConversation: "Loading this conversation…",
-      startPlaceholder: "Paste a URL to review",
+      startPlaceholder: "Paste a URL to check",
       startLabel: "URL to review",
-      startAction: "Start review",
+      startAction: "Start check",
       startError: "Could not start this review. Check the URL and try again.",
       returnToReport: "Back to this report",
       authBody: "Sign in to ask about the Flags and fixes in this report.",
@@ -193,7 +193,7 @@ export const REPORT_COPY = {
       allowanceAction: "Upgrade to continue",
       viewFlag: "View Flag",
       productReview: "Product review",
-      updateReview: "Update review",
+      updateReview: "Recheck",
     },
     playback: {
       label: "Path playback",
@@ -283,7 +283,7 @@ export const REPORT_COPY = {
   lovableBolt: {
     heroTitle: "Paste this into Lovable or Bolt",
     heroBody:
-      "One click copies fix instructions tuned for your builder. Publish the change, then run an update review here.",
+      "One click copies fix instructions tuned for your builder. Publish the change, then run a recheck here.",
     defaultToolHint:
       "Choose your builder, copy the fix, paste it into your AI editor.",
   },
@@ -298,9 +298,9 @@ export const REPORT_COPY = {
     preparingFixList: "Preparing your fix list…",
   },
   recheck: {
-    label: "Update review",
+    label: "Recheck",
     helper: "See if these Flags are still open.",
-    error: "Could not start the update review. Try again.",
+    error: "Could not start the recheck. Try again.",
   },
   keepReport: {
     title: "Email me this report",
@@ -325,7 +325,7 @@ export const REPORT_COPY = {
   },
   verificationReceipts: {
     title: "Independent verification",
-    body: "Each receipt comes from a fresh completed update review and shows the evidence, coverage, and remaining risk.",
+    body: "Each receipt comes from a fresh completed recheck and shows the evidence, coverage, and remaining risk.",
     countLabel: (count: number) =>
       `${count} ${count === 1 ? "verification receipt" : "verification receipts"}`,
     outcomes: {
@@ -334,12 +334,12 @@ export const REPORT_COPY = {
       REGRESSED: "Regressed",
       INCONCLUSIVE: "Inconclusive",
     },
-    improvedBody: "Independently verified by this update review.",
+    improvedBody: "Independently verified by this recheck.",
     noLongerObserved: "No longer observed in this review.",
     coverageLabel: "Coverage",
     evidenceLabel: "Evidence",
     remainingRiskLabel: "Remaining risk",
-    openReview: "Open update review",
+    openReview: "Open recheck",
   },
   sampleCta: {
     title: "Run the same check on your site",
@@ -462,7 +462,7 @@ export const REPORT_COPY = {
       return `${openCheckCount} public ${openCheckCount === 1 ? 'link' : 'links'}`
     },
     coveragePartialTooltip:
-      'Some optional evidence was unavailable. Clears credit only for pages this review re-checked.',
+      'Some optional evidence was unavailable. Clears credit only for pages this review rechecked.',
     coveragePartialLabel: 'About this capture',
     productCoverage: (linkedPageCount: number) => {
       const pages = linkedPageCount + 1
@@ -489,13 +489,13 @@ export const MADE_WITH_COPY = {
   verified: "Verified",
   strongSignal: "Strong signal",
   legacy:
-    "Technology signals were not captured for this review. Run an update review to create a verified profile.",
+    "Technology signals were not captured for this review. Run a recheck to create a verified profile.",
   unavailable:
     "Technology signals were unavailable for this check. The rest of the report is unaffected.",
   empty: "No technologies could be verified from the site’s public signals.",
   partial:
     "Partial profile. Only signals preserved by the historical capture are shown.",
-  changed: "Changed since the last update review",
+  changed: "Changed since the last recheck",
   added: "Added",
   removed: "Removed",
   evidenceChanged: "Evidence changed",

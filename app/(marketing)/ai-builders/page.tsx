@@ -37,7 +37,7 @@ export default function AiBuildersPage() {
       </section>
       <section aria-labelledby="ai-loop-title">
         <h2 id="ai-loop-title" className={s.heading}>{C.loopTitle}</h2>
-        <ol className={s.loop}>{C.loop.map((step, index) => <li key={step.title}><span aria-hidden="true">{index + 1}</span><h3>{step.title}</h3><p>{step.body}</p></li>)}</ol>
+        <ol className={s.loop}>{C.loop.map((step, index) => <li key={step.label}><p className={s.loopHead}><span aria-hidden="true">{index + 1}</span>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}</ol>
       </section>
       <section className={s.why} aria-labelledby="ai-why-title">
         <h2 id="ai-why-title" className={s.heading}>{C.why.title}</h2>

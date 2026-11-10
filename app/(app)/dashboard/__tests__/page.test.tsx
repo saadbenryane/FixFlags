@@ -86,7 +86,7 @@ describe('/dashboard handoff', () => {
       expect(screen.getByDisplayValue('https://example.com/')).toBeInTheDocument()
     )
     // The field is locked only while the resumed scan is in flight.
-    expect(screen.getByRole('button', { name: /Analyzing/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Checking/i })).toBeDisabled()
   })
 
   it('ignores an uncheckable handoff URL rather than offering a dead scan', async () => {

@@ -18,7 +18,7 @@ const requestSchema = z.object({
     context.addIssue({ code: 'custom', path: ['outcomeIds'], message: 'Select at least one Outcome.' })
   }
   if ((value.scope === 'site' || value.scope === 'category') && value.outcomeIds.length > 0) {
-    context.addIssue({ code: 'custom', path: ['outcomeIds'], message: 'Site care does not select Outcomes.' })
+    context.addIssue({ code: 'custom', path: ['outcomeIds'], message: 'A whole-Site check does not select Outcomes.' })
   }
   if ((value.scope === 'category') !== Boolean(value.area)) context.addIssue({ code: 'custom', path: ['area'], message: 'Select one category.' })
 })

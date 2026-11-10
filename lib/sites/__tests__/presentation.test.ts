@@ -131,8 +131,8 @@ describe('Site presentation', () => {
   it('uses one banner for active, incomplete, and paused work', () => {
     const monitoring = { state: 'weekly' as const, label: 'Weekly' }
     const run = { state: 'idle' as const, label: 'Run details', auditId: 'audit-1', recoveryAction: null }
-    expect(runBanner({ run: { ...run, state: 'running', recoveryAction: 'view_details' }, monitoring })?.headline).toBe('Analyzing')
-    expect(runBanner({ run: { ...run, state: 'partial', recoveryAction: 'retry' }, monitoring })?.headline).toBe('Analysis incomplete')
+    expect(runBanner({ run: { ...run, state: 'running', recoveryAction: 'view_details' }, monitoring })?.headline).toBe('Checking')
+    expect(runBanner({ run: { ...run, state: 'partial', recoveryAction: 'retry' }, monitoring })?.headline).toBe('Check incomplete')
     expect(runBanner({ run: { ...run, state: 'running' }, monitoring, disconnected: true })?.headline).toBe('Updates disconnected')
     expect(runBanner({ run, monitoring: { state: 'paused', label: 'Paused' } })?.headline).toBe('Updates paused')
     expect(runBanner({ run, monitoring })?.kind).toBe('details')
@@ -158,7 +158,7 @@ describe('Site presentation', () => {
     expect(pagesCardPresentation({ ...site, result: { state: 'flags', label: 'Offline' }, run: { ...site.run, state: 'interrupted' } }, []).state).toBe('unknown')
     expect(pagesCardPresentation({ ...site, run: { ...site.run, state: 'running' } }, []).state).not.toBe('healthy')
     expect(pagesCardPresentation({ ...site, result: { state: 'flags', label: 'Offline' }, run: { ...site.run, state: 'running' } }, []))
-      .toEqual({ state: 'checking', status: 'Analyzing' })
+      .toEqual({ state: 'checking', status: 'Checking' })
     // Findings remain actionable while their next independent observation is unavailable.
     for (const current of [site, { ...site, coverage: { ...site.coverage, complete: false } },
       { ...site, freshness: { ...site.freshness, stale: true } },

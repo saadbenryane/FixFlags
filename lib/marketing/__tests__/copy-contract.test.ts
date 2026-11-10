@@ -36,15 +36,13 @@ describe('customer copy contract', () => {
     expect(REPORT_COPY).toBe(WORKSPACE_REPORT_COPY)
   })
 
-  it('uses Update review on customer-facing copy without changing internal keys', () => {
-    expect(CUSTOMER_TERMS.updateReview).toBe('Update review')
-    expect(CUSTOMER_TERMS.updateReviews).toBe('Update reviews')
-    expect(REPORT_COPY.recheck.label).toBe('Update review')
+  it('uses Recheck on customer-facing copy without changing internal keys', () => {
+    expect(CUSTOMER_TERMS.updateReview).toBe('Recheck')
+    expect(CUSTOMER_TERMS.updateReviews).toBe('Rechecks')
+    expect(REPORT_COPY.recheck.label).toBe('Recheck')
 
-    const visibleCopy = collectStrings({ HERO, SAMPLE_RUBRIC_COPY, REPORT_COPY }).filter(
-      (value) => value !== 'recheck',
-    )
-    expect(visibleCopy.join('\n')).not.toMatch(/\bre-?checks?\b/i)
+    const visibleCopy = collectStrings({ HERO, SAMPLE_RUBRIC_COPY, REPORT_COPY })
+    expect(visibleCopy.join('\n')).not.toMatch(/\bupdate reviews?\b|\bre-check/i)
   })
 
   it('keeps Verified as independent proof, separate from report absence buckets', () => {

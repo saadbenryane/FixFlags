@@ -16,7 +16,7 @@ After authorization, settings shows the connected GitHub username. Saved authori
 
 ## Coverage and limitations
 
-FixFlags does not inspect code or open pull requests in the website beta. Connecting does not verify a fix. Fix prompts and website verification also work without a GitHub connection.
+FixFlags does not inspect code or open pull requests in the website beta. Connecting does not verify a fix. Fix instructions and rechecks also work without a GitHub connection.
 
 ## Permissions and data
 

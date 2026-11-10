@@ -17,7 +17,7 @@ export const BOARD_PREVIEW_COPY = {
   discoveredPages: (count: number) => `${count} ${count === 1 ? 'page' : 'pages'} discovered`,
   historyChecking: 'A check is running. Its completed results will be added to this history.',
   historyUnavailable: 'Check history could not be refreshed. Previously recorded events remain shown.',
-  historyMissing: 'This Site has recorded analysis. Detailed history is unavailable for this evidence.',
+  historyMissing: 'This Site has recorded checks. Detailed history is unavailable for this evidence.',
   pagesNeedAttention: (count: number) => `${count} ${count === 1 ? 'needs' : 'need'} attention`,
   noPageFlags: 'No page Flags',
   pagesUnchecked: 'Not checked yet',
@@ -44,7 +44,7 @@ export const BOARD_PREVIEW_COPY = {
   incomplete: 'Check incomplete',
   history: {
     scheduled: 'Scheduled check', manual: 'Manual check', other: 'Triggered check', afterFix: 'Check after a fix',
-    site: 'Site-wide analysis', outcomes: 'Selected visitor actions', diagnostic: 'Targeted page check', unknown: 'Scope unavailable',
+    site: 'Whole-Site check', outcomes: 'Selected visitor actions', diagnostic: 'Targeted page check', unknown: 'Scope unavailable',
     clear: 'Clear for this scope', recovered: 'Recovery verified for this scope', flagged: 'Flag found in this scope', uncertain: 'Couldn’t verify',
   },
   noFlags: '0 Flags',

@@ -10,6 +10,7 @@ import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { getCuratedSampleAudit, UnknownCuratedObservationError } from '@/lib/marketing/curated-sample'
 import { effectiveRepairGuidance } from '@/lib/improvements/repair-guidance'
+import { boardFindingTitle } from '@/lib/sites/board-card'
 
 export const metadata = buildPageMetadata('samples', '/samples')
 const C = PUBLIC_SITE_COPY.samplePage
@@ -29,12 +30,15 @@ export default async function SamplesPage({ searchParams }: {
   const screenshot = audit.screenshots.find(item => item.device === 'MOBILE')
   const prompt = flag ? effectiveRepairGuidance(flag) : null
   if (!flag || !screenshot || !prompt || !flag.verificationRule) notFound()
+  // The board's customer headline, and the change described once: the fix instructions carry it.
+  const title = boardFindingTitle(flag.problem, flag.checkId)
+  const separateChange = Boolean(flag.fix?.trim()) && flag.fix?.trim() !== prompt.trim()
 
   return <>
     <PublicPageIntro page="/samples" label={C.label} title={C.title} body={C.body} />
     <Section spacing="overview"><Container variant="marketing">
       <article data-testid="sample-site" data-observation={audit.id} className="space-y-9">
-        <div><p className="section-label">{C.demoLabel}</p><h2 className="mt-3 font-display text-3xl font-semibold tracking-display">{flag.problem}</h2></div>
+        <div><p className="section-label">{C.demoLabel}</p><h2 className="mt-3 font-display text-3xl font-semibold tracking-display">{title}</h2></div>
         <div className="grid min-w-0 grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <figure className="min-w-0 w-full max-w-sm">
             <Image src={screenshot.url} alt={C.imageAlt} width={screenshot.width ?? 375} height={screenshot.height ?? 812} className="h-auto w-full rounded-card" />
@@ -42,7 +46,7 @@ export default async function SamplesPage({ searchParams }: {
           </figure>
           <div className="min-w-0 space-y-8 [overflow-wrap:anywhere]">
             <section><h3 className="text-lg font-semibold">{C.observed}</h3><p className="mt-3 leading-7 text-muted-foreground">{flag.evidence}</p></section>
-            <section><h3 className="text-lg font-semibold">{C.fix}</h3><p className="mt-3 leading-7 text-muted-foreground">{flag.fix}</p></section>
+            {separateChange ? <section><h3 className="text-lg font-semibold">{C.fix}</h3><p className="mt-3 leading-7 text-muted-foreground">{flag.fix}</p></section> : null}
             <section className="rounded-card bg-muted/30 p-6"><h3 className="mb-4 text-lg font-semibold">{C.prompt}</h3><SampleFixPrompt prompt={prompt} /></section>
             <section><h3 className="text-lg font-semibold">{C.verification}</h3><p className="mt-3 font-medium leading-7">{flag.verificationRule}</p><p className="mt-3 leading-7 text-muted-foreground">{C.verificationBody}</p></section>
           </div>

@@ -68,7 +68,7 @@ if (
 }
 if (
   !completedReport.includes('Saved evidence') ||
-  !completedReport.includes('Analyze a website')
+  !completedReport.includes('Check your website')
 ) {
   violations.push('app/report/[id]/CompletedReportView.tsx: sanitized evidence adapter missing')
 }
