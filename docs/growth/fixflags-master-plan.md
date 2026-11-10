@@ -73,6 +73,34 @@ A second pass compared every public and in-product surface against the adopted v
 
 The first-check walk on real infrastructure. On November 10 the local walk reached the provisional Site board and the signup gate: the check was created (201) and the board showed progress and the gate. The worker then failed because the local database lacks nine migrations (`audits.prescriptionHandoffRetryAt`, `email_provider_events.discardedAt` and `uptime_incidents.tlsFailureOrigin` are missing). The agent's permission check blocks `npm run db:deploy`. Run it, start `npm run worker`, then walk sign-up → board → Flag → fix instructions → Recheck on desktop and phone. Production configuration (Resend, storage, PageSpeed keys) is outside the code and was not verified.
 
+### End-to-end walk and gap plan, November 10 (night)
+
+The local stack was migrated and run with the worker. A real anonymous check of example.com went through the results gate, signup, claim and the owner's board. Two reviews then read the signed-in product and the public site against DESIGN.md and the voice guide.
+
+**Fixed from the walk**
+
+- Claiming a Site started a second full check at once, so a new owner landed on "Checking, 0 Flags so far" right after the gate said their results were ready, and every signup paid for two checks. Monitoring now counts the owner's own check as its first run.
+- A new Site's uptime history showed 24 hours of "Unknown" before it existed. History now starts when monitoring began.
+- Running cards told screen readers "Waiting. Couldn't verify", mixing the live run with the previous result. They now describe only the running work.
+- "Where did you build this site?" opened the board above the results, even with no Flags. It now appears only beside a fix to hand off.
+- The live status read "Checking / (mobile)". It now reads "Checking the homepage on a phone".
+
+**Found and needing the owner**
+
+- The local OpenAI key has no credits (HTTP 429). The AI explanation step failed, so a complete check of a clean page reported nine areas as partially checked. Confirm the production key has credit; if it runs dry, every check reads "Partially checked".
+- The demo-store walk (Flag, fix instructions, Recheck) needs a worker started with `DEV_ALLOW_LOCALHOST=true`. A worker left running from the walk (PID 73551) must be stopped first; the agent's permission check blocks signalling it.
+
+**Gap plan, in build order**
+
+1. *One status, one place.* The header owns run status, the overview owns the one live sentence, cards show a dot with screen-reader text. Today "Checking" appears up to four times.
+2. *A clean result reads as good news.* Zero Flags gets the healthy tone and a headline such as "No Flags on 12 pages"; the Websites list says "No Flags"; the section is "Checks" when nothing needs attention.
+3. *Partial results explain themselves.* One term, "Partly checked", always with what was missed and the next action. It is never paired with "0 Flags". When the AI explanation provider is unavailable, say so and retry it automatically instead of leaving areas partial.
+4. *One name per action.* Recheck for a fix, Check again for the Site, Check now only for an Outcome. Retire "Watch", "Clear for this scope", "Whole-Site check", "Incomparable scope" and "Detected in partial check" from customer copy.
+5. *The Flag page speaks product copy.* Move its hard-coded strings into `lib/marketing/copy`, show the page and device under the title, keep one affected-page count, and keep the nav on the view the owner came from.
+6. *No dead ends.* Pages shows its empty state only while checking; the uptime card gives the next step when a Site is offline; Integrations has one home in Settings.
+7. *No separators.* Replace visible "·" joins (Flag page, uptime card, preview card, Websites grid, card execution, minimal footer) with spacing, weight or a sentence. Replace outlined rows and one-off radii with the shared card surfaces.
+8. *One marketing system.* Extract `HomepageSectionHeader` into a shared marketing section header; move the page header to the homepage hero type with two-tone lines; paint the marketing shell, header frost and footer with the canvas; give cards the window surface; use marketing section spacing; share the closing band and text link; give sign-in and sign-up the canvas instead of the app grid.
+
 ## The short version
 
 1. **We are not losing to Elu's product. We are losing on conviction and distribution.** Elu ships a confident story, a one-command install, proof signals and a sales motion. FixFlags has a fast, real, installation-free product that almost nobody sees, explained by a website that sells gentle "website care".
