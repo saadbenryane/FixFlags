@@ -15,6 +15,7 @@
 .marks span[data-state='offline'] { background: hsl(var(--brand)); }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 12px; color: hsl(var(--muted-foreground)); font-size: 11px; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
+.nextStep { margin-top: 10px; color: hsl(var(--foreground)); font-size: 13px; line-height: 1.5; }
 .meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; color: hsl(var(--muted-foreground)); font-size: 11px; line-height: 1.5; }
 .incidentCount { margin-top: 8px; color: hsl(var(--foreground)); font-size: 12px; font-weight: 550; }
 .scope { overflow-wrap: anywhere; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.6; }

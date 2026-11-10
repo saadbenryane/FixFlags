@@ -15,6 +15,14 @@ function historyPage(id: string, observedAt: string, nextCursor: string | null):
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('recorded uptime reporting', () => {
+  it('gives an offline Site its next step and keeps it off healthy cards', () => {
+    const at = Date.parse('2026-11-03T12:06:00Z')
+    const offline: UptimeSummary = { ...summary, state: 'offline', lastCheckedAt: '2026-11-03T12:05:00Z', openIncidentCount: 1 }
+    const view = render(<UptimeCard siteId="site-1" summary={offline} referenceTime={at} />)
+    expect(screen.getByText(C.offlineNext)).toBeVisible()
+    view.rerender(<UptimeCard siteId="site-1" summary={{ ...offline, state: 'online', openIncidentCount: 0 }} referenceTime={at} />)
+    expect(screen.queryByText(C.offlineNext)).not.toBeInTheDocument()
+  })
   it.each(['certificate_expired', 'dns_failure', 'connection_failed'] as const)('shows the confirming origin for %s even when no probes remain', async reason => {
     const at = '2026-11-03T12:00:00Z', failureOrigin = 'https://edge.example.com:8443'
     const recorded: UptimeHistory = { ...history(), incidentOpen: true, openIncidentCount: 1, incidents: [{

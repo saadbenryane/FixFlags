@@ -57,6 +57,7 @@ export const SITE_DASHBOARD_COPY = {
   promptInterrupted: 'Couldn’t finish preparing the instructions. Try again.',
   pagesBody: 'See the problems on each page. Choose a page to explore its Flags.',
   noPages: 'Pages will appear here as the check runs.',
+  noPagesRecorded: 'No page results are recorded yet. Select Check again to record this website’s pages.',
   allPages: 'All pages',
   noFlags: 'No Flags found in the checks that ran.',
   pageFlags: (count: number) => `${count} ${count === 1 ? 'Flag' : 'Flags'}`,

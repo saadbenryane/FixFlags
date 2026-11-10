@@ -107,6 +107,7 @@ export function UptimeCard({ siteId, summary, summaryReadAt, verification, histo
       {summary?.segments ? <PeriodStrip segments={summary.segments} /> : null}
       <div className={styles.meta}>{current && !current.enabled ? <span>{C.paused}</span> : null}{!current?.lastCheckedAt ? <span>{C.firstCheck}</span> : null}</div>
       {current && current.openIncidentCount > 0 ? <p className={styles.incidentCount}>{C.openIncidents(current.openIncidentCount)}</p> : null}
+      {state === 'offline' ? <p className={styles.nextStep}>{C.offlineNext}</p> : null}
     </article>
     <ResponsiveDepth header={<DialogTitle>{C.details}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }} className="max-w-3xl">
       <DialogDescription className="sr-only">{C.description}</DialogDescription>

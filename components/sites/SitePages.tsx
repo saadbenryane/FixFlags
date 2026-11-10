@@ -10,10 +10,11 @@ import { SitePromptCopyButton } from './SitePromptCopyButton'
 import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
 
 export function SitePages({ siteId, view, onOpenFlag }: { siteId: string; view: SiteHomeView; onOpenFlag: (id: string, trigger?: HTMLElement) => void }) {
+  const checking = Boolean(view.audit?.status && !['COMPLETED', 'FAILED'].includes(view.audit.status))
   const pages: PageResult[] = projectPageResults(view.checkedPages ?? [], view.flags).map(page => ({ ...page,
     flags: page.flags.map(flag => ({ ...flag, title: customerFindingLabel(flag), href: `/sites/${siteId}/flags/${encodeURIComponent(flag.id)}`, onOpen: trigger => onOpenFlag(flag.id, trigger),
       copyAction: view.actions.copy !== 'available' || hasRepairGuidance(flag.fix) ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={customerFindingLabel(flag)} availability={view.actions.copy} compact /> : null })) }))
   return <section aria-label={C.pages}>
-    {pages.length ? <SiteFlagSelection siteId={siteId} flags={view.flags} availability={view.actions.copy} allOpen><SitePageResults density="comfortable" linkPages pages={pages} checking={Boolean(view.audit?.status && !['COMPLETED', 'FAILED'].includes(view.audit.status))} /></SiteFlagSelection> : <p role="status" className="text-sm text-muted-foreground">{C.noPages}</p>}
+    {pages.length ? <SiteFlagSelection siteId={siteId} flags={view.flags} availability={view.actions.copy} allOpen><SitePageResults density="comfortable" linkPages pages={pages} checking={checking} /></SiteFlagSelection> : <p role="status" className="text-sm text-muted-foreground">{checking ? C.noPages : C.noPagesRecorded}</p>}
   </section>
 }

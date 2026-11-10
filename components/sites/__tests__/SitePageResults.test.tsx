@@ -104,3 +104,12 @@ it('offers recorded page navigation from the application Pages workspace even wh
   fireEvent.click(screen.getByText(C.otherPages(1), { selector: 'summary' }))
   expect(screen.getByRole('link', { name: C.open(view.checkedPages[0].url) })).toHaveAttribute('href', view.checkedPages[0].url)
 })
+
+it('says how to record pages when no check is running instead of promising they will appear', () => {
+  const base = siteViewFixture()
+  const view = { ...base, checkedPages: [], flags: [] }
+  const rendered = render(<SitePages siteId="fixture-site" view={{ ...view, audit: { ...view.audit, status: 'CHECKING' } }} onOpenFlag={() => {}} />)
+  expect(screen.getByRole('status')).toHaveTextContent(C.noPages)
+  rendered.rerender(<SitePages siteId="fixture-site" view={{ ...view, audit: { ...view.audit, status: 'COMPLETED' } }} onOpenFlag={() => {}} />)
+  expect(screen.getByRole('status')).toHaveTextContent(C.noPagesRecorded)
+})
