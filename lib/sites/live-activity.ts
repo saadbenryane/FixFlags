@@ -3,8 +3,11 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 type Task = { kind: string; pageUrl: string; state: string; device?: 'desktop' | 'mobile' | null }
 const NOW = SITE_ACTION_COPY.execution.now
 
+/** The page in customer words: the homepage, or its path. */
 function pathOf(url: string) {
-  try { return new URL(url).pathname || '/' } catch { return url || '/' }
+  let path = '/'
+  try { path = new URL(url).pathname || '/' } catch { path = url || '/' }
+  return path === '/' ? NOW.homepage : path
 }
 
 /** One plain sentence about what the check is trying right now, or null when nothing is running. */
