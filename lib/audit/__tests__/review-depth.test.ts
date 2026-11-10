@@ -161,3 +161,14 @@ describe('review depth', () => {
     })
   })
 })
+
+describe('anonymous review depth', () => {
+  it('stays on one page unless key pages are explicitly enabled, and never reaches full depth', async () => {
+    const { anonymousReviewDepth } = await import('../review-depth')
+    expect(anonymousReviewDepth(undefined)).toBe(1)
+    expect(anonymousReviewDepth('1')).toBe(1)
+    expect(anonymousReviewDepth(' 2 ')).toBe(2)
+    expect(anonymousReviewDepth('3')).toBe(1)
+    expect(anonymousReviewDepth('yes')).toBe(1)
+  })
+})

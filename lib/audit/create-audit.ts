@@ -47,7 +47,7 @@ import { ProductLimitReached } from '@/lib/billing/product-capacity'
 import { reviewDepthForPlan } from '@/lib/billing/plans'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
-import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
+import { anonymousReviewDepth, asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
 import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
@@ -176,7 +176,7 @@ async function resolveStoredReviewDepth(options: {
   parentId?: string
   userId?: string | null
 }): Promise<ReviewDepth> {
-  if (options.isAnonTeaser) return 1
+  if (options.isAnonTeaser) return anonymousReviewDepth()
   if (OPEN_BETA_ACCESS && options.userId) return 3
   if (options.parentId) {
     const parent = await prisma.audit.findUnique({

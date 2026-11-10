@@ -58,6 +58,15 @@ const CONVERSION_PATH = /pricing|plans?|checkout|buy|signup|sign-up|register|dem
 const PRODUCT_PATH = /product|features?|solutions?|platform|pricing/i
 const NAV_HINT = /home|features?|product|pricing|docs|blog|about|login|sign/i
 
+/**
+ * Depth for an anonymous first check. One page by default, so the first check stays short
+ * and cheap. Set ANONYMOUS_REVIEW_DEPTH=2 to include key pages once cost per check is
+ * measured. Anonymous checks never get the deepest review.
+ */
+export function anonymousReviewDepth(value: string | undefined = process.env.ANONYMOUS_REVIEW_DEPTH): ReviewDepth {
+  return value?.trim() === '2' ? 2 : 1
+}
+
 export function asReviewDepth(value: unknown): ReviewDepth {
   if (value === 2 || value === 3) return value
   return 1

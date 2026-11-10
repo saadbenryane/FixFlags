@@ -23,6 +23,7 @@ const envSchema = z.object({
     .optional()
     .or(z.literal('')),
   PAGESPEED_API_KEY: z.string().optional(),
+  ANONYMOUS_REVIEW_DEPTH: z.enum(['1', '2']).optional(),
   CRON_SECRET: z.string().optional(),
   R2_BUCKET_NAME: z.string().optional(),
   R2_ACCOUNT_ID: z.string().optional(),
