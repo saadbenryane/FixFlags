@@ -6,6 +6,7 @@ import { MONITORING_SCHEDULE_COPY as M } from '../lib/marketing/copy/monitoring'
 import { SITE_SETTINGS_COPY as Settings } from '../lib/marketing/copy/site-settings'
 import { UPTIME_COPY as U } from '../lib/marketing/copy/uptime'
 import { INTEGRATIONS_PAGE } from '../lib/marketing/copy/integrations'
+import { SITE_CONNECTION_COPY } from '../lib/marketing/copy/site-connections'
 import { inspectAccessibilityViolations } from './approved-contrast'
 
 async function visit(page: Page, theme: 'light' | 'dark' = 'light') {
@@ -151,7 +152,7 @@ test('integration discovery reflects released authorization and parked connectio
   for (const integration of INTEGRATIONS_PAGE.items) {
     const card = page.locator(`[data-integration="${integration.id}"]`)
     await expect(card.getByRole('link')).toHaveAttribute('href', `/integrations#${integration.id}`)
-    await expect(card.getByText(integration.status === 'available' ? INTEGRATIONS_PAGE.availableLabel : INTEGRATIONS_PAGE.proposedLabel, { exact: true })).toBeVisible()
+    await expect(card.getByText(integration.status === 'available' ? INTEGRATIONS_PAGE.availableLabel : SITE_CONNECTION_COPY.comingSoon, { exact: true })).toBeVisible()
   }
   await page.getByRole('link', { name: C.integrations.action, exact: true }).click()
   await expect(page).toHaveURL(/\/integrations$/)
