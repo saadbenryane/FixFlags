@@ -1149,6 +1149,8 @@ describe('SiteBoard chrome', () => {
     expect(status).toHaveTextContent('Checking')
     expect(status.querySelector('svg')).not.toBeNull()
     expect(within(header).getAllByText('Checking')).toHaveLength(1)
+    // The header owns run status; running cards do not repeat it as text.
+    expect(screen.getAllByText('Checking', { selector: ':not(.sr-only)' })).toHaveLength(1)
     expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
     expect(within(header).queryByText('0 pages')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Checking' })).not.toBeInTheDocument()

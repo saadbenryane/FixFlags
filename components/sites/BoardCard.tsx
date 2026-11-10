@@ -251,8 +251,9 @@ export function BoardCard({
     // gaps belong to that result, not to the check in progress.
     const description = [...new Set((checking ? [status ?? SITE_BOARD_COPY.checking, detail]
       : [status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail]).filter(Boolean))].join('. ')
-    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}><span className={styles.compactStatus}>{checking ? SITE_BOARD_COPY.checking : state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}</span>
-      <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
+    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{/* While a check runs, the header owns the status; a card shows only its spinner. */}
+      {checking ? null : <span className={styles.compactStatus}>{state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}</span>}
+      <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]} ${checking ? styles.checkingDot : ''}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
     const compactClass = `${styles.card} ${styles.compactSummary}`
     return onOpen ? <InteractiveButton type="button" className={compactClass} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</InteractiveButton>
       : href ? <Link className={compactClass} href={href as Route} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</Link>
