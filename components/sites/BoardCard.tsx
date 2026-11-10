@@ -384,7 +384,7 @@ export function ProductBoardCard({
   // and measured scope in card depth; never summarize unknown claims by truncation.
   const recordedPartial = compact && card.state === 'unknown' && card.activity !== 'checking'
     && Boolean(card.checkedAt && card.incompleteReason) && card.openFlagCount === 0
-  const answer = recordedPartial ? flagCountLabel(0) : compact ? boardFindingTitle(originalAnswer) : originalAnswer
+  const answer = recordedPartial ? SITE_BOARD_COPY.partialNoFlags : compact ? boardFindingTitle(originalAnswer) : originalAnswer
 
   return (
     <BoardCard

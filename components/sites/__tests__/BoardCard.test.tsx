@@ -19,7 +19,7 @@ describe('BoardCard chrome', () => {
     fireEvent.click(more)
     expect(open).toHaveBeenCalledWith(more)
   })
-  it('shows a recorded zero count with a neutral partial state and keeps collector details in depth', () => {
+  it('shows a partial area without claiming zero Flags and keeps collector details in depth', () => {
     const card: BoardCardView = {
       id: 'accessibility', name: 'Accessibility', question: 'Keyboard access', state: 'unknown',
       status: 'Keyboard checks incomplete', answer: 'Keyboard checks incomplete', detail: '40 page controls exercised. Detailed collector limitations.',
@@ -28,7 +28,9 @@ describe('BoardCard chrome', () => {
       captureUrl: null, captureAlt: null, cropUrl: null, cropAlt: null, problem: null,
     }
     const { rerender } = render(<ProductBoardCard card={card} compact layout="row" onOpen={() => undefined} />)
-    expect(screen.getByText('0 Flags')).toBeVisible()
+    // A partial area never claims "0 Flags".
+    expect(screen.getByText(SITE_BOARD_COPY.partialNoFlags)).toBeVisible()
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
     expect(screen.getByText('Partially checked')).toBeVisible()
     expect(screen.queryByText(/40 page controls/)).not.toBeInTheDocument()
     expect(screen.queryByText('No completed analysis')).not.toBeInTheDocument()
