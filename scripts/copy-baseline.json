@@ -79,10 +79,6 @@
     "Shopify connection",
     "The Shopify installation is authorized, but it is not attached to a FixFlags account.\n              Sign in, add this website, then choose Connect Shopify in Site settings. A hostname alone\n              can never claim a Site."
   ],
-  "app/sites/[siteId]/flags/[flagId]/page.tsx": [
-    "Connected context",
-    "These numbers come from an account connected to this Site. They sit beside the Flag."
-  ],
   "app/sites/[siteId]/outcomes/[outcomeId]/page.tsx": [
     "Technical evidence"
   ],
