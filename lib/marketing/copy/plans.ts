@@ -90,7 +90,7 @@ export const PRICING = {
   compareTitle: 'Compare plans', compareLabel: 'Available now and coming soon',
   compareBody: 'Start free on one website. Paid plans for more websites are coming soon.',
   compareNote: 'During open beta, all supported features and schedules are free on one website, with no usage limits. Pro and Studio show the planned paid offer.',
-  coverageLink: 'See what gets checked', connectionsLink: 'See optional connections', faqTitle: 'Pricing questions',
+  coverageLink: 'See what gets checked', connectionsLink: 'See optional connections', faqTitle: 'Pricing questions', faqLines: ['Pricing questions.', 'Straight answers.'] as const,
   upgradeSteps: 'Join the waitlist. No subscription or charge.', upgradeStepsLoggedIn: 'Join the waitlist. No subscription or charge.', checkoutRedirecting: 'Opening waitlist…',
   allPlansInclude: 'All supported features are included during open beta.',
   pickerEyebrow: 'Open beta', pickerTitle: 'Start free on one website',

@@ -5,6 +5,7 @@ import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
+import { MarketingSectionHeader } from '@/components/marketing/MarketingSectionHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { PRICING, PRICING_FAQ } from '@/lib/marketing/copy/plans'
@@ -24,7 +25,7 @@ export function PricingPage() {
           <PricingComparisonTable />
           <div className={s.links}><Link prefetch={false} href="/docs/site-care">{PRICING.coverageLink}<ArrowRight aria-hidden size={16} /></Link><Link prefetch={false} href="/docs/integrations">{PRICING.connectionsLink}<ArrowRight aria-hidden size={16} /></Link></div>
         </section>
-        <div className={s.faq}><FaqSection items={PRICING_FAQ} title={PRICING.faqTitle} sectionLabel={null} /></div>
+        <section className={s.faq} aria-labelledby="pricing-faq-title"><MarketingSectionHeader id="pricing-faq-title" lines={PRICING.faqLines} align="center" /><FaqSection items={PRICING_FAQ} title="" sectionLabel={null} /></section>
       </div>
     </Container>
   </Section>

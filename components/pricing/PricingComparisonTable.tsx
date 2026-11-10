@@ -1,5 +1,5 @@
 import type { Route } from 'next'
-import { Activity, CalendarClock, Check, Clock3, Flag, Infinity as InfinityIcon, ListChecks, Minus, ShieldCheck, Users, Zap } from 'lucide-react'
+import { Activity, CalendarClock, Check, Clock3, Flag, ListChecks, Minus, ShieldCheck, Users, Zap } from 'lucide-react'
 import { PRICING, PRICING_CARDS, PRICING_COMPARISON as C } from '@/lib/marketing/copy/plans'
 import { PricingCTAButton } from './PricingCTAButton'
 import { PlanPrice } from './PlanPrice'
@@ -12,7 +12,7 @@ type Cell = { value: string; note: string; kind: 'included' | 'unlimited' | 'pen
 
 function CellValue({ cell }: { cell: Cell }) {
   return <div className={s.value} data-kind={cell.kind}>
-    <strong>{cell.kind === 'included' ? <Check aria-hidden size={17} /> : cell.kind === 'unlimited' ? <InfinityIcon aria-hidden size={19} /> : cell.kind === 'pending' ? <Clock3 aria-hidden size={16} /> : cell.kind === 'excluded' ? <Minus aria-hidden size={16} /> : null}{cell.value}</strong>
+    <strong>{cell.kind === 'included' ? <Check aria-hidden size={17} /> : cell.kind === 'pending' ? <Clock3 aria-hidden size={16} /> : cell.kind === 'excluded' ? <Minus aria-hidden size={16} /> : null}{cell.value}</strong>
     {cell.kind === 'pending' && cell.note ? <span>{cell.note}</span> : null}
   </div>
 }
@@ -24,9 +24,9 @@ export function PricingComparisonTable() {
       const Icon = PLAN_ICONS[plan.plan]
       return <article key={key} aria-labelledby={`pricing-${plan.plan}`} className={s.plan} data-featured={plan.highlight}>
         <header className={s.planHeading}>
-          <div className={s.top}><h3 id={`pricing-${plan.plan}`}><Icon aria-hidden size={22} strokeWidth={1.5} />{plan.name}</h3><span className={s.status}>{plan.badge}</span></div>
+          <div className={s.top}><h3 id={`pricing-${plan.plan}`}><Icon aria-hidden size={22} strokeWidth={1.5} />{plan.name}</h3>{plan.highlight ? null : <span className={s.status}>{plan.badge}</span>}</div>
           <div className={s.price}><PlanPrice price={plan.price} />{plan.period ? <span>{plan.period}</span> : null}</div>
-          <p className={s.priceLabel}>{plan.priceLabel}{plan.plan === 'FREE' ? <> · {plan.products}</> : null}</p>
+          <p className={s.priceLabel}>{plan.plan === 'FREE' ? `${plan.priceLabel}, ${plan.products}` : plan.priceLabel}</p>
         </header>
         {C.rows.filter(row => row.id !== 'websites').map(row => {
           const RowIcon = ROW_ICONS[row.id]

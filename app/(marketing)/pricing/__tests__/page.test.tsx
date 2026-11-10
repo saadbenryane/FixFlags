@@ -66,7 +66,8 @@ describe('/pricing', () => {
     const pro = within(screen.getByRole('article', { name: 'Pro' }))
     const studio = within(screen.getByRole('article', { name: 'Studio' }))
     expect(free.getByText('$0')).toBeVisible()
-    expect(free.getByText('Open beta')).toBeVisible()
+    // The page eyebrow already says Open beta; the available plan does not repeat it.
+    expect(free.queryByText('Open beta')).not.toBeInTheDocument()
     expect(free.getByText('Custom')).toBeVisible()
     expect(free.getByText('No usage limits')).toBeVisible()
     expect(pro.getByText('$49')).toBeVisible()

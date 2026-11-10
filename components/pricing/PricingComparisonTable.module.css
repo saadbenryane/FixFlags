@@ -1,10 +1,11 @@
 .comparison { min-width: 0; }
 .columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); column-gap: 20px; }
 .plan { display: grid; grid-template-rows: subgrid; grid-row: span 6; min-width: 0; padding: 28px; border-radius: var(--radius-card); background: hsl(var(--muted) / .7); }
-.plan[data-featured='true'] { background: hsl(var(--brand) / .045); box-shadow: inset 0 0 0 1px hsl(var(--brand) / .4); }
+/* The available plan is lifted onto a white window; planned plans stay on the muted canvas. */
+.plan[data-featured='true'] { background: hsl(var(--window)); box-shadow: var(--shadow-window); }
 .planHeading { padding-bottom: 26px; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 24px; }
-.planHeading h3 { display: flex; align-items: center; gap: 9px; font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 620; line-height: 1.1; letter-spacing: -.04em; }
+.planHeading h3 { display: flex; align-items: center; gap: 9px; font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 500; line-height: 1.1; letter-spacing: -.04em; }
 .planHeading h3 svg { flex-shrink: 0; color: hsl(var(--brand)); }
 .status { flex-shrink: 0; padding: 6px 9px; border-radius: var(--radius-pill); background: hsl(var(--background) / .7); color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 550; }
 .plan[data-featured='true'] .status { background: hsl(var(--brand) / .09); color: hsl(var(--brand-strong)); }
