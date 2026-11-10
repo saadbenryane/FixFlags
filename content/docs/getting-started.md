@@ -39,7 +39,7 @@ A **Check again** action starts a new check now. It does not turn on scheduled m
 
 Connections are optional. You can start with your website address alone.
 
-[GitHub account authorization](/docs/integrations/github) is available. It does not inspect code or open pull requests. Other [integrations](/integrations) are coming soon until testing and validation. Public website checks and monitoring do not require a connected tool.
+[GitHub account authorization](/docs/integrations/github) is available. It does not inspect code or open pull requests. Other [integrations](/integrations) are coming soon. Public website checks and monitoring do not require a connected tool.
 
 ## Get help
 

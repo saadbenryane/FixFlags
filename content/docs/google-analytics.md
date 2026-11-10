@@ -1,16 +1,16 @@
 ## What it adds
 
-**Coming soon.** Google Analytics is a planned integration. GitHub account authorization is available. New connection setup and refresh will become available after testing and validation.
+**Coming soon.** Google Analytics becomes available after testing and validation. Everything below describes what it will add.
 
-Planned value: Page traffic beside matching pages, with page views and sessions labeled separately.
+Page traffic beside matching pages, with page views and sessions labeled separately.
 
 ## Before you connect
 
-Connection setup is unavailable in this beta. [Save and check your website](/docs/getting-started) using the independent website product.
+Nothing is needed yet. [Save and check your website](/docs/getting-started) today; checks do not depend on this connection.
 
 ## Connect
 
-There is no connection action to complete yet. See [planned integrations](/integrations) for the current lineup.
+See the [integrations overview](/integrations) for the current lineup.
 
 ## Confirm the connection
 
@@ -18,9 +18,7 @@ A previously saved connection is historical configuration, not proof of a newly 
 
 ## Coverage and limitations
 
-Planned reports cover matching website and watched-page scope. Missing provider data will remain unknown. Traffic context will not prove signup, payment, attribution, or revenue.
-
-These are planned integration capabilities. Public website checks operate independently.
+Reports will cover matching website and watched-page scope. Missing provider data will remain unknown. Traffic context will not prove signup, payment, attribution, or revenue.
 
 ## Permissions and data
 
@@ -28,13 +26,11 @@ The retained implementation uses read-only property and reporting access, with e
 
 ## Reconnect or disconnect
 
-Reconnect and refresh are unavailable while this integration is coming soon.
-
-Select **Disconnect Google Analytics** in the Site’s Integrations to remove its saved connection. Previously recorded context keeps its original date.
+Select **Disconnect Google Analytics** in the Site’s Settings to remove its saved connection. Previously recorded context keeps its original date.
 
 ## Troubleshooting
 
-“Coming soon” describes release availability. Repeated connection attempts cannot enable it. Existing records and cleanup are preserved.
+Repeated connection attempts do not change when this connection is released. Existing records and cleanup are preserved.
 
 ## Get help
 

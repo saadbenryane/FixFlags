@@ -8,7 +8,7 @@ Sign in to FixFlags. GitHub requests the **repo** permission, which grants acces
 
 ## Connect
 
-Open your Site’s **Integrations**, choose **Manage GitHub connection**, then **Connect GitHub**. You can also open [GitHub connection settings](/settings/integrations) directly.
+Open your Site’s **Settings**, choose **Manage GitHub connection**, then **Connect GitHub**. You can also open [GitHub connection settings](/settings/integrations) directly.
 
 ## Confirm the connection
 

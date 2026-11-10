@@ -17,20 +17,20 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'analyze-a-website', categoryId: 'getting-started', title: 'Check your website',
     excerpt: "Enter your website address and see what needs attention.", popular: true,
-    searchTokens: ['start', 'url', 'scan', 'audit', 'site'], updatedAt: '2026-10-16', estimatedReadMinutes: 2,
+    searchTokens: ['start', 'url', 'scan', 'audit', 'site'], updatedAt: '2026-11-10', estimatedReadMinutes: 2,
     body: [
-      { type: "p", text: "You can try your first check before creating an account. Use a live webpage that visitors can open without signing in." },
+      { type: "p", text: "You can start your first check before creating an account. Create a free account to see the results. Use a live webpage that visitors can open without signing in." },
       { type: "p", text: "No installation needed for public pages." },
-      { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Check your website.", "Open a problem, called a Flag, to see what went wrong and how to fix it. If we couldn’t check an area, the result tells you why."] },
+      { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Check your website.", "Create a free account or sign in when asked. Your results open as soon as the check finishes.", "Open a problem, called a Flag, to see what went wrong and how to fix it. If we couldn’t check an area, the result tells you why."] },
       { type: "callout", text: "A Flag is a problem that needs attention. Not checked yet means results are not available for that area." },
     ], related: ['save-your-site', 'read-site-coverage', 'verify-a-flag'], relatedDocs: ['getting-started'],
   },
   {
     slug: 'save-your-site', categoryId: 'getting-started', title: 'Save a Site to your account',
     excerpt: "Keep your website and results in your account.", popular: true,
-    searchTokens: ['claim', 'sign up', 'sign in', 'anonymous'], updatedAt: '2026-10-19', estimatedReadMinutes: 2,
+    searchTokens: ['claim', 'sign up', 'sign in', 'anonymous'], updatedAt: '2026-11-10', estimatedReadMinutes: 2,
     body: [
-      { type: "p", text: "From your website’s results page, sign in or create an account to save it. FixFlags calls your saved website a Site." },
+      { type: "p", text: "After a check starts, sign in or create a free account to see the results and save the website. FixFlags calls your saved website a Site." },
       { type: "p", text: "Your original results stay with the website you checked. Open it from Websites in your account. Saving a Site schedules monitoring. Its next check and cadence are shown in Settings." },
     ], related: ['analyze-a-website', 'sign-in-and-account-security'], relatedDocs: ['getting-started'],
   },
@@ -107,21 +107,21 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     slug: 'connect-shopify', categoryId: 'shopify', title: 'Shopify integration, coming soon',
-    excerpt: 'Planned store context. Existing connection cleanup remains available.', popular: true,
+    excerpt: 'Store context for your Site. Existing connection cleanup remains available.', popular: true,
     searchTokens: ['shopify', 'install', 'connect', 'store'], updatedAt: '2026-10-14', estimatedReadMinutes: 2,
     body: [
-      { type: 'p', text: 'Shopify is coming soon until its connection and execution are tested and validated. GitHub account authorization is available. Website checks and monitoring work independently.' },
-      { type: 'p', text: 'New setup, refresh, and reconnection are unavailable. A previously saved connection can still be disconnected from the Site’s Integrations. Uninstall any existing FixFlags Shopify app separately to revoke its external access.' },
+      { type: 'p', text: 'Shopify becomes available after its connection and execution are tested and validated. Website checks and monitoring work without it.' },
+      { type: 'p', text: 'A previously saved connection can still be disconnected from the Site’s Settings. Uninstall any existing FixFlags Shopify app separately to revoke its external access.' },
       { type: 'link', text: 'Read the Shopify integration status', href: '/docs/integrations/shopify' },
     ], related: ['shopify-access-and-removal', 'read-site-coverage'], relatedDocs: ['shopify'],
   },
   {
     slug: 'connect-google-data', categoryId: 'getting-started', title: 'Google integrations, coming soon',
-    excerpt: 'Planned traffic and Search Console context. Independent website checks work now.',
+    excerpt: 'Traffic and Search Console context. Independent website checks work now.',
     searchTokens: ['analytics', 'google', 'search console', 'queries', 'sessions', 'connection'], updatedAt: '2026-10-14', estimatedReadMinutes: 2,
     body: [
-      { type: 'p', text: 'Google Analytics and Search Console integrations are coming soon. New setup and refresh remain unavailable until tested and validated.' },
-      { type: 'p', text: 'Previously recorded context retains its source and date. Existing saved connections can still be disconnected from the Site’s Integrations.' },
+      { type: 'p', text: 'Google Analytics and Search Console become available after testing and validation.' },
+      { type: 'p', text: 'Previously recorded context retains its source and date. Existing saved connections can still be disconnected from the Site’s Settings.' },
       { type: 'callout', text: 'Public Search inspection and website checks work independently. Provider traffic and search reports cannot prove that a visitor action or fix works.' },
       { type: 'link', text: 'Read the integration status', href: '/docs/integrations' },
     ], related: ['read-site-coverage', 'connect-shopify'], relatedDocs: ['google-analytics', 'google-search-console'],

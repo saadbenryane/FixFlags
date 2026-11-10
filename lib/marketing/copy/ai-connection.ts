@@ -34,7 +34,7 @@ export const AI_CONNECTION_COPY = {
     },
     unavailable: {
       title: 'Direct connections are coming soon.',
-      body: 'New MCP connections are not available in this beta. You can use fix instructions today by copying and pasting them, with nothing to connect.',
+      body: 'You can use fix instructions today by copying and pasting them, with nothing to connect.',
       action: 'How to copy and paste a fix',
       existing: 'Already connected to FixFlags?',
       existingBody: 'This prompt checks an existing connection. It does not install a connection, start a website check, or make changes.',

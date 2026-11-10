@@ -29,7 +29,8 @@ describe('help catalog', () => {
   it('explains the Google connections without claiming event or indexing checks', () => {
     const article = getHelpArticle('connect-google-data')
     expect(article?.title).toBe('Google integrations, coming soon')
-    expect(JSON.stringify(article?.body)).toContain('New setup and refresh remain unavailable until tested and validated')
+    expect(JSON.stringify(article?.body)).toContain('become available after testing and validation')
+    expect(JSON.stringify(article).match(/coming soon/gi)).toHaveLength(1)
   })
 
   it('maps failure and limit surfaces to help hrefs', () => {

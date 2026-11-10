@@ -27,9 +27,9 @@ If the check fails, read the reason and use the retry action. Contact support if
 
 ## Connections
 
-For GitHub authorization, open your website’s **Integrations** and read the connection state. Follow the [GitHub troubleshooting steps](/docs/integrations/github#troubleshooting) if authorization expires or does not finish.
+For GitHub authorization, open your Site’s **Settings** and read the connection state. Follow the [GitHub troubleshooting steps](/docs/integrations/github#troubleshooting) if authorization expires or does not finish.
 
-Shopify, Google Analytics, and Search Console setup and refresh are unavailable while those integrations are coming soon. Previously saved context keeps its recorded date. Use the [integration guides](/docs/integrations) to understand its limits and remove a saved connection.
+Shopify, Google Analytics, and Search Console are coming soon. Previously saved context keeps its recorded date. Use the [integration guides](/docs/integrations) to understand its limits and remove a saved connection.
 
 ## Contact support
 

@@ -1,16 +1,16 @@
 ## What it adds
 
-**Coming soon.** Google Search Console is a planned integration. GitHub account authorization is available. New connection setup and refresh will become available after testing and validation.
+**Coming soon.** Google Search Console becomes available after testing and validation. Everything below describes what it will add.
 
-Planned value: Search queries, impressions, clicks, and Google’s dated indexing evidence beside matching pages.
+Search queries, impressions, clicks, and Google’s dated indexing evidence beside matching pages.
 
 ## Before you connect
 
-Connection setup is unavailable in this beta. [Save and check your website](/docs/getting-started) using the independent website product.
+Nothing is needed yet. [Save and check your website](/docs/getting-started) today; checks do not depend on this connection.
 
 ## Connect
 
-There is no connection action to complete yet. See [planned integrations](/integrations) for the current lineup.
+See the [integrations overview](/integrations) for the current lineup.
 
 ## Confirm the connection
 
@@ -18,9 +18,7 @@ A previously saved connection is historical configuration, not proof of a newly 
 
 ## Coverage and limitations
 
-Planned indexing observations remain separate from today’s public-page inspection. A later comparable Google crawl is required for provider-based recovery. Traffic reports will not establish ranking changes or verify a fix.
-
-These are planned integration capabilities. Public website checks operate independently.
+Indexing observations will remain separate from today’s public-page inspection. A later comparable Google crawl is required for provider-based recovery. Traffic reports will not establish ranking changes or verify a fix.
 
 ## Permissions and data
 
@@ -28,13 +26,11 @@ The retained implementation uses read-only property and reporting access, with e
 
 ## Reconnect or disconnect
 
-Reconnect and refresh are unavailable while this integration is coming soon.
-
-Select **Disconnect Google Search Console** in the Site’s Integrations to remove its saved connection. Previously recorded context keeps its original date.
+Select **Disconnect Google Search Console** in the Site’s Settings to remove its saved connection. Previously recorded context keeps its original date.
 
 ## Troubleshooting
 
-“Coming soon” describes release availability. Repeated connection attempts cannot enable it. Existing records and cleanup are preserved.
+Repeated connection attempts do not change when this connection is released. Existing records and cleanup are preserved.
 
 ## Get help
 

@@ -1,16 +1,16 @@
 ## What it adds
 
-**Coming soon.** Shopify is a planned integration. GitHub account authorization is available. New connection setup and refresh will become available after testing and validation.
+**Coming soon.** Shopify becomes available after testing and validation. Everything below describes what it will add.
 
-Planned value: Store and product context alongside selected product, cart, and checkout-entry paths.
+Store and product context alongside selected product, cart, and checkout-entry paths.
 
 ## Before you connect
 
-Connection setup is unavailable in this beta. [Save and check your website](/docs/getting-started) using the independent website product.
+Nothing is needed yet. [Save and check your website](/docs/getting-started) today; checks do not depend on this connection.
 
 ## Connect
 
-There is no connection action to complete yet. See [planned integrations](/integrations) for the current lineup.
+See the [integrations overview](/integrations) for the current lineup.
 
 ## Confirm the connection
 
@@ -18,9 +18,7 @@ A previously saved connection is historical configuration, not proof of a newly 
 
 ## Coverage and limitations
 
-Planned checks stop before payment. They will not place orders or establish payment completion. Only independently exercised paths can have recorded results.
-
-These are planned integration capabilities. Public website checks operate independently.
+Checks will stop before payment. They will not place orders or establish payment completion. Only independently exercised paths can have recorded results.
 
 ## Permissions and data
 
@@ -28,13 +26,11 @@ The retained implementation uses read-only product access and encrypted credenti
 
 ## Reconnect or disconnect
 
-Reconnect and refresh are unavailable while this integration is coming soon.
-
-Select **Disconnect Shopify** in the Site’s Integrations to remove its saved connection. Previously recorded context keeps its original date. Also uninstall FixFlags in Shopify admin to revoke external app access and stop any existing store-specific checks.
+Select **Disconnect Shopify** in the Site’s Settings to remove its saved connection. Previously recorded context keeps its original date. Also uninstall FixFlags in Shopify admin to revoke external app access and stop any existing store-specific checks.
 
 ## Troubleshooting
 
-“Coming soon” describes release availability. Repeated connection attempts cannot enable it. Existing records and cleanup are preserved.
+Repeated connection attempts do not change when this connection is released. Existing records and cleanup are preserved.
 
 ## Get help
 

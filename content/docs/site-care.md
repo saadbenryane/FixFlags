@@ -19,8 +19,7 @@ Use the website sidebar to move between:
 
 - **Overview**: see results and open problems.
 - **Timeline**: see earlier checks and changes after fixes.
-- **Integrations**: manage GitHub account authorization, inspect recorded connection context, and see which connections are coming soon.
-- **Settings**: choose a monitoring schedule and email preferences.
+- **Settings**: choose a monitoring schedule and email preferences, and manage GitHub account authorization.
 
 The Timeline graph shows Flag counts from website-wide checks. Your first check is the starting point; more checks build a trend. Checks that could not finish leave gaps rather than counting as zero. Checks of one area or action appear in the history below the graph.
 
@@ -76,7 +75,7 @@ Regular monitoring reuses the saved test account. New signup tests run at setup,
 
 ## Connections
 
-[Shopify](/docs/integrations/shopify), Analytics, and Search Console are coming soon. GitHub account authorization is available. [Planned integrations](/integrations) are separate from the independent website checks available now.
+GitHub account authorization is available in Settings. [Shopify](/docs/integrations/shopify), Analytics, and Search Console are [coming soon](/integrations); website checks do not depend on them.
 
 ## Get help
 

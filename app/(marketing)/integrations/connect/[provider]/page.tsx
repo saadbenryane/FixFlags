@@ -14,7 +14,6 @@ export default async function ConnectIntegrationPage({ params }: { params: Promi
     <p className={styles.eyebrow}>{SITE_CONNECTION_COPY.comingSoon}</p>
     <h1>{selected.title}</h1>
     <p className={styles.intro}>{selected.summary}</p>
-    <p className={styles.notice}>{SITE_CONNECTION_COPY.comingSoonBody}</p>
     <Link href="/" className={styles.action}>{INTEGRATIONS_PAGE.checkWebsite}</Link>
   </main>
 }
