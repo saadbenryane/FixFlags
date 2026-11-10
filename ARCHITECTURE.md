@@ -200,7 +200,7 @@ The website beta admits one website. Monitoring is enabled automatically when th
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)
-- Billing enforcement: `lib/billing/limits.ts`, `lib/billing/credits.ts`, `lib/billing/config.ts`
+- Billing enforcement: `lib/audit/check-limit.ts`, `lib/billing/usage-period.ts`, `lib/billing/credits.ts`, `lib/billing/config.ts`
 - Liveness: `/api/health` remains a low-cost diagnostic snapshot; launch readiness is `/api/health/ready`.
 
 ## Deployment
@@ -236,9 +236,9 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 | Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Studio API + MCP `scanAccess` on check |
 | Deploy CI gate | `app/api/webhooks/railway/route.ts` (Authorization header, owned Site, shared RunRequest); see `docs/railway-deploy-check.md` |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
-| Live explorer | `LiveReportExplorer` → `ReportExplorer` |
-| Sample explorer | `/samples`: `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`. Homepage sample section: `SampleReportDashboardMock` fed by `buildSampleDashboardPreview` (product-true stylized chrome, not the live explorer). |
-| Flag detail | `FlagDetailPanel` with access-redacted prompt state, then one desktop\|mobile pair via `ScreenshotWithHighlights`; GIF/overlay plays in the affected frame |
+| Live results | `/sites/[siteId]`: `SiteBoard` fed by `lib/sites/board-view.ts`; `/report/[id]` is a read-only view for earlier links and shares |
+| Sample | `/samples` renders one curated observation as a Site Flag with its fix instructions |
+| Flag detail | `/sites/[siteId]/flags/[flagId]`: `FlagEvidenceDetails` and `SiteFlagActions` (fix instructions, Recheck) |
 
 ### Capture stack
 

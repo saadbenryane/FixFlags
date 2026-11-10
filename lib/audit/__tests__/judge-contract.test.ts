@@ -5,7 +5,6 @@ import {
   normalizeJudgeRawOutput,
   JudgeContractError,
 } from '@/lib/audit/validate-judge-output'
-import { deduplicateFlags } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'
 
@@ -18,20 +17,6 @@ function makeDet(partial: Partial<DeterministicFlag> & Pick<DeterministicFlag, '
     fix: 'Fix it',
     confidence: 1,
     source: 'DETERMINISTIC',
-    ...partial,
-  }
-}
-
-function makeAiFlag(partial: Partial<JudgeOutput['newFlags'][number]>): JudgeOutput['newFlags'][number] {
-  return {
-    rubric: 'MESSAGE',
-    impactTag: 'CONVERSION',
-    severity: 'IMPORTANT',
-    problem: 'AI detected issue',
-    evidence: 'AI evidence',
-    whyItMatters: 'This matters because',
-    fix: 'Fix it with AI',
-    confidence: 0.8,
     ...partial,
   }
 }
@@ -315,59 +300,3 @@ describe('validateJudgeOutput', () => {
   })
 })
 
-// ── deduplicateFlags edge cases ──────────────────────────────────
-
-describe('deduplicateFlags', () => {
-  it('removes AI flag with exact problem match to deterministic', () => {
-    const det = [makeDet({ checkId: 'title-missing', rubric: 'REACH', problem: 'Page title is missing' })]
-    const ai = [makeAiFlag({ rubric: 'REACH', problem: 'Page title is missing' })]
-    assert.equal(deduplicateFlags(det, ai).length, 0)
-  })
-
-  it('removes AI flag with high-evidence overlap to deterministic', () => {
-    const det = [makeDet({ checkId: 'title-missing', problem: 'Page title is missing', evidence: 'No <title> tag found' })]
-    const ai = [makeAiFlag({ problem: 'Missing page title tag', evidence: 'Page head lacks a title element' })]
-    assert.equal(deduplicateFlags(det, ai).length, 0)
-  })
-
-  it('removes cross-rubric AI flag matching deterministic theme', () => {
-    const det = [makeDet({ checkId: 'no-cta-detected', rubric: 'MESSAGE', problem: 'No call-to-action buttons found' })]
-    const ai = [makeAiFlag({ rubric: 'REACH', problem: 'Primary CTA is hidden below the fold on mobile' })]
-    assert.equal(deduplicateFlags(det, ai).length, 0)
-  })
-
-  it('keeps genuinely new AI flag with no overlap', () => {
-    const det = [makeDet({ checkId: 'title-missing', problem: 'Title is missing' })]
-    const ai = [makeAiFlag({ problem: 'Testimonials use placeholder names', evidence: 'Screenshot shows Acme Corp' })]
-    assert.equal(deduplicateFlags(det, ai).length, 1)
-  })
-
-  it('retains paraphrases without an explicit shared check identity', () => {
-    const det: DeterministicFlag[] = []
-    const ai = [
-      makeAiFlag({ problem: 'Page load time too slow exceeds threshold', evidence: 'LCP very slow four point five seconds' }),
-      makeAiFlag({ problem: 'Page load time exceeds threshold LCP is very slow', evidence: 'Slow load time over four point five seconds' }),
-    ]
-    const result = deduplicateFlags(det, ai)
-    assert.equal(result.length, ai.length)
-  })
-
-  it('returns empty array when no AI flags provided', () => {
-    assert.equal(deduplicateFlags([], []).length, 0)
-  })
-
-  it('returns empty array when all AI flags are duplicates of deterministic', () => {
-    const det = [makeDet({ checkId: 'og-image-missing', rubric: 'REACH', problem: 'og:image is missing' })]
-    const ai = [makeAiFlag({ problem: 'No og:image meta tag detected' })]
-    assert.equal(deduplicateFlags(det, ai).length, 0)
-  })
-
-  it('keeps multiple unique AI flags', () => {
-    const det: DeterministicFlag[] = []
-    const ai = [
-      makeAiFlag({ problem: 'No testimonials section', evidence: 'Page lacks social proof' }),
-      makeAiFlag({ problem: 'Contact form has no CSRF protection', evidence: 'Form submits without token' }),
-    ]
-    assert.equal(deduplicateFlags(det, ai).length, 2)
-  })
-})

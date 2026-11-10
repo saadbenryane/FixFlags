@@ -235,7 +235,6 @@
     "lib/admin/evidence.ts",
     "lib/admin/exports.ts",
     "lib/admin/external-actions.ts",
-    "lib/admin/feedback-digest.ts",
     "lib/admin/format.ts",
     "lib/admin/http.ts",
     "lib/admin/operations.ts",

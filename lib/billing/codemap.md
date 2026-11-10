@@ -6,14 +6,12 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 ## Entry Points
 | File | Purpose |
 |------|---------|
-| `limits.ts` | Monthly Product Review and deep-review limits from the canonical plan definitions |
 | `credits.ts` | AI credit tracking (prescription costs credits) |
 | `plans.ts` | Canonical plan names, prices, and usage allowances |
 | `config.ts` | Stripe config (prices, products) |
 | `costs.ts` | `MODEL_RATES` for LLM cost estimation (keep in sync with `judge-config.ts`) |
 | `env.ts` | Billing environment variables |
 | `notify.ts` | Usage threshold notifications |
-| `upgrade-moments.ts` | Upgrade prompt triggers |
 
 ## Architecture
 - **Public packaging:** Free is one website verified weekly. Pro is $49 per website per month with daily verification. Studio is quoted per website. Internal 3/30/90 review pools remain enforcement details and are not customer packaging; legacy deep-review counters remain persistence-only.

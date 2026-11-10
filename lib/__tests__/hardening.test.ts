@@ -16,7 +16,7 @@ import {
   calculateOverallScore,
   gradeFromScore,
 } from '@/lib/audit/scoring'
-import { flagFingerprint } from '@/lib/audit/deduplicate'
+import { flagFingerprint } from '@/lib/audit/flag-identity'
 import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
 import { isPublicIp, normalizeAuditUrl } from '@/lib/audit/url'
 import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'

@@ -76,8 +76,8 @@ FixFlags is the independent monitor for software that acts. The website product 
 - **Billing/subscription logic** → `lib/billing/` (read `lib/billing/codemap.md`)
 - **Marketing copy** → the relevant module under `lib/marketing/copy/`; `copy.ts` is the export barrel
 - **Design tokens** → `lib/design/tokens.css` (semantic tokens, never raw hex)
-- **Canonical report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts`. Default route is Agent beside Report.
-- **Flag interaction UI** → `components/report/` (explorer, detail panel, fix loop)
+- **Canonical results UI** → the Site board: `components/sites/SiteBoard.tsx`, `lib/sites/board-view.ts`, and Flag detail in `app/sites/[siteId]/flags/[flagId]/`.
+- **Flag interaction UI** → `components/sites/` (`SiteFlagActions`, `FlagEvidenceDetails`)
 - **Shared UI primitives** → `components/ui/` (shadcn-based)
 - **API routes** → `app/api/` (Site, checks, reports, auth, MCP, Stripe, cron, health). New run behavior must enter through `lib/sites/application`, not a route-specific engine.
 - **Launch MCP / CLI** → `fixflags-cli/`, `lib/mcp/`, `lib/integrations/` (currently parked at the edge; re-scope from reports to Site/Outcome/Run/Flag before unpark). **Parked repo scan** remains `lib/repo-scan/`.
@@ -109,7 +109,7 @@ FixFlags is the independent monitor for software that acts. The website product 
 
 1. User subscribes → Stripe Checkout → webhook → `app/api/stripe/webhook/route.ts`
 2. Subscription state persisted → `lib/billing/`
-3. Audit creation checks limits → `lib/billing/limits.ts`
+3. Check creation enforces limits → `lib/audit/check-limit.ts`
 4. AI prescription gated by `includeAi` + credits → `lib/billing/credits.ts`
 
 ### Anonymous Wedge Flow

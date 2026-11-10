@@ -10,7 +10,6 @@ import {
   isBlankText,
 } from '@/lib/audit/persist'
 import { whyItMattersForCheckId } from '@/lib/audit/flag-copy'
-import { flagFingerprint } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'
 
@@ -58,45 +57,6 @@ describe('aiImpactToEnum', () => {
   })
 })
 
-// ── flagFingerprint ──────────────────────────────────────────────
-
-describe('flagFingerprint', () => {
-  it('produces the same hash for identical inputs', () => {
-    const a = flagFingerprint({ rubric: 'EXPERIENCE', checkId: 'title-missing', problem: 'Title is missing' })
-    const b = flagFingerprint({ rubric: 'EXPERIENCE', checkId: 'title-missing', problem: 'Title is missing' })
-    assert.equal(a, b)
-  })
-
-  it('produces different hashes for different checkIds', () => {
-    const a = flagFingerprint({ rubric: 'EXPERIENCE', checkId: 'title-missing', problem: 'Title is missing' })
-    const b = flagFingerprint({ rubric: 'EXPERIENCE', checkId: 'description-missing', problem: 'Title is missing' })
-    assert.notEqual(a, b)
-  })
-
-  it('produces different hashes for different rubrics', () => {
-    const a = flagFingerprint({ rubric: 'MESSAGE', checkId: 'title-missing', problem: 'Title is missing' })
-    const b = flagFingerprint({ rubric: 'REACH', checkId: 'title-missing', problem: 'Title is missing' })
-    assert.notEqual(a, b)
-  })
-
-  it('hashes by problem words when checkId is null (AI flag)', () => {
-    const a = flagFingerprint({ rubric: 'MESSAGE', checkId: null, problem: 'Slow page load time' })
-    const b = flagFingerprint({ rubric: 'MESSAGE', checkId: null, problem: 'Slow page load time' })
-    assert.equal(a, b)
-  })
-
-  it('produces different hashes for different AI problems', () => {
-    const a = flagFingerprint({ rubric: 'MESSAGE', checkId: null, problem: 'Slow page load time' })
-    const b = flagFingerprint({ rubric: 'MESSAGE', checkId: null, problem: 'Missing testimonials section' })
-    assert.notEqual(a, b)
-  })
-
-  it('includes pageUrl in hash when provided', () => {
-    const a = flagFingerprint({ rubric: 'MESSAGE', checkId: 'title-missing', problem: 'Title missing', pageUrl: '/page1' })
-    const b = flagFingerprint({ rubric: 'MESSAGE', checkId: 'title-missing', problem: 'Title missing', pageUrl: '/page2' })
-    assert.notEqual(a, b)
-  })
-})
 
 // ── Severity ↔ Score consistency ────────────────────────────────
 
