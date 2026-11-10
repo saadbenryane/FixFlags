@@ -50,17 +50,21 @@ A second pass compared every public and in-product surface against the adopted v
 - The sample page uses the board's customer headline ("The main button is off-screen on phones") and states the change once, inside the fix instructions.
 - Removed 16 unused components and 11 unused copy exports. Three analytics events were satisfied only by an unmounted tracker, so they are now marked retired.
 
-**Still to do, in order**
+**Completed after the audit**
 
-1. Real-path proof of the first check. Apply local migrations, run the worker, and walk URL → board → Flag → fix instructions → Check now on desktop and phone. Nothing in this pass replaces that walk.
-2. Retire `/report` from new paths. `/api/checks` and the CLI still return `reportUrl`. Sign-up from a running report uses `next=/report/…`, and chat history and claim links point at `/report`. Point all of them at the Site.
-3. Remove redirect-only routes that nothing links to (`/compare/[id]`, `/report/[id]/details`, `/report/repo/[id]`, `/share/[token]/details`, `/docs/cli`, `/docs/mcp/tools`, `/dashboard/mcp-analytics`, `/admin/inbox`, `/examples`, `/samples/details`, `/design/homepage`). Keep `/partners` as a config redirect until search traffic moves.
-4. Mount or delete the Safe Signup fixture and Outcome confirmation UI (`SafeFormFixtures`, `SiteOutcomeConfirm`). Both are tested but rendered nowhere, so owners have no path to authorize Safe Signup.
-5. Collapse "coming soon" to one line per surface. Pricing repeats it six or more times, and it also repeats on Integrations, `/connect-ai`, Site Settings, docs and help.
-6. Decide one name for the recheck action. The app button says "Check now", while the homepage sample and the voice guide say Recheck. Then align the remaining "problem" and "Monitoring" wording with Flag and Watch.
-7. Add the missing IA pages: For agencies, Compare (Elu, uptime monitors, Checkly) and a free tools index.
-8. Flag text for people. Some prescriptions still read as hedged inspection plans ("Review the recorded mobile action… If this is the intended primary action…"). Rewrite them so the first line states the change, as part of the finding-quality review.
-9. Legal text still says "Analyze a URL". It needs an owner or legal review, not a copy edit.
+1. `/report` is retired from new paths. The checks API, re-check API, MCP outcomes and CLI return `siteUrl` only, and the CLI says recheck. `/report` sends any owner, including a signed-out owner with a provisional Site, to the Site board. Repair briefs and Site emails link the source check to the Site timeline. The progressive report workspace, chat panel, explorer and repo-scan UI were reachable only from each other and are removed.
+2. The eleven redirect-only page folders are gone. Their public addresses redirect from `next.config.ts`, and `/partners` now redirects to For agencies.
+3. Inferred Outcomes can be confirmed. Owners get the confirm control on the Outcome detail page. The Safe Form fixture editor was superseded by automatic account checks and is removed; fixture APIs keep their contracts.
+4. "Coming soon" appears once per surface on Integrations, the connect pages, `/connect-ai`, the provider guides, docs and help. Pricing and the homepage belong to the redesign session.
+5. The fix-check action is Recheck everywhere. Outcome verification keeps "Check now" because it checks an Outcome, not a fix. The voice guide itself keeps Monitoring as the name for scheduled execution and defines a Flag as a problem, so that wording stays.
+6. `/compare` (Elu, Lighthouse and PageSpeed Insights, uptime monitors, Checkly, each sourced and checked November 10), `/for-agencies` (what works today, with the one-website beta limit stated once) and `/tools` are live in the sitemap, llms.txt and the footer.
+7. Fix instructions lead with the change where the check records the problem itself (positive tabindex, tap targets, titles, missing analytics, overlong opening headings). Contextual observations keep their conditional inspection on purpose: `prescription-policy` requires it because a recorded position or phrase does not establish a failure, and leading with a change would claim one.
+
+**Still needs the owner**
+
+1. Real-path proof of the first check. Run `npm run db:deploy` (nine local migrations are pending; the agent's permission check blocks it), start the worker, then walk URL → sign-up gate → board → Flag → fix instructions → Recheck on desktop and phone.
+2. Legal review of the Terms and Privacy wording (`lib/marketing/copy/legal.ts`). It still says "analyze" four times, and the accounts section says a URL can be analyzed without an account, which the signup gate changes. Proposed wording for review: "You can start a check of a public URL without an account. Seeing its results, saving the Site, rechecking fixes and watching it require signing in." Elsewhere, "analyzes" becomes "checks" and "When you Analyze a URL" becomes "When you check a URL".
+3. The owner's new bar, that every advertised and competitive feature works, needs its own audit against PRODUCT.md once the first-check walk runs on real infrastructure.
 
 ## The short version
 
