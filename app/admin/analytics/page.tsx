@@ -18,6 +18,7 @@ import { SITE_LIFECYCLE_EVENTS } from '@/lib/analytics/site-events'
 import { loadSiteFirstValueFunnel } from '@/lib/analytics/site-first-value-funnel'
 import { loadWatchLaunchReadiness } from '@/lib/analytics/watch-launch-readiness'
 import { loadWeeklyScoreboard, type ScoreboardStage } from '@/lib/analytics/weekly-scoreboard'
+import { loadCheckCostSummary, type CostDistribution } from '@/lib/analytics/check-cost'
 import { ADMIN_COPY } from '@/lib/marketing/copy/admin'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
@@ -55,6 +56,18 @@ const WATCH_GATE_LABELS = {
   flagDeduplication: 'Flag deduplication',
   economics: 'Daily-care economics',
 } as const
+
+const COST_ROWS = [['Anonymous first check', 'anonymousFirstCheck'], ['Owned check', 'ownedCheck'], ['Per active Site', 'perActiveSite']] as const
+
+const usd = (value: number | null) => (value === null ? 'N/A' : '$' + value.toFixed(3))
+
+function costValue(cost: CostDistribution) {
+  return cost.medianUsd === null ? 'N/A' : usd(cost.medianUsd) + ' median'
+}
+
+function costDetail(cost: CostDistribution) {
+  return 'p90 ' + usd(cost.p90Usd) + ' · n=' + cost.count + (cost.missing ? ' · ' + cost.missing + ' unmeasured' : '')
+}
 
 const SCOREBOARD_COLUMNS: [ScoreboardStage, string][] = [
   ['checks', 'First checks'],
@@ -162,6 +175,7 @@ export default async function AdminAnalyticsPage() {
     siteLifecycleCounts,
     firstValueFunnel,
     weeklyScoreboard,
+    checkCosts,
   ] = await Promise.all([
     prisma.user.findMany({
       where: { plan: { not: 'FREE' }, subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
@@ -203,6 +217,7 @@ export default async function AdminAnalyticsPage() {
     }),
     loadSiteFirstValueFunnel(monthAgo),
     loadWeeklyScoreboard(),
+    loadCheckCostSummary(monthAgo, 30),
   ])
 
   const mrr = activePaidUsers.reduce(
@@ -308,6 +323,19 @@ export default async function AdminAnalyticsPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+      <section className="space-y-4" aria-labelledby="check-cost-heading">
+        <SectionTitle id="check-cost-heading">Measured cost (last 30 days)</SectionTitle>
+        <p className="max-w-4xl text-sm text-muted-foreground">
+          Recorded run costs for completed checks. Runs without a recorded cost are counted as
+          missing, never as free. Use these before raising anonymous check depth or setting prices.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {COST_ROWS.map(([label, key]) => (
+            <MetricCard key={label} label={label} value={costValue(checkCosts[key])} variant="subtle"
+              detail={<span className="text-xs text-muted-foreground">{costDetail(checkCosts[key])}</span>} />
+          ))}
         </div>
       </section>
       <section className="space-y-4">
