@@ -7,6 +7,7 @@ import { ProductBoardCard } from '@/components/sites/BoardCard'
 import { SiteOverview } from '@/components/sites/SiteOverview'
 import { SiteTopProblem, detectedBuilder, topProblem } from '@/components/sites/SiteTopProblem'
 import { SiteBuilderQuestion } from '@/components/sites/SiteBuilderQuestion'
+import { liveActivityLine } from '@/lib/sites/live-activity'
 import { SiteOverviewWorkspace } from '@/components/sites/SiteOverviewWorkspace'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
@@ -190,7 +191,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
           copyReady={view.actions.copy !== 'available' || Boolean(primaryProblem.fix.trim())} technologies={technologies} reportedBuilder={reportedBuilder} onOpen={openFlag} /> : null}
         {ownsSite && !detectedBuilder(technologies) ? <SiteBuilderQuestion siteId={siteId} onAnswer={setReportedBuilder} /> : null}
         <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
-          notice={checking && !disconnected && !currentReadUnavailable ? SITE_ACTION_COPY.execution.live : undefined}
+          notice={checking && !disconnected && !currentReadUnavailable ? liveActivityLine(view.executionProgress?.tasks) ?? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
             if (item.id === 'pages') { openWorkspace('pages'); return }
             const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')
