@@ -10,6 +10,16 @@ import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { Toaster, toast } from 'sonner'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-testid="url-entry" /> }))
+// The dashboard loads lazily in the browser (covered in HomepageDeferredDashboard.test.tsx).
+// Here it renders directly so these tests exercise the sample experience itself.
+vi.mock('../HomepageDeferredDashboard', async () => {
+  const { HomepageDashboardPreview } = await import('../HomepageDashboardPreview')
+  return { HomepageDeferredDashboard: (props: Parameters<typeof HomepageDashboardPreview>[0] & { eager?: boolean }) => {
+    const { eager, ...preview } = props
+    void eager
+    return <HomepageDashboardPreview {...preview} />
+  } }
+})
 vi.mock('next/image', () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }))
 afterEach(() => { toast.dismiss(); cleanup(); vi.restoreAllMocks() })
 

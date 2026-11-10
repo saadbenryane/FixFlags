@@ -2,6 +2,9 @@
 
 **Initial research date:** 2026-10-01. **Corrective reviews:** 2026-10-02 and 2026-10-04.
 **Status:** evidence-safe working brief; the conversion baseline and MCP category claim remain open.
+
+For the November 10, 2026 Elu investigation, see [Elu product research and competitive plan](elu-product-research-and-competitive-plan.md). The owner-requested [website design plan](website-design-plan.md) is a separate workstream. Both are supporting proposals; the current product completion plan remains the execution authority.
+
 **Supersedes the factual content of** [`competitors.md`](competitors.md). That file's narrative described the
 retired "AI-built product QA" positioning and misidentified two of its three named competitors. Its history is
 preserved in git per the never-delete rule in [`README.md`](README.md). Per

@@ -7,7 +7,8 @@ import { HOMEPAGE_SAMPLE as S, type SampleCategory, type SampleFlagId } from '@/
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { HomepageUrlEntry } from './HomepagePrimitives'
 import { GlassHeroMark } from './GlassHeroMark'
-import { HomepageDashboardPreview, type SampleFlagOpener } from './HomepageDashboardPreview'
+import type { SampleFlagOpener } from './HomepageDashboardPreview'
+import { HomepageDeferredDashboard } from './HomepageDeferredDashboard'
 import s from './HomepageHero.module.css'
 
 export type HomepageDetailCard = SiteCardArea
@@ -35,7 +36,7 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onView
           return <li key={benefit.title}><Icon size={20} aria-hidden="true" /><strong>{benefit.title}</strong></li>
         })}
       </ul>
-      <HomepageDashboardPreview onOpen={onOpen} onOpenFlag={onOpenFlag} onCopyFlag={onCopyFlag} onCopyAll={onCopyAll} onViewAll={onViewAll} onCopySelection={onCopySelection} />
+      <HomepageDeferredDashboard onOpen={onOpen} onOpenFlag={onOpenFlag} onCopyFlag={onCopyFlag} onCopyAll={onCopyAll} onViewAll={onViewAll} onCopySelection={onCopySelection} />
     </section>
   </>
 }

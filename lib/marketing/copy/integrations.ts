@@ -8,7 +8,7 @@ export const INTEGRATIONS_PAGE = {
   },
   checkWebsite: 'Check your website',
   currentListTitle: 'What it adds',
-  futureListTitle: 'What’s planned',
+  plannedTitle: 'Planned connections',
   proposedLabel: 'Coming soon',
   availableLabel: 'Available',
   items: [

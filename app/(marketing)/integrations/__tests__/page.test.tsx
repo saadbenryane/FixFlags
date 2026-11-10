@@ -9,36 +9,34 @@ vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-te
 vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPageViewTracker: () => null }))
 
 describe('integrations marketing page', () => {
-  it('uses matching detailed cards for available and coming-soon connections', () => {
+  it('shows detailed cards only for available connections and lists planned ones quietly', () => {
     render(<IntegrationsPage />)
     expect(screen.getByRole('heading', { level: 1, name: C.hero.title })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Available connections' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Exploring other connections')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('article')).toHaveLength(10)
-    expect(screen.getAllByText('Coming soon')).toHaveLength(9)
-    expect(screen.getAllByRole('article')[0].dataset.status === 'available').toBe(true)
-    expect(screen.queryByRole('heading', { name: 'More signals to bring in' })).not.toBeInTheDocument()
-    expect(C.items).toHaveLength(10)
-    expect(C.items.filter(item => item.status === 'available')).toHaveLength(1)
-    for (const item of C.items) {
+    const available = C.items.filter(item => item.status === 'available')
+    const planned = C.items.filter(item => item.status === 'planned')
+    expect(available).toHaveLength(1)
+    expect(planned).toHaveLength(9)
+    expect(screen.getAllByRole('article')).toHaveLength(available.length)
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
+    for (const item of available) {
       const card = document.getElementById(item.id)!
-      expect(within(card).getByRole('heading', { name: item.title })).toBeInTheDocument()
       expect(card.tagName).toBe('ARTICLE')
-      expect(card.className).toBe(document.getElementById('shopify')!.className)
+      expect(within(card).getByRole('heading', { name: item.title })).toBeInTheDocument()
       expect(card.querySelector('img')).toHaveAttribute('src', item.logo)
       expect(within(card).getByText(item.summary)).toBeInTheDocument()
-      if (item.status === 'available') {
-        expect(within(card).getByRole('heading', { name: C.currentListTitle })).toBeInTheDocument()
-        for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
-      } else {
-        expect(within(card).getByRole('heading', { name: C.futureListTitle })).toBeVisible()
-        for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
-        expect(within(card).getByText(item.summary)).toHaveTextContent(/^Planned:/)
-        expect(within(card).getByText(C.proposedLabel)).toBeVisible()
-      }
-      if (item.status === 'available') expect(within(card).getByRole('link', { name: item.action })).toHaveAttribute('href', item.href)
-      else expect(within(card).queryByRole('link')).not.toBeInTheDocument()
+      expect(within(card).getByRole('heading', { name: C.currentListTitle })).toBeInTheDocument()
+      for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
+      expect(within(card).getByRole('link', { name: item.action })).toHaveAttribute('href', item.href)
     }
+    const plannedSection = screen.getByRole('region', { name: C.plannedTitle })
+    const plannedItems = within(plannedSection).getAllByRole('listitem')
+    expect(plannedItems.map(item => item.textContent)).toEqual(planned.map(item => item.title))
+    for (const item of planned) {
+      // Homepage links deep-link to /integrations#<id>, so every planned connection keeps its anchor.
+      expect(document.getElementById(item.id)?.tagName).toBe('LI')
+      expect(screen.queryByText(item.summary)).not.toBeInTheDocument()
+    }
+    expect(within(plannedSection).queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByTestId('url-entry')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: CARE_HOME.close.title })).toBeInTheDocument()
     expect(screen.getByText(CARE_HOME.close.body)).toBeInTheDocument()

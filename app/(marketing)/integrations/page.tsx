@@ -17,19 +17,19 @@ export const metadata = buildPageMetadata('integrations', '/integrations')
 type Integration = { id: string; status: 'available' | 'planned'; title: string; logo: string; purpose: string; summary: string; checks: readonly string[]; action?: string; href?: string }
 
 function IntegrationCard({ item }: { item: Integration }) {
-  return <article id={item.id} className={s.card} data-status={item.status}>
+  return <article id={item.id} className={s.card}>
     <div className={s.cardTop}>
       <span className={s.logoPlate}><Image src={item.logo} alt="" width={42} height={42} /></span>
-      <span className={s.status}>{item.status === 'available' ? C.availableLabel : C.proposedLabel}</span>
+      <span className={s.status}>{C.availableLabel}</span>
     </div>
     <p className={s.purpose}>{item.purpose}</p>
     <h2>{item.title}</h2>
     <p className={s.summary}>{item.summary}</p>
     <div className={s.checks}>
-      <h3>{item.status === 'available' ? C.currentListTitle : C.futureListTitle}</h3>
-      <ul>{item.checks.map(check => <li key={check}>{item.status === 'available' ? <Check size={15} aria-hidden="true" /> : <span className={s.proposedBullet} aria-hidden="true" />}<span>{check}</span></li>)}</ul>
+      <h3>{C.currentListTitle}</h3>
+      <ul>{item.checks.map(check => <li key={check}><Check size={15} aria-hidden="true" /><span>{check}</span></li>)}</ul>
     </div>
-    {item.status === 'available' && item.action && item.href ? <>
+    {item.action && item.href ? <>
       <p className={s.requirements}>{PUBLIC_SITE_COPY.integrations.requirements[item.id as keyof typeof PUBLIC_SITE_COPY.integrations.requirements]}</p>
       <Link href={item.href as Route} className={s.cardAction}>{item.action}<span className={s.linkArrow}><ArrowRight size={16} aria-hidden="true" /></span></Link>
     </> : null}
@@ -37,12 +37,18 @@ function IntegrationCard({ item }: { item: Integration }) {
 }
 
 export default function IntegrationsPage() {
+  const available = C.items.filter(item => item.status === 'available')
+  const planned = C.items.filter(item => item.status === 'planned')
   return <div className={s.page}>
     <MarketingPageViewTracker page="/integrations" />
     <Container variant="marketing"><MarketingPageHeader id="integrations-heading" eyebrow={C.hero.label} title={C.hero.title} description={C.hero.body} /></Container>
 
     <Section spacing="overview" aria-label={C.hero.label}><Container variant="marketing" className={s.group}>
-      <div className={s.grid}>{[...C.items.filter(item => item.status === 'available'), ...C.items.filter(item => item.status === 'planned')].map(item => <IntegrationCard key={item.id} item={item} />)}</div>
+      <div className={s.grid}>{available.map(item => <IntegrationCard key={item.id} item={item} />)}</div>
+      {planned.length ? <section className={s.planned} aria-labelledby="planned-connections-heading">
+        <h2 id="planned-connections-heading">{C.plannedTitle}</h2>
+        <ul>{planned.map(item => <li key={item.id} id={item.id}><Image src={item.logo} alt="" width={20} height={20} />{item.title}</li>)}</ul>
+      </section> : null}
     </Container></Section>
 
     <Section spacing="marketing" tint="subtle" className={s.close} aria-labelledby="integrations-close-heading">

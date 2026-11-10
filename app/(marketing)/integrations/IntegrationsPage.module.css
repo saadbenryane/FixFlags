@@ -2,13 +2,13 @@
 .group { max-width: 1168px; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
 .card { display: flex; flex-direction: column; min-width: 0; padding: 32px; border-radius: var(--radius-card); background: hsl(var(--muted) / .7); scroll-margin-top: var(--header-offset); }
-.card:target { outline: 2px solid hsl(var(--brand) / .55); outline-offset: 5px; }
+.card:only-child { grid-column: span 2; }
+.card:target, .planned li:target { outline: 2px solid hsl(var(--brand) / .55); outline-offset: 5px; }
 .cardTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .logoPlate { display: grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; border-radius: var(--radius-inner); background: hsl(var(--logo-tile-background)); box-shadow: var(--shadow-glass-subtle); }
 .logoPlate img { width: 42px; height: 42px; object-fit: contain; }
-.status { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--radius-pill); color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
-.card[data-status='available'] .status { background: hsl(var(--background)); color: hsl(var(--foreground)); }
-.card[data-status='available'] .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: hsl(var(--brand)); }
+.status { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--radius-pill); background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: 12px; font-weight: 550; }
+.status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: hsl(var(--brand)); }
 .purpose { margin-top: 28px; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
 .card h2 { margin-top: 8px; font-family: var(--font-display), sans-serif; font-size: clamp(26px, 2.5vw, 34px); font-weight: 620; line-height: 1.12; letter-spacing: -.04em; text-wrap: balance; }
 .summary { margin-top: 16px; color: hsl(var(--muted-foreground)); font-size: 15px; line-height: 1.65; text-wrap: pretty; }
@@ -17,7 +17,11 @@
 .checks ul { display: grid; gap: 14px; margin-top: 16px; }
 .checks li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.6; }
 .checks li svg { flex-shrink: 0; margin-top: 3px; color: hsl(var(--brand)); }
-.proposedBullet { width: 5px; height: 5px; flex-shrink: 0; margin: 8px 5px 0; border-radius: 50%; background: hsl(var(--muted-foreground) / .5); }
+.planned { margin-top: 56px; }
+.planned h2 { color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 600; }
+.planned ul { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.planned li { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 14px 8px 10px; border-radius: var(--radius-pill); background: hsl(var(--muted) / .7); color: hsl(var(--muted-foreground)); font-size: 14px; scroll-margin-top: var(--header-offset); }
+.planned li img { width: 20px; height: 20px; object-fit: contain; }
 .requirements { margin-top: auto; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.65; text-wrap: pretty; }
 .cardAction { display: inline-flex; align-items: center; gap: 12px; width: fit-content; min-height: 44px; margin-top: 20px; color: hsl(var(--foreground)); font-size: 14px; font-weight: 600; }
 .linkArrow { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: var(--radius-pill); background: hsl(var(--brand) / .08); color: hsl(var(--brand)); }
@@ -35,5 +39,6 @@
 }
 @media (max-width: 639px) {
   .grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .card:only-child { grid-column: auto; }
   .card { padding: 28px 24px; }
 }

@@ -18,6 +18,8 @@
 .intro h2, .final h2 { font-size: clamp(30px, 3.7vw, 48px); font-weight: 600; letter-spacing: -.04em; line-height: 1.14; }
 .intro > p:last-child:not(.eyebrow) { margin-top: 14px; font-size: 16px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
 .board { position: relative; container: sample-board / inline-size; display: grid; grid-template-columns: var(--site-account-rail-width) minmax(0, 1fr); overflow: hidden; border: 0; border-radius: 20px; background: hsl(var(--background)); box-shadow: var(--shadow-board); }
+/* Reserves the sample dashboard's rendered height while its code loads, so nothing below it moves. */
+.boardPlaceholder { min-height: 1240px; border-radius: 20px; background: hsl(var(--background)); box-shadow: var(--shadow-board); }
 .board :is(h2, h3) { font-family: var(--font-sans), sans-serif; text-wrap: initial; }
 .boardMain { min-width: 0; padding: 24px var(--site-content-gutter); }
 .sampleIdentity { min-width: 0; }
@@ -91,8 +93,12 @@
   .board { border-radius: 16px; }
   .boardMain { padding: 16px; }
 }
+@media (max-width: 1023px) {
+  .boardPlaceholder { min-height: 1540px; }
+}
 @media (max-width: 767px) {
   .board { grid-template-columns: minmax(0, 1fr); }
+  .boardPlaceholder { min-height: 2300px; border-radius: 16px; }
 }
 @media (max-width: 479px) {
   .boardHeader, .boardIdentity { gap: 6px; }

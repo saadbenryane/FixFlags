@@ -19,7 +19,8 @@ import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import { SITE_DASHBOARD_COPY as Dashboard } from '@/lib/marketing/copy/site-dashboard'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
-import { HomepageDashboardPreview, type SampleFlagOpener } from './HomepageDashboardPreview'
+import type { SampleFlagOpener } from './HomepageDashboardPreview'
+import { HomepageDeferredDashboard } from './HomepageDeferredDashboard'
 import { SITE_ROUTES, type SiteRoute } from '@/components/sites/SiteWorkspaceNavigation'
 import { HomepageCheckCoverage } from './HomepageCheckCoverage'
 import { HomepageFinalSection, HomepageHandoffSection, HomepageIndependentSection, HomepageIntegrationsSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
@@ -104,7 +105,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
   const returnLabel = flagOrigin ? SITE_ROUTES.find(([id]) => id === flagOrigin)?.[1] : selectedCard?.name ?? 'area'
 
   return <div className={s.home}>
-    {dashboardOnly ? <HomepageDashboardPreview {...previewActions} /> : <HomepageHero {...previewActions} />}
+    {dashboardOnly ? <HomepageDeferredDashboard eager {...previewActions} /> : <HomepageHero {...previewActions} />}
     {!dashboardOnly ? <>
     <HomepageCheckCoverage />
     <HomepageIndependentSection />

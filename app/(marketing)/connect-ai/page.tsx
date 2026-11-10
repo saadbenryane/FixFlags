@@ -11,6 +11,18 @@ import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('connectAi', AI_CONNECTION_PATH)
 
+function CurrentPath({ tint }: { tint?: 'subtle' }) {
+  return <Section spacing="overview" tint={tint}>
+    <Container variant="marketing">
+      <h2 className="font-display text-3xl font-semibold tracking-display">{C.current.title}</h2>
+      <ol className="mt-8 grid gap-8 md:grid-cols-3">{C.current.steps.map(step => <li key={step.title} className="min-w-0">
+        <h3 className="text-lg font-semibold">{step.title}</h3>
+        <p className="mt-3 leading-relaxed text-muted-foreground">{step.body}</p>
+      </li>)}</ol>
+    </Container>
+  </Section>
+}
+
 export default function ConnectAiPage() {
   return <>
     <PublicPageIntro page={AI_CONNECTION_PATH} label={C.label} title={C.title} body={C.description} />
@@ -24,10 +36,10 @@ export default function ConnectAiPage() {
         </div>
       </Container>
     </Section>
-    <Section spacing="overview" tint="subtle">
-      <Container variant="marketing">
-        <section className="mx-auto max-w-3xl space-y-6" aria-labelledby="connection-title">
-          {MCP_IS_DISCOVERABLE ? <>
+    {MCP_IS_DISCOVERABLE ? <>
+      <Section spacing="overview" tint="subtle">
+        <Container variant="marketing">
+          <section className="mx-auto max-w-3xl space-y-6" aria-labelledby="connection-title">
             <h2 id="connection-title" className="font-display text-3xl font-semibold tracking-display">{C.connection.available.title}</h2>
             <p className="leading-relaxed text-muted-foreground">{C.connection.available.body}</p>
             <ol className="list-decimal space-y-3 pl-5 leading-relaxed">{C.connection.available.steps.map(step => <li key={step}>{step}</li>)}</ol>
@@ -36,28 +48,28 @@ export default function ConnectAiPage() {
             <p className="text-sm leading-relaxed text-muted-foreground">{C.connection.privacy}</p>
             <h3 className="font-display text-2xl font-semibold tracking-heading">{C.connection.workTitle}</h3>
             <p className="leading-relaxed text-muted-foreground">{C.connection.workBody}</p>
-          </> : <>
-            <h2 id="connection-title" className="font-display text-3xl font-semibold tracking-display">{C.connection.unavailable.title}</h2>
+          </section>
+        </Container>
+      </Section>
+      <CurrentPath />
+    </> : <>
+      {/* Lead with what works today. The direct connection is a quiet note until it ships. */}
+      <CurrentPath tint="subtle" />
+      <Section spacing="overview">
+        <Container variant="marketing">
+          <section className="max-w-2xl space-y-3" aria-labelledby="connection-title">
+            <h2 id="connection-title" className="text-lg font-semibold">{C.connection.unavailable.title}</h2>
             <p className="leading-relaxed text-muted-foreground">{C.connection.unavailable.body}</p>
             <Link href="/docs/fix-with-ai" className="inline-flex min-h-11 items-center gap-2 font-medium text-link">{C.connection.unavailable.action}<ArrowRight aria-hidden size={16} /></Link>
-            <details className="pt-4">
+            <details className="pt-2">
               <summary className="min-h-11 cursor-pointer rounded-control text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{C.connection.unavailable.existing}</summary>
               <p className="mb-5 mt-3 text-sm leading-relaxed text-muted-foreground">{C.connection.unavailable.existingBody}</p>
               <AgentConnectionPrompt />
             </details>
-          </>}
-        </section>
-      </Container>
-    </Section>
-    <Section spacing="overview">
-      <Container variant="marketing">
-        <h2 className="font-display text-3xl font-semibold tracking-display">{C.current.title}</h2>
-        <ol className="mt-8 grid gap-8 md:grid-cols-3">{C.current.steps.map(step => <li key={step.title} className="min-w-0">
-          <h3 className="text-lg font-semibold">{step.title}</h3>
-          <p className="mt-3 leading-relaxed text-muted-foreground">{step.body}</p>
-        </li>)}</ol>
-      </Container>
-    </Section>
+          </section>
+        </Container>
+      </Section>
+    </>}
     <PublicPageNextStep />
   </>
 }

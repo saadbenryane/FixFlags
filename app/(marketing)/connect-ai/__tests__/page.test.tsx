@@ -29,6 +29,13 @@ describe('AI connection explainer', () => {
     expect(document.querySelector('a[href^="/dashboard/mcp-setup"]')).not.toBeInTheDocument()
   })
 
+  it('leads with the copy-and-paste path while direct connections are unavailable', () => {
+    render(<ConnectAiPage />)
+    const current = screen.getByRole('heading', { level: 2, name: C.current.title })
+    const unavailable = screen.getByRole('heading', { level: 2, name: C.connection.unavailable.title })
+    expect(current.compareDocumentPosition(unavailable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('copies only a connection check for an existing client, without starting work', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
