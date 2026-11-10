@@ -92,6 +92,8 @@ The local stack was migrated and run with the worker. A real anonymous check of 
 
 **Gap plan, in build order**
 
+Progress the same night: items 1, 2, 4 and 8 are built. Item 3 is built except the AI provider retry. Items 5 to 7 are with the completeness session. Still open: the AI explanation retry in item 3 and the demo-store walk.
+
 1. *One status, one place.* The header owns run status, the overview owns the one live sentence, cards show a dot with screen-reader text. Today "Checking" appears up to four times.
 2. *A clean result reads as good news.* Zero Flags gets the healthy tone and a headline such as "No Flags on 12 pages"; the Websites list says "No Flags"; the section is "Checks" when nothing needs attention.
 3. *Partial results explain themselves.* One term, "Partly checked", always with what was missed and the next action. It is never paired with "0 Flags". When the AI explanation provider is unavailable, say so and retry it automatically instead of leaving areas partial.
