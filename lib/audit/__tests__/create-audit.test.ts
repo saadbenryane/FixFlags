@@ -21,6 +21,7 @@ const prismaMock = vi.hoisted(() => ({
   runRequest: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   runRequestKey: { findUnique: vi.fn() },
   outcomeFixture: { updateMany: vi.fn() },
+  siteOutcome: { findFirst: vi.fn(async () => null) },
   improvementAttempt: { findFirst: vi.fn(), update: vi.fn() },
   flag: { findMany: vi.fn() },
   audit: {
@@ -76,7 +77,9 @@ vi.mock('@/lib/audit/ai-report-entitlement', () => ({
   resolveIncludeAiForNewAudit,
 }))
 vi.mock('@/lib/billing/credits', () => ({ wouldBlockNewCheckWithCredits }))
-vi.mock('@/lib/audit/url', () => ({ assertPublicNavigationUrl }))
+vi.mock('@/lib/audit/url', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/audit/url')>(), assertPublicNavigationUrl,
+}))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
 vi.mock('@/lib/sites/application/default-monitoring', () => ({ ensureDefaultMonitoring: vi.fn(async () => true) }))
 vi.mock('@/lib/sites/ensure-site', () => ({ ensureSiteForAudit }))

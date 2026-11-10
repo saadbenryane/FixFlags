@@ -36,7 +36,11 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
         anchors: [], publishedText: 'Content', publishedHrefs: [], jsonLd: [], markers: [], markupComplete: true,
         anchorOverflow: false, hrefOverflow: false, textOverflow: false, jsonOverflow: false, privacyInLongAnchor: false,
       }
-      if (typeof argument === 'string' || argument === false) return { readyState: 'complete', title: 'Example', loadingVisible: mocks.loading(Date.now() - navigationStartedAt, loadingReads++), loadingLabel: 'hero-skeleton' }
+      if (argument === null) return { pageUrl: 'https://example.com/', timeOrigin: navigationStartedAt,
+        readyState: 'complete', title: 'Example', loadingVisible: mocks.loading(Date.now() - navigationStartedAt, loadingReads++), loadingLabel: 'hero-skeleton' }
+      if (typeof argument === 'string' || typeof argument === 'boolean') return { pageUrl: 'https://example.com/', timeOrigin: navigationStartedAt, readyState: 'complete', title: 'Example' }
+      if (argument && typeof argument === 'object' && 'includeActions' in argument) return { pageUrl: 'https://example.com/', timeOrigin: navigationStartedAt,
+        content: false, contentComplete: true, text: false, textComplete: true, cta: false, ctaComplete: true, actions: [] }
       if (fn.toString().includes('outerHTML')) return { html: '<html><head><title>Example</title></head><body>Content</body></html>', truncated: false }
       if (fn.toString().includes('document.readyState ===')) return true
       return { title: 'Example', description: null, ogTitle: null, ogDescription: null, ogImage: null,
@@ -169,10 +173,10 @@ describe('independent rendered evidence', () => {
     const pause = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
     mocks.loading.mockImplementation((elapsed) => elapsed < 500)
     mocks.wait.mockImplementation(async (fn, argument, navigationStartedAt) => {
-      if (typeof argument === 'string' || argument === true) {
+      if (argument && typeof argument === 'object' && 'timeOrigin' in argument) {
         await pause(Math.max(0, navigationStartedAt + 500 - Date.now()))
-        if (argument === true) await pause(3500)
-        return { jsonValue: async () => navigationStartedAt + 500 }
+        await pause(3500)
+        return { jsonValue: async () => navigationStartedAt + 500, dispose: async () => {} }
       }
       else if (fn.toString().includes('document.title')) await pause(3000)
     })
@@ -189,7 +193,7 @@ describe('independent rendered evidence', () => {
   })
   it('leaves clearance unknown when the browser observation fails', async () => {
     mocks.loading.mockImplementation((_elapsed, read) => read === 0)
-    mocks.wait.mockImplementation(async (_fn, argument) => { if (argument === true) throw new Error('Observation unavailable') })
+    mocks.wait.mockImplementation(async (_fn, argument) => { if (argument && typeof argument === 'object' && 'timeOrigin' in argument) throw new Error('Observation unavailable') })
     const result = await captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, captureMedia: false })
     expect(result.loadExperience).toMatchObject({ loadingVisibleAtInitial: true, loadingVisibleAtFinal: false, loadingClearedMs: null })
   })
