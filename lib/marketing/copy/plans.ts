@@ -1,7 +1,6 @@
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { PRICING_ADD_ONS, PRICING_TIERS, websitesLabel } from './pricing-page'
 import { PUBLIC_OFFER } from './public-offer'
-import { PRODUCT_STORY } from './product-story'
 
 const tier = (id: (typeof PRICING_TIERS)[number]['id']) => PRICING_TIERS.find(entry => entry.id === id)!
 const extraWebsites = PRICING_ADD_ONS.items[0]
@@ -32,9 +31,9 @@ export const PLANS = [
 ] as const
 
 export const PRICING = {
-  // The promise leads the header; the loop (Check. Flag. Fix. Verify.) titles the story section below it.
-  plansTitle: 'Plans', label: 'Open beta', headline: `${PRODUCT_STORY.headline.join(' ')} Free during open beta.`,
-  headlineLead: PRODUCT_STORY.headline.join(' '), headlineAccent: 'Free during open beta.',
+  // The homepage owns the promise; pricing leads with the offer.
+  plansTitle: 'Plans', label: 'Open beta', headline: 'Free during open beta.',
+  headlineLead: 'Free during', headlineAccent: 'open beta.',
   subhead: 'One website. All supported features and schedules. No usage limits during beta.',
   signupCta: 'Start free', signupHref: '/sign-up', signupNote: 'No credit card. No automatic charge.',
   trustBadge: 'Full access on one website',

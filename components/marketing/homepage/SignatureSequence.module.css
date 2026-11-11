@@ -31,14 +31,13 @@
   top: calc(var(--top) + clamp(16px, 4svh, 48px) + min(calc(100svh - var(--top) - 72px), 660px) / 2 - (4 * var(--node) + 3 * var(--gap)) / 2);
   display: grid; gap: var(--gap); margin: 0; padding: 0; list-style: none;
 }
-.rail li, .railCompact li {
+.rail li {
   display: grid; place-items: center; width: var(--node); height: var(--node); border-radius: 999px;
   background: hsl(var(--foreground) / .05); color: hsl(var(--muted-foreground) / .75);
   transition: background-color 360ms var(--ease-out), color 360ms var(--ease-out), box-shadow 360ms var(--ease-out), transform 360ms var(--ease-out);
 }
-.rail li[data-state='done'], .railCompact li[data-state='done'] { background: hsl(var(--brand) / .12); color: hsl(var(--brand)); }
-.rail li[data-state='active'], .railCompact li[data-state='active'] { background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); box-shadow: 0 10px 24px -8px hsl(var(--brand) / .65); transform: scale(1.08); }
-.railCompact { display: none; }
+.rail li[data-state='done'] { background: hsl(var(--brand) / .12); color: hsl(var(--brand)); }
+.rail li[data-state='active'] { background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); box-shadow: 0 10px 24px -8px hsl(var(--brand) / .65); transform: scale(1.08); }
 
 .link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 14px; color: hsl(var(--foreground)); font-size: 15px; font-weight: 600; }
 .link:hover { text-decoration: underline; text-underline-offset: 4px; }
@@ -144,7 +143,7 @@
   .link:is(:hover, :focus-visible) svg { transform: translateX(3px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .steps > li, .phone, .after, .layer, .ring, .marker, .tap, .rail li, .railCompact li { transition: none; }
+  .steps > li, .phone, .after, .layer, .ring, .marker, .tap, .rail li { transition: none; }
 }
 
 @keyframes line-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
@@ -186,12 +185,10 @@
   .copyState { margin-top: 10px; }
   .steps { grid-row: 2; padding-left: 0; }
   .rail { display: none; }
-  .railCompact { --node: 30px; --gap: 14px; position: absolute; bottom: 44px; left: 0; display: grid; gap: var(--gap); margin: 0; padding: 0; list-style: none; }
-  .railCompact svg { width: 14px; height: 14px; }
   .points { margin-top: 16px; gap: 6px; }
   .points li { min-height: 28px; padding: 0 10px; font-size: 12px; }
   /* Each step's words hold just below the phone until the next step pushes them out. */
-  .steps > li { display: block; min-height: 64svh; opacity: .12; }
+  .steps > li { display: block; min-height: 64svh; opacity: 0; }
   .steps > li:last-child { min-height: 42svh; }
   .stepText { position: sticky; top: calc(var(--top) + min(50svh, 520px) + 36px); padding-top: 4px; }
   .steps h3 { font-size: clamp(48px, 14vw, 64px); }

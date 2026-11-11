@@ -212,7 +212,7 @@ export function Header({
                           onNavigate={() => { if (isMarketing) trackPublicNavigation(link.label); setOpen(false) }}
                           className={NAV_LINK_MOBILE_BASE}
                           activeClassName={NAV_LINK_MOBILE_ACTIVE}
-                          inactiveClassName={NAV_LINK_INACTIVE}
+                          inactiveClassName="text-foreground"
                         >
                           <span className="inline-flex items-center gap-1.5">
                             {link.label}

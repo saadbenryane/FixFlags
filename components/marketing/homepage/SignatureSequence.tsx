@@ -118,7 +118,6 @@ export function SignatureSequence() {
           </div>
         </div>
         <Layers />
-        <Rail active={active} className={s.railCompact} />
         <figcaption className={s.caption}>{C.label}</figcaption>
       </figure>
     </div>

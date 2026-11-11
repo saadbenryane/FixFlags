@@ -135,14 +135,21 @@
   .checkCard[data-area='conversion'] .preview { min-height: 280px; }
   .pagesScene { grid-template-columns: minmax(0, 1fr); justify-items: center; }
 }
+/* Phones: the eight areas become one swipeable row, so the section stays one screen tall. */
 @media (max-width: 639px) {
   .coverage { padding-top: 56px; padding-bottom: 56px; }
-  
-  .checkGrid { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; gap: 14px; margin-top: 36px; }
-  .checkCard[data-area] { grid-area: auto; padding: 8px 8px 20px; border-radius: 24px; }
+  .checkGrid {
+    display: flex; gap: 12px; margin: 32px -20px 0; padding: 4px 20px 20px; overflow-x: auto; overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory; scroll-padding-inline: 20px; scrollbar-width: none;
+  }
+  .checkGrid::-webkit-scrollbar { display: none; }
+  .checkCard[data-area] { flex: 0 0 min(84%, 320px); grid-area: auto; grid-template-rows: 212px auto auto; padding: 8px 8px 20px; border-radius: 24px; scroll-snap-align: start; }
   .checkCard[data-area='conversion'] { order: -1; }
-  .preview { min-height: 168px; padding: 22px; }
-  .purchaseScene > .artwork { width: 220px; }
-  .checkCard h3 { margin: 18px 14px 0; }
-  .benefit { margin: 2px 14px 0; }
+  .checkCard[data-area] .preview { min-height: 0; height: 212px; padding: 18px; overflow: hidden; }
+  .artwork { width: 96px; }
+  .purchaseScene > .artwork { display: none; }
+  .pagesScene { gap: 4px; }
+  .pagesScene .artwork { width: 72px; }
+  .checkCard h3 { margin: 16px 12px 0; }
+  .benefit { margin: 2px 12px 0; }
 }
