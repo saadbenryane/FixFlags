@@ -61,7 +61,7 @@ describe('private screenshot transport with the installed S3 SDK', () => {
       }
     })
     try {
-      const options = { deadline: Date.now() + 1_000 }
+      const options = { deadline: Date.now() + 400 }
       const operation = kind === 'read' ? getScreenshotBytes('screenshots/fixture/desktop.png', options)
         : kind === 'write' ? uploadScreenshot('fixture', 'desktop', Buffer.from('image'), null, options)
           : kind === 'integrity-write' ? uploadIntegrityArtifact('fixture', 'frame.png', Buffer.from('image'), 'image/png', options)

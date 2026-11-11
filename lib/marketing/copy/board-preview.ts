@@ -51,13 +51,10 @@ export const BOARD_PREVIEW_COPY = {
   noHistory: 'Check history appears after the first check.',
   connect: 'Connect', connected: 'Connected', settings: 'Settings',
   suggested: 'Suggested for this website',
-  otherIntegrations: 'More integrations',
   integrationsBody: 'Connect your tools for more context and checks.',
   connectionUnavailable: 'Connection setup is unavailable right now.',
   sampleConnection: 'This connection is part of the preview. Changes stay in this sample.',
   connectSample: 'Connect in preview', disconnectSample: 'Disconnect in preview',
   flags: (count: number) => `${count} ${count === 1 ? 'Flag' : 'Flags'}`,
-  connectTool: (name: string) => `Connect ${name}`,
-  settingsFor: (name: string) => `Settings for ${name}`,
   detected: (name: string) => `${name} detected on this website.`,
 } as const

@@ -111,18 +111,6 @@ export function hasIncidentRecoveryProof(flag: { id?: string; resolvedInId?: str
   return proofs.hasFlag ? proofs.hasFlag(flag) : proofs.has(flag.resolvedInId)
 }
 
-export function currentUnboundFindings<T extends { id: string; fingerprint?: string | null; status: string; resolvedInId?: string | null }>(
-  flags: T[], proofs: IncidentRecoveryProofIndex,
-) {
-  const seen = new Set<string>()
-  return currentIncidentFlags(flags, proofs).filter(flag => {
-    const identity = flag.fingerprint ? `fingerprint:${flag.fingerprint}` : `flag:${flag.id}`
-    if (seen.has(identity)) return false
-    seen.add(identity)
-    return true
-  })
-}
-
 /** An unbound legacy finding must not replace a newer recorded occurrence.
  * Missing timestamps cannot establish that a candidate is newer. */
 export function newestRecordedFlag<T extends { id: string; createdAt?: Date }>(flags: T[]): T | undefined {

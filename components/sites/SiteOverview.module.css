@@ -1,10 +1,25 @@
 .workspace { display: grid; gap: 24px; min-width: 0; }
 .overview { container: site-overview / inline-size; min-width: 0; }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-items: center; }
-.summaries { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.overview { display: grid; gap: 12px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.preview { min-width: 0; overflow: hidden; border-radius: var(--radius-board-panel); }
 .findings { display: flex; align-items: stretch; min-width: 0; }
 .findings > * { width: 100%; }
+/* The summary figures are small cards; beside a lead they stack to the row's height. */
+.findings dl { height: 100%; gap: 12px; padding: 0; align-content: stretch; }
+.findings dl > div { align-content: center; padding: 14px 18px; border-radius: var(--radius-board-panel); background: hsl(var(--surface-board)); box-shadow: var(--shadow-board); }
+.lead { display: flex; min-width: 0; }
+.lead > * { flex: 1; }
 .notice { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
 @container site-overview (min-width: 640px) {
-  .layout { grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); }
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .layout[data-lead] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .layout[data-lead] .lead { grid-column: 1 / -1; }
+}
+@container site-overview (min-width: 900px) {
+  .layout[data-lead] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, .7fr); }
+  .layout[data-lead] .lead { grid-column: 2; grid-row: 1; }
+  .layout[data-lead] .preview { grid-column: 1; grid-row: 1; }
+  .layout[data-lead] .findings { grid-column: 3; grid-row: 1; }
+  .layout[data-lead] .findings dl { grid-template-columns: minmax(0, 1fr); }
 }

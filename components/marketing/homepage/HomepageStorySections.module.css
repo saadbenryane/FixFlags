@@ -2,49 +2,37 @@
 .textLink svg { flex-shrink: 0; color: hsl(var(--brand)); }
 .textLink:hover { text-decoration: underline; text-underline-offset: 4px; }
 
-/* Proof */
-.proof { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 88px); background: hsl(var(--canvas-deep)); }
-.points { display: grid; gap: 10px; margin: 22px 0 0; padding: 0; list-style: none; }
-.points li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; font-weight: 500; line-height: 1.5; }
-.points svg { flex-shrink: 0; margin-top: 3px; color: hsl(var(--brand)); }
-.captures { margin: 0; }
-.capturePair { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); justify-content: center; gap: 16px; }
-.capture { overflow: hidden; border-radius: 20px; background: hsl(var(--window)); box-shadow: var(--shadow-window), 0 40px 90px -48px hsl(var(--brand) / .18); }
-.capture p { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 12px 14px; font-size: 14px; font-weight: 600; }
-.capture p span { color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
-.capture[data-state='before'] p span { color: hsl(var(--brand-strong)); }
-.capture[data-state='after'] p span { color: color-mix(in srgb, hsl(var(--success)) 60%, hsl(var(--foreground))); }
-.capture img { display: block; width: 100%; height: auto; }
-.captures figcaption { margin-top: 12px; color: hsl(var(--muted-foreground)); font-size: 12px; text-align: center; }
-
-/* Built for your AI */
-.ai { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: clamp(32px, 5vw, 72px); }
-.aiCopy { position: sticky; top: 110px; }
-.aiDemo { min-width: 0; }
-.toolTabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.toolTab {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px;
-  background: transparent; color: hsl(var(--muted-foreground)); font-size: 14px; font-weight: 550; cursor: pointer; transition: background-color 180ms, color 180ms;
+/* Built for your AI: the instructions as an object you can copy, beside why they work and where they go. */
+.handoff { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: start; gap: clamp(32px, 5vw, 72px); max-width: 1040px; margin: 56px auto 0; }
+.fixCard {
+  position: relative; min-width: 0; padding: clamp(24px, 3vw, 36px); border-radius: 28px; background: hsl(var(--window));
+  box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 30px 70px -36px hsl(30 20% 18% / .38), 0 40px 100px -60px hsl(var(--brand) / .35);
 }
-.toolTab:hover { color: hsl(var(--foreground)); }
-.toolTab[aria-selected='true'] { background: hsl(var(--window)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 6px 16px -8px hsl(30 15% 20% / .3); }
+.fixLabel { display: flex; align-items: center; gap: 8px; margin: 0; color: hsl(var(--brand-strong)); font-size: 13px; font-weight: 650; }
+.fixLabel small { margin-left: auto; padding: 3px 9px; border-radius: 999px; background: hsl(var(--foreground) / .055); color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
+.fixText { margin: 18px 0 24px; font-family: var(--font-display), sans-serif; font-size: clamp(18px, 1.6vw, 21px); font-weight: 450; line-height: 1.5; letter-spacing: -.012em; text-wrap: pretty; }
+.ways { min-width: 0; }
+.waysLabel { margin: 0; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 550; }
+.ways > ol { display: grid; gap: 26px; margin: 18px 0 0; padding: 0; list-style: none; }
+.ways > ol > li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; align-items: start; }
+.wayIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 13px; background: hsl(var(--brand) / .1); color: hsl(var(--brand)); }
+.ways h4 { margin: 8px 0 0; font-family: var(--font-display), sans-serif; font-size: 19px; font-weight: 500; letter-spacing: -.025em; }
+.ways p { margin: 6px 0 0; color: hsl(var(--muted-foreground)); font-size: 15px; line-height: 1.55; }
+.ways .textLink { margin-top: 6px; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.tools a {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: hsl(var(--window));
+  font-size: 13px; font-weight: 550; box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 6px 16px -10px hsl(30 15% 20% / .25); transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+.tools a:hover { transform: translateY(-1px); box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 10px 22px -10px hsl(30 15% 20% / .32); }
+.tools a:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+/* Why it matters: two plain claims under the handoff. */
+.reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(24px, 5vw, 64px); max-width: 1040px; margin: clamp(56px, 7vw, 88px) auto 0; padding: 0; list-style: none; }
+.reasonIcon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: hsl(var(--window)); color: hsl(var(--brand)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 8px 20px -12px hsl(30 15% 20% / .3); }
+.reasons h3 { margin: 18px 0 0; font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 500; letter-spacing: -.035em; }
+.reasons p { margin: 8px 0 0; max-width: 440px; color: hsl(var(--muted-foreground)); font-size: 16px; line-height: 1.6; }
 .toolMark { display: inline-flex; width: 16px; height: 16px; flex-shrink: 0; }
-.toolMark svg, .windowMark svg { width: 100%; height: 100%; }
-.toolPanel { margin-top: 16px; }
-.window { overflow: hidden; border-radius: 20px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); box-shadow: var(--shadow-window), 0 40px 90px -44px hsl(var(--brand) / .22); }
-.windowBar { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; background: hsl(var(--stage-raised)); color: hsl(var(--stage-foreground)); font-size: 13px; font-weight: 600; }
-.windowBar small { margin-left: auto; color: hsl(var(--stage-muted)); font-size: 12px; font-weight: 500; }
-.windowMark { display: inline-flex; width: 16px; height: 16px; }
-.terminalText { margin: 0; padding: 20px; color: hsl(var(--stage-foreground)); font-family: var(--font-mono), monospace; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
-/* A caret after the instructions: they read as typed into the agent, waiting for Enter. */
-.terminalText::after { content: ''; display: inline-block; width: .55em; height: 1.1em; margin-left: 3px; vertical-align: text-bottom; border-radius: 2px; background: hsl(var(--brand)); }
-.terminalText span { color: hsl(var(--brand)); }
-.chat { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
-.bubble { align-self: flex-end; max-width: 88%; margin: 0; padding: 14px 16px; border-radius: 16px 16px 4px 16px; background: hsl(var(--stage-raised)); color: hsl(var(--stage-foreground)); font-size: 14px; line-height: 1.6; }
-.chatInput { margin: 0; padding: 12px 16px; border-radius: 12px; background: hsl(var(--stage-foreground) / .06); color: hsl(var(--stage-muted)); font-size: 14px; }
-.where { margin: 14px 0 0; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.55; }
-.aiActions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 10px; }
-.aiActions .textLink { margin-top: 0; }
+.toolMark svg { width: 100%; height: 100%; }
 .copyButton {
   display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 0; border-radius: var(--radius-control);
   background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 14px; font-weight: 600; cursor: pointer;
@@ -54,36 +42,27 @@
 .manualCopy { display: grid; gap: 8px; margin-top: 12px; font-size: 13px; }
 .manualCopy textarea { width: 100%; font-family: var(--font-mono), monospace; font-size: 12px; }
 
-/* Compare */
-/* Compare: the page's one dark beat. */
-.compare { position: relative; isolation: isolate; overflow: hidden; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); }
-.compare::before { content: ''; position: absolute; inset: -20% -10% auto; z-index: -1; height: 80%; pointer-events: none;
-  background: radial-gradient(40% 50% at 22% 30%, hsl(var(--brand) / .12), transparent 70%); filter: blur(24px); }
-.compare :global(h2) > span + span { color: hsl(var(--stage-muted)) !important; }
-.compare p { color: hsl(var(--stage-muted)); }
-.compare .textLink { color: hsl(var(--stage-foreground)); }
-.compareList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 56px 0 0; padding: 0; list-style: none; }
-.compareList li { padding: 28px; border-radius: 20px; background: hsl(var(--stage-raised)); }
-.compareList li > span { display: block; margin-bottom: 28px; color: hsl(var(--brand)); font-family: var(--font-mono), monospace; font-size: 12px; }
-.compareList h3 { font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 500; letter-spacing: -.03em; }
-.compareList p { margin-top: 10px; font-size: 15px; line-height: 1.6; }
+/* Compare: three plain claims on the canvas. Each icon is struck through: the thing FixFlags is not. */
+.compare .textLink { margin-top: 0; }
+.compareList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(32px, 5vw, 64px); max-width: 1000px; margin: 64px auto 0; padding: 0; list-style: none; }
+.compareList li { display: grid; justify-items: start; align-content: start; }
+.compareIcon {
+  position: relative; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: hsl(var(--window));
+  color: hsl(var(--muted-foreground)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 8px 20px -12px hsl(30 15% 20% / .3);
+}
+.compareIcon::after { content: ''; position: absolute; width: 30px; height: 2px; border-radius: 2px; background: hsl(var(--brand)); transform: rotate(-45deg); box-shadow: 0 0 0 2px hsl(var(--window)); }
+.compareList h3 { margin: 22px 0 0; font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 500; line-height: 1.15; letter-spacing: -.035em; }
+.compareList p { margin: 10px 0 0; color: hsl(var(--muted-foreground)); font-size: 15.5px; line-height: 1.6; text-wrap: pretty; }
 
 @media (max-width: 1023px) {
-  .proof, .ai { grid-template-columns: minmax(0, 1fr); }
-  .aiCopy { position: static; }
+  .handoff { grid-template-columns: minmax(0, 1fr); }
+  .reasons { grid-template-columns: minmax(0, 1fr); }
   .compareList { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 767px) {
-  .proofCopy > p:not(:first-child), .aiCopy > p:not(:first-child) { font-size: 16px; }
-  .capturePair { gap: 10px; }
-  .capture { border-radius: 14px; }
-  .terminalText, .chat { padding: 16px; font-size: 12px; }
-  .bubble { max-width: 100%; font-size: 13px; }
-  .windowBar small { display: none; }
+  .handoff { margin-top: 36px; }
+  .fixCard { border-radius: 22px; }
+  .fixText { font-size: 17px; }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .terminalText::after { animation: caret 1.1s steps(1) infinite; }
-}
-@keyframes caret { 50% { opacity: 0; } }

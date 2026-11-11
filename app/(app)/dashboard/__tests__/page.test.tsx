@@ -86,8 +86,9 @@ describe('/dashboard handoff', () => {
   it('keeps the URL visible so the customer can see what is being scanned', async () => {
     await renderPage({ url: 'https://example.com' })
 
+    // The resumed scan starts after the session and Site reads settle; give it room on a loaded machine.
     await waitFor(() =>
-      expect(screen.getByDisplayValue('https://example.com/')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('https://example.com/')).toBeInTheDocument(), { timeout: 5_000 }
     )
     // The field is locked only while the resumed scan is in flight.
     expect(screen.getByRole('button', { name: /^Checking/i })).toBeDisabled()
@@ -130,7 +131,9 @@ describe('/dashboard handoff', () => {
       presentation: siteViewFixture().presentation, lastUsefulChangeAt: '2026-11-03T00:00:00Z' }])
     mocks.loadSiteCapacity.mockResolvedValue({ limit: 1, used: 1, atLimit: true })
     await renderPage({})
-    expect(screen.getByText(PLAN_LIMIT_NOTICE.copy['site-limit'].title)).toBeVisible()
+    expect(screen.getByText(WEBSITES_COPY.limitNote)).toBeVisible()
+    expect(screen.getByRole('link', { name: WEBSITES_COPY.limitAction })).toHaveAttribute('href', '/waitlist')
+    expect(screen.queryByText(PLAN_LIMIT_NOTICE.copy['site-limit'].title)).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Website URL' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: WEBSITES_COPY.analyzeTitle })).not.toBeInTheDocument()
   })

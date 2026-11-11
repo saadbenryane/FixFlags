@@ -408,33 +408,3 @@ function labelForCheck(checkId: string): string {
   if (/image|alt/.test(checkId)) return 'Image'
   return 'Flagged element'
 }
-
-export function flowExtraFromAnchor(
-  checkId: string | null,
-  device: EvidenceDevice,
-  anchor: { x: number; y: number; width?: number; height?: number; selector?: string } | null | undefined
-): { checkId: string; device: EvidenceDevice; rect: EvidenceRect; selector?: string; label?: string } | null {
-  if (!checkId || !anchor) return null
-  const width = anchor.width ?? 0
-  const height = anchor.height ?? 0
-  if (width < 0.01 || height < 0.01) return null
-  // Flow used to store center-points. Accept both: if x/y look like a center, convert.
-  const looksCentered = anchor.x > width / 2 && anchor.x + width / 2 <= 1.02
-  const rect: EvidenceRect = looksCentered
-    ? {
-        x: Math.max(0, anchor.x - width / 2),
-        y: Math.max(0, anchor.y - height / 2),
-        width,
-        height,
-      }
-    : { x: anchor.x, y: anchor.y, width, height }
-  return {
-    checkId,
-    device,
-    rect,
-    selector: anchor.selector,
-    label: 'Call to action',
-  }
-}
-
-

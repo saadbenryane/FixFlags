@@ -43,10 +43,3 @@ export function scrubSecrets(text: string): ScrubResult {
 
   return { text: result, redactedCount, categories: [...categories] }
 }
-
-export function containsLikelySecret(text: string): boolean {
-  return SECRET_PATTERNS.some(({ pattern }) => {
-    pattern.lastIndex = 0
-    return pattern.test(text)
-  })
-}

@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { ArrowRight, Plus } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
-import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
 import { SitesOverviewGrid } from '@/components/sites/SitesOverviewGrid'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
@@ -68,7 +67,7 @@ export function WebsitesDashboard({ initialSites, ownerId, readAt, resumedUrl, a
   return <div ref={dashboard} key={user?.id} className="space-y-6">
     {feedback}
     <SitesOverviewGrid sites={sites} action={atSiteLimit ? undefined : <Button asChild variant="outline" size="sm"><a href="#analyze-heading"><Plus aria-hidden />{C.analyzeTitle}</a></Button>} />
-    {atSiteLimit && !firstWebsite ? <PlanLimitNotice kind="site-limit" /> : null}
+    {atSiteLimit && !firstWebsite ? <p className={styles.limit}>{C.limitNote}{' '}<Link href="/waitlist">{C.limitAction}<ArrowRight size={14} aria-hidden /></Link></p> : null}
     {atSiteLimit && !firstWebsite ? null : <section aria-labelledby="analyze-heading" className={styles.entry} data-first={firstWebsite}>
       <h2 id="analyze-heading" tabIndex={-1} className={`${styles.title} scroll-mt-24 rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>{firstWebsite ? C.firstTitle : C.analyzeTitle}</h2>
       <p className={styles.description}>{handoff ? SCAN_HANDOFF.resuming(handoff) : C.analyzeBody}</p>

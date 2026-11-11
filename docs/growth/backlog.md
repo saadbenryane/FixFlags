@@ -26,11 +26,10 @@ Re-rank after each comparable SEO growth-loop measurement.
    proof slop. Writes `ToolUsage` rows.
    *(app/(marketing)/tools/placeholder-detector + app/api/tools/placeholder-detector)*
 
-4. **Industry/tech detection** — Already connected end-to-end:
-   `run-page.ts` calls `detectTechnologies()` + `inferIndustry()`, stores
-   in `AuditPage.performanceData`, `snapshot.ts` extracts and passes to
-   `persist.ts` which upserts `SiteTechnology` rows and sets
-   `Site.industryGuess`. *(lib/audit/tech-detect.ts → lib/graph/snapshot.ts → lib/graph/persist.ts)*
+4. **Tech detection:** `detectTechnologies()` feeds `SiteTechnology` rows
+   through `lib/graph/snapshot.ts` and `lib/graph/persist.ts`. The unused
+   `inferIndustry()` helper was removed on 2026-11-11; industry inference is not
+   wired today. *(lib/audit/tech-detect.ts → lib/graph/snapshot.ts → lib/graph/persist.ts)*
 
 7. **Attribution system** — `AuditSource` enum extended with `TOOL_PAGE`,
    `ISSUE_PAGE`, `BENCHMARK_PAGE`. `CLIENT_SOURCES` and `inferAuditSource`

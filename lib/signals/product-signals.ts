@@ -30,8 +30,6 @@ const batchSchema = z
   })
   .strict()
 
-export type ProductSignalBatch = z.infer<typeof batchSchema>
-
 export function normalizeSignalOrigin(value: string): string {
   const url = new URL(value)
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
@@ -244,18 +242,4 @@ export async function recordProductReleaseForReview(input: {
       url: input.url,
     },
   })
-}
-
-export const PRODUCT_SIGNAL_POLICY = {
-  retentionDays: SIGNAL_RETENTION_DAYS,
-  maxBatchSize: MAX_BATCH_SIZE,
-  maxActiveKeys: MAX_ACTIVE_SIGNAL_KEYS,
-  allowedKinds: [
-    'NAVIGATION',
-    'ACTION',
-    'OUTCOME',
-    'ERROR',
-    'PERFORMANCE',
-    'DEPLOYMENT',
-  ] as const,
 }

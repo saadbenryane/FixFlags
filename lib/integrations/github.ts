@@ -58,10 +58,6 @@ export function readGithubConnectState(state: string, expectedUserId: string): {
   }
 }
 
-export function verifyGithubConnectState(state: string, expectedUserId: string): boolean {
-  return readGithubConnectState(state, expectedUserId) !== null
-}
-
 export function buildGithubAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID ?? '',

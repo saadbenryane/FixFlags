@@ -182,13 +182,6 @@ export type ExistingFlagForPrescription = Pick<
 }
 
 /**
- * Minimal subset for theme-based deduplication matching.
- */
-export type ThemeMatchableFlag = Pick<FlagData, 'problem' | 'evidence'> & {
-  whyItMatters?: string
-}
-
-/**
  * Minimal subset for diff comparison.
  */
 export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric' | 'severity'> & {
@@ -202,11 +195,4 @@ export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric
   pageUrl?: string | null
   /** True when this Flag’s pageUrl was not reviewed on the parent audit. */
   foundOnNewPage?: boolean
-}
-
-/**
- * Minimal subset for text export.
- */
-export type ExportFlag = Pick<FlagData, 'severity' | 'problem'> & {
-  rubric?: string
 }

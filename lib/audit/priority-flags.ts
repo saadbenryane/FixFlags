@@ -274,35 +274,6 @@ export function compareFlagsByPriority(
   return a.problem.localeCompare(b.problem)
 }
 
-export function groupFlagsBySeverity(flags: RankableFlag[]): {
-  critical: RankableFlag[]
-  important: RankableFlag[]
-  polish: RankableFlag[]
-} {
-  const sorted = [...flags].sort(compareFlagsByPriority)
-
-  return {
-    critical: sorted.filter((f) => f.severity === 'CRITICAL'),
-    important: sorted.filter((f) => f.severity === 'IMPORTANT'),
-    polish: sorted.filter((f) => f.severity === 'POLISH'),
-  }
-}
-
-export function countFlags(flags: RankableFlag[]): {
-  total: number
-  critical: number
-  important: number
-  polish: number
-} {
-  const groups = groupFlagsBySeverity(flags)
-  return {
-    total: flags.length,
-    critical: groups.critical.length,
-    important: groups.important.length,
-    polish: groups.polish.length,
-  }
-}
-
 export function flagHasFixPrompt(flag: RankableFlag): boolean {
   return resolveFixPrompt(flag) !== null
 }
@@ -328,10 +299,6 @@ export function collectFixPromptsByRubric(
     }
   }
   return parts.join('\n\n')
-}
-
-export function countFixPromptsByRubric(flags: RankableFlag[], rubric: string): number {
-  return flags.filter((f) => f.rubric === rubric && flagHasFixPrompt(f)).length
 }
 
 export function collectAllFixPrompts(

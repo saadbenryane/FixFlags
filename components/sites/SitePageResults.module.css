@@ -15,7 +15,6 @@
 .content ul { display: grid; gap: 4px; margin-top: 4px; padding: 0; list-style: none; }
 .finding > :is(button, a) { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; width: 100%; min-height: 44px; padding: 6px 0; color: hsl(var(--foreground)); text-align: left; font-size: 12px; line-height: 1.5; }
 .content small { font-size: 10px; color: hsl(var(--muted-foreground)); }
-.content small[data-priority='fix_first'] { color: hsl(var(--foreground)); font-weight: 600; }
 .heading a:hover, .finding > :is(button, a):hover { text-decoration: underline; text-underline-offset: 3px; }
 .heading a:focus-visible, .finding > :is(button, a):focus-visible, .other > summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
 .other > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding-block: 8px; color: hsl(var(--muted-foreground)); cursor: pointer; list-style: none; font-size: 12px; }
@@ -24,10 +23,10 @@
 .other > .grid { margin-top: 8px; }
 @media (max-width: 480px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
-.content li { display: grid; gap: 4px; min-width: 0; }
+.content li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; min-width: 0; }
 .finding { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .finding > :is(button, a) { min-width: 0; flex: 1; }
-.flagActions { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 8px; }
+.flagActions { display: flex; flex-wrap: nowrap; gap: 2px; color: hsl(var(--muted-foreground)); }
 
 .results[data-density='comfortable'] .content { padding: 16px; }
 .results[data-density='comfortable'] .heading { flex-wrap: wrap; align-items: flex-start; gap: 8px; }
@@ -37,3 +36,4 @@
 .results[data-density='comfortable'] .finding > :is(button, a) { padding-block: 8px; font-size: 16px; overflow-wrap: anywhere; }
 .results[data-density='comfortable'] .content small { font-size: 12px; line-height: 1.5; }
 .results[data-density='comfortable'] .other > summary { font-size: 14px; }
+.flagTitle { display: inline-flex; align-items: center; gap: 10px; }

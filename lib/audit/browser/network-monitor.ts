@@ -356,13 +356,3 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     },
   }
 }
-
-export function formatNetworkFailuresForEvidence(
-  failures: NetworkFailureRecord[],
-  limit = 5
-): string {
-  return failures
-    .slice(0, limit)
-    .map((f) => `${f.method} ${f.status} ${f.url}`)
-    .join('; ')
-}

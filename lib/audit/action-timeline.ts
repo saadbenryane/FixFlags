@@ -44,8 +44,6 @@ export function createActionTimeline(startedAt = Date.now()) {
   }
 }
 
-export type ActionTimeline = ReturnType<typeof createActionTimeline>
-
 export function parseActionTimeline(data: unknown): ActionTimelineEvent[] {
   if (!data || typeof data !== 'object') return []
   const raw = (data as { actionTimeline?: unknown }).actionTimeline

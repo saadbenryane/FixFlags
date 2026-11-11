@@ -24,7 +24,7 @@ If needed, [save the website to your account](/help/getting-started/save-your-si
 
 MCP is a way for an AI tool to use another service directly. It stands for Model Context Protocol.
 
-New FixFlags MCP connections are not available yet. You can copy and paste fix instructions now, without setting up a connection.
+<!-- generated:mcp-availability -->
 
 ## Get started
 

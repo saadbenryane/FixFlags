@@ -10,11 +10,11 @@ import { SiteCaptureThumb } from './SiteCaptureThumb'
 import { SiteEvidenceTime } from './SiteEvidenceTime'
 import { Skeleton } from '@/components/ui/skeleton'
 
-/** Loading shares the same container queries, card sizes, and spacing as the list. */
+/** Loading shares the same container queries, card sizes, and spacing as the list, with one row: most accounts hold one website. */
 export function SitesOverviewSkeleton() {
   return <div className={styles.overview} aria-hidden="true">
     <Skeleton className="mb-3 h-4 w-24 animate-none" />
-    <ul className={styles.list}>{[0, 1, 2].map(index => <li key={index}>
+    <ul className={styles.list}>{[0].map(index => <li key={index}>
       <div className={`${styles.site} pointer-events-none`}>
         <Skeleton className={`${styles.preview} animate-none`} />
         <div className={styles.identity}>

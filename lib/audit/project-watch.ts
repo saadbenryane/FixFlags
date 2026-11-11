@@ -40,7 +40,6 @@ export {
   plannedWatchJobs,
   toStoredWatchInterval,
 } from '@/lib/audit/watch-interval'
-export type SiteWatchJobKind = 'pulse' | 'full'
 
 const RETRY_MS = [15 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000] as const
 const LEASE_MS = 10 * 60 * 1000

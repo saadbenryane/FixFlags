@@ -42,9 +42,9 @@ describe('published documentation', () => {
     }
   })
 
-  it('publishes and indexes the public fix guide and every available integration guide', async () => {
+  it('publishes and indexes the public fix guide, the MCP guide, and every available integration guide', async () => {
     const entries = await buildDocsSearchIndex()
-    for (const key of ['fix-with-ai', 'integrations', 'github', 'shopify', 'google-analytics', 'google-search-console'] as const) {
+    for (const key of ['fix-with-ai', 'mcp', 'integrations', 'github', 'shopify', 'google-analytics', 'google-search-console'] as const) {
       const page = getDocsPage(key)
       expect(isParkedPowerToolPath(page.path)).toBe(false)
       expect(INDEXABLE_ROUTES.some(route => route.path === page.path)).toBe(true)
@@ -57,8 +57,7 @@ describe('published documentation', () => {
     expect(docsStructuredData(getDocsPage('shopify'))['@graph'][0]).toMatchObject({
       itemListElement: [{ name: 'Docs' }, { name: 'Integration guides' }, { name: 'Shopify' }],
     })
-    expect(isParkedPowerToolPath('/docs/mcp')).toBe(true)
-    expect(isParkedPowerToolPath('/docs/cli')).toBe(true)
+    expect(isParkedPowerToolPath('/docs/mcp')).toBe(false)
     expect(isParkedPowerToolPath('/api/integrations/github/repos')).toBe(true)
     for (const article of HELP_ARTICLES) for (const key of article.relatedDocs ?? []) {
       expect(DOCS_PAGES).toContain(getDocsPage(key))

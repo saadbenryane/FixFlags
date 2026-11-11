@@ -126,15 +126,3 @@ export const VISUAL_DESCRIPTORS: Record<string, VisualDescriptor> = {
 export function getVisualDescriptor(checkId: string): VisualDescriptor {
   return VISUAL_DESCRIPTORS[checkId] ?? { type: 'none' }
 }
-
-export function getGifCaptureCheckIds(device: 'desktop' | 'mobile'): string[] {
-  return Object.entries(VISUAL_DESCRIPTORS)
-    .filter(([, d]) => d.type === 'animated-gif' && (d.device === device || d.device === 'both' || !d.device))
-    .map(([id]) => id)
-}
-
-export function getOverlayCheckIds(): string[] {
-  return Object.entries(VISUAL_DESCRIPTORS)
-    .filter(([, d]) => d.type === 'static-overlay')
-    .map(([id]) => id)
-}

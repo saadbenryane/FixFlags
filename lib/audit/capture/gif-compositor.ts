@@ -207,26 +207,3 @@ function quantizeFrame(
 
   return { indexed, palette }
 }
-
-export async function addTimerToFrame(frameBuffer: Buffer, elapsedMs: number): Promise<Buffer> {
-  const sec = (elapsedMs / 1000).toFixed(1)
-  const svg = `<svg width="80" height="28" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="0" width="80" height="28" fill="rgba(0,0,0,0.75)" rx="6"/>
-    <text x="40" y="20" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="monospace">${sec}s</text>
-  </svg>`
-  return sharp(frameBuffer).composite([{ input: Buffer.from(svg), top: 8, left: 8 }]).png().toBuffer()
-}
-
-export async function addBadgeToFrame(
-  frameBuffer: Buffer,
-  text: string,
-  color: 'red' | 'amber' | 'green' = 'red'
-): Promise<Buffer> {
-  const colors = { red: '#ef4444', amber: '#f59e0b', green: '#22c55e' }
-  const tw = text.length * 9 + 24
-  const svg = `<svg width="${tw}" height="28" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="0" width="${tw}" height="28" fill="${colors[color]}" rx="14"/>
-    <text x="${tw / 2}" y="19" text-anchor="middle" fill="white" font-size="12" font-weight="bold" font-family="system-ui">${text}</text>
-  </svg>`
-  return sharp(frameBuffer).composite([{ input: Buffer.from(svg), top: 8, left: 8 }]).png().toBuffer()
-}

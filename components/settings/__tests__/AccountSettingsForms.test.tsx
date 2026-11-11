@@ -56,7 +56,6 @@ function renderAccount(overrides?: Partial<ComponentProps<typeof AccountSettings
       email="saadbenryane@gmail.com"
       emailVerified
       planName="Free"
-      isPaid={false}
       {...overrides}
     />,
   )
@@ -74,12 +73,12 @@ describe('AccountSettingsForms', () => {
   })
   afterEach(() => { cleanup(); vi.useRealTimers() })
 
-  it('shows the plan with an upgrade CTA and a single save action', () => {
+  it('shows the plan with one quiet link to Billing and a single save action', () => {
     const { container } = renderAccount()
 
     expect(screen.getByText(ac.planLabel)).toBeInTheDocument()
     expect(screen.getByText('Free')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: ac.upgradeCta })).toHaveAttribute('href', '/pricing')
+    expect(screen.getByRole('link', { name: ac.managePlanCta })).toHaveAttribute('href', '/billing')
     expect(screen.getByRole('button', { name: ac.saveCta })).toBeDisabled()
     expect(screen.queryByText('Profile')).not.toBeInTheDocument()
     expect(container.querySelector('.shadow-card')).toBeNull()

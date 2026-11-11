@@ -1,10 +1,5 @@
 import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Image from 'next/image'
-import Link from 'next/link'
-import type { Route } from 'next'
-import { Settings2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { BOARD_PREVIEW_COPY as C } from '@/lib/marketing/copy/board-preview'
 import type { SimpleIcon } from 'simple-icons'
 import {
   siAngular,
@@ -106,33 +101,5 @@ export function TechnologyStrip({ items, label = 'Built with', onSelect }: { ite
         </li>
       })}
     </ul>
-  </section>
-}
-
-export function IntegrationList({ items, label = 'Integrations', onAction }: { items: readonly ToolItem[]; label?: string; onAction?: (item: ToolItem) => void }) {
-  const connected = items.filter(item => item.status === C.connected)
-  const suggested = items.filter(item => item.status !== C.connected && item.suggested)
-  const other = items.filter(item => item.status !== C.connected && !item.suggested)
-  const rows = (group: readonly ToolItem[]) => (
-    <ul className={styles.integrationList}>
-      {group.map(item => {
-        const isConnected = item.status === C.connected
-        const action = <>{isConnected ? <Settings2 size={14} aria-hidden /> : null}{item.actionLabel ?? (isConnected ? C.settings : C.connect)}</>
-        const aria = isConnected ? C.settingsFor(item.name) : item.actionLabel ? `${item.actionLabel}: ${item.name}` : isConnected ? C.settingsFor(item.name) : C.connectTool(item.name)
-        return <li key={item.name} className={styles.integrationItem}>
-        <ToolLogo name={item.name} />
-        <span className={styles.integrationCopy}><strong>{item.name}</strong>{item.detail ? <span>{item.detail}</span> : null}</span>
-        <span className={styles.integrationActions}>
-          <span className={styles.integrationStatus}>{isConnected ? <i className={styles.statusDot} aria-hidden /> : null}{item.status}</span>
-          {item.actionHref && !item.actionDisabled && !onAction ? <Button size="sm" variant="outline" className="min-h-11" asChild><Link href={item.actionHref as Route} aria-label={aria}>{action}</Link></Button>
-            : <Button type="button" size="sm" variant="outline" className="min-h-11" aria-label={aria} disabled={item.actionDisabled || (!onAction && !item.actionHref)} onClick={() => onAction?.(item)}>{action}</Button>}
-        </span>
-      </li>})}
-    </ul>
-  )
-  return <section aria-label={label}>
-    {connected.length ? rows(connected) : null}
-    {suggested.length ? <div className={styles.integrationGroup}><h3>{C.suggested}</h3>{rows(suggested)}</div> : null}
-    {other.length ? <div className={styles.integrationGroup}>{suggested.length || connected.length ? <h3>{C.otherIntegrations}</h3> : null}{rows(other)}</div> : null}
   </section>
 }

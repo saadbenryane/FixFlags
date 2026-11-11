@@ -6,7 +6,7 @@ import { SiteRepairPrompt } from './SiteRepairPrompt'
 
 export function SiteFixBundleButton({ siteId, area, flagIds, availability, ...presentation }: {
   siteId: string; area?: SiteCardArea; flagIds?: string[]; availability: SiteActionAvailability;
-  label?: string; presentation?: 'button' | 'preview';
+  label?: string; presentation?: 'button' | 'preview'; secondary?: boolean; reveal?: boolean;
 }) {
   return <SiteRepairPrompt scope={{ kind: 'bundle', siteId, ...(area ? { area } : {}), ...(flagIds ? { flagIds } : {}) }} availability={availability} {...presentation} />
 }

@@ -91,7 +91,7 @@ test('build creates a reproducible extractable ZIP with an explicit file allowli
   const archivedRegistry = JSON.parse(execFileSync('unzip', ['-p', archive, 'review/tool-contract.json'], { encoding: 'utf8' }))
   const registry = JSON.parse(await readFile(resolve(ROOT, 'lib/mcp/tool-registry.json')))
   assert.deepEqual(archivedRegistry, toolContract(registry))
-  assert.equal(first.discoveryEnabled, false)
+  assert.equal(first.discoveryEnabled, true)
   assert.equal(first.submissionReady, false)
 })
 
@@ -100,19 +100,29 @@ test('check mode writes nothing and submission mode fails closed on current real
   const report = await buildPlugin({ root, check: true })
   assert.equal(report.packageValidated, true)
   await assert.rejects(readFile(resolve(root, 'test-results/growth/chatgpt-plugin/readiness.json')), /ENOENT/)
-  await assert.rejects(buildPlugin({ root, submissionReady: true }), /Submission blocked:[\s\S]*discovery is disabled/)
+  await assert.rejects(buildPlugin({ root, submissionReady: true }), /Submission blocked:[\s\S]*Independent live evidence required/)
   await assert.rejects(readFile(resolve(root, 'test-results/growth/chatgpt-plugin/fixflags-development.zip')), /ENOENT/)
 })
 
-test('changing the discovery constant alone cannot fabricate independently verified readiness', async (t) => {
+test('the open discovery gate alone cannot fabricate independently verified readiness', async (t) => {
   const root = await fixture(t)
-  const gatePath = resolve(root, 'lib/mcp/discoverability.ts')
-  const gate = await readFile(gatePath, 'utf8')
-  await writeFile(gatePath, gate.replace('export const MCP_IS_DISCOVERABLE = false', 'export const MCP_IS_DISCOVERABLE = true'))
+  const gate = await readFile(resolve(root, 'lib/mcp/discoverability.ts'), 'utf8')
+  assert.match(gate, /export const MCP_IS_DISCOVERABLE = true\b/)
   const report = await buildPlugin({ root, check: true })
   assert.equal(report.discoveryEnabled, true)
   assert.equal(report.submissionReady, false)
+  assert.ok(!report.blockers.some((blocker) => blocker.includes('discovery is disabled')))
   await assert.rejects(buildPlugin({ root, submissionReady: true }), /Independent live evidence required/)
+})
+
+test('a closed discovery gate is reported as a submission blocker', async (t) => {
+  const root = await fixture(t)
+  const gatePath = resolve(root, 'lib/mcp/discoverability.ts')
+  const gate = await readFile(gatePath, 'utf8')
+  await writeFile(gatePath, gate.replace('export const MCP_IS_DISCOVERABLE = true', 'export const MCP_IS_DISCOVERABLE = false'))
+  const report = await buildPlugin({ root, check: true })
+  assert.equal(report.discoveryEnabled, false)
+  await assert.rejects(buildPlugin({ root, submissionReady: true }), /Submission blocked:[\s\S]*discovery is disabled/)
 })
 
 test('symlink inputs and output directories are refused', async (t) => {

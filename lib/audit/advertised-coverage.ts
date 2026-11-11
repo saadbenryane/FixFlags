@@ -1,4 +1,4 @@
-import { HOMEPAGE_CHECK_COVERAGE } from '@/lib/marketing/copy/check-coverage'
+import { COVERAGE_CATALOG } from './coverage-catalog'
 import { PAGE_CHECK_DEFINITIONS } from './checks/definitions'
 import { SEARCH_DEFINITIONS } from './search/definitions'
 import { taskKindSchema } from './progressive/contracts'
@@ -21,7 +21,7 @@ export type AdvertisedCoverage = {
  * inventory, with every obligation unproven until a source-bound receipt exists. */
 export function advertisedCoverageObligations() {
   const registry = validateAdvertisedCoverage()
-  return HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items.map(item => {
+  return COVERAGE_CATALOG.flatMap(area => area.groups.flatMap(group => group.items.map(item => {
     const coverage = registry.get(item.id)!
     return { ...coverage, area: area.id, label: item.label,
       obligations: coverage.acceptance.proofEnvironments.flatMap(environment => coverage.acceptance.scenarios.map(scenario => ({
@@ -148,7 +148,7 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
 ]
 
 export function validateAdvertisedCoverage(definitions: readonly AdvertisedCoverage[] = ADVERTISED_COVERAGE) {
-  const advertised = new Set<string>(HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items.map(item => item.id))))
+  const advertised = new Set<string>(COVERAGE_CATALOG.flatMap(area => area.groups.flatMap(group => group.items.map(item => item.id))))
   const mapped = new Map<string, AdvertisedCoverage>()
   const search = new Set<string>(SEARCH_DEFINITIONS.map(definition => definition.evaluator))
   for (const definition of definitions) {

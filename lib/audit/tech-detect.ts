@@ -728,28 +728,3 @@ export function detectTechnologies(
     b.confidence - a.confidence || a.name.localeCompare(b.name)
   )
 }
-
-/**
- * Infer industry from the URL hostname and page text.
- * Returns a best-guess industry string or null.
- */
-export function inferIndustry(hostname: string, pageText: string): string | null {
-  const h = hostname.toLowerCase()
-  const text = (h + ' ' + pageText).toLowerCase()
-
-  const rules: Array<{ pattern: RegExp; industry: string }> = [
-    { pattern: /\b(shop|store|buy|cart|product|commerce|checkout|ecommerce)\b/, industry: 'E-commerce' },
-    { pattern: /\b(saas|app\.|api\.|dev\.|tool|platform|dashboard|software)\b/, industry: 'SaaS' },
-    { pattern: /\b(agency|studio|design|consulting|services|creative)\b/, industry: 'Agency' },
-    { pattern: /\b(learn|course|education|academy|school|training|university)\b/, industry: 'Education' },
-    { pattern: /\b(health|medical|doctor|clinic|wellness|fitness|hospital)\b/, industry: 'Health' },
-    { pattern: /\b(finance|bank|invest|crypto|fintech|payment|insurance)\b/, industry: 'Finance' },
-    { pattern: /\b(news|media|magazine|journal|podcast|blog)\b/, industry: 'Media' },
-    { pattern: /\b(portfolio|personal|resume|cv)\b/, industry: 'Portfolio' },
-  ]
-
-  for (const { pattern, industry } of rules) {
-    if (pattern.test(text)) return industry
-  }
-  return null
-}

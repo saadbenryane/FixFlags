@@ -9,17 +9,17 @@ export type SiteCheckItem = {
   render: (layout: 'card' | 'row') => ReactNode
 }
 
-export function SiteCheckSections({ items, summary, actions, uptime, trend, headingLevel = 2 }: { items: readonly SiteCheckItem[]; summary?: ReactNode; actions?: ReactNode; uptime?: ReactNode; trend?: ReactNode; headingLevel?: 2 | 3 }) {
+export function SiteCheckSections({ items, summary, uptime, trend, headingLevel = 2 }: { items: readonly SiteCheckItem[]; summary?: ReactNode; uptime?: ReactNode; trend?: ReactNode; headingLevel?: 2 | 3 }) {
   const rows = items.filter(item => item.flagCount > 0)
   const quiet = items.filter(item => item.flagCount === 0)
   const Heading = headingLevel === 2 ? 'h2' : 'h3'
-  const actionGroup = actions ? <div role="group" aria-label={C.actions} className={styles.actions}>{actions}</div> : null
   return <div className={styles.checks}>
     {summary}
     {rows.length ? <section className={styles.group} aria-label={C.attentionHeading}>
-      <div className={styles.groupHeader}><Heading>{C.attentionHeading}</Heading>{actionGroup}</div>
+      {/* The list speaks for itself; its name stays for assistive technology. */}
+      <Heading className="sr-only">{C.attentionHeading}</Heading>
       <BoardGrid layout="rows" className={styles.categoryGrid}>{rows.map(item => <Fragment key={item.id}>{item.render('row')}</Fragment>)}</BoardGrid>
-    </section> : actionGroup}
+    </section> : null}
     {trend || uptime ? <div className={styles.monitoring}>{trend}{uptime}</div> : null}
     {quiet.length ? <section className={styles.group} aria-label={C.otherChecksHeading}><Heading>{C.otherChecksHeading}</Heading><BoardGrid className={styles.quietGrid}>{quiet.map(item => <Fragment key={item.id}>{item.render('card')}</Fragment>)}</BoardGrid></section> : null}
   </div>

@@ -1,33 +1,69 @@
-/* One dark surface lets the real and proposed connections share a clear grid. */
+/* After launch: when FixFlags writes, then a sample fortnight of checks with the one email that mattered. */
+.alerts { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 12px; margin-top: 6px; }
+.alerts > span { color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 550; }
+.alerts ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.alerts li {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: hsl(var(--window));
+  font-size: 13px; font-weight: 550; box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 6px 16px -10px hsl(30 15% 20% / .25);
+}
+.alerts li::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--brand)); }
 
-@keyframes drift { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+/* The board and the email overlap on one grid row, so the email reads as sent from that moment. */
+.watch { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 300px); align-items: center; max-width: 920px; margin: 56px auto 0; }
+.watch figcaption { grid-column: 1 / -1; margin: 0 0 16px; color: hsl(var(--muted-foreground)); font-size: 12px; text-align: center; }
+.watchBoard { grid-column: 1 / 3; grid-row: 2; padding: 28px 28px 24px; border-radius: 24px; background: hsl(var(--window)); box-shadow: var(--shadow-window); }
+.watchHead { display: flex; align-items: center; gap: 10px; padding-right: 96px; font-size: 14px; }
+.watchHead span { margin-left: auto; padding: 5px 10px; border-radius: 999px; background: hsl(var(--muted) / .7); color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
+.ticks { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 6px; height: 64px; margin: 28px 0 0; padding: 0 96px 0 0; list-style: none; }
+.ticks li { border-radius: 7px; background: hsl(var(--success) / .32); transform-origin: bottom; }
+.ticks li[data-state='flag'] { background: hsl(var(--brand)); box-shadow: 0 8px 20px -6px hsl(var(--brand) / .6); }
+.ticks li[data-state='verified'] { background: hsl(var(--success)); }
+.axis { display: flex; justify-content: space-between; margin: 10px 0 0; padding-right: 96px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.events { display: grid; gap: 12px; margin: 24px 0 0; padding: 0 96px 0 0; list-style: none; }
+.events li { display: grid; grid-template-columns: 22px auto minmax(0, 1fr); align-items: center; gap: 12px; font-size: 14px; }
+.events i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); }
+.events li[data-kind='verified'] i { background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+.events span { color: hsl(var(--muted-foreground)); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.events strong { font-weight: 550; }
 
-.monitoringGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 88px); }
-.monitoringIntro > p:not(:first-child) { margin-top: 20px; color: hsl(var(--muted-foreground)); font-size: 18px; line-height: 1.7; }
-.monitoringDetails { margin-top: 18px; }
-.monitoringDetails summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; width: fit-content; max-width: 100%; border-radius: var(--radius-control); font-size: 13px; font-weight: 550; cursor: pointer; list-style: none; }
+.emailCard {
+  grid-column: 2 / 4; grid-row: 2; z-index: 1; min-width: 0; padding: 24px; border-radius: 20px; background: hsl(var(--window));
+  box-shadow: 0 2px 4px hsl(30 10% 20% / .06), 0 24px 60px -24px hsl(30 20% 18% / .4), 0 40px 90px -48px hsl(var(--brand) / .3);
+}
+.emailSender { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.emailSender > svg { margin-left: auto; color: hsl(var(--muted-foreground)); }
+.emailCard h3 { margin-top: 20px; overflow-wrap: anywhere; font-family: var(--font-display), sans-serif; font-size: 20px; font-weight: 600; letter-spacing: -.03em; line-height: 1.3; }
+.emailFinding { display: grid; grid-template-columns: 7px minmax(0, 1fr); align-items: baseline; gap: 6px 10px; margin-top: 18px; padding: 14px; border-radius: 12px; background: hsl(var(--brand) / .07); }
+.emailFinding > span:first-child { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--brand)); }
+.emailFinding strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 600; line-height: 1.5; }
+.emailFinding > span:last-child { grid-column: 2; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.emailAction { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 100%; margin-top: 10px; color: hsl(var(--foreground)); font-size: 13px; font-weight: 600; }
+.emailAction:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.monitoringDetails { width: fit-content; max-width: 520px; margin: 28px auto 0; text-align: center; }
+.monitoringDetails summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border-radius: var(--radius-control); font-size: 13px; font-weight: 550; cursor: pointer; list-style: none; }
 .monitoringDetails summary::-webkit-details-marker { display: none; }
 .monitoringDetails summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }
 .monitoringDetails summary svg { flex-shrink: 0; transition: transform var(--motion-fast) var(--ease-out); }
 .monitoringDetails[open] summary svg { transform: rotate(180deg); }
-.monitoringDetails > p { max-width: 460px; margin-top: 8px; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.7; }
-.emailExample { min-width: 0; margin: 0; }
-.emailExample figcaption { margin-bottom: 16px; color: hsl(var(--muted-foreground)); font-size: 11px; line-height: 1.5; text-align: center; }
-.emailCard { min-width: 0; padding: clamp(20px, 3vw, 28px); border-radius: 16px; background: hsl(var(--background)); box-shadow: 0 12px 32px -12px hsl(var(--foreground) / .12), 0 40px 90px -48px hsl(var(--brand) / .16); }
-.emailSender { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-.emailSender > svg { margin-left: auto; color: hsl(var(--muted-foreground)); }
-.emailCard h3 { margin-top: 24px; overflow-wrap: anywhere; font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -.03em; line-height: 1.3; }
-.emailCard > p { margin-top: 14px; overflow-wrap: anywhere; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.65; }
-.emailFinding { display: grid; grid-template-columns: 7px minmax(0, 1fr); align-items: baseline; gap: 6px 10px; margin-top: 24px; padding: 16px; border-radius: 10px; background: hsl(var(--muted) / .6); }
-.emailFinding > span:first-child { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--brand)); }
-.emailFinding strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 550; line-height: 1.5; }
-.emailFinding > span:last-child { grid-column: 2; font-size: 11px; color: hsl(var(--muted-foreground)); }
-.emailAction { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 100%; margin-top: 16px; color: hsl(var(--foreground)); font-size: 12px; font-weight: 600; }
-.emailAction:hover { text-decoration: underline; text-underline-offset: 4px; }
-@media (max-width: 767px) {
-  .monitoringGrid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-}
+.monitoringDetails > p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.7; }
 
 @media (max-width: 767px) {
-  .monitoringIntro > p:not(:first-child) { font-size: 16px; }
+  .watch { grid-template-columns: minmax(0, 1fr); margin-top: 36px; }
+  .watchBoard { grid-column: 1; padding: 20px 18px 56px; border-radius: 20px; }
+  .ticks { gap: 4px; height: 48px; padding-right: 0; }
+  .watchHead, .axis, .events { padding-right: 0; }
+  .events li { grid-template-columns: 22px minmax(0, 1fr); gap: 4px 12px; }
+  .events strong { grid-column: 2; }
+  .emailCard { grid-column: 1; grid-row: 3; margin: -36px 12px 0; padding: 20px; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ticks li[data-state='flag'] { animation: flag-glow 2.4s ease-in-out infinite; }
+  @supports (animation-timeline: view()) {
+    .ticks li { animation: tick-in linear both; animation-timeline: view(); animation-range: entry calc(10% + var(--i) * 3%) entry calc(50% + var(--i) * 3%); }
+    .ticks li[data-state='flag'] { animation: tick-in linear both, flag-glow 2.4s ease-in-out infinite; animation-timeline: view(), auto; animation-range: entry calc(10% + var(--i) * 3%) entry calc(50% + var(--i) * 3%), normal; }
+  }
+}
+@keyframes tick-in { from { transform: scaleY(.15); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes flag-glow { 50% { box-shadow: 0 8px 26px -4px hsl(var(--brand) / .85); } }

@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { MarketingEyebrow } from './MarketingEyebrow'
 import s from './MarketingPageHeader.module.css'
 
-/** Page title in the homepage hero type. `lines` sets the two-tone title:
- * one statement, then its muted follow-through. */
+/** Page title in the homepage hero type. `lines` sets the title on two lines:
+ * one statement, then its follow-through, in the same ink. */
 export function MarketingPageHeader({ eyebrow, title, lines, description, children, id }: {
   eyebrow?: string
   title?: ReactNode

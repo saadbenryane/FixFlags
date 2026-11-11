@@ -23,14 +23,12 @@ import { SiteActionFeedback } from './SiteActionFeedback'
 
 export function SiteSettingsControls({
   siteId,
-  target,
   watch,
   initial,
   onRefresh,
   children,
 }: {
   siteId: string
-  target?: string
   watch: SiteHomeView['watch']
   initial: SiteHomeView['settings']
   onRefresh: () => Promise<unknown>
@@ -90,8 +88,8 @@ export function SiteSettingsControls({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <SiteMonitoringSettingsPanel target={target} label={watch.label} paused={paused} scheduled={Boolean(watch.interval)}
+    <div className="flex w-full max-w-3xl flex-col gap-4">
+      <SiteMonitoringSettingsPanel label={watch.label} paused={paused} scheduled={Boolean(watch.interval)}
         nextCheck={watch.nextRunAt ? formatEvidenceTimestamp(watch.nextRunAt) : null}
         lastCheck={watch.lastRunAt ? formatEvidenceTimestamp(watch.lastRunAt) : null}
         lastError={watch.lastError} busy={busy} onEdit={() => setScheduleOpen(true)} onPause={value => void setMonitoringPaused(value)}

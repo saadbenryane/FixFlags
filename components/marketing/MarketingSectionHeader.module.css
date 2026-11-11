@@ -1,14 +1,13 @@
-/* Section headers: an optional mono index, one statement, then its muted follow-through. */
+/* Section headers: a small kicker, then one statement in two lines of the same ink. */
 .header { display: grid; gap: 18px; max-width: 760px; }
 .header[data-align='center'] { justify-items: center; margin-inline: auto; text-align: center; }
 .header[data-align='split'] { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); align-items: end; gap: 18px 56px; max-width: none; }
 .header[data-align='split'] .kicker, .header[data-align='split'] .title { grid-column: 1; }
 .header[data-align='split'] .lede { grid-column: 2; grid-row: 2; }
-.kicker { display: inline-flex; align-items: center; gap: 10px; margin: 0; color: hsl(var(--muted-foreground)); font-family: var(--font-mono), monospace; font-size: 12px; font-weight: 500; letter-spacing: .02em; }
-.kicker span { color: hsl(var(--brand)); }
-.title { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(36px, 4vw, 56px); font-weight: 500; line-height: 1.04; letter-spacing: -.045em; text-wrap: balance; }
+.kicker { display: inline-flex; align-items: center; gap: 8px; margin: 0; color: hsl(var(--foreground)); font-size: 13px; font-weight: 600; letter-spacing: -.005em; }
+.kicker span { width: 6px; height: 6px; border-radius: 999px; background: hsl(var(--brand)); }
+.title { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(36px, 4vw, 56px); font-weight: 600; line-height: 1.04; letter-spacing: -.042em; text-wrap: balance; }
 .title > span { display: block; }
-.title > span + span { color: hsl(var(--muted-foreground) / .78); }
 .lede { max-width: 560px; margin: 0; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.6; text-wrap: pretty; }
 .header[data-align='center'] .lede { margin-inline: auto; }
 

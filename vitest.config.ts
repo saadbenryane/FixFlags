@@ -77,6 +77,8 @@ export default defineConfig({
           maxWorkers: 1,
           fileParallelism: false,
           testTimeout: 30_000,
+          // Launching a browser in setup can outlast the 10 second default under a loaded machine.
+          hookTimeout: 30_000,
         },
       },
       {

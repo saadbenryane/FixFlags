@@ -12,6 +12,9 @@ export const APP_NAV_COPY = {
   docs: 'Docs',
   help: 'Help',
   admin: 'Admin',
+  theme: 'Theme',
+  /** The website selector at the top of the app panel. */
+  switcher: { label: 'Choose a website', all: 'All websites', loading: 'Loading websites…', failed: 'Couldn’t load your websites.' },
 } as const
 
 /** Footer column headings. */

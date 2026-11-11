@@ -63,26 +63,6 @@ export const RECHECK_DIFF_COPY = {
     'Not observed in the previous Review. Pages already reviewed should have been caught the first time. Newly reviewed pages are extra coverage.',
 } as const
 
-export const FLAG_DISMISS_REASONS = [
-  { id: 'WRONG', label: 'Wrong' },
-  { id: 'ALREADY_KNOWN', label: 'Already known' },
-  { id: 'LOW_IMPACT', label: 'Low impact' },
-  { id: 'POOR_TIMING', label: 'Poor timing' },
-  { id: 'TOO_COSTLY', label: 'Too costly' },
-  { id: 'WEAK_RECOMMENDATION', label: 'Weak recommendation' },
-  { id: 'MISUNDERSTOOD_PRODUCT_CONTEXT', label: 'Misunderstood Product context' },
-] as const
-
-export type FlagDismissReasonId = (typeof FLAG_DISMISS_REASONS)[number]['id']
-
-export const FLAG_FEEDBACK_COPY = {
-  thanksUp: 'Thanks for the feedback!',
-  thanksDown: "Got it, we'll improve this.",
-  saveFailed: 'Failed to save feedback',
-  dismissPrompt: 'Why are you not acting on this recommendation?',
-  dismissed: 'Recommendation declined.',
-} as const
-
 export const SAVED_FINDING_COPY = {
   recommendation: 'Recommendation',
   observation: 'Observation',

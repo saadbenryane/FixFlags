@@ -49,11 +49,3 @@ export function getUserFacingCaptureError(code?: string | null): string {
   }
   return AUDIT_ERRORS.captureFailed
 }
-
-export function getUserFacingPageSpeedError(): string {
-  return AUDIT_ERRORS.pageSpeedUnavailable
-}
-
-export function getUserFacingPartialAiError(): string {
-  return AUDIT_ERRORS.partialAiReview
-}

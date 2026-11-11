@@ -17,6 +17,7 @@ const ROUTE_TO_PAGE = {
   '/security': 'app/(marketing)/security/page.tsx',
   '/use-cases': 'app/(marketing)/use-cases/page.tsx',
   '/docs/fix-with-ai': 'app/(docs)/docs/[slug]/page.tsx',
+  '/docs/mcp': 'app/(docs)/docs/[slug]/page.tsx',
   '/how-it-works': 'app/(marketing)/how-it-works/page.tsx',
   '/ai-builders': 'app/(marketing)/ai-builders/page.tsx',
   '/for-agencies': 'app/(marketing)/for-agencies/page.tsx',

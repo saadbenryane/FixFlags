@@ -15,8 +15,6 @@ export const journeyPlanSchema = z.object({
   confidence: z.number().min(0).max(1),
   estimatedDurationMs: z.number().int().min(5000).max(120_000),
 })
-
-export type StepPlan = z.infer<typeof stepPlanSchema>
 export type JourneyPlan = z.infer<typeof journeyPlanSchema>
 
 /** New plans can request only implemented public, read-only actions. */

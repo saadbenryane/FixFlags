@@ -8,6 +8,9 @@ import { runPathProbe } from '@/lib/integrity/run-path-probe'
 import { runGoalProbe } from '@/lib/integrity/run-goal-probe'
 import * as storage from '@/lib/integrity/storage'
 
+/** Local fixtures react at once, so the post-click wait only needs to cover a render. */
+const FIXTURE_AFTER_CLICK_MS = 250
+
 const FIXTURES = path.join(process.cwd(), 'lib/integrity/__tests__/fixtures')
 
 function playwrightChromiumAvailable() {
@@ -40,7 +43,7 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     const result = await runPathProbe({
       runId: `green-${Date.now()}`,
       url: `${origin}/green/`,
-      allowLocalhost: true,
+      allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS,
       browser,
       confirmRed: false,
     })
@@ -56,7 +59,7 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     const result = await runPathProbe({
       runId: `red-${Date.now()}`,
       url: `${origin}/red-atc/`,
-      allowLocalhost: true,
+      allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS,
       browser,
     })
     expect(result.health).toBe('RED')
@@ -67,7 +70,7 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
   }, 90_000)
 
   it('retains both failed checkout observations without confirming either destination', async () => {
-    const result = await runPathProbe({ url: `${origin}/alternating-checkout/`, allowLocalhost: true, browser })
+    const result = await runPathProbe({ url: `${origin}/alternating-checkout/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser })
     expect(result).toMatchObject({ health: 'UNKNOWN', reason: 'flaky', confirmed: false })
     expect(result.attempts.map(attempt => ({
       url: attempt.finalUrl, status: attempt.outcome.httpStatus,
@@ -86,11 +89,11 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     })
     const pending = kind === 'configured' ? runGoalProbe({ runId: `held-goal-${Date.now()}`,
       browser, confirmRed: false, deadline: Date.now() + 15_000, config: {
-        startUrl: `${origin}/green/`, allowLocalhost: true,
+        startUrl: `${origin}/green/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS,
         steps: [{ action: 'click', selector: '#add' }, { action: 'click', role: 'link', name: 'Checkout' }],
         goal: { type: 'url_pattern', pattern: '/checkout' }, safety: 'stop-at-checkout', goalAfterStep: 2,
       } }) : runPathProbe({ runId: `held-storage-${Date.now()}`, url: `${origin}/green/`,
-      allowLocalhost: true, browser, confirmRed: false, deadline: Date.now() + 15_000 })
+      allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser, confirmRed: false, deadline: Date.now() + 15_000 })
     try {
       await vi.waitFor(() => expect(upload).toHaveBeenCalled(), { timeout: 10_000, interval: 20 })
       expect(browser.contexts()).toHaveLength(0)
@@ -109,7 +112,7 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
 
   for (const failure of ['http-failure', 'visible-error']) {
     it(`does not certify a ${failure} destination merely because its URL is checkout`, async () => {
-      const result = await runPathProbe({ runId: `destination-${failure}-${Date.now()}`, url: `${origin}/${failure}/`, allowLocalhost: true, browser })
+      const result = await runPathProbe({ runId: `destination-${failure}-${Date.now()}`, url: `${origin}/${failure}/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser })
       expect(result.health).toBe('RED')
       expect(result.confirmed).toBe(true)
       expect(result.attempts).toHaveLength(2)
@@ -120,27 +123,27 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
   }
 
   it.each(['hidden-cart', 'transparent-cart', 'branding-text', 'branding-frame', 'branding-visible-frame', 'embedded-hidden'])('requires an observed checkout surface instead of %s markup', async mode => {
-    const result = await runPathProbe({ runId: `surface-${mode}-${Date.now()}`, url: `${origin}/${mode}/`, allowLocalhost: true, browser, confirmRed: false })
+    const result = await runPathProbe({ runId: `surface-${mode}-${Date.now()}`, url: `${origin}/${mode}/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser, confirmRed: false })
     expect(result.attempts[0].outcome.reachedCheckout).toBe(false)
     expect(result.health).toBe('RED')
     expect(result.reason).toBe('add_to_cart_noop')
   }, 30_000)
 
   it.each(['embedded-empty', 'embedded-challenge', 'top-empty', 'top-challenge'])('keeps %s checkout evidence unavailable until a usable surface is observed', async mode => {
-    const result = await runPathProbe({ runId: `unavailable-${mode}-${Date.now()}`, url: `${origin}/${mode}/`, allowLocalhost: true, browser, confirmRed: false })
+    const result = await runPathProbe({ runId: `unavailable-${mode}-${Date.now()}`, url: `${origin}/${mode}/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser, confirmRed: false })
     expect(result.attempts[0].outcome.reachedCheckout).toBe(false)
     expect(result.health).toBe('UNKNOWN')
     expect(result.reason).toBe('checkout_surface_unavailable')
   }, 30_000)
 
   it('recognizes a visible embedded checkout surface reached through the buy control', async () => {
-    const result = await runPathProbe({ runId: `surface-embedded-${Date.now()}`, url: `${origin}/embedded-checkout/`, allowLocalhost: true, browser, confirmRed: false })
+    const result = await runPathProbe({ runId: `surface-embedded-${Date.now()}`, url: `${origin}/embedded-checkout/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser, confirmRed: false })
     expect(result.health).toBe('GREEN')
     expect(result.steps.find(step => step.label === 'checkout')?.destinationUrl).toBe(`${origin}/checkout`)
   }, 30_000)
 
   it.each(['empty', 'challenge', 'unavailable'])('retains embedded checkout %s evidence without inventing success', async mode => {
-    const result = await runPathProbe({ runId: `embedded-${mode}-${Date.now()}`, url: `${origin}/embedded-${mode}/`, allowLocalhost: true, browser, confirmRed: false })
+    const result = await runPathProbe({ runId: `embedded-${mode}-${Date.now()}`, url: `${origin}/embedded-${mode}/`, allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS, browser, confirmRed: false })
     expect(result.attempts[0].outcome.reachedCheckout).toBe(false)
     expect(result.health).toBe(mode === 'unavailable' ? 'RED' : 'UNKNOWN')
     if (mode === 'unavailable') expect(result.attempts[0].outcome.httpStatus).toBe(503)
@@ -151,7 +154,7 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     const result = await runPathProbe({
       runId: `unknown-${Date.now()}`,
       url: `${origin}/unknown/`,
-      allowLocalhost: true,
+      allowLocalhost: true, afterClickMs: FIXTURE_AFTER_CLICK_MS,
       browser,
       confirmRed: false,
     })

@@ -11,21 +11,3 @@ button.technologyItem:not(:disabled):hover { background: hsl(var(--muted)); }
 .toolFallback { font-size: 11px; font-weight: 700; color: hsl(var(--logo-tile-foreground)); }
 .statusDot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: hsl(var(--success)); }
 .attention { background: hsl(var(--brand)); }
-.integrationList { display: grid; gap: 10px; margin: 16px 0 0; padding: 0; list-style: none; }
-.integrationItem { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 68px; padding: 12px 14px; border-radius: 12px; background: hsl(var(--muted) / .55); }
-.integrationItem .toolLogo { width: 42px; height: 42px; border-radius: 10px; }
-.integrationItem .toolLogo svg, .integrationItem .toolLogo img { width: 24px; height: 24px; }
-.integrationCopy { min-width: 0; }
-.integrationCopy strong { display: block; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; }
-.integrationCopy span { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; color: hsl(var(--muted-foreground)); }
-.integrationStatus { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 12px; font-weight: 550; }
-.integrationActions { display: flex; align-items: center; gap: 12px; }
-.integrationGroup { margin-top: 22px; }
-.integrationGroup h3 { font-size: 12px; font-weight: 550; color: hsl(var(--muted-foreground)); }
-
-@media (max-width: 639px) {
-  .integrationItem { grid-template-columns: 36px minmax(0, 1fr); }
-  .integrationItem .toolLogo { width: 36px; height: 36px; }
-  .integrationStatus { grid-column: 2; }
-  .integrationActions { grid-column: 2; flex-wrap: wrap; }
-}

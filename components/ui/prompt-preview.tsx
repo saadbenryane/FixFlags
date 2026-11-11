@@ -41,27 +41,32 @@ export function PromptPreviewButton({ prompt, loadPrompt, disabled, iconOnly = f
   </>
 }
 
-export function PromptPreviewDialog({ prompt, open, onOpenChange, onCopy, copyLabel = C.copyPrompt, copyDisabled, description = C.previewPromptBody, loading = false, error, onRetry, onDownload, downloadLabel }: {
+export function PromptPreviewDialog({ prompt, open, onOpenChange, onCopy, copyLabel = C.copyPrompt, copyDisabled, description = C.previewPromptBody, loading = false, error, onRetry, onDownload, downloadLabel, heading = C.fixPromptLabel, doneLabel }: {
   prompt: string; open: boolean; onOpenChange: (open: boolean) => void;
   onCopy?: () => void; copyLabel?: string; copyDisabled?: boolean; description?: string;
   loading?: boolean; error?: string | null; onRetry?: () => void;
   onDownload?: () => void; downloadLabel?: string;
+  /** A confirmation after copying: its own heading, a single Done, and no select or copy controls. */
+  heading?: string; doneLabel?: string;
 }) {
   const input = useRef<HTMLTextAreaElement>(null)
   const title = useRef<HTMLHeadingElement>(null)
   const ready = !loading && !error && Boolean(prompt.trim())
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent header={<DialogTitle ref={title}>{C.fixPromptLabel}</DialogTitle>} initialFocus="title" className="max-w-3xl">
+    <DialogContent header={<DialogTitle ref={title}>{heading}</DialogTitle>} initialFocus="title" className="max-w-3xl">
       <DialogDescription>{description}</DialogDescription>
       {loading ? <p role="status" className="min-h-40 text-sm text-muted-foreground">{SITE_DASHBOARD_COPY.promptLoading}</p>
         : error ? <div className="min-h-40 space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p>
           {onRetry ? <Button type="button" variant="outline" onClick={() => { title.current?.focus({ preventScroll: true }); onRetry() }}>{SYSTEM_COPY.actions.retry}</Button> : null}</div>
         : <Textarea ref={input} readOnly value={prompt} rows={14} aria-label={C.fixPromptLabel} className="font-mono text-xs leading-relaxed" />}
-      <DialogFooter>
+      {doneLabel ? <DialogFooter>
+        {onDownload ? <Button type="button" variant="ghost" disabled={!ready} onClick={() => { onOpenChange(false); onDownload() }}>{downloadLabel}</Button> : null}
+        <Button type="button" onClick={() => onOpenChange(false)}>{doneLabel}</Button>
+      </DialogFooter> : <DialogFooter>
         {onDownload ? <Button type="button" variant="outline" disabled={copyDisabled || !ready} onClick={() => { onOpenChange(false); onDownload() }}>{downloadLabel}</Button> : null}
         <Button type="button" variant="outline" disabled={!ready} onClick={() => { input.current?.focus(); input.current?.select() }}>{C.selectPrompt}</Button>
         {onCopy ? <Button type="button" disabled={copyDisabled || !ready} onClick={() => { onOpenChange(false); onCopy() }}><Copy aria-hidden />{copyLabel}</Button> : null}
-      </DialogFooter>
+      </DialogFooter>}
     </DialogContent>
   </Dialog>
 }

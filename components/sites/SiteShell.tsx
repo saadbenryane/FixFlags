@@ -23,13 +23,12 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { BRAND } from '@/lib/marketing/copy/brand'
 import { ReportAuthGateProvider, useReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { ReportMobileNav } from '@/components/layout/ReportAppRail'
-import { helpArticlePath } from '@/lib/help/types'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
 import { siteWorkspaceHref } from '@/lib/sites/workspace-location'
 import { SiteWorkspaceHeader } from './SiteWorkspaceHeader'
 import { SiteWorkspaceFrame } from './SiteWorkspaceFrame'
-const coverageHelpHref = helpArticlePath('sites-and-coverage', 'read-site-coverage')
+// Help lives in the app's own navigation; the Site tabs stay on this Site.
 
 function routeHref(siteId: string, route: SiteRoute): Route {
   return siteWorkspaceHref(siteId, route) as Route
@@ -53,6 +52,7 @@ function SiteShellContent({
   analysisStatus,
   analysisView,
   chatFlag,
+  identityDetail,
   onWorkspaceNavigate,
   children,
 }: {
@@ -69,6 +69,8 @@ function SiteShellContent({
   analysisView?: SiteHomeView
   analysisStatus?: ReactNode
   chatFlag?: { id: string; title: string }
+  /** A quiet line under the website name, such as the tools it is built with. */
+  identityDetail?: ReactNode
   onWorkspaceNavigate?: (route: 'home' | 'pages' | 'timeline' | 'integrations') => void
   children: ReactNode
 }) {
@@ -97,24 +99,25 @@ function SiteShellContent({
     event.preventDefault()
     onWorkspaceNavigate(route)
   }
-  const navigation = (label: string, close?: () => void) => <SiteWorkspaceNavigation activeRoute={activeRoute} label={label} showSettings={showSettings} foldIntegrations helpHref={coverageHelpHref}
+  const navigation = (label: string, close?: () => void) => <SiteWorkspaceNavigation activeRoute={activeRoute} label={label} showSettings={showSettings} foldIntegrations className={styles.panelNavigation}
     renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} prefetch={onWorkspaceNavigate && id !== 'settings' ? false : undefined} onClick={event => openWorkspace(event, id, close)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
 
   const analyzing = presentation.run.state === 'queued' || presentation.run.state === 'running'
 
-  return <SiteWorkspaceFrame mobileHeader={<><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
+  return <SiteWorkspaceFrame current={{ id: siteId, host }} panelNavigation={navigation('Site')} mobileHeader={<><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
       <ReportMobileNav showAdmin={user?.isAdmin} />
-    </>} mobileNavigation={<SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} foldIntegrations helpHref={coverageHelpHref} mobile className={cn(customerMobileBarClass, 'md:hidden')}
+    </>} mobileNavigation={<SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} foldIntegrations mobile className={cn(customerMobileBarClass, 'md:hidden')}
       renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} prefetch={onWorkspaceNavigate && id !== 'settings' ? false : undefined} onClick={event => openWorkspace(event, id)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />}
     overlay={<LazySiteChat key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
       host={host} ownsSite={ownsSite} ownerId={ownsSite ? user?.id ?? null : null} flagId={chatFlag?.id} flagTitle={chatFlag?.title} />}>
         <SiteWorkspaceHeader identity={<>
         {canvasTitle == null ? <h1 tabIndex={-1} className={styles.siteTitle}><Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link></h1>
           : <Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link>}
-        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : analyzing ? <AnalysisDetails statusLabel={presentation.run.label} active disconnected={false} /> : null)}
-        </>} navigation={<div className={styles.desktopNavigation}>{navigation('Site')}</div>}
+        {identityDetail ? <div className={styles.identityDetail}>{identityDetail}</div> : null}
+        </>} navigation={null}
           heading={canvasTitle ? <><h1 tabIndex={-1}>{canvasTitle}</h1>{description ? <p>{description}</p> : null}</> : null}
-          actions={<><SiteMonitoringMenu label={watch.label}
+          // When it was checked sits with how often it is checked; the Site's actions follow on the right.
+          actions={<><span className={styles.checkStatus}>{analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : analyzing ? <AnalysisDetails statusLabel={presentation.run.label} active disconnected={false} /> : null)}</span><SiteMonitoringMenu label={watch.label}
             state={watch.state === 'watching' ? 'healthy' : watch.state === 'delayed' || watch.state === 'quota' ? 'attention' : 'unknown'}
             nextCheck={now => nextCheckLabel(watch.nextRunAt, now)}
             manageLabel={ownsSite ? undefined : SITE_ACTION_COPY.access.monitoring}

@@ -26,11 +26,9 @@ describe('URL-first public product scope', () => {
   })
 
   /**
-   * `AGENTS.md` and ROADMAP Gate 3 both require MCP to stay undiscoverable until the
-   * Site/Outcome loop and its authorization are proven. The public surface was telling
-   * the opposite: a released docs page, a setup page, and machine-readable discovery
-   * documents, one of which advertised eighteen tools FixFlags does not serve,
-   * including four for the explicitly parked repository-scan domain.
+   * MCP discovery was withheld under ROADMAP Gate 3 and opened by owner decision on
+   * 2026-11-10. Every surface below now describes only the tools in the registry and the
+   * `/api/mcp` transport. `/docs/cli` and `/docs/mcp/tools` redirect to `/docs/mcp`.
    */
   it.each([
     '/docs/mcp',
@@ -40,10 +38,12 @@ describe('URL-first public product scope', () => {
     '/api/well-known/mcp-json',
     '/.well-known/mcp.json',
     '/.well-known/mcp-server.json',
+    '/.well-known/oauth-protected-resource',
+    '/.well-known/oauth-authorization-server',
     '/.well-known/skills',
     '/.well-known/skills/index.json',
-  ])('withholds the MCP discovery surface %s until the loop is proven', (pathname) => {
-    expect(isParkedPowerToolPath(pathname)).toBe(true)
+  ])('serves the MCP discovery surface %s now that discovery is open', (pathname) => {
+    expect(isParkedPowerToolPath(pathname)).toBe(false)
   })
 
   it('keeps the MCP transport and its authorization reachable', () => {
@@ -80,6 +80,7 @@ describe('URL-first public product scope', () => {
       '/docs/getting-started',
       '/docs/site-care',
       '/docs/fix-with-ai',
+      '/docs/mcp',
       '/docs/integrations',
       '/docs/integrations/github',
       '/docs/integrations/shopify',
@@ -87,19 +88,17 @@ describe('URL-first public product scope', () => {
       '/docs/integrations/google-search-console',
       '/docs/troubleshooting',
     ])
-    expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/mcp')
-    expect(FOOTER_COLUMNS.resources.map((link) => link.label)).not.toContain('MCP for agents')
     expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/integrations')
   })
 
-  it('keeps the withheld MCP guide ready for the gate to publish', () => {
-    // The page is withheld, not deleted. Losing the source would mean rewriting it
-    // under time pressure on the day the evidence arrives.
+  it('publishes the MCP guide now that discovery is open', () => {
+    // The guide stays gated by `MCP_IS_DISCOVERABLE`, so closing discovery withholds it again.
+    expect(MCP_IS_DISCOVERABLE).toBe(true)
     const withheld = DOCS_PAGE_DEFINITIONS.filter((page) => !DOCS_PAGES.includes(page))
-    expect(withheld.map((page) => page.path)).toEqual(['/docs/mcp'])
+    expect(withheld).toEqual([])
   })
 
-  it('publishes MCP only against a written evidence checklist', () => {
+  it('keeps the outstanding MCP evidence checklist while discovery is open', () => {
     expect(MCP_DISCOVERY_EVIDENCE.length).toBeGreaterThan(0)
     for (const line of MCP_DISCOVERY_EVIDENCE) expect(line.length).toBeGreaterThan(20)
     if (MCP_IS_DISCOVERABLE) {

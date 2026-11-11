@@ -4,7 +4,6 @@ import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useRef, useState } from 'react'
 import { Boxes, Copy, RefreshCw, UserRound } from 'lucide-react'
 import Link from 'next/link'
-import { PromptPreviewButton } from '@/components/ui/prompt-preview'
 import { Logo } from '@/components/brand/Logo'
 import { BoardCard } from '@/components/sites/BoardCard'
 import { SiteOverview } from '@/components/sites/SiteOverview'
@@ -37,8 +36,7 @@ import { SiteWorkspaceHeader } from '@/components/sites/SiteWorkspaceHeader'
 
 export type SampleFlagOpener = (card: SampleCategory, flag: SampleFlagId, trigger?: HTMLElement, origin?: SiteRoute) => void
 
-export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onViewAll, onCopySelection }: {
-  onViewAll?: () => string;
+export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onCopySelection }: {
   onOpen: (card: SiteCardArea, trigger?: HTMLElement) => void; onOpenFlag: SampleFlagOpener; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void;
   onCopyAll?: () => void; onCopySelection?: (prompt: string) => void;
 }) {
@@ -82,7 +80,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
     }))
     setAccountMessage(mode === 'retest' ? P.retested : P.cleanedUp)
   }
-  const siteActions = <>{onCopyAll ? <InteractiveButton type="button" onClick={onCopyAll} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-foreground px-3 text-xs text-background"><Copy size={14} aria-hidden />{Dashboard.fixAll}</InteractiveButton> : null}{onViewAll ? <PromptPreviewButton loadPrompt={async () => onViewAll()} /> : null}<a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden /></a></>
+  const siteActions = <>{onCopyAll ? <InteractiveButton type="button" onClick={onCopyAll} className="inline-flex min-h-11 items-center gap-2 rounded-control bg-foreground px-3 text-xs text-background"><Copy size={14} aria-hidden />{Dashboard.fixAll}</InteractiveButton> : null}<a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden /></a></>
 
   return <div className={s.board} role="region" aria-label={C.boardAria}>
     <p className={s.sampleLabel}>{S.sampleLabel}</p>
@@ -92,10 +90,10 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
         identity={<div className={s.sampleIdentity}><strong className={workspace.domain}>{C.boardLabel}</strong><small>{S.freshness}</small></div>}
         navigation={<SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} foldIntegrations renderItem={({ id, label, selected, className, content }) => <InteractiveButton key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</InteractiveButton>} />}
         heading={view !== 'home' ? <h3>{SITE_ROUTES.find(([id]) => id === view)?.[1]}</h3> : null}
-        actions={<><SiteMonitoringMenu label={paused ? 'Paused' : scheduleLabel(schedule)} state={schedule && !paused ? 'healthy' : 'unknown'} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} onManage={() => { setView('settings'); setScheduleOpen(true) }} />{view !== 'home' ? siteActions : null}</>} />
+        actions={<><SiteMonitoringMenu label={paused ? 'Paused' : scheduleLabel(schedule)} state={schedule && !paused ? 'healthy' : 'unknown'} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} onManage={() => { setView('settings'); setScheduleOpen(true) }} />{siteActions}</>} />
       </div>
       {view === 'home' ? <>
-        <SiteOverviewWorkspace checksId="sample-website-checks" headingLevel={3} actions={siteActions} summary={<SiteOverview host={C.boardLabel} captures={[
+        <SiteOverviewWorkspace checksId="sample-website-checks" headingLevel={3} summary={<SiteOverview host={C.boardLabel} captures={[
           { auditId: 'sample', device: 'desktop', previous: false, url: HOMEPAGE_EVIDENCE.site, pageUrl: `https://${C.boardLabel}/`, viewport: '720 × 440', recordedAt: P.checkedAt },
           { auditId: 'sample', device: 'mobile', previous: false, url: HOMEPAGE_EVIDENCE.siteMobile, pageUrl: `https://${C.boardLabel}/`, viewport: '390 × 844', recordedAt: P.checkedAt },
         ]}
@@ -116,7 +114,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
       })} /></SampleFlagSelection></section> : null}
       {view === 'settings' ? <section className={s.boardPane} aria-label={S.navigation.settings}><p className={s.paneDescription}>{Settings.description}</p><p className={s.sampleNotice}>{P.sample}</p>
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          <SiteMonitoringSettingsPanel target={`https://${C.boardLabel}/`} label={scheduleLabel(schedule)} paused={paused} scheduled={Boolean(schedule)} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} lastCheck={formatEvidenceTimestamp(P.checkedAt)} onEdit={() => setScheduleOpen(true)} onPause={setPaused} />
+          <SiteMonitoringSettingsPanel label={scheduleLabel(schedule)} paused={paused} scheduled={Boolean(schedule)} nextCheck={nextCheckLabel(nextRunAt, referenceTime)} lastCheck={formatEvidenceTimestamp(P.checkedAt)} onEdit={() => setScheduleOpen(true)} onPause={setPaused} />
           <SiteNotificationSettingsPanel level={notifications} recovery={recovery} onChange={(level, nextRecovery) => { setNotifications(level); setRecovery(nextRecovery) }} />
           <SiteAdvancedSettings><SiteAccountChecksPanel initial={accountChecks} enabled={accountChecks.enabled} onToggle={enabled => setAccountChecks(current => ({ ...current, enabled }))} onRequest={requestAccountCheck} feedback={accountMessage ? <p role="status" className={s.sampleNotice}>{accountMessage}</p> : null} /></SiteAdvancedSettings>
           <section id="sample-integrations" aria-label={S.navigation.integrations} className="scroll-mt-6 space-y-3"><h3 className="text-lg font-semibold">{S.navigation.integrations}</h3><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>

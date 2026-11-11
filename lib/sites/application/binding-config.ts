@@ -63,11 +63,6 @@ export const browserJourneyConfigSchema = browserJourneyBaseConfigSchema.superRe
   }
 })
 
-export const checkoutBindingConfigSchema = z.object({
-  startUrl: url,
-  safety: z.literal('stop-at-checkout'),
-})
-
 export const availabilityBindingConfigSchema = z.object({
   startUrl: url,
   expectedText: z.string().min(1).max(500).optional(),
@@ -82,7 +77,6 @@ export const safeFormBindingConfigSchema = z.object({
 })
 
 export type BrowserJourneyConfig = z.infer<typeof browserJourneyConfigSchema>
-export type CheckoutBindingConfig = z.infer<typeof checkoutBindingConfigSchema>
 export type AvailabilityBindingConfig = z.infer<typeof availabilityBindingConfigSchema>
 export type SafeFormBindingConfig = z.infer<typeof safeFormBindingConfigSchema>
 export type ValidatedBindingConfig =

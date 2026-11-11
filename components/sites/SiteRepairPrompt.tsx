@@ -22,6 +22,12 @@ import { SitePromptAccessActions } from './SiteActionContinuation'
 type Props = {
   scope: RepairPromptScope; availability: SiteActionAvailability; label?: string; flagTitle?: string;
   compact?: boolean; iconOnly?: boolean; presentation?: 'button' | 'preview';
+  /** A view holds one primary button; this copy action yields that weight to another. */
+  secondary?: boolean;
+  /** Offer the preview beside the copy button. Off where the view already opens the full Flag. */
+  preview?: boolean;
+  /** After a successful copy, show exactly what was copied instead of offering a separate preview. */
+  reveal?: boolean;
 }
 
 /** One owner for inspected instructions, native copying, receipts, and recovery. */
@@ -29,7 +35,7 @@ export function SiteRepairPrompt(props: Props) {
   return <RepairPromptContent key={JSON.stringify([props.scope, props.availability])} {...props} />
 }
 
-function RepairPromptContent({ scope, availability, label, flagTitle, compact = false, iconOnly = false, presentation = 'button' }: Props) {
+function RepairPromptContent({ scope, availability, label, flagTitle, compact = false, iconOnly = false, presentation = 'button', secondary = false, preview = true, reveal = false }: Props) {
   const { siteId } = scope
   const isFlag = scope.kind === 'flag'
   const { busy, message, error, submit } = useSiteAction()
@@ -37,6 +43,16 @@ function RepairPromptContent({ scope, availability, label, flagTitle, compact = 
   const [recordNotice, setRecordNotice] = useState<string | null>(null)
   const [manual, setManual] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const [revealed, setRevealed] = useState<string | null>(null)
+  const [manualState, setManualState] = useState<'idle' | 'copied' | 'keys'>('idle')
+  async function copyManually() {
+    input.current?.focus(); input.current?.select()
+    try {
+      await navigator.clipboard.writeText(manual ?? '')
+      setManualState('copied')
+      window.setTimeout(() => { setManual(null); setManualState('idle') }, 900)
+    } catch { setManualState('keys') }
+  }
   const input = useRef<HTMLTextAreaElement>(null)
   const scopeTooLarge = scope.kind === 'bundle' && Boolean(scope.flagIds && scope.flagIds.length > MAX_REPAIR_TASKS)
   const scopeNotice = scopeTooLarge ? C.bundleTooLarge(MAX_REPAIR_TASKS) : null
@@ -67,6 +83,7 @@ function RepairPromptContent({ scope, availability, label, flagTitle, compact = 
       if (signal.aborted) return false
       if (!result.copied) { setManual(result.prompt); return false }
       setRecordNotice(result.notice)
+      if (reveal) setRevealed((await body).prompt)
       return true
     }, saved => isFlag && saved ? B.copyPromptCopied : null)
   }
@@ -96,30 +113,35 @@ function RepairPromptContent({ scope, availability, label, flagTitle, compact = 
       <span className="inline-flex flex-wrap items-center gap-1">
         {/* Row copy actions stay visible but quiet; the view's primary actions keep their weight. */}
         <Button type="button" data-site-return-focus="copy" size={isFlag ? iconOnly ? 'icon' : compact ? 'sm' : 'default' : 'sm'}
-          variant={isFlag ? iconOnly || compact ? 'ghost' : 'default' : scope.area ? 'outline' : 'default'}
+          variant={isFlag ? iconOnly || compact ? 'ghost' : secondary ? 'outline' : 'default' : scope.area || secondary ? 'outline' : 'default'}
           disabled={busy || scopeTooLarge} loading={isFlag && busy && !copied} loadingLabel={downloading ? H.fileDownloading : undefined} aria-busy={busy || undefined}
           aria-label={iconOnly || flagTitle ? namedLabel : undefined} title={isFlag ? iconOnly ? namedLabel : undefined : C.bundleBody} onClick={() => void copy()}>
           {copied ? <Check aria-hidden /> : !isFlag || !busy ? <Copy aria-hidden /> : null}{iconOnly ? null : currentLabel}
         </Button>
-        <PromptPreviewButton label={previewLabel} iconOnly={iconOnly} disabled={busy || scopeTooLarge} onCopy={() => void copy()} copyLabel={copyLabel}
+        {/* A bundle keeps one labelled button; its preview rides along as an icon. */}
+        {preview && !reveal ? <PromptPreviewButton label={previewLabel} iconOnly={iconOnly || !isFlag} disabled={busy || scopeTooLarge} onCopy={() => void copy()} copyLabel={copyLabel}
           onDownload={() => void download()} downloadLabel={H.fileDownload}
-          loadPrompt={async () => (await prepared.prepare()).prompt} />
+          loadPrompt={async () => (await prepared.prepare()).prompt} /> : null}
       </span>
       {feedback}
     </span>}
+    {reveal ? <PromptPreviewDialog prompt={revealed ?? ''} open={revealed !== null} onOpenChange={open => { if (!open) setRevealed(null) }}
+      heading={C.copiedReveal.title} description={C.copiedReveal.body} doneLabel={C.copiedReveal.done}
+      onDownload={() => void download()} downloadLabel={C.copiedReveal.download} /> : null}
     <PromptPreviewDialog prompt={prepared.review ?? ''} open={prepared.review !== null} onOpenChange={open => { if (!open) prepared.closeReview() }}
       onDownload={() => void download()} downloadLabel={H.fileDownload}
       onCopy={() => void copy()} copyLabel={copyLabel} copyDisabled={busy || scopeTooLarge} description={C.promptChanged} />
-    <Dialog open={Boolean(manual)} onOpenChange={open => { if (!open) setManual(null) }}>
+    <Dialog open={Boolean(manual)} onOpenChange={open => { if (!open) { setManual(null); setManualState('idle') } }}>
       <DialogContent header={<DialogTitle>{isFlag ? B.manualCopyTitle : C.bundleManual}</DialogTitle>} onOpenAutoFocus={event => {
         if (!input.current) return
         event.preventDefault(); input.current.focus(); input.current.select()
       }}>
         <DialogDescription>{B.manualCopyBody}</DialogDescription>
         <Textarea ref={input} value={manual ?? ''} readOnly rows={isFlag ? 12 : 14} aria-label={B.fixPromptLabel} onFocus={event => event.currentTarget.select()} />
+        {manualState === 'keys' ? <p role="status" className="text-sm text-muted-foreground">{B.manualCopyKeys}</p> : null}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => { input.current?.focus(); input.current?.select() }}>{B.selectPrompt}</Button>
-          {isFlag ? <Button type="button" onClick={() => setManual(null)}>Done</Button> : null}
+          {/* A click is a fresh gesture, so the browser often allows the copy it refused before. */}
+          <Button type="button" onClick={() => void copyManually()}>{manualState === 'copied' ? <Check aria-hidden /> : <Copy aria-hidden />}{manualState === 'copied' ? B.manualCopyDone : B.manualCopyAction}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

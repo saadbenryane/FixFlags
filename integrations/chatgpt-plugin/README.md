@@ -1,6 +1,6 @@
 # FixFlags plugin preparation
 
-This is a development package for the existing remote MCP server at `https://fixflags.com/api/mcp`. It implements portable plugin packaging, listing metadata, the real brand assets, registry-derived tool descriptions and reviewer scenarios. It has not been submitted or published. Public MCP discovery remains disabled by `lib/mcp/discoverability.ts`.
+This is a development package for the existing remote MCP server at `https://fixflags.com/api/mcp`. It implements portable plugin packaging, listing metadata, the real brand assets, registry-derived tool descriptions and reviewer scenarios. It has not been submitted or published. Public MCP discovery was opened by owner decision on 2026-11-10 in `lib/mcp/discoverability.ts`; that decision is not evidence for this package.
 
 Build from the repository root:
 
@@ -10,13 +10,13 @@ node scripts/growth/build-chatgpt-plugin.mjs --check
 node scripts/growth/build-chatgpt-plugin.mjs --submission-ready
 ```
 
-The first command writes a deterministic ZIP and readiness report beneath ignored `test-results/growth/chatgpt-plugin/`. `--check` validates without writing. `--submission-ready` refuses to emit an archive while live acceptance evidence is unproven. It has no approval flags or environment bypass. Clearing the existing discovery constant alone cannot make this package submission ready. Independently reviewed evidence needs a separately implemented provenance and acceptance integration before this command can authorize a submission archive.
+The first command writes a deterministic ZIP and readiness report beneath ignored `test-results/growth/chatgpt-plugin/`. `--check` validates without writing. `--submission-ready` refuses to emit an archive while live acceptance evidence is unproven. It has no approval flags or environment bypass. Opening the discovery gate alone cannot make this package submission ready. Independently reviewed evidence needs a separately implemented provenance and acceptance integration before this command can authorize a submission archive.
 
 The ZIP has root `plugin.json` and `mcp.json`, square brand images copied unchanged from `public/icon-512.png` and `public/brand/logo-mark-md.png`, this README, and generated `review/tool-contract.json`. The file list is explicit. Environment files, credentials, local accounts, build output and repository data cannot enter the archive through directory traversal or recursive collection.
 
 ## Authentication and live proof
 
-The MCP config declares streamable HTTP, OAuth and dynamic client registration using the existing server's discovery. Its requested scopes match the current tool registry. There are no embedded tokens, headers, invented OAuth client IDs, new tools or endpoint overrides. Public OAuth discovery is currently hidden, so this package is not evidence of a working fresh install. Existing implementation references: `lib/mcp/oauth.ts`, `lib/mcp/tool-manifest.ts`, `lib/mcp/tools/sites.ts` and `lib/mcp/contract.ts`.
+The MCP config declares streamable HTTP, OAuth and dynamic client registration using the existing server's discovery. Its requested scopes match the current tool registry. There are no embedded tokens, headers, invented OAuth client IDs, new tools or endpoint overrides. Public OAuth discovery is now served, but this package is still not evidence of a working fresh install. Existing implementation references: `lib/mcp/oauth.ts`, `lib/mcp/tool-manifest.ts`, `lib/mcp/tools/sites.ts` and `lib/mcp/contract.ts`.
 
 Before review, prove the full owned Site, Outcome, Flag, deployed fix and fresh comparable verification flow in real ChatGPT and Codex clients. Prove durable reconnect and same-run resumption, scope denial, revocation, cross-tenant denial, arbitrary-host denial, rate limiting, worker outage, blocked targets and incomparable evidence. Preserve current evidence requirements in `MCP_DISCOVERY_EVIDENCE`; no agent statement can replace them. Local tests and a valid ZIP establish neither this evidence nor publication eligibility.
 

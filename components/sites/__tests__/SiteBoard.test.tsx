@@ -344,7 +344,7 @@ function openFlag(partial: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
 }
 
 describe('SiteBoard chrome', () => {
-  it('rechecks a category directly from its quiet overview control while preserving the recorded Flag on refusal', async () => {
+  it('checks the whole Site again from one overview action while preserving the recorded Flag on refusal', async () => {
     const title = 'Page title is missing'
     const view = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'problem', openFlagCount: 1,
       answer: title, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete,
@@ -354,15 +354,12 @@ describe('SiteBoard chrome', () => {
     vi.stubGlobal('fetch', fetchMock)
     try {
       render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-      const retry = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })
-      // The quiet control shows its action instead of relying on an icon and tooltip.
-      expect(retry).toHaveTextContent(SITE_BOARD_COPY.checkAgain)
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      // Categories on the overview no longer carry their own recheck; that lives in the category detail.
+      expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })).not.toBeInTheDocument()
+      const retry = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })
       fireEvent.click(retry)
       expect(await screen.findByText('Please try again.')).toBeVisible()
-      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/runs', expect.objectContaining({
-        method: 'POST', body: JSON.stringify({ scope: 'category', area: 'search' }),
-      }))
+      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/runs', expect.objectContaining({ method: 'POST' }))
       expect(screen.getByRole('button', { name: `Open ${title}` })).toBeEnabled()
       expect(retry).toBeEnabled()
     } finally { vi.unstubAllGlobals() }
@@ -889,12 +886,11 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByText('Search · Important Flag')).not.toBeInTheDocument()
   })
 
-  it('keeps findings inside Overview categories and provides Help in the navigation', async () => {
+  it('keeps findings inside Overview categories and keeps the Site tabs on this Site', async () => {
     renderBoard(signedInUser)
     const rail = screen.getByRole('navigation', { name: 'Site' })
-    expect(within(rail).getAllByRole('link').map(link => link.textContent?.trim())).toEqual(['Overview', 'Pages', 'Timeline', 'Settings', 'Help'])
-    expect(within(rail).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help/sites-and-coverage/read-site-coverage')
-    expect(within(screen.getByRole('navigation', { name: 'Mobile Site' })).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help/sites-and-coverage/read-site-coverage')
+    expect(within(rail).getAllByRole('link').map(link => link.textContent?.trim())).toEqual(['Overview', 'Pages', 'Timeline', 'Settings'])
+    expect(within(screen.getByRole('navigation', { name: 'Mobile Site' })).queryByRole('link', { name: 'Help' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Flags', level: 2 })).not.toBeInTheDocument()
   })
@@ -974,7 +970,7 @@ describe('SiteBoard chrome', () => {
     const pages = screen.getByRole('region', { name: 'Pages' })
     expect(within(pages).getByText('/contact')).toBeVisible()
     expect(within(pages).getByRole('heading', { name: 'Page checks incomplete' })).toBeVisible()
-    expect(within(pages).getByText('/')).not.toBeVisible()
+    expect(within(pages).getByText('Homepage')).not.toBeVisible()
     fireEvent.click(within(pages).getByText('1 other page', { selector: 'summary' }))
     expect(within(pages).getByRole('img', { name: 'Home' })).toHaveAttribute('src', '/api/screenshots/audit-1/desktop?page=home')
     expect(within(pages).getByRole('img', { name: 'Preview of /contact: No screenshot recorded' })).toBeVisible()
@@ -1227,7 +1223,10 @@ describe('SiteBoard chrome', () => {
   it('keeps watch and All Sites for signed-in owners', async () => {
     renderBoard(signedInUser)
     expect(screen.queryByRole('link', { name: CARE_HOME.signIn })).not.toBeInTheDocument()
-    expect(within(screen.getByRole('complementary', { name: 'App' })).getByRole('link', { name: 'Websites' })).toHaveAttribute('aria-current', 'page')
+    // The app panel opens on this website, with every other one a choice away in its selector.
+    const panel = screen.getByRole('complementary', { name: 'App' })
+    expect(within(panel).getByRole('button', { name: /Choose a website: / })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     fireEvent.click(screen.getByRole('button', { name: 'Monitoring: Not monitored' }))
     expect(screen.getByRole('link', { name: 'Edit schedule' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
     expect(screen.queryByRole('button', { name: 'Turn on monitoring' })).not.toBeInTheDocument()

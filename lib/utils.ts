@@ -5,17 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function gradeColor(grade: string): string {
-  const map: Record<string, string> = {
-    A: 'text-grade-A bg-grade-A/10 border-grade-A/25',
-    B: 'text-grade-B bg-grade-B/10 border-grade-B/25',
-    C: 'text-grade-C bg-grade-C/10 border-grade-C/25',
-    D: 'text-grade-D bg-grade-D/10 border-grade-D/25',
-    F: 'text-grade-F bg-grade-F/10 border-grade-F/25',
-  }
-  return map[grade] ?? 'text-muted-foreground bg-muted border-border'
-}
-
 export function severityColor(severity: string): string {
   const map: Record<string, string> = {
     CRITICAL: 'text-destructive bg-destructive/12',

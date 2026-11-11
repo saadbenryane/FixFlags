@@ -160,13 +160,6 @@ export function classifyCtaHref(
   }
 }
 
-export function isActionableCtaHref(
-  href: string | null | undefined,
-  options: CtaHrefOptions = {}
-): boolean {
-  return classifyCtaHref(href, options).isActionable
-}
-
 export type LinkCategory =
   | 'pricing'
   | 'primary-cta'

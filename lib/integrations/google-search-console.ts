@@ -183,11 +183,6 @@ export interface GscSearchRow {
   position: number
 }
 
-export interface GscSearchResponse {
-  rows?: GscSearchRow[]
-  responseAggregationType?: string
-}
-
 export async function querySearchAnalytics(
   accessToken: string,
   siteUrl: string,
@@ -254,32 +249,4 @@ export async function inspectSearchUrl(accessToken: string, siteUrl: string, url
   const parsed = urlInspectionSchema.safeParse(await readBoundedJson(response, 1_000_000).catch(() => null))
   if (!parsed.success) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
   return parsed.data.inspectionResult
-}
-
-export interface GscUrlInspection {
-  inspectionResult: {
-    indexStatusResult?: {
-      verdict?: string
-      coverageState?: string
-      robotsTxtState?: string
-      indexingState?: string
-      pageFetchState?: string
-      lastCrawlTime?: string
-      googleCanonical?: string
-      userCanonical?: string
-      crawledAs?: string
-      sitemap?: string[]
-    }
-    richResultsResult?: SearchUrlInspection['richResultsResult']
-  }
-}
-
-export async function inspectUrl(
-  accessToken: string,
-  siteUrl: string,
-  url: string
-): Promise<GscUrlInspection['inspectionResult']['indexStatusResult'] | null> {
-  // Compatibility response; the complete evaluator keeps rich-results evidence separate.
-  try { return (await inspectSearchUrl(accessToken, siteUrl, url)).indexStatusResult ?? null }
-  catch { return null }
 }

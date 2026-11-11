@@ -1,4 +1,3 @@
-import type { Plan } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
 
@@ -59,10 +58,6 @@ export function tierPromotionIdForPlan(
   const key = TIER_PROMOTION_ENV[tier][plan]
   const value = process.env[key]
   return value && value.length > 0 ? value : undefined
-}
-
-export function isTierConfigured(plan: TierCheckoutPlan): boolean {
-  return Boolean(tierPromotionIdForPlan(1, plan) || tierPromotionIdForPlan(2, plan))
 }
 
 /**
@@ -126,8 +121,4 @@ export async function tierCheckoutDiscounts(
   const promotionId = tierPromotionIdForPlan(tier, plan)
   if (!promotionId) return null
   return { tier, promotion_code: promotionId }
-}
-
-export function planFromTierCheckout(plan: TierCheckoutPlan): Plan {
-  return plan
 }

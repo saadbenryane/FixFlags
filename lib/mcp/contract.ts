@@ -32,16 +32,6 @@ export type McpErrorEnvelope = {
   }
 }
 
-export const mcpErrorOutputSchema = z.object({
-  status: z.literal('ERROR'),
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-    recoverable: z.boolean(),
-    action: z.string(),
-  }),
-})
-
 export function mcpStructuredResult<T extends object>(payload: T) {
   return {
     structuredContent: payload as Record<string, unknown>,

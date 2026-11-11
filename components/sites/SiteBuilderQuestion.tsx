@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 
 const C = SITE_DASHBOARD_COPY.builderQuestion
 
-/** One question for owners: where the Site was built. Hidden once answered. */
+/** One question for owners, asked inside the fix card: where the Site was built. Hidden once answered. */
 export function SiteBuilderQuestion({ siteId, onAnswer }: { siteId: string; onAnswer: (tool: string) => void }) {
   const [state, setState] = useState<'loading' | 'ask' | 'saving' | 'saved' | 'failed' | 'hidden'>('loading')
   useEffect(() => {
@@ -35,13 +34,15 @@ export function SiteBuilderQuestion({ siteId, onAnswer }: { siteId: string; onAn
   }
 
   if (state === 'loading' || state === 'hidden') return null
-  if (state === 'saved') return <p role="status" className="rounded-card bg-muted/30 p-4 text-sm text-muted-foreground">{C.saved}</p>
-  return <section aria-labelledby="builder-question-title" className="rounded-card bg-muted/30 px-5 py-4">
-    <p className="text-sm text-muted-foreground"><span id="builder-question-title" role="heading" aria-level={2} className="font-semibold text-foreground">{C.title}</span>{' '}{C.body}</p>
-    <ul className="mt-3 flex flex-wrap gap-2">{C.options.map(option => <li key={option.id}>
-      <InteractiveButton type="button" disabled={state === 'saving'} onClick={() => void answer(option.id)}
-        className="inline-flex min-h-11 items-center rounded-pill bg-background/70 px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-background disabled:opacity-60">{option.label}</InteractiveButton>
-    </li>)}</ul>
-    {state === 'failed' ? <p role="alert" className="mt-2 text-sm text-destructive">{C.failed}</p> : null}
-  </section>
+  if (state === 'saved') return <p role="status" className="text-sm text-muted-foreground">{C.saved}</p>
+  // One quiet line inside the fix card: the answer only tunes where fix instructions point.
+  return <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+    <label htmlFor={`builder-${siteId}`} className="text-muted-foreground">{C.title}</label>
+    <select id={`builder-${siteId}`} defaultValue="" disabled={state === 'saving'} onChange={event => { if (event.currentTarget.value) void answer(event.currentTarget.value) }}
+      className="min-h-11 rounded-control bg-background/80 px-3 pr-8 text-sm font-medium text-foreground shadow-[0_1px_2px_hsl(30_10%_20%/.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60">
+      <option value="" disabled>{C.placeholder}</option>
+      {C.options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+    </select>
+    {state === 'failed' ? <p role="alert" className="w-full text-sm text-destructive">{C.failed}</p> : null}
+  </div>
 }

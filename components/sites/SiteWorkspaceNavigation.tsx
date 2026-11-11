@@ -1,7 +1,4 @@
-import { CircleHelp, Clock3, Files, LayoutGrid, Plug, Settings2, type LucideIcon } from 'lucide-react'
-import Link from 'next/link'
-import type { Route } from 'next'
-import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { Clock3, Files, LayoutGrid, Plug, Settings2, type LucideIcon } from 'lucide-react'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { useRef, type ReactNode } from 'react'
 import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
@@ -18,8 +15,8 @@ export const SITE_ROUTES = [
   ['settings', SITE_WORKSPACE_COPY.navigation.settings, Settings2],
 ] as const
 
-export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = true, mobile = false, className, renderItem, helpHref, foldIntegrations = false }: {
-  activeRoute: SiteRoute; label: string; showSettings?: boolean; mobile?: boolean; className?: string; helpHref?: Route;
+export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = true, mobile = false, className, renderItem, foldIntegrations = false }: {
+  activeRoute: SiteRoute; label: string; showSettings?: boolean; mobile?: boolean; className?: string;
   /** While only one integration is live, owners find it in Settings rather than a separate tab. */
   foldIntegrations?: boolean;
   renderItem: (item: { id: SiteRoute; label: string; selected: boolean; className: string; content: ReactNode; icon: LucideIcon }) => ReactNode;
@@ -32,8 +29,5 @@ export function SiteWorkspaceNavigation({ activeRoute, label, showSettings = tru
       className: mobile ? cn('flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center text-2xs [overflow-wrap:anywhere]', selected ? 'text-foreground' : 'text-muted-foreground') : cn(styles.navLink, selected && styles.selected),
       content: <><Icon className="shrink-0" size={mobile ? 20 : 17} aria-hidden /><span className="min-w-0 max-w-full">{label}</span></>,
     }) })}
-    {helpHref ? <Link href={helpHref} className={mobile ? 'flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center text-2xs text-muted-foreground' : styles.navLink}>
-      <CircleHelp size={mobile ? 20 : 17} className="shrink-0" aria-hidden /><span>{SITE_ACTION_COPY.help}</span>
-    </Link> : null}
   </nav>
 }

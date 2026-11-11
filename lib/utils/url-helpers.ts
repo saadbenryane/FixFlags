@@ -52,24 +52,6 @@ export function normalizeSiteHost(hostname: string): string {
 }
 
 /**
- * Extract the first meaningful path segment from a URL for display labels.
- * Returns empty string for root path or on parse failure.
- *
- * Example:
- *   `/pricing` → `pricing`
- *   `/blog/best-practices` → `blog`
- *   `/` → ``
- */
-export function parsePageLabel(url: string): string {
-  try {
-    const pathname = new URL(url).pathname
-    return pathname.split('/').filter(Boolean)[0] ?? ''
-  } catch {
-    return ''
-  }
-}
-
-/**
  * Customer-facing evidence URL. Hides browser-internal error pages while
  * preserving normal http(s) destinations for Flow/Timeline UI.
  */

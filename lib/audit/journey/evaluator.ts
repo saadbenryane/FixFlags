@@ -4,7 +4,6 @@ import { getTriageProviderConfig } from '@/lib/audit/judge-config'
 import {
   anthropic,
   openai,
-  isProviderConfigured,
   runLlmWithRetry,
   type LlmUsage,
 } from '@/lib/audit/judge-runner'
@@ -25,10 +24,6 @@ export type EvaluatorUsage = LlmUsage
 export interface EvaluatorResult {
   evaluation: JourneyEvaluation
   usage: EvaluatorUsage | null
-}
-
-export function isEvaluatorProviderConfigured(): boolean {
-  return isProviderConfigured()
 }
 
 function parseEvaluationOutput(raw: unknown): JourneyEvaluation {

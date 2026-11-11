@@ -1,10 +1,11 @@
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import type { SiteHomeView } from './site-home'
 import type { SiteFlagSeed } from './coverage'
 import { compareFlagPriority } from './presentation'
 
 export type PageResultData = {
   url: string; label: string; status: string; capture: { src: string; alt: string } | null;
-  flags: Array<Pick<SiteFlagSeed, 'id' | 'problem' | 'priorityBand' | 'checkId' | 'fix' | 'area' | 'evidence'>>;
+  flags: Array<Pick<SiteFlagSeed, 'id' | 'problem' | 'priorityBand' | 'priorityScore' | 'checkId' | 'fix' | 'area' | 'evidence'>>;
 }
 
 /** A single recorded page inventory, projected through an explicitly selected finding scope. */
@@ -33,9 +34,10 @@ export function projectPageResults(checked: NonNullable<SiteHomeView['checkedPag
   }
   return Array.from(pages, ([url, { recorded, parsed, flags: pageFlags }]) => {
     const matching = parsed ? paths.get(parsed.pathname)! : null
-    const label = parsed && matching ? `${matching.hosts.size > 1 ? parsed.host : ''}${parsed.pathname}${matching.count > 1 ? parsed.search + parsed.hash : ''}` : url
+    const path = parsed && matching ? `${matching.hosts.size > 1 ? parsed.host : ''}${parsed.pathname}${matching.count > 1 ? parsed.search + parsed.hash : ''}` : url
+    const label = path === '/' ? SITE_DASHBOARD_COPY.homepage : path
     return { url, label, status: recorded?.status ?? 'UNKNOWN',
       capture: recorded?.capture ? { src: recorded.capture.url, alt: recorded.title || url } : null,
-      flags: pageFlags.sort(compareFlagPriority).map(({ id, problem, priorityBand, checkId, fix, area, evidence }) => ({ id, problem, priorityBand, checkId, fix, area, evidence })) }
+      flags: pageFlags.sort(compareFlagPriority).map(({ id, problem, priorityBand, priorityScore, checkId, fix, area, evidence }) => ({ id, problem, priorityBand, priorityScore, checkId, fix, area, evidence })) }
   })
 }

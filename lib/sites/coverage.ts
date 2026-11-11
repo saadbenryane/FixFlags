@@ -107,14 +107,6 @@ function healthyEvidenceCopy(
   }
 }
 
-/** Completed check-module receipts Home must load. A Flag is not required. */
-export const AREA_EVIDENCE_MODULE_KEYS = [
-  'module:accessibility',
-  'module:trust',
-  'module:security',
-  'module:measurement',
-] as const
-
 function passedAssertion(modules: RecordedModule[], module: string, assertion: string): boolean {
   return modules.some(({ execution, module: recorded, receipt }) => {
     if (recorded !== module || execution.status !== 'COMPLETED' || receipt.legacy || !receipt.applicable || receipt.failed) return false

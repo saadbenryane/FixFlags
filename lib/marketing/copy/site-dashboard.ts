@@ -12,15 +12,18 @@ export const SITE_DASHBOARD_COPY = {
     independent: 'An independent FixFlags recheck of the same page confirmed it.',
     reference: (auditId: string) => `Check reference: ${auditId}`,
   },
+  /** The root path in plain words wherever a page is named. */
+  homepage: 'Homepage',
   topProblem: {
     label: 'Fix this first',
-    page: (path: string) => `On ${path}`,
+    page: (path: string) => path === '/' ? 'On your homepage' : `On ${path}`,
     view: 'View Flag',
     builderGuide: (tool: string) => `Using FixFlags with ${tool}`,
   },
   builderQuestion: {
     title: 'Where did you build this site?',
-    body: 'Your answer tells FixFlags where to point you when you copy fix instructions.',
+    /** Shown inside the first option so the select explains itself without extra text. */
+    placeholder: 'Choose a tool',
     options: [
       { id: 'lovable', label: 'Lovable' }, { id: 'bolt', label: 'Bolt' }, { id: 'v0', label: 'v0' }, { id: 'replit', label: 'Replit' },
       { id: 'cursor', label: 'Cursor' }, { id: 'claude-code', label: 'Claude Code' }, { id: 'windsurf', label: 'Windsurf' }, { id: 'codex', label: 'Codex' },
@@ -66,6 +69,9 @@ export const SITE_DASHBOARD_COPY = {
   sharedFlag: 'A Flag can affect more than one page.',
   checkDetails: 'Check details',
   priority: { fix_first: 'High priority', other: 'Lower priority' },
+  /** The five-bar priority meter, named for screen readers and on hover. */
+  priorityLevels: { 1: 'Minor', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Urgent' },
+  priorityMeter: (label: string, level: number) => `${label} priority, ${level} of 5`,
   evidenceDetails: 'Evidence and check details',
   tracking: {
     library: 'No external tracking library observed',
@@ -87,16 +93,18 @@ export const SITE_DASHBOARD_COPY = {
   flagVerificationInconclusive: 'The latest check couldn’t establish whether this fix worked.',
   previousObservation: 'Previous observation',
   whyItMatters: 'Why it matters',
-  fixAll: 'Copy all fix instructions',
-  fixCategory: 'Copy all fix instructions',
+  fixAll: 'Copy all fixes',
+  fixCategory: 'Copy these fixes',
   selectFlags: 'Select Flags',
   cancelSelection: 'Cancel selection',
   selectFlag: (title: string) => `Select ${title}`,
   selectedCount: (count: number) => `${count} selected`,
-  fixSelected: (count: number) => `Copy fix instructions (${count})`,
+  fixSelected: (count: number) => `Copy ${count} ${count === 1 ? 'fix' : 'fixes'}`,
   bundleBody: 'Copy the problems and fix instructions together. Paste them where you built your website, or send them to someone who can help.',
   bundlePreparing: 'Preparing fixes…',
   bundleCopied: 'Fixes copied',
+  /** After Copy all fixes: what was copied, shown once, with the complete file one step away. */
+  copiedReveal: { title: 'All fixes copied', body: 'Paste them into the AI you build with. This is exactly what was copied.', done: 'Done', download: 'Download the complete file' },
   bundleEmpty: 'There are no open Flags in this scope.',
   bundleNotReady: 'This bundle includes Flags without usable fix instructions. Ready individual fixes are available inside each Flag.',
   bundleTooLarge: (limit: number) => `Select up to ${limit} Flags to prepare one set of fix instructions.`,

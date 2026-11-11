@@ -40,6 +40,8 @@ export interface RunPathProbeOptions {
   confirmRed?: boolean
   deadline?: number
   purchaseControlKey?: string
+  /** How long the page gets to react after each click. Production keeps the default; local fixtures react at once. */
+  afterClickMs?: number
 }
 
 function purchaseControlKey(identity: NonNullable<BuyControl['identity']>): string {
@@ -169,7 +171,7 @@ async function runAttempt(
       return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
-    await sleep(AFTER_CLICK_MS)
+    await sleep(options.afterClickMs ?? AFTER_CLICK_MS)
     await captureWalkStep(page, 'add_to_cart', steps, stepPngs)
     finalUrl = page.url()
 
@@ -196,7 +198,7 @@ async function runAttempt(
     if (checkout) {
       const checkoutClicked = await clickSelector(page, checkout.selector)
       if (checkoutClicked) {
-        await sleep(AFTER_CLICK_MS)
+        await sleep(options.afterClickMs ?? AFTER_CLICK_MS)
       }
     }
 

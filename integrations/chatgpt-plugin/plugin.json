@@ -11,7 +11,7 @@
       "interface": {
         "displayName": "FixFlags",
         "shortDescription": "Website evidence and rechecks",
-        "longDescription": "For website owners and coding agents: inspect your owned Sites, watched Outcomes and active Flags with their evidence. Request a check, record a deployed fix, then request fresh comparable verification. A recorded fix or agent claim does not establish recovery. Incomplete evidence remains incomplete. This development package is preparation for review. Public MCP discovery is currently disabled and live ChatGPT/Codex connection, authorization and recovery acceptance remain unproven.",
+        "longDescription": "For website owners and coding agents: inspect your owned Sites, watched Outcomes and active Flags with their evidence. Request a check, record a deployed fix, then request fresh comparable verification. A recorded fix or agent claim does not establish recovery. Incomplete evidence remains incomplete. This development package is preparation for review. Live ChatGPT/Codex connection, authorization and recovery acceptance remain unproven.",
         "developerName": "FixFlags",
         "category": "Developer Tools",
         "capabilities": ["Read owned Site evidence", "Request checks", "Record fixes", "Request independent verification"],

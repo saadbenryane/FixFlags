@@ -23,15 +23,13 @@ function PanelHeading({ icon: Icon, title, description }: { icon: LucideIcon; ti
   return <div className={styles.heading}><span className={styles.icon}><Icon size={18} aria-hidden /></span><div><h2>{title}</h2><p>{description}</p></div></div>
 }
 
-export function SiteMonitoringSettingsPanel({ label, target, paused, scheduled, nextCheck, lastCheck, lastError, busy = false, onEdit, onPause, notice, editor }: {
-  label: string; target?: string; paused: boolean; scheduled: boolean; nextCheck?: string | null; lastCheck?: string | null;
+export function SiteMonitoringSettingsPanel({ label, paused, scheduled, nextCheck, lastCheck, lastError, busy = false, onEdit, onPause, notice, editor }: {
+  label: string; paused: boolean; scheduled: boolean; nextCheck?: string | null; lastCheck?: string | null;
   lastError?: string | null; busy?: boolean; onEdit: () => void; onPause: (paused: boolean) => void;
   notice?: ReactNode; editor?: ReactNode;
 }) {
   return <SiteSettingsSection id="watch" tabIndex={-1}>
     <PanelHeading icon={Clock3} title={S.monitoring} description={S.monitoringBody} />
-    <details className={styles.details}><summary>{S.monitoringDetails}<ChevronDown size={14} aria-hidden /></summary><p>{S.monitoringScope}</p></details>
-    {target ? <p className={styles.note}>{S.target}: <span className="break-all">{target}</span></p> : null}
     <div className={styles.schedule}><span className={styles.scheduleLabel}><i data-active={scheduled && !paused} aria-hidden />{paused ? S.paused : label}</span>
       <div className={styles.actions}><Button variant="outline" disabled={busy} onClick={onEdit}>{M.edit}</Button>
         {scheduled ? <Button variant="ghost" disabled={busy} onClick={() => onPause(!paused)}>{paused ? S.resume : S.pause}</Button> : null}</div>
@@ -42,6 +40,8 @@ export function SiteMonitoringSettingsPanel({ label, target, paused, scheduled, 
     </dl> : null}
     {lastError ? <p className={styles.note}>{lastError}</p> : null}
     {notice}{editor}
+    {/* The fine print comes after the controls it explains. */}
+    <details className={styles.details}><summary>{S.monitoringDetails}<ChevronDown size={14} aria-hidden /></summary><p>{S.monitoringScope}</p></details>
   </SiteSettingsSection>
 }
 
@@ -52,7 +52,6 @@ export function SiteNotificationSettingsPanel({ level, recovery, busy = false, o
   const id = useId()
   return <SiteSettingsSection id="notifications">
     <PanelHeading icon={Bell} title={S.notifications} description={S.notificationsBody} />
-    <details className={styles.details}><summary>{S.notificationDetails}<ChevronDown size={14} aria-hidden /></summary><p>{S.notificationPolicy}</p></details>
     {level == null || recovery == null ? <p className={styles.note}>{SITE_BOARD_COPY.notificationsUnavailable}</p> : <>
       <div className={styles.field}><label htmlFor={id}>{S.emailMe}</label><InteractiveSelect id={id} value={level} disabled={busy} onChange={event => onChange(event.target.value as NotificationLevel, recovery)}>
         <option value="FLAGS">{S.levels.FLAGS}</option><option value="CRITICAL_ONLY">{S.levels.CRITICAL_ONLY}</option><option value="OFF">{S.levels.OFF}</option>
@@ -60,6 +59,7 @@ export function SiteNotificationSettingsPanel({ level, recovery, busy = false, o
       <label className={styles.toggle}><Checkbox checked={recovery} disabled={busy || level === 'OFF'} onCheckedChange={checked => onChange(level, checked === true)} /><span>{S.recovery}</span></label>
       <p className={styles.saveHint}>{level === 'OFF' ? S.recoveryDisabled : S.automaticSave}</p>
     </>}
+    <details className={styles.details}><summary>{S.notificationDetails}<ChevronDown size={14} aria-hidden /></summary><p>{S.notificationPolicy}</p></details>
   </SiteSettingsSection>
 }
 

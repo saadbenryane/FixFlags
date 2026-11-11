@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SiteAccountRail } from '../SiteAccountRail'
+import { AppPanel } from '../AppPanel'
+import { APP_NAV_COPY } from '@/lib/marketing/copy/navigation'
 
 const state = vi.hoisted(() => ({ open: vi.fn(), pathname: '/sites/site-1', user: { id: 'owner', email: 'owner@example.com', isAdmin: false } as { id: string; email: string; isAdmin: boolean } | null }))
 vi.mock('next/navigation', () => ({ usePathname: () => state.pathname, useSearchParams: () => new URLSearchParams() }))
@@ -9,28 +11,27 @@ vi.mock('@/hooks/useMe', () => ({ useMe: () => ({ user: state.user }) }))
 vi.mock('@/components/theme-toggle', () => ({ ThemeToggle: () => <button>Theme</button> }))
 vi.mock('@/components/layout/AvatarMenu', () => ({ AvatarMenu: () => <button>Account menu</button> }))
 
-describe('persistent account navigation within a website', () => {
+describe('app panel', () => {
   beforeEach(() => { state.pathname = '/sites/site-1'; state.user = { id: 'owner', email: 'owner@example.com', isAdmin: false } })
-  it('keeps Websites selected and every account destination reachable from a nested site page', () => {
-    state.pathname = '/sites/site-1/settings'
-    render(<SiteAccountRail />)
-    expect(screen.getByRole('link', { name: 'Websites' })).toHaveAttribute('aria-current', 'page')
-    for (const label of ['Billing', 'Docs', 'Help', 'Account']) expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'FixFlags' })).toHaveAttribute('href', '/dashboard')
+  it('shows the website being viewed, its sections, and one account menu instead of account links', () => {
+    render(<AppPanel current={{ id: 'site-1', host: 'example.com' }} navigation={<nav aria-label="Site"><Link href="/sites/site-1">Overview</Link></nav>} />)
+    expect(screen.getByRole('button', { name: `${APP_NAV_COPY.switcher.label}: example.com` })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'API keys' })).not.toBeInTheDocument()
+    for (const label of ['Billing', 'API keys', 'Docs', 'Help', 'Account']) expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'FixFlags' })).toHaveAttribute('href', '/dashboard')
   })
-  it('only exposes administrator navigation for an administrator', () => {
-    state.user!.isAdmin = true
-    render(<SiteAccountRail />)
-    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin')
+  it('opens on all websites when no website is chosen', () => {
+    state.pathname = '/dashboard'
+    render(<AppPanel />)
+    expect(screen.getByRole('button', { name: `${APP_NAV_COPY.switcher.label}: ${APP_NAV_COPY.switcher.all}` })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Websites' })).toHaveAttribute('aria-current', 'page')
   })
-  it('retains main navigation for visitors and gates account destinations when clicked', () => {
+  it('keeps the websites link for visitors, gates it on click, and offers sign in', () => {
     state.user = null
-    render(<SiteAccountRail />)
+    render(<AppPanel />)
     expect(screen.getByRole('complementary', { name: 'App' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute('href', '/docs')
+    expect(screen.queryByRole('button', { name: /Choose a website/ })).not.toBeInTheDocument()
     const websites = screen.getByRole('link', { name: 'Websites' })
     fireEvent.click(websites)
     expect(state.open).toHaveBeenCalledWith({ reason: 'create-account', nextPath: '/dashboard', trigger: websites })

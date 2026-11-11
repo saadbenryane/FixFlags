@@ -23,7 +23,3 @@ export type ImpactTagName = (typeof IMPACT_TAG_ORDER)[number]
 export const SEVERITY_ORDER = ['CRITICAL', 'IMPORTANT', 'POLISH'] as const
 
 export type SeverityName = (typeof SEVERITY_ORDER)[number]
-
-export const FLAG_STATUS_ORDER = ['OPEN', 'FIXED', 'IGNORED', 'REGRESSED'] as const
-
-export type FlagStatusName = (typeof FLAG_STATUS_ORDER)[number]

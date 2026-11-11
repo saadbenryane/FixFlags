@@ -41,5 +41,3 @@ export function inspectMcpToolReadiness(toolNames: Iterable<string>) {
     optional: [],
   }
 }
-
-export type McpToolName = (typeof MCP_TOOL_DEFINITIONS)[number]['name']

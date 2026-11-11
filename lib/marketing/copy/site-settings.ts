@@ -25,7 +25,7 @@ export const SITE_SETTINGS_COPY = {
   monitoringBody: 'Choose how often FixFlags checks that your website opens.',
   monitoringDetails: 'What follows this schedule',
   monitoringScope: 'Page availability follows this schedule. Broader page inspection runs no more than daily. Supported signup checks run initially and when needed.',
-  target: 'Target', monitoring: 'Monitoring', next: 'Next check', last: 'Last successful check', notifications: 'Notifications',
+  monitoring: 'Monitoring', next: 'Next check', last: 'Last successful check', notifications: 'Notifications',
   paused: 'Paused', pause: 'Pause monitoring', resume: 'Resume monitoring',
   notificationsBody: 'Choose which changes should trigger an alert. Set your daily or weekly summary in Account settings.',
   notificationDetails: 'When FixFlags sends email',

@@ -1,72 +1,96 @@
-.sequence { display: grid; gap: 28px; margin: 0; }
-
-/* The rail: four steps, read left to right. The active step is ink, the rest wait in grey. */
-.rail { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.step {
-  position: relative; display: grid; align-content: start; gap: 6px; min-height: 44px; padding: 14px 4px 4px 0; border: 0;
-  background: transparent; color: hsl(var(--muted-foreground) / .7); text-align: left; cursor: pointer;
-  transition: color 240ms var(--ease-out);
+/*
+ * The homepage story. The words scroll; the phone stays. Each step swaps what FixFlags shows
+ * beside the same demo store, so the visitor discovers the product by reading down the page.
+ */
+.story {
+  --top: var(--header-height-marketing, 4.5rem);
+  position: relative; display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 0 clamp(32px, 6vw, 96px);
+  padding: 0 max(24px, calc((100% - 1120px) / 2)) clamp(24px, 4vw, 64px);
 }
-.step::before { content: ''; position: absolute; top: 0; left: 0; width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--foreground) / .14); transition: background-color 240ms; }
-.step[data-state='done']::before { background: hsl(var(--foreground) / .55); }
-.step[data-state='active']::before { background: hsl(var(--brand)); box-shadow: 0 0 0 4px hsl(var(--brand) / .14); }
-.step:hover, .step[data-state='active'] { color: hsl(var(--foreground)); }
-.step:focus-visible { outline: 2px solid hsl(var(--brand)); outline-offset: 4px; border-radius: 6px; }
-.stepIndex { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: .04em; color: hsl(var(--muted-foreground)); }
-.step[data-state='active'] .stepIndex { color: hsl(var(--brand)); }
-.stepTitle { font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 500; letter-spacing: -.03em; line-height: 1.1; }
-.stepLine { max-width: 230px; font-size: 13.5px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
-.step[data-state='next'] .stepLine { color: hsl(var(--muted-foreground) / .75); }
-.progress { position: absolute; top: 3px; left: 14px; right: 16px; height: 1px; background: hsl(var(--brand) / .55); transform-origin: left; animation: progress linear both; }
-.mobileCaption { display: none; }
 
-/* The window: browser chrome, then the page beside what FixFlags shows. */
-.window { overflow: hidden; border-radius: 22px; background: hsl(var(--window)); box-shadow: var(--shadow-window); }
-.chrome { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 10px 0 16px; background: hsl(var(--window-chrome)); }
-.dots { display: inline-flex; gap: 6px; }
-.dots i { width: 10px; height: 10px; border-radius: 999px; background: hsl(var(--foreground) / .13); }
-.url { flex: 1; min-width: 0; margin: 0 auto; max-width: 360px; padding: 6px 12px; overflow: hidden; border-radius: 8px; background: hsl(var(--window)); color: hsl(var(--muted-foreground)); font-family: var(--font-mono), monospace; font-size: 11.5px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.sample { color: hsl(var(--muted-foreground)); font-size: 12px; white-space: nowrap; }
-.control {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px;
-  background: transparent; color: hsl(var(--foreground)); font-size: 13px; font-weight: 550; cursor: pointer;
+.steps { grid-column: 1; grid-row: 1; margin: 0; padding: 0 0 0 76px; list-style: none; }
+.steps > li { display: flex; flex-direction: column; justify-content: center; min-height: min(80svh, 760px); opacity: .2; transition: opacity 420ms var(--ease-out); }
+.steps > li[data-active] { opacity: 1; }
+.steps h3 { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(64px, 8vw, 116px); font-weight: 600; line-height: .92; letter-spacing: -.062em; }
+.steps h3 span { color: hsl(var(--brand)); }
+.steps p { max-width: 390px; margin: 22px 0 0; color: hsl(var(--muted-foreground)); font-size: clamp(18px, 1.55vw, 22px); line-height: 1.45; text-wrap: pretty; }
+/* Small facts under each caption: quiet pills, the AI tools on Fix. */
+.points { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; padding: 0; list-style: none; }
+.points li {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: hsl(var(--window));
+  color: hsl(var(--foreground)); font-size: 13px; font-weight: 550; box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 6px 16px -10px hsl(30 15% 20% / .25);
 }
-.control:hover { background: hsl(var(--foreground) / .06); }
-.control:focus-visible { outline: 2px solid hsl(var(--brand)); outline-offset: 2px; }
+.points li:not(:has(svg))::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--brand)); }
+.toolMark { display: inline-flex; width: 15px; height: 15px; flex: none; }
+.toolMark svg { width: 100%; height: 100%; }
 
-.body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-/* Every step shows the same 720 by 400 window onto the store, so the height never changes. */
-.page { position: relative; overflow: hidden; aspect-ratio: 720 / 400; background: hsl(0 0% 100%); }
-.frame { position: relative; width: 100%; aspect-ratio: 720 / 440; }
-.capture { display: block; width: 100%; height: 100%; }
-.page[data-step='fix'] .capture { opacity: .5; filter: saturate(.6); }
-.after { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 48%; }
-.pageLabel {
-  position: absolute; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 12px; border-radius: 999px;
-  background: hsl(0 0% 100% / .94); color: hsl(240 10% 7%); font-size: 12px; font-weight: 600; box-shadow: 0 6px 20px hsl(30 10% 20% / .14);
+/* The rail: four stations that warm to Flag Orange as the story moves. Filled shapes only. */
+.rail {
+  --node: 44px; --gap: 30px;
+  grid-column: 1; grid-row: 1; position: sticky; z-index: 1; align-self: start; justify-self: start;
+  top: calc(var(--top) + clamp(16px, 4svh, 48px) + min(calc(100svh - var(--top) - 72px), 660px) / 2 - (4 * var(--node) + 3 * var(--gap)) / 2);
+  display: grid; gap: var(--gap); margin: 0; padding: 0; list-style: none;
 }
-.pageLabel i { width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--success)); }
+.rail li, .railCompact li {
+  display: grid; place-items: center; width: var(--node); height: var(--node); border-radius: 999px;
+  background: hsl(var(--foreground) / .05); color: hsl(var(--muted-foreground) / .75);
+  transition: background-color 360ms var(--ease-out), color 360ms var(--ease-out), box-shadow 360ms var(--ease-out), transform 360ms var(--ease-out);
+}
+.rail li[data-state='done'], .railCompact li[data-state='done'] { background: hsl(var(--brand) / .12); color: hsl(var(--brand)); }
+.rail li[data-state='active'], .railCompact li[data-state='active'] { background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); box-shadow: 0 10px 24px -8px hsl(var(--brand) / .65); transform: scale(1.08); }
+.railCompact { display: none; }
 
-/* The Add to cart button sits at 4.4% to 21.5% across and 73% to 84% down the 720 by 440 capture. */
-.target { position: absolute; left: 3.6%; top: 72%; width: 18.8%; height: 12.8%; border-radius: 9px; }
-.target[data-state='flag'], .target[data-state='fix'] { box-shadow: 0 0 0 3px hsl(var(--brand)), 0 0 0 10px hsl(var(--brand) / .16); }
-.cursor {
-  position: absolute; left: 13%; top: 78.4%; width: 18px; height: 18px; margin: -4px 0 0 -3px; background: hsl(240 10% 7%);
-  clip-path: polygon(0 0, 0 100%, 30% 72%, 52% 100%, 66% 92%, 45% 66%, 82% 66%); filter: drop-shadow(0 1px 1px hsl(0 0% 100%));
+.link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 14px; color: hsl(var(--foreground)); font-size: 15px; font-weight: 600; }
+.link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* The stage holds still while the steps pass. */
+.stageWrap { grid-column: 2; grid-row: 1; position: sticky; top: var(--top); display: grid; place-items: start center; align-self: start; padding-top: clamp(16px, 4svh, 48px); }
+.stage { --phone-h: calc(100% - 40px); position: relative; width: 100%; max-width: 580px; height: min(calc(100svh - var(--top) - 72px), 660px); margin: 0; }
+.caption { position: absolute; right: 0; bottom: 0; left: 0; margin: 0; color: hsl(var(--muted-foreground)); font-size: 12px; text-align: right; }
+
+.phone {
+  position: absolute; top: 0; right: 2%; height: var(--phone-h); padding: 9px; border-radius: 46px; background: hsl(240 6% 10%);
+  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / .12), 0 2px 4px hsl(30 10% 10% / .12), 0 40px 80px -28px hsl(28 30% 18% / .45), 0 18px 40px -24px hsl(var(--brand) / .28);
+  transition: transform 600ms var(--ease-out), filter 600ms var(--ease-out);
 }
+.screen { position: relative; height: 100%; aspect-ratio: 780 / 1520; overflow: hidden; border-radius: 37px; background: hsl(0 0% 100%); }
+.before, .ready, .home, .after { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The walk through the store plays only while Check is current and motion is welcome; otherwise the failed tap shows. */
+.ready, .home { opacity: 0; }
+.after { opacity: 0; transition: opacity 640ms var(--ease-out); }
+.stage[data-step='verify'] .after { opacity: 1; }
+.stage[data-step='fix'] .phone { transform: scale(.965); filter: saturate(.7) brightness(.97); }
+
+/* Positions on the 780 by 1520 capture: Add to cart sits at 52.5% to 58.8% down, the result banner at 60% to 64.6%. */
+.tap { position: absolute; top: 55.6%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 999px; background: hsl(0 0% 100% / .55); box-shadow: 0 0 0 2px hsl(0 0% 100% / .85), 0 2px 10px hsl(0 0% 0% / .3); opacity: 0; transition: opacity 240ms; }
+.stage[data-step='check'] .tap { opacity: 1; }
+.ring { position: absolute; top: 59.6%; left: 2.6%; width: 94.8%; height: 5.4%; border-radius: 10px; opacity: 0; transition: opacity 320ms var(--ease-out), box-shadow 320ms var(--ease-out); }
+.stage:is([data-step='flag'], [data-step='fix']) .ring { opacity: 1; box-shadow: 0 0 0 2.5px hsl(var(--brand)), 0 0 0 9px hsl(var(--brand) / .18); }
+.stage[data-step='verify'] .ring { opacity: 1; box-shadow: 0 0 0 2.5px hsl(var(--success)), 0 0 0 9px hsl(var(--success) / .16); }
 .marker {
-  position: absolute; left: 12.9%; top: 72%; display: grid; place-items: center; width: 28px; height: 28px; margin: -36px 0 0 -14px;
+  position: absolute; top: 59.6%; left: 88%; display: grid; place-items: center; width: 26px; height: 26px; margin: -32px 0 0 -13px;
   border-radius: 999px 999px 999px 4px; transform: rotate(-45deg); background: hsl(var(--brand)); color: hsl(var(--brand-foreground));
-  box-shadow: 0 6px 16px hsl(var(--brand) / .4);
+  box-shadow: 0 6px 16px hsl(var(--brand) / .45); opacity: 0; transition: opacity 240ms;
 }
 .marker svg { transform: rotate(45deg); }
+.stage:is([data-step='flag'], [data-step='fix']) .marker { opacity: 1; }
 
-.side { display: grid; align-content: center; padding: 28px; background: hsl(var(--window-chrome) / .55); }
-.card { margin: 0; padding: 20px 22px; border-radius: 16px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 12px 32px -16px hsl(30 15% 20% / .25); }
-.card h3 { margin: 6px 0 12px; font-family: var(--font-display), sans-serif; font-size: 19px; font-weight: 550; letter-spacing: -.02em; line-height: 1.25; }
-.card dl { display: grid; gap: 10px; margin: 0; }
-.card dt { color: hsl(var(--muted-foreground)); font-size: 12px; }
-.card dd { margin: 2px 0 0; font-size: 14px; line-height: 1.45; }
+/* What FixFlags shows. Every layer is always present; only the current one is shown. */
+.layer { position: absolute; left: 0; z-index: 1; width: min(340px, 62%); opacity: 0; transform: translateY(16px) scale(.97); pointer-events: none;
+  transition: opacity 360ms var(--ease-out), transform 560ms var(--ease-out); }
+/* Cards sit above or below the result banner so the evidence stays in view. */
+.layer[data-for='check'] { top: 10%; }
+.layer[data-for='flag'] { top: 68%; }
+.layer[data-for='fix'] { top: 8%; width: min(380px, 70%); }
+.layer[data-for='verify'] { top: 68%; }
+.stage[data-step='check'] .layer[data-for='check'], .stage[data-step='flag'] .layer[data-for='flag'],
+.stage[data-step='fix'] .layer[data-for='fix'], .stage[data-step='verify'] .layer[data-for='verify'] { opacity: 1; transform: none; }
+
+.card {
+  margin: 0; padding: 18px 20px; border-radius: 18px; background: hsl(var(--window) / .94); backdrop-filter: blur(14px);
+  box-shadow: 0 2px 4px hsl(30 10% 20% / .06), 0 24px 48px -20px hsl(30 20% 18% / .32);
+}
+.cardTitle { margin: 6px 0 0; font-family: var(--font-display), sans-serif; font-size: 18px; font-weight: 550; line-height: 1.25; letter-spacing: -.02em; }
 .cardHead { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; font-weight: 600; }
 .cardHead small { margin-left: auto; color: hsl(var(--brand-strong)); font-size: 12px; font-weight: 600; }
 .live { width: 8px; height: 8px; border-radius: 999px; background: hsl(var(--brand)); }
@@ -75,67 +99,101 @@
 .log li svg { flex-shrink: 0; color: hsl(var(--success)); }
 .log li[data-pending] { color: hsl(var(--muted-foreground)); }
 .spinner { flex-shrink: 0; width: 13px; height: 13px; border: 2px solid hsl(var(--brand) / .25); border-top-color: hsl(var(--brand)); border-radius: 999px; }
-.flagLabel { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: hsl(var(--brand-strong)); font-size: 12px; font-weight: 650; }
+.flagLabel { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: hsl(var(--brand-strong)); font-size: 12.5px; font-weight: 650; }
+.facts { display: grid; gap: 10px; margin: 14px 0 0; }
+.facts dt { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.facts dd { margin: 2px 0 0; font-size: 14px; line-height: 1.45; }
 
-.terminal { overflow: hidden; border-radius: 14px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); }
+.terminal { overflow: hidden; border-radius: 16px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); box-shadow: 0 30px 60px -24px hsl(240 20% 6% / .55); }
 .terminalBar { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; background: hsl(var(--stage-raised)); color: hsl(var(--stage-muted)); font-size: 12px; font-weight: 550; }
 .terminalBody { padding: 16px; font-family: var(--font-mono), monospace; font-size: 12px; line-height: 1.7; }
 .command { margin: 0 0 8px; font-weight: 600; }
 .command span { color: hsl(var(--brand)); }
 .terminalBody ul { margin: 0; padding: 0 0 0 12px; list-style: none; color: hsl(var(--stage-muted)); }
 .copyState { position: relative; display: inline-flex; align-items: center; margin: 14px 0 0; padding: 7px 12px; border-radius: 8px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-family: var(--font-sans), sans-serif; font-size: 12.5px; font-weight: 600; }
-.copied { position: absolute; inset: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: inherit; background: color-mix(in srgb, hsl(var(--success)) 62%, hsl(240 10% 7%)); color: hsl(var(--success-foreground)); opacity: 0; }
+.copied { position: absolute; inset: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: inherit; background: color-mix(in srgb, hsl(var(--success)) 62%, hsl(240 10% 7%)); color: hsl(var(--success-foreground)); opacity: 1; }
 
 .stamp {
   display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 5px 11px; border-radius: 8px; transform: rotate(-2deg);
   background: hsl(var(--success-muted)); color: color-mix(in srgb, hsl(var(--success)) 55%, hsl(var(--foreground))); font-size: 12.5px; font-weight: 750; letter-spacing: .02em;
 }
-.receiptRows { grid-template-columns: auto 1fr; column-gap: 16px; row-gap: 6px !important; }
-.receiptRows > div { display: contents; }
-.receiptRows dd { margin: 0 !important; font-weight: 550; font-size: 13.5px !important; }
-.note { margin: 14px 0 0; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.receipt { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 14px 0 0; font-size: 13.5px; }
+.receipt > div { display: contents; }
+.receipt dt { color: hsl(var(--muted-foreground)); }
+.receipt dd { margin: 0; font-weight: 550; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .body { animation: scene-in 420ms var(--ease-out) both; }
-  .side > * { animation: rise 520ms var(--ease-out) 220ms both; }
-  .cursor { animation: cursor-move 1600ms var(--ease-out) both; }
-  .target[data-state='check'] { animation: click-ring 700ms ease-out 1600ms both; }
-  .body[data-step='flag'] .marker { animation: marker-drop 560ms cubic-bezier(.2, 1.4, .4, 1) 160ms both; }
-  .log li { animation: line-in 300ms var(--ease-out) both; animation-delay: calc(300ms + var(--entry) * 650ms); }
+  /* One walk, about 3.4 seconds: home page, tap the product, product page, tap Add to cart, nothing happens. */
+  .stage:not([data-seen]) .home { opacity: 1; }
+  .stage:not([data-seen]) .tap, .stage:not([data-seen]) .log li { opacity: 0; }
+  .stage[data-seen][data-step='check'] .home { animation: walk-home 3.4s var(--ease-out) both; }
+  .stage[data-seen][data-step='check'] .ready { animation: walk-ready 3.4s var(--ease-out) both; }
+  .stage[data-seen][data-step='check'] .tap { animation: walk-tap 3.4s var(--ease-out) both; }
+  .stage[data-seen][data-step='check'] .log li { animation: line-in 320ms var(--ease-out) both; }
+  .stage[data-seen][data-step='check'] .log li:nth-child(1) { animation-delay: 150ms; }
+  .stage[data-seen][data-step='check'] .log li:nth-child(2) { animation-delay: 1800ms; }
+  .stage[data-seen][data-step='check'] .log li:nth-child(3) { animation-delay: 2900ms; }
+  .stage[data-seen][data-step='check'] .log li:nth-child(4) { animation-delay: 3300ms; }
   .spinner { animation: spin 900ms linear infinite; }
   .live { animation: pulse 1400ms ease-in-out infinite; }
-  .terminalBody ul li { animation: line-in 260ms var(--ease-out) both; animation-delay: calc(500ms + var(--line) * 260ms); }
-  .copied { animation: fade-in 200ms ease-out 2800ms both; }
-  .stamp { animation: stamp-in 460ms cubic-bezier(.2, 1.5, .4, 1) 520ms both; }
+  .stage[data-step='flag'] .marker { animation: marker-drop 560ms cubic-bezier(.2, 1.4, .4, 1) 120ms both; }
+  .stage[data-step='fix'] .terminalBody li { animation: line-in 280ms var(--ease-out) both; animation-delay: calc(360ms + var(--i) * 220ms); }
+  .stage[data-step='fix'] .copied { animation: fade-in 220ms ease-out 2200ms both; }
+  .stage[data-step='verify'] .stamp { animation: stamp-in 460ms cubic-bezier(.2, 1.5, .4, 1) 360ms both; }
+  .link svg { transition: transform var(--motion-fast) var(--ease-out); }
+  .link:is(:hover, :focus-visible) svg { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .steps > li, .phone, .after, .layer, .ring, .marker, .tap, .rail li, .railCompact li { transition: none; }
 }
 
-@keyframes progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes scene-in { from { opacity: .4; } to { opacity: 1; } }
-@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes cursor-move { from { transform: translate(320%, -380%); opacity: 0; } 20% { opacity: 1; } to { transform: none; opacity: 1; } }
-@keyframes click-ring { from { box-shadow: 0 0 0 0 hsl(var(--brand) / .5); } to { box-shadow: 0 0 0 16px hsl(var(--brand) / 0); } }
-@keyframes marker-drop { from { opacity: 0; translate: 0 -24px; } to { opacity: 1; translate: 0 0; } }
 @keyframes line-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes walk-home { 0%, 48% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes walk-ready { 0%, 88% { opacity: 1; } 96%, 100% { opacity: 0; } }
+/* The View button sits at 84.8% across and 81.6% down the home capture; Add to cart at 50% and 55.6%. */
+@keyframes walk-tap {
+  0% { left: 84.8%; top: 81.6%; opacity: 0; transform: scale(1.3); }
+  12%, 30% { left: 84.8%; top: 81.6%; opacity: 1; transform: scale(1); }
+  34% { left: 84.8%; top: 81.6%; transform: scale(.72); }
+  40% { left: 84.8%; top: 81.6%; transform: scale(1); }
+  60%, 78% { left: 50%; top: 55.6%; transform: scale(1); }
+  83% { left: 50%; top: 55.6%; transform: scale(.72); }
+  90%, 100% { left: 50%; top: 55.6%; opacity: 1; transform: scale(1); }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: .35; } }
+@keyframes marker-drop { from { opacity: 0; translate: 0 -22px; } to { opacity: 1; translate: 0 0; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes stamp-in { from { opacity: 0; transform: rotate(-2deg) scale(1.5); } to { opacity: 1; transform: rotate(-2deg) scale(1); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .copied { opacity: 1; }
-}
-
+/* Phones and small tablets: the phone pins under the header and each step rises in below it. */
 @media (max-width: 899px) {
-  .sequence { gap: 16px; }
-  .rail { gap: 4px; }
-  .step { padding-top: 14px; }
-  .stepTitle { font-size: 17px; }
-  .stepLine { display: none; }
-  .mobileCaption { display: block; min-height: 3em; margin: 0; color: hsl(var(--muted-foreground)); font-size: 15px; line-height: 1.5; }
-  .sample, .url { display: none; }
-  .chrome { justify-content: space-between; }
-  /* One height for every step, so auto-advance never shifts the page. */
-  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: 540px; }
-  .side { align-content: start; padding: 16px; }
-  .card { padding: 16px; }
+  .story { grid-template-columns: minmax(0, 1fr); padding: 0 16px 24px; }
+  .stageWrap { grid-column: 1; grid-row: 1; z-index: 2; place-items: center; padding: 8px 0 12px; background: hsl(var(--canvas)); }
+  .stage { --phone-h: calc(100% - 30px); height: min(50svh, 520px); max-width: 440px; }
+  .phone { right: auto; left: 50%; padding: 7px; border-radius: 36px; transform: translateX(-50%); }
+  .stage[data-step='fix'] .phone { transform: translateX(-50%) scale(.965); }
+  .screen { border-radius: 29px; }
+  .caption { text-align: center; font-size: 11.5px; }
+  .layer, .layer[data-for] { top: 14px; left: 50%; width: min(92%, 340px); transform: translate(-50%, 16px) scale(.97); }
+  .stage[data-step='check'] .layer[data-for='check'], .stage[data-step='flag'] .layer[data-for='flag'],
+  .stage[data-step='fix'] .layer[data-for='fix'], .stage[data-step='verify'] .layer[data-for='verify'] { transform: translate(-50%, 0); }
+  .card { padding: 14px 16px; }
+  .cardTitle { font-size: 16px; }
+  .log { gap: 8px; font-size: 13px; }
+  .facts > div + div { display: none; }
+  .terminalBody { padding: 12px 14px; font-size: 11px; line-height: 1.55; }
+  .copyState { margin-top: 10px; }
+  .steps { grid-row: 2; padding-left: 0; }
+  .rail { display: none; }
+  .railCompact { --node: 30px; --gap: 14px; position: absolute; bottom: 44px; left: 0; display: grid; gap: var(--gap); margin: 0; padding: 0; list-style: none; }
+  .railCompact svg { width: 14px; height: 14px; }
+  .points { margin-top: 16px; gap: 6px; }
+  .points li { min-height: 28px; padding: 0 10px; font-size: 12px; }
+  /* Each step's words hold just below the phone until the next step pushes them out. */
+  .steps > li { display: block; min-height: 64svh; opacity: .12; }
+  .steps > li:last-child { min-height: 42svh; }
+  .stepText { position: sticky; top: calc(var(--top) + min(50svh, 520px) + 36px); padding-top: 4px; }
+  .steps h3 { font-size: clamp(48px, 14vw, 64px); }
+  .steps p { margin-top: 12px; font-size: 17px; }
 }

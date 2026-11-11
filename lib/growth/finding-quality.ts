@@ -5,7 +5,6 @@
  * product claim.
  */
 export const QUALITY_LABELS = ['useful', 'noisy', 'wrong'] as const
-export type QualityLabel = (typeof QUALITY_LABELS)[number]
 
 export const QUALITY_COLUMNS = ['flag_id', 'checked_at', 'host', 'page', 'check_id', 'severity', 'priority_band', 'problem', 'label', 'note'] as const
 export type QualityRow = Record<(typeof QUALITY_COLUMNS)[number], string>

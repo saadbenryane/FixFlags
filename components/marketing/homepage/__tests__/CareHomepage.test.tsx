@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
+import { CHECK_ARTWORK } from '@/lib/marketing/check-artwork'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS } from '@/lib/marketing/copy/care-homepage'
+import { SIGNATURE_SEQUENCE as STORY } from '@/lib/marketing/copy/signature-sequence'
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -31,10 +33,10 @@ function openCategory(name: string) {
 describe('comprehensive homepage experience', () => {
   it('explains how to confirm a fix without requiring technical setup', () => {
     render(<CareHomepage />)
-    const section = screen.getByRole('region', { name: C.independent.titleLines.join(' ') })
-    expect(within(section).getByText(C.independent.body)).toBeVisible()
+    const section = screen.getByRole('region', { name: STORY.title })
+    expect(within(section).getByText(STORY.steps[3].caption)).toBeVisible()
     expect(within(section).getAllByRole('link')).toHaveLength(1)
-    expect(within(section).getByRole('link', { name: C.independent.action })).toHaveAttribute('href', '/how-it-works')
+    expect(within(section).getByRole('link', { name: STORY.verifyAction.label })).toHaveAttribute('href', '/how-it-works')
     expect(section).not.toHaveTextContent(/MCP|API key|tokens/)
     expect(within(section).queryByRole('button')).not.toBeInTheDocument()
   })
@@ -79,7 +81,7 @@ describe('comprehensive homepage experience', () => {
     render(<CareHomepage dashboardOnly />)
     const card = screen.getByRole('article', { name: 'Pages' })
     const trigger = within(card).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` })
-    fireEvent.click(within(card).getByText('High priority'))
+    fireEvent.click(within(card).getAllByRole('img', { name: SITE_DASHBOARD_COPY.priorityMeter(SITE_DASHBOARD_COPY.priorityLevels[4], 4) })[0])
     expect(within(screen.getByRole('dialog')).getByRole('heading', { name: SAMPLE_FLAGS.availability.title })).toBeVisible()
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     await waitFor(() => expect(trigger).toHaveFocus())
@@ -144,6 +146,8 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('keeps keyboard focus in the board when a detected tool opens Settings, where integrations live', async () => {
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { value: scrollIntoView, configurable: true })
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'View detected tools' }))
@@ -153,6 +157,8 @@ describe('comprehensive homepage experience', () => {
     await waitFor(() => expect(settings).toHaveFocus())
     expect(settings).toHaveAttribute('aria-pressed', 'true')
     expect(within(board).getByRole('heading', { name: S.navigation.integrations })).toBeVisible()
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
   })
 
   it('opens the Flag list from the website count and category details from category counts', () => {
@@ -207,14 +213,14 @@ describe('comprehensive homepage experience', () => {
     expect(within(pages).getByRole('button', { name: `Open ${SAMPLE_FLAGS.checkout.title}` })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Add signup monitoring/ })).not.toBeInTheDocument()
   })
-  it('leads with the promise, two URL entries, and the sample sequence instead of the dashboard', () => {
+  it('leads with the promise, two URL entries, and the sample story instead of the dashboard', () => {
     render(<CareHomepage />)
     expect(screen.getByRole('heading', { level: 1, name: /Your AI built it\.\s*We make sure it works\./ })).toBeVisible()
     expect(screen.getByRole('link', { name: C.hero.sampleAction })).toHaveAttribute('href', '/how-it-works#sample')
     expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
     expect(screen.getByText(C.hero.body)).toBeVisible()
     expect(screen.getByText(C.hero.setup)).toBeVisible()
-    expect(screen.getByRole('figure', { name: 'Sample check on a controlled demo store' })).toBeVisible()
+    expect(screen.getByRole('figure', { name: STORY.label })).toBeVisible()
     expect(screen.queryByRole('region', { name: C.boardAria })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
@@ -442,7 +448,7 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(board).getByRole('button', { name: 'Select Flags' }))
     fireEvent.click(within(board).getAllByRole('checkbox')[0])
     expect(within(board).getByText('1 selected')).toBeVisible()
-    const previews = within(board).getAllByRole('button', { name: 'View instructions' })
+    const previews = within(board).getAllByRole('button', { name: 'Preview' })
     fireEvent.click(previews.at(-1)!)
     expect((await screen.findByRole('textbox') as HTMLTextAreaElement).value).toContain('Illustrative FixFlags sample.')
     expect(fetchMock).not.toHaveBeenCalled()
@@ -504,23 +510,18 @@ describe('comprehensive homepage experience', () => {
     expect(screen.getByRole('dialog')).toBeVisible()
   })
 
-  it('shows the same fix instructions in each AI tool and links to its guide', async () => {
+  it('shows one set of fix instructions to copy, why they work, and a guide for each AI tool', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
     const section = screen.getByRole('region', { name: C.builtForAi.titleLines.join(' ') })
-    const tabs = within(section).getAllByRole('tab')
-    expect(tabs.map(tab => tab.textContent)).toEqual(C.builtForAi.tools.map(tool => tool.label))
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
-    expect(within(section).getByRole('tabpanel')).toHaveTextContent(C.workflow.instructions)
-    expect(within(section).getByRole('link', { name: C.builtForAi.guideAction('Claude Code') })).toHaveAttribute('href', '/ai-builders/claude-code')
-    fireEvent.click(within(section).getByRole('tab', { name: 'Lovable' }))
-    expect(within(section).getByRole('tab', { name: 'Lovable' })).toHaveAttribute('aria-selected', 'true')
-    expect(within(section).getByRole('tabpanel')).toHaveTextContent(C.workflow.instructions)
-    expect(within(section).getByText(C.builtForAi.tools[2].where)).toBeVisible()
-    fireEvent.keyDown(within(section).getByRole('tab', { name: 'Lovable' }), { key: 'ArrowRight' })
-    expect(within(section).getByRole('tab', { name: 'Bolt' })).toHaveFocus()
-    fireEvent.click(within(section).getByRole('button', { name: C.story.copy }))
+    expect(within(section).queryByRole('tab')).not.toBeInTheDocument()
+    expect(within(section).getByText(C.workflow.instructions)).toBeVisible()
+    for (const reason of C.builtForAi.reasons) expect(within(section).getByRole('heading', { name: reason.title })).toBeVisible()
+    const tools = within(section).getByRole('list', { name: C.builtForAi.toolsLabel })
+    for (const tool of C.builtForAi.tools)
+      expect(within(tools).getByRole('link', { name: C.builtForAi.guideAction(tool.label) })).toHaveAttribute('href', `/ai-builders/${tool.key}`)
+    fireEvent.click(within(section).getByRole('button', { name: C.builtForAi.copy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(C.workflow.instructions))
     expect(await within(section).findByRole('status')).toHaveTextContent(S.guidanceCopied)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -549,7 +550,11 @@ describe('comprehensive homepage experience', () => {
     expect(within(coverage).getByText(C.checks.previews.conversion.result)).toBeVisible()
     expect(within(coverage).getByText(C.checks.previews.conversion.product)).toBeVisible()
     expect(within(coverage).queryByText('Cart remains empty')).not.toBeInTheDocument()
-    expect(within(coverage).getByRole('img', { name: C.checks.previews.search.imageAlt })).toHaveAttribute('data-src', C.checks.previews.search.image)
+    for (const src of Object.values(CHECK_ARTWORK)) {
+      const artwork = coverage.querySelector(`[data-src="${src}"]`)
+      expect(artwork).toHaveAttribute('aria-label', '')
+      expect(artwork?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    }
     expect(within(coverage).getByText(C.checks.previews.search.title)).toBeVisible()
     const tracking = within(coverage).getByRole('button', { name: C.checks.explore('Tracking') }).closest('article')!
     for (const page of C.checks.previews.tracking.pages) expect(within(tracking).getByText(page.page)).toBeVisible()
@@ -557,21 +562,19 @@ describe('comprehensive homepage experience', () => {
     expect(within(coverage).getByText('Spot the steps that stop visitors moving forward.')).toBeVisible()
     expect(within(coverage).queryByText(/Stripe|Payment form missing|Script blocked/)).not.toBeInTheDocument()
     expect(screen.queryByText('Illustrative check examples')).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: C.story.title })).not.toBeInTheDocument()
-    expect(screen.queryByText(C.story.example.failedTitle)).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1 }).closest('section')?.nextElementSibling).toBe(coverage)
+    const story = screen.getByRole('region', { name: STORY.title })
+    expect(screen.getByRole('heading', { level: 1 }).closest('section')?.nextElementSibling).toBe(story)
+    expect(story.nextElementSibling).toBe(coverage)
   })
 
-  it('opens complete marketing coverage for every area instead of sample results', () => {
+  it('opens a few examples for every area instead of sample results or the full check list', () => {
     render(<CareHomepage />)
     for (const area of C.checks.areas) {
       fireEvent.click(screen.getByRole('button', { name: C.checks.explore(area.name) }))
       const dialog = screen.getByRole('dialog')
       expect(within(dialog).getByRole('heading', { name: C.checks.detailTitle(area.name) })).toBeVisible()
-      for (const group of area.groups) {
-        expect(within(dialog).getByRole('heading', { name: group.title })).toBeVisible()
-        for (const check of group.checks) expect(within(dialog).getByText(check)).toBeVisible()
-      }
+      expect(within(dialog).getByRole('heading', { name: C.checks.examplesLabel })).toBeVisible()
+      expect(within(dialog).getAllByRole('listitem').map(item => item.textContent)).toEqual(area.examples.map(example => example.label))
       expect(within(dialog).queryByRole('button', { name: S.sampleCopy })).not.toBeInTheDocument()
       expect(within(dialog).queryByText('0 Flags')).not.toBeInTheDocument()
       expect(within(dialog).queryByText('15 minutes ago')).not.toBeInTheDocument()
@@ -580,14 +583,14 @@ describe('comprehensive homepage experience', () => {
     }
   })
 
-  it('shows experience coverage and returns focus to the marketing card', async () => {
+  it('shows conversion examples and returns focus to the marketing card', async () => {
     render(<CareHomepage />)
     const opener = screen.getByRole('button', { name: C.checks.explore('Conversion') })
     opener.focus()
     fireEvent.click(opener)
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByRole('heading', { name: 'Customer experience' })).toBeVisible()
-    expect(within(dialog).getByText('Mobile menus and pricing navigation')).toBeVisible()
+    expect(within(dialog).getByText('Overlays blocking buttons, forms, or navigation')).toBeVisible()
+    expect(within(dialog).queryByText('Mobile menus and pricing navigation')).not.toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(opener).toHaveFocus())
   })
@@ -596,22 +599,21 @@ describe('comprehensive homepage experience', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
     render(<CareHomepage />)
     const section = screen.getByRole('region', { name: C.builtForAi.titleLines.join(' ') })
-    fireEvent.click(within(section).getByRole('button', { name: C.story.copy }))
+    fireEvent.click(within(section).getByRole('button', { name: C.builtForAi.copy }))
     await waitFor(() => expect(within(section).getByRole('textbox', { name: S.guidanceLabel })).toHaveValue(C.workflow.instructions))
     expect(within(section).getByRole('status')).toHaveTextContent(S.copyFailed)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('shows real before and after captures as proof, then an honest comparison, in storyboard order', () => {
+  it('shows real before and after captures in the story, then an honest comparison, in storyboard order', () => {
     render(<CareHomepage />)
-    const proof = screen.getByRole('region', { name: C.independent.titleLines.join(' ') })
-    expect(within(proof).getByRole('img', { name: C.independent.beforeAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-broken.png')
-    expect(within(proof).getByRole('img', { name: C.independent.afterAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-verified.png')
-    expect(within(proof).getByText(C.independent.sampleNote)).toBeVisible()
-    for (const point of C.independent.points) expect(within(proof).getByText(point)).toBeVisible()
+    const story = screen.getByRole('region', { name: STORY.title })
+    expect(within(story).getByRole('img', { name: STORY.phone.beforeAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-broken.png')
+    expect(within(story).getByRole('img', { name: STORY.phone.afterAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-verified.png')
+    expect(within(story).getByText(STORY.label)).toBeVisible()
     const compare = screen.getByRole('region', { name: C.compare.titleLines.join(' ') })
     for (const item of C.compare.items) expect(within(compare).getByRole('heading', { name: item.title })).toBeVisible()
-    const order = [C.checks, C.builtForAi, C.independent, C.notifications, C.compare].map(section => section.titleLines.join(' '))
+    const order = [STORY.title, ...[C.checks, C.builtForAi, C.notifications, C.compare].map(section => section.titleLines.join(' '))]
       .map(name => screen.getByRole('region', { name }))
     for (let index = 1; index < order.length; index++) expect(order[index - 1].compareDocumentPosition(order[index])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
@@ -647,14 +649,13 @@ it('offers all fixes and manual copying in the shared preview', async () => {
   for (const flag of Object.values(SAMPLE_FLAGS)) expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain(flag.prompt)
 })
 
-it('previews the entire homepage fix prompt before copying anything', async () => {
-  const writeText = vi.fn()
+it('copies every sample fix at once from the header, like the product', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined)
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
   render(<CareHomepage dashboardOnly />)
   const board = screen.getByRole('region', { name: C.boardAria })
   expect(within(board).getByText('Checked 15 minutes ago')).toBeVisible()
-  fireEvent.click(within(board).getByRole('button', { name: 'View instructions' }))
-  const prompt = await screen.findByRole('textbox', { name: 'Fix instructions' })
-  for (const flag of Object.values(SAMPLE_FLAGS)) expect((prompt as HTMLTextAreaElement).value).toContain(flag.prompt)
-  expect(writeText).not.toHaveBeenCalled()
+  fireEvent.click(within(board).getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll }))
+  await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
+  for (const flag of Object.values(SAMPLE_FLAGS)) expect(writeText.mock.calls[0][0]).toContain(flag.prompt)
 })

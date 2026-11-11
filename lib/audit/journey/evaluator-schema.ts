@@ -64,7 +64,6 @@ export const journeyEvaluationSchema = z.object({
 })
 
 export type FrictionPoint = z.infer<typeof frictionPointSchema>
-export type BrokenPromise = z.infer<typeof brokenPromiseSchema>
 export type AccessibilityBarrier = z.infer<typeof accessibilityBarrierSchema>
 export type JourneyEvaluation = z.infer<typeof journeyEvaluationSchema>
 

@@ -123,12 +123,3 @@ export function getChatProviderConfig(provider: string, maxTimeoutMs?: number): 
     imageDetail: 'low',
   }
 }
-
-/** Provider chain limited to vendors configured for chat. */
-export function getConfiguredChatProviders(): string[] {
-  return ['openai', 'anthropic'].filter((provider) => {
-    if (provider === 'openai') return hasOpenAIProviderKey()
-    if (provider === 'anthropic') return Boolean(process.env.ANTHROPIC_API_KEY)
-    return false
-  })
-}

@@ -1,13 +1,13 @@
 .checks { container: site-checks / inline-size; display: grid; gap: 24px; min-width: 0; }
 .group { min-width: 0; }
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-width: 0; }
-.actions > * { min-width: 0; max-width: 100%; }
-.groupHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: 12px; }
-.group > :is(h2, h3), .groupHeader > :is(h2, h3) { margin: 4px 0 12px; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 550; letter-spacing: -.01em; }
-.groupHeader > :is(h2, h3) { margin: 0; }
+.group > :is(h2, h3) { margin: 4px 0 12px; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 550; letter-spacing: -.01em; }
 .checks .categoryGrid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .categoryGrid > :is(div, article) { display: flex; min-width: 0; }
 .categoryGrid > :is(div, article) > * { flex: 1; }
+/* Flagged areas read as one list on one surface: each area is a group, separated by space, not by its own card. */
+.checks .categoryGrid { gap: 2px; padding: 6px; border-radius: var(--radius-board-panel); background: hsl(var(--surface-board)); box-shadow: var(--shadow-board); }
+.checks .categoryGrid > :is(div, article) > * { min-height: 0; background: transparent; box-shadow: none; transition: background-color var(--motion-fast) var(--ease-out); }
+.checks .categoryGrid > :is(div, article) > *:is(:hover, :focus-within) { background: hsl(var(--muted) / .3); box-shadow: none; }
 .checks .quietGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .quietGrid > :is(div, article) { display: flex; min-width: 0; }
 .quietGrid > :is(div, article) > * { flex: 1; }

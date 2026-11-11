@@ -1,6 +1,6 @@
 .stack { display: grid; gap: clamp(72px, 9vw, 120px); }
 .heading { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 500; letter-spacing: -.045em; line-height: 1.06; text-wrap: balance; }
-.groupTitle { margin: 24px 0 12px; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 600; }
+
 .toolGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
 section > .toolGrid, section > .loop { margin-top: 36px; }
 @media (max-width: 1023px) { .toolGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -15,7 +15,7 @@ section > .toolGrid, section > .loop { margin-top: 36px; }
 .toolMark { display: inline-flex; width: 22px; height: 22px; color: hsl(var(--brand)); }
 .toolMark svg { width: 100%; height: 100%; }
 .toolTop { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.toolKind { color: hsl(var(--muted-foreground)); font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: .03em; }
+.toolKind { color: hsl(var(--muted-foreground)); font-size: 12px; }
 .toolName { font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
 .toolSummary { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.55; }
 .toolArrow { position: absolute; top: 22px; right: 18px; color: hsl(var(--brand)); }
@@ -25,7 +25,7 @@ section > .toolGrid, section > .loop { margin-top: 36px; }
 .loopHead { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; }
 .loop .loopHead { margin-top: 0; color: hsl(var(--foreground)); }
 /* Steps use the section kicker's mono index, not filled badges. */
-.loopHead > span { color: hsl(var(--brand)); font-family: var(--font-mono), monospace; font-size: 12px; font-weight: 500; }
+.loopHead > span { color: hsl(var(--brand)); font-size: 13px; font-weight: 650; }
 .loop h3 { margin-top: 18px; font-family: var(--font-display), sans-serif; font-size: 20px; font-weight: 500; letter-spacing: -.025em; }
 .loop p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
 

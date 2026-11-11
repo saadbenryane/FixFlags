@@ -64,21 +64,6 @@ export const REQUEST_ERROR_COPY = {
 } as const
 
 /**
- * Watch activation copy.
- *
- * Watch is what distinguishes FixFlags from a one-shot report, and it is off
- * until the customer turns it on, because turning it on sends email. Home
- * answers "what is FixFlags watching", so Home states this plainly rather than
- * leaving a customer to infer it. Nothing here claims a delivery guarantee, and
- * nothing here turns Watch on.
- */
-export const WATCH_OFFER = {
-  title: 'FixFlags is not watching this Site yet',
-  body: 'Right now FixFlags checks this Site only when you ask. Turn on Watch and it keeps checking on a schedule, so a broken checkout or a dead page gets a Flag instead of waiting for you to look.',
-  actionLabel: 'Turn on Watch',
-} as const
-
-/**
  * Watch alert delivery copy.
  *
  * A Site can be checked on schedule and still never tell the customer anything.
@@ -257,13 +242,6 @@ export const AUDIT_PROGRESS = {
     prioritizingFlags: 'Checking which Flags matter most',
   },
 } as const
-
-export function formatQueueWaitHint(seconds: number): string {
-  if (seconds >= 60) {
-    return `About ${Math.ceil(seconds / 60)} min before the review starts.`
-  }
-  return `About ${Math.max(1, Math.round(seconds))}s before the review starts.`
-}
 
 export const SITE_ERRORS = {
   notFound: 'Site not found',

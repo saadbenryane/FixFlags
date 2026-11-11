@@ -96,31 +96,19 @@ export const PUBLIC_SITE_COPY = {
     label: 'Coverage',
     title: 'What FixFlags checks',
     body: 'Broken pages, slow loading, buttons that go nowhere, and more. Each result tells you what we checked and what we couldn’t.',
-    questionLabel: 'What we look for',
-    detailLabel: 'See the checks and what they cover',
-    setupLabel: 'What’s needed',
-    extentLabel: 'What the result tells you',
+    previewLabel: 'Illustration',
+    /** Short labels beside an example. Examples without a label need only a reachable public page. */
+    setupTags: {
+      public: null, pagespeed: 'PageSpeed data', search_console: 'Needs Search Console', analytics: 'Needs Analytics',
+      signup_fixture: 'Needs a safe test setup', availability: 'Needs a saved schedule', automatic_accounts: 'Needs account checks on', uptime_probes: 'Needs monitoring on',
+    },
+    extentTags: { checked_scope: null, heuristic: 'Suggestion', partial: 'Partly automatic' },
     limitsTitle: 'Know what was checked.',
     limits: [
       { title: 'Couldn’t verify', body: 'If a page is blocked or a check can’t finish, we say so. It does not count as a pass.' },
       { title: 'Every check has a time', body: 'Results tell you how your website behaved when we checked. Scheduled checks leave time between runs.' },
       { title: 'Improvements need a closer look', body: 'We can suggest changes to copy and layout. A suggestion does not prove it will increase sales or that a problem is fixed.' },
     ],
-    setup: {
-      public: 'A reachable public page.',
-      pagespeed: 'Available PageSpeed measurements for the checked page.',
-      search_console: 'An authorized, matching Search Console property and available reports.',
-      analytics: 'An authorized, matching Analytics property and available reports.',
-      signup_fixture: 'An authorized safe test setup with reset, cleanup, and a successful dry run.',
-      availability: 'A configured page-availability check. Monitoring starts after its schedule is saved.',
-      automatic_accounts: 'An owned Site with automatic account checks enabled and verified receiving infrastructure. Supported same-origin HTTPS forms only.',
-      uptime_probes: 'An owned Site with monitoring enabled. Public HTTP probes run every ten minutes; rendered-page verification is separate.',
-    },
-    extent: {
-      checked_scope: 'A result for the pages and actions checked at that time.',
-      heuristic: 'A suggestion about copy or layout, not proof of what visitors do.',
-      partial: 'Only part of this could be checked automatically. You may need to review the rest.',
-    },
   },
   securityPage: {
     label: 'Privacy and security',

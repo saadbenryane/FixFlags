@@ -1,9 +1,6 @@
 import { OPEN_BETA_ACCESS, PLANNED_PAID_PRICING } from '@/lib/billing/beta-policy'
 import type { FaqEntry } from './faq'
 
-/** Planned offers are separate from persisted subscriber prices and allowances. */
-function proUpgradeCta(prefix = 'Join waitlist') { return prefix }
-
 export const PLANS = [
   {
     name: 'Free', plan: 'FREE' as const, price: '$0', period: '',
@@ -186,75 +183,6 @@ export const BILLING_ACTION_COPY = {
     pricingCallout:
       'Paid monitoring is billed per website. We are not charging yet.',
   },
-} as const
-
-export const UPGRADE_MOMENTS = {
-  audit_limit_reached: {
-    headline: 'You have reached this period\u2019s limit',
-    body: 'Open beta includes all supported schedules on one website. Join the waitlist if you need another website.',
-    cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
-  },
-  compare_improved: {
-    headline: (scoreDelta: number) => {
-      void scoreDelta
-      return 'Recheck complete'
-    },
-    body: 'Join the waitlist if you need another website.',
-    cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
-  },
-  compare_flat: {
-    headline: 'Flags remain after your recheck',
-    body: 'Use the full report to close what remains, then verify on the live URL.',
-    cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
-  },
-  export_locked: {
-    headline: 'Need more websites monitored?',
-    body: 'Proof exports are included on every plan. Join the waitlist when you need daily verification on more websites.',
-    cta: 'See plans',
-    plan: 'BUILDER' as const,
-  },
-  free_default: {
-    headline: 'Monitoring more than one website?',
-    body: 'Planned paid prices: Pro $49 and Studio $99 per website/month. Paid plans are coming soon.',
-    cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
-  },
-  report_completed: {
-    headline: 'Keep this website monitored',
-    body: 'Choose any supported schedule during beta. Join the waitlist if you need another website.',
-    cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
-  },
-} as const
-
-export const USAGE_METER_COPY = {
-  // The heading stays period-free because an unlimited plan has no period, and a
-  // heading that promises one would contradict the count shown beneath it. Where
-  // a limit really does apply, `usedCaption` and `progressLabel` say "this
-  // period", which is also what tells a customer when the meter resets.
-  regionLabel: 'Checks',
-  compactLabel: 'Checks',
-  panelLabel: 'Checks',
-  usedOfLimit: (used: number, limit: number) => `${used} of ${limit}`,
-  usedCaption: 'used this period',
-  remainingCaption: (n: number) =>
-    n === 1 ? '1 remaining this period' : `${n} remaining this period`,
-  remainingShort: (n: number) => `${n} remaining`,
-  usedThisMonthCaption: (n: number) => `${n} used`,
-  panelNote:
-    'Watch and Verify are not counted here. Open beta includes one website with any supported schedule. Join the waitlist if you need another website.',
-  progressLabel: (used: number, limit: number) =>
-    `${used} of ${limit} used this period`,
-  pending: (n: number) => `${n} in progress`,
-  purchasedCredits: (n: number) =>
-    `${n} purchased credit${n === 1 ? '' : 's'} available`,
-  upgradeToPro: 'Join waitlist',
-  upgradeForMore: 'join the waitlist',
-  paidLimitReached: 'Plan limit reached. Join the waitlist for more websites.',
-  limitReached: 'Plan limit reached.',
 } as const
 
 export const BILLING_PAGE_COPY = {

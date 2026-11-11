@@ -98,15 +98,6 @@ export function buildAttribution(input: {
   }
 }
 
-export function parseAuditAttribution(input: {
-  url: string
-  referer?: string | null
-  pathname?: string | null
-  searchParams?: URLSearchParams
-}): AuditAttribution {
-  return buildAttribution(input)
-}
-
 export function parseClientAuditSource(raw: string | undefined): AuditSource | undefined {
   if (!raw) return undefined
   const upper = raw.toUpperCase() as AuditSource

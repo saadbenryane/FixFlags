@@ -32,6 +32,7 @@ export type BoardCardProblem = {
 
 export type BoardCardFlagChip = {
   priorityBand?: SiteFlagSeed['priorityBand']
+  priorityScore?: number
   repairGuidanceReady?: boolean
   repairGuidance?: SiteFlagSeed['repairGuidance']
   id: string
@@ -101,17 +102,6 @@ export function boardCardHeaderText(
   return null
 }
 
-export function boardCardSignalLabel(
-  state: CardHealthState,
-  activity: 'checking' | null | undefined,
-  checkedAt: string | null,
-  now = Date.now()
-): string {
-  return (
-    boardCardHeaderText(state, activity, checkedAt, now) ?? boardCardStatusText(state, activity)
-  )
-}
-
 export function boardCardFreshnessText(checkedAt: string | null, now = Date.now()): string | null {
   if (!checkedAt) return null
   const then = Date.parse(checkedAt)
@@ -154,16 +144,6 @@ export function outcomeNameForFlag(
 
 export function starterBoardNames(): string[] {
   return STARTER_BOARD_CARDS.map((id) => CARD_CATALOG[id].name)
-}
-
-export function visibleFlagChips(chips: BoardCardFlagChip[], limit = 3): {
-  shown: BoardCardFlagChip[]
-  overflow: number
-} {
-  return {
-    shown: chips.slice(0, limit),
-    overflow: Math.max(0, chips.length - limit),
-  }
 }
 
 export function boardFlagPrompt(input: {
@@ -219,6 +199,7 @@ export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string
 function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip[] {
   return [...flags].sort((a, b) => b.priorityScore - a.priorityScore).map((flag) => ({
     priorityBand: flag.priorityBand,
+    priorityScore: flag.priorityScore,
     id: flag.id,
     sourceFlagId: flag.sourceFlagId,
     title: boardFindingTitle(flag.problem, flag.checkId),

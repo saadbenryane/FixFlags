@@ -538,12 +538,6 @@ export function parseProductHistoryCursor(
   return { at: at.toISOString(), id: idValue }
 }
 
-export function serializeProductHistoryCursor(
-  cursor: ProductHistoryCursorDTO
-): string {
-  return `${cursor.at}|${cursor.id}`
-}
-
 function historyDateWhere(
   prefix: 'review:' | 'attempt:',
   cursor: ProductHistoryCursorDTO | null

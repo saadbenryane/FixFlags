@@ -200,25 +200,10 @@ export const AUTH = {
       gsc_invalid_state: 'That Google Search Console connection link expired. Try again.',
       gsc_no_sites: 'No verified Google Search Console properties were available for this account.',
     } as Record<string, string>,
-    gsc: {
-      title: 'Google Search Console',
-      connectBody:
-        'Connect to see search performance, indexing status, and keyword data in your reports',
-      connectedTo: (site: string) => `Connected to ${site}`,
-      connectedFallback: 'your property',
-      connectedBadge: 'Connected',
-      connectCta: 'Connect',
-      disconnectCta: 'Disconnect',
-      disconnectTitle: 'Disconnect Search Console',
-      disconnectDescription:
-        'Your reports will no longer include search performance data. This will not delete past data.',
-      disconnectConfirm: 'Disconnect',
-    },
     account: {
       title: 'Account',
       description: 'Your plan, name, email, and password.',
       planLabel: 'Plan',
-      upgradeCta: 'Upgrade',
       managePlanCta: 'Manage plan',
       nameLabel: 'Name',
       saveCta: 'Save changes',
@@ -337,13 +322,6 @@ export const SHARE_COPY = {
     checking: 'Checking…',
     viewReport: 'View report',
   },
-} as const
-
-export const LOCKED_CONTENT_TEASER = {
-  defaultLabel: 'Sign up to view',
-  fixPromptLabel: 'Create a free account to get the fix instructions for this Flag',
-  primaryCta: 'Create free account',
-  secondaryCta: 'Sign in',
 } as const
 
 export const SCAN_LIMIT_GATE = {

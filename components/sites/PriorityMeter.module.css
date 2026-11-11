@@ -1,0 +1,4 @@
+/* Five equal bars stacked upward, filled from the bottom to the Flag's priority in Flag Orange. Unfilled steps stay faint. */
+.meter { display: inline-flex; flex: none; flex-direction: column-reverse; justify-content: center; gap: 1.5px; width: 12px; height: 16px; }
+.meter i { display: block; height: 2px; border-radius: 1px; background: hsl(var(--foreground) / .12); }
+.meter i[data-on] { background: hsl(var(--brand)); }

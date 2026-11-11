@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { HOMEPAGE_CHECK_COVERAGE } from '@/lib/marketing/copy/check-coverage'
+import { COVERAGE_CATALOG } from '../coverage-catalog'
 import { ADVERTISED_COVERAGE, advertisedCoverageObligations, validateAdvertisedCoverage } from '../advertised-coverage'
 
 describe('advertised coverage registration', () => {
@@ -7,7 +8,7 @@ describe('advertised coverage registration', () => {
     const inventory = advertisedCoverageObligations()
     expect(inventory).toHaveLength(108)
     for (const entry of inventory) {
-      expect(entry.label).toBe(HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items))
+      expect(entry.label).toBe(COVERAGE_CATALOG.flatMap(area => area.groups.flatMap(group => group.items))
         .find(item => item.id === entry.id)?.label)
       expect(entry.obligations).toHaveLength(entry.acceptance.proofEnvironments.length * entry.acceptance.scenarios.length)
       expect(entry.obligations.every(obligation => obligation.status === 'evidence_required' && obligation.receipt === null)).toBe(true)
@@ -17,11 +18,21 @@ describe('advertised coverage registration', () => {
     ]))
   })
   it('maps every unchanged customer label through an explicit stable coverage identity', () => {
-    const items = HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items))
+    const items = COVERAGE_CATALOG.flatMap(area => area.groups.flatMap(group => group.items))
     expect(new Set(items.map(item => item.id)).size).toBe(items.length)
     expect(validateAdvertisedCoverage().size).toBe(items.length)
-    for (const area of HOMEPAGE_CHECK_COVERAGE.areas) for (const group of area.groups)
-      expect(group.checks).toEqual(group.items.map(item => item.label))
+  })
+  it('publishes only a few available examples per area, each worded exactly as the catalog', () => {
+    expect(HOMEPAGE_CHECK_COVERAGE.areas.map(area => area.id)).toEqual(COVERAGE_CATALOG.map(area => area.id))
+    for (const area of HOMEPAGE_CHECK_COVERAGE.areas) {
+      const groups = COVERAGE_CATALOG.find(entry => entry.id === area.id)!.groups
+      expect(area.examples).toHaveLength(3)
+      for (const example of area.examples) {
+        const group = groups.find(entry => entry.items.some(item => item.id === example.id))
+        expect(group?.items.find(item => item.id === example.id)?.label).toBe(example.label)
+        expect(group?.title).not.toMatch(/^Coming soon/)
+      }
+    }
   })
   it('rejects omissions, duplicate identities, unknown evaluators, and unspecified limitations', () => {
     expect(() => validateAdvertisedCoverage(ADVERTISED_COVERAGE.slice(1))).toThrow('Missing advertised')

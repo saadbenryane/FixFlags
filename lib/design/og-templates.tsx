@@ -1,4 +1,4 @@
-import { BRAND, CARE_HOME } from '@/lib/marketing/copy-barrel'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
 import { LogoMarkSvg, getOfficialLogoMarkDataUrl } from '@/lib/design/logo-mark'
@@ -26,113 +26,6 @@ function OgLogoRow({ mode }: { mode: BrandMode }) {
         }}
       >
         {BRAND.name}
-      </div>
-    </div>
-  )
-}
-
-/** Site-wide marketing OG card (1200×630) */
-export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
-  const p = getBrandPalette(mode)
-
-  return (
-    <div
-      style={{
-        height: '100%',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: p.background,
-        padding: '72px 80px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          maxWidth: 580,
-        }}
-      >
-        <OgLogoRow mode={mode} />
-        <div
-          style={{
-            fontSize: 48,
-            fontWeight: 500,
-            color: p.foreground,
-            lineHeight: 1.15,
-            marginBottom: 28,
-            fontFamily: ogFontFamilies.serif,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {CARE_HOME.hero.headline.join(' ')}
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            fontSize: 20,
-            color: p.mutedForeground,
-            lineHeight: 1.5,
-            maxWidth: 480,
-            fontFamily: ogFontFamilies.sans,
-          }}
-        >
-          {BRAND.oneLiner}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: p.card,
-          borderRadius: 12,
-          padding: '40px 48px',
-          border: `1px solid ${p.border}`,
-          boxShadow: '0 8px 32px -8px rgba(15,17,21,0.1)',
-        }}
-      >
-        <div
-          style={{
-            fontSize: 72,
-            fontWeight: 700,
-            color: p.brand,
-            fontFamily: ogFontFamilies.mono,
-            lineHeight: 1,
-            marginBottom: 4,
-          }}
-        >
-          78
-        </div>
-        <div
-          style={{
-            fontSize: 18,
-            color: p.mutedForeground,
-            fontFamily: ogFontFamilies.mono,
-            marginBottom: 16,
-          }}
-        >
-          / 100
-        </div>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: p.brand,
-            backgroundColor: `${p.brand}14`,
-            borderRadius: 6,
-            padding: '6px 14px',
-            fontFamily: ogFontFamilies.sans,
-          }}
-        >
-          fix instructions included
-        </div>
       </div>
     </div>
   )

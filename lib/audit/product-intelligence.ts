@@ -1,5 +1,4 @@
 import type { ProductContract } from './product-contract'
-import { parseProductContract } from './product-contract'
 import { logger } from '@/lib/logger'
 
 /**
@@ -260,8 +259,4 @@ export function appendIntentionalNote(
     source: pi.source === 'heuristic' ? 'merged' : pi.source,
     updatedAt: new Date().toISOString(),
   }
-}
-
-export function parseContractOrIntelligence(data: unknown): ProductContract | null {
-  return parseProductContract(data)
 }

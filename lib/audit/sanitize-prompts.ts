@@ -126,43 +126,6 @@ function sanitizeRubricPrompts<T extends SanitizableRubric>(rubric: T): T {
   }
 }
 
-export function sanitizeJudgeOutput<
-  T extends {
-    newFlags: SanitizableFlag[]
-    enrichments: Array<SanitizableFlag & { checkId?: string; whyItMatters: string }>
-    rubrics: Array<SanitizableRubric>
-  },
->(output: T): T {
-  const dedupedEnrichments: typeof output.enrichments = []
-  const seenCheckIds = new Set<string>()
-  for (const enrichment of output.enrichments) {
-    const checkId = enrichment.checkId
-    if (!checkId || seenCheckIds.has(checkId)) continue
-    seenCheckIds.add(checkId)
-    dedupedEnrichments.push(enrichment)
-  }
-
-  return {
-    ...output,
-    newFlags: output.newFlags.map((f) => sanitizeFlagFields(f)),
-    enrichments: dedupedEnrichments.map((e) =>
-      sanitizeFlagFields({
-        ...e,
-        fix: e.whyItMatters,
-        evidence: e.checkId ?? e.whyItMatters,
-      })
-    ),
-    rubrics: output.rubrics.map((rubric) => sanitizeRubricPrompts(rubric)),
-  }
-}
-
-/** Re-sanitize persisted flag fields before API/MCP responses. */
-export function sanitizeFlagForRead<
-  T extends SanitizableFlag & { fix: string; evidence: string },
->(flag: T): T {
-  return sanitizeFlagFields(flag)
-}
-
 /** Re-sanitize persisted rubric prompts before API/MCP responses. */
 export function sanitizeRubricForRead<T extends SanitizableRubric>(rubric: T): T {
   return sanitizeRubricPrompts(rubric)

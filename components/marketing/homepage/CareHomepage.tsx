@@ -24,7 +24,8 @@ import { HomepageDeferredDashboard } from './HomepageDeferredDashboard'
 import { SITE_ROUTES, type SiteRoute } from '@/components/sites/SiteWorkspaceNavigation'
 import { HomepageCheckCoverage } from './HomepageCheckCoverage'
 import { HomepageFinalSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
-import { HomepageBuiltForAiSection, HomepageCompareSection, HomepageProofSection } from './HomepageStorySections'
+import { HomepageBuiltForAiSection, HomepageCompareSection } from './HomepageStorySections'
+import { SignatureSequence } from './SignatureSequence'
 import s from './CareHomepage.module.css'
 
 /** `dashboardOnly` renders just the interactive sample; `lazy` defers it until it nears the viewport. */
@@ -85,7 +86,7 @@ export function CareHomepage({ dashboardOnly = false, lazy = false }: { dashboar
       await navigator.clipboard.writeText(text)
       setManualPrompt(null)
       showFixPromptCopied()
-      setCopyResult({ source, message: source === 'share' ? C.story.copied : S.guidanceCopied })
+      setCopyResult({ source, message: S.guidanceCopied })
     } catch {
       if (selected === null && source === 'read') {
         if (card && id) openSampleFlag(card, id)
@@ -100,7 +101,6 @@ export function CareHomepage({ dashboardOnly = false, lazy = false }: { dashboar
   const previewActions = { onOpen: openCard, onOpenFlag: openSampleFlag,
     onCopyFlag: (card: typeof S.categories[number], id: SampleFlagId) => void copyFlag('read', SAMPLE_FLAGS[id].prompt, card, id),
     onCopySelection: (text: string) => { opener.current = document.activeElement as HTMLElement; void copyFlag('all', text) },
-    onViewAll: () => sampleBundle(Object.keys(SAMPLE_FLAGS) as SampleFlagId[]),
     onCopyAll: () => { opener.current = document.activeElement as HTMLElement; void copyFlag('all', sampleBundle(Object.keys(SAMPLE_FLAGS) as SampleFlagId[])) } }
   const manualBundle = Boolean(manualPrompt && copyResult?.source === 'all')
   const title = selectedFlag?.title ?? selectedCard?.name ?? (manualBundle ? Dashboard.bundleManual : '')
@@ -109,9 +109,9 @@ export function CareHomepage({ dashboardOnly = false, lazy = false }: { dashboar
   return <div className={s.home}>
     {dashboardOnly ? <HomepageDeferredDashboard eager={!lazy} {...previewActions} /> : <>
     <HomepageHero />
+    <SignatureSequence />
     <HomepageCheckCoverage />
     <HomepageBuiltForAiSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
-    <HomepageProofSection />
     <HomepageLoopSection onOpenFlag={trigger => { openCard('site'); setFlag('availability'); opener.current = trigger }} />
     <HomepageCompareSection />
     <HomepageFinalSection />

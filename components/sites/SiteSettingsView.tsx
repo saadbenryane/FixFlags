@@ -30,7 +30,7 @@ function SiteSettingsContent({ siteId, fixtures }: { siteId: string; fixtures: O
       watch={view.watch}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} readUnavailable={readUnavailable} onRetry={refresh} />}
     >
-      <SiteSettingsControls key={`monitoring:${siteId}`} target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh}>
+      <SiteSettingsControls key={`monitoring:${siteId}`} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh}>
         {view.site.projectId ? <SiteScanAccessSettings key={`scan-access:${view.site.projectId}`} siteId={siteId} /> : null}
         {view.site.projectId ? <SiteDeployChecksPanel key={`deploy:${view.site.projectId}`} /> : null}
         {view.site.projectId ? <SiteSignupSetupPanel key={`signup-setup:${view.site.projectId}`} siteId={siteId} fixtures={fixtures} /> : null}

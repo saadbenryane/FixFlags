@@ -34,12 +34,6 @@ export function tierLabel(tier: WaitlistTier): string {
   return 'No tier (list)'
 }
 
-export function tierShortLabel(tier: WaitlistTier): string {
-  if (tier === 1) return 'T1'
-  if (tier === 2) return 'T2'
-  return 'None'
-}
-
 /** Discount percentage per tier (25 or 15), or null for list price. */
 export function tierPercent(tier: WaitlistTier): number | null {
   return tier === 1 || tier === 2 ? TIER_PERCENT[tier] : null
@@ -67,15 +61,6 @@ export function isPurchased(user: {
   subscriptionStatus: SubscriptionStatus
 }): boolean {
   return user.plan !== 'FREE' && isPaidSubscription(user.subscriptionStatus)
-}
-
-/** Active use = purchased and at least one completed check (the core loop). */
-export function isActiveUser(user: {
-  plan: Plan
-  subscriptionStatus: SubscriptionStatus
-  completedAudits: number
-}): boolean {
-  return isPurchased(user) && user.completedAudits >= 1
 }
 
 export interface WaitlistEntryStats {

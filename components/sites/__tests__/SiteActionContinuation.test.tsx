@@ -21,7 +21,7 @@ function Actions() {
 afterEach(() => { cleanup(); sessionStorage.clear(); vi.unstubAllGlobals(); window.history.replaceState({}, '', '/') })
 
 describe('signed-out Site actions', () => {
-  it.each(['Check again', 'Copy all fix instructions', 'View instructions'])('opens authentication from %s without running a protected action', async label => {
+  it.each(['Check again', 'Copy all fix instructions', 'Preview'])('opens authentication from %s without running a protected action', async label => {
     const request = vi.fn()
     vi.stubGlobal('fetch', request)
     window.history.replaceState({}, '', '/sites/p_creator?category=performance#flags')

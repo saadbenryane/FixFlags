@@ -28,15 +28,15 @@ export default function AiBuildersPage() {
     <PublicPageIntro page="/ai-builders" label={C.label} title={C.title} lines={C.titleLines} body={C.body}><PublicPageActions /></PublicPageIntro>
     <Section spacing="overview"><Container variant="marketing" className={s.stack}>
       <section aria-labelledby="ai-tools-title">
-        <MarketingSectionHeader id="ai-tools-title" index={C.tools.index} label={C.tools.label} lines={C.tools.lines} />
+        <MarketingSectionHeader id="ai-tools-title" label={C.tools.label} lines={C.tools.lines} />
         <ul className={s.toolGrid}>{AI_BUILDER_TOOLS.map(tool => <ToolCard key={tool.slug} tool={tool} />)}</ul>
       </section>
       <section aria-labelledby="ai-loop-title">
-        <MarketingSectionHeader id="ai-loop-title" index={C.loopHeader.index} label={C.loopHeader.label} lines={C.loopHeader.lines} />
+        <MarketingSectionHeader id="ai-loop-title" label={C.loopHeader.label} lines={C.loopHeader.lines} />
         <ol className={s.loop}>{C.loop.map((step, index) => <li key={step.label}><p className={s.loopHead}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}</ol>
       </section>
       <section aria-labelledby="ai-why-title">
-        <MarketingSectionHeader id="ai-why-title" index={C.why.index} label={C.why.label} lines={C.why.lines} lede={C.why.body} align="split" />
+        <MarketingSectionHeader id="ai-why-title" label={C.why.label} lines={C.why.lines} lede={C.why.body} align="split" />
       </section>
     </Container></Section>
   </>

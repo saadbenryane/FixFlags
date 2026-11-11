@@ -1,5 +1,4 @@
 import { SHOPIFY_API_VERSION } from './config'
-import { getValidOfflineToken } from './tokens'
 
 export async function shopifyAdminGraphql<T>(
   shop: string,
@@ -24,15 +23,6 @@ export async function shopifyAdminGraphql<T>(
   }
   if (!payload.data) throw new Error('Shopify GraphQL returned no data')
   return payload.data
-}
-
-export async function shopifyAdminGraphqlForShop<T>(
-  shop: string,
-  query: string,
-  variables?: Record<string, unknown>
-): Promise<T> {
-  const accessToken = await getValidOfflineToken(shop)
-  return shopifyAdminGraphql<T>(shop, accessToken, query, variables)
 }
 
 export interface ShopifyProductNode {

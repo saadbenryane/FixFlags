@@ -29,7 +29,8 @@ describe('buyer guide content and evidence contracts', () => {
     expect(GUIDES_PAGE.offer).toBe(PUBLIC_OFFER.free)
     expect(GUIDES_PAGE.offerLimits).toBe(PUBLIC_OFFER.availability)
     expect(GUIDES_PAGE.sourceNote).toMatch(/stop(?:s)? before payment/)
-    expect(GUIDES_PAGE.sourceNote).toMatch(/MCP connections/)
+    // MCP discovery is open, so the guides must not call new MCP connections unavailable.
+    expect(GUIDES_PAGE.sourceNote).not.toMatch(/MCP connections/)
     expect(GUIDES_PAGE.sourceNote).toMatch(/paid integrations/)
     expect(GUIDES_PAGE.sourceNote).toMatch(/Signup checks need a supported, safe test setup/)
     for (const guide of WEBSITE_GUIDES) {

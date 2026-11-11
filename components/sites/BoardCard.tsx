@@ -24,6 +24,8 @@ import {
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
+import { priorityLevel } from '@/lib/sites/presentation'
+import { PriorityMeter } from './PriorityMeter'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
@@ -196,9 +198,8 @@ export function BoardCard({
     const visibleStatus = state === 'unknown' && !checking && repeatedLimit ? '' : footerLabel
     const statusLabel = `${name}: ${checking && count > 0 ? `${flagCountLabel(count)}. ` : ''}${visibleStatus || answer}`
     const recoveryText = incompleteReason && incompleteReason !== SITE_BOARD_COPY.cardCheckIncomplete && (previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail)) ? incompleteReason : null
-    const rowMeta = <span className={styles.rowTrailing}>
-      <span className={styles.rowStatus}>{visibleStatus || count > 0 ? <BoardStatus state={checking ? 'checking' : state} label={statusLabel} text={visibleStatus} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /> : null}</span>
-    </span>
+    const rowStatus = <span className={styles.rowStatus}>{visibleStatus || count > 0 ? <BoardStatus state={checking ? 'checking' : state} label={statusLabel} text={visibleStatus} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /> : null}</span>
+    const rowMeta = <span className={styles.rowTrailing}>{rowStatus}</span>
     const recovery = (recoveryText || recoveryAction) && !checking ? <div className={styles.rowRecovery}>
       {recoveryText ? <p>{recoveryText}</p> : null}
       {recoveryAction ? <span className={styles.rowRecheck}>{recoveryAction}</span> : null}
@@ -206,14 +207,16 @@ export function BoardCard({
     if (previewFlags.length > 0) {
       const bounded = compact && Boolean(onOpen || href)
       const rowFlags = bounded ? visiblePreviewFlags : previewFlags
+      // A bare "Check again" sits in the header beside the count; only an explanation earns its own footer.
+      const headerRecheck = recoveryAction && !recoveryText && !checking
       return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>
         {onOpen ? <InteractiveButton type="button" className={styles.rowTitleButton} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</InteractiveButton>
           : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
-        {rowMeta}
+        {headerRecheck ? <span className={styles.rowTrailing}><span className={styles.rowHeaderRecheck}>{recoveryAction}</span>{rowStatus}</span> : rowMeta}
         <ul className={styles.rowFlagList}>
           {rowFlags.map(flag => {
             const guidance = flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance] : null
-            const content = <><span className={styles.rowFlagTitle}><strong>{flag.title}</strong>{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</span><ArrowRight size={16} aria-hidden /></>
+            const content = <><PriorityMeter level={priorityLevel(flag)} /><span className={styles.rowFlagTitle}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</span></>
             return <li key={flag.id}>
             <SiteFlagTarget className={styles.rowFlagName} href={flag.href} aria-label={`Open ${flag.title}`} onOpen={onOpenFlag || flag.onOpen ? trigger => { if (onOpenFlag) onOpenFlag(flag.id, trigger); else flag.onOpen?.() } : undefined}>{content}</SiteFlagTarget>
             {flag.copyAction ? <span className={styles.rowFlagActions}><span className={styles.rowCopyAction}>{flag.copyAction}</span></span> : null}
@@ -222,7 +225,7 @@ export function BoardCard({
             ? <InteractiveButton type="button" className={styles.rowMoreAction} onClick={event => onOpen(event.currentTarget)}>{SITE_DASHBOARD_COPY.moreFlags(hiddenPreviewCount)}</InteractiveButton>
             : <Link className={styles.rowMoreAction} href={href as Route}>{SITE_DASHBOARD_COPY.moreFlags(hiddenPreviewCount)}</Link>}</li> : null}
         </ul>
-        {recovery}
+        {headerRecheck ? null : recovery}
       </article>
     }
     const resultContent = <>
@@ -274,7 +277,7 @@ export function BoardCard({
       {showFlagPreview && visiblePreviewFlags.length > 0 ? (
         <ul className={styles.flagPreviewList}>
           {visiblePreviewFlags.map(flag => {
-            const content = <><span>{flag.title}{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}</span><ArrowRight size={14} aria-hidden /></>
+            const content = <><PriorityMeter level={priorityLevel(flag)} /><span>{flag.title}</span><ArrowRight size={14} aria-hidden /></>
             return <li key={flag.id}><SiteFlagTarget className={styles.flagPreviewLink} aria-label={`Open ${flag.title}`} href={flag.href} onOpen={onOpenFlag || flag.onOpen ? trigger => { if (onOpenFlag) onOpenFlag(flag.id, trigger); else flag.onOpen?.() } : undefined}>{content}</SiteFlagTarget>{flag.copyAction ? <div className={styles.previewCopyAction}>{flag.copyAction}</div> : null}</li>
           })}
           {hiddenPreviewCount > 0 ? <li className={styles.flagPreviewMore}>+{hiddenPreviewCount} more</li> : null}

@@ -29,7 +29,6 @@ import { planLabel } from '@/lib/billing/plans'
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
@@ -58,11 +57,14 @@ export function SidebarNav({
   onNav,
   showAdmin,
   compact = false,
+  primaryOnly = false,
   onGatedItem,
 }: {
   onNav?: () => void
   showAdmin?: boolean
   compact?: boolean
+  /** The app panel keeps only the websites here; account destinations live in the account menu. */
+  primaryOnly?: boolean
   onGatedItem?: SidebarGate
 }) {
   const pathname = usePathname()
@@ -124,7 +126,7 @@ export function SidebarNav({
   return (
     <nav className="flex flex-col gap-1" aria-label="Main">
       {PRIMARY_ITEMS.map(renderItem)}
-      <div className="mt-3 flex flex-col gap-1">{secondaryItems.map(renderItem)}</div>
+      {primaryOnly ? null : <div className="mt-3 flex flex-col gap-1">{secondaryItems.map(renderItem)}</div>}
     </nav>
   )
 }
@@ -166,22 +168,6 @@ export function SidebarFooter({ compact = false }: { compact?: boolean }) {
           ))}
       </div>
     </div>
-  )
-}
-
-export function DesktopSidebar({ showAdmin }: { showAdmin?: boolean }) {
-  return (
-    <TooltipProvider delayDuration={150}>
-      <aside className="fixed inset-y-0 z-navbar hidden w-48 flex-col bg-background md:flex">
-        <div className="flex h-[var(--header-height)] shrink-0 items-center justify-center">
-          <Logo variant="lockup" size="sm" href="/dashboard" />
-        </div>
-        <div className="flex-1 overflow-y-auto px-2 py-3">
-          <SidebarNav showAdmin={showAdmin} />
-        </div>
-        <SidebarFooter />
-      </aside>
-    </TooltipProvider>
   )
 }
 

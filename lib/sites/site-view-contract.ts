@@ -13,7 +13,7 @@ const time = z.string().datetime({ offset: true }), nullableTime = time.nullable
 const date = z.union([z.date(), time]).transform(value => new Date(value)).nullable()
 const flagChip = z.object({
   id: text, sourceFlagId: nullableText.optional(), title: text, href: text,
-  priorityBand: z.enum(['fix_first', 'other']).optional(),
+  priorityBand: z.enum(['fix_first', 'other']).optional(), priorityScore: z.number().optional(),
   repairGuidanceReady: z.boolean().optional(), repairGuidance: z.enum(['ready', 'pending', 'unavailable']).optional(),
 } satisfies { [Key in keyof BoardCardFlagChip]-?: z.ZodType<BoardCardFlagChip[Key]> })
 const connection = z.object({ provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']), configured: z.boolean(),

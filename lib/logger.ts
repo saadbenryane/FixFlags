@@ -45,5 +45,3 @@ export const logger = {
   fatal: wrapMethod(baseLogger.fatal.bind(baseLogger)),
   child: (bindings: Record<string, unknown>) => pino({ ...baseLogger, ...bindings }),
 }
-
-export type Logger = typeof logger

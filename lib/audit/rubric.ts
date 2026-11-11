@@ -19,8 +19,6 @@ export const LAUNCH_CHECKLIST_IDS = [
   'privacy-contact',
 ] as const
 
-export type LaunchChecklistId = (typeof LAUNCH_CHECKLIST_IDS)[number]
-
 /** Rubrics the judge must always return (one entry each). */
 export const REQUIRED_JUDGE_RUBRICS = RUBRIC_ORDER
 

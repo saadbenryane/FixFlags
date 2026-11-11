@@ -37,14 +37,12 @@ export function AccountSettingsForms({
   email,
   emailVerified,
   planName,
-  isPaid,
 }: {
   ownerId: string
   initialName: string
   email: string
   emailVerified: boolean
   planName: string
-  isPaid: boolean
 }) {
   const draft = useSettingsDraft(ownerId, 'profile', { name: initialName, email })
   const { name, email: newEmail } = draft.values
@@ -136,8 +134,9 @@ export function AccountSettingsForms({
     }
   }
 
-  const planHref = isPaid ? '/billing' : '/pricing'
-  const planCta = isPaid ? ac.managePlanCta : ac.upgradeCta
+  // Billing owns the plan, including the paid-plan waitlist during open beta.
+  const planHref = '/billing'
+  const planCta = ac.managePlanCta
   const emailStatus = emailIsVerified ? ac.verified : ac.notVerified
 
   return (
@@ -153,7 +152,7 @@ export function AccountSettingsForms({
         <span className="text-muted-foreground">{ac.planLabel}</span>
         <div className="flex items-center gap-3">
           <span className="font-medium">{planName}</span>
-          <Button asChild variant={isPaid ? 'outline' : 'default'} size="sm">
+          <Button asChild variant="outline" size="sm">
             <Link href={planHref}>{planCta}</Link>
           </Button>
         </div>

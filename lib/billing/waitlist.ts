@@ -145,13 +145,6 @@ async function claimOrCreateEntry(
   })
 }
 
-export async function markWaitlistInvited(entryId: string) {
-  return prisma.paidPlanWaitlistEntry.update({
-    where: { id: entryId },
-    data: { invitedAt: new Date() },
-  })
-}
-
 export async function markWaitlistConverted(
   userId: string,
   plan: Plan,
@@ -204,16 +197,6 @@ export async function hasPlanAccessGranted(
     select: { batch: true, accessGrantedAt: true },
   })
   return isCheckoutEligible(entry)
-}
-
-/** Explicit per-member grant (admin "Grant access" action). */
-export async function grantWaitlistEntryAccess(
-  entryId: string
-): Promise<PaidPlanWaitlistEntry> {
-  return prisma.paidPlanWaitlistEntry.update({
-    where: { id: entryId },
-    data: { accessGrantedAt: new Date() },
-  })
 }
 
 /**

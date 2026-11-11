@@ -1,5 +1,8 @@
 'use client'
 
+import { priorityLevel } from '@/lib/sites/presentation'
+import { PriorityMeter } from './PriorityMeter'
+
 import { SiteFlagSelectionCheckbox } from './SiteFlagSelection'
 import { Check, ChevronDown, Flag, LoaderCircle } from 'lucide-react'
 import { SiteFlagTarget, type FlagDestination } from './SiteFlagTarget'
@@ -12,7 +15,7 @@ import { RecordedPageLink } from './RecordedPageLink'
 export type PageResult = {
   url: string; label: string; status: string;
   capture?: { src: string; alt: string } | null;
-  flags: readonly ({ id: string; title: string; priorityBand?: 'fix_first' | 'other'; copyAction?: ReactNode } & FlagDestination)[];
+  flags: readonly ({ id: string; title: string; priorityBand?: 'fix_first' | 'other'; priorityScore?: number; copyAction?: ReactNode } & FlagDestination)[];
 }
 
 function PageCard({ page, checking, linkPages }: { page: PageResult; checking: boolean; linkPages: boolean }) {
@@ -27,7 +30,7 @@ function PageCard({ page, checking, linkPages }: { page: PageResult; checking: b
         {!page.flags.length || !complete ? <span className={styles.status}>{complete ? <Check size={14} aria-hidden /> : active ? <LoaderCircle size={14} className="motion-safe:animate-spin" aria-hidden /> : null}{status}</span> : null}
       </div></div>
       {page.flags.length ? <ul>{page.flags.map(flag => {
-        const content = <><span>{flag.title}</span>{flag.priorityBand ? <small data-priority={flag.priorityBand}>{C.priority[flag.priorityBand]}</small> : null}</>
+        const content = <span className={styles.flagTitle}><PriorityMeter level={priorityLevel(flag)} /><span>{flag.title}</span></span>
         const destination: FlagDestination = flag.href !== undefined ? { href: flag.href, onOpen: flag.onOpen } : flag.onOpen ? { onOpen: flag.onOpen } : { href: page.url }
         return <li key={flag.id}><div className={styles.finding}><SiteFlagSelectionCheckbox flagId={flag.id} title={flag.title} /><SiteFlagTarget {...destination} id={`page-flag-${encodeURIComponent(page.url)}-${flag.id}`} aria-label={C.open(flag.title)}>{content}</SiteFlagTarget></div>{flag.copyAction ? <div className={styles.flagActions}>{flag.copyAction}</div> : null}</li>
       })}</ul> : null}

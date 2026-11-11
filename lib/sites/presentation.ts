@@ -200,6 +200,16 @@ export function flagActionKind(checkId: string | null | undefined): 'visitor_act
   return 'other'
 }
 
+/**
+ * Priority on a five-step scale for the meter beside each Flag. Four steps and up is the fix-first band;
+ * a Flag without a score falls back to its band.
+ */
+export function priorityLevel(input: { priorityScore?: number | null; priorityBand?: FlagPriorityBand | null }): 1 | 2 | 3 | 4 | 5 {
+  const score = input.priorityScore
+  if (typeof score !== 'number') return input.priorityBand === 'fix_first' ? 4 : 2
+  return score >= 150 ? 5 : score >= 90 ? 4 : score >= 60 ? 3 : score >= 35 ? 2 : 1
+}
+
 export function flagPriority(input: {
   severity: string
   confidence?: number | null

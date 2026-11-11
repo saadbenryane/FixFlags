@@ -1,94 +1,74 @@
 'use client'
 
-import { useId, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import type { Route } from 'next'
-import { ArrowRight, Check, Copy, Terminal } from 'lucide-react'
+import { Activity, ArrowRight, Bot, Coins, Copy, Gauge, Link2, ShieldCheck, Sparkles, Video } from 'lucide-react'
 import { InteractiveButton, InteractiveTextarea } from '@/components/ui/interactive-controls'
 import { EditorMark } from '@/components/brand/EditorMarks'
 import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
-import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
 import { MarketingSectionHeader } from '../MarketingSectionHeader'
 import type { HomepageCopyResult, HomepageCopySource } from './HomepageSections'
 import s from './CareHomepage.module.css'
 import t from './HomepageStorySections.module.css'
 
 const AI = C.builtForAi
-const PROOF = C.independent
 
-export function HomepageProofSection() {
-  return <section className={`${s.section} ${t.proof}`} aria-labelledby="proof-title">
-    <MarketingSectionHeader id="proof-title" index="03" label={PROOF.label} lines={PROOF.titleLines} lede={PROOF.body}>
-      <ul className={t.points}>{PROOF.points.map(point => <li key={point}><Check size={16} aria-hidden="true" />{point}</li>)}</ul>
-      <Link href="/how-it-works" className={t.textLink}>{PROOF.action}<ArrowRight size={16} aria-hidden="true" /></Link>
-    </MarketingSectionHeader>
-    <figure className={t.captures}>
-      <div className={t.capturePair}>
-        <div className={t.capture} data-state="before">
-          <p><span>{PROOF.beforeLabel}</span>{PROOF.beforeTitle}</p>
-          <Image src={HOMEPAGE_EVIDENCE.failed} alt={PROOF.beforeAlt} width={780} height={1520} sizes="(max-width: 767px) 44vw, 240px" />
-        </div>
-        <div className={t.capture} data-state="after">
-          <p><span>{PROOF.afterLabel}</span>{PROOF.afterTitle}</p>
-          <Image src={HOMEPAGE_EVIDENCE.passed} alt={PROOF.afterAlt} width={780} height={1520} sizes="(max-width: 767px) 44vw, 240px" />
-        </div>
-      </div>
-      <figcaption>{PROOF.sampleNote}</figcaption>
-    </figure>
-  </section>
-}
+const WAY_ICONS = { paste: Copy, agent: Bot, record: Link2 } as const
+const REASON_ICONS = { tokens: Coins, proof: ShieldCheck } as const
 
+/** The handoff: the fix instructions you would copy, the ways they reach your AI, and why that beats asking it to check. */
 export function HomepageBuiltForAiSection({ onCopy, copyResult, manualPrompt }: {
   onCopy: (source: HomepageCopySource, prompt: string) => void
   copyResult: HomepageCopyResult
   manualPrompt: string | null
 }) {
-  const id = useId()
-  const [active, setActive] = useState(0)
-  const tool = AI.tools[active]
   const prompt = C.workflow.instructions
-  const select = (index: number) => {
-    const next = (index + AI.tools.length) % AI.tools.length
-    setActive(next)
-    document.getElementById(`${id}-tool-${next}`)?.focus()
-  }
-  return <section className={`${s.section} ${t.ai}`} aria-labelledby="built-for-ai-title">
-    <div className={t.aiCopy}><MarketingSectionHeader id="built-for-ai-title" index="02" label={AI.label} lines={AI.titleLines} lede={AI.body} /></div>
-    <div className={t.aiDemo}>
-      <div className={t.toolTabs} role="tablist" aria-label={AI.toolsLabel}>
-        {AI.tools.map((item, index) => <button key={item.key} id={`${id}-tool-${index}`} type="button" role="tab" aria-selected={index === active}
-          aria-controls={`${id}-tool-panel`} tabIndex={index === active ? 0 : -1} className={t.toolTab} onClick={() => setActive(index)} onKeyDown={event => {
-            if (event.key === 'ArrowRight') { event.preventDefault(); select(active + 1) }
-            if (event.key === 'ArrowLeft') { event.preventDefault(); select(active - 1) }
-          }}>
-          <EditorMark name={item.label} className={t.toolMark} />{item.label}
-        </button>)}
-      </div>
-      <div id={`${id}-tool-panel`} role="tabpanel" aria-labelledby={`${id}-tool-${active}`} className={t.toolPanel}>
-        <div className={t.window} data-surface={tool.surface}>
-          <div className={t.windowBar}>{tool.surface === 'terminal' ? <Terminal size={14} aria-hidden="true" /> : <EditorMark name={tool.label} className={t.windowMark} />}<span>{tool.label}</span><small>{AI.sampleLabel}</small></div>
-          {tool.surface === 'terminal'
-            ? <pre className={t.terminalText}><span aria-hidden="true">&gt; </span>{prompt}</pre>
-            : <div className={t.chat}><p className={t.bubble}>{prompt}</p><p className={t.chatInput} aria-hidden="true">{AI.chatPlaceholder(tool.label)}</p></div>}
-        </div>
-        <p className={t.where}>{tool.where}</p>
-        <div className={t.aiActions}>
-          <InteractiveButton type="button" className={t.copyButton} onClick={() => onCopy('ai', prompt)}><Copy size={16} aria-hidden="true" />{C.story.copy}</InteractiveButton>
-          <Link href={`/ai-builders/${tool.key}` as Route} className={t.textLink}>{AI.guideAction(tool.label)}<ArrowRight size={16} aria-hidden="true" /></Link>
-        </div>
+  return <section className={s.section} aria-labelledby="built-for-ai-title">
+    <MarketingSectionHeader id="built-for-ai-title" label={AI.label} lines={AI.titleLines} lede={AI.body} align="center" />
+    <div className={t.handoff}>
+      <div className={t.fixCard}>
+        <p className={t.fixLabel}><Sparkles size={15} aria-hidden="true" />{AI.cardLabel}<small>{AI.sampleLabel}</small></p>
+        <p className={t.fixText}>{prompt}</p>
+        <InteractiveButton type="button" className={t.copyButton} onClick={() => onCopy('ai', prompt)}><Copy size={16} aria-hidden="true" />{AI.copy}</InteractiveButton>
         {copyResult?.source === 'ai' ? <p className={t.copyStatus} role="status">{copyResult.message}</p> : null}
         {manualPrompt && copyResult?.source === 'ai' ? <div className={t.manualCopy}><label htmlFor="ai-guidance">{S.guidanceLabel}</label><InteractiveTextarea id="ai-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
       </div>
+      <div className={t.ways}>
+        <h3 className={t.waysLabel}>{AI.waysLabel}</h3>
+        <ol>{AI.ways.map(way => {
+          const Icon = WAY_ICONS[way.id]
+          return <li key={way.id}>
+            <span className={t.wayIcon} aria-hidden="true"><Icon size={18} strokeWidth={1.9} /></span>
+            <div>
+              <h4>{way.title}</h4>
+              <p>{way.body}</p>
+              {way.id === 'paste' ? <ul className={t.tools} aria-label={AI.toolsLabel}>{AI.tools.map(tool => <li key={tool.key}>
+                <Link href={`/ai-builders/${tool.key}` as Route} aria-label={AI.guideAction(tool.label)}><EditorMark name={tool.label} className={t.toolMark} />{tool.label}</Link>
+              </li>)}</ul> : null}
+              {'href' in way ? <Link href={way.href as Route} className={t.textLink}>{way.action}<ArrowRight size={16} aria-hidden="true" /></Link> : null}
+            </div>
+          </li>
+        })}</ol>
+      </div>
     </div>
+    <ul className={t.reasons}>{AI.reasons.map(reason => {
+      const Icon = REASON_ICONS[reason.id]
+      return <li key={reason.id}><span className={t.reasonIcon} aria-hidden="true"><Icon size={20} strokeWidth={1.8} /></span><h3>{reason.title}</h3><p>{reason.body}</p></li>
+    })}</ul>
   </section>
 }
 
+const COMPARE_ICONS = [Gauge, Video, Activity] as const
+
+/** What FixFlags is not, said once and plainly: three short claims, each with the thing it replaces. */
 export function HomepageCompareSection() {
   return <section className={`${s.section} ${t.compare}`} aria-labelledby="compare-title">
-    <MarketingSectionHeader id="compare-title" index="05" label={C.compare.label} lines={C.compare.titleLines} align="split"
+    <MarketingSectionHeader id="compare-title" label={C.compare.label} lines={C.compare.titleLines} align="center"
       lede={<Link href="/coverage" className={t.textLink}>{C.compare.action}<ArrowRight size={16} aria-hidden="true" /></Link>} />
-    <ul className={t.compareList}>{C.compare.items.map((item, index) => <li key={item.title}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><h3>{item.title}</h3><p>{item.body}</p></li>)}</ul>
+    <ul className={t.compareList}>{C.compare.items.map((item, index) => {
+      const Icon = COMPARE_ICONS[index]
+      return <li key={item.title}><span className={t.compareIcon} aria-hidden="true"><Icon size={20} strokeWidth={1.8} /></span><h3>{item.title}</h3><p>{item.body}</p></li>
+    })}</ul>
   </section>
 }

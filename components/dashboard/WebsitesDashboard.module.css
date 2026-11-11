@@ -19,3 +19,6 @@
   .entry[data-first='true'] { padding: 40px 32px; }
   .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 40px; }
 }
+.limit { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.limit a { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: hsl(var(--foreground)); font-weight: 550; }
+.limit a:hover { text-decoration: underline; text-underline-offset: 4px; }

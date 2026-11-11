@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { cancelSiteExecutions } from '@/lib/sites/application/cancel-executions'
-import { decryptScanAccess, encryptScanAccess, type ScanAccessConfig } from './scan-access'
+import { decryptScanAccess, type ScanAccessConfig } from './scan-access'
 import { readProjectAccessGrant, writeProjectAccessGrant, sameScanAccessCredentials, ScanAccessUnavailable } from './scan-access-grants'
 import type { ScanAccessIntent } from './scan-access-intent'
 import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
@@ -52,18 +52,6 @@ export async function resolveAuditScanAccess(auditId: string): Promise<ScanAcces
   // Unversioned secrets require an unchanged, currently authorized legacy Site grant.
   if (!grant.legacyCompatible || !config || !sameScanAccessCredentials(config, grant.config)) throw new ScanAccessUnavailable()
   return { ...config, origin: grant.origin }
-}
-
-export async function persistAuditScanAccess(auditId: string, config: ScanAccessConfig | null): Promise<void> {
-  const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { url: true, executionSpec: true, userId: true } })
-  const spec = readExecutionSpec(audit?.executionSpec)
-  if (!audit || !spec || config && !audit.userId) throw new ScanAccessUnavailable()
-  const changed = await prisma.audit.updateMany({ where: { id: auditId, status: 'QUEUED', startedAt: null }, data: {
-    scanAccessEncrypted: config ? encryptScanAccess(config) : null,
-    executionSpec: { ...spec, scanAccess: { kind: config ? 'explicit' : 'public', origin: new URL(audit.url).origin } } as Prisma.InputJsonValue,
-    ...(config ? { isPublic: false } : {}),
-  } })
-  if (changed.count !== 1) throw new ScanAccessUnavailable()
 }
 
 export async function persistProjectScanAccess(projectId: string, userId: string, config: ScanAccessConfig | null): Promise<void> {

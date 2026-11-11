@@ -1,13 +1,6 @@
 import {
-  Accessibility,
-  BarChart3,
-  DollarSign,
   Globe2,
   MessageSquare,
-  Search,
-  Share2,
-  ShieldCheck,
-  TrendingUp,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
@@ -43,18 +36,4 @@ export function rubricBadgeClasses(name: string): string {
   if (r === 'EXPERIENCE') return `bg-success-muted ${rubricTint(r)} border-success-border`
   if (r === 'REACH') return `bg-info-muted ${rubricTint(r)} border-info-border`
   return 'bg-muted text-muted-foreground'
-}
-
-export function impactTagIcon(tag: string | null | undefined): LucideIcon | null {
-  if (!tag) return null
-  const map: Record<string, LucideIcon> = {
-    CONVERSION: TrendingUp,
-    REVENUE: DollarSign,
-    TRUST: ShieldCheck,
-    MEASUREMENT: BarChart3,
-    SHARING: Share2,
-    SEO: Search,
-    ACCESSIBILITY: Accessibility,
-  }
-  return map[tag] ?? null
 }

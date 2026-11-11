@@ -3,7 +3,7 @@
   "product": "FixFlags",
   "stance": "site-care",
   "engine": "https://fixflags.com",
-  "note": "The FixFlags web product looks after one persistent Site. Agent distribution is parked until it supports the same Site and Flag model.",
+  "note": "The FixFlags web product looks after one persistent Site. Coding agents use the same Site and Flag model through the MCP server at https://fixflags.com/api/mcp. Setup guide: https://fixflags.com/docs/mcp",
   "skills": [
     {
       "id": "fixflags",

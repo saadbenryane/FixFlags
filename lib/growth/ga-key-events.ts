@@ -11,5 +11,3 @@ export const GA4_KEY_EVENTS = [
   'fix_prompt_copied',
   'completed_checkout',
 ] as const
-
-export type Ga4KeyEventName = (typeof GA4_KEY_EVENTS)[number]

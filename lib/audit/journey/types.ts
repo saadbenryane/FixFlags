@@ -96,5 +96,3 @@ export const JOURNEY_MAX_STEPS = 10
 export const JOURNEY_TIMEOUT_MS = 60_000
 /** Maximum times a URL can appear before the journey detects a loop. */
 export const JOURNEY_LOOP_THRESHOLD = 3
-/** Per-step timeout in milliseconds. */
-export const JOURNEY_STEP_TIMEOUT_MS = 15_000

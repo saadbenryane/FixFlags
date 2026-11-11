@@ -14,7 +14,7 @@ export const GUIDES_PAGE = {
   contents: 'On this page',
   reviewed: 'Sources and coverage reviewed',
   sources: 'Sources and scope',
-  sourceNote: 'External sources describe their own products. These examples are demos, not customer results. Purchase checks stop before payment. Signup checks need a supported, safe test setup. Login and password reset, new MCP connections, and planned paid integrations are not available in the website beta.',
+  sourceNote: 'External sources describe their own products. These examples are demos, not customer results. Purchase checks stop before payment. Signup checks need a supported, safe test setup. Login and password reset and planned paid integrations are not available in the website beta.',
   exampleLabel: 'Controlled example',
   related: 'Keep going',
   coverageLink: 'FixFlags coverage and limits',

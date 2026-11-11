@@ -189,11 +189,6 @@ export function buildExpertFixPrompt(
   return lines.join('\n')
 }
 
-/** Concise report preview. The copied editor payload remains plan-shaped. */
-export function buildFixPromptPreview(flag: RankableFlag): string {
-  return normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
-}
-
 /** Pull actionable steps out of legacy Goal/Observed/Expected essays. */
 export function normalizeFixBody(raw: string): string {
   const trimmed = raw.trim()

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canvas Tote · Everyday Goods</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #f6f6f4; color: #111113; font: 16px/1.4 Inter, "Helvetica Neue", sans-serif; }
+  header {
+    height: 60px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border-bottom: 1px solid #e5e5e2;
+  }
+  .mark { font-size: 16px; font-weight: 750; letter-spacing: -0.035em; }
+  .cart-link { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 650; }
+  .badge {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #ff5a00;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .stage { padding: 14px 14px 0; }
+  .photo {
+    height: 230px;
+    border-radius: 14px;
+    background: #eeeae2;
+    overflow: hidden;
+  }
+  .photo img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center 54%; }
+  .buy { margin-top: 14px; }
+  .eyebrow { margin: 0; font-size: 10px; font-weight: 650; letter-spacing: 0.07em; color: #747478; }
+  .product-line { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-top: 3px; }
+  h1 { margin: 0; font-size: 29px; line-height: 1.05; letter-spacing: -0.045em; }
+  .price { margin: 0; font-size: 17px; font-weight: 700; }
+  .meta { margin: 6px 0 0; color: #66666c; font-size: 11px; }
+  .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    margin-top: 11px;
+    border-radius: 10px;
+    background: #111113;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .miss { margin-top: 9px; padding: 9px 11px; border-radius: 10px; background: #fff4ed; color: #a43a00; font-size: 12px; font-weight: 700; }
+  .sheet {
+    margin-top: 10px;
+    min-height: 0;
+    padding: 15px 16px 72px;
+    border-radius: 18px 18px 0 0;
+    background: #fff;
+    box-shadow: 0 -10px 32px rgba(17, 17, 19, 0.06);
+  }
+  .sheet-top { display: flex; align-items: baseline; justify-content: space-between; }
+  .sheet h2 { margin: 0; font-size: 18px; }
+  .zero { margin: 12px 0 0; font-size: 42px; line-height: .9; letter-spacing: -.06em; font-weight: 650; }
+  .empty {
+    margin: 6px 0 0;
+    font-size: 21px;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-weight: 750;
+  }
+  .why { margin: 6px 0 0; max-width: 300px; color: #66666c; font-size: 12px; }
+  .closed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    margin-top: 14px;
+    border-radius: 10px;
+    background: #f1f1ee;
+    color: #8b8b8f;
+    font-size: 12px;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<header>
+  <strong class="mark">Everyday Goods</strong>
+  <span class="cart-link">Cart <span class="badge">0</span></span>
+</header>
+<main>
+  <section class="stage">
+    <div class="photo"><img src="../../../../public/marketing/evidence/everyday-tote-product-v2.webp" alt="Natural canvas tote photographed on a stone plinth"></div>
+    <div class="buy">
+      <p class="eyebrow">Everyday series</p>
+      <div class="product-line"><h1>Canvas Tote</h1><p class="price">$48</p></div>
+      <p class="meta">Heavyweight cotton · Natural</p>
+      <div class="button">Add to cart</div>
+    </div>
+  </section>
+  <section class="sheet">
+    <div class="sheet-top"><h2>Your cart</h2><span>0 items</span></div>
+    <p class="zero">0</p>
+    <p class="empty">Your cart is empty.</p>
+    <p class="why">Items you add will appear here.</p>
+    <div class="closed">Checkout</div>
+  </section>
+</main>
+</body>
+</html>

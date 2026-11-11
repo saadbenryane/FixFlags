@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  GATED_MCP_DISCOVERY_PREFIXES,
   PARKED_PUBLIC_PREFIXES,
   powerToolVisibilityFailures,
   runPowerToolsVisibilityGuard,
@@ -31,7 +30,6 @@ test('accepts retained implementations when every public prefix is parked and un
     discoverySources: {
       'lib/marketing/copy/homepage.ts': "export const promise = 'Review a live URL'",
     },
-    mcpGateSource: mcpGate(),
   }), [])
 })
 
@@ -45,7 +43,6 @@ test('allows published store and Google integration guides', () => {
     discoverySources: {
       'content/docs/integrations.md': '/docs/integrations/shopify /docs/integrations/google-analytics /docs/integrations/google-search-console',
     },
-    mcpGateSource: mcpGate(),
   }), [])
 })
 
@@ -53,9 +50,8 @@ test('rejects missing route parking, inconsistent repository responses, and publ
   const failures = powerToolVisibilityFailures({
     proxySource: `${proxyHonouringGate().replace('"/api/repo-scans"', '"/api/other"')}\nRepository scanning is not currently available`,
     discoverySources: {
-      'lib/docs/content.ts': "href: '/docs/cli'",
+      'lib/docs/content.ts': "href: '/report/repo/scan-1'",
     },
-    mcpGateSource: mcpGate(),
   })
   assert.ok(failures.includes('Proxy does not park /api/repo-scans'))
   assert.ok(failures.some((failure) => failure.includes('same not-found boundary')))
@@ -69,7 +65,6 @@ test('allows the waitlist logged-in review line on pricing copy without setup-ro
       'lib/marketing/copy/plans.ts':
         "features: ['This page and every public page it links to', 'Logged-in review on your computer']",
     },
-    mcpGateSource: mcpGate(),
   }), [])
 })
 
@@ -78,74 +73,54 @@ test('still rejects parked setup routes next to the waitlist logged-in line', ()
     proxySource: proxyHonouringGate(),
     discoverySources: {
       'lib/marketing/copy/plans.ts':
-        "features: ['Logged-in review on your computer']\nhref: '/docs/cli'",
+        "features: ['Logged-in review on your computer']\nhref: '/help/mcp-and-editors'",
     },
-    mcpGateSource: mcpGate(),
   })
   assert.ok(failures.some((failure) => failure.includes('links to a parked')))
 })
 
 /**
- * MCP discovery is withheld by a gate rather than by literal entries in `proxy.ts`, so
- * the guard has to check the gate itself. These are the three ways that arrangement can
- * silently fail: the edge stops consulting the gate, the gate loses a path, or somebody
- * opens the gate and forgets that a list of withheld paths is now stale.
+ * MCP discovery is public by owner decision since 2026-11-10. The guard no longer
+ * withholds its paths, but the edge must keep consulting the gate so it can be closed
+ * again, and the public MCP surfaces are now scanned like every other public source.
  */
 test('reports an edge that stopped consulting the MCP gate', () => {
   const failures = powerToolVisibilityFailures({
     proxySource: parkedProxy(),
     discoverySources: {},
-    mcpGateSource: mcpGate(),
   })
   assert.ok(failures.some((failure) => failure.includes('does not consult the MCP discovery gate')))
 })
 
-test('reports a gate that stopped withholding a path', () => {
-  const trimmed = mcpGate().replace("'/.well-known',", '')
-  const failures = powerToolVisibilityFailures({
+test('passes with the MCP discovery gate open', () => {
+  assert.match(mcpGate(), /export const MCP_IS_DISCOVERABLE = true\b/)
+  assert.deepEqual(powerToolVisibilityFailures({
     proxySource: proxyHonouringGate(),
     discoverySources: {},
-    mcpGateSource: trimmed,
-  })
-  assert.ok(failures.includes('MCP gate does not withhold /.well-known'))
+  }), [])
 })
 
-test('reports a reopened gate so the withheld-path list is revisited on purpose', () => {
-  const reopened = mcpGate().replace(
-    'export const MCP_IS_DISCOVERABLE = false',
-    'export const MCP_IS_DISCOVERABLE = true',
-  )
-  const failures = powerToolVisibilityFailures({
-    proxySource: proxyHonouringGate(),
-    discoverySources: {},
-    mcpGateSource: reopened,
-  })
-  assert.ok(failures.some((failure) => failure.includes('MCP is discoverable again')))
-})
-
-test('rejects a customer surface that links to a withheld MCP path', () => {
-  const failures = powerToolVisibilityFailures({
+test('allows public links to the MCP guide, setup page, and explainer', () => {
+  assert.deepEqual(powerToolVisibilityFailures({
     proxySource: proxyHonouringGate(),
     discoverySources: {
       'app/(app)/settings/page.tsx': "href: '/dashboard/mcp-setup'",
+      'content/docs/index.md': '[MCP for coding agents](/docs/mcp)',
+      'lib/marketing/copy/homepage.ts': "href: '/docs/fix-with-ai#what-is-mcp', label: 'Learn about MCP'",
     },
-    mcpGateSource: mcpGate(),
+  }), [])
+})
+
+test('scans the public MCP guide for parked power-tool terminology', () => {
+  const failures = powerToolVisibilityFailures({
+    proxySource: proxyHonouringGate(),
+    discoverySources: { 'content/docs/mcp.md': 'Start a Repository scan from your agent.' },
   })
-  assert.ok(failures.some((failure) => failure.includes('links to a parked power-tool surface')))
+  assert.ok(failures.includes('content/docs/mcp.md advertises parked power-tool terminology'))
 })
 
-test('every gated MCP path is one the gate actually withholds', () => {
-  const source = mcpGate()
-  for (const prefix of GATED_MCP_DISCOVERY_PREFIXES) {
-    assert.ok(source.includes(`'${prefix}'`), `${prefix} is guarded but not withheld`)
-  }
-})
-
-
-test('rejects MCP fragment promotion and parked agent-access claims in public discovery', () => {
-  for (const source of ["href: '/docs/fix-with-ai#what-is-mcp'", "label: 'Learn about MCP'", "features: ['Agent access']"]) {
-    assert.ok(powerToolVisibilityFailures({ proxySource: proxyHonouringGate(),
-      discoverySources: { 'lib/marketing/copy/homepage.ts': source }, mcpGateSource: mcpGate() })
-      .some(failure => failure.includes('links to a parked')))
-  }
+test('rejects parked agent-access claims in public discovery', () => {
+  assert.ok(powerToolVisibilityFailures({ proxySource: proxyHonouringGate(),
+    discoverySources: { 'lib/marketing/copy/homepage.ts': "features: ['Agent access']" } })
+    .some(failure => failure.includes('links to a parked')))
 })

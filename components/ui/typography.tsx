@@ -92,18 +92,6 @@ export function Prose({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   )
 }
 
-export function LabelCaps({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
-  return (
-    <span
-      className={cn(
-        'font-mono text-2xs font-medium uppercase tracking-label text-muted-foreground',
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
 /** In-page section heading (dashboard lists, admin groups) */
 export function SectionTitle({
   as: Tag = 'h2',

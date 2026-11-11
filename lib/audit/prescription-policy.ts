@@ -1,7 +1,5 @@
 import { registeredCheck } from './check-registry'
 
-export type PrescriptionAttention = 'flag' | 'recommendation'
-
 /** These collectors establish nonvisual facts. Unknown findings retain page context. */
 const NONVISUAL_GUIDANCE_MODULES = new Set(['page-response', 'security', 'security-headers', 'metadata', 'seo', 'search'])
 

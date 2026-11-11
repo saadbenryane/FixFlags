@@ -323,16 +323,3 @@ export async function expireUnownedExecution(audit: { id: string; executionToken
   await markOutcomeRunsCouldNotVerify(audit.id, 'EXECUTION_LEASE_EXPIRED', 'The worker stopped before this check completed.', authority)
   return true
 }
-
-/** Expired execution is terminal, never an invitation to repeat a protected action. */
-export async function recoverExpiredExecutions(limit = 25): Promise<number> {
-  const now = new Date()
-  const audits = await prisma.audit.findMany({
-    where: { executionToken: { not: null }, executionLeaseUntil: { lte: now }, status: { notIn: ['COMPLETED', 'FAILED'] } },
-    orderBy: [{ executionLeaseUntil: 'asc' }, { id: 'asc' }], take: Math.max(1, Math.min(100, limit)),
-    select: { id: true, executionToken: true, executionGeneration: true },
-  })
-  let recovered = 0
-  for (const audit of audits) if (await expireUnownedExecution(audit, now, { executionLeaseUntil: { lte: now } })) recovered++
-  return recovered
-}

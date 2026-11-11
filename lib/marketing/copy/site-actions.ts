@@ -40,7 +40,6 @@ export const SITE_ACTION_COPY = {
     historyOverview: 'View current results',
     integrationsBody: 'Save this Site to connect your tools and add their context to its checks.',
   },
-  help: 'Help',
   sessionPending: 'Checking your session…',
   signupPrompt: {
     title: 'Save your website. Start monitoring.',
@@ -116,7 +115,7 @@ export const SITE_ACTION_COPY = {
   },
 
   recovery: { access: 'Set up website access', connections: 'Review connections', support: 'Get help with this check',
-    inspect: 'See what couldn’t be checked', setupBody: 'This area needs setup before it can be checked again.' },
+    inspect: 'See why', inspectLead: 'Some checks couldn’t finish.', setupBody: 'This area needs setup before it can be checked again.' },
   execution: {
     availabilityAccess: { summary: 'Public access was restricted, so availability is unverified.',
       recovery: 'Verify again when public access is available.' },

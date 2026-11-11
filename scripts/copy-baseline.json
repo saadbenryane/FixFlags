@@ -203,9 +203,6 @@
   "components/sites/FlagResolutionPanel.tsx": [
     "Check details"
   ],
-  "components/sites/SiteCategoryContent.tsx": [
-    "Check again"
-  ],
   "components/sites/SiteCheckResults.tsx": [
     "Recorded execution"
   ],

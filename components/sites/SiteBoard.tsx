@@ -5,6 +5,7 @@ import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { ProductBoardCard } from '@/components/sites/BoardCard'
 import { SiteOverview } from '@/components/sites/SiteOverview'
+import { DetectedToolsCard } from '@/components/sites/DetectedToolsCard'
 import { SiteTopProblem, detectedBuilder, topProblem } from '@/components/sites/SiteTopProblem'
 import { SiteBuilderQuestion } from '@/components/sites/SiteBuilderQuestion'
 import { liveActivityLine } from '@/lib/sites/live-activity'
@@ -40,7 +41,7 @@ import { helpHrefForFailureCode } from '@/lib/help/contextual'
 import { recoveryReplacesRecheck } from '@/lib/sites/execution-recovery'
 import { runBanner } from '@/lib/sites/presentation'
 import { formatAlertDate,NO_ALERT_DELIVERY,siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
-import { RefreshCw } from 'lucide-react'
+import { ArrowRight, RefreshCw } from 'lucide-react'
 import type { Route } from 'next'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -87,16 +88,27 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
     navigation.openFlag(id)
   }
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
+  /** When setup, connections or an explanation replace a plain recheck, where that recovery lives. */
+  function recoveryLink(area?: SiteCardArea) {
+    const recovery = area ? view.executionProgress?.categoryRecovery?.[area] : view.executionProgress?.recovery
+    const limited = !area || Boolean(view.cards.find(card => card.id === area)?.incompleteReason)
+    if (!ownsSite || !limited || !recovery || !recoveryReplacesRecheck(recovery)) return null
+    const href = recovery.action === 'access' ? `/sites/${siteId}/settings#${recovery.reasons.some(code => code.includes('FIXTURE') || code === 'PROTECTED_EFFECT_UNRESOLVED' || code === 'ACCOUNT_CHECKS_NOT_ADMITTED') ? 'signup-setup' : 'scan-access'}` : recovery.action === 'connections' ? `/sites/${siteId}?view=integrations#integrations` : helpHrefForFailureCode(recovery.reasons[0])
+    return { href, action: recovery.action }
+  }
+  /** On the overview an area offers only setup it needs; checking again is one action for the whole Site. */
+  function categoryRecovery(area: SiteCardArea) {
+    const recovery = recoveryLink(area)
+    return recovery && recovery.action !== 'inspect' ? <Button asChild variant="ghost" size="sm"><Link href={recovery.href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button> : null
+  }
   function checkAction(area?: SiteCardArea, identifyArea = false, iconOnly = false) {
     const name = area ? view.cards.find(card => card.id === area)?.name ?? area : undefined
     const categoryChecking = area && view.activeRuns.some(run => run.scope === 'CATEGORY' && run.targetLabel === name)
-    const recovery = area ? view.executionProgress?.categoryRecovery?.[area] : view.executionProgress?.recovery
-    const limited = !area || Boolean(view.cards.find(card => card.id === area)?.incompleteReason)
-    if (ownsSite && limited && recovery && recoveryReplacesRecheck(recovery)) {
-      const href = recovery.action === 'access' ? `/sites/${siteId}/settings#${recovery.reasons.some(code => code.includes('FIXTURE') || code === 'PROTECTED_EFFECT_UNRESOLVED' || code === 'ACCOUNT_CHECKS_NOT_ADMITTED') ? 'signup-setup' : 'scan-access'}` : recovery.action === 'connections' ? `/sites/${siteId}?view=integrations#integrations` : helpHrefForFailureCode(recovery.reasons[0])
-      if (recovery.action === 'inspect' && area) return null
-      return <Button asChild variant="outline" size="sm"><Link href={href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button>
-    }
+    const recovery = recoveryLink(area)
+    // An explanation of unfinished checks is read after the results, at the foot of the overview,
+    // so it never takes the place of checking again.
+    if (recovery && recovery.action !== 'inspect') return <Button asChild variant="outline" size="sm"><Link href={recovery.href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button>
+    if (recovery && area) return null
     // Compact rows show the short action; the area name stays in the accessible name.
     if (ownsSite) return <Button variant={iconOnly ? 'ghost' : 'outline'} size="sm" className="min-h-11" data-site-return-focus="check" data-site-compact-recheck={iconOnly || undefined} aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} aria-busy={busy || Boolean(categoryChecking) || undefined} disabled={busy || checking || Boolean(categoryChecking) || currentReadUnavailable} onClick={() => void refreshSiteEvidence(area)}>
       <RefreshCw className={`h-4 w-4${busy || categoryChecking ? ' motion-safe:animate-spin' : ''}`} aria-hidden /><span>{busy ? SITE_BOARD_COPY.starting : checking || categoryChecking ? SITE_BOARD_COPY.checking : name && identifyArea && !iconOnly ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain}</span>
@@ -156,12 +168,14 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   })
   const primaryProblem = topProblem(view.flags)
   const [reportedBuilder, setReportedBuilder] = useState<string | null>(null)
-  const siteActions = <>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>
+  // Fix this first owns the one primary button when it shows; copying everything then follows quietly.
+  const siteActions = <div role="group" aria-label={B.actions} className="flex flex-wrap items-center gap-2">{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} secondary={Boolean(primaryProblem) && !checking} reveal /> : null}{!checking ? checkAction() : null}</div>
 
   return (
     <SiteWorkspaceLocationProvider value={{ siteId, viewMode, selectedCard }}><SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} readUnavailable={readUnavailable} onRetry={refresh} />}
-      headerAction={viewMode === 'home' ? undefined : viewMode === 'pages' ? !checking ? checkAction() : null : siteActions}>
+      headerAction={viewMode === 'pages' ? !checking ? checkAction() : null : siteActions}
+      identityDetail={viewMode === 'home' ? <DetectedToolsCard items={technologies} inline /> : undefined}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
         <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
@@ -187,13 +201,13 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        {!checking && primaryProblem ? <SiteTopProblem siteId={siteId} flag={primaryProblem} copyAvailability={view.actions.copy}
-          copyReady={view.actions.copy !== 'available' || Boolean(primaryProblem.fix.trim())} technologies={technologies} reportedBuilder={reportedBuilder} onOpen={openFlag} /> : null}
-        {/* The answer points fix instructions at the owner's tool, so ask only beside a fix to hand off. */}
-        {ownsSite && !checking && primaryProblem && !detectedBuilder(technologies) ? <SiteBuilderQuestion siteId={siteId} onAnswer={setReportedBuilder} /> : null}
-        <SiteOverviewWorkspace actions={siteActions} summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
+        <SiteOverviewWorkspace summary={<SiteOverview host={view.presentation.identity.host}
+          lead={!checking && primaryProblem ? <SiteTopProblem siteId={siteId} flag={primaryProblem} copyAvailability={view.actions.copy}
+            copyReady={view.actions.copy !== 'available' || Boolean(primaryProblem.fix.trim())} technologies={technologies} reportedBuilder={reportedBuilder} onOpen={openFlag}
+            // The answer points fix instructions at the owner's tool, so it is asked inside the fix card.
+            builderQuestion={ownsSite && !detectedBuilder(technologies) ? <SiteBuilderQuestion siteId={siteId} onAnswer={setReportedBuilder} /> : null} /> : undefined} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
           notice={checking && !disconnected && !currentReadUnavailable ? liveActivityLine(view.executionProgress?.tasks) ?? SITE_ACTION_COPY.execution.live : undefined}
-          technologies={technologies} onSelectSummary={item => {
+          onSelectSummary={item => {
             if (item.id === 'pages') { openWorkspace('pages'); return }
             const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')
             target?.focus({ preventScroll: true }); target?.scrollIntoView({ behavior: 'instant', block: 'start' })
@@ -221,11 +235,16 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
               return { id: card.id, flagCount: category.flagCount,
                 render: (layout: 'card' | 'row') => {
                 const Frame = layout === 'row' ? 'div' : 'article'
-                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} className="rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true, layout === 'row') : null} renderFlagCopy={flag => !ownsSite || flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null} onOpen={trigger => {
+                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} className="rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? categoryRecovery(card.id) : null} renderFlagCopy={flag => !ownsSite || flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} iconOnly preview={false} /> : null} onOpen={trigger => {
                 opener.current = trigger
                 selectCategory(card.id)
               }} /></Frame> } }
             })} />
+        {(() => {
+          const unfinished = !checking ? recoveryLink() : null
+          return unfinished?.action === 'inspect' ? <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">{SITE_ACTION_COPY.recovery.inspectLead}
+            <Link href={unfinished.href as Route} className="inline-flex min-h-11 items-center gap-1 font-medium text-foreground underline-offset-4 hover:underline">{SITE_ACTION_COPY.recovery.inspect}<ArrowRight size={14} aria-hidden /></Link></p> : null
+        })()}
       </section> : null}
 
       {viewMode === 'pages' ? <SitePages siteId={siteId} view={view} onOpenFlag={openFlag} /> : null}
@@ -234,7 +253,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
           onOpenEvidence: 'evidenceHref' in event && event.evidenceHref === `/sites/${siteId}#category-uptime` ? () => openWorkspace('home', 'category-uptime') : undefined,
           flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => openFlag(flag.id, trigger),
           copyAction: view.flags.some(current => (current.id === flag.id || current.sourceFlagId === flag.id) && (view.actions.copy !== 'available' || current.fix.trim()))
-            ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} compact /> : null })) : undefined }))} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} />
+            ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={flag.title} availability={view.actions.copy} iconOnly preview={false} /> : null })) : undefined }))} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} />
       </section> : null}
 
       {viewMode === 'integrations' ? <section id="integrations" aria-labelledby="integrations-heading"><div><h2 id="integrations-heading" className="sr-only">Integrations</h2><p className="mt-1 text-sm text-muted-foreground">{B.integrationsBody}</p></div><SiteIntegrationsControls key={siteId} siteId={siteId} initial={view.settings} onRefresh={refresh} /></section> : null}

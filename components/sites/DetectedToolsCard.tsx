@@ -9,11 +9,11 @@ import { TechnologyStrip, ToolLogo, type ToolItem } from './SiteTooling'
 import { BOARD_PREVIEW_COPY as C } from '@/lib/marketing/copy/board-preview'
 import styles from './DetectedToolsCard.module.css'
 
-export function DetectedToolsCard({ items, onSelect }: { items: readonly ToolItem[]; onSelect?: (item: ToolItem) => void }) {
+export function DetectedToolsCard({ items, onSelect, inline = false }: { items: readonly ToolItem[]; onSelect?: (item: ToolItem) => void; inline?: boolean }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   if (!items.length) return null
-  return <section className={styles.card} aria-label="Detected technologies">
+  return <section className={styles.card} data-inline={inline || undefined} aria-label="Detected technologies">
     <InteractiveButton ref={trigger} type="button" className={styles.trigger} aria-label={C.viewTools} onClick={() => setOpen(true)}>
       <span className={styles.heading}><span>{C.detectedTools}</span><ArrowUpRight size={14} aria-hidden /></span>
       <span className={styles.tools}>{items.map(item => <span key={item.name} title={`${item.name}: ${item.status}`}><ToolLogo name={item.name} /><span>{item.name}</span></span>)}</span>

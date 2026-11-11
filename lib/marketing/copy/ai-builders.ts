@@ -91,10 +91,10 @@ export const AI_BUILDERS_PAGE = {
   title: 'Built with AI? Check what your visitors get.',
   titleLines: ['Built with AI?', 'Check what your visitors get.'] as const,
   body: 'AI tools build fast and check their own preview. FixFlags checks your live site in a real browser, hands your tool the fix, and rechecks to prove it worked.',
-  tools: { index: '01', label: 'Your tool', lines: ['Pick your tool.', 'Get the fix shaped for it.'] as const },
+  tools: { label: 'Your tool', lines: ['Pick your tool.', 'Get the fix shaped for it.'] as const },
   kinds: { builder: 'App builder', agent: 'Coding agent' },
   open: (name: string) => `FixFlags for ${name}`,
-  loopHeader: { index: '02', label: 'The loop', lines: ['Check. Flag. Fix. Verify.', 'The same in every tool.'] as const },
+  loopHeader: { label: 'The loop', lines: ['Check. Flag. Fix. Verify.', 'The same in every tool.'] as const },
   loop: [
     { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
     { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
@@ -102,7 +102,7 @@ export const AI_BUILDERS_PAGE = {
     { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Recheck. FixFlags checks the same page and action on the live site.' },
   ],
   why: {
-    index: '03', label: 'Independent', lines: ['An independent check.', 'Not the tool grading itself.'] as const,
+    label: 'Independent', lines: ['An independent check.', 'Not the tool grading itself.'] as const,
     body: 'The tool that made a change should not certify it. Builders test the preview before publish. FixFlags checks production after, and keeps the before and after with the Flag.',
   },
   tool: {

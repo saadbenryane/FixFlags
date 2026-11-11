@@ -19,24 +19,12 @@ export interface RepoFindingFixTaskInput {
   fix: string
 }
 
-export interface RepoFindingPayloadInput extends RepoFindingFixTaskInput {
-  id: string
-  agentPrompt?: string | null
-  cursorPrompt?: string | null
-  claudePrompt?: string | null
-  windsurfPrompt?: string | null
-}
-
 export interface RepoFindingFixTask {
   location: string
   branchName: string
   commitMessage: string
   prompt: string
   verification: string[]
-}
-
-export interface RepoFindingPayload extends RepoFindingFixTaskInput, RepoFindingFixTask {
-  id: string
 }
 
 export function repoFindingLocation(finding: {
@@ -130,25 +118,5 @@ export function buildRepoFindingFixTask(
     commitMessage,
     prompt,
     verification,
-  }
-}
-
-export function buildRepoFindingPayload(
-  finding: RepoFindingPayloadInput,
-  tool: RepoFindingPromptTool = 'generic'
-): RepoFindingPayload {
-  return {
-    id: finding.id,
-    repoFullName: finding.repoFullName,
-    commitSha: finding.commitSha,
-    severity: finding.severity,
-    category: finding.category,
-    filePath: finding.filePath,
-    lineStart: finding.lineStart,
-    lineEnd: finding.lineEnd,
-    problem: finding.problem,
-    evidence: finding.evidence,
-    fix: finding.fix,
-    ...buildRepoFindingFixTask(finding, tool),
   }
 }

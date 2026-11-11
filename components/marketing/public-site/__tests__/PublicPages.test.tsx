@@ -23,15 +23,16 @@ describe('public supporting pages', () => {
     expect(coverageMetadata.alternates?.canonical).toMatch(/\/coverage$/)
   })
 
-  it('shows eight coverage areas with evaluator-backed setup and limits', () => {
+  it('shows eight coverage areas with three examples each, setup labels, and limits, never the full list', () => {
     render(<CoveragePage />)
     for (const area of HOMEPAGE_CHECK_COVERAGE.areas) {
-      expect(document.getElementById(area.id)).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: area.name })).toBeVisible()
+      const section = document.getElementById(area.id)!
+      expect(within(section).getByRole('heading', { name: area.name })).toBeVisible()
+      for (const example of area.examples) expect(within(section).getAllByText(example.label)[0]).toBeVisible()
     }
-    fireEvent.click(document.querySelector('#conversion summary')!)
-    expect(screen.getAllByText(C.coveragePage.setup.signup_fixture)[0]).toBeVisible()
-    expect(screen.getAllByText(C.coveragePage.extent.heuristic, { exact: false }).length).toBeGreaterThan(0)
+    expect(within(document.getElementById('uptime')!).getAllByText(C.coveragePage.setupTags.uptime_probes).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Referrer policy')).not.toBeInTheDocument()
+    expect(screen.queryByText('Form length and trial requirements')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Couldn’t verify' })).toBeVisible()
   })
 

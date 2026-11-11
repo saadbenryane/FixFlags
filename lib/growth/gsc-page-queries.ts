@@ -1,7 +1,5 @@
 export const FOCUS_DISCOVERY_PATHS = ['/', '/pricing', '/partners'] as const
 
-export type FocusDiscoveryPath = (typeof FOCUS_DISCOVERY_PATHS)[number]
-
 export type GscDimensionRow = {
   keys: string[]
   clicks: number

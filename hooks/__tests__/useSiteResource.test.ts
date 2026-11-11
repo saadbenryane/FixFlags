@@ -94,14 +94,19 @@ it('keeps updating after analysis finishes until the independent result arrives,
   const fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => pending }).mockResolvedValue({ ok: true, json: async () => finished })
   vi.stubGlobal('fetch', fetch)
   const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0, isVisible: () => true, isOnline: () => true } }, children)
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
   const { result, unmount } = renderHook(() => useSiteResource('fixture-site', pending), { wrapper })
-  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
-  expect(result.current.view.outcomes[0].running).toBe(true)
-  await waitFor(() => expect(result.current.view.outcomes[0].lastVerifiedAt).toBe('2026-10-10T15:00:00Z'), { timeout: 5000 })
-  const calls = fetch.mock.calls.length
-  await new Promise(resolve => setTimeout(resolve, 2800))
-  expect(fetch).toHaveBeenCalledTimes(calls)
-  unmount()
+  try {
+    // Fake time steps through the 2.5 second poll instead of waiting for it.
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(result.current.view.outcomes[0].running).toBe(true)
+    await act(async () => { await vi.advanceTimersByTimeAsync(2700) })
+    expect(result.current.view.outcomes[0].lastVerifiedAt).toBe('2026-10-10T15:00:00Z')
+    const calls = fetch.mock.calls.length
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    expect(fetch).toHaveBeenCalledTimes(calls)
+  } finally { unmount(); vi.useRealTimers() }
 })
 it('retains the recorded view when a successful HTTP response has malformed state', async () => {
   const initial = siteViewFixture()
@@ -351,11 +356,15 @@ it('observes an active diagnostic run even when the broad analysis and Outcomes 
   const fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => initial }).mockResolvedValue({ ok: true, json: async () => finished })
   vi.stubGlobal('fetch', fetch)
   const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0, isVisible: () => true, isOnline: () => true } }, children)
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
   const { result, unmount } = renderHook(() => useSiteResource('fixture-site', initial), { wrapper })
-  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
-  await waitFor(() => expect(result.current.view.activeRuns).toEqual([]), { timeout: 5000 })
-  expect(result.current.view.audit.id).toBe('audit-1')
-  unmount()
+  try {
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(2700) })
+    expect(result.current.view.activeRuns).toEqual([])
+    expect(result.current.view.audit.id).toBe('audit-1')
+  } finally { unmount(); vi.useRealTimers() }
 })
 
 

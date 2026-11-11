@@ -64,7 +64,6 @@ export default async function SettingsPage() {
             email={user.email}
             emailVerified={user.emailVerified}
             planName={planDef.name}
-            isPaid={user.plan !== 'FREE'}
           />
         </CardContent>
       </Card>

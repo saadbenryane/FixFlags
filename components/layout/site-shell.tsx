@@ -1,5 +1,6 @@
 import { Header, type HeaderVariant } from '@/components/layout/header'
-import { DesktopSidebar, MobileSidebar } from '@/components/layout/sidebar'
+import { MobileSidebar } from '@/components/layout/sidebar'
+import { AppPanel } from '@/components/layout/AppPanel'
 import { ReportAppRail } from '@/components/layout/ReportAppRail'
 import { Logo } from '@/components/brand/Logo'
 import { Footer } from '@/components/layout/footer'
@@ -75,8 +76,8 @@ export function SiteShell({
           </>
         ) : hasSidebar ? (
           <div className="flex flex-1">
-            <DesktopSidebar showAdmin={showAdmin} />
-            <div className="flex min-w-0 flex-1 flex-col md:pl-48">
+            <AppPanel />
+            <div className="flex min-w-0 flex-1 flex-col md:pl-[var(--app-panel-width)]">
               <header data-primary-navigation className="sticky top-0 z-navbar flex h-14 items-center gap-3 px-4 glass-nav md:hidden">
                 <MobileSidebar showAdmin={showAdmin} />
                 <Logo variant="lockup" size="sm" href="/dashboard" />

@@ -19,11 +19,7 @@ import { runAccuracyFixtureChecks } from '@/lib/audit/fixture-html'
  * /systemone endpoint through the shared `jev-client` transport, but owns its
  * own question set, score mapping and triage conversion.
  *
- * It does NOT import `lib/audit/jev-triage.ts`. That adapter is an in-flight
- * experiment owned by another agent (check `npm run agent -- ownership`,
- * restore-ci-triage-adapter-2026-09-29) and currently does not typecheck.
- * Coupling this research gate to unreferenced experiment code would inherit
- * that breakage and blur whose scope is whose.
+ * The former unreferenced `lib/audit/jev-triage.ts` adapter has been removed.
  */
 import { isJevConfigured, callJev, type JevAnswer, type JevQuestion } from '@/lib/audit/jev-client'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'

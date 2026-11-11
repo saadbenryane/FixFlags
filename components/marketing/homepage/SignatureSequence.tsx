@@ -1,121 +1,138 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useId, useState } from 'react'
-import { Check, Flag, Pause, Play, RotateCcw, Terminal } from 'lucide-react'
-import { SIGNATURE_SEQUENCE as C, type SignatureStepId } from '@/lib/marketing/copy/signature-sequence'
+import Link from 'next/link'
+import type { Route } from 'next'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowRight, BadgeCheck, Check, Flag, ScanSearch, Sparkles, Terminal } from 'lucide-react'
+import { EditorMark } from '@/components/brand/EditorMarks'
+import { SIGNATURE_SEQUENCE as C } from '@/lib/marketing/copy/signature-sequence'
 import s from './SignatureSequence.module.css'
-
-/** Each scene holds long enough to read; the whole story runs about 16 seconds. */
-export const SIGNATURE_STEP_MS = 4000
 
 const STEPS = C.steps
 
-/** The page the visitor sees: the real capture, with the cursor, the Flag marker, or the recheck. */
-function PageView({ step }: { step: SignatureStepId }) {
-  if (step === 'verify') return <div className={s.page} data-step={step}>
-    <Image src={C.browser.after} alt={C.browser.afterAlt} width={780} height={1520} sizes="(max-width: 899px) 92vw, 600px" className={s.after} />
-    <p className={s.pageLabel}><i aria-hidden="true" />{C.browser.afterLabel}</p>
-  </div>
-  return <div className={s.page} data-step={step}>
-    <div className={s.frame}>
-      <Image src={C.browser.capture} alt={C.browser.captureAlt} width={720} height={440} priority sizes="(max-width: 899px) 92vw, 700px" className={s.capture} />
-      <span className={s.target} data-state={step} aria-hidden="true" />
-      {step === 'check' ? <span className={s.cursor} aria-hidden="true" /> : null}
-      {step !== 'check' ? <span className={s.marker} aria-hidden="true"><Flag size={13} strokeWidth={2.5} /></span> : null}
-    </div>
-  </div>
+/**
+ * The step is chosen by where its words sit on screen. On wide screens a step becomes current
+ * once its heading rises past this share of the viewport; on narrow screens, once it rises
+ * past this share of the space left below the pinned phone.
+ */
+export const STORY_LINE = { wide: .58, narrow: .5 } as const
+
+const STEP_ICONS = { check: ScanSearch, flag: Flag, fix: Sparkles, verify: BadgeCheck } as const
+
+/** Where the visitor is in the story. Decorative: the steps themselves carry the current step. */
+function Rail({ active, className }: { active: number; className: string }) {
+  return <ol className={className} aria-hidden="true">{STEPS.map((item, index) => {
+    const Icon = STEP_ICONS[item.id]
+    return <li key={item.id} data-state={index < active ? 'done' : index === active ? 'active' : 'next'}><Icon size={16} strokeWidth={2.1} /></li>
+  })}</ol>
 }
 
-/** What FixFlags shows beside the page at each step. */
-function Panel({ step }: { step: SignatureStepId }) {
-  switch (step) {
-    case 'check': return <div className={s.card}>
-      <p className={s.cardHead}><span className={s.live} aria-hidden="true" />{C.browser.logTitle}<small>{C.browser.logState}</small></p>
-      <ol className={s.log}>{C.browser.log.map((entry, index) => <li key={entry} style={{ '--entry': index } as React.CSSProperties} data-pending={index === C.browser.log.length - 1 || undefined}>
-        {index === C.browser.log.length - 1 ? <span className={s.spinner} aria-hidden="true" /> : <Check size={13} strokeWidth={2.5} aria-hidden="true" />}{entry}
-      </li>)}</ol>
-    </div>
-    case 'flag': return <article className={s.card} aria-label={C.flag.label}>
-      <p className={s.flagLabel}><Flag size={13} aria-hidden="true" />{C.flag.label}</p>
-      <h3>{C.flag.title}</h3>
-      <dl>{C.flag.facts.map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
-    </article>
-    case 'fix': return <div className={s.terminal}>
-      <p className={s.terminalBar}><Terminal size={13} aria-hidden="true" />{C.fix.tool}</p>
-      <div className={s.terminalBody}>
-        <p className={s.command}><span aria-hidden="true">&gt;</span> {C.fix.command}</p>
-        <ul>{C.fix.lines.map((line, index) => <li key={line} style={{ '--line': index } as React.CSSProperties}>{line}</li>)}</ul>
-        <p className={s.copyState} aria-hidden="true"><span>{C.fix.copy}</span><span className={s.copied}><Check size={13} />{C.fix.copied}</span></p>
+/** What FixFlags shows beside the phone at each step. Every layer stays in the reading order. */
+function Layers() {
+  return <>
+    <div className={s.layer} data-for="check">
+      <div className={s.card}>
+        <p className={s.cardHead}><span className={s.live} aria-hidden="true" />{C.check.title}<small>{C.check.state}</small></p>
+        <ol className={s.log}>{C.check.log.map((entry, index) => {
+          const last = index === C.check.log.length - 1
+          return <li key={entry} style={{ '--i': index } as React.CSSProperties} data-pending={last || undefined}>
+            {last ? <span className={s.spinner} aria-hidden="true" /> : <Check size={13} strokeWidth={2.6} aria-hidden="true" />}{entry}
+          </li>
+        })}</ol>
       </div>
     </div>
-    case 'verify': return <article className={s.card} aria-label={C.receipt.stamp}>
-      <p className={s.stamp}><Check size={14} strokeWidth={3} aria-hidden="true" />{C.receipt.stamp}</p>
-      <h3>{C.receipt.title}</h3>
-      <dl className={s.receiptRows}>{C.receipt.rows.map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>
-      <p className={s.note}>{C.receipt.note}</p>
-    </article>
-  }
+    <div className={s.layer} data-for="flag">
+      <article className={s.card} aria-label={C.flag.label}>
+        <p className={s.flagLabel}><Flag size={13} strokeWidth={2.4} aria-hidden="true" />{C.flag.label}</p>
+        <p className={s.cardTitle}>{C.flag.title}</p>
+        <dl className={s.facts}>{C.flag.facts.map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
+      </article>
+    </div>
+    <div className={s.layer} data-for="fix">
+      <div className={s.terminal}>
+        <p className={s.terminalBar}><Terminal size={13} aria-hidden="true" />{C.fix.tool}</p>
+        <div className={s.terminalBody}>
+          <p className={s.command}><span aria-hidden="true">&gt;</span> {C.fix.command}</p>
+          <ul>{C.fix.lines.map((line, index) => <li key={line} style={{ '--i': index } as React.CSSProperties}>{line}</li>)}</ul>
+          <p className={s.copyState} aria-hidden="true"><span>{C.fix.copy}</span><span className={s.copied}><Check size={13} strokeWidth={2.6} />{C.fix.copied}</span></p>
+        </div>
+      </div>
+    </div>
+    <div className={s.layer} data-for="verify">
+      <article className={s.card} aria-label={C.receipt.stamp}>
+        <p className={s.stamp}><Check size={14} strokeWidth={3} aria-hidden="true" />{C.receipt.stamp}</p>
+        <p className={s.cardTitle}>{C.receipt.title}</p>
+        <dl className={s.receipt}>{C.receipt.rows.map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>
+      </article>
+    </div>
+  </>
 }
 
+/** Scroll through the product: the phone stays in view while Check, Flag, Fix and Verify pass by. */
 export function SignatureSequence() {
-  const id = useId()
-  const [index, setIndex] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const [run, setRun] = useState(0)
+  const [active, setActive] = useState(0)
+  // The Check walk waits until the phone is on screen, so the visitor sees it from the first tap.
+  const [seen, setSeen] = useState(false)
+  const headings = useRef<(HTMLHeadingElement | null)[]>([])
+  const stage = useRef<HTMLDivElement | null>(null)
 
-  // Motion starts only when the visitor has not asked for reduced motion.
   useEffect(() => {
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(true)
+    let frame = 0
+    const narrow = window.matchMedia('(max-width: 899px)')
+    const update = () => {
+      frame = 0
+      const box = stage.current?.getBoundingClientRect()
+      const below = box?.bottom ?? 0
+      if (box && box.top < window.innerHeight * .7) setSeen(true)
+      const line = narrow.matches ? below + (window.innerHeight - below) * STORY_LINE.narrow : window.innerHeight * STORY_LINE.wide
+      let next = 0
+      headings.current.forEach((heading, index) => { if (heading && heading.getBoundingClientRect().top < line) next = index })
+      setActive(next)
+    }
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
   }, [])
 
-  useEffect(() => {
-    if (!playing) return
-    if (index === STEPS.length - 1) { setPlaying(false); return }
-    const timer = window.setTimeout(() => setIndex(current => current + 1), SIGNATURE_STEP_MS)
-    return () => window.clearTimeout(timer)
-  }, [playing, index, run])
-
-  const step = STEPS[index]
-  const finished = !playing && index === STEPS.length - 1
-  const select = (next: number) => { setPlaying(false); setIndex(next) }
-  const replay = () => { setIndex(0); setRun(current => current + 1); setPlaying(true) }
-  const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-    if (!delta) return
-    event.preventDefault()
-    const next = (index + delta + STEPS.length) % STEPS.length
-    select(next)
-    document.getElementById(`${id}-tab-${next}`)?.focus()
-  }
-
-  return <figure className={s.sequence} aria-label={C.label} data-playing={playing || undefined}>
-    <div className={s.rail} role="tablist" aria-label={C.controls.steps}>
-      {STEPS.map((item, itemIndex) => <button key={item.id} id={`${id}-tab-${itemIndex}`} type="button" role="tab"
-        aria-selected={itemIndex === index} aria-controls={`${id}-panel`} tabIndex={itemIndex === index ? 0 : -1}
-        className={s.step} data-state={itemIndex < index ? 'done' : itemIndex === index ? 'active' : 'next'} onClick={() => select(itemIndex)} onKeyDown={onKeyDown}>
-        <span className={s.stepIndex} aria-hidden="true">{String(itemIndex + 1).padStart(2, '0')}</span>
-        <span className={s.stepTitle}>{item.tab}.</span>
-        <span className={s.stepLine}>{item.caption}</span>
-        {itemIndex === index && playing ? <span key={`${run}-${index}`} className={s.progress} aria-hidden="true" style={{ animationDuration: `${SIGNATURE_STEP_MS}ms` }} /> : null}
-      </button>)}
+  const step = STEPS[active].id
+  return <section className={s.story} data-story aria-labelledby="story-title">
+    <h2 id="story-title" className="sr-only">{C.title}</h2>
+    <div className={s.stageWrap} ref={stage}>
+      <figure className={s.stage} data-step={step} data-seen={seen || undefined} aria-label={C.label}>
+        <div className={s.phone}>
+          <div className={s.screen}>
+            <Image src={C.phone.before} alt={C.phone.beforeAlt} width={780} height={1520} sizes="(max-width: 899px) 250px, 320px" quality={82} className={s.before} />
+            <Image src={C.phone.ready} alt="" width={780} height={1520} sizes="(max-width: 899px) 250px, 320px" quality={82} className={s.ready} />
+            <Image src={C.phone.home} alt="" width={780} height={1520} sizes="(max-width: 899px) 250px, 320px" quality={82} className={s.home} />
+            <Image src={C.phone.after} alt={C.phone.afterAlt} width={780} height={1520} sizes="(max-width: 899px) 250px, 320px" quality={82} className={s.after} />
+            <span className={s.tap} aria-hidden="true" />
+            <span className={s.ring} aria-hidden="true" />
+            <span className={s.marker} aria-hidden="true"><Flag size={12} strokeWidth={2.6} /></span>
+          </div>
+        </div>
+        <Layers />
+        <Rail active={active} className={s.railCompact} />
+        <figcaption className={s.caption}>{C.label}</figcaption>
+      </figure>
     </div>
-    <p className={s.mobileCaption} aria-hidden="true">{step.caption}</p>
-    <div className={s.window}>
-      <div className={s.chrome}>
-        <span className={s.dots} aria-hidden="true"><i /><i /><i /></span>
-        <p className={s.url}>{C.browser.url}</p>
-        <span className={s.sample}>{C.sampleNote}</span>
-        {finished
-          ? <button type="button" className={s.control} onClick={replay}><RotateCcw size={14} aria-hidden="true" />{C.controls.replay}</button>
-          : <button type="button" className={s.control} onClick={() => setPlaying(current => !current)}>
-              {playing ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}{playing ? C.controls.pause : C.controls.play}
-            </button>}
-      </div>
-      <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${index}`} className={s.body} data-step={step.id} key={`${run}-${step.id}`}>
-        <PageView step={step.id} />
-        <div className={s.side}><Panel step={step.id} /></div>
-      </div>
-    </div>
-  </figure>
+    <Rail active={active} className={s.rail} />
+    <ol className={s.steps}>
+      {STEPS.map((item, index) => <li key={item.id} data-active={index === active || undefined} aria-current={index === active ? 'step' : undefined}>
+        <div className={s.stepText}>
+          <h3 ref={node => { headings.current[index] = node }}>{item.tab}<span aria-hidden="true">.</span></h3>
+          <p>{item.caption}</p>
+          {item.points.length ? <ul className={s.points}>{item.points.map(point => <li key={point}>{point}</li>)}</ul> : null}
+          {item.id === 'fix' ? <ul className={s.points} aria-label={C.toolsLabel}>{C.tools.map(name => <li key={name}><EditorMark name={name} className={s.toolMark} />{name}</li>)}</ul> : null}
+          {item.id === 'verify' ? <Link href={C.verifyAction.href as Route} className={s.link}>{C.verifyAction.label}<ArrowRight size={16} aria-hidden="true" /></Link> : null}
+        </div>
+      </li>)}
+    </ol>
+  </section>
 }

@@ -1,3 +1,4 @@
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { BoardCard, ProductBoardCard } from '../BoardCard'
@@ -6,6 +7,8 @@ import { hydrateRoot, type Root } from 'react-dom/client'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+
+const meter = (level: 1 | 2 | 3 | 4 | 5) => SITE_DASHBOARD_COPY.priorityMeter(SITE_DASHBOARD_COPY.priorityLevels[level], level)
 
 describe('BoardCard chrome', () => {
   it('keeps a large overview row short with an explicit route to the remaining Flags', () => {
@@ -60,13 +63,15 @@ describe('BoardCard chrome', () => {
     expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
   })
 
-  it('shows the recorded priority beside each preview Flag', () => {
+  it('shows the recorded priority as a meter beside each preview Flag', () => {
     render(<BoardCard compact showFlagPreview name="Pages" icon="site" state="problem" status="2 Flags" answer="Problems" flags={[
       { id: 'high', title: 'Pricing unavailable', href: '#high', priorityBand: 'fix_first' },
       { id: 'lower', title: 'Contact loads slowly', href: '#lower', priorityBand: 'other' },
     ]} />)
-    expect(screen.getByText('High priority').parentElement).toHaveTextContent('Pricing unavailable')
-    expect(screen.getByText('Lower priority').parentElement).toHaveTextContent('Contact loads slowly')
+    // Priority reads as five bars, named for assistive technology; a Flag without a score falls back to its band.
+    expect(screen.getByRole('img', { name: meter(4) }).parentElement).toHaveTextContent('Pricing unavailable')
+    expect(screen.getByRole('img', { name: meter(2) }).parentElement).toHaveTextContent('Contact loads slowly')
+    expect(screen.queryByText('High priority')).not.toBeInTheDocument()
   })
 
   it.each(['card', 'row'] as const)('opens individual Flags and keeps the category target separate in %s layout', layout => {
@@ -75,7 +80,7 @@ describe('BoardCard chrome', () => {
       { id: 'high', title: 'Pricing unavailable', href: '#high', priorityBand: 'fix_first' },
       { id: 'lower', title: 'Contact loads slowly', href: '#lower', priorityBand: 'other' },
     ]} />)
-    fireEvent.click(screen.getByText('High priority'))
+    fireEvent.click(screen.getByRole('img', { name: meter(4) }))
     expect(open).toHaveBeenCalledWith('high', screen.getByRole('button', { name: 'Open Pricing unavailable' }))
     expect(category).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Open Contact loads slowly' }))
@@ -137,7 +142,7 @@ describe('BoardCard chrome', () => {
     expect(screen.getAllByText('Some checks unfinished')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Check Security again' })).toBeVisible()
   })
-  it('shows unfinished work and a separate recovery action alongside recorded Flags', () => {
+  it('keeps a bare recovery action in the header beside the count, separate from recorded Flags', () => {
     const retry = vi.fn()
     render(<BoardCard name="Search" status="1 Flag" state="problem" answer="Page title is missing" icon="search"
       layout="row" flags={[{ id: 'f1', title: 'Page title is missing', href: '#flag' }]}
@@ -147,7 +152,8 @@ describe('BoardCard chrome', () => {
     expect(screen.queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     const action = screen.getByRole('button', { name: 'Check Search again' })
     const flags = screen.getByRole('list')
-    expect(flags.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(flags.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect(flags.contains(action)).toBe(false)
     expect(action.parentElement?.closest('button, a')).toBeNull()
     fireEvent.click(action)
     expect(retry).toHaveBeenCalledOnce()

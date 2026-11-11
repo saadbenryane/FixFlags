@@ -115,8 +115,3 @@ export function sumProviderPhases(events: readonly { event?: string; detail: unk
     cacheWriteTokens: totals.reduce((sum, phase) => sum + phase.cacheWriteTokens, 0),
     model: [...new Set(totals.flatMap(phase => phase.model ? phase.model.split(',') : []))].join(',') }
 }
-
-/** The existing phase-one subtotal covers every initial-analysis provider. */
-export function sumAnalysisProviderResponses(events: readonly { event?: string; detail: unknown }[]) {
-  return sumProviderPhases(events, INITIAL_ANALYSIS_PROVIDER_PHASES)
-}

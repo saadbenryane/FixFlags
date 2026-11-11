@@ -6,8 +6,6 @@ import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import s from './CareHomepage.module.css'
 
 export const HOMEPAGE_EVIDENCE = {
-  failed: '/marketing/evidence/purchase-broken.png',
-  passed: '/marketing/evidence/purchase-verified.png',
   site: '/marketing/evidence/site-home.png',
   siteMobile: '/marketing/evidence/site-home-mobile.png',
 } as const

@@ -2,7 +2,7 @@
 .heading > div { min-width: 0; }
 .heading h2, .removal h2 { font-size: 15px; font-weight: 600; line-height: 1.5; }
 .heading p, .removal p { margin-top: 5px; font-size: 13px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
-.icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid hsl(var(--border) / .65); border-radius: 10px; background: hsl(var(--muted) / .4); color: hsl(var(--muted-foreground)); }
+.icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: hsl(var(--muted) / .55); color: hsl(var(--foreground) / .75); }
 .schedule { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .scheduleLabel { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .scheduleLabel i { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--muted-foreground)); }
@@ -18,7 +18,7 @@
 .toggle { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; margin-top: 16px; padding-block: 10px; font-size: 13px; line-height: 1.6; }
 .toggle > span { min-width: 0; padding-top: 10px; }
 .toggle:has(button:disabled) { color: hsl(var(--muted-foreground)); }
-.details { margin-top: 8px; font-size: 12px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
+.details { margin-top: 12px; font-size: 12px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
 .details summary { display: flex; align-items: center; gap: 8px; width: fit-content; min-height: 44px; padding-block: 8px; cursor: pointer; list-style: none; }
 .details summary::-webkit-details-marker { display: none; }
 .details summary svg { flex-shrink: 0; }

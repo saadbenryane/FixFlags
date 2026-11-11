@@ -34,4 +34,3 @@ export const recordedSiteAssessmentSchema = z.object({
     new Set(recorded.customerFlags.map(item => item.group + ':' + item.index)).size !== recorded.customerFlags.length)
     context.addIssue({ code: 'custom', message: 'Inconsistent recorded Site conclusion' })
 })
-export type RecordedSiteAssessment = z.infer<typeof recordedSiteAssessmentSchema>

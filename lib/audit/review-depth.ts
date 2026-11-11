@@ -4,7 +4,6 @@ import {
   collectEligibleDestinations,
   canonicalizeDestination,
   navigationDestinationKey,
-  reviewPathLabel,
   type EligibleLink,
   isEligiblePublicDestination,
 } from '@/lib/audit/url-identity'
@@ -199,11 +198,6 @@ export function planReviewTargets(input: {
     openCheckUrls: [...openCheckUrls],
     truncated: eligibleNavigations.size > reviewCeiling,
   }
-}
-
-export function progressReviewingDetail(url: string): string {
-  const label = reviewPathLabel(url)
-  return label === 'Home' ? 'Reviewing this page' : `Reviewing ${label}`
 }
 
 export { parseReviewCoverage, type ReviewCoverage } from './review-coverage'

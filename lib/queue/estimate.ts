@@ -103,64 +103,6 @@ export interface QueueStatus {
   workerAvailable: boolean
 }
 
-export async function getAuditQueueInfo(auditId: string): Promise<QueueStatus | null> {
-  const queue = getAuditQueue()
-  const job = await queue.getJob(auditId)
-  if (!job) return null
-
-  const state = await job.getState()
-  const [active, waiting, heartbeat] = await Promise.all([
-    queue.getActiveCount(),
-    queue.getWaitingCount(),
-    readWorkerHeartbeat(),
-  ])
-  const workerAvailable = heartbeat.alive && heartbeat.browserOk
-
-  if (state === 'delayed') {
-    const delayMs = typeof job.opts.delay === 'number' ? job.opts.delay : 0
-    const processedOn = job.processedOn ?? job.timestamp ?? Date.now()
-    const scheduledStartAt = new Date(processedOn + delayMs)
-    const remainingMs = Math.max(0, scheduledStartAt.getTime() - Date.now())
-    return {
-      state: 'delayed',
-      jobsAhead: 0,
-      estimatedWaitSeconds: Math.max(1, Math.ceil(remainingMs / 1000)),
-      scheduledStartAt: scheduledStartAt.toISOString(),
-      workerAvailable,
-    }
-  }
-
-  if (state === 'waiting') {
-    const waitingJobs = await queue.getWaiting()
-    const index = waitingJobs.findIndex((j) => j.id === auditId)
-    const waitingAhead = index >= 0 ? index : waiting
-    const capacity = workerAvailable ? heartbeat.configuredConcurrency : 0
-    const position = active + waitingAhead
-    return {
-      state: 'waiting',
-      jobsAhead: position,
-      estimatedWaitSeconds:
-        capacity > 0
-          ? Math.ceil((waitingAhead + 1) / capacity) * AVG_JOB_DURATION_SECONDS
-          : null,
-      scheduledStartAt: null,
-      workerAvailable,
-    }
-  }
-
-  if (state === 'active') {
-    return {
-      state: 'active',
-      jobsAhead: 0,
-      estimatedWaitSeconds: 0,
-      scheduledStartAt: null,
-      workerAvailable: true,
-    }
-  }
-
-  return null
-}
-
 export function computeEnqueueDelay(
   rateLimitRetryAfterSeconds: number,
   workerEstimate: QueueEstimate

@@ -1,21 +1,10 @@
-import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
+import type { CardHealthState } from '@/lib/sites/card-areas'
 import type { CoverageFact } from '@/lib/sites/coverage'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { CustomerOutcomeState } from '@/lib/sites/outcome-state'
-import { LEGACY_BROAD_REQUIRED_AREAS, projectSiteAssessment, type SiteAssessment } from './assessment'
+import { projectSiteAssessment, type SiteAssessment } from './assessment'
 import { uptimeAssessment, type UptimeStatus } from '@/lib/uptime/status'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
-
-/** Starter areas that must be evidenced before the Site card can say healthy. */
-export const REQUIRED_STARTER_AREAS: SiteCardArea[] = [...LEGACY_BROAD_REQUIRED_AREAS]
-
-export function requiredAreasUnchecked(coverage: CoverageFact[]): CoverageFact[] {
-  return coverage.filter(
-    (fact) =>
-      REQUIRED_STARTER_AREAS.includes(fact.area) &&
-      (fact.state === 'unknown' || !fact.evidenced)
-  )
-}
 
 /**
  * Site-level health is coverage-bounded. Zero open Flags is not healthy when
