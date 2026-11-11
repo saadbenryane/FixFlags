@@ -14,6 +14,7 @@ import { projectRecordedSiteResult } from './recorded-assessment'
 import { analysisDidNotFinish } from '../analysis-completion'
 import { readSiteEvidence } from './site-evidence-read'
 import { recordedOutcomes } from './recorded-outcomes'
+import { customerFindingLabel } from '../finding-label'
 
 const historySelect = {
   id: true, ...flagComparisonAuditScopeSelect, status: true, failureCode: true, failureStage: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
@@ -102,7 +103,7 @@ export function projectHistory(audit: HistoryAudit, legacyIds: string[], proofFl
   const proof = source && proofFlags.find(item => item.id === source.id && item.auditId === source.auditId)
   // A repair event opens the Flag the owner selected, even if the recheck
   // emitted a fresh observation with the same wording.
-  let linkedFlags = (proof ? [proof] : flags).map(flag => ({ id: flag.id, title: flag.problem }))
+  let linkedFlags = (proof ? [proof] : flags).map(flag => ({ id: flag.id, title: customerFindingLabel(flag) }))
   const repair = recordedRepairConclusion({ executionSpec, verificationTarget: selected?.verificationTarget, audit })
   const repairCheck = Boolean(repair || metadata.afterFix || metadata.scope === 'DIAGNOSTIC')
   const accountOnly = (audit.executionSpec as { scope?: string } | null)?.scope === 'ACCOUNT_CHECKS'
@@ -135,7 +136,7 @@ export function projectHistory(audit: HistoryAudit, legacyIds: string[], proofFl
       assessments: outcomes.flatMap(item => item.assessment ? [item.assessment] : []) })
     if (findings) {
       flagCount = findings.length
-      linkedFlags = findings.flatMap(finding => finding.id ? [{ id: finding.id, title: finding.problem }] : [])
+      linkedFlags = findings.flatMap(finding => finding.id ? [{ id: finding.id, title: customerFindingLabel(finding) }] : [])
     }
     metadata.result = assessment.result === 'FLAG' ? 'FLAG' : assessment.result === 'CLEAR' ? 'CLEAR' : 'COULD_NOT_VERIFY'
     completionState = audit.status === 'FAILED' ? 'FAILED' : assessment.completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL'

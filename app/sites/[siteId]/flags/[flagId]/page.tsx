@@ -203,15 +203,18 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </h2>
                 {resolution.kind === 'proven' ? <p className="mt-1 text-sm text-muted-foreground">{plainTitle}</p> : null}
                 <div className="mt-5 space-y-5">
-                  <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
-                    observedLabel={FLAG_PAGE_COPY.observed} expectedLabel={FLAG_PAGE_COPY.expected}
-                    supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
                   {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
                   {affectedPaths.length > 1 ? <details className="text-sm">
                     <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.viewAll(affectedPaths.length)}</summary>
                     <ul className="mt-2 space-y-1">{affectedPaths.map((path) => <li key={path}><RecordedPageLink url={path} className={linkClass}>{recordedPathLabel(path)}</RecordedPageLink></li>)}</ul>
                   </details> : null}
-                  {flag.performanceEvidenceSource ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
+                  <details className="text-sm">
+                    <summary className="flex min-h-11 cursor-pointer items-center font-medium text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.details}</summary>
+                    <div className="mt-3 space-y-5">
+                      <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
+                        observedLabel={FLAG_PAGE_COPY.observed} expectedLabel={FLAG_PAGE_COPY.expected}
+                        supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
+                      {flag.performanceEvidenceSource ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
                     <p>{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p>
                     {flag.performanceEvidence?.length ? <details>
                       <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.conditions}</summary>
@@ -222,14 +225,13 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     </details> : <p className="text-xs text-muted-foreground">{SITE_ACTION_COPY.flagEvidence.conditionsUnknown}</p>}
                     {flag.pageUrl ? <a className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(flag.pageUrl)}`} target="_blank" rel="noopener noreferrer">{SITE_ACTION_COPY.flagEvidence.retestPerformance}</a> : null}
                   </div> : null}
-                  {flag.evidenceContext ? <details className="text-sm">
-                    <summary className="flex min-h-11 cursor-pointer items-center font-medium text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.details}</summary>
-                    <dl className="mt-3 space-y-3 text-xs text-muted-foreground">
+                      {flag.evidenceContext ? <dl className="space-y-3 text-xs text-muted-foreground">
                       <div><dt>{FLAG_PAGE_COPY.foundBy}</dt><dd className="text-foreground">{SITE_ACTION_COPY.flagEvidence.sources[flag.evidenceContext.source as keyof typeof SITE_ACTION_COPY.flagEvidence.sources] ?? SITE_ACTION_COPY.flagEvidence.unknown}</dd></div>
                       {flag.evidenceContext.recordedAt ? <div><dt>{FLAG_PAGE_COPY.found}</dt><dd className="text-foreground"><time dateTime={flag.evidenceContext.recordedAt}>{formatEvidenceTimestamp(flag.evidenceContext.recordedAt)}</time></dd></div> : null}
                       {flag.evidenceContext.references.length ? <div><dt>{FLAG_PAGE_COPY.elements}</dt><dd><ul className="mt-1 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words font-mono text-foreground">{[reference.label, reference.selector, reference.device].filter(Boolean).join(', ')}</li>)}</ul></dd></div> : null}
-                    </dl>
-                  </details> : null}
+                      </dl> : null}
+                    </div>
+                  </details>
                 </div>
               </section>
 

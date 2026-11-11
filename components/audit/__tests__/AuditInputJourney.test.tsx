@@ -67,7 +67,7 @@ describe('AuditInput public entry journey handoff', () => {
     expect(pixel.mock.calls.filter(([verb, name]) => verb === 'track' && name === 'Lead')).toHaveLength(leads)
   })
 
-  it('links a new consented landing to the Analyze request after consent is withdrawn and restored', async () => {
+  it('measures the arrival, then links a landing restored after opt-out to the Analyze request', async () => {
     window.history.replaceState({}, '', '/')
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       siteId: 'site-journey', reportId: 'audit-journey', reused: false,
@@ -78,9 +78,13 @@ describe('AuditInput public entry journey handoff', () => {
       <LandingViewTracker />
       <MeProvider initialUser={null}><AuditInput variant="landing" idSuffix="-reconsent" /></MeProvider>
     </>)
+    const landingKeys = () => (window.dataLayer ?? []).map(command => Array.from(command as IArguments))
+      .filter(([command, name]) => command === 'event' && name === 'landing_view')
+      .map(([, , params]) => (params as Record<string, unknown>).journey_id)
+    // Analytics is on at arrival; a journey id needs an explicit grant.
+    expect(landingKeys()).toEqual([undefined])
     act(() => writeAnalyticsConsent('granted'))
-    const firstKey = sessionStorage.getItem(ANALYTICS_JOURNEY_STORAGE_KEY)
-    expect(isAnalyticsJourneyId(firstKey)).toBe(true)
+    expect(landingKeys()).toEqual([undefined])
     act(() => writeAnalyticsConsent('denied'))
     expect(sessionStorage.getItem(ANALYTICS_JOURNEY_STORAGE_KEY)).toBeNull()
     act(() => writeAnalyticsConsent('granted'))
@@ -92,11 +96,7 @@ describe('AuditInput public entry journey handoff', () => {
 
     const { journeyId } = JSON.parse(fetchMock.mock.calls[0][1].body)
     expect(isAnalyticsJourneyId(journeyId)).toBe(true)
-    expect(journeyId).not.toBe(firstKey)
-    const landingKeys = (window.dataLayer ?? []).map(command => Array.from(command as IArguments))
-      .filter(([command, name]) => command === 'event' && name === 'landing_view')
-      .map(([, , params]) => (params as Record<string, unknown>).journey_id)
-    expect(landingKeys).toEqual([firstKey, journeyId])
+    expect(landingKeys()).toEqual([undefined, journeyId])
     expect(startedEvents()).toEqual([expect.objectContaining({ journey_id: journeyId })])
   })
 
@@ -139,10 +139,9 @@ describe('AuditInput public entry journey handoff', () => {
     } else {
       expect(body).not.toHaveProperty('journeyId')
       expect(sessionStorage.getItem(ANALYTICS_JOURNEY_STORAGE_KEY)).toBeNull()
-      if (consent) {
-        expect(startedEvents()).toHaveLength(1)
-        expect(startedEvents()[0].journey_id).toBeUndefined()
-      } else expect(startedEvents()).toEqual([])
+      // Analytics measures the start either way; only a grant adds a journey id.
+      expect(startedEvents()).toHaveLength(1)
+      expect(startedEvents()[0].journey_id).toBeUndefined()
     }
   })
 })

@@ -14,6 +14,11 @@ import { RecordedPageLink } from './RecordedPageLink'
 
 import type { useSiteFlagDetail } from '@/hooks/useSiteFlagDetail'
 
+/** A page reads as its path; the full address stays in the link. */
+function pagePath(url: string) {
+  try { const { pathname, search } = new URL(url); return `${pathname}${search}` } catch { return url }
+}
+
 export function SiteFlagContent({ siteId, flagId, view, seed, resource }: {
   siteId: string; flagId: string | null; view: SiteHomeView; seed?: SiteHomeView['flags'][number]; resource: ReturnType<typeof useSiteFlagDetail>;
 }) {
@@ -35,25 +40,27 @@ export function SiteFlagContent({ siteId, flagId, view, seed, resource }: {
     {flag ? <>
       {resolved ? <p role="status" className="rounded-control bg-muted/30 p-4 text-sm">{C.flagResolved}</p> : null}
       {!resolved && !dismissed && !verifying && !stale && flag.verificationFeedback ? <FlagVerificationNotice feedback={flag.verificationFeedback} /> : null}
-      <section className="space-y-3" aria-label={SITE_BOARD_COPY.flagEvidence}>
-        <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
-          factsClassName="grid gap-3 text-sm sm:grid-cols-2 [&>div]:rounded-control [&>div]:bg-muted/30 [&>div]:p-4"
-          observedLabel={resolved ? C.previousObservation : undefined}
-          supportingObservations={flag.supportingObservations.map(item => ({ ...item, references: item.references.map(reference => ({ ...reference, selector: reference.selector })) }))} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
-      </section>
       {view.actions.copy === 'available' && !resolved && !dismissed ? <SiteFlagActions compact key={key}
         siteId={siteId} flagId={sourceFlagId ?? flag.id} referenceFlagId={flagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
         initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={verifying}
         initialVerificationAuditId={activeVerificationAuditId} onVerificationSettled={retry} /> :
         view.actions.copy !== 'available' ? <SitePromptAccessActions availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
+      {flag.pageUrl || otherPaths.length ? <div className="text-sm">
+        <p className="text-xs font-medium text-muted-foreground">{C.seenOn}</p>
+        <ul className="mt-1 flex flex-wrap gap-x-4">{[flag.pageUrl, ...otherPaths].filter((path): path is string => Boolean(path)).map(path => <li key={path} className="break-all"><RecordedPageLink url={path}
+          className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{pagePath(path)}</RecordedPageLink></li>)}</ul>
+      </div> : null}
       <details className="text-sm"><summary className="flex min-h-11 cursor-pointer items-center font-medium">{C.evidenceDetails}</summary>
         <div className="mt-3 space-y-4">
-          {flag.performanceEvidenceSource ? <p className="text-xs leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p> : null}
-          {flag.pageUrl ? <RecordedPageLink url={flag.pageUrl} className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control break-all underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /> : null}
-          {otherPaths.length ? <ul className="space-y-2">{otherPaths.map(path => <li key={path} className="break-all"><RecordedPageLink url={path}
-            className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></li>)}</ul> : null}
-          {flag.viewport ? <p className="text-muted-foreground">{flag.viewport}</p> : null}
           {data?.capture ? <BoardDetails image={{ src: data.capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={data.capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
+          <section className="space-y-3" aria-label={SITE_BOARD_COPY.flagEvidence}>
+            <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
+              factsClassName="grid gap-3 text-sm sm:grid-cols-2 [&>div]:rounded-control [&>div]:bg-muted/30 [&>div]:p-4"
+              observedLabel={resolved ? C.previousObservation : undefined}
+              supportingObservations={flag.supportingObservations.map(item => ({ ...item, references: item.references.map(reference => ({ ...reference, selector: reference.selector })) }))} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
+          </section>
+          {flag.performanceEvidenceSource ? <p className="text-xs leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p> : null}
+          {flag.viewport ? <p className="text-muted-foreground">{flag.viewport}</p> : null}
         </div>
       </details>
     </> : failed ? <div role="status" className="space-y-3"><p>{C.flagUnavailable}</p><Button variant="outline" loading={refreshing} loadingLabel={SITE_ACTION_COPY.loading} onClick={() => void retry()}>{SITE_ACTION_COPY.retryResults}</Button></div> : <p role="status" className="text-sm text-muted-foreground">{C.loadingFlag}</p>}

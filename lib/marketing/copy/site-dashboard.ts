@@ -72,7 +72,8 @@ export const SITE_DASHBOARD_COPY = {
   /** The five-bar priority meter, named for screen readers and on hover. */
   priorityLevels: { 1: 'Minor', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Urgent' },
   priorityMeter: (label: string, level: number) => `${label} priority, ${level} of 5`,
-  evidenceDetails: 'Evidence and check details',
+  evidenceDetails: 'Screenshot and technical details',
+  seenOn: 'Seen on',
   tracking: {
     library: 'No external tracking library observed',
     activity: 'No tracking event observed',

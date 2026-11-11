@@ -185,7 +185,7 @@ export async function probeCoverAtPoint(
           /accept|allow|agree|consent|got it|i agree|ok,?\s*continue/.test(label)
         )
         const hasReject = labels.some((label) =>
-          /reject|deny|decline|refuse|necessary only|essential only|no thanks|disagree|reject analytics/.test(
+          /reject|deny|decline|refuse|(?:only|just) (?:the )?(?:necessary|essential)|(?:necessary|essential)(?: cookies)? only|no thanks|disagree/.test(
             label
           )
         )

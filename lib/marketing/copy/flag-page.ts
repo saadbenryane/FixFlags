@@ -5,7 +5,7 @@ export const FLAG_PAGE_COPY = {
   pages: (count: number) => `${count} pages`,
   viewAll: (count: number) => `See all ${count} pages`,
   observed: 'What happened',
-  expected: 'After the fix',
+  expected: 'What should happen',
   details: 'Technical details',
   foundBy: 'Found by',
   found: 'Found',

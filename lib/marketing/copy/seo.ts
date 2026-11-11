@@ -26,7 +26,7 @@ export const SEO = {
     description: AI_BUILDERS_PAGE.seo.description,
   },
   home: {
-    title: `FixFlags | ${PRODUCT_STORY.summary}`,
+    title: `FixFlags | ${PRODUCT_STORY.headline.join(" ")}`,
     description: PRODUCT_STORY.description,
   },
   pricing: {

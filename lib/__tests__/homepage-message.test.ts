@@ -19,7 +19,7 @@ describe('shared product story contracts', () => {
     expect(SEO.home.description).toMatch(/real browser/i)
     expect(SEO.home.description).toMatch(/hands your AI the fix/i)
     expect(SEO.home.description).toMatch(/rechecks to prove it worked/i)
-    expect(SEO.home.title).toBe(`FixFlags | ${PRODUCT_STORY.summary}`)
+    expect(SEO.home.title).toBe(`FixFlags | ${PRODUCT_STORY.headline.join(" ")}`)
   })
   it('keeps the hero and social artwork on the same product promise', () => {
     expect(CARE_HOME.hero.headline.join(' ')).toBe(BRAND.tagline)

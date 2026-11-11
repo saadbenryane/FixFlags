@@ -8,7 +8,7 @@ const FEATURE_FLAG_INFRA = /feature[- ]flags? infra|openfeature/i
 describe('pre-publish brand discovery copy', () => {
   it('keeps FixFlags first on the official homepage snippet', () => {
     assert.match(SEO.home.title, /^FixFlags/)
-    assert.match(SEO.home.title, /Find what’s broken\. Hand your AI the fix\. Prove it worked\./)
+    assert.match(SEO.home.title, /Your AI built it\. We make sure it works\./)
     assert.match(SEO.home.description, /real browser/)
     assert.match(SEO.home.description, /hands your AI the fix/)
     assert.doesNotMatch(SEO.home.description, FEATURE_FLAG_INFRA)

@@ -36,6 +36,13 @@ export const FINDING_LABEL_COPY: Readonly<Record<string, string>> = {
   'slow-3g-cta-delayed': 'The main button appears late on slow connections',
   'scroll-ghost-sections': 'Some sections stay invisible when visitors scroll',
 
+  'overlay-blocks-cta': 'A pop-up covers the main button',
+  'overlay-blocks-nav': 'A pop-up covers the menu',
+  'overlay-blocks-form': 'A pop-up covers the form',
+  'account-signup-failed': 'Signing up doesn’t work',
+  'account-verification-failed': 'The sign-up email step doesn’t work',
+  'account-deletion-failed': 'A deleted account can still log in',
+
   // Forms
   'flow-form-no-validation': 'Sending the form empty shows no message',
   'flow-form-no-submit': 'The form has no visible submit button',
@@ -180,6 +187,13 @@ export const FINDING_LABEL_COPY: Readonly<Record<string, string>> = {
   'axe-video-caption': 'Videos have no captions',
   'axe-meta-refresh': 'The page reloads or redirects on a timer',
   'lang-missing': 'The page doesn’t say what language it’s in',
+
+  'keyboard-popup-opening': 'A pop-up doesn’t open with the Enter key',
+  'keyboard-popup-focus': 'Keyboard users can’t reach an open pop-up',
+  'keyboard-menu-navigation': 'Arrow keys don’t move through the menu',
+  'keyboard-modal-boundary': 'Keyboard focus slips out of an open pop-up',
+  'keyboard-popup-escape': 'The Escape key doesn’t close a pop-up',
+  'keyboard-focus-restoration': 'Keyboard users lose their place after closing a pop-up',
 
   // Search and sharing
   'title-missing': 'The page has no title for search results and browser tabs',

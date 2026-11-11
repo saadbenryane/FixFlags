@@ -81,7 +81,7 @@ describe('shared Flag evidence presentation', () => {
 
   it('explains missing evidence and avoids repeating a single observation', () => {
     render(<FlagEvidenceDetails observed={null} expected="The original condition must be observed again" />)
-    expect(screen.getByText(/Evidence for this Flag was not stored/)).toBeInTheDocument()
+    expect(screen.getByText(/Evidence for this Flag wasn’t saved/)).toBeInTheDocument()
     expect(screen.queryByText('More evidence')).not.toBeInTheDocument()
   })
   it('ranks repeated page measurements and keeps the rest behind the full list', () => {

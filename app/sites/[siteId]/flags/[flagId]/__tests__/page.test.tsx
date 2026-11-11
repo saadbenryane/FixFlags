@@ -334,6 +334,6 @@ describe('Flag verification attempts', () => {
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
     expect(screen.queryByRole('link', { name: C.open(url) })).toBeNull()
     expect(screen.queryByText('secret', { exact: false })).toBeNull()
-    expect(screen.getByText('The cart stayed empty.')).toBeVisible()
+    expect(screen.getByText('The cart stayed empty.')).toBeInTheDocument()
   })
 })
