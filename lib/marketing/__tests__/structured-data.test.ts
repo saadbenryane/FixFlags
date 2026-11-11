@@ -26,19 +26,19 @@ describe('structured data', () => {
   })
 
   it('emits FAQPage schema that matches visible FAQ copy and anchors', () => {
-    const schema = faqPageSchema(FAQ, { path: '/faq', name: FAQ_PAGE.title })
+    const schema = faqPageSchema(FAQ, { path: '/help', name: FAQ_PAGE.title })
     expect(schema).toMatchObject({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
-      url: `${SITE_URL}/faq`,
+      url: `${SITE_URL}/help`,
       name: FAQ_PAGE.title,
     })
     expect(schema.mainEntity).toHaveLength(FAQ.length)
     const freeQuestion = schema.mainEntity.find((entity) => entity.name === 'Is FixFlags free?')
     expect(freeQuestion).toMatchObject({
       '@type': 'Question',
-      '@id': `${SITE_URL}/faq#is-fixflags-free`,
-      url: `${SITE_URL}/faq#is-fixflags-free`,
+      '@id': `${SITE_URL}/help#is-fixflags-free`,
+      url: `${SITE_URL}/help#is-fixflags-free`,
     })
     const visible = FAQ.find(entry => entry.question === 'Is FixFlags free?')!
     expect(freeQuestion?.acceptedAnswer.text).toBe(`${visible.answer} ${visible.learnMore!.label}: ${SITE_URL}${visible.learnMore!.href}`)

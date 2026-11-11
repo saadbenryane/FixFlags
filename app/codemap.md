@@ -6,7 +6,7 @@ Next.js App Router routes: marketing pages, auth, authenticated dashboard, audit
 ## Route Groups
 | Route | Purpose |
 |-------|---------|
-| `(marketing)/` | Public pages: homepage, pricing, FAQ, help, tools, docs, changelog, roast |
+| `(marketing)/` | Public pages: homepage, pricing, help (with the FAQ), tools, docs, changelog |
 | `(auth)/` | Sign-in, sign-up, forgot/reset password |
 | `(app)/` | Authenticated dashboard, billing, settings |
 

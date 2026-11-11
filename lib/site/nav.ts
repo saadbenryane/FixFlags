@@ -10,33 +10,26 @@ export const MARKETING_LINKS = [
 
 export const MARKETING_NAV = [...MARKETING_LINKS] as const
 
+/** Three groups, separated by whitespace. Each destination appears once. */
 export const FOOTER_COLUMNS = {
   product: [
     { href: '/how-it-works', label: 'Product' },
     { href: '/ai-builders', label: 'For AI builders' },
     { href: '/for-agencies', label: 'For agencies' },
     { href: '/coverage', label: 'What it checks' },
-    { href: '/samples', label: 'Product sample' },
-    { href: '/use-cases', label: 'Use cases' },
-    { href: '/integrations', label: 'Integrations' },
     { href: '/compare', label: 'Compare' },
     { href: '/pricing', label: 'Pricing' },
   ],
   resources: [
     { href: '/docs', label: 'Docs' },
-    { href: '/docs/fix-with-ai', label: 'Fix with your AI' },
     { href: '/help', label: 'Help Center' },
-    { href: '/faq', label: 'FAQ' },
-    { href: '/blog', label: 'Blog' },
     { href: '/guides', label: 'Website guides' },
     { href: '/tools', label: 'Free tools' },
+    { href: '/blog', label: 'Blog' },
+    { href: '/changelog', label: 'Changelog' },
   ],
   company: [
-    { href: '/blog/introducing-fixflags', label: 'Why we built FixFlags' },
-    { href: '/changelog', label: 'Changelog' },
     { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
-  ],
-  trust: [
     { href: '/security', label: 'Privacy and security' },
     { href: '/privacy', label: 'Privacy Policy' },
     { href: '/terms', label: 'Terms' },

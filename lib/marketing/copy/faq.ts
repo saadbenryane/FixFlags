@@ -46,7 +46,7 @@ export const FAQ: readonly FaqEntry[] = [
   {
     question: 'Can I see what FixFlags saw?',
     answer: 'Yes. Open a problem to see the page and the details from our check, including screenshots when available. You can try the sample before checking your own website.',
-    learnMore: { href: '/samples', label: 'Explore the product sample' },
+    learnMore: { href: '/how-it-works#sample', label: 'Explore the product sample' },
   },
   {
     question: 'How do I know a fix worked?',
@@ -96,7 +96,7 @@ export const FAQ: readonly FaqEntry[] = [
   {
     question: 'Who is FixFlags for?',
     answer: 'Anyone looking after a live website or app, from someone building their first project to store owners, agencies, and marketing teams. Start with the pages your visitors use most.',
-    learnMore: { href: '/use-cases', label: 'Explore use cases' },
+    learnMore: { href: '/ai-builders', label: 'For AI builders' },
   },
 ] as const
 
@@ -108,6 +108,13 @@ export const CHANGELOG_PAGE = {
 } as const
 
 export const CHANGELOG_ENTRIES = [
+  {
+    date: '2026-11-11',
+    title: 'Connect your coding agent over MCP',
+    items: [
+      'The FixFlags MCP server is live: connect a coding agent to read Flag evidence and request a recheck. Setup is in the MCP guide.',
+    ],
+  },
   {
     date: '2026-11-10',
     title: 'Built for AI builders: fix it, then prove it',
@@ -136,7 +143,6 @@ export const CHANGELOG_ENTRIES = [
     date: '2026-10-11',
     title: 'Integration setup belongs in the docs',
     items: [
-      'Shopify, Google Analytics, and Google Search Console now have complete guides for setup, permissions, coverage, and recovery',
       'Available integrations link to their guides, and Site settings includes contextual documentation links',
       'Shopify authorization failures return to a recovery message in the guide',
       'The standalone Shopify install page has been retired in favor of connecting from an owned Site',

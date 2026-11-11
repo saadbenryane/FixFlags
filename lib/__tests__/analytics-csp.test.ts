@@ -38,7 +38,7 @@ it.each([
   },
 )
 
-it.each(['/sign-up?next=%2Fdashboard', '/samples/details', '/reports-guide'])('keeps the ordinary referral policy for %s', async path => {
+it.each(['/sign-up?next=%2Fdashboard', '/how-it-works', '/reports-guide'])('keeps the ordinary referral policy for %s', async path => {
   vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fixflags.com')
   const response = await proxy(new NextRequest(`https://fixflags.com${path}`))
   expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin')

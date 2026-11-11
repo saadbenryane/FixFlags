@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { ROAST_SEO, SEO } from '@/lib/marketing/copy/seo'
+import { SEO } from '@/lib/marketing/copy/seo'
 import { LLMS_SECTIONS } from '@/lib/marketing/seo-routes'
 
 const FEATURE_FLAG_INFRA = /feature[- ]flags? infra|openfeature/i
@@ -26,13 +26,9 @@ describe('pre-publish brand discovery copy', () => {
     assert.doesNotMatch(SEO.pricing.description, /24\/7/i)
     assert.doesNotMatch(SEO.pricing.description, /free on shopify/i)
     assert.doesNotMatch(SEO.pricing.description, /\$69|\$199/)
-
-    assert.match(SEO.useCases.title, /FixFlags/)
-    assert.match(SEO.useCases.description, /agencies/i)
   })
 
-  it('does not advertise a roast grade or Shopify-only pricing in llms notes', () => {
-    assert.doesNotMatch(ROAST_SEO.description, /\bgrade\b/i)
+  it('does not advertise Shopify-only pricing in llms notes', () => {
     const productNotes = LLMS_SECTIONS.flatMap((section) => section.links)
       .map((link) => `${link.path} ${link.note ?? ''}`)
       .join('\n')

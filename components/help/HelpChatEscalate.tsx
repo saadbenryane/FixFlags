@@ -34,7 +34,7 @@ export function HelpChatEscalate({
           </Button>
         ) : (
           <Button asChild size="sm">
-            <Link href="/help/account/contact-us">{HELP_CENTER.openChatCta}</Link>
+            <Link href="/help/troubleshooting/contact-support">{HELP_CENTER.openChatCta}</Link>
           </Button>
         )}
         <Button asChild variant="outline" size="sm">

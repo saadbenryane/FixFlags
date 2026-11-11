@@ -195,7 +195,7 @@ describe('technical discovery', () => {
     vi.mocked(getIndexableIssueCheckIds).mockResolvedValue([])
     const urls = (await sitemap()).map(entry => entry.url)
     expect(urls).not.toContain(`${baseUrl}/issues`)
-    for (const path of ['/coverage', '/security', '/use-cases']) expect(urls).toContain(`${baseUrl}${path}`)
+    for (const path of ['/coverage', '/security', '/guides']) expect(urls).toContain(`${baseUrl}${path}`)
   })
 
   it('does not advertise a new content update when only the request time changes', async () => {
@@ -231,5 +231,23 @@ describe('technical discovery', () => {
     const redirect = redirects.find((rule) => rule.source === logoPath)
     const publicAsset = redirect?.destination ?? logoPath
     expect(existsSync(resolve('public', publicAsset.slice(1)))).toBe(true)
+  })
+
+  it.each([
+    ['/samples', '/how-it-works#sample'],
+    ['/samples/details', '/how-it-works#sample'],
+    ['/examples', '/how-it-works#sample'],
+    ['/use-cases', '/ai-builders'],
+    ['/integrations', '/docs/integrations'],
+    ['/roast', '/'],
+    ['/request-demo', '/waitlist'],
+    ['/faq', '/help#faq'],
+    ['/help/mcp', '/docs/mcp'],
+  ])('permanently redirects retired %s to %s and keeps it out of discovery', async (source, destination) => {
+    const redirects = await nextConfig.redirects!()
+    expect(redirects.find((rule) => rule.source === source)).toMatchObject({ destination, permanent: true })
+    expect(INDEXABLE_ROUTES.some((route) => route.path === source)).toBe(false)
+    expect(LLMS_SECTIONS.flatMap((section) => section.links).some((link) => link.path === source)).toBe(false)
+    expect(existsSync(resolve('app/(marketing)', source.slice(1), 'page.tsx'))).toBe(false)
   })
 })

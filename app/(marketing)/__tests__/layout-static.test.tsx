@@ -10,10 +10,10 @@ describe('marketing layout static rendering', () => {
     expect(layout).toMatch(/MarketingShell/)
   })
 
-  it('mounts knowledge support from nested help and faq layouts', () => {
+  it('mounts knowledge support from the help layout, which also hosts the FAQ', () => {
     const help = readFileSync(join(process.cwd(), 'app/(marketing)/help/layout.tsx'), 'utf8')
-    const faq = readFileSync(join(process.cwd(), 'app/(marketing)/faq/layout.tsx'), 'utf8')
+    const helpPage = readFileSync(join(process.cwd(), 'app/(marketing)/help/page.tsx'), 'utf8')
     expect(help).toMatch(/KnowledgeSupportShell/)
-    expect(faq).toMatch(/KnowledgeSupportShell/)
+    expect(helpPage).toMatch(/id="faq"/)
   })
 })

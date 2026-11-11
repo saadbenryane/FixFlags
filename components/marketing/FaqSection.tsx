@@ -19,7 +19,7 @@ interface Props {
   title?: string
   /** Uppercase label above title (hidden when title is empty) */
   sectionLabel?: string | null
-  /** First item open on load (e.g. /faq page) */
+  /** First item open on load */
   defaultOpenFirst?: boolean
   /** Show search input */
   searchable?: boolean

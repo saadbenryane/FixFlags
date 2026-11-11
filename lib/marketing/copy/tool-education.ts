@@ -38,7 +38,7 @@ export const TOOL_EDUCATION = {
     links: [
       { href: '/guides/monitoring-ai-built-websites', label: 'Look after an AI-built website' },
       { href: '/tools/meta-preview', label: 'Check the link preview' },
-      { href: '/samples', label: 'Try the sample and copy a fix' },
+      { href: '/how-it-works#sample', label: 'Try the sample and copy a fix' },
     ],
   },
 } as const

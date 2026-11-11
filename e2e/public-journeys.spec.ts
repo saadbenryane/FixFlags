@@ -82,8 +82,8 @@ for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
-    await page.goto('/samples')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await page.goto('/how-it-works')
+    await expect(page.locator('#sample')).toBeVisible()
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -92,62 +92,13 @@ for (const width of widths) {
     expect(errors).toEqual([])
   })
 
-  test(`canonical sample exposes dated evidence and an independent recovery criterion at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    const errors: string[] = []
-    page.on('pageerror', (error) => errors.push(error.message))
-    await page.goto('/samples')
-
-    await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
-    const sample = page.locator('[data-testid="sample-site"]:visible')
-    await expect(sample).toHaveCount(1)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(PUBLIC_SITE_COPY.samplePage.title)
-    await expect(sample).toHaveAttribute('data-observation', /^curated-sample-/)
-    for (const heading of ['observed', 'fix', 'prompt', 'verification'] as const)
-      await expect(sample.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage[heading], exact: true })).toBeVisible()
-    const image = sample.getByRole('img', { name: PUBLIC_SITE_COPY.samplePage.imageAlt })
-    await image.scrollIntoViewIfNeeded()
-    await expect.poll(() => image.evaluate(element => element instanceof HTMLImageElement && element.complete && element.naturalWidth > 0)).toBe(true)
-    await expect(sample.getByText(PUBLIC_SITE_COPY.samplePage.verificationBody)).toBeVisible()
-    await sample.getByText(PUBLIC_SITE_COPY.samplePage.provenance, { exact: true }).click()
-    await expect(sample.getByText(PUBLIC_SITE_COPY.samplePage.provenanceBody)).toBeVisible()
-    await expect(sample.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/)
-
-    const dimensions = await page.evaluate(() => ({
-      clientWidth: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-    }))
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
-
-    const undersizedControls = await page
-      .locator('button, input, select, textarea, [role="button"], [role="tab"], header a[href], footer a[href]')
-      .evaluateAll((elements) => elements
-        .filter((element) => {
-          // Next's development-only shadow toolbar is framework tooling.
-          // Every customer control remains subject to the touch requirement.
-          const root = element.getRootNode()
-          if (root instanceof ShadowRoot && root.host.tagName === 'NEXTJS-PORTAL') return false
-          const rect = element.getBoundingClientRect()
-          const style = getComputedStyle(element)
-          // Chromium can report an exact 44px CSS target a fraction below 44px.
-          const minimumTarget = 43.99
-          return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && (rect.width < minimumTarget || rect.height < minimumTarget)
-        })
-        .map((element) => ({
-          text: element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 60),
-          width: element.getBoundingClientRect().width,
-          height: element.getBoundingClientRect().height,
-        })))
-    expect(undersizedControls).toEqual([])
-    expect(errors).toEqual([])
-  })
 }
 
 for (const width of [320, 375]) {
   test(`mobile sample and primary action remain responsive at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto('/samples')
-    await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
+    await page.goto('/how-it-works')
+    await expect(page.locator('#sample')).toBeVisible()
 
     const header = page.getByRole('banner')
     const logo = header.getByRole('link', { name: 'FixFlags' })
@@ -166,26 +117,27 @@ for (const width of [320, 375]) {
   })
 }
 
-test('legacy sample details redirects to the canonical Site sample', async ({ page }) => {
-  await page.goto('/samples/details')
-  await expect(page).toHaveURL(/\/samples(?:\?flag=[^#]+)?$/)
-  await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
-})
-
-test('curated sample demonstrates evidence, a proposed change, and a success condition', async ({ page }) => {
-  await page.goto('/samples')
-  await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
-  await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.observed, exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.fix, exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.verification, exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: PUBLIC_SITE_COPY.samplePage.copy, exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /verify|mark fixed/i })).toHaveCount(0)
+test('retired public pages permanently redirect to their canonical destinations', async ({ request }) => {
+  for (const [path, destination] of [
+    ['/samples', /\/how-it-works#sample$/],
+    ['/samples/details', /\/how-it-works#sample$/],
+    ['/examples', /\/how-it-works#sample$/],
+    ['/use-cases', /\/ai-builders$/],
+    ['/integrations', /\/docs\/integrations$/],
+    ['/roast', /^(?:https?:\/\/[^/]+)?\/$/],
+    ['/request-demo', /\/waitlist$/],
+    ['/faq', /\/help#faq$/],
+  ] as const) {
+    const response = await request.get(path, { maxRedirects: 0 })
+    expect(response.status(), path).toBe(308)
+    expect(response.headers()['location'], path).toMatch(destination)
+  }
 })
 
 test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/samples')
+  await page.goto('/how-it-works')
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%'
   })
@@ -253,10 +205,10 @@ test('parked power-tool help stays closed and website connection Docs remain ava
   await expect(page.getByRole('heading', { name: 'Available integrations' })).toBeVisible()
 })
 
-test('/help/mcp redirects to the help hub', async ({ request }) => {
+test('/help/mcp redirects to the MCP guide', async ({ request }) => {
   const response = await request.get('/help/mcp', { maxRedirects: 0 })
   expect(response.status()).toBe(308)
-  expect(response.headers()['location']).toMatch(/\/help$/)
+  expect(response.headers()['location']).toMatch(/\/docs\/mcp$/)
 })
 
 test('auth and pricing entry points render without client errors', async ({ page }) => {
@@ -454,7 +406,7 @@ const AXE_ROUTES: Array<{ name: string; path: string; expectHeading?: RegExp }> 
     expectHeading: /Sign in to your account/,
   },
   { name: 'pricing', path: '/pricing' },
-  { name: 'request demo', path: '/request-demo' },
+  { name: 'help', path: '/help' },
   { name: 'sign-in', path: '/sign-in' },
 ]
 
@@ -471,16 +423,16 @@ for (const route of AXE_ROUTES) {
   })
 }
 
-test('accessibility: completed Site sample has no axe violations', async ({ page }) => {
-  await page.goto('/samples')
-  await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
+test('accessibility: interactive product sample has no axe violations', async ({ page }) => {
+  await page.goto('/how-it-works')
+  await expect(page.locator('#sample')).toBeVisible()
   const results = await new AxeBuilder({ page: page as never }).analyze()
   expect((await inspectAccessibilityViolations(page, results.violations)).failures).toEqual([])
 })
 
 test('accessibility: key marketing surfaces pass in light and dark at launch widths', async ({ page }) => {
   test.setTimeout(120_000)
-  const routes = ['/', '/pricing', '/samples'] as const
+  const routes = ['/', '/pricing', '/how-it-works'] as const
   const schemes = ['light', 'dark'] as const
   const violations: string[] = []
 
@@ -520,8 +472,8 @@ for (const width of DENSITY_WIDTHS) {
   }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.goto('/samples')
-    await page.locator('[data-testid="sample-site"]:visible').waitFor()
+    await page.goto('/how-it-works')
+    await page.locator('#sample').waitFor()
     await page.evaluate(() => document.fonts.ready)
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%'

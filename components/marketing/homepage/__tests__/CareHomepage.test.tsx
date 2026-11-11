@@ -293,7 +293,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByText('Search rankings')).toBeVisible()
     expect(within(dialog).getByText('Outside coverage')).toBeVisible()
     fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
-    expect(within(dialog).getByRole('link', { name: /Search Console context/ })).toHaveAttribute('href', '/integrations#search-console')
+    expect(within(dialog).getByRole('link', { name: /Search Console context/ })).toHaveAttribute('href', '/docs/integrations/google-search-console')
   })
 
   it('shows the matching pricing capture in Pages and its Flag, with no Analyze promotion in either', () => {

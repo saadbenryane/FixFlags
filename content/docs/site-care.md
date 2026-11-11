@@ -77,7 +77,7 @@ Regular monitoring reuses the saved test account. New signup tests run at setup,
 
 ## Connections
 
-GitHub account authorization is available in Settings. [Shopify](/docs/integrations/shopify), Analytics, and Search Console are [coming soon](/integrations); website checks do not depend on them.
+GitHub account authorization is available in Settings. [Shopify](/docs/integrations/shopify), Analytics, and Search Console are [coming soon](/docs/integrations); website checks do not depend on them.
 
 ## Get help
 

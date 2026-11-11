@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Browser proof for the Report pane redesign.
- * Opens Report mode on the homepage emulation, /samples, and an optional live
+ * Opens Report mode on the homepage emulation, the product sample, and an optional live
  * report at three widths, then asserts the pane anatomy: one compact Score header, the
  * fix list reachable without scrolling, list and detail scrolling inside the
  * pane, Copy prompt docked below the comparison pair, and no Review context disclosure.
@@ -179,7 +179,7 @@ async function run() {
     const results = []
 
     const targets = [
-      { name: 'samples', path: '/samples' },
+      { name: 'sample', path: '/how-it-works#sample' },
     ]
     if (reportPath) targets.push({ name: 'report', path: reportPath })
 

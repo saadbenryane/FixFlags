@@ -17,18 +17,14 @@ export type IndexableRoute = {
 export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/', seoKey: 'home', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/connect-ai', seoKey: 'connectAi', priority: 0.6, changeFrequency: 'monthly' },
-  { path: '/integrations', seoKey: 'integrations', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/waitlist', seoKey: 'waitlist', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/coverage', seoKey: 'coverage', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/security', seoKey: 'security', priority: 0.7, changeFrequency: 'monthly' },
-  { path: '/use-cases', seoKey: 'useCases', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/ai-builders', seoKey: 'aiBuilders', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/for-agencies', seoKey: 'agencies', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/compare', seoKey: 'compare', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
-  { path: '/request-demo', seoKey: 'requestDemo', priority: 0.5, changeFrequency: 'monthly' },
-  { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/help', seoKey: 'help', priority: 0.8, changeFrequency: 'weekly' },
   { path: '/docs', seoKey: 'docs', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/docs/getting-started', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
@@ -44,7 +40,6 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/changelog', seoKey: 'changelog', priority: 0.5, changeFrequency: 'weekly' },
   { path: '/blog', seoKey: 'blog', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/guides', seoKey: 'guides', priority: 0.8, changeFrequency: 'monthly' },
-  { path: '/samples', seoKey: 'samples', priority: 0.7, changeFrequency: 'weekly' },
   { path: '/privacy', seoKey: 'privacy', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', seoKey: 'terms', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/tools', seoKey: 'freeTools', priority: 0.6, changeFrequency: 'monthly' },
@@ -74,13 +69,10 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/for-agencies', label: 'For agencies', note: 'Check client websites without installing anything and prove each fix' },
       { path: '/compare', label: 'Compare', note: 'FixFlags beside Elu, Lighthouse, uptime monitors, and Checkly, with sources' },
       { path: '/connect-ai', label: 'FixFlags and your AI', note: 'Connect your coding agent over MCP, or copy and paste focused fix instructions' },
-      { path: '/integrations', label: 'Integrations', note: 'GitHub authorization available; every other connection coming soon' },
       { path: '/coverage', label: 'What FixFlags checks', note: 'Coverage, setup, and evidence limits' },
       { path: '/security', label: 'Privacy and security', note: 'Evidence access, AI processing, and control' },
-      { path: '/use-cases', label: 'Use cases', note: 'For people responsible for websites' },
       { path: '/how-it-works', label: 'Product', note: 'URL in, Site board, Flags, Verify, Watch, and the interactive sample' },
       { path: '/pricing', label: 'Pricing', note: PUBLIC_OFFER.free },
-      { path: '/request-demo', label: 'Request a demo', note: 'A walkthrough of checks, evidence, and next steps for your website' },
       { path: '/docs', label: 'Documentation', note: 'Site checks, Flags, Verify, and Watch' },
       {
         path: '/docs/getting-started',
@@ -90,7 +82,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/docs/site-care', label: 'Site care', note: 'Coverage, evidence, Verify, and Watch' },
       { path: '/docs/fix-with-ai', label: 'Fix with your AI', note: 'Use fix instructions with your AI tool' },
       { path: '/docs/mcp', label: 'MCP for coding agents', note: 'Connect a coding agent to read Flag evidence and request independent verification' },
-      { path: '/docs/integrations', label: 'Integration guides' },
+      { path: '/docs/integrations', label: 'Integration guides', note: 'GitHub authorization available; every other connection coming soon' },
       { path: '/docs/integrations/github', label: 'GitHub', note: 'Account authorization and independent website verification' },
       { path: '/docs/integrations/shopify', label: 'Shopify', note: 'Coming soon: store and selected product-path context' },
       { path: '/docs/integrations/google-analytics', label: 'Google Analytics', note: 'Coming soon: page-session context' },
@@ -106,8 +98,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   {
     title: 'Support',
     links: [
-      { path: '/help', label: 'Help Center', note: 'Searchable guides + chat' },
-      { path: '/faq', label: 'FAQ', note: 'Site checks, Flags, Watch, and Shopify as a connection' },
+      { path: '/help', label: 'Help Center', note: 'Searchable guides, FAQ, and chat' },
       { path: '/privacy', label: 'Privacy' },
       { path: '/terms', label: 'Terms' },
     ],
@@ -140,13 +131,6 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     links: [
       { path: '/blog', label: 'Blog' },
       { path: '/changelog', label: 'Changelog' },
-    ],
-  },
-  {
-    title: 'Optional',
-    optional: true,
-    links: [
-      { path: '/samples', label: 'Product sample', note: 'One evidence-backed Site and Flag' },
     ],
   },
 ] as const

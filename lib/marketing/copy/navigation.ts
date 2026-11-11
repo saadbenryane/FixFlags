@@ -22,5 +22,4 @@ export const FOOTER_COLUMN_COPY = {
   product: 'Product',
   resources: 'Resources',
   company: 'Company',
-  trust: 'Trust',
 } as const

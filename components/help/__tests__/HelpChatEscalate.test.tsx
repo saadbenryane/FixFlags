@@ -28,7 +28,7 @@ describe('HelpChatEscalate', () => {
 
     expect(screen.getByRole('link', { name: HELP_CENTER.openChatCta })).toHaveAttribute(
       'href',
-      '/help/account/contact-us',
+      '/help/troubleshooting/contact-support',
     )
   })
 })

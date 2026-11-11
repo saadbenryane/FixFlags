@@ -26,7 +26,7 @@ import path from 'node:path'
 export const BUDGET_KB = { shell: 190, homepage: 60 }
 
 /** Marketing pages compared with the homepage to find the shared shell. */
-const COMPARED_PAGES = ['pricing', 'faq', 'security', 'integrations']
+const COMPARED_PAGES = ['pricing', 'help', 'security', 'coverage']
 
 function pageScripts(distDir, page) {
   const htmlPath = path.join(distDir, 'server/app', `${page}.html`)

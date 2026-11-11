@@ -12,8 +12,6 @@ These connections become available after testing and validation. Website checks,
 | [Google Analytics](/docs/integrations/google-analytics) | Traffic context beside checked pages. |
 | [Google Search Console](/docs/integrations/google-search-console) | Search demand and recorded indexing context. |
 
-See the [integrations overview](/integrations) for the full lineup.
-
 ## Connect to a Site
 
 Open your Site’s **Settings** to manage GitHub authorization. You can [check your website](/docs/getting-started), save the Site, and use its independent checks now.

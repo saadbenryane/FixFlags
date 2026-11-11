@@ -10,7 +10,7 @@ Nothing is needed yet. [Save and check your website](/docs/getting-started) toda
 
 ## Connect
 
-See the [integrations overview](/integrations) for the current lineup.
+See the [integrations overview](/docs/integrations) for the current lineup.
 
 ## Confirm the connection
 

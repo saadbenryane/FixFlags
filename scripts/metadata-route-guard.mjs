@@ -10,12 +10,9 @@ const ROOT = process.cwd()
 const ROUTE_TO_PAGE = {
   '/': 'app/(marketing)/page.tsx',
   '/connect-ai': 'app/(marketing)/connect-ai/page.tsx',
-  '/integrations': 'app/(marketing)/integrations/page.tsx',
   '/waitlist': 'app/(marketing)/waitlist/page.tsx',
-  '/request-demo': 'app/(marketing)/request-demo/page.tsx',
   '/coverage': 'app/(marketing)/coverage/page.tsx',
   '/security': 'app/(marketing)/security/page.tsx',
-  '/use-cases': 'app/(marketing)/use-cases/page.tsx',
   '/docs/fix-with-ai': 'app/(docs)/docs/[slug]/page.tsx',
   '/docs/mcp': 'app/(docs)/docs/[slug]/page.tsx',
   '/how-it-works': 'app/(marketing)/how-it-works/page.tsx',
@@ -24,7 +21,6 @@ const ROUTE_TO_PAGE = {
   '/compare': 'app/(marketing)/compare/page.tsx',
   '/tools': 'app/(marketing)/tools/page.tsx',
   '/pricing': 'app/(marketing)/pricing/page.tsx',
-  '/faq': 'app/(marketing)/faq/page.tsx',
   '/help': 'app/(marketing)/help/page.tsx',
   '/docs': 'app/(docs)/docs/page.tsx',
   '/docs/getting-started': 'app/(docs)/docs/[slug]/page.tsx',
@@ -38,14 +34,12 @@ const ROUTE_TO_PAGE = {
   '/changelog': 'app/(marketing)/changelog/page.tsx',
   '/blog': 'app/(marketing)/blog/page.tsx',
   '/guides': 'app/(marketing)/guides/page.tsx',
-  '/samples': 'app/(marketing)/samples/page.tsx',
   '/privacy': 'app/(marketing)/privacy/page.tsx',
   '/terms': 'app/(marketing)/terms/page.tsx',
   '/tools/meta-preview': 'app/(marketing)/tools/meta-preview/page.tsx',
   '/tools/placeholder-detector': 'app/(marketing)/tools/placeholder-detector/page.tsx',
   '/tools/broken-link-checker': 'app/(marketing)/tools/broken-link-checker/page.tsx',
   '/issues': 'app/(marketing)/issues/page.tsx',
-  '/roast': 'app/(marketing)/roast/page.tsx',
 }
 
 const APPROVED_METADATA_HELPERS = [

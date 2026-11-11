@@ -53,7 +53,6 @@ for (const key of seoKeys) {
 
 const requiredLlmsPaths = [
   '/',
-  '/integrations',
   '/how-it-works',
   '/pricing',
   '/docs',
@@ -64,7 +63,6 @@ const requiredLlmsPaths = [
   '/docs/integrations/shopify',
   '/docs/integrations/google-analytics',
   '/docs/integrations/google-search-console',
-  '/faq',
   '/help',
   '/help/getting-started/analyze-a-website',
   '/help/account-and-billing/free-and-pro',
@@ -93,8 +91,7 @@ for (const llmsPath of llmsPaths) {
   if (llmsPath === '/help') continue
   const exists =
     helpArticlePaths.includes(llmsPath) ||
-    helpCategoryPaths.includes(llmsPath) ||
-    llmsPath.endsWith('/contact-us')
+    helpCategoryPaths.includes(llmsPath)
   if (!exists && requiredLlmsPaths.includes(llmsPath)) {
     errors.push(`LLMS help path "${llmsPath}" not found in help catalog`)
   }
