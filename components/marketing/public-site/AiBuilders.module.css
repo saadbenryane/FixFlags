@@ -53,6 +53,12 @@ section > .toolGrid, section > .loop { margin-top: 36px; }
 .tip svg { flex-shrink: 0; margin-top: 2px; color: hsl(var(--brand-strong)); }
 .tip p { font-size: 15px; line-height: 1.6; }
 
+.mcp { max-width: 760px; }
+.mcp h2 { font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 500; letter-spacing: -.025em; }
+.mcp p { margin-top: 8px; color: hsl(var(--muted-foreground)); font-size: 15px; line-height: 1.6; }
+.mcp a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 4px; color: hsl(var(--link)); font-size: 14px; font-weight: 600; }
+.mcp a:hover { color: hsl(var(--link-hover)); }
+
 .otherTools { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
 .otherTools a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 6px 16px -8px hsl(30 15% 20% / .3); font-size: 14px; font-weight: 550; }
 .otherTools a:hover { color: hsl(var(--brand-strong)); }

@@ -42,6 +42,11 @@ export default async function AiBuilderToolPage({ params }: Props) {
       </section>
       <AiBuilderExample toolName={tool.name} flag={tool.example.flag} prompt={aiBuilderExamplePrompt(tool)} />
       <aside className={s.tip} aria-label={C.tool.tipTitle}><Lightbulb size={18} aria-hidden="true" /><p><strong>{C.tool.tipTitle}.</strong> {tool.tip}</p></aside>
+      {tool.kind === 'agent' ? <section className={s.mcp} aria-labelledby="tool-mcp-title">
+        <h2 id="tool-mcp-title">{C.tool.mcp.title}</h2>
+        <p>{C.tool.mcp.body(tool.name)}</p>
+        <Link href={C.tool.mcp.href as Route}>{C.tool.mcp.action}<ArrowRight size={16} aria-hidden="true" /></Link>
+      </section> : null}
       <nav aria-labelledby="other-tools-title">
         <h2 id="other-tools-title" className={s.heading}>{C.tool.other}</h2>
         <ul className={s.otherTools}>{others.map(other => <li key={other.slug}><Link href={`/ai-builders/${other.slug}` as Route}>{other.name}<ArrowRight size={14} aria-hidden="true" /></Link></li>)}</ul>

@@ -332,7 +332,7 @@ describe('Product Watch', () => {
 
     expect(result).toEqual({
       ok: false,
-      error: 'Daily watching is available on Pro and Studio. Free Sites watch weekly.',
+      error: 'Daily watching is available on paid plans. Free Sites watch weekly.',
       code: 'INTERVAL_NOT_ALLOWED',
     })
     expect(mocks.projectUpdateMany).not.toHaveBeenCalled()

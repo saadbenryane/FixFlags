@@ -8,7 +8,7 @@ Each problem comes with fix instructions you can copy and paste. They describe t
 
 For example, if you built your website with Lovable, paste the instructions into your project’s Lovable chat. You can also send them to a developer. Copying the instructions alone does not change your website.
 
-Saved website problems include a report link and a detailed repair brief with the pages, devices, recorded results, and conditions for checking a fix. Private links still require permission to open. Grouped fixes can include links to more details. The tool making the change must read every linked observation page before fixing the group. If it cannot open the details, it should stop and tell you what is missing. Never paste an API key into the instructions.
+For a saved website, the instructions also link to the full details: the pages, devices, what FixFlags recorded, and how the fix will be checked. Those links only open for people with access. For a group of problems, your AI tool should read every linked page of details before it changes anything. If it can’t open them, it should stop and tell you what is missing. Never paste an API key into the instructions.
 
 The homepage uses example instructions. [Check your own website](/new) to get instructions for problems found there.
 

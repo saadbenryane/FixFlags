@@ -123,7 +123,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     path: '/docs/mcp',
     group: 'Use FixFlags',
     title: 'MCP for coding agents',
-    description: 'Connect a coding agent and ask FixFlags to independently verify an owned Outcome.',
+    description: 'Let your coding agent read your Flags and ask FixFlags to recheck a fix.',
     source: 'mcp.md',
     order: 3,
     headings: [
@@ -152,9 +152,9 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
   },
   ...([
     { key: 'github', title: 'GitHub', description: 'Connect or disconnect your GitHub account. Website checks and fix instructions work without it.', relatedHelpSlugs: ['verify-a-flag'], order: 4.5 },
-    { key: 'shopify', title: 'Shopify', description: 'Coming soon: store and selected product-path context.', relatedHelpSlugs: ['connect-shopify', 'shopify-access-and-removal'], order: 5 },
-    { key: 'google-analytics', title: 'Google Analytics', description: 'Coming soon: traffic context beside matching checked pages.', relatedHelpSlugs: ['connect-google-data'], order: 6 },
-    { key: 'google-search-console', title: 'Google Search Console', description: 'Coming soon: search and recorded indexing context.', relatedHelpSlugs: ['connect-google-data'], order: 7 },
+    { key: 'shopify', title: 'Shopify', description: 'Coming soon: store details beside your product and checkout checks.', relatedHelpSlugs: ['connect-shopify', 'shopify-access-and-removal'], order: 5 },
+    { key: 'google-analytics', title: 'Google Analytics', description: 'Coming soon: visit numbers beside the pages FixFlags checks.', relatedHelpSlugs: ['connect-google-data'], order: 6 },
+    { key: 'google-search-console', title: 'Google Search Console', description: 'Coming soon: Google search data beside the pages FixFlags checks.', relatedHelpSlugs: ['connect-google-data'], order: 7 },
   ] as const).map((integration): DocsPageDefinition => ({
     ...integration, path: `/docs/integrations/${integration.key}`, group: 'Integrations',
     parentKey: 'integrations', source: `${integration.key}.md`,
@@ -175,7 +175,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     path: '/docs/troubleshooting',
     group: 'Reference',
     title: 'Troubleshooting',
-    description: 'Recover from blocked, delayed, or failed checks and connections.',
+    description: 'What to do when a check or connection is blocked, slow, or fails.',
     source: 'troubleshooting.md',
     order: 8,
     headings: [

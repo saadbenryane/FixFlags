@@ -11,7 +11,7 @@ export const BRAND = {
     'Third-party trademarks and logos belong to their respective owners. Their use does not imply affiliation with or endorsement of FixFlags.',
   category: 'Independent checks for websites built with AI.',
   oneLiner:
-    'FixFlags checks your live website in a real browser, gives your AI the fix instructions, and rechecks to prove the fix worked.',
+    'FixFlags checks your live site in a real browser, flags what’s broken with evidence, hands your AI the fix, and rechecks to prove it worked.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
@@ -21,9 +21,8 @@ export const BRAND = {
 export const SOCIAL_CARD = {
   headline: PRODUCT_STORY.headline,
   description: PRODUCT_STORY.summary,
-  label: 'Check. Flag. Fix. Verify.',
+  label: PRODUCT_STORY.loop.map(step => `${step}.`).join(' '),
   imageAlt: `${PRODUCT_STORY.headline.join(' ')} ${PRODUCT_STORY.summary} Orange glass FixFlags mark on a warm studio background.`,
-  workflow: 'Monitor. Flag. Fix.',
 } as const
 
 export const SITE_URL =

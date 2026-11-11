@@ -1,8 +1,8 @@
 ## What MCP does
 
-MCP gives your coding agent the evidence behind a Flag and a way to ask FixFlags to check a deployed fix. It uses the same monitoring system as Watch and the web product.
+MCP lets your coding agent read the evidence behind a Flag and ask FixFlags to recheck your live site after a fix. The recheck uses the same checks as the rest of FixFlags.
 
-The coding agent may describe a commit, deployment, or affected area. That context helps identify the request, but it never counts as proof. FixFlags independently exercises the live Outcome.
+Your agent can tell FixFlags what it changed, such as a commit or a deploy. That helps match the request, but it never counts as proof. FixFlags checks the live site itself.
 
 ## Connect
 

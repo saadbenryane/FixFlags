@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ANALYZE_CTA, CORE_LOOP_LABEL, SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { ANALYZE_CTA, SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { PRODUCT_STORY } from '@/lib/marketing/copy/product-story'
 import { FLAG_STATUS_LABELS } from '@/lib/marketing/copy/flags'
 import { plannedWatchJobs } from '@/lib/audit/project-watch'
 
-describe('Monitor. Flag. Fix. loop contract', () => {
+describe('Check, Flag, Fix, Verify loop contract', () => {
   it('locks the website check action, the core loop, Copy fix instructions, and independent Verify', () => {
     expect(ANALYZE_CTA).toBe('Check your website')
-    expect(CORE_LOOP_LABEL).toBe('Monitor. Flag. Fix.')
+    expect(PRODUCT_STORY.loop).toEqual(['Check', 'Flag', 'Fix', 'Verify'])
     expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix instructions')
     expect(SITE_BOARD_COPY.verifyFix).toBe('Recheck')
     expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Verified')

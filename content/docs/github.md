@@ -1,6 +1,6 @@
 ## What it adds
 
-GitHub account authorization is available. FixFlags stores your authorization encrypted. You can use a Flag’s evidence and fix instructions in your code workflow, then verify the deployed website independently.
+You can connect your GitHub account. FixFlags stores the authorization encrypted. Connecting does not read your code or open pull requests. Website checks and fix instructions work without it.
 
 ## Before you connect
 

@@ -261,7 +261,6 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(board).getByRole('button', { name: '3 Flags', exact: true }))
     expect(within(board).getByRole('button', { name: 'Open Pages' })).toBeVisible()
     expect(within(board).getByRole('button', { name: 'Open Conversion' })).toBeVisible()
-    expect(within(board).queryByRole('heading', { name: S.flagsTitle })).not.toBeInTheDocument()
   })
 
   it('shows complete mobile and desktop performance results', () => {
@@ -291,9 +290,9 @@ describe('comprehensive homepage experience', () => {
     const dialog = openCategory('Search')
     expect(within(dialog).getByText('Page titles')).toBeVisible()
     expect(within(dialog).getByText('Search rankings')).toBeVisible()
-    expect(within(dialog).getByText('Outside coverage')).toBeVisible()
+    expect(within(dialog).getByText(S.notChecked)).toBeVisible()
     fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
-    expect(within(dialog).getByRole('link', { name: /Search Console context/ })).toHaveAttribute('href', '/docs/integrations/google-search-console')
+    expect(within(dialog).getByRole('link', { name: /Google Search Console/ })).toHaveAttribute('href', '/docs/integrations/google-search-console')
   })
 
   it('shows the matching pricing capture in Pages and its Flag, with no Analyze promotion in either', () => {
@@ -306,17 +305,14 @@ describe('comprehensive homepage experience', () => {
     dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('img', { name: S.availabilityAlt })).toHaveAttribute('data-src', '/marketing/evidence/pricing-unavailable.png')
     expect(within(dialog).queryByRole('link', { name: 'Check your website' })).not.toBeInTheDocument()
-    expect(within(dialog).queryByRole('img', { name: C.flag.cropAlt })).not.toBeInTheDocument()
-    expect(within(dialog).queryByText(S.unresolved)).not.toBeInTheDocument()
     expect(within(dialog).getByRole('link', { name: '/pricing' })).toHaveAttribute('href', S.sources.http)
-    expect(within(dialog).queryByRole('button', { name: S.recoveryAction })).not.toBeInTheDocument()
   })
 
   it('keeps Signup unconfigured and shows scoped checkout recovery only for Checkout', () => {
     render(<CareHomepage dashboardOnly />)
     let dialog = openCategory('Conversion')
     expect(within(dialog).getByText('Signup')).toBeVisible()
-    expect(within(dialog).getByText('Not verified')).toBeVisible()
+    expect(within(dialog).getByText(S.couldNotVerify)).toBeVisible()
     fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for Add to cart' }))
     dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText(SAMPLE_FLAGS.checkout.observed)).toBeVisible()
@@ -352,14 +348,11 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByText(S.categories[0].scope)).toBeVisible()
     expect(within(dialog).queryByText(S.sources.http)).not.toBeInTheDocument()
     expect(watchableOutcomeKinds()).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
-    expect(C.monitoring.notScheduled).toBe('Not scheduled')
   })
 
   it('shows dated sample scheduling and never suggests a UI control runs verification', () => {
     render(<CareHomepage dashboardOnly />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).queryByText(C.monitoring.summary)).not.toBeInTheDocument()
-    expect(within(board).queryByRole('button', { name: C.monitoring.action })).not.toBeInTheDocument()
     fireEvent.click(within(board).getByRole('button', { name: S.navigation.timeline, exact: true }))
     const monitoring = board
     expect(within(monitoring).getByText('Flags over time')).toBeVisible()
@@ -488,7 +481,6 @@ describe('comprehensive homepage experience', () => {
     dialog = screen.getByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
-    expect(within(dialog).queryByText(S.unresolved)).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(SITE_BOARD_COPY.copyPromptCopied)).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'How to use these instructions' })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
@@ -541,7 +533,8 @@ describe('comprehensive homepage experience', () => {
     const coverage = screen.getByRole('region', { name: C.checks.titleLines.join(' ') })
     expect(C.checks.areas.map(area => area.id).sort()).toEqual([...SITE_CARD_AREAS].sort())
     expect(C.checks.areas).toHaveLength(8)
-    expect(C.checks.title).toContain(`${C.checks.areas.length} areas`)
+    expect(C.checks.titleLines[0]).toBe(`${C.checks.areas.length} areas.`)
+    expect(C.checks.titleLines.join(' ')).not.toMatch(/every page|every button/i)
     for (const area of C.checks.areas) {
       expect(within(coverage).getByRole('button', { name: C.checks.explore(area.name) })).toBeVisible()
       expect(within(coverage).getByText(area.benefit)).toBeVisible()

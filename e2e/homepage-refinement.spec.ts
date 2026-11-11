@@ -5,8 +5,6 @@ import { BOARD_PREVIEW_COPY as B } from '../lib/marketing/copy/board-preview'
 import { MONITORING_SCHEDULE_COPY as M } from '../lib/marketing/copy/monitoring'
 import { SITE_SETTINGS_COPY as Settings } from '../lib/marketing/copy/site-settings'
 import { UPTIME_COPY as U } from '../lib/marketing/copy/uptime'
-import { INTEGRATIONS_PAGE } from '../lib/marketing/copy/integrations'
-import { SITE_CONNECTION_COPY } from '../lib/marketing/copy/site-connections'
 import { inspectAccessibilityViolations } from './approved-contrast'
 
 async function visit(page: Page, theme: 'light' | 'dark' = 'light') {
@@ -76,7 +74,7 @@ test('category depth keeps original Flag scope, evidence, guidance and focus', a
   await opener.focus(); await page.keyboard.press('Enter')
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Conversion', exact: true })).toBeVisible()
-  await expect(dialog.getByText(S.notVerified, { exact: true })).toBeVisible()
+  await expect(dialog.getByText(S.couldNotVerify, { exact: true })).toBeVisible()
   const detail = dialog.getByRole('button', { name: 'View Flag for Add to cart', exact: true })
   await detail.focus(); await page.keyboard.press('Enter')
   await expect(dialog.getByRole('heading', { name: SAMPLE_FLAGS.checkout.title, exact: true })).toBeFocused()
@@ -85,7 +83,6 @@ test('category depth keeps original Flag scope, evidence, guidance and focus', a
   await expect(dialog.getByRole('link', { name: SAMPLE_FLAGS.checkout.page, exact: true })).toHaveAttribute('href', SAMPLE_FLAGS.checkout.url)
   await dialog.getByText('Check details', { exact: true }).click()
   await expect(dialog.getByRole('link', { name: S.guidanceAction, exact: true })).toHaveAttribute('href', '/docs/fix-with-ai')
-  await expect(dialog.getByRole('button', { name: S.recoveryAction, exact: true })).toHaveCount(0)
   await page.keyboard.press('Tab')
   expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true)
   await dialog.getByRole('button', { name: 'Back to Conversion', exact: true }).click()
@@ -111,12 +108,12 @@ test('unverified signup and analytics delivery remain separate from checked obse
   await visit(page)
   await openCard(page, 'Conversion')
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText(S.notVerified, { exact: true })).toBeVisible()
+  await expect(dialog.getByText(S.couldNotVerify, { exact: true })).toBeVisible()
   await dialog.getByText('Check details', { exact: true }).click()
   await expect(dialog.getByText(S.connections, { exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   await board(page).getByRole('button', { name: 'Open Tracking', exact: true }).click()
-  await expect(dialog.getByText('Outside coverage', { exact: true })).toBeVisible()
+  await expect(dialog.getByText(S.notChecked, { exact: true })).toBeVisible()
   await expect(dialog.getByText('Analytics delivery', { exact: true })).toBeVisible()
   await dialog.locator('summary').filter({ hasText: 'Analytics delivery' }).click()
   await expect(dialog.getByText(/does not prove it reached an analytics account/)).toBeVisible()
@@ -144,19 +141,6 @@ test('illustrative history, monitoring and HTTP uptime retain separate scope', a
   await board(page).getByRole('button', { name: 'Settings', exact: true }).click()
   await board(page).getByRole('button', { name: Settings.resume, exact: true }).click()
   await expect(board(page).getByRole('button', { name: Settings.pause, exact: true })).toBeVisible()
-})
-
-test('integration discovery reflects released authorization and parked connections', async ({ page }) => {
-  await visit(page)
-  await page.getByText(C.integrations.detailsAction, { exact: true }).click()
-  for (const integration of INTEGRATIONS_PAGE.items) {
-    const card = page.locator(`[data-integration="${integration.id}"]`)
-    await expect(card.getByRole('link')).toHaveAttribute('href', `/docs/integrations#${integration.id}`)
-    await expect(card.getByText(integration.status === 'available' ? INTEGRATIONS_PAGE.availableLabel : SITE_CONNECTION_COPY.comingSoon, { exact: true })).toBeVisible()
-  }
-  await page.getByRole('link', { name: C.integrations.action, exact: true }).click()
-  await expect(page).toHaveURL(/\/docs\/integrations$/)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 })
 
 test('Analyze preserves the URL in the existing Site handoff', async ({ page }) => {

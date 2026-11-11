@@ -6,7 +6,6 @@ import { v0Fixture } from '@/lib/demo/fixtures/v0'
 import { v1Fixture } from '@/lib/demo/fixtures/v1'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { DEMO_FIXTURE_CONTEXT_TAG } from '@/lib/marketing/display-meta'
-import { SEO } from '@/lib/marketing/copy-barrel'
 
 /**
  * The demo has one name and one story. Chrome, fixture copy, curated evidence,
@@ -50,10 +49,5 @@ describe('demo identity', () => {
     assert.ok(messageFlag)
     assert.ok(messageFlag.evidence?.includes(originalFixture.headline))
     assert.ok(!RETIRED_IDENTITIES.test(JSON.stringify(sample)))
-  })
-
-  it('labels the public samples as demo evidence', () => {
-    assert.match(SEO.samples.description, /recorded demo/i)
-    assert.ok(!RETIRED_IDENTITIES.test(SEO.samples.description))
   })
 })

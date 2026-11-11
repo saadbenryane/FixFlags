@@ -35,12 +35,12 @@ describe('public supporting pages', () => {
     expect(screen.getByRole('heading', { name: 'Couldn’t verify' })).toBeVisible()
   })
 
-  it('explains creator privacy, historical public reports, and safe execution plainly', () => {
+  it('explains creator privacy, older public reports, and safe execution plainly', () => {
     render(<SecurityPage />)
-    expect(screen.getByText(/A new analysis is private to the browser that started it/i)).toBeVisible()
-    expect(screen.getByText(/A copied link does not grant private access/i)).toBeVisible()
-    expect(screen.getByText(/Historical public reports keep their existing access policy/i)).toBeVisible()
-    expect(screen.getByText(/Signup checks require an authorized, reversible test setup/)).toBeVisible()
+    expect(screen.getByText(/A new check is private to the browser that started it/i)).toBeVisible()
+    expect(screen.getByText(/Sharing a link does not give anyone else access/i)).toBeVisible()
+    expect(screen.getByText(/Older public reports keep the access they already had/i)).toBeVisible()
+    expect(screen.getByText(/Signup checks only run with a test account you set up and approve/)).toBeVisible()
     expect(screen.getByRole('link', { name: C.securityPage.terms })).toHaveAttribute('href', '/terms')
   })
 

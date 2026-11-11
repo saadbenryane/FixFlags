@@ -17,7 +17,7 @@ const REPEAT_ICONS = [Code2, Check, RefreshCw]
 
 export default function HowItWorksPage() {
   return <>
-    <PublicPageIntro page="/how-it-works" label={C.label} title={C.title} lines={C.titleLines} body={C.body}><PublicPageActions /></PublicPageIntro>
+    <PublicPageIntro page="/how-it-works" label={C.label} title={C.title} body={C.body}><PublicPageActions /></PublicPageIntro>
     <Section spacing="overview"><Container variant="marketing"><ProductSample /></Container></Section>
     <Section spacing="overview"><Container variant="marketing" className={s.content}>
       <HowItWorksWalkthrough areas={HOMEPAGE_CHECK_COVERAGE.areas.map(({ id, name }) => ({ id, name }))} />

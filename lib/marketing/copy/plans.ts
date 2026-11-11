@@ -58,33 +58,6 @@ export const PRICING = {
   pickerCurrentPlan: 'Current plan', pickerFreeCta: 'Start free', pickerProCta: 'Join Pro waitlist', pickerStudioCta: 'Join Team waitlist', pickerRecommended: 'Available now', pickerBusy: 'Working…',
 } as const
 
-export const DEMO_PAGE = {
-  eyebrow: 'Request a demo',
-  headline: 'Explore FixFlags for your websites.',
-  subhead:
-    'Bring your website. We’ll email you to arrange a look at the problems we find and how to fix them.',
-  nameLabel: 'Name',
-  namePlaceholder: 'Your name',
-  emailLabel: 'Work email',
-  emailPlaceholder: 'you@company.com',
-  websiteLabel: 'Website',
-  websitePlaceholder: 'https://yoursite.com',
-  planLabel: 'Plan',
-  planPro: 'Pro',
-  planStudio: 'Studio',
-  siteCountLabel: 'How many websites?',
-  siteCountPlaceholder: '5',
-  noteLabel: 'Anything we should know',
-  notePlaceholder: 'Optional',
-  submitCta: 'Request a demo',
-  submitting: 'Sending…',
-  successTitle: 'Request sent',
-  successBody: 'We will email you to set a time.',
-  failed: 'Could not send the request. Try again.',
-  anotherCta: 'Send another request',
-  pricingLink: 'Back to pricing',
-} as const
-
 function waitlistPlan(id: 'pro' | 'team' | 'agency') {
   const source = tier(id)
   return {

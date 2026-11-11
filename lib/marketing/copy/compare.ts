@@ -1,3 +1,5 @@
+import { PRODUCT_STORY } from './product-story'
+
 /**
  * Compare: what each kind of tool needs from you and what it can prove.
  * Vendor facts come from each vendor's own pages, checked on `checkedOn`.
@@ -14,7 +16,7 @@ export const COMPARE_PAGE = {
   },
   fixflags: {
     title: 'FixFlags in one line',
-    body: 'Paste a URL. FixFlags tries your live pages and actions like a visitor, flags what is broken with evidence, hands your AI the fix, and rechecks the same page and action to prove it worked. No install, no scripts, no visitors needed.',
+    body: `${PRODUCT_STORY.description} No install, no scripts, no visitors needed.`,
   },
   entries: [
     {

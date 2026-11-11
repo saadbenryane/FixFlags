@@ -91,7 +91,7 @@ describe('POST /api/demo-request', () => {
       1,
       expect.objectContaining({
         to: 'notify@example.com',
-        subject: expect.stringContaining('Studio'),
+        subject: expect.stringContaining('Team'),
       })
     )
     expect(send).toHaveBeenNthCalledWith(

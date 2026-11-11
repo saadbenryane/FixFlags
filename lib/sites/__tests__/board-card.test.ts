@@ -10,7 +10,6 @@ import {
   starterBoardNames,
   outcomeNameForFlag,
 } from '@/lib/sites/board-card'
-import { CARE_HOME } from '@/lib/marketing/copy-barrel'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 it('labels recorded repair alternatives as diagnostics rather than an observed action', () => {
@@ -96,14 +95,6 @@ describe('board card contract', () => {
       'Tracking',
     ])
     expect(STARTER_BOARD_CARDS.map((id) => CARD_CATALOG[id].name)).toEqual(starterBoardNames())
-  })
-
-  it('keeps homepage example labels on the same catalog names', () => {
-    expect([
-      CARE_HOME.site.label,
-      CARE_HOME.flag.name,
-      ...CARE_HOME.cards.map((card) => card.name),
-    ]).toEqual(starterBoardNames())
   })
 
   it('never uses the host as the Site card name', () => {

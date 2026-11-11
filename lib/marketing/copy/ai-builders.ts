@@ -1,9 +1,11 @@
 import type { EditorMarkName } from '@/lib/integrations/editor-catalog'
+import { AI_CONNECTION_PATH } from './ai-connection'
 import { PRODUCT_STORY } from './product-story'
 
 /**
- * For AI builders: one hub and one page per tool. Each page describes the copy-and-paste
- * handoff that works today. Tool steps stay generic enough to remain true as tools change.
+ * For AI builders: one hub and one page per tool. Each page leads with the copy-and-paste
+ * handoff; coding agents also get a short pointer to MCP. Tool steps stay generic enough to
+ * remain true as tools change.
  */
 export type AiBuilderTool = {
   slug: string
@@ -49,7 +51,7 @@ export const AI_BUILDER_TOOLS: readonly AiBuilderTool[] = [
     summary: 'Replit Agent builds and hosts your app. FixFlags checks the published app from outside.',
     where: 'Open your app in Replit and paste the fix instructions into Agent.',
     publish: 'Test the change, then republish your app from Replit.',
-    example: { flag: 'Contact form shows no confirmation', page: '/contact', observed: 'After submitting, the form stays on screen with no message.', expected: 'A confirmation appears after the form is submitted.' },
+    example: { flag: 'Book a demo button leads to an error page', page: '/', observed: 'Selecting Book a demo opens a page that says Internal Server Error.', expected: 'The booking page opens with its form.' },
     tip: 'After you republish, select Recheck in FixFlags to check the same page and action again.',
   },
   {
@@ -94,7 +96,7 @@ export const AI_BUILDERS_PAGE = {
   tools: { label: 'Your tool', lines: ['Pick your tool.', 'Get the fix shaped for it.'] as const },
   kinds: { builder: 'App builder', agent: 'Coding agent' },
   open: (name: string) => `FixFlags for ${name}`,
-  loopHeader: { label: 'The loop', lines: ['Check. Flag. Fix. Verify.', 'The same in every tool.'] as const },
+  loopHeader: { label: 'The loop', lines: ['Four steps.', 'The same in every tool.'] as const },
   loop: [
     { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
     { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
@@ -108,8 +110,8 @@ export const AI_BUILDERS_PAGE = {
   tool: {
     back: 'All AI tools',
     label: (name: string) => `FixFlags for ${name}`,
-    title: (name: string) => `Find what’s broken. Hand ${name} the fix.`,
-    titleLines: (name: string) => ['Find what’s broken.', `Hand ${name} the fix.`] as const,
+    title: (name: string) => `${name} built it. ${PRODUCT_STORY.headline[1]}`,
+    titleLines: (name: string) => [`${name} built it.`, PRODUCT_STORY.headline[1]] as const,
     stepsTitle: 'How it works',
     steps: (tool: AiBuilderTool) => [
       { title: 'Check your live site', body: 'Paste your published URL into FixFlags. Nothing to install, and no signup to start.' },
@@ -122,6 +124,13 @@ export const AI_BUILDERS_PAGE = {
     copy: 'Copy example',
     copied: 'Example copied.',
     tipTitle: 'Tip',
+    /** Coding agents can skip the copy and paste. */
+    mcp: {
+      title: 'Or connect over MCP',
+      body: (name: string) => `${name} can also connect to FixFlags over MCP. It reads your Flags directly and asks FixFlags to recheck after you deploy.`,
+      action: 'Connect with MCP',
+      href: AI_CONNECTION_PATH,
+    },
     cta: 'Check your website',
     other: 'Other tools',
   },

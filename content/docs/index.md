@@ -11,7 +11,7 @@ Start with [Getting started](/docs/getting-started) for a walkthrough.
 
 ## The product loop
 
-FixFlags checks your live website, shows problems that need attention, and checks again after you fix them.
+Check, Flag, Fix, Verify. FixFlags checks your live website, raises a Flag for each problem with its evidence, gives you fix instructions, and rechecks to verify the fix.
 
 Save your website to your account to return to its results. In FixFlags, this saved website is called a **Site**. Newly saved websites receive a default monitoring schedule. Open Settings to see the next check or change the interval.
 
