@@ -86,7 +86,7 @@ Keep the workspace and transcript mounted until the completed server report repl
 ## Samples and public reports
 
 - Homepage: complete curated fix list with selected evidence and one editor-ready fix.
-- `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, and exactly one demonstrated per-Flag prompt.
+- `/samples` redirects to the interactive sample at `/how-it-works#sample`. The curated observation bundle remains in `lib/marketing` for fixtures and capture scripts.
   Every visible history point resolves to one immutable observation.
   An absent selector opens the current curated Review; an explicit unknown selector returns not found.
 - `/report/[id]` is the canonical public evidence URL. Legacy `/share/[token]` links remain readable for compatibility but are no longer created or managed in the product.

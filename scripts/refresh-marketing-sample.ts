@@ -10,4 +10,4 @@ execFileSync('npx', ['tsx', 'scripts/capture-sample-screenshots.ts'], {
   stdio: 'inherit',
   env: { ...process.env, SAMPLE_CAPTURE_BASE_URL: baseUrl },
 })
-process.stdout.write('Curated sample bundle refreshed. Verify /samples and both history destinations.\n')
+process.stdout.write('Curated sample bundle refreshed. Verify both history destinations.\n')

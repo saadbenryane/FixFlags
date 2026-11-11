@@ -15,7 +15,7 @@ describe('published marketing journey', () => {
     expect(within(header).getByRole('heading', { level: 1 })).toHaveTextContent(C.howItWorks.title)
     expect(within(header).getAllByRole('link')).toHaveLength(2)
     expect(within(header).getByRole('link', { name: C.analyze })).toHaveAttribute('href', '/new')
-    expect(within(header).getByRole('link', { name: C.sample })).toHaveAttribute('href', '/samples')
+    expect(within(header).getByRole('link', { name: C.sample })).toHaveAttribute('href', '/how-it-works#sample')
   })
   it('renders the current footer destinations instead of testing unreachable compositions', () => {
     render(<Footer />)

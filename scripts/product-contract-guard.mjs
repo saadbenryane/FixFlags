@@ -44,8 +44,19 @@ if (home.includes('ReportExamplesSection')) {
   violations.push('app/(marketing)/page.tsx: repeated Flag examples returned')
 }
 
-const nav = read('lib/site/nav.ts').split('export const FOOTER_COLUMNS')[0]
-if (nav.includes("'/roast'")) violations.push('lib/site/nav.ts: Roast returned to primary navigation')
+// Retired public pages redirect in next.config.ts. Neither the page nor a nav link may return.
+const nav = read('lib/site/nav.ts')
+for (const [route, page] of [
+  ['/roast', 'app/(marketing)/roast/page.tsx'],
+  ['/samples', 'app/(marketing)/samples/page.tsx'],
+  ['/use-cases', 'app/(marketing)/use-cases/page.tsx'],
+  ['/integrations', 'app/(marketing)/integrations/page.tsx'],
+  ['/request-demo', 'app/(marketing)/request-demo/page.tsx'],
+  ['/faq', 'app/(marketing)/faq/page.tsx'],
+]) {
+  if (existsSync(join(root, page))) violations.push(`${page}: retired page returned`)
+  if (nav.includes(`'${route}'`)) violations.push(`lib/site/nav.ts: retired ${route} returned to navigation`)
+}
 
 const sample = read('lib/marketing/curated-sample.ts')
 if (sample.includes("from '@/lib/db'") || sample.includes('prisma.audit')) {

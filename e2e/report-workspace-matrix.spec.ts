@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { inspectAccessibilityViolations } from './approved-contrast'
 
 const launchWidths = [320, 375, 768, 1280]
@@ -12,11 +11,8 @@ test('canonical Site sample works at launch widths', async ({ browser, browserNa
     await context.addInitScript(selected => localStorage.setItem('theme', selected), theme)
     const page = await context.newPage()
     try {
-      await page.goto(new URL('/samples', baseURL).toString())
-      await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
-      await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.title, exact: true })).toBeVisible()
-      for (const section of ['observed', 'fix', 'prompt', 'verification'] as const)
-        await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage[section], exact: true })).toBeVisible()
+      await page.goto(new URL('/how-it-works#sample', baseURL).toString())
+      await expect(page.locator('#sample')).toBeVisible()
 
       const geometry = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
@@ -32,16 +28,4 @@ test('canonical Site sample works at launch widths', async ({ browser, browserNa
       await context.close()
     }
   }
-})
-
-test('sample preserves a published observation and rejects an unknown one', async ({ page }) => {
-  await page.goto('/samples')
-  const observation = await page.locator('[data-testid="sample-site"]').getAttribute('data-observation')
-  expect(observation).toBeTruthy()
-
-  await page.goto(`/samples?observation=${encodeURIComponent(observation!)}`)
-  await expect(page.locator('[data-testid="sample-site"]')).toHaveAttribute('data-observation', observation!)
-
-  await page.goto('/samples?observation=not-published')
-  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
 })

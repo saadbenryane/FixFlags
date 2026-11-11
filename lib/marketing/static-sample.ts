@@ -293,7 +293,7 @@ function buildRubricRows(scores: SampleRubricScores, flags: RankableFlag[]): Rep
 function historyPoints() {
   return STATIC_OBSERVATIONS.map((definition) => ({
     id: definition.id,
-    href: `/samples?observation=${encodeURIComponent(definition.id)}&view=report`,
+    href: '/how-it-works#sample',
     score: calculateOverallScore(scoresFor(definition.flags)) ?? 0,
     checkedAt: new Date(definition.completedAt),
     kind: definition.kind,

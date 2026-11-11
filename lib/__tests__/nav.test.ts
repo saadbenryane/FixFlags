@@ -20,21 +20,20 @@ describe('marketing nav labels', () => {
   })
 
   it('keeps changelog in the footer', () => {
-    const changelog = FOOTER_COLUMNS.company.find((link) => link.label === 'Changelog')
+    const changelog = FOOTER_COLUMNS.resources.find((link) => link.label === 'Changelog')
     assert.ok(changelog)
     assert.equal(changelog.href, '/changelog')
   })
 
-  it('keeps integrations discoverable without standalone install entries', () => {
-    const hrefs = [
-      ...FOOTER_COLUMNS.product,
-      ...FOOTER_COLUMNS.resources,
-      ...FOOTER_COLUMNS.company,
-    ].map((link) => link.href)
-    assert.ok(hrefs.includes('/integrations'))
-    assert.ok(!hrefs.includes('/install'))
+  it('keeps the footer to the essentials without retired pages or install entries', () => {
+    const hrefs = Object.values(FOOTER_COLUMNS).flat().map((link) => String(link.href))
+    assert.ok(hrefs.length <= 16, `footer has ${hrefs.length} links`)
+    for (const retired of ['/samples', '/use-cases', '/integrations', '/faq', '/roast', '/request-demo', '/install']) {
+      assert.ok(!hrefs.includes(retired), retired)
+    }
     assert.ok(!FOOTER_COLUMNS.product.some(link => link.label === 'Shopify'))
     assert.ok(FOOTER_COLUMNS.resources.some(link => link.href === '/docs'))
+    assert.ok(FOOTER_COLUMNS.resources.some(link => link.href === '/help'))
   })
 
   it('leads the product footer with the Site product', () => {
@@ -42,12 +41,12 @@ describe('marketing nav labels', () => {
   })
 
   it('keeps footer destinations distinct and points only to published pages or contact', () => {
-    const links = [...FOOTER_COLUMNS.product, ...FOOTER_COLUMNS.resources, ...FOOTER_COLUMNS.company, ...LEGAL_LINKS]
-    const hrefs = links.map(link => link.href)
+    const links = Object.values(FOOTER_COLUMNS).flat()
+    const hrefs = links.map(link => String(link.href))
     assert.equal(new Set(hrefs).size, hrefs.length)
     assert.ok(hrefs.includes('/blog'))
     const published = new Set([...INDEXABLE_ROUTES.map(route => route.path), ...BLOG_POSTS.map(post => `/blog/${post.slug}`)])
-    for (const href of hrefs) {
+    for (const href of [...hrefs, ...LEGAL_LINKS.map(link => link.href)]) {
       if (href.startsWith('mailto:')) continue
       const [path] = href.split('#')
       assert.ok(published.has(path), href)

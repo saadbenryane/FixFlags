@@ -174,11 +174,6 @@ for (const removedPath of [
   }
 }
 
-const sampleRoute = readFileSync(join(ROOT, 'app/(marketing)/samples/page.tsx'), 'utf8')
-if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.includes('notFound()')) {
-  violations.push('app/(marketing)/samples/page.tsx: unknown curated observations must fail closed')
-}
-
 const reviewProjection = readFileSync(
   join(ROOT, 'lib/report/review-workspace-projection.ts'),
   'utf8'

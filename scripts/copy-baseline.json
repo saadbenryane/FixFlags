@@ -44,9 +44,6 @@
     "Back to home",
     "Privacy Policy"
   ],
-  "app/(marketing)/samples/loading.tsx": [
-    "Loading sample Fix list"
-  ],
   "app/(marketing)/terms/page.tsx": [
     "Back to home",
     "Terms of Service"

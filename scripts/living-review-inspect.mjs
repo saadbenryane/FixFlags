@@ -120,7 +120,7 @@ async function run() {
   const results = []
   const targets = [
     { name: 'home', path: '/' },
-    { name: 'samples', path: '/samples' },
+    { name: 'sample', path: '/how-it-works#sample' },
   ]
   if (reportPath) targets.push({ name: 'report', path: reportPath })
 

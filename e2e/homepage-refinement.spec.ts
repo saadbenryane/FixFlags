@@ -151,11 +151,11 @@ test('integration discovery reflects released authorization and parked connectio
   await page.getByText(C.integrations.detailsAction, { exact: true }).click()
   for (const integration of INTEGRATIONS_PAGE.items) {
     const card = page.locator(`[data-integration="${integration.id}"]`)
-    await expect(card.getByRole('link')).toHaveAttribute('href', `/integrations#${integration.id}`)
+    await expect(card.getByRole('link')).toHaveAttribute('href', `/docs/integrations#${integration.id}`)
     await expect(card.getByText(integration.status === 'available' ? INTEGRATIONS_PAGE.availableLabel : SITE_CONNECTION_COPY.comingSoon, { exact: true })).toBeVisible()
   }
   await page.getByRole('link', { name: C.integrations.action, exact: true }).click()
-  await expect(page).toHaveURL(/\/integrations$/)
+  await expect(page).toHaveURL(/\/docs\/integrations$/)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 })
 

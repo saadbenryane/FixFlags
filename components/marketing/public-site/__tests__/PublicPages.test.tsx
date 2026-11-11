@@ -2,7 +2,6 @@ import { render, screen, fireEvent, within, waitFor, act } from '@testing-librar
 import { describe, expect, it, vi } from 'vitest'
 import CoveragePage, { metadata as coverageMetadata } from '@/app/(marketing)/coverage/page'
 import SecurityPage from '@/app/(marketing)/security/page'
-import UseCasesPage from '@/app/(marketing)/use-cases/page'
 import HowItWorksPage from '@/app/(marketing)/how-it-works/page'
 import { HOMEPAGE_CHECK_COVERAGE } from '@/lib/marketing/copy/check-coverage'
 import { PUBLIC_SITE_COPY as C } from '@/lib/marketing/copy/public-site'
@@ -15,8 +14,8 @@ vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPag
 vi.mock('@/lib/audit/start-scan-handoff', () => ({ startScanWithHandoff: vi.fn(), trackStartedAudit: vi.fn() }))
 
 describe('public supporting pages', () => {
-  it('publishes all three additions in search and machine-readable discovery', () => {
-    for (const path of ['/coverage', '/security', '/use-cases']) {
+  it('publishes the supporting pages in search and machine-readable discovery', () => {
+    for (const path of ['/coverage', '/security']) {
       expect(INDEXABLE_ROUTES.some(route => route.path === path)).toBe(true)
       expect(LLMS_SECTIONS.flatMap(section => section.links).some(link => link.path === path)).toBe(true)
     }
@@ -34,18 +33,6 @@ describe('public supporting pages', () => {
     expect(screen.queryByText('Referrer policy')).not.toBeInTheDocument()
     expect(screen.queryByText('Form length and trial requirements')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Couldn’t verify' })).toBeVisible()
-  })
-
-  it('gives each operator a real anchor and bounded setup guidance', () => {
-    render(<MeProvider initialUser={null}><UseCasesPage /></MeProvider>)
-    for (const item of C.useCasesPage.cases) {
-      expect(document.getElementById(item.id)).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: item.title })).toHaveAttribute('href', `#${item.id}`)
-      expect(screen.getByText(item.limits)).toBeVisible()
-    }
-    expect(screen.getAllByRole('link', { name: C.analyze }).every(link => link.getAttribute('href') === '/new')).toBe(true)
-    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: C.analyze })).toHaveAttribute('type', 'submit')
   })
 
   it('explains creator privacy, historical public reports, and safe execution plainly', () => {
@@ -73,7 +60,7 @@ describe('public supporting pages', () => {
     expect(screen.queryByText('Illustrative cart example')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: C.howItWorks.setupLink })).toHaveAttribute('href', '/coverage')
-    expect(screen.getAllByRole('link', { name: C.sample }).every(link => link.getAttribute('href') === '/samples')).toBe(true)
+    expect(screen.getAllByRole('link', { name: C.sample }).every(link => link.getAttribute('href') === '/how-it-works#sample')).toBe(true)
   })
 
   it('keeps the Flag and copyable fix prompt together when choosing an example', async () => {

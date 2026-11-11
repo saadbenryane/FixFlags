@@ -22,10 +22,6 @@ export const SEO = {
     title: 'Privacy and security | FixFlags',
     description: 'Understand what FixFlags records, who can access evidence, how AI is used, and how to control connections and deletion.',
   },
-  useCases: {
-    title: 'Website monitoring use cases | FixFlags',
-    description: 'Keep building your website or app. Get website checks, email alerts, and copy-and-paste fix instructions. For builders, store owners, and agencies.',
-  },
   aiBuilders: {
     title: AI_BUILDERS_PAGE.seo.title,
     description: AI_BUILDERS_PAGE.seo.description,
@@ -35,19 +31,9 @@ export const SEO = {
     description:
       WEBSITE_PROMISE,
   },
-  integrations: {
-    title: 'FixFlags Integrations',
-    description:
-      'Start with just your website address. See optional connections, including GitHub, and what’s coming soon.',
-  },
   pricing: {
     title: 'FixFlags Pricing',
     description: [PUBLIC_OFFER.free, PUBLIC_OFFER.availability].join(' '),
-  },
-  requestDemo: {
-    title: 'Request a FixFlags demo',
-    description:
-      'Bring your website and your questions. See how FixFlags finds problems and helps you fix them.',
   },
   waitlist: {
     title: 'Join the waitlist',
@@ -57,16 +43,6 @@ export const SEO = {
     title: 'FixFlags product | How checks, Flags, fixes and verification work',
     description:
       'See how FixFlags checks your live website in a real browser, hands your AI the fix instructions, and rechecks the same page to prove the fix worked. Try the interactive sample.',
-  },
-  samples: {
-    title: 'Sample Site and Flag',
-    description:
-      'Try a recorded demo. See a website problem and copy the instructions to fix it.',
-  },
-  faq: {
-    title: 'FAQ',
-    description:
-      'Simple answers about checking your website, copying fix instructions, email alerts, and what’s included for free.',
   },
   help: {
     title: 'Help Center',
@@ -116,11 +92,4 @@ export const SEO = {
       'Reviewed website problems and fix guidance. Published patterns include their evidence, research scope, and limits.',
   },
 
-} as const
-
-/** `/roast` is live but noindex and kept off nav, footer, and INDEXABLE_ROUTES. */
-export const ROAST_SEO = {
-  title: 'Website Roast - FixFlags',
-  description:
-    'Check a live page with FixFlags and see what needs attention. Then fix it.',
 } as const

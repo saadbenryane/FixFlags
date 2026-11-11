@@ -25,8 +25,8 @@ describe('MarketingPageViewTracker', () => {
   it('records navigation for an already consented visitor and removes old listeners', () => {
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     const { rerender, unmount } = render(<MarketingPageViewTracker page="/pricing" />)
-    rerender(<MarketingPageViewTracker page="/samples" />)
-    expect(trackMarketingPageView.mock.calls).toEqual([['/pricing'], ['/samples']])
+    rerender(<MarketingPageViewTracker page="/coverage" />)
+    expect(trackMarketingPageView.mock.calls).toEqual([['/pricing'], ['/coverage']])
     unmount()
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
     expect(trackMarketingPageView).toHaveBeenCalledTimes(2)

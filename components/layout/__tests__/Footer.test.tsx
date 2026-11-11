@@ -31,7 +31,7 @@ const LEGACY_MADE_WITH = 'Built for businesses that depend on their website.'
 describe('Footer', () => {
   it('renders every configured destination, including the blog, without retired installation links', () => {
     render(<Footer />)
-    for (const link of [...FOOTER_COLUMNS.product, ...FOOTER_COLUMNS.resources, ...FOOTER_COLUMNS.company, ...FOOTER_COLUMNS.trust]) {
+    for (const link of Object.values(FOOTER_COLUMNS).flat()) {
       expect(screen.getByRole('link', { name: link.label })).toHaveAttribute('href', link.href)
     }
     expect(screen.queryByRole('link', { name: 'Install' })).not.toBeInTheDocument()

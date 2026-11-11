@@ -55,12 +55,19 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/help/mcp',
-        destination: '/help',
+        destination: '/docs/mcp',
         permanent: true,
       },
       // Retired page addresses keep working for bookmarks, backlinks and old emails.
-      { source: '/examples', destination: '/samples', permanent: true },
-      { source: '/samples/details', destination: '/samples', permanent: true },
+      { source: '/examples', destination: '/how-it-works#sample', permanent: true },
+      { source: '/samples', destination: '/how-it-works#sample', permanent: true },
+      { source: '/samples/details', destination: '/how-it-works#sample', permanent: true },
+      { source: '/use-cases', destination: '/ai-builders', permanent: true },
+      // Only the overview retires. `/integrations/connect/:provider` stays for the Shopify install return.
+      { source: '/integrations', destination: '/docs/integrations', permanent: true },
+      { source: '/roast', destination: '/', permanent: true },
+      { source: '/request-demo', destination: '/waitlist', permanent: true },
+      { source: '/faq', destination: '/help#faq', permanent: true },
       { source: '/partners', destination: '/for-agencies', permanent: true },
       { source: '/docs/cli', destination: '/docs/mcp', permanent: true },
       { source: '/docs/mcp/tools', destination: '/docs/mcp', permanent: true },

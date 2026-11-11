@@ -27,9 +27,8 @@ const ALLOWED_PREFIXES = [
   'app/demo/',
   'lib/prompts/',
   'lib/audit/capture/',
-  // Generated SVG badge and roast artwork uses non-CSS rendering values.
+  // Generated SVG badge artwork uses non-CSS rendering values.
   'app/api/badge/',
-  'app/api/tools/roast/',
 ]
 
 const SCAN_DIRS = ['app', 'components', 'lib']

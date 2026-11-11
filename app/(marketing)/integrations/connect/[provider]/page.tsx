@@ -10,7 +10,7 @@ export default async function ConnectIntegrationPage({ params }: { params: Promi
   if (!selected) notFound()
   if (selected.status === 'available') redirect('/settings/integrations')
   return <main className={styles.page}>
-    <Link href="/integrations" className={styles.back}>{INTEGRATIONS_PAGE.hero.label}</Link>
+    <Link href="/docs/integrations" className={styles.back}>{INTEGRATIONS_PAGE.hero.label}</Link>
     <p className={styles.eyebrow}>{SITE_CONNECTION_COPY.comingSoon}</p>
     <h1>{selected.title}</h1>
     <p className={styles.intro}>{selected.summary}</p>

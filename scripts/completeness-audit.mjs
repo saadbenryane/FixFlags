@@ -147,10 +147,6 @@ export function curatedSampleBundleFailures(root) {
       }
     }
   }
-  const sampleRoute = read(root, 'app/(marketing)/samples/page.tsx')
-  if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.includes('notFound()')) {
-    failures.push('Explicit unknown sample observations must fail closed with notFound')
-  }
   return failures
 }
 

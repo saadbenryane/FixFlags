@@ -23,7 +23,7 @@ export function PublicPageIntro({ page, label, title, lines, body, children }: {
 export function PublicPageActions() {
   return <div className="mt-7 flex flex-wrap items-center gap-3">
     <Button asChild variant="brand" className="h-auto min-h-11 max-w-full whitespace-normal py-3"><PublicLink href="/new" target="analyze">{C.analyze}<ArrowRight aria-hidden className="ml-2 h-4 w-4" /></PublicLink></Button>
-    <Button asChild variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal py-3"><PublicLink href="/samples" target="sample">{C.sample}</PublicLink></Button>
+    <Button asChild variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal py-3"><PublicLink href="/how-it-works#sample" target="sample">{C.sample}</PublicLink></Button>
   </div>
 }
 

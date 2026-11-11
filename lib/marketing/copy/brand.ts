@@ -113,53 +113,6 @@ export const TOOLS = {
   },
 } as const
 
-export const ROAST_COPY = {
-  title: 'Website Roast',
-  subhead: 'Paste your URL. Get roasted. Fix what matters.',
-  placeholder: URL_PLACEHOLDER,
-  cta: 'Roast it',
-  ctaLoading: 'Roasting...',
-  overallLabel: 'Overall Quality',
-  topIssuesHeading: 'Top Flags',
-  shareBadge: 'Share your quality badge',
-  downloadSvg: 'Download SVG',
-  copyMarkdown: 'Copy markdown',
-  fullReport: 'Open Site board',
-  wantFixes: 'Want fix instructions you can copy and paste?',
-  runFullAudit: 'Run a full FixFlags check',
-  taglines: {
-    A: 'The checked areas scored well. Review any remaining Flags and coverage limits.',
-    B: 'Solid foundation. A few tweaks and you are golden.',
-    C: 'Not bad. Some issues visitors notice.',
-    D: 'Your site has feelings. Mostly pain.',
-    F: 'We roasted your site so your users do not have to.',
-    default: 'Every site has room to grow.',
-  },
-  rubricVerdicts: {
-    MESSAGE: {
-      A: 'Messaging checks scored well on the content inspected.',
-      B: 'Good messaging. Minor clarity gaps.',
-      C: 'Messaging findings need a closer look.',
-      D: 'Review the headline findings and supporting evidence.',
-      F: 'Start with the highest-priority messaging Flags.',
-    },
-    EXPERIENCE: {
-      A: 'Experience checks scored well within the inspected scope.',
-      B: 'Works well. A few rough edges.',
-      C: 'It loads. That is about the nicest thing we can say.',
-      D: 'Important experience problems need attention.',
-      F: 'This is a usability incident.',
-    },
-    REACH: {
-      A: 'Search-access checks scored well on the pages inspected.',
-      B: 'Review the remaining search-access findings.',
-      C: 'You exist on the internet. Technically.',
-      D: 'Important search-access problems need attention.',
-      F: 'Start with the highest-priority search-access Flags.',
-    },
-  },
-} as const
-
 /** User-facing score explanation. Must match lib/audit/scoring.ts. */
 export const SCORE_HELP = {
   diagnostic:

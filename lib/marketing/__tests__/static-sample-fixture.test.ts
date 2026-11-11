@@ -53,10 +53,7 @@ describe('static sample vs original fixture', () => {
       assert.ok((audit.actionTimeline?.length ?? 0) >= 3)
       assert.equal(audit.score, calculateOverallScore(rubricScores))
       assert.equal(ownHistoryPoint?.score, audit.score)
-      assert.equal(
-        ownHistoryPoint?.href,
-        `/samples?observation=${encodeURIComponent(id)}&view=report`
-      )
+      assert.equal(ownHistoryPoint?.href, '/how-it-works#sample')
     }
 
     const changed = getStaticSampleAudit('curated-sample-v0')

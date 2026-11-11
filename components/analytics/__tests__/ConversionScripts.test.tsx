@@ -205,8 +205,8 @@ describe('ConversionScripts consent', () => {
   })
 
   it('retains analytics for the public sample', () => {
-    routeState.pathname = '/samples/details'
-    window.history.replaceState({}, '', '/samples/details')
+    routeState.pathname = '/how-it-works'
+    window.history.replaceState({}, '', '/how-it-works')
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
 

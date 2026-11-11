@@ -20,7 +20,7 @@ export default function ChangelogPage() {
 
         <ol className="space-y-8">
           {CHANGELOG_ENTRIES.map((entry) => (
-            <li key={entry.date} className="space-y-3 pb-8">
+            <li key={`${entry.date}-${entry.title}`} className="space-y-3 pb-8">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <time
                   dateTime={entry.date}
