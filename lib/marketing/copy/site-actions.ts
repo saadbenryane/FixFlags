@@ -50,7 +50,7 @@ export const SITE_ACTION_COPY = {
   invalidResponse: 'FixFlags could not confirm this action. Refresh before trying again.',
   added: 'Added to this Site. Check it for fresh evidence. Your monitoring schedule is unchanged.',
   currentResults: 'Current results', previousResults: 'Previous evidence', moreResults: 'Load more recorded results',
-  flagEvidence: { observed: 'Observed', technicalDiagnostic: 'Technical diagnostic', supporting: 'Supporting observations', source: 'Evidence source', recorded: 'Finding recorded', references: 'Recorded element references', unknown: 'Source not recorded',
+  flagEvidence: { observed: 'Observed', technicalDiagnostic: 'Technical details', supporting: 'More evidence', unknown: 'Not recorded',
     viewAllPages: (count: number) => `View all ${count} pages`,
     sources: { DETERMINISTIC: 'Website check', AI: 'Visual review', JOURNEY: 'Visitor action', SEARCH: 'Search evidence' },
     lab: 'Google PageSpeed lab measurement. This controlled result does not describe every visitor’s experience.',

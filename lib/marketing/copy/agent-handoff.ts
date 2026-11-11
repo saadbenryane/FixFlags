@@ -2,6 +2,7 @@ const FILE_DOWNLOAD_LABEL = 'Download complete instructions'
 
 export const AGENT_HANDOFF_COPY = {
   fileDownload: FILE_DOWNLOAD_LABEL,
+  headline: (title: string, pageUrl: string | null) => `Problem to fix${pageUrl ? ` on ${pageUrl}` : ''}: ${title.replace(/[.\s]+$/, '')}.`,
   fileDownloading: 'Preparing complete instructions',
   fileReady: 'The repair file is ready. Give it to your developer or attach it to your AI conversation.',
   fileFailed: 'The complete repair file could not be prepared. Review the instructions and try again.',

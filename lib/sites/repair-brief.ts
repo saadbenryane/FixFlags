@@ -11,6 +11,7 @@ import { SiteRunRefusal } from './application/run-refusal'
 import { MAX_REPAIR_BRIEF_BYTES, MAX_REPAIR_PROMPT_BYTES } from './repair-budgets'
 import { repairFileTaskSchema } from './repair-file-contract'
 import { siteWorkspaceHref } from './workspace-location'
+import { customerFindingLabel } from './finding-label'
 
 /** Complete customer-safe projection. Transport limits belong to repair-delivery,
  * so valid source evidence also remains available to revision checks and copy. */
@@ -149,7 +150,9 @@ export function buildSiteRepairHandoff(...args: Parameters<typeof buildSiteRepai
 
 export function renderSiteRepairHandoff(brief: ReturnType<typeof buildSiteRepairBrief>) {
   const { flag, repair, verification, links, contextHash } = brief
+  // The pasted text opens with the problem in plain words; protocol detail follows.
   const references = [
+    C.headline(customerFindingLabel(flag), flag.pageUrl),
     `FixFlags repair brief (${brief.schemaVersion})`,
     `Flag: ${flag.sourceFlagId}. Source scan: ${flag.sourceAuditId}. Context revision: ${contextHash}.`,
     `Flag details: ${links.flag}`,

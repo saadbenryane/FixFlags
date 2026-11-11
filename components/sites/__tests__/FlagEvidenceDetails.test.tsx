@@ -32,7 +32,7 @@ describe('shared Flag evidence presentation', () => {
         { source: 'DETERMINISTIC', checkId: 'buttons-no-text', checkVersion: 1, pageUrl: 'https://example.com/pricing',
           evidence: 'The purchase action has no accessible name', recordedAt: '2026-11-03T10:00:00Z', references: [{ label: 'Purchase', selector: '#purchase', device: 'mobile' }] },
       ]} />)
-    const disclosure = screen.getByText('Supporting observations')
+    const disclosure = screen.getByText('More evidence')
     const details = disclosure.closest('details')!
     expect(details).not.toHaveAttribute('open')
     expect(screen.getByText(/#purchase/)).not.toBeVisible()
@@ -45,7 +45,7 @@ describe('shared Flag evidence presentation', () => {
     render(<FlagEvidenceDetails observed="The action has no name" expected="The action has a name" supportingObservations={[
       { source: 'DETERMINISTIC', checkId: 'buttons-no-text', checkVersion: 1, pageUrl: null, evidence: 'The action has no name', recordedAt: null, references: [] },
     ]} />)
-    expect(screen.queryByText('Supporting observations')).not.toBeInTheDocument()
+    expect(screen.queryByText('More evidence')).not.toBeInTheDocument()
   })
 
   it('scales page measurement bars to the recorded values without inflating the smaller value', () => {
@@ -60,7 +60,7 @@ describe('shared Flag evidence presentation', () => {
     const diagnostic = '#menu\nFix any of the following:\nElement does not have text that is visible to screen readers\n<button id="menu"></button>'
     render(<FlagEvidenceDetails observed={diagnostic} diagnosis="Buttons must have discernible text (1 element)" expected="The menu has an accessible name" />)
     expect(screen.getByText('Buttons must have discernible text (1 element)')).toBeVisible()
-    const details = screen.getByText('Technical diagnostic').closest('details')!
+    const details = screen.getByText('Technical details').closest('details')!
     expect(details).not.toHaveAttribute('open')
     expect(details.querySelector('p')?.textContent).toBe(diagnostic)
   })
@@ -72,7 +72,7 @@ describe('shared Flag evidence presentation', () => {
         { source: 'DETERMINISTIC', checkId: 'buttons-no-text', checkVersion: 1, pageUrl: 'https://example.com/pricing',
           evidence: 'The purchase action has no accessible name', recordedAt: null, references: [] },
       ]}><button type="button">Copy sample guidance</button></FlagEvidenceDetails>)
-    expect(screen.getByText('Supporting observations')).toBeInTheDocument()
+    expect(screen.getByText('More evidence')).toBeInTheDocument()
     expect(screen.getByText('The menu action has no accessible name')).toBeInTheDocument()
     expect(screen.getByText('The purchase action has no accessible name')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy sample guidance' })).toBeInTheDocument()
@@ -82,7 +82,7 @@ describe('shared Flag evidence presentation', () => {
   it('explains missing evidence and avoids repeating a single observation', () => {
     render(<FlagEvidenceDetails observed={null} expected="The original condition must be observed again" />)
     expect(screen.getByText(/Evidence for this Flag was not stored/)).toBeInTheDocument()
-    expect(screen.queryByText('Supporting observations')).not.toBeInTheDocument()
+    expect(screen.queryByText('More evidence')).not.toBeInTheDocument()
   })
   it('ranks repeated page measurements and keeps the rest behind the full list', () => {
     render(<FlagEvidenceDetails observed={[

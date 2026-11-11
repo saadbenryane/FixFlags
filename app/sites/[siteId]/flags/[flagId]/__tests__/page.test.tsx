@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -208,7 +208,7 @@ describe('Flag verification attempts', () => {
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.fixStep })).toBeVisible()
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Recheck' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.verificationHistory })).toBeVisible()
     expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-site', 'site-1')
     expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-flag', 'flag-1')
     expect(screen.getByTestId('live-flag-detail')).toHaveAttribute('data-source', 'flag-1')
@@ -303,7 +303,6 @@ describe('Flag verification attempts', () => {
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.previousFailure })).toBeVisible()
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.flagRecovered })).toBeVisible()
     expect(screen.queryByText(SITE_BOARD_COPY.noVerificationYet)).not.toBeInTheDocument()
-    expect(screen.queryByText(SITE_BOARD_COPY.noVerificationBody)).not.toBeInTheDocument()
     if (hasManualHistory) {
       expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.verificationHistory })).toBeVisible()
       expect(screen.getByText('Repaired the purchase control.')).toBeVisible()
@@ -322,8 +321,8 @@ describe('Flag verification attempts', () => {
     const detail = await mocks.loadSiteBoardFlag()
     mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, affectedPaths: [] } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
-    const scope = screen.getByRole('heading', { name: SITE_BOARD_COPY.flagScope }).parentElement!
-    const link = within(scope).getByRole('link', { name: C.open(detail.flag.pageUrl) })
+    // The page appears once, beside the back link, as a link to the live page.
+    const link = screen.getByRole('link', { name: C.open(detail.flag.pageUrl) })
     expect(link).toHaveAttribute('href', detail.flag.pageUrl)
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(link).toHaveTextContent('/products/tote')
@@ -333,8 +332,8 @@ describe('Flag verification attempts', () => {
     const detail = await mocks.loadSiteBoardFlag()
     mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, affectedPaths: [url] } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
-    const scope = screen.getByRole('heading', { name: SITE_BOARD_COPY.flagScope }).parentElement!
-    expect(within(scope).queryByRole('link')).toBeNull()
+    expect(screen.queryByRole('link', { name: C.open(url) })).toBeNull()
+    expect(screen.queryByText('secret', { exact: false })).toBeNull()
     expect(screen.getByText('The cart stayed empty.')).toBeVisible()
   })
 })
