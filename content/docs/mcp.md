@@ -6,6 +6,8 @@ The coding agent may describe a commit, deployment, or affected area. That conte
 
 ## Connect
 
+<!-- generated:mcp-connection -->
+
 1. Sign in and open [MCP setup](/dashboard/mcp-setup). Choose your coding agent.
 2. Create a key with **Read evidence** to retrieve repair briefs, **Run checks** to also start checks, or **Fix and verify** for the full repair workflow. Copy the secret when it appears. It is shown once.
 3. Add the configuration shown for your agent and reconnect its MCP connection. Keep the key in private configuration, outside committed project files and prompts.

@@ -3,7 +3,7 @@
   "assets": [
     {
       "id": "site-open-graph",
-      "src": "/og-v2.jpg",
+      "src": "/og-v3.jpg",
       "classification": "refined",
       "width": 1200,
       "height": 630,
@@ -11,16 +11,18 @@
       "contentBearing": true,
       "requiredTerms": [
         "FixFlags",
-        "Your website is live.",
-        "Is everything working?",
-        "Find problems. Get alerts. Copy the fix.",
+        "Your AI built it.",
+        "We make sure it works.",
+        "Find what’s broken. Hand your AI the fix. Prove it worked.",
+        "Check. Flag. Fix. Verify.",
         "fixflags.com"
       ],
       "consumers": [
         "lib/marketing/metadata.ts"
       ],
       "replaces": [
-        "/og.jpg"
+        "/og.jpg",
+        "/og-v2.jpg"
       ]
     },
     {
@@ -59,8 +61,96 @@
       ]
     },
     {
-      "id": "folded-f-studio-v1",
-      "src": "/marketing/visuals/folded-f-studio-v1.webp",
+      "id": "folded-f-studio-v2",
+      "src": "/marketing/visuals/folded-f-studio-v2.webp",
+      "classification": "refined",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": false,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "components/marketing/BrandClosing.tsx"
+      ],
+      "replaces": [
+        "/marketing/visuals/folded-f-studio-v1.webp"
+      ]
+    },
+    {
+      "id": "folded-f-studio-dark-v2",
+      "src": "/marketing/visuals/folded-f-studio-dark-v2.webp",
+      "classification": "refined",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": false,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "components/marketing/BrandClosing.tsx"
+      ],
+      "replaces": [
+        "/marketing/visuals/folded-f-studio-dark-v1.webp"
+      ]
+    },
+    {
+      "id": "check-conversion-glass-v1",
+      "src": "/marketing/visuals/check-conversion-glass-v1.webp",
+      "classification": "refined",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "check-pages-glass-v1",
+      "src": "/marketing/visuals/check-pages-glass-v1.webp",
+      "classification": "refined",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "check-security-glass-v1",
+      "src": "/marketing/visuals/check-security-glass-v1.webp",
+      "classification": "refined",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "check-search-glass-v1",
+      "src": "/marketing/visuals/check-search-glass-v1.webp",
+      "classification": "refined",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "social-studio-v3",
+      "src": "/marketing/visuals/social-studio-v3.webp",
       "classification": "refined",
       "width": 1731,
       "height": 909,
@@ -68,21 +158,7 @@
       "contentBearing": false,
       "requiredTerms": [],
       "consumers": [
-        "components/marketing/BrandClosing.tsx"
-      ],
-      "replaces": []
-    },
-    {
-      "id": "folded-f-studio-dark-v1",
-      "src": "/marketing/visuals/folded-f-studio-dark-v1.webp",
-      "classification": "refined",
-      "width": 1730,
-      "height": 909,
-      "requiresAlpha": false,
-      "contentBearing": false,
-      "requiredTerms": [],
-      "consumers": [
-        "components/marketing/BrandClosing.tsx"
+        "scripts/generate-social-card.mts"
       ],
       "replaces": []
     }

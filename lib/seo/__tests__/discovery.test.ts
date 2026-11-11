@@ -15,6 +15,8 @@ import { INDEXABLE_ROUTES, LLMS_SECTIONS } from '@/lib/marketing/seo-routes'
 import { marketingGraphSchema } from '@/lib/marketing/structured-data'
 import { HELP_ARTICLES, HELP_CATEGORIES } from '@/lib/help/catalog'
 import { helpArticlePath } from '@/lib/help/types'
+import { DOCS_PAGES } from '@/lib/docs/catalog'
+import { docsMarkdownPath } from '@/lib/docs/markdown-path'
 
 vi.mock('@/lib/graph/queries', () => ({ getIndexableIssueCheckIds: vi.fn() }))
 
@@ -55,6 +57,10 @@ describe('technical discovery', () => {
       '*', 'OAI-SearchBot', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot',
     ]))
     for (const rule of rules) {
+      if (rule.disallow === '/') {
+        expect(rule.allow).toBeUndefined()
+        continue
+      }
       expect(rule.allow).toBe('/')
       expect(rule.disallow).toEqual(expect.arrayContaining([
         '/api', '/admin', '/dashboard', '/sites', '/products', '/settings',
@@ -65,6 +71,17 @@ describe('technical discovery', () => {
       }
     }
     expect(policy.sitemap).toBe(`${baseUrl}/sitemap.xml`)
+  })
+
+  it('keeps training restrictions independent from AI search and user retrieval', () => {
+    const policy = robots()
+    const rules = Array.isArray(policy.rules) ? policy.rules : [policy.rules]
+    for (const agent of ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended', 'Applebot-Extended']) {
+      expect(rules.find(rule => rule.userAgent === agent), agent).toEqual({ userAgent: agent, disallow: '/' })
+    }
+    for (const agent of ['OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot']) {
+      expect(rules.find(rule => rule.userAgent === agent), agent).toMatchObject({ allow: '/' })
+    }
   })
 
   it('describes the shipped product and links to published content in llms.txt', () => {
@@ -91,6 +108,9 @@ describe('technical discovery', () => {
       ...BLOG_POSTS.map((post) => `/blog/${post.slug}`),
       ...WEBSITE_GUIDES.map(guide => `/guides/${guide.slug}`),
       ...AI_BUILDER_TOOLS.map(tool => `/ai-builders/${tool.slug}`),
+      ...DOCS_PAGES.map(page => docsMarkdownPath(page.path)),
+      '/llms-full.txt', '/.well-known/mcp.json', '/api/mcp',
+      '/.well-known/oauth-protected-resource/api/mcp', '/.well-known/oauth-authorization-server',
     ])
     const links = [...buildLlmsTxt().matchAll(/\]\(([^)]+)\)/g)]
     expect(links.length).toBeGreaterThan(0)
@@ -209,7 +229,7 @@ describe('technical discovery', () => {
     const logoPath = new URL((organization as { logo: string }).logo).pathname
     const redirects = await nextConfig.redirects!()
     const redirect = redirects.find((rule) => rule.source === logoPath)
-    expect(redirect).toMatchObject({ destination: '/icon-512.png', permanent: true })
-    expect(existsSync(resolve('public', redirect!.destination.slice(1)))).toBe(true)
+    const publicAsset = redirect?.destination ?? logoPath
+    expect(existsSync(resolve('public', publicAsset.slice(1)))).toBe(true)
   })
 })

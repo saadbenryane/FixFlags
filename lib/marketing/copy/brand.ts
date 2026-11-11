@@ -22,6 +22,7 @@ export const SOCIAL_CARD = {
   headline: PRODUCT_STORY.headline,
   description: PRODUCT_STORY.summary,
   label: 'Check. Flag. Fix. Verify.',
+  imageAlt: `${PRODUCT_STORY.headline.join(' ')} ${PRODUCT_STORY.summary} Orange glass FixFlags mark on a warm studio background.`,
   workflow: 'Monitor. Flag. Fix.',
 } as const
 

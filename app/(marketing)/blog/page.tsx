@@ -26,7 +26,7 @@ export default function BlogPage() {
               <div className={s.meta}><time dateTime={post.date}>{blogDate(post.date)}</time><span>{BLOG_PAGE.readingTime(blogReadingMinutes(post))}</span></div>
               <Link href={`/blog/${post.slug}`} className={s.readLink} aria-label={`${BLOG_PAGE.readArticle}: ${post.title}`}>{BLOG_PAGE.readArticle}<ArrowRight size={16} aria-hidden="true" /></Link>
             </div>
-            {position === 0 ? <div className={s.featuredImage}><Image src={post.cover.src} alt={post.cover.alt} fill priority sizes="(min-width: 1280px) 540px, (min-width: 768px) 50vw, calc(100vw - 40px)" /></div> : null}
+            {position === 0 ? <div className={s.featuredImage}><Image src={post.cover.src} alt={post.cover.alt} fill priority quality={82} sizes="(min-width: 1280px) 540px, (min-width: 768px) 50vw, calc(100vw - 40px)" /></div> : null}
           </article>
         </li>)}
       </ol>

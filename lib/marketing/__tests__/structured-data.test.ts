@@ -10,12 +10,21 @@ import {
   helpHubStructuredData,
   issueIndexStructuredData,
   issuePageSchema,
+  organizationSchema,
   publicReportStructuredData,
   toolPageStructuredData,
 } from '@/lib/marketing/structured-data'
 import { getDocsPage } from '@/lib/docs/catalog'
 
 describe('structured data', () => {
+  it('publishes the transparent organization logo at an existing public asset', async () => {
+    const { access } = await import('node:fs/promises')
+    const schema = organizationSchema()
+    const asset = new URL(schema.logo).pathname
+    expect(schema.logo).toBe(`${SITE_URL}/brand/logo-mark-transparent.png`)
+    await expect(access(`${process.cwd()}/public${asset}`)).resolves.toBeUndefined()
+  })
+
   it('emits FAQPage schema that matches visible FAQ copy and anchors', () => {
     const schema = faqPageSchema(FAQ, { path: '/faq', name: FAQ_PAGE.title })
     expect(schema).toMatchObject({

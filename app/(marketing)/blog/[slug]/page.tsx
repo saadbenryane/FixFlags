@@ -63,7 +63,7 @@ export default async function BlogPostPage({ params }: Props) {
         {post.dateNote ? <p className={s.dateNote}>{post.dateNote}</p> : null}
       </header>
       <figure className={s.cover}>
-        <Image src={post.cover.src} alt={post.cover.alt} width={post.cover.width} height={post.cover.height} priority sizes="(min-width: 1280px) 1120px, calc(100vw - 40px)" />
+        <Image src={post.cover.src} alt={post.cover.alt} width={post.cover.width} height={post.cover.height} priority quality={82} sizes="(min-width: 1280px) 1120px, calc(100vw - 40px)" />
       </figure>
       <div className={s.readingLayout}>
         <aside className={s.contents}>

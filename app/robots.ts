@@ -22,20 +22,25 @@ const PRIVATE_PREFIXES = [
   '/integrations/connect',
 ] as const
 
-// AI crawlers we explicitly welcome onto the public site. A named user-agent
-// group fully replaces the `*` group for that bot, so each must repeat the
+// Search crawlers and user-directed fetchers can discover the public site.
+// Other AI uses follow the existing managed production restrictions.
+// A named user-agent group fully replaces the `*` group for that bot, so each must repeat the
 // private-prefix exclusions or it would otherwise be free to crawl them.
 const AI_CRAWLERS = [
-  'GPTBot',
   'OAI-SearchBot',
   'ChatGPT-User',
-  'ClaudeBot',
   'Claude-SearchBot',
   'Claude-User',
-  'Claude-Web',
-  'anthropic-ai',
   'PerplexityBot',
   'Perplexity-User',
+] as const
+
+const RESTRICTED_AI_CRAWLERS = [
+  'GPTBot',
+  'ClaudeBot',
+  'Claude-Web',
+  'anthropic-ai',
+  // Google combines Gemini grounding and training under this control.
   'Google-Extended',
   'Applebot-Extended',
   'CCBot',
@@ -50,6 +55,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       { userAgent: '*', allow: '/', disallow },
       ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: '/', disallow })),
+      ...RESTRICTED_AI_CRAWLERS.map((userAgent) => ({ userAgent, disallow: '/' })),
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
   }

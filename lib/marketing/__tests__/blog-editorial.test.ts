@@ -35,7 +35,7 @@ describe('blog editorial contracts', () => {
         publishedTime: post.publishedAt ?? post.date,
         images: [{ url: post.cover.src, width: post.cover.width, height: post.cover.height, alt: post.cover.alt }],
       })
-      expect(metadata.twitter).toMatchObject({ images: [`${SITE_URL}${post.cover.src}`] })
+      expect(metadata.twitter).toMatchObject({ images: [{ url: `${SITE_URL}${post.cover.src}`, alt: post.cover.alt }] })
       expect(blogPostingSchema(post)['@graph']).toEqual(expect.arrayContaining([
         expect.objectContaining({ '@type': 'BlogPosting', datePublished: post.publishedAt ?? post.date, image: expect.objectContaining({ url: `${SITE_URL}${post.cover.src}` }) }),
       ]))

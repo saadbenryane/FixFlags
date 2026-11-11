@@ -72,6 +72,8 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      { source: '/docs.md', destination: '/api/docs' },
+      { source: '/docs/:path+.md', destination: '/api/docs/:path+' },
       {
         source: '/.well-known/mcp.json',
         destination: '/api/well-known/mcp-json',

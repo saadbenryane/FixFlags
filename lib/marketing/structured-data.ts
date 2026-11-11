@@ -14,7 +14,7 @@ export function organizationSchema() {
     '@id': ORG_ID,
     name: BRAND.name,
     url: SITE_URL,
-    logo: `${SITE_URL}/icon`,
+    logo: `${SITE_URL}/brand/logo-mark-transparent.png`,
     description: BRAND.oneLiner,
     email: BRAND.supportEmail,
   }

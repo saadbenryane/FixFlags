@@ -57,7 +57,7 @@ export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: st
         <div className={s.flagHeader}><span className={s.flagLabel}><Flag aria-hidden size={13} />{C.steps[1].label}</span><span className={s.pagePath}>{example.page}</span></div>
         <h3>{example.title}</h3>
         <dl className={s.facts}><div><dt>{C.walkthrough.observed}</dt><dd>{example.observed}</dd></div><div><dt>{C.walkthrough.expected}</dt><dd>{example.expected}</dd></div></dl>
-        {selected === 'checkout' ? <figure className={s.cartEvidence}><Image src="/marketing/evidence/purchase-broken.png" alt={C.example.imageAlt} width={780} height={1520} sizes="(min-width: 640px) 260px, 70vw" /></figure> : selected === 'availability' ? <div className={s.response}><span>{C.walkthrough.response}</span><strong>404</strong><code>{example.page}</code></div> : <div className={s.loading}><Gauge aria-hidden size={32} strokeWidth={1.5} /><span>{C.walkthrough.performanceLabel}</span><strong>{C.walkthrough.performanceValue}</strong></div>}
+        {selected === 'checkout' ? <figure className={s.cartEvidence}><Image src="/marketing/evidence/purchase-broken.png" alt={C.example.imageAlt} width={780} height={1520} quality={82} sizes="260px" /></figure> : selected === 'availability' ? <div className={s.response}><span>{C.walkthrough.response}</span><strong>404</strong><code>{example.page}</code></div> : <div className={s.loading}><Gauge aria-hidden size={32} strokeWidth={1.5} /><span>{C.walkthrough.performanceLabel}</span><strong>{C.walkthrough.performanceValue}</strong></div>}
         <p className={s.provenance}>{C.walkthrough.provenance}</p>
       </div>
     </li>
@@ -78,8 +78,8 @@ export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: st
           <summary>{C.walkthrough.recoveryDetail}</summary>
           <h4>{C.walkthrough.recoveryTitle}</h4><p>{C.walkthrough.recoveryBody}</p>
           <div className={s.screenshots}>
-            <figure><figcaption>{C.walkthrough.before}</figcaption><Image src="/marketing/evidence/purchase-broken.png" alt={C.example.imageAlt} width={780} height={1520} sizes="(min-width: 640px) 240px, 70vw" /></figure>
-            <figure><figcaption>{C.walkthrough.after}</figcaption><Image src="/marketing/evidence/purchase-verified.png" alt={C.example.recoveryAlt} width={780} height={1520} sizes="(min-width: 640px) 240px, 70vw" /></figure>
+            <figure><figcaption>{C.walkthrough.before}</figcaption><Image src="/marketing/evidence/purchase-broken.png" alt={C.example.imageAlt} width={780} height={1520} quality={82} sizes="(max-width: 639px) 40vw, 260px" /></figure>
+            <figure><figcaption>{C.walkthrough.after}</figcaption><Image src="/marketing/evidence/purchase-verified.png" alt={C.example.recoveryAlt} width={780} height={1520} quality={82} sizes="(max-width: 639px) 40vw, 260px" /></figure>
           </div>
           <p className={s.provenance}>{C.walkthrough.provenance}</p>
         </details>

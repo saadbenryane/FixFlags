@@ -40,15 +40,16 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: BRAND.name,
     description: SEO.home.description,
-    images: [DEFAULT_OG_IMAGE.url],
+    images: [DEFAULT_OG_IMAGE],
   },
   icons: {
     icon: [
-      { url: '/favicon.ico?v=20261021', sizes: '16x16 32x32 48x48' },
-      { url: '/icon-32.png?v=20261021', type: 'image/png', sizes: '32x32' },
-      { url: '/icon.svg?v=20261021', type: 'image/svg+xml', sizes: 'any' },
+      { url: '/favicon.ico?v=20261111', sizes: '16x16 32x32 48x48' },
+      { url: '/icon-32.png?v=20261111', type: 'image/png', sizes: '32x32' },
+      { url: '/icon-96.png?v=20261111', type: 'image/png', sizes: '96x96' },
+      { url: '/icon.svg?v=20261111', type: 'image/svg+xml', sizes: 'any' },
     ],
-    apple: [{ url: '/apple-touch-icon-v2.png', type: 'image/png', sizes: '180x180' }],
+    apple: [{ url: '/apple-touch-icon-v2.png?v=20261111', type: 'image/png', sizes: '180x180' }],
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',

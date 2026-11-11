@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { BRAND, SITE_URL } from './copy/brand'
+import { BRAND, SITE_URL, SOCIAL_CARD } from './copy/brand'
 import { SEO } from './copy/seo'
 
 const DEFAULT_OG_IMAGE = {
-  url: '/og-v2.jpg',
+  url: '/og-v3.jpg',
   width: 1200,
   height: 630,
-  alt: BRAND.tagline,
+  alt: SOCIAL_CARD.imageAlt,
   type: 'image/jpeg',
 } as const
 
@@ -49,7 +49,7 @@ export function buildIndexableMetadata(input: IndexableMetadataInput): Metadata 
       card: 'summary_large_image',
       title: ogTitle,
       description: input.description,
-      images: [twitterImage],
+      images: [{ ...images[0], url: twitterImage }],
     },
   }
 }

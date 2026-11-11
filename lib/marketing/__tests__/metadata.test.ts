@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { BRAND, SEO, SITE_URL } from '../copy'
+import { SEO, SITE_URL, SOCIAL_CARD } from '../copy'
 import { DEFAULT_OG_IMAGE, buildIndexableMetadata, buildPageMetadata } from '../metadata'
 
 describe('site share metadata', () => {
   it('points Open Graph and Twitter cards at the 1200x630 brand artwork', () => {
     expect(DEFAULT_OG_IMAGE).toEqual({
-      url: '/og-v2.jpg',
+      url: '/og-v3.jpg',
       width: 1200,
       height: 630,
-      alt: BRAND.tagline,
+      alt: SOCIAL_CARD.imageAlt,
       type: 'image/jpeg',
     })
 
@@ -16,7 +16,7 @@ describe('site share metadata', () => {
     expect(home.openGraph?.images).toEqual([DEFAULT_OG_IMAGE])
     expect(home.twitter).toMatchObject({
       card: 'summary_large_image',
-      images: [`${SITE_URL}/og-v2.jpg`],
+      images: [{ ...DEFAULT_OG_IMAGE, url: `${SITE_URL}/og-v3.jpg` }],
     })
   })
 

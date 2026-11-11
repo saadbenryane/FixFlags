@@ -21,6 +21,7 @@ function walk(directory, files = []) {
 }
 
 function boundaryFor(file) {
+  if (file === 'app/api/docs/[[...slug]]/route.ts') return 'public'
   if (file === 'app/api/mcp/route.ts' || file === 'app/api/cli/auth/session/route.ts') return 'api-key'
   if (file.startsWith('app/api/api-keys/') || file === 'app/api/cli/auth/authorize/route.ts') return 'session'
   if (file.startsWith('app/api/oauth/') || ['app/api/cli/auth/device/route.ts',

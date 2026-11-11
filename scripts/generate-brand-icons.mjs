@@ -37,17 +37,19 @@ async function icon(size, path, { background = 'transparent', scale = .74 } = {}
   const width = height * 474 / 779
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${background !== 'transparent' ? `<rect width="${size}" height="${size}" fill="${background}"/>` : ''}${markAt((size - width) / 2, (size - height) / 2, height)}</svg>`
   // Rasterize the paths at each target's native resolution. No bitmap enlargement.
-  let raster = sharp(Buffer.from(svg), { density: 288 }).resize(size, size)
+  let raster = sharp(Buffer.from(svg))
   if (background !== 'transparent') raster = raster.flatten({ background })
   await raster.png().toFile(path)
 }
 
 await sharp(Buffer.from(mark), { density: 288 }).resize({ height: 2048 }).png().toFile('public/brand/logo-mark.png')
+await icon(2048, 'public/brand/logo-mark-transparent.png')
 for (const [name, display] of Object.entries({ sm: 24, md: 28, lg: 32 })) {
   await icon(display * 3, `public/brand/logo-mark-${name}.png`, { scale: 1 })
 }
 
 for (const size of [16, 32, 48]) await icon(size, `public/icon-${size}.png`, { scale: .94 })
+await icon(96, 'public/icon-96.png', { scale: .94 })
 await writeFile('public/icon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${markAt((32 - 30 * 474 / 779) / 2, 1, 30)}</svg>`)
 for (const size of [192, 512]) await icon(size, `public/icon-${size}.png`, { background: white })
 await icon(512, 'public/icon-512-maskable.png', { background: white, scale: .66 })

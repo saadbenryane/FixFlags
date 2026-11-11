@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { HelpArticleSlug } from '@/lib/help/types'
 import { buildIndexableMetadata } from '@/lib/marketing/metadata'
 import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
+import { docsMarkdownPath } from '@/lib/docs/markdown-path'
 
 export type DocsPageKey =
   | 'home'
@@ -128,6 +129,9 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     headings: [
       { id: 'what-mcp-does', title: 'What MCP does' },
       { id: 'connect', title: 'Connect' },
+      { id: 'give-the-agent-a-repair-brief', title: 'Give the agent a repair brief' },
+      { id: 'fix-and-verify', title: 'Fix and verify' },
+      { id: 'troubleshooting', title: 'Troubleshooting' },
       { id: 'tools', title: 'Tools' },
       { id: 'async-runs', title: 'Async runs' },
       { id: 'security-and-independence', title: 'Security and independence' },
@@ -222,13 +226,20 @@ export function getDocsPageByPath(path: string) {
 }
 
 export function buildDocsMetadata(page: DocsPageDefinition): Metadata {
-  return buildIndexableMetadata({
+  const metadata = buildIndexableMetadata({
     title: `${page.title} | FixFlags Docs`,
     description: page.description,
     path: page.path,
     openGraphType: 'article',
     openGraphTitle: page.title,
   })
+  return {
+    ...metadata,
+    alternates: {
+      ...metadata.alternates,
+      types: { 'text/markdown': docsMarkdownPath(page.path) },
+    },
+  }
 }
 
 export { docsStructuredData } from '@/lib/marketing/structured-data'

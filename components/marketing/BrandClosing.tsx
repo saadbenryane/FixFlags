@@ -7,8 +7,8 @@ export function BrandClosing({ children }: { children: ReactNode }) {
   return <div className={styles.closing}>
     <div className={styles.copy}>{children}</div>
     <div className={styles.art} aria-hidden="true">
-      <Image src="/marketing/visuals/folded-f-studio-v1.webp" alt="" fill sizes="(max-width: 639px) 300px, 460px" className={styles.light} />
-      <Image src="/marketing/visuals/folded-f-studio-dark-v1.webp" alt="" fill sizes="(max-width: 639px) 300px, 460px" className={styles.dark} />
+      <Image src="/marketing/visuals/folded-f-studio-v2.webp" alt="" fill sizes="(max-width: 767px) 300px, 460px" quality={82} className={styles.light} />
+      <Image src="/marketing/visuals/folded-f-studio-dark-v2.webp" alt="" fill sizes="(max-width: 767px) 300px, 460px" quality={82} className={styles.dark} />
     </div>
   </div>
 }

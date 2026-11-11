@@ -1,7 +1,9 @@
-import { WEBSITE_GUIDES } from './copy/guides'
 import { BLOG_POSTS, BRAND, SITE_URL } from './copy'
-import { INDEXABLE_ROUTES, LLMS_SECTIONS, LLMS_TXT_PATH } from './seo-routes'
+import { LLMS_SECTIONS } from './seo-routes'
 import { humanizeCheckId } from './issue-page'
+import { DOCS_PAGES } from '@/lib/docs/catalog'
+import { docsMarkdownPath } from '@/lib/docs/markdown-path'
+import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 
 const MAX_RESEARCH_LINKS = 20
 
@@ -13,6 +15,22 @@ export function buildLlmsTxt(reviewedIssueCheckIds: readonly string[] = []): str
     `> ${BRAND.oneLiner}`,
     '',
   ]
+
+  lines.push('## Machine-readable documentation', '',
+    `- [Complete documentation](${baseUrl}/llms-full.txt): Published guides in one plain-text response.`,
+    ...DOCS_PAGES.filter(page => page.source).map(page =>
+      `- [${page.title}](${baseUrl}${docsMarkdownPath(page.path)}): ${page.description}`),
+    '',
+  )
+  if (MCP_IS_DISCOVERABLE) {
+    lines.push('## MCP connection', '',
+      `- [MCP server description](${baseUrl}/.well-known/mcp.json): Current tool names, scopes, and Streamable HTTP endpoint.`,
+      `- [MCP endpoint](${baseUrl}/api/mcp): Requires an authorized bearer credential.`,
+      `- [OAuth protected resource](${baseUrl}/.well-known/oauth-protected-resource/api/mcp): Authorization server and supported scopes.`,
+      `- [OAuth authorization server](${baseUrl}/.well-known/oauth-authorization-server): Authorization, token, registration, and revocation endpoints.`,
+      '',
+    )
+  }
 
   for (const section of LLMS_SECTIONS) {
     if (section.requiresReviewedResearch && reviewedIssueCheckIds.length === 0) continue
@@ -37,9 +55,4 @@ export function buildLlmsTxt(reviewedIssueCheckIds: readonly string[] = []): str
   }
 
   return lines.join('\n').trimEnd() + '\n'
-}
-
-/** Paths indexed for sitemap guard checks (marketing pages + llms.txt). */
-export function sitemapPaths(options: { hasReviewedResearch?: boolean } = {}): string[] {
-  return [...INDEXABLE_ROUTES.filter((route) => route.path !== '/issues' || options.hasReviewedResearch).map((r) => r.path), ...WEBSITE_GUIDES.map(guide => `/guides/${guide.slug}`), LLMS_TXT_PATH]
 }
