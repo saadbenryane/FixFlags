@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { fireEvent, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
@@ -12,13 +13,24 @@ afterEach(() => {
 })
 
 describe('MarketingPageViewTracker', () => {
+  it('does not double-count when React replays effects', () => {
+    render(<StrictMode><MarketingPageViewTracker page="/pricing" /></StrictMode>)
+    expect(trackMarketingPageView).toHaveBeenCalledExactlyOnceWith('/pricing')
+  })
+
   it('records the current page once when consent arrives after mount', () => {
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
     render(<MarketingPageViewTracker page="/pricing" />)
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
     expect(trackMarketingPageView).not.toHaveBeenCalled()
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))
+    expect(trackMarketingPageView).toHaveBeenCalledExactlyOnceWith('/pricing')
+  })
+
+  it('records the current page on arrival without a saved preference', () => {
+    render(<MarketingPageViewTracker page="/pricing" />)
     expect(trackMarketingPageView).toHaveBeenCalledExactlyOnceWith('/pricing')
   })
 

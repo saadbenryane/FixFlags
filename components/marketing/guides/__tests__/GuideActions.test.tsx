@@ -38,7 +38,7 @@ describe('guide acquisition entry', () => {
     expect(JSON.stringify(events)).not.toContain('private')
   })
 
-  it('waits for consent and does not invent campaign tags for organic entry', () => {
+  it('measures organic visits immediately and waits for consent before adding journey attribution', () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST123')
     const page = '/guides'
     const { rerender } = render(<><MarketingPageViewTracker page={page} /><GuideActions /></>)
@@ -46,7 +46,8 @@ describe('guide acquisition entry', () => {
     expect(link).toHaveAttribute('href', '/new')
     link.addEventListener('click', event => event.preventDefault())
     fireEvent.click(link)
-    expect(recorded()).toEqual([])
+    expect(recorded().map(([, name]) => name)).toEqual(['marketing_page_view', GUIDE_ANALYZE_EVENT])
+    expect(recorded().every(([, , params]) => !(params as Record<string, unknown>).journey_id)).toBe(true)
     expect(sessionStorage.length).toBe(0)
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     fireEvent(window, new Event(ANALYTICS_CONSENT_EVENT))

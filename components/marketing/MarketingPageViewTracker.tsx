@@ -1,16 +1,20 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { trackMarketingPageView } from '@/lib/analytics/events'
-import { ANALYTICS_CONSENT_EVENT, hasAnalyticsConsent } from '@/lib/analytics/consent'
+import { ANALYTICS_CONSENT_EVENT, isGoogleAnalyticsEnabled } from '@/lib/analytics/consent'
 
 /** Fires once per marketing page mount for funnel attribution. */
 export function MarketingPageViewTracker({ page }: { page: string }) {
+  const sentPage = useRef<string | null>(null)
   useEffect(() => {
-    let sent = false
     const sendWhenGranted = () => {
-      if (sent || !hasAnalyticsConsent()) return
-      sent = true
+      if (!isGoogleAnalyticsEnabled()) {
+        sentPage.current = null
+        return
+      }
+      if (sentPage.current === page) return
+      sentPage.current = page
       trackMarketingPageView(page)
     }
     sendWhenGranted()

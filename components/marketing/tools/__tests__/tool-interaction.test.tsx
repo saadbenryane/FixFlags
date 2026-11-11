@@ -111,8 +111,8 @@ describe.each(tools)('$slug acquisition lifecycle', ({ slug, Component, result }
     await waitFor(() => expect(toolEvents().map((event) => event.outcome)).toEqual(['submitted', 'succeeded']))
   })
 
-  it('does not emit telemetry or create a journey without consent', async () => {
-    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=; Max-Age=0; Path=/`
+  it('does not emit telemetry or create a journey after opt-out', async () => {
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(result))))
     render(<Component />)
     submit()

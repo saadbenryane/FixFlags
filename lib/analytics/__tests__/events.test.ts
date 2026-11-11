@@ -3,8 +3,9 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ensureGtagStub, initializeGoogleTag, isGaConfigured } from '@/lib/analytics/gtag'
-import { trackEvent, trackLandingView } from '@/lib/analytics/events'
-import { ANALYTICS_CONSENT_COOKIE } from '@/lib/analytics/consent'
+import { trackEvent, trackLandingView, trackMarketingPageView } from '@/lib/analytics/events'
+import { fireGoogleAdsConversion, fireMetaPixelEvent } from '@/lib/analytics/ad-conversions'
+import { ANALYTICS_CONSENT_COOKIE, writeAnalyticsConsent } from '@/lib/analytics/consent'
 import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 describe('analytics gtag bootstrap', () => {
@@ -61,8 +62,9 @@ describe('analytics gtag bootstrap', () => {
     expect(eventIndex).toBeGreaterThan(configIndex)
   })
 
-  it('does not queue browser events before analytics consent', () => {
+  it('does not queue browser events after an explicit opt-out', () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
     ensureGtagStub()
     trackEvent('landing_view', { path: '/' })
     expect(window.dataLayer).toEqual([])
@@ -82,6 +84,77 @@ describe('analytics gtag bootstrap', () => {
     ).toBe(true)
   })
 
+  it('sends first-visit funnel events without granting advertising or extra journey attribution', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', 'AW-TEST')
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL', 'signup')
+    window.fbq = vi.fn()
+    trackLandingView()
+    trackEvent('signup_started', { method: 'email' })
+    trackEvent('signed_up', { method: 'email', email: 'private@example.com', user_id: 'private-user' })
+    const commands = window.dataLayer!.map(command => Array.from(command as IArguments))
+    expect(commands.filter(([verb]) => verb === 'event').map(([, name]) => name))
+      .toEqual(['landing_view', 'signup_started', 'signed_up'])
+    expect(JSON.stringify(commands)).not.toMatch(/private@example|private-user|AW-TEST|ffj_/)
+    expect(window.fbq).not.toHaveBeenCalled()
+    expect(sessionStorage.length).toBe(0)
+  })
+
+  it('filters unsafe campaign values from first-visit acquisition events', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    window.history.replaceState({}, '', '/?utm_source=private%40example.com&utm_campaign=launch_2026&token=private-token')
+    trackLandingView()
+    trackMarketingPageView('/pricing')
+    const events = window.dataLayer!.map(command => Array.from(command as IArguments)).filter(([verb]) => verb === 'event')
+    expect(events).toHaveLength(2)
+    for (const [, , params] of events) {
+      expect(params).toMatchObject({ utm_campaign: 'launch_2026', utm_source: undefined })
+    }
+    expect(JSON.stringify(events)).not.toMatch(/private/)
+  })
+
+  it('stops subsequent events and direct advertising calls after opt-out', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', 'AW-TEST')
+    window.fbq = vi.fn()
+    trackLandingView()
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
+    expect(initializeGoogleTag()).toBe(false)
+    const count = window.dataLayer!.length
+    trackEvent('signup_started', { method: 'email' })
+    fireGoogleAdsConversion('signup', { email: 'private@example.com' })
+    fireMetaPixelEvent('Lead')
+    expect(window.dataLayer).toHaveLength(count)
+    expect(window.fbq).not.toHaveBeenCalled()
+    expect((window as unknown as Record<string, unknown>)['ga-disable-G-TEST12345']).toBe(true)
+  })
+
+  it('revokes an already configured Ads tag even without a GA measurement ID', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', '')
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', 'AW-TEST')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    expect(initializeGoogleTag()).toBe(true)
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
+    expect(initializeGoogleTag()).toBe(false)
+    expect(Array.from(window.dataLayer!.at(-1) as IArguments)).toEqual(['consent', 'update', {
+      analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+    }])
+  })
+
+  it('removes existing measurement cookies while preserving necessary cookies and the opt-out', () => {
+    document.cookie = '_ga=old-client; Path=/'
+    document.cookie = '_ga_TEST=old-session; Path=/'
+    document.cookie = '_gid=old-visitor; Path=/'
+    document.cookie = '_gcl_au=old-click; Path=/'
+    document.cookie = '_fbp=old-pixel; Path=/'
+    document.cookie = 'necessary-session=keep; Path=/'
+    writeAnalyticsConsent('denied')
+    expect(document.cookie).not.toMatch(/_ga|_gid|_gcl_|_fbp/)
+    expect(document.cookie).toContain('necessary-session=keep')
+    expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=denied`)
+    document.cookie = 'necessary-session=; Path=/; Max-Age=0'
+  })
+
   it('validates configured GA measurement IDs', () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-ABCDEFGHI')
     expect(isGaConfigured()).toBe(true)
@@ -93,13 +166,13 @@ describe('analytics gtag bootstrap', () => {
     expect(isGaConfigured()).toBe(true)
   })
 
-  it('initializes cookieless measurement once with denied consent before config', () => {
+  it('initializes analytics once on arrival with advertising denied before config', () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
     initializeGoogleTag()
     initializeGoogleTag()
     const commands = window.dataLayer!.map((command) => Array.from(command as IArguments))
     expect(commands[0]).toEqual(['consent', 'default', {
-      analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+      analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
     }])
     expect(commands.filter(([command]) => command === 'config')).toEqual([
       ['config', 'G-TEST12345', { allow_google_signals: false, allow_ad_personalization_signals: false }],

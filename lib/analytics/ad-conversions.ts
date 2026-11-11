@@ -1,3 +1,5 @@
+import { hasAnalyticsConsent } from '@/lib/analytics/consent'
+
 export function getGoogleAdsId(): string | undefined {
   return process.env.NEXT_PUBLIC_GOOGLE_ADS_ID
 }
@@ -15,7 +17,7 @@ export function fireGoogleAdsConversion(
   params?: { email?: string }
 ): void {
   const adsId = getGoogleAdsId()
-  if (typeof window === 'undefined' || !adsId || !window.gtag) return
+  if (typeof window === 'undefined' || !hasAnalyticsConsent() || !adsId || !window.gtag) return
   // A conversion needs a specific label ("AW-XXX/label"). Firing at the bare
   // account id silently mis-attributes, so fail loud in dev and skip instead.
   if (!conversionLabel) {
@@ -42,7 +44,7 @@ export function fireMetaPixelEvent(
   params?: Record<string, unknown>,
   eventID?: string
 ): void {
-  if (typeof window === 'undefined' || typeof window.fbq !== 'function') return
+  if (typeof window === 'undefined' || !hasAnalyticsConsent() || typeof window.fbq !== 'function') return
   try {
     // The 4th arg { eventID } lets Meta deduplicate this client event against
     // the server-side Conversions API event that shares the same id.

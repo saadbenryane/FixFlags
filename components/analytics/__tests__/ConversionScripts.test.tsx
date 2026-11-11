@@ -54,7 +54,7 @@ describe('ConversionScripts consent', () => {
     expect(explanation).toBeVisible()
   })
 
-  it('requires an explicit choice and remembers necessary-only', async () => {
+  it('offers a persistent opt-out', async () => {
     render(<ConversionScripts />)
 
     const dialog = await screen.findByRole('dialog', { name: 'Choose your analytics settings' })
@@ -66,7 +66,7 @@ describe('ConversionScripts consent', () => {
     expect(document.documentElement.style.paddingTop).toBe('')
     expect(document.documentElement.style.paddingBottom).toBe('')
     expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Only necessary' }))
+    fireEvent.click(screen.getByRole('button', { name: ANALYTICS_CONSENT_COPY.necessaryOnly }))
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -117,7 +117,7 @@ describe('ConversionScripts consent', () => {
     expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
     expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Allow analytics' }))
+    fireEvent.click(await screen.findByRole('button', { name: ANALYTICS_CONSENT_COPY.allow }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getAllByTestId('analytics-script')).toHaveLength(2)
@@ -132,8 +132,8 @@ describe('ConversionScripts consent', () => {
 
     act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
     expect(await screen.findByRole('dialog', { name: 'Choose your analytics settings' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Allow analytics' })).toHaveFocus()
-    fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }))
+    expect(screen.getByRole('button', { name: ANALYTICS_CONSENT_COPY.allow })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: ANALYTICS_CONSENT_COPY.allow }))
 
     expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=granted`)
   })
@@ -147,7 +147,7 @@ describe('ConversionScripts consent', () => {
     act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
     expect(await screen.findByRole('dialog')).toBeVisible()
     fireEvent(window, new Event('resize'))
-    fireEvent.click(screen.getByRole('button', { name: 'Only necessary' }))
+    fireEvent.click(screen.getByRole('button', { name: ANALYTICS_CONSENT_COPY.necessaryOnly }))
 
     expect(document.documentElement.style.paddingTop).toBe('17px')
     expect(document.documentElement.style.paddingBottom).toBe('23px')
@@ -230,7 +230,7 @@ describe('ConversionScripts consent', () => {
     expect(pageviews()).toEqual([['event', 'page_view', {
       send_to: 'G-TEST12345', page_location: origin + '/?utm_source=partner-guide', page_referrer: 'https://external.example', page_title: '/',
     }]])
-    fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }))
+    fireEvent.click(screen.getByRole('button', { name: ANALYTICS_CONSENT_COPY.allow }))
     expect(pageviews()).toHaveLength(1)
     expect(commands()).toContainEqual(['set', {
       page_location: origin + '/?utm_source=partner-guide&gclid=fixture-click', page_referrer: 'https://external.example', page_title: '/',
@@ -282,25 +282,35 @@ describe('ConversionScripts consent', () => {
     expect((window as unknown as Record<string, unknown>)['ga-disable-G-TEST12345']).toBe(true)
   })
 
-  it.each([null, 'denied'])('loads only GA with storage denied for a %s choice', async (choice) => {
+  it('starts GA on arrival while keeping advertising and extra attribution off', async () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
-    if (choice) document.cookie = `${ANALYTICS_CONSENT_COOKIE}=${choice}; Path=/`
+    window.history.replaceState({}, '', '/?gclid=test-click')
     render(<ConversionScripts />)
 
     const scripts = await screen.findAllByTestId('analytics-script')
     expect(scripts).toHaveLength(1)
     expect(scripts[0]).toHaveAttribute('data-src', 'https://www.googletagmanager.com/gtag/js?id=G-TEST12345')
-    const commands = window.dataLayer!.map((command) => Array.from(command as IArguments))
+    const commands = window.dataLayer!.map(command => Array.from(command as IArguments))
     expect(commands[0]).toEqual(['consent', 'default', {
-      analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+      analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
     }])
     expect(commands.filter(([command]) => command === 'config')).toHaveLength(1)
     expect(commands.some(([, target]) => target === 'AW-test')).toBe(false)
     expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
+    expect(document.cookie).not.toContain(ANALYTICS_CONSENT_COOKIE)
     expect(sessionStorage.length).toBe(0)
   })
 
-  it('updates Google consent on withdrawal and keeps only cookieless GA loaded', async () => {
+  it('honors a remembered opt-out before creating any Google queue or script', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
+    render(<ConversionScripts />)
+    expect(window.dataLayer).toBeUndefined()
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+    expect((window as unknown as Record<string, unknown>)['ga-disable-G-TEST12345']).toBe(true)
+  })
+
+  it('stops Google measurement on withdrawal and supports re-enabling without duplicate setup', async () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     document.cookie = `${CLICK_IDS_COOKIE}=test-click; Path=/`
@@ -310,22 +320,25 @@ describe('ConversionScripts consent', () => {
     const fbq = vi.fn()
     window.fbq = fbq
     act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
-    fireEvent.click(await screen.findByRole('button', { name: 'Only necessary' }))
+    fireEvent.click(await screen.findByRole('button', { name: ANALYTICS_CONSENT_COPY.necessaryOnly }))
 
     const commands = window.dataLayer!.map((command) => Array.from(command as IArguments))
     expect(commands.at(-1)).toEqual(['consent', 'update', {
       analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
     }])
-    expect(screen.getAllByTestId('analytics-script')).toHaveLength(1)
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+    expect((window as unknown as Record<string, unknown>)['ga-disable-G-TEST12345']).toBe(true)
     expect(fbq).toHaveBeenCalledWith('consent', 'revoke')
     expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
     expect(sessionStorage.getItem('ff:analytics-journey:v1')).toBeNull()
 
     act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
-    fireEvent.click(await screen.findByRole('button', { name: 'Allow analytics' }))
+    fireEvent.click(await screen.findByRole('button', { name: ANALYTICS_CONSENT_COPY.allow }))
     const updatedCommands = window.dataLayer!.map((command) => Array.from(command as IArguments))
     expect(updatedCommands.filter(([command, target]) => command === 'config' && target === 'G-TEST12345')).toHaveLength(1)
     expect(window.dataLayer!.filter((command) => (command as IArguments)[0] === 'js')).toHaveLength(1)
+    expect((window as unknown as Record<string, unknown>)['ga-disable-G-TEST12345']).toBe(false)
+    expect(screen.getAllByTestId('analytics-script')).toHaveLength(2)
     expect(fbq).toHaveBeenLastCalledWith('consent', 'grant')
   })
 })

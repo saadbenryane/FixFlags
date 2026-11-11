@@ -11,11 +11,11 @@ export const LEGAL_PAGE_META = {
 
 export const ANALYTICS_CONSENT_COPY = {
   title: 'Choose your analytics settings',
-  compactTitle: 'Optional analytics',
+  compactTitle: 'Analytics is on by default',
   body:
-    'FixFlags uses optional analytics to see how people use FixFlags. Google Analytics receives basic cookieless measurement signals. Analytics cookies and advertising scripts are enabled only when you allow them. Necessary cookies keep the product working.',
-  allow: 'Allow analytics',
-  necessaryOnly: 'Only necessary',
+    'FixFlags uses Google Analytics cookies and events by default to see how people use FixFlags. Turn off analytics to stop measurement on this browser. Advertising scripts and additional attribution are enabled only when you choose Allow analytics and ads. Necessary cookies keep the product working.',
+  allow: 'Allow analytics and ads',
+  necessaryOnly: 'Turn off analytics',
 } as const
 
 /** Terms of Service sections, rendered in this order. A lawyer should review changes. */
@@ -91,7 +91,7 @@ export const PRIVACY_SECTIONS = {
   thirdParties: {
     title: 'Third parties',
     body:
-      'We use service providers for hosting, queues, email, evidence storage, payments, and bounded AI processing. Shopify provides shop identity and store access under your authorization. Google Analytics receives basic cookieless measurement signals. Analytics cookies, additional analytics events, and advertising scripts are enabled only after you allow analytics, and you can change that choice from Cookie settings in the footer. These providers process data on our behalf under their own terms.',
+      'We use service providers for hosting, queues, email, evidence storage, payments, and bounded AI processing. Shopify provides shop identity and store access under your authorization. Google Analytics cookies and events measure public visits by default. You can turn off analytics from the notice or Cookie settings in the footer. That choice stops Google Analytics measurement on this browser and is remembered for one year. Advertising scripts and additional attribution require an explicit choice to allow them. Private reports, Site pages, and account authorization links are excluded from browser analytics. These providers process data under their own terms.',
   },
   retentionAndDeletion: {
     title: 'Retention and deletion',

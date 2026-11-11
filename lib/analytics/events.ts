@@ -4,10 +4,11 @@ import {
   getGoogleAdsSignupLabel,
 } from '@/lib/analytics/ad-conversions'
 import { getGoogleAnalyticsId, initializeGoogleTag, isGaConfigured } from '@/lib/analytics/gtag'
-import { hasAnalyticsConsent } from '@/lib/analytics/consent'
+import { hasAnalyticsConsent, isGoogleAnalyticsEnabled } from '@/lib/analytics/consent'
 import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 import { GUIDE_ANALYZE_EVENT } from '@/lib/analytics/guide-entry'
 import { durableCheckId } from '@/lib/audit/check-identity'
+import { controlledGoogleLocation } from '@/lib/analytics/controlled-pageview'
 
 /**
  * Funnel events for launch instrumentation.
@@ -88,6 +89,9 @@ export const RETIRED_FUNNEL_EVENTS = [
   'report_progress_viewed',
   'polish_pass_copied',
   'flag_detail_viewed',
+  // The standalone sample and demo-request journeys have been removed.
+  'viewed_sample',
+  'requested_demo',
 ] as const satisfies readonly FunnelEvent[]
 
 export type AcquisitionTool = 'meta-preview' | 'placeholder-detector' | 'broken-links'
@@ -263,7 +267,7 @@ function deviceClass(): string | undefined {
 
 function utmParams(): { utm_source?: string; utm_campaign?: string } {
   if (typeof window === 'undefined') return {}
-  const params = new URLSearchParams(window.location.search)
+  const params = new URL(controlledGoogleLocation(new URL(window.location.href), false)).searchParams
   return {
     utm_source: params.get('utm_source') ?? undefined,
     utm_campaign: params.get('utm_campaign') ?? undefined,
@@ -284,8 +288,8 @@ export function trackEvent<T extends FunnelEvent>(
     )
     return
   }
-  if (!hasAnalyticsConsent()) return
-  if (!isGaConfigured() && process.env.NODE_ENV === 'production') return
+  if (!isGoogleAnalyticsEnabled()) return
+  if (!isGaConfigured()) return
   if (!initializeGoogleTag()) return
 
   const eventParams: Record<string, unknown> = {
@@ -308,6 +312,8 @@ export function trackEvent<T extends FunnelEvent>(
       error: error instanceof Error ? error.message : String(error),
     })
   }
+
+  if (!hasAnalyticsConsent()) return
 
   if (event === 'signed_up') {
     const signupParams = params as EventParams['signed_up'] | undefined

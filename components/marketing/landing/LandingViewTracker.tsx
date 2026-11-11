@@ -1,25 +1,25 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { trackLandingView } from '@/lib/analytics/events'
 import {
   ANALYTICS_CONSENT_EVENT,
-  hasAnalyticsConsent,
+  isGoogleAnalyticsEnabled,
   type AnalyticsConsent,
 } from '@/lib/analytics/consent'
 
-/** Fires once per consented period on the mounted homepage. */
+/** Fires on arrival and once again if measurement is re-enabled after opt-out. */
 export function LandingViewTracker() {
+  const sent = useRef(false)
   useEffect(() => {
-    let sent = false
     const sendWhenGranted = () => {
-      if (sent || !hasAnalyticsConsent()) return
-      sent = true
+      if (sent.current || !isGoogleAnalyticsEnabled()) return
+      sent.current = true
       trackLandingView()
     }
     const onConsent = (event: Event) => {
       const choice = (event as CustomEvent<AnalyticsConsent>).detail
-      if (choice === 'denied') sent = false
+      if (choice === 'denied') sent.current = false
       if (choice === 'granted') sendWhenGranted()
     }
 

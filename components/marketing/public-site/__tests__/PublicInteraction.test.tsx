@@ -15,6 +15,7 @@ describe('public interaction measurement', () => {
   it('respects consent and never includes the query or user URL in navigation events', () => {
     vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST')
     window.history.replaceState({}, '', '/coverage?url=https://private.example')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=denied; Path=/`
     ensureGtagStub()
     render(<PublicLink href="/new" target="analyze" onClick={event => event.preventDefault()}>Analyze</PublicLink>)
     fireEvent.click(screen.getByRole('link', { name: 'Analyze' }))

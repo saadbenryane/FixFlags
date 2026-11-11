@@ -1,4 +1,4 @@
-import { hasAnalyticsConsent } from '@/lib/analytics/consent'
+import { hasAnalyticsConsent, isGoogleAnalyticsEnabled } from '@/lib/analytics/consent'
 import { getGoogleAdsId } from '@/lib/analytics/ad-conversions'
 import { carriesPrivateContinuation, isPrivateDocumentPath } from '@/lib/http/private-document'
 import { controlledGoogleLocation, controlledGoogleReferrer, isControlledGooglePath, usesControlledGooglePageviews } from './controlled-pageview'
@@ -50,7 +50,8 @@ export function ensureGtagStub(): boolean {
 }
 
 type TagState = {
-  consent: boolean
+  analyticsConsent: boolean
+  advertisingConsent: boolean
   configured: Set<string>
   controlledPage?: { path: string; location: string; referrer: string; viewed: boolean }
   crossedUnmeasuredPage?: boolean
@@ -73,39 +74,49 @@ export function initializeGoogleTag(): boolean {
   if (typeof window === 'undefined' || isAnalyticsSuppressedPath(window.location.pathname)) return false
   if (carriesPrivateContinuation(window.location.pathname, new URLSearchParams(window.location.search))) return false
   const gaId = getGoogleAnalyticsId()
-  const granted = hasAnalyticsConsent()
-  const adsId = granted ? getGoogleAdsId() : undefined
+  const analyticsEnabled = isGoogleAnalyticsEnabled()
+  const advertisingEnabled = hasAnalyticsConsent()
+  const adsId = advertisingEnabled ? getGoogleAdsId() : undefined
   const controlled = usesControlledGooglePageviews()
-  if (!gaId && !adsId) return false
+  let state = window.dataLayer && tagStates.get(window.dataLayer)
+  if (!gaId && !adsId && !state) return false
   if (controlled && !isControlledGooglePath(window.location.pathname)) return false
+  if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = !analyticsEnabled
+  const consent = {
+    analytics_storage: analyticsEnabled ? 'granted' : 'denied',
+    ad_storage: advertisingEnabled ? 'granted' : 'denied',
+    ad_user_data: advertisingEnabled ? 'granted' : 'denied',
+    ad_personalization: advertisingEnabled ? 'granted' : 'denied',
+  }
+  // Withdrawal disables collection entirely, including cookieless pings. Do not
+  // create a queue or load a tag for a visitor with a remembered opt-out.
+  if (!analyticsEnabled) {
+    if (state) {
+      if (state.analyticsConsent || state.advertisingConsent) window.gtag?.('consent', 'update', consent)
+      state.analyticsConsent = false
+      state.advertisingConsent = false
+      state.controlledPage = undefined
+      state.crossedUnmeasuredPage = true
+    }
+    return false
+  }
   if (!ensureGtagStub()) return false
 
-  let state = tagStates.get(window.dataLayer!)
   if (!state) {
-    window.gtag!('consent', 'default', {
-      analytics_storage: 'denied',
-      ad_storage: 'denied',
-      ad_user_data: 'denied',
-      ad_personalization: 'denied',
-    })
+    window.gtag!('consent', 'default', consent)
     window.gtag!('set', { ads_data_redaction: true })
-    state = { consent: false, configured: new Set() }
-    if (controlled) setControlledPageContext(state, new URL(window.location.href), granted)
+    state = { analyticsConsent: analyticsEnabled, advertisingConsent: advertisingEnabled, configured: new Set() }
+    if (controlled) setControlledPageContext(state, new URL(window.location.href), advertisingEnabled)
     window.gtag!('js', new Date())
     tagStates.set(window.dataLayer!, state)
   } else if (controlled) {
-    setControlledPageContext(state, new URL(window.location.href), granted)
+    setControlledPageContext(state, new URL(window.location.href), advertisingEnabled)
   }
 
-  if (state.consent !== granted) {
-    const value = granted ? 'granted' : 'denied'
-    window.gtag!('consent', 'update', {
-      analytics_storage: value,
-      ad_storage: value,
-      ad_user_data: value,
-      ad_personalization: value,
-    })
-    state.consent = granted
+  if (state.analyticsConsent !== analyticsEnabled || state.advertisingConsent !== advertisingEnabled) {
+    window.gtag!('consent', 'update', consent)
+    state.analyticsConsent = analyticsEnabled
+    state.advertisingConsent = advertisingEnabled
   }
 
   if (gaId && !state.configured.has(gaId)) {

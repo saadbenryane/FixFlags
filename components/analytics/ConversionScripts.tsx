@@ -18,6 +18,7 @@ import {
   ANALYTICS_PREFERENCES_EVENT,
   type AnalyticsConsent,
   readAnalyticsConsent,
+  isGoogleAnalyticsEnabled,
   writeAnalyticsConsent,
 } from '@/lib/analytics/consent'
 import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy/legal'
@@ -80,7 +81,7 @@ function AnalyticsForPage({ pathname, analyticsSuppressed }: { pathname: string 
 
   useLayoutEffect(() => {
     const excludedGooglePath = controlled && (!trackedPath || !isControlledGooglePath(trackedPath))
-    if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = analyticsSuppressed || excludedGooglePath
+    if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = analyticsSuppressed || excludedGooglePath || !isGoogleAnalyticsEnabled()
     trackControlledGooglePageview(trackedPath, analyticsSuppressed || excludedGooglePath)
     window.fbq?.(
       'consent',
@@ -93,6 +94,7 @@ function AnalyticsForPage({ pathname, analyticsSuppressed }: { pathname: string 
     setConsent(readAnalyticsConsent())
     const onConsent = (event: Event) => {
       setGoogleReady(initializeGoogleTag())
+      trackControlledGooglePageview(trackedPath, analyticsSuppressed)
       const choice = (event as CustomEvent<AnalyticsConsent>).detail
       window.fbq?.('consent', choice === 'granted' ? 'grant' : 'revoke')
       if (choice === 'denied') {
@@ -137,7 +139,7 @@ function AnalyticsForPage({ pathname, analyticsSuppressed }: { pathname: string 
   if (analyticsSuppressed) return null
   return (
     <>
-      {consent !== undefined && gtagId && (!controlled || googleReady) ? (
+      {consent !== undefined && gtagId && googleReady ? (
         <Script
           id="google-tag"
           src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`}
@@ -147,6 +149,7 @@ function AnalyticsForPage({ pathname, analyticsSuppressed }: { pathname: string 
       {enabled && pixelId ? (
         <Script id="meta-pixel" strategy="lazyOnload">
           {`
+            if (document.cookie.split('; ').includes('fixflags_analytics_consent=granted')) {
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -157,6 +160,7 @@ function AnalyticsForPage({ pathname, analyticsSuppressed }: { pathname: string 
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '${pixelId}');
             fbq('track', 'PageView');
+            }
           `}
         </Script>
       ) : null}
