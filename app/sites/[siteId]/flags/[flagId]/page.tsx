@@ -150,8 +150,12 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
         : SITE_BOARD_COPY.problemRecovered
     : customerFindingLabel(flag)
 
+  const plainTitle = customerFindingLabel(flag)
+  const showActions = ownsSite && (resolution.kind === 'open' || resolution.kind === 'verifying')
+  const linkClass = 'inline-flex min-h-11 max-w-full items-center gap-1.5 break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
+
   return (
-    <SiteShell actions={home.actions} siteId={resolvedId} activeRoute={returnDestination.view} title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
+    <SiteShell actions={home.actions} siteId={resolvedId} activeRoute={returnDestination.view} title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: plainTitle }}>
       <SiteFlagDetailRefresh key={`${resolvedId}:${flagId}`} siteId={resolvedId} flagId={flagId} sourceFlagId={actionFlagId} initial={home} />
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -161,8 +165,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
               {SITE_DASHBOARD_COPY.backTo(SITE_WORKSPACE_COPY.navigation[returnDestination.view])}
             </Link>
           </Button>
-          <p className="text-xs text-muted-foreground">
-            {FLAG_PAGE_COPY.where(affectedPaths.length === 1 ? recordedPathLabel(affectedPaths[0]) : CARD_CATALOG[flag.area].name, flagDeviceLabel(flag.viewport))}
+          {/* The one place this Flag's page and device appear. */}
+          <p className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+            {affectedPaths.length === 1
+              ? <RecordedPageLink url={affectedPaths[0]} className={linkClass}>{FLAG_PAGE_COPY.where(recordedPathLabel(affectedPaths[0]), flagDeviceLabel(flag.viewport))}</RecordedPageLink>
+              : FLAG_PAGE_COPY.where(affectedPaths.length > 1 ? FLAG_PAGE_COPY.pages(affectedPaths.length) : CARD_CATALOG[flag.area].name, flagDeviceLabel(flag.viewport))}
           </p>
         </div>
         <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} verificationFeedback={ownsSite && !['DISMISSED', 'IGNORED'].includes(flag.status) ? flag.verificationFeedback : null} receipt={{ page: flag.pageUrl, foundAt: flag.latestOccurrenceAt }}>
@@ -175,30 +182,34 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             </p>
           ) : null}
 
-          <div className={`${styles.evidenceGrid} ${resolution.kind === 'open' || resolution.kind === 'verifying' ? styles.withActions : ''}`}>
-            <div className="space-y-6">
-              <section className="overflow-hidden rounded-board-panel border-0 bg-background shadow-board" aria-labelledby="flag-evidence-heading">
-                <div className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand text-brand">
-                    <CircleAlert className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
-                    <h2 id="flag-evidence-heading" className="font-semibold">
-                      {resolution.kind === 'proven' ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence}
-                    </h2>
-                    {resolution.kind === 'proven' ? <p className="text-xs text-muted-foreground">{flag.problem}</p> : null}
-                  </div>
+          <div className={`${styles.evidenceGrid} ${showActions ? styles.withActions : ''}`}>
+            {/* The next action leads on phones and sits beside the evidence on wide screens. */}
+            {showActions ? (
+              <aside className={`rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:sticky lg:top-6 ${styles.actions}`} aria-labelledby="fix-and-verify-heading">
+                <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
+                  {SITE_BOARD_COPY.fixAndVerify}
+                </h2>
+                <div className="mt-6">
+                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.activeVerificationAuditId} verifying={flag.verifying} />
                 </div>
-                <div className="space-y-5 p-5 sm:p-6">
+              </aside>
+            ) : null}
+            {!ownsSite ? <div className={styles.actions}><SitePromptAccessActions availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} label={SITE_BOARD_COPY.copyPrompt} /></div> : null}
+
+            <div className={`space-y-6 ${styles.main}`}>
+              <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6" aria-labelledby="flag-evidence-heading">
+                <h2 id="flag-evidence-heading" className="font-semibold">
+                  {resolution.kind === 'proven' ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence}
+                </h2>
+                {resolution.kind === 'proven' ? <p className="mt-1 text-sm text-muted-foreground">{plainTitle}</p> : null}
+                <div className="mt-5 space-y-5">
                   <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
+                    observedLabel={FLAG_PAGE_COPY.observed} expectedLabel={FLAG_PAGE_COPY.expected}
                     supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
-                  {flag.evidenceContext ? <details className="text-sm">
-                    <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.evidence}</summary>
-                    <dl className="mt-3 space-y-3 text-xs text-muted-foreground">
-                      <div><dt>{SITE_ACTION_COPY.flagEvidence.source}</dt><dd>{SITE_ACTION_COPY.flagEvidence.sources[flag.evidenceContext.source as keyof typeof SITE_ACTION_COPY.flagEvidence.sources] ?? SITE_ACTION_COPY.flagEvidence.unknown}</dd></div>
-                      {flag.evidenceContext.recordedAt ? <div><dt>{SITE_ACTION_COPY.flagEvidence.recorded}</dt><dd><time dateTime={flag.evidenceContext.recordedAt}>{formatEvidenceTimestamp(flag.evidenceContext.recordedAt)}</time></dd></div> : null}
-                      {flag.evidenceContext.references.length ? <div><dt>{SITE_ACTION_COPY.flagEvidence.references}</dt><dd><ul className="mt-2 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words">{[reference.label, reference.selector, reference.device].filter(Boolean).join(', ')}</li>)}</ul></dd></div> : null}
-                    </dl>
+                  {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
+                  {affectedPaths.length > 1 ? <details className="text-sm">
+                    <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.viewAll(affectedPaths.length)}</summary>
+                    <ul className="mt-2 space-y-1">{affectedPaths.map((path) => <li key={path}><RecordedPageLink url={path} className={linkClass}>{recordedPathLabel(path)}</RecordedPageLink></li>)}</ul>
                   </details> : null}
                   {flag.performanceEvidenceSource ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
                     <p>{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p>
@@ -211,33 +222,14 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     </details> : <p className="text-xs text-muted-foreground">{SITE_ACTION_COPY.flagEvidence.conditionsUnknown}</p>}
                     {flag.pageUrl ? <a className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(flag.pageUrl)}`} target="_blank" rel="noopener noreferrer">{SITE_ACTION_COPY.flagEvidence.retestPerformance}</a> : null}
                   </div> : null}
-                  {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
-                  <div>
-                    <h3 className="text-xs font-medium text-muted-foreground">{SITE_BOARD_COPY.flagScope}</h3>
-                    <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
-                      <div className={flag.viewport ? '' : 'sm:col-span-2'}>
-                        <dt className="text-xs text-muted-foreground">{(flag.affectedPageCount ?? affectedPaths.length) > 1 ? FLAG_PAGE_COPY.affectedPages : FLAG_PAGE_COPY.page}</dt>
-                        <dd className="mt-1 min-w-0 break-words font-medium">
-                          {affectedPaths.length === 1 ? (
-                            <RecordedPageLink url={affectedPaths[0]} className="inline-flex min-h-11 max-w-full items-start gap-1.5 rounded-control break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{recordedPathLabel(affectedPaths[0])}</RecordedPageLink>
-                          ) : affectedPaths.length > 1 ? (
-                            <details>
-                              <summary className="min-h-11 cursor-pointer py-2 text-sm">{FLAG_PAGE_COPY.viewAll(affectedPaths.length)}</summary>
-                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><RecordedPageLink url={path} className="inline-flex min-h-11 max-w-full items-start gap-1.5 rounded-control break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{recordedPathLabel(path)}</RecordedPageLink></li>)}</ul>
-                            </details>
-                          ) : (
-                            FLAG_PAGE_COPY.pageNotRecorded
-                          )}
-                        </dd>
-                      </div>
-                      {flag.viewport ? (
-                        <div>
-                          <dt className="text-xs text-muted-foreground">{FLAG_PAGE_COPY.screen}</dt>
-                          <dd className="mt-1 font-medium">{flag.viewport}</dd>
-                        </div>
-                      ) : null}
+                  {flag.evidenceContext ? <details className="text-sm">
+                    <summary className="flex min-h-11 cursor-pointer items-center font-medium text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.details}</summary>
+                    <dl className="mt-3 space-y-3 text-xs text-muted-foreground">
+                      <div><dt>{FLAG_PAGE_COPY.foundBy}</dt><dd className="text-foreground">{SITE_ACTION_COPY.flagEvidence.sources[flag.evidenceContext.source as keyof typeof SITE_ACTION_COPY.flagEvidence.sources] ?? SITE_ACTION_COPY.flagEvidence.unknown}</dd></div>
+                      {flag.evidenceContext.recordedAt ? <div><dt>{FLAG_PAGE_COPY.found}</dt><dd className="text-foreground"><time dateTime={flag.evidenceContext.recordedAt}>{formatEvidenceTimestamp(flag.evidenceContext.recordedAt)}</time></dd></div> : null}
+                      {flag.evidenceContext.references.length ? <div><dt>{FLAG_PAGE_COPY.elements}</dt><dd><ul className="mt-1 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words font-mono text-foreground">{[reference.label, reference.selector, reference.device].filter(Boolean).join(', ')}</li>)}</ul></dd></div> : null}
                     </dl>
-                  </div>
+                  </details> : null}
                 </div>
               </section>
 
@@ -252,38 +244,20 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   </ul>
                 </section>
               ) : null}
-            </div>
 
-            {ownsSite && (resolution.kind === 'open' || resolution.kind === 'verifying') ? (
-              <aside className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:sticky lg:top-6" aria-labelledby="fix-and-verify-heading">
-                <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
-                  {SITE_BOARD_COPY.fixAndVerify}
-                </h2>
-                <div className="mt-6">
-                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.activeVerificationAuditId} verifying={flag.verifying} />
+              {/* Rechecks appear once there is one; the fix steps already say how to start. */}
+              {ownsSite && flag.attempts.length > 0 ? <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6" aria-labelledby="verification-history-heading">
+                <div className="flex flex-wrap items-center gap-3">
+                  <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <h2 id="verification-history-heading" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] font-semibold">
+                    {SITE_BOARD_COPY.verificationHistory}
+                  </h2>
                 </div>
-              </aside>
-            ) : null}
-
-            {!ownsSite ? <SitePromptAccessActions availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
-            {ownsSite && (resolution.kind !== 'proven' || flag.attempts.length > 0) ? <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
-              <div className="flex flex-wrap items-center gap-3">
-                <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <h2 id="verification-history-heading" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] font-semibold">
-                  {SITE_BOARD_COPY.verificationHistory}
-                </h2>
-              </div>
-              {flag.attempts.length === 0 ? (
-                <div className="mt-4 rounded-card bg-muted p-4">
-                  <p className="text-sm font-medium">{SITE_BOARD_COPY.noVerificationYet}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.noVerificationBody}</p>
-                </div>
-              ) : (
                 <ol className="mt-5 space-y-5">
                   {flag.attempts.map((attempt) => {
                     const when = formatEvidenceTimestamp(attempt.createdAt)
                     return (
-                      <li id={`attempt-${attempt.id}`} key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 pb-5 last:pb-0">
+                      <li id={`attempt-${attempt.id}`} key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3">
                         <AttemptIcon attempt={attempt} />
                         <div className="min-w-0">
                           <p className="font-medium">{attemptLabel(attempt)}</p>
@@ -298,8 +272,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     )
                   })}
                 </ol>
-              )}
-            </section> : null}
+              </section> : null}
+            </div>
           </div>
         </FlagResolutionPanel>
       </div>

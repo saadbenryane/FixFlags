@@ -48,7 +48,7 @@ describe('flag-copy', () => {
   it('distinguishes a delayed observation from permanent absence and a loading sample from a timeout', () => {
     assert.match(whyItMattersForCheckId('slow-3g-blank-screen'), /threshold/)
     assert.doesNotMatch(whyItMattersForCheckId('slow-3g-blank-screen'), /no content.*during|remained blank/)
-    assert.match(whyItMattersForCheckId('journey-funnel-timeout'), /Loading UI was recorded/)
+    assert.match(whyItMattersForCheckId('journey-funnel-timeout'), /still loading when they arrive\. If it stays that way/)
     assert.doesNotMatch(whyItMattersForCheckId('journey-funnel-timeout'), /execution budget|never resolve|stuck/)
     assert.doesNotMatch(whyItMattersForCheckId('hierarchy-no-headline'), /cannot.*understand|no visible headline/)
   })
@@ -65,7 +65,7 @@ describe('flag-copy', () => {
       fix: 'Add og:image to metadata export.',
     }
     assert.ok(isGenericWhyItMatters(flag.whyItMatters))
-    assert.match(resolveWhyItMatters(flag), /Shared links|blank/i)
+    assert.match(resolveWhyItMatters(flag), /shared in chats/i)
   })
 
   it('has specific whyItMatters copy for every new UX check ID', () => {
@@ -81,9 +81,9 @@ describe('flag-copy', () => {
     for (const explanation of [...Object.values(FLAG_EXPLANATIONS), whyItMattersForCheckId('unknown-check')]) {
       assert.doesNotMatch(explanation, /every click.*lost revenue|costs conversions|most traffic is mobile|most visitors never|convert better|causing.*abandon|creates compliance risk|split ranking signals/i)
     }
-    assert.match(whyItMattersForCheckId('perf-score-poor'), /page-speed check/)
-    assert.match(whyItMattersForCheckId('mobile-perf-critical'), /measured delays/)
-    assert.match(whyItMattersForCheckId('cookie-consent-absent'), /legal compliance were not evaluated/)
+    assert.match(whyItMattersForCheckId('perf-score-poor'), /speed check found delays/)
+    assert.match(whyItMattersForCheckId('mobile-perf-critical'), /evidence lists the biggest ones/)
+    assert.match(whyItMattersForCheckId('cookie-consent-absent'), /doesn’t judge legal compliance/)
     assert.equal(resolveWhyItMatters({ id: 'historic', checkId: 'perf-score-poor', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Recorded problem',
       whyItMatters: 'Specific original explanation from this observation.' }), 'Specific original explanation from this observation.')
   })

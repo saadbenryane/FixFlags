@@ -1,12 +1,15 @@
-/** Flag detail page. Page and device lead under the title; the affected-page count lives once, in Scope. */
+/** Flag detail page. The page and device appear once, beside the back link. */
 export const FLAG_PAGE_COPY = {
   devices: { mobile: 'on a phone', phone: 'on a phone', tablet: 'on a tablet', desktop: 'on desktop' } as Record<string, string>,
   where: (page: string, device: string | null) => device ? `${page} ${device}` : page,
-  affectedPages: 'Affected pages',
-  page: 'Page',
-  viewAll: (count: number) => `View all ${count} pages`,
-  pageNotRecorded: 'This Site, page not recorded',
-  screen: 'Screen',
+  pages: (count: number) => `${count} pages`,
+  viewAll: (count: number) => `See all ${count} pages`,
+  observed: 'What happened',
+  expected: 'After the fix',
+  details: 'Technical details',
+  foundBy: 'Found by',
+  found: 'Found',
+  elements: 'Elements',
   connectedTitle: 'Connected context',
   connectedBody: 'These numbers come from an account connected to this Site. They sit beside the Flag.',
   affects: 'Affects',

@@ -161,7 +161,7 @@ describe('customer Flags from a page walk', () => {
     const saved = mocks.flagCreate.mock.calls[0][0].data
     expect(saved.source).toBe('JOURNEY')
     expect(saved.evidence).toMatch(/^Reproduced at step/)
-    expect(saved.whyItMatters).toContain('Loading UI was recorded')
+    expect(saved.whyItMatters).toContain('still loading when they arrive')
     expect(saved.supportingObservations.items[0]).toMatchObject({ source: 'JOURNEY', checkVersion: 1 })
   })
 

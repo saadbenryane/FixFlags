@@ -21,7 +21,8 @@ describe('saved report finding presentation', () => {
   it('preserves both observations while distinguishing recommendations from consequential Flags', () => {
     const state = { id: 'saved', audit: { url: 'https://example.com/' }, flags: [recommendation, failure], isLoggedIn: false, session: null }
     render(<CompletedReportView state={state as unknown as Parameters<typeof CompletedReportView>[0]['state']} />)
-    const adviceCard = screen.getByRole('heading', { name: recommendation.problem }).parentElement!.parentElement!
+    // The stored review instruction reads as the problem a visitor hits.
+    const adviceCard = screen.getByRole('heading', { name: 'The next page has no clear next step' }).parentElement!.parentElement!
     expect(within(adviceCard as HTMLElement).getByText('Recommendation')).toBeInTheDocument()
     expect(screen.getByText('important Flag')).toBeInTheDocument()
     expect(screen.getByText(recommendation.evidence)).toBeInTheDocument()
