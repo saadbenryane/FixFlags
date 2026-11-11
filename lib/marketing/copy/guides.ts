@@ -5,8 +5,8 @@ export const GUIDE_REVIEWED_AT = '2026-10-20'
 
 export const GUIDES_PAGE = {
   eyebrow: 'Website guides',
-  title: 'Find it, fix it, and know it worked.',
-  description: 'Plain-language guides to checking your website, copying a fix, and knowing it worked.',
+  title: 'Guides to keeping your website working.',
+  description: 'Plain-language guides to checking a live website, fixing what broke, and confirming the fix.',
   metadataTitle: 'Website checking and monitoring guides | FixFlags',
   start: 'Check your website',
   pricing: 'See current pricing',
@@ -241,7 +241,7 @@ export const WEBSITE_GUIDES: WebsiteGuide[] = [
         'Checkout often depends on addresses that change between environments: the page customers return to after paying, and the endpoint that receives payment events. If those still point at a preview domain, or the webhook endpoint was not registered for the production address, orders can look broken after payment even when the payment went through.',
         'Webhook endpoints are registered at a public HTTPS address, and each endpoint has its own signing secret. A redirect on that address counts as a failed delivery. After a domain or host change, confirm the endpoint address and its secret.',
       ], sourceIds: [2] },
-      { id: 'fix-and-verify', title: 'Fix it, then prove it on the live site', paragraphs: [
+      { id: 'fix-and-verify', title: 'Fix it, then recheck the live site', paragraphs: [
         'Give your AI tool or developer the exact failing step, the error, and what should happen instead. Review the change, publish it, then check the same step again on the live site. FixFlags can reach checkout from the product page without paying, record where it stops, and run the same check again after your fix as independent verification.',
         'If a check cannot reach the step, for example because the page is blocked, the result is Couldn’t verify rather than fixed. Keep the problem open until a check confirms checkout opens again, and add a check after every deploy so the next regression is caught before customers find it.',
       ], sourceIds: [0] },

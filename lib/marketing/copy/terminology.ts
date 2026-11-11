@@ -1,7 +1,7 @@
 /**
  * Canonical customer-facing terminology. Wire marketing, product UI, and help from here.
  * Internal code may still use recheck, scan, audit, journey enums.
- * Monitor. Flag. Fix. is the customer loop. Verification supplies recovery proof.
+ * The public loop is PRODUCT_STORY.loop (Check, Flag, Fix, Verify). Verification supplies recovery proof.
  */
 
 export const ANALYZE_CTA = 'Check your website'
@@ -310,7 +310,7 @@ export const API_KEY_COPY = {
   createDescription: 'Choose the access your tool needs for Sites owned by this account. The secret is shown once.',
   accessName: 'Fix and verify',
   accessLabel: 'Access',
-  accessDescription: 'Read Site evidence, start checks, and use the Monitor → Flag → Fix loop for Sites you own.',
+  accessDescription: 'Read Site evidence, start checks, record fixes, and request rechecks for Sites you own.',
   listFailed: 'Could not load developer keys.',
   retryList: 'Refresh keys',
   revokeFailed: 'Could not revoke this key.',
@@ -354,8 +354,6 @@ export const PRICING_COPY = {
   freeFrequency: 'any supported schedule during open beta',
   paidFrequency: 'every day',
 } as const
-
-export const CORE_LOOP_LABEL = 'Monitor. Flag. Fix.'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
 /** Recheck is the public word for a fresh check of a fix (docs/voice-and-copy.md); only its unlimited claim is banned. */

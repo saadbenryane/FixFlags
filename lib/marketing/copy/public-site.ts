@@ -10,9 +10,8 @@ export const PUBLIC_SITE_COPY = {
   nextBody: 'Start with a free check. Save your website to get copy-and-paste fix instructions and scheduled checks.',
   howItWorks: {
     label: 'Product',
-    title: 'Find it. Fix it. Prove it worked.',
-    titleLines: ['Find it. Fix it.', 'Prove it worked.'] as const,
-    body: 'FixFlags checks your live website in a real browser, gives you fix instructions for the AI tool you build with, and rechecks the same page to confirm the fix.',
+    title: 'How FixFlags works.',
+    body: 'Four steps, from your web address to a fix you know worked.',
     steps: [
       { id: 'check', label: PRODUCT_STORY.loop[0], title: 'Enter your website.', body: 'We check your homepage for free. Save your website to check more of its pages and keep getting scheduled checks.' },
       { id: 'flag', label: PRODUCT_STORY.loop[1], title: 'See what needs fixing.', body: 'See broken pages, slow loading, and other problems. Each problem, called a Flag, shows what happened and where.' },
@@ -99,10 +98,10 @@ export const PUBLIC_SITE_COPY = {
     previewLabel: 'Illustration',
     /** Short labels beside an example. Examples without a label need only a reachable public page. */
     setupTags: {
-      public: null, pagespeed: 'PageSpeed data', search_console: 'Needs Search Console', analytics: 'Needs Analytics',
-      signup_fixture: 'Needs a safe test setup', availability: 'Needs a saved schedule', automatic_accounts: 'Needs account checks on', uptime_probes: 'Needs monitoring on',
+      public: null, pagespeed: 'Uses Google PageSpeed', search_console: 'Needs Google Search Console', analytics: 'Needs Google Analytics',
+      signup_fixture: 'Needs a test account', availability: 'Needs your site saved', automatic_accounts: 'Needs account checks turned on', uptime_probes: 'Needs scheduled checks',
     },
-    extentTags: { checked_scope: null, heuristic: 'Suggestion', partial: 'Partly automatic' },
+    extentTags: { checked_scope: null, heuristic: 'Suggestion only', partial: 'Partly checked' },
     limitsTitle: 'Know what was checked.',
     limits: [
       { title: 'Couldn’t verify', body: 'If a page is blocked or a check can’t finish, we say so. It does not count as a pass.' },
@@ -113,14 +112,14 @@ export const PUBLIC_SITE_COPY = {
   securityPage: {
     label: 'Privacy and security',
     title: 'Privacy and security',
-    body: 'Understand what FixFlags does on your website, what it records, and how you control access.',
+    body: 'What FixFlags does on your website, what it keeps, and who can see it.',
     sections: [
-      { title: 'What does the browser do?', body: 'FixFlags opens public pages and records its own checks. It does not record your visitors’ sessions. Purchase-path checks stop before payment. Signup checks require an authorized, reversible test setup.', href: '/coverage', link: 'See the checks and their limits' },
-      { title: 'What is recorded?', body: 'A check can retain the submitted URL, screenshots, browser observations, and findings needed to explain a Flag. Scope and time stay with the evidence. This is FixFlags’ own activity on the website.', href: '/privacy', link: 'Read the Privacy Policy' },
-      { title: 'Who can see the results?', body: 'A new analysis is private to the browser that started it. Signup keeps it with your account. A copied link does not grant private access. Historical public reports keep their existing access policy.', href: '/help/privacy-and-security/privacy-and-evidence', link: 'Understand evidence access' },
-      { title: 'How is AI used?', body: 'AI helps explain observations and answer Site questions using the context needed for that request. FixFlags uses external AI providers for this processing. An AI tool’s claim that a fix worked does not replace a fresh check.', href: '/privacy', link: 'Read how data is used' },
-      { title: 'What access do connections need?', body: 'A connection belongs to a Site you own. Its guide explains permissions, the data it adds, and how to disconnect it. Store and Google data add context; they do not automatically prove a customer action works.', href: '/docs/integrations', link: 'Read integration guides' },
-      { title: 'How do I stop checks or remove data?', body: 'Stop monitoring from Site settings. Site and account deletion remove or schedule removal of owned data, subject to operational and legal retention needs. Uninstall Shopify separately to revoke its app authorization.', href: '/help/privacy-and-security/delete-your-account', link: 'Manage account deletion' },
+      { title: 'What does FixFlags do on my site?', body: 'It opens your public pages in a browser and tries them like a visitor. It does not record your visitors. Shopping checks stop before payment. Signup checks only run with a test account you set up and approve.', href: '/coverage', link: 'See the checks and their limits' },
+      { title: 'What does FixFlags keep?', body: 'The address you checked, screenshots, what the browser saw, and the Flags it raised, each with the time of the check. It is a record of FixFlags’ own visit, not of your visitors.', href: '/privacy', link: 'Read the Privacy Policy' },
+      { title: 'Who can see my results?', body: 'A new check is private to the browser that started it. When you sign up, it moves to your account. Sharing a link does not give anyone else access. Older public reports keep the access they already had.', href: '/help/privacy-and-security/privacy-and-evidence', link: 'Understand evidence access' },
+      { title: 'How is AI used?', body: 'AI helps explain what a check found and answers questions about your site. We send outside AI providers only what each request needs. Your AI tool saying a fix worked is not proof. A fresh check is.', href: '/privacy', link: 'Read how data is used' },
+      { title: 'What can connections access?', body: 'A connection belongs to a site you own. Its guide explains what it can access, what it adds, and how to disconnect it. Store and Google data add background. They don’t prove a visitor can complete an action.', href: '/docs/integrations', link: 'Read integration guides' },
+      { title: 'How do I stop checks or delete my data?', body: 'Turn off monitoring in your site’s settings. Deleting a site or your account removes its data, or schedules it for removal, except what we must keep for legal or operating reasons. If you installed the Shopify app, uninstall it in Shopify too.', href: '/help/privacy-and-security/delete-your-account', link: 'Manage account deletion' },
     ],
     terms: 'Read the Terms of Service',
   },

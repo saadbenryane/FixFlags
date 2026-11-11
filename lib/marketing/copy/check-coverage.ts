@@ -19,9 +19,8 @@ const AREAS = [
 
 export const HOMEPAGE_CHECK_COVERAGE = {
   label: 'What we check',
-  title: `Every page and button, checked across ${AREAS.length} areas.`,
-  titleLines: ['Every page. Every button.', 'Checked like a visitor.'] as const,
-  body: `A page can load while its checkout is broken. So we check ${AREAS.length} areas, the way your visitors use your site.`,
+  titleLines: [`${AREAS.length} areas.`, 'Checked like a visitor.'] as const,
+  body: 'A page can load while its checkout is broken. So we open your public pages and try the main buttons, the way your visitors would.',
   explore: (name: string) => `Explore ${name} checks`,
   detailTitle: (name: string) => `${name} checks`,
   detailAction: 'Check your website',

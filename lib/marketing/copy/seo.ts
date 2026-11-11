@@ -1,5 +1,4 @@
 import { GUIDES_PAGE } from './guides'
-import { WEBSITE_PROMISE } from './care-homepage'
 import { PUBLIC_OFFER } from './public-offer'
 import { PRODUCT_STORY } from './product-story'
 import { AI_BUILDERS_PAGE } from './ai-builders'
@@ -32,8 +31,7 @@ export const SEO = {
   },
   home: {
     title: `FixFlags | ${PRODUCT_STORY.summary}`,
-    description:
-      WEBSITE_PROMISE,
+    description: PRODUCT_STORY.description,
   },
   integrations: {
     title: 'FixFlags Integrations',

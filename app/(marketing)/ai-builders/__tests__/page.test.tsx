@@ -35,6 +35,7 @@ describe('For AI builders', () => {
     expect(screen.getByText(aiBuilderExamplePrompt(tool), { normalizer: text => text })).toBeVisible()
     const others = screen.getByRole('navigation', { name: C.tool.other })
     expect(within(others).getAllByRole('link')).toHaveLength(AI_BUILDER_TOOLS.length - 1)
+    expect(screen.queryByRole('link', { name: C.tool.mcp.action })).not.toBeInTheDocument()
     await expect(AiBuilderToolPage({ params: Promise.resolve({ tool: 'unknown' }) })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
@@ -48,7 +49,18 @@ describe('For AI builders', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(C.tool.copied)
   })
 
-  it('claims only the copy-and-paste handoff and keeps the copy free of em dashes', () => {
+  it('points coding agents, and only coding agents, to the MCP connection', async () => {
+    for (const tool of AI_BUILDER_TOOLS) {
+      const { unmount } = render(await AiBuilderToolPage({ params: Promise.resolve({ tool: tool.slug }) }))
+      const link = screen.queryByRole('link', { name: C.tool.mcp.action })
+      if (tool.kind === 'agent') expect(link).toHaveAttribute('href', '/connect-ai')
+      else expect(link).not.toBeInTheDocument()
+      unmount()
+    }
+    expect(AI_BUILDER_TOOLS.filter(tool => tool.kind === 'agent').map(tool => tool.slug)).toEqual(['cursor', 'claude-code'])
+  })
+
+  it('keeps MCP to its one pointer and the copy free of em dashes', () => {
     const text = JSON.stringify(AI_BUILDERS_PAGE_TEXT())
     expect(text).not.toMatch(/\u2014/)
     expect(text).not.toMatch(/\bMCP\b|coming soon|about a minute/i)
@@ -56,5 +68,5 @@ describe('For AI builders', () => {
 })
 
 function AI_BUILDERS_PAGE_TEXT() {
-  return { page: { ...C, seo: C.seo.description }, tools: AI_BUILDER_TOOLS.map(tool => ({ ...tool, prompt: aiBuilderExamplePrompt(tool), steps: C.tool.steps(tool) })) }
+  return { page: { ...C, tool: Object.fromEntries(Object.entries(C.tool).filter(([key]) => key !== 'mcp')), seo: C.seo.description }, tools: AI_BUILDER_TOOLS.map(tool => ({ ...tool, prompt: aiBuilderExamplePrompt(tool), steps: C.tool.steps(tool) })) }
 }

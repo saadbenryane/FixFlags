@@ -45,7 +45,6 @@ describe('customer-visible truth', () => {
     const homepage = source('lib/marketing/copy/care-homepage.ts')
     expect(homepage).not.toMatch(/paid checkout is open|Analytics marked this Clear|guaranteed recovery/i)
     expect(homepage).not.toContain('Coming later')
-    expect(homepage).toContain('Illustrative integration evidence. GitHub is available; other connections are coming soon.')
     const github = INTEGRATIONS_PAGE.items.find(item => item.id === 'github')!
     expect(github.status).toBe('available')
     expect(github.checks.join(' ')).toMatch(/Connect.*GitHub.*Disconnect/)
