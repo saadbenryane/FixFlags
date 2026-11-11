@@ -6,7 +6,7 @@ import PricingRoute from '@/app/(marketing)/pricing/page'
 import { PricingPage } from '@/components/pricing/PricingPage'
 import { MeProvider } from '@/hooks/useMe'
 import { PRICING } from '@/lib/marketing/copy/plans'
-import { PRICING_ADD_ONS, PRICING_IMPACT, PRICING_PAGE_FAQ, PRICING_PLAN_TABLE, PRICING_STORY, PRICING_TOOL_COMPARISON } from '@/lib/marketing/copy/pricing-page'
+import { PRICING_ADD_ONS, PRICING_IMPACT, PRICING_PAGE_FAQ, PRICING_PLAN_TABLE, PRICING_STORY } from '@/lib/marketing/copy/pricing-page'
 
 vi.mock('next/image', () => ({
   default: ({ alt, src }: { alt?: string; src: string }) => (
@@ -62,17 +62,21 @@ describe('/pricing', () => {
     expect(pro.getByRole('link', { name: 'Join Pro waitlist' })).toHaveAttribute('href', '/waitlist/pro')
     expect(team.getByText('$149')).toBeVisible()
     expect(team.getByText('5 websites')).toBeVisible()
-    expect(team.getByRole('link', { name: 'Join Team waitlist' })).toHaveAttribute('href', '/waitlist/studio')
+    expect(team.getByRole('link', { name: 'Join Team waitlist' })).toHaveAttribute('href', '/waitlist/team')
     expect(agency.getByText('$399')).toBeVisible()
     expect(agency.getByText('25 websites')).toBeVisible()
     expect(agency.getByText('Planned')).toBeVisible()
-    expect(agency.getByRole('link', { name: 'Talk to us' })).toHaveAttribute('href', '/request-demo')
+    expect(agency.getByRole('link', { name: 'Join Agency waitlist' })).toHaveAttribute('href', '/waitlist/agency')
+    expect(free.getByText('Any check schedule')).toBeVisible()
+    expect(free.getByText('A check after every deploy')).toBeVisible()
+    expect(free.queryByText('Weekly checks')).not.toBeInTheDocument()
     for (const card of [pro, team, agency]) {
       expect(card.getByText('Coming soon')).toBeVisible()
       expect(card.getByText('Planned pricing')).toBeVisible()
     }
     expect(screen.queryByText('Studio')).not.toBeInTheDocument()
     expect(screen.queryByText('$99')).not.toBeInTheDocument()
+    expect(document.body.innerHTML).not.toContain('/request-demo')
   })
 
   it('lists the add-ons and a plan table with honest statuses', () => {
@@ -87,28 +91,25 @@ describe('/pricing', () => {
     const reports = within(within(planTable).getByRole('rowheader', { name: 'Client reports' }).closest('tr')!)
     expect(reports.getByText('Planned')).toBeVisible()
     expect(reports.getAllByText('Not included')).toHaveLength(3)
+    const freeCell = (feature: string) => within(within(planTable).getByRole('rowheader', { name: feature }).closest('tr')!).getAllByRole('cell')[0]
+    expect(freeCell('Scheduled checks')).toHaveTextContent('Any schedule')
+    expect(within(freeCell('Check after every deploy')).getByText('Included')).toBeInTheDocument()
     expect(screen.getByText(PRICING_PLAN_TABLE.note)).toBeVisible()
   })
 
-  it('tells the Check. Find. Fix. story across the eight areas', () => {
+  it('tells the Check. Flag. Fix. Verify. story across the eight areas', () => {
     renderPricing()
     const story = within(screen.getByRole('region', { name: PRICING_STORY.title }))
     for (const area of ['Uptime', 'Pages', 'Conversion', 'Security', 'Performance', 'Search', 'Tracking', 'Accessibility']) expect(story.getByText(area)).toBeVisible()
+    expect(PRICING_STORY.title).toBe('Check. Flag. Fix. Verify.')
     expect(story.getByRole('link', { name: PRICING_STORY.link.label })).toHaveAttribute('href', '/coverage')
+    expect(story.getByRole('link', { name: PRICING_STORY.compareLink.label })).toHaveAttribute('href', '/compare')
   })
 
-  it('compares tools with the deck marks and a vendor-page note', () => {
+  it('drops the competitor table and unsourced tool claims', () => {
     renderPricing()
-    const table = screen.getByRole('table', { name: PRICING_TOOL_COMPARISON.caption })
-    expect(within(table).getAllByRole('columnheader').slice(1).map(cell => cell.textContent)).toEqual([...PRICING_TOOL_COMPARISON.columns])
-    expect(within(table).getAllByRole('rowheader').map(cell => cell.textContent)).toEqual(PRICING_TOOL_COMPARISON.rows.map(row => row.name))
-    const fixflags = within(within(table).getAllByRole('rowheader')[0].closest('tr')!)
-    expect(fixflags.getAllByText('Yes')).toHaveLength(7)
-    expect(fixflags.getByText('npm CLI')).toBeVisible()
-    const lovable = within(within(table).getByRole('rowheader', { name: 'Lovable Security Checker' }).closest('tr')!)
-    expect(lovable.getByText('Before publish')).toBeVisible()
-    expect(lovable.getAllByText('No')).toHaveLength(2)
-    expect(screen.getByText(/Based on public vendor pages, Nov 2026\./)).toBeVisible()
+    expect(screen.queryByRole('table', { name: 'FixFlags compared with other website tools' })).not.toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/AI fix prompt|npm CLI|UptimeRobot|Lovable Security Checker/)
   })
 
   it('cites every impact number at its source', () => {
@@ -120,6 +121,7 @@ describe('/pricing', () => {
       expect(impact.getByRole('link', { name: stat.source })).toHaveAttribute('href', stat.href)
     }
     expect(JSON.stringify(PRICING_IMPACT)).not.toMatch(/estimate|assum|illustrative/i)
+    expect(PRICING_IMPACT).not.toHaveProperty('tieIn')
   })
 
   it('answers pricing questions with the new plans', () => {

@@ -15,7 +15,7 @@ import { pct } from '@/lib/admin/date-ranges'
  * the current paid state.
  *
  * Tier snapshot at join time: 1 = first 500 (25% off), 2 = next 500 (15% off),
- * null = list price. Caps are per plan (Pro and Studio each have their own
+ * null = list price. Caps are per plan (Pro and Team each have their own
  * 500/500 slots).
  */
 

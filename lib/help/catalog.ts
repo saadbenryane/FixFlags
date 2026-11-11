@@ -137,12 +137,12 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ], related: ['connect-shopify', 'privacy-and-evidence', 'contact-support'], relatedDocs: ['shopify'],
   },
   {
-    slug: 'free-and-pro', categoryId: 'account-and-billing', title: 'Free, Pro, and Studio',
+    slug: 'free-and-pro', categoryId: 'account-and-billing', title: 'Free and paid plans',
     excerpt: PUBLIC_OFFER.availability, popular: true,
-    searchTokens: ['price', 'pricing', 'free', 'pro', '49', 'waitlist'], updatedAt: '2026-10-13', estimatedReadMinutes: 2,
+    searchTokens: ['price', 'pricing', 'free', 'pro', 'team', 'agency', 'website', 'waitlist'], updatedAt: '2026-11-11', estimatedReadMinutes: 2,
     body: [
-      { type: 'ul', items: [PUBLIC_OFFER.free, PUBLIC_OFFER.pro, PUBLIC_OFFER.studio, PUBLIC_OFFER.availability, PUBLIC_OFFER.usage] },
-      { type: 'p', text: 'Existing subscribers can manage their subscription in Billing. Pricing lists the current allowance for each plan; new paid access remains waitlisted.' },
+      { type: 'ul', items: [PUBLIC_OFFER.free, PUBLIC_OFFER.model, PUBLIC_OFFER.paid, PUBLIC_OFFER.availability, PUBLIC_OFFER.noCharge, PUBLIC_OFFER.usage] },
+      { type: 'p', text: 'Existing subscribers can manage their subscription in Billing and keep their existing billing terms.' },
     ], related: ['manage-an-existing-subscription', 'weekly-watch'], relatedDocs: ['getting-started'],
   },
   {

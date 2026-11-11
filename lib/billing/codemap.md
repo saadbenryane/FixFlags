@@ -14,7 +14,7 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 | `notify.ts` | Usage threshold notifications |
 
 ## Architecture
-- **Public packaging:** Free is one website verified weekly. Pro is $49 per website per month with daily verification. Studio is quoted per website. Internal 3/30/90 review pools remain enforcement details and are not customer packaging; legacy deep-review counters remain persistence-only.
+- **Public packaging:** `PLANNED_PAID_PRICING` in `beta-policy.ts` is the one source. Paid plans are priced per account plus a monthly fee for each additional website: Pro $49 a month (1 website), Team $149 (5, internal plan TEAM, formerly Studio), Agency $399 (25, no internal plan yet). Paid plans are waitlist-only; open beta is free on one website. Internal 3/30/90 review pools remain enforcement details and are not customer packaging; legacy deep-review counters remain persistence-only.
 - **Capabilities:** Every plan has the same web product. Plans differ by monthly usage only.
 - **Credits:** AI prescription gated by `includeAi` + available credits
 - **Stripe:** Hosted Checkout + Customer Portal + webhooks (`app/api/stripe/webhook/route.ts`)

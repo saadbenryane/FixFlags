@@ -1,22 +1,15 @@
-import { redirect } from 'next/navigation'
+import { permanentRedirect, redirect } from 'next/navigation'
 import type { Metadata, Route } from 'next'
 import { WaitlistLanding } from '@/components/marketing/waitlist/WaitlistLanding'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import type { CheckoutPlan } from '@/lib/billing/client-checkout'
+import { RETIRED_WAITLIST_SEGMENTS, isWaitlistPlanSegment, waitlistPathForSegment } from '@/lib/billing/waitlist-path'
 
-const PLAN_BY_SEGMENT: Record<string, CheckoutPlan> = {
-  pro: 'BUILDER',
-  studio: 'TEAM',
-}
+type Params = Promise<{ plan: string }>
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ plan: string }>
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { plan } = await params
-  const checkoutPlan = PLAN_BY_SEGMENT[plan.toLowerCase()]
-  if (!checkoutPlan) return buildPageMetadata('waitlist', '/waitlist')
+  if (!isWaitlistPlanSegment(plan.toLowerCase())) return buildPageMetadata('waitlist', '/waitlist')
 
   return {
     ...buildPageMetadata('waitlist', '/waitlist'),
@@ -24,13 +17,19 @@ export async function generateMetadata({
   }
 }
 
-export default async function WaitlistPlanPage({
-  params,
-}: {
-  params: Promise<{ plan: string }>
-}) {
+export default async function WaitlistPlanPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const { plan } = await params
-  const checkoutPlan = PLAN_BY_SEGMENT[plan.toLowerCase()]
-  if (!checkoutPlan) redirect('/waitlist' as Route)
-  return <WaitlistLanding initialPlan={checkoutPlan} />
+  const segment = plan.toLowerCase()
+  const retired = RETIRED_WAITLIST_SEGMENTS[segment]
+  if (retired) {
+    // Old links, including invite links with ?code=, keep their query string.
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(await searchParams)) {
+      for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, item)
+    }
+    const search = query.toString()
+    permanentRedirect(`${waitlistPathForSegment(retired)}${search ? `?${search}` : ''}` as Route)
+  }
+  if (!isWaitlistPlanSegment(segment)) redirect('/waitlist' as Route)
+  return <WaitlistLanding segment={segment} />
 }

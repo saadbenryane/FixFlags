@@ -18,7 +18,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { submitWaitlistJoin, type CheckoutPlan } from '@/lib/billing/client-checkout'
 import { toast } from 'sonner'
 import { WaitlistAuthDialog } from '@/components/billing/WaitlistAuthDialog'
-import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
+import { WAITLIST_PLAN_BY_SEGMENT, waitlistPathForSegment, type WaitlistPlanSegment } from '@/lib/billing/waitlist-path'
 
 const PENDING_KEY = 'ff_waitlist_pending'
 
@@ -50,15 +50,20 @@ function clearPendingJoin() {
 }
 
 interface WaitlistLandingProps {
-  initialPlan: CheckoutPlan
+  segment: WaitlistPlanSegment
 }
 
-export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
+const SEGMENTS: readonly WaitlistPlanSegment[] = ['pro', 'team', 'agency']
+
+export function WaitlistLanding({ segment }: WaitlistLandingProps) {
   const router = useRouter()
   const inputId = useId()
   const { user, isLoading } = useMe()
-  // Plan is a server-passed prop (/waitlist, /waitlist/pro, /waitlist/studio).
-  const plan = initialPlan
+  // Segment is a server-passed prop (/waitlist, /waitlist/pro, /waitlist/team, /waitlist/agency).
+  const plan = WAITLIST_PLAN_BY_SEGMENT[segment]
+  const copy = WAITLIST_PAGE.plans[segment]
+  // Agency has no internal plan yet; its joins record TEAM with their own source.
+  const source = segment === 'agency' ? 'waitlist-agency' : 'waitlist'
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -110,19 +115,19 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
         const outcome = await submitWaitlistJoin({
           email: trimmed,
           plan,
-          source: 'waitlist',
+          source,
         })
         if (outcome.kind === 'error') {
           toast.error(outcome.message)
           return
         }
-        trackEvent('waitlist_joined', { plan, source: 'waitlist' })
+        trackEvent('waitlist_joined', { plan, source })
         setSubmitted(true)
         return
       }
       // Signed out: remember the join, then open the unified auth modal with the
       // email prefilled. After auth (email or SSO) the join completes.
-      const pending: PendingJoin = { email: trimmed, plan, source: 'waitlist' }
+      const pending: PendingJoin = { email: trimmed, plan, source }
       try {
         sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending))
       } catch {
@@ -134,11 +139,7 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
     }
   }
 
-  const planLabel = plan === 'TEAM' ? 'Studio' : 'Pro'
-  const submitLabel =
-    plan === 'TEAM'
-      ? BILLING_ACTION_COPY.waitlist.submitStudio
-      : BILLING_ACTION_COPY.waitlist.submitPro
+  const planLabel = copy.label
 
   return (
     <Section spacing="tight" className="relative overflow-hidden">
@@ -156,21 +157,16 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
 
         <SegmentedControl
           size="md"
-          value={plan}
-          onValueChange={(value) => router.push(waitlistPathForPlan(value as CheckoutPlan) as Route)}
-          items={[
-            { value: 'BUILDER', label: WAITLIST_PAGE.planProLabel },
-            { value: 'TEAM', label: WAITLIST_PAGE.planStudioLabel },
-          ]}
+          value={segment}
+          onValueChange={(value) => router.push(waitlistPathForSegment(value as WaitlistPlanSegment) as Route)}
+          items={SEGMENTS.map((value) => ({ value, label: WAITLIST_PAGE.plans[value].label }))}
           aria-label="Plan"
           className="mt-8"
         />
 
         <div className="mt-3 flex items-baseline gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{planLabel}</span>
-          <span>
-            {plan === 'TEAM' ? WAITLIST_PAGE.planStudioDetail : WAITLIST_PAGE.planProDetail}
-          </span>
+          <span>{copy.detail}</span>
         </div>
 
         {submitted ? (
@@ -208,10 +204,10 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
                 loadingLabel={BILLING_ACTION_COPY.waitlist.submitting}
                 disabled={!email.trim()}
               >
-                {submitLabel}
+                {copy.submit}
               </Button>
             </div>
-            {!user ? <div className="text-center text-xs leading-snug"><Link className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`/sign-up?next=${encodeURIComponent(waitlistPathForPlan(plan))}&from=waitlist` as Route}>{WAITLIST_PAGE.signUpRequired}</Link></div> : null}
+            {!user ? <div className="text-center text-xs leading-snug"><Link className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`/sign-up?next=${encodeURIComponent(waitlistPathForSegment(segment))}&from=waitlist` as Route}>{WAITLIST_PAGE.signUpRequired}</Link></div> : null}
           </form>
         )}
 
@@ -238,9 +234,9 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
       <WaitlistAuthDialog
         open={dialogOpen}
         initialEmail={email}
-        plan={plan}
+        segment={segment}
         onClose={() => setDialogOpen(false)}
-        onAuthenticated={() => completeJoin(readPendingJoin() ?? { email, plan, source: 'waitlist' })}
+        onAuthenticated={() => completeJoin(readPendingJoin() ?? { email, plan, source })}
       />
     </Section>
   )

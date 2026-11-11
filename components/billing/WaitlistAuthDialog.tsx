@@ -8,14 +8,12 @@ import {
 } from '@/components/ui/dialog'
 import { AuthFlow } from '@/components/auth/AuthFlow'
 import { WAITLIST_PAGE } from '@/lib/marketing/copy-barrel'
-import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
-
-export type WaitlistDialogPlan = 'BUILDER' | 'TEAM'
+import { waitlistPathForSegment, type WaitlistPlanSegment } from '@/lib/billing/waitlist-path'
 
 interface WaitlistAuthDialogProps {
   open: boolean
   initialEmail: string
-  plan: WaitlistDialogPlan
+  segment: WaitlistPlanSegment
   onClose: () => void
   onAuthenticated: () => Promise<void> | void
 }
@@ -30,11 +28,11 @@ interface WaitlistAuthDialogProps {
 export function WaitlistAuthDialog({
   open,
   initialEmail,
-  plan,
+  segment,
   onClose,
   onAuthenticated,
 }: WaitlistAuthDialogProps) {
-  const callbackURL = waitlistPathForPlan(plan)
+  const callbackURL = waitlistPathForSegment(segment)
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>

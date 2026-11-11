@@ -20,7 +20,7 @@ import {
   waitlistEntryStatsToCsv,
 } from '@/lib/analytics/waitlist-conversion'
 
-const PLAN_LABELS: Record<string, string> = { BUILDER: 'Pro', TEAM: 'Studio' }
+const PLAN_LABELS: Record<string, string> = { BUILDER: 'Pro', TEAM: 'Team' }
 
 export default async function AdminWaitlistAnalyticsPage() {
   await requireAdminPage()

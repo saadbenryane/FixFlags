@@ -9,19 +9,19 @@ import {
 
 describe('planLabel', () => {
   // Paying customers must always see the name they bought. The internal enum
-  // codes (BUILDER, TEAM) are not customer-facing: rendering "Builder plan" or
-  // "Team plan" reads as a billing bug to someone who paid for "Pro" / "Studio".
+  // code BUILDER is not customer-facing: "Builder plan" reads as a billing bug
+  // to someone who paid for "Pro". Internal TEAM displays as Team.
   it('maps internal plan codes to customer-facing names', () => {
     assert.equal(planLabel('FREE'), 'Free')
     assert.equal(planLabel('BUILDER'), 'Pro')
-    assert.equal(planLabel('TEAM'), 'Studio')
+    assert.equal(planLabel('TEAM'), 'Team')
   })
 
   it('never leaks a raw enum code as a label', () => {
     for (const plan of Object.keys(PLAN_DEFINITIONS)) {
       const label = planLabel(plan)
       assert.notEqual(label, plan, `label for ${plan} must not be the raw code`)
-      assert.doesNotMatch(label, /builder|team/i, `label for ${plan} leaks an internal code`)
+      assert.doesNotMatch(label, /builder/i, `label for ${plan} leaks an internal code`)
     }
   })
 
@@ -40,14 +40,15 @@ describe('usage plan ladder', () => {
     })
     expect(PLAN_DEFINITIONS.BUILDER).toMatchObject({
       price: '$49',
-      period: '/website/mo',
+      period: '/month',
       auditLimit: 30,
       projectLimit: 5,
       deepReviewLimit: -1,
       deepReviewLimitLabel: 'Path depth included',
     })
     expect(PLAN_DEFINITIONS.TEAM).toMatchObject({
-      price: 'Volume',
+      price: '$149',
+      period: '/month',
       auditLimit: 90,
       projectLimit: null,
       deepReviewLimit: -1,

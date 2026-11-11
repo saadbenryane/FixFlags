@@ -1,92 +1,50 @@
-import { OPEN_BETA_ACCESS, PLANNED_PAID_PRICING } from '@/lib/billing/beta-policy'
-import type { FaqEntry } from './faq'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { PRICING_ADD_ONS, PRICING_TIERS, websitesLabel } from './pricing-page'
+import { PUBLIC_OFFER } from './public-offer'
+import { PRODUCT_STORY } from './product-story'
+
+const tier = (id: (typeof PRICING_TIERS)[number]['id']) => PRICING_TIERS.find(entry => entry.id === id)!
+const extraWebsites = PRICING_ADD_ONS.items[0]
+const extraWebsitesLine = `${extraWebsites.name} ${extraWebsites.price} ${extraWebsites.unit}`
+
+/** In-app plan cards (Billing, plan picker). Paid prices and websites come from PRICING_TIERS. */
+function paidPlan(id: 'pro' | 'team', plan: 'BUILDER' | 'TEAM', persona: string) {
+  const source = tier(id)
+  return {
+    name: source.name, plan, price: source.price, period: source.period, persona,
+    audits: `${websitesLabel(source.websites)} included`, products: websitesLabel(source.websites),
+    features: [...source.features.slice(0, 3).map(feature => feature.label), extraWebsitesLine],
+    cta: source.cta.label, href: source.cta.href, highlight: false, priceLabel: source.priceLabel,
+  }
+}
 
 export const PLANS = [
   {
     name: 'Free', plan: 'FREE' as const, price: '$0', period: '',
     persona: 'Explore the full product on one website',
-    outcome: 'All features included during open beta',
     audits: 'No usage limits during beta', products: '1 website',
     features: ['1 website', 'All supported features', 'Any supported monitoring schedule', 'No usage limits during beta'],
-    cta: 'Start free', href: '/sign-up', highlight: true, badge: 'Open beta',
-    availability: 'Available now', priceLabel: 'During open beta',
-    accountModel: 'One website. Full access during open beta.',
+    cta: 'Start free', href: '/sign-up', highlight: true, priceLabel: 'During open beta',
   },
-  {
-    name: 'Pro', plan: 'BUILDER' as const, ...PLANNED_PAID_PRICING.BUILDER,
-    persona: 'Regular checks, on your schedule',
-    outcome: `${PLANNED_PAID_PRICING.BUILDER.websiteChecks} website checks per month, scheduled or manual`, audits: `${PLANNED_PAID_PRICING.BUILDER.websiteChecks} website checks per month`, products: 'Billed per website',
-    features: ['30 website checks per month', 'Uptime monitoring included separately', 'Custom automatic scheduling', 'Scheduled and manual checks share one allowance'],
-    cta: 'Join Pro waitlist', href: '/waitlist/pro', highlight: false, badge: 'Coming soon',
-    availability: 'Join the waitlist', priceLabel: 'Planned pricing',
-    accountModel: 'Billed per website when paid plans open.',
-  },
-  {
-    name: 'Studio', plan: 'TEAM' as const, ...PLANNED_PAID_PRICING.TEAM,
-    persona: 'More checks for websites that change often',
-    outcome: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} website checks per month, including checks after every deploy`, audits: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} website checks per month`, products: 'Billed per website',
-    features: ['90 website checks per month', 'Uptime monitoring included separately', 'Custom automatic scheduling', 'Checks after every deploy'],
-    cta: 'Join Studio waitlist', href: '/waitlist/studio', highlight: false, badge: 'Coming soon',
-    availability: 'Join the waitlist', priceLabel: 'Planned pricing',
-    accountModel: 'Billed per website when paid plans open.',
-  },
-] as const
-
-export const PRICING_CARDS = PLANS
-
-export const PRICING_COMPARISON = {
-  caption: 'FixFlags plan comparison',
-  allowanceNote: 'One allowance for scheduled and manual website checks. Uptime checks are included separately.',
-  rows: [
-    { id: 'checks', feature: 'Website checks',
-      free: { value: 'No usage limits', note: 'During open beta', kind: 'unlimited' },
-      pro: { value: `${PLANNED_PAID_PRICING.BUILDER.websiteChecks} / month`, note: 'Scheduled or manual', kind: 'allowance' },
-      studio: { value: `${PLANNED_PAID_PRICING.TEAM.websiteChecks} / month`, note: 'One shared allowance', kind: 'allowance' } },
-    { id: 'uptime', feature: 'Uptime monitoring',
-      free: { value: 'Included', note: '', kind: 'included' },
-      pro: { value: 'Included', note: 'Outside the website-check allowance', kind: 'included' },
-      studio: { value: 'Included', note: 'Outside the website-check allowance', kind: 'included' } },
-    { id: 'scheduling', feature: 'Automatic scheduling',
-      free: { value: 'Custom', note: 'Any supported schedule during beta', kind: 'value' },
-      pro: { value: 'Custom', note: 'Within your monthly allowance', kind: 'value' },
-      studio: { value: 'Custom', note: 'Within your monthly allowance', kind: 'value' } },
-    { id: 'updates', feature: 'Checks after every deploy',
-      free: { value: 'Included', note: 'Deploy hook from any host or CI', kind: 'included' },
-      pro: { value: 'Not included', note: 'Check manually or use your schedule', kind: 'excluded' },
-      studio: { value: 'Included', note: 'Uses the same allowance', kind: 'included' } },
-    { id: 'websites', feature: 'Websites',
-      free: { value: '1 website', note: '', kind: 'value' },
-      pro: { value: 'Per website', note: '', kind: 'value' },
-      studio: { value: 'Per website', note: '', kind: 'value' } },
-  ],
-} as const
-
-export const PRICING_FAQ: readonly FaqEntry[] = [
-  { question: 'What do I get during open beta?', answer: 'All supported features on one website, with no usage limits and any supported monitoring schedule. Paid-plan allowances do not apply during beta. Checks after every deploy are included.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'The beta offer' } },
-  { question: 'What counts as a website check?', answer: 'One run checks the pages and actions available for your website and setup. It can find several problems and tells you what it couldn’t check. That counts as one website check, not one check per problem.', learnMore: { href: '/coverage', label: 'What FixFlags checks' } },
-  { question: 'Do scheduled and manual checks share the allowance?', answer: 'Yes. The planned Pro allowance is 30 website checks per website per month. Studio includes 90. Scheduled and manual checks use the same allowance, so you choose how to use it. Both plans support custom automatic scheduling. On Studio, checks after a deploy use that same allowance.', learnMore: { href: '/docs/site-care', label: 'Monitoring coverage' } },
-  { question: 'Does uptime use my website-check allowance?', answer: 'No. Uptime monitoring is included separately on every plan, including Free. Its checks run on the configured schedule and do not use the allowance for complete website checks.', learnMore: { href: '/coverage#uptime', label: 'Uptime coverage' } },
-  { question: 'Can FixFlags check my site after every deploy?', answer: 'Yes. Add one request to your deploy pipeline, from GitHub Actions, Vercel, Netlify or a shell script, and FixFlags checks your live Site after each production deploy, including its open Flags. It is included on Free during open beta. On Studio, each deploy check uses the same 90-check allowance.', learnMore: { href: '/docs/site-care#check-after-every-deploy', label: 'Check after every deploy' } },
-  { question: 'What counts as one website?', answer: 'Pages on the same domain count as one website. For example, yourwebsite.com and yourwebsite.com/pricing belong together. A separate subdomain, such as app.yourwebsite.com, counts as another website. Adding www does not make a separate website.', learnMore: { href: '/docs/getting-started', label: 'Getting started' } },
-  { question: 'What if I need another website?', answer: 'Join the Pro or Studio waitlist. Joining records your interest and does not add a website, start a subscription, or charge you. You can keep using your existing website during beta.', learnMore: { href: '/waitlist', label: 'Join the waitlist' } },
-  { question: 'What happens when beta ends?', answer: 'The full-access beta promotion is temporary. We plan to keep a useful Free plan with uptime monitoring. Paid plans add monthly website-check allowances. We’ll tell you before the beta offer changes. Paid plans require you to opt in; there is no automatic charge.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'Free and future paid plans' } },
-  { question: 'Are Pro and Studio available now?', answer: 'Both are coming soon. Planned pricing is $49 per website per month for Pro with 30 website checks, and $99 for Studio with 90. Final terms will be confirmed before paid launch. Existing waitlist discount terms still apply.', learnMore: { href: '/waitlist', label: 'Paid plan waitlist' } },
+  paidPlan('pro', 'BUILDER', 'One website, checked daily'),
+  // Internal plan TEAM (formerly Studio) displays as Team.
+  paidPlan('team', 'TEAM', 'A few websites that change often'),
 ] as const
 
 export const PRICING = {
-  plansTitle: 'Plans', label: 'Open beta', headline: 'Find it. Fix it. Prove it. Free during open beta.',
-  headlineLead: 'Find it. Fix it. Prove it.', headlineAccent: 'Free during open beta.',
+  // The promise leads the header; the loop (Check. Flag. Fix. Verify.) titles the story section below it.
+  plansTitle: 'Plans', label: 'Open beta', headline: `${PRODUCT_STORY.headline.join(' ')} Free during open beta.`,
+  headlineLead: PRODUCT_STORY.headline.join(' '), headlineAccent: 'Free during open beta.',
   subhead: 'One website. All supported features and schedules. No usage limits during beta.',
   signupCta: 'Start free', signupHref: '/sign-up', signupNote: 'No credit card. No automatic charge.',
   trustBadge: 'Full access on one website',
   assurances: ['No credit card.', 'No automatic charge.', 'We’ll tell you before the beta offer changes.'] as const,
-  studioLine: 'Need another website?', studioCta: 'Join the paid-plan waitlist', studioHref: '/waitlist',
   sharedTitle: 'Included in every check',
   sharedFeatures: ['Website checks', 'Problems explained clearly', 'Copy-and-paste fix instructions', 'Checks to confirm fixes', 'Your check history'] as const,
   sharedNote: 'See what needs attention, how to fix it, and whether the fix worked.',
   compareTitle: 'Compare plans', compareLabel: 'Available now and coming soon',
   compareBody: 'Start free on one website. Paid plans for more websites are coming soon.',
-  compareNote: 'During open beta, all supported features and schedules are free on one website, with no usage limits. Pro and Studio show the planned paid offer.',
+  compareNote: 'During open beta, all supported features and schedules are free on one website, with no usage limits. Pro, Team and Agency show planned pricing.',
   coverageLink: 'See what gets checked', connectionsLink: 'See optional connections', faqTitle: 'Pricing questions', faqLines: ['Pricing questions.', 'Straight answers.'] as const,
   upgradeSteps: 'Join the waitlist. No subscription or charge.', upgradeStepsLoggedIn: 'Join the waitlist. No subscription or charge.', checkoutRedirecting: 'Opening waitlist…',
   allPlansInclude: 'All supported features are included during open beta.',
@@ -96,7 +54,8 @@ export const PRICING = {
   pickerBodyWithReport: 'The first check can start as soon as you enter a URL.',
   pickerCreditNote: 'One website. All features. No usage limits during open beta.',
   pickerReportNote: 'Choosing Free returns you to your Site.', pickerFootnote: 'Need more detail?', pickerCompareLink: 'See pricing.',
-  pickerCurrentPlan: 'Current plan', pickerFreeCta: 'Start free', pickerProCta: 'Join Pro waitlist', pickerStudioCta: 'Join Studio waitlist', pickerRecommended: 'Available now', pickerBusy: 'Working…',
+  // Keys named Studio follow internal plan TEAM, which displays as Team.
+  pickerCurrentPlan: 'Current plan', pickerFreeCta: 'Start free', pickerProCta: 'Join Pro waitlist', pickerStudioCta: 'Join Team waitlist', pickerRecommended: 'Available now', pickerBusy: 'Working…',
 } as const
 
 export const DEMO_PAGE = {
@@ -126,16 +85,25 @@ export const DEMO_PAGE = {
   pricingLink: 'Back to pricing',
 } as const
 
+function waitlistPlan(id: 'pro' | 'team' | 'agency') {
+  const source = tier(id)
+  return {
+    label: source.name,
+    detail: `Planned: ${source.price} a month with ${websitesLabel(source.websites)} included. ${extraWebsitesLine}.`,
+    submit: source.cta.label,
+  }
+}
+
 export const WAITLIST_PAGE = {
   eyebrow: 'Paid plan waitlist',
   headline: 'We will email you when checkout opens',
-  subhead:
-    'Open beta is free on one website. Planned paid pricing is $49 per website per month for Pro and $99 for Studio. Join the list for updates; no subscription or charge.',
-  planProLabel: 'Pro',
-  planStudioLabel: 'Studio',
-  planProDetail: 'Planned: $49 per website/month, 30 website checks and custom scheduling',
-  planStudioDetail:
-    'Planned: $99 per website/month, 90 website checks, custom scheduling, and checks after every deploy',
+  subhead: `Open beta is free on one website. ${PUBLIC_OFFER.model} Join the list for updates; no subscription or charge.`,
+  /** One entry per waitlist address: /waitlist/pro, /waitlist/team, /waitlist/agency. */
+  plans: {
+    pro: waitlistPlan('pro'),
+    team: waitlistPlan('team'),
+    agency: waitlistPlan('agency'),
+  },
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -167,21 +135,19 @@ export const BILLING_ACTION_COPY = {
     gatedHint: 'Join the waitlist if you need another website. Joining does not add a website or charge you.',
   },
   waitlist: {
-    submitPro: 'Join Pro waitlist',
-    submitStudio: 'Join Studio waitlist',
+    submitPro: tier('pro').cta.label,
+    // Internal plan TEAM (formerly Studio) displays as Team.
+    submitStudio: tier('team').cta.label,
     submitting: 'Joining waitlist…',
     failed: 'Could not join the waitlist. Try again.',
     success: "You're on the list. We'll email you when checkout opens.",
-    description:
-      'Planned paid prices: Pro $49 and Studio $99 per website/month. Joining does not start a subscription or charge you.',
+    description: `${PUBLIC_OFFER.paid} Joining does not start a subscription or charge you.`,
   },
   tierOffers: {
     name: 'Launch discount tiers',
     tier1Label: 'First 500: 25% off',
     tier2Label: 'Next 500: 15% off',
     duration: '12 months from launch',
-    pricingCallout:
-      'Paid monitoring is billed per website. We are not charging yet.',
   },
 } as const
 
@@ -201,7 +167,6 @@ statusLabel: 'Billing status',
   paidFeaturesPaused: OPEN_BETA_ACCESS ? ' (open beta access available)' : ' (paid features paused)',
   upgradeCta: 'Join waitlist',
   changePlanCta: 'Change plan',
-  compareStudio: 'Compare Studio',
   activating: 'Activating subscription…',
   activatingHint: 'This usually takes a few seconds after checkout.',
   periodEnds: (date: string) => `Current period ends ${date}`,

@@ -9,8 +9,6 @@ import {
   projectLimitForPlan,
   proUpgradeCta,
   planFromPriceId,
-  getMarketingPlans,
-  CONTACT_PLAN,
 } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
 import {
@@ -65,10 +63,10 @@ describe('plan definitions', () => {
     assert.ok(PLAN_DEFINITIONS.BUILDER.auditLimit < PLAN_DEFINITIONS.TEAM.auditLimit)
   })
 
-  it('public list prices Free then Pro; Studio is volume', () => {
+  it('public list prices rise from Free to Pro to Team', () => {
     const price = (s: string) => Number(s.replace(/[^0-9]/g, ''))
     assert.ok(price(PLAN_DEFINITIONS.FREE.price) < price(PLAN_DEFINITIONS.BUILDER.price))
-    assert.equal(PLAN_DEFINITIONS.TEAM.price, 'Volume')
+    assert.ok(price(PLAN_DEFINITIONS.BUILDER.price) < price(PLAN_DEFINITIONS.TEAM.price))
   })
 
   it('PLAN_LIMITS has matching entries for every plan', () => {
@@ -77,18 +75,6 @@ describe('plan definitions', () => {
       assert.equal(PLAN_LIMITS[plan].audits, PLAN_DEFINITIONS[plan].auditLimit)
       assert.equal(PLAN_LIMITS[plan].label, PLAN_DEFINITIONS[plan].label)
     }
-  })
-})
-
-// ── CONTACT_PLAN invariants ──────────────────────────────────────
-
-describe('CONTACT_PLAN', () => {
-  it('has custom pricing', () => {
-    assert.equal(CONTACT_PLAN.price, 'Custom')
-  })
-
-  it('has at least one feature', () => {
-    assert.ok(CONTACT_PLAN.features.length >= 1)
   })
 })
 
@@ -135,26 +121,6 @@ describe('proUpgradeCta', () => {
 describe('planFromPriceId', () => {
   it('returns null for unknown price IDs', () => {
     assert.equal(planFromPriceId('price_unknown'), null)
-  })
-})
-
-// ── getMarketingPlans ────────────────────────────────────────────
-
-describe('getMarketingPlans', () => {
-  it('returns all three plans', () => {
-    const plans = getMarketingPlans()
-    assert.equal(plans.length, 3)
-  })
-
-  it('each plan has required fields', () => {
-    const plans = getMarketingPlans()
-    for (const plan of plans) {
-      assert.ok(plan.name)
-      assert.ok(plan.price)
-      assert.ok(plan.features.length >= 1)
-      assert.ok(plan.cta)
-      assert.ok(plan.href)
-    }
   })
 })
 

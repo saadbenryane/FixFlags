@@ -11,9 +11,10 @@ describe('subscriptionMetrics', () => {
     ], 2, true)
 
     expect(metrics).toMatchObject({
+      // List prices: Pro $49, Team $149 a month.
       newMrr: 49,
-      expansionMrr: 0,
-      churnedMrr: 0,
+      expansionMrr: 100,
+      churnedMrr: 149,
       activatedUsers: 1,
       churnedUsers: 1,
     })

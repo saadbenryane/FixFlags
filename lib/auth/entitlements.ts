@@ -54,7 +54,7 @@ export function canAccessBasicMcp(
   return true
 }
 
-/** Owner-authorized repository scanning is included in beta; legacy Studio gates apply after beta. */
+/** Owner-authorized repository scanning is included in beta; legacy Team (internal TEAM) gates apply after beta. */
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {

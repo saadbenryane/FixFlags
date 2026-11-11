@@ -179,7 +179,7 @@ export async function previewAdminBillingAction(request: AdminActionRequest) {
           currency: invoice.currency,
         }),
         effects: [
-          `Change to ${input.plan === 'TEAM' ? 'Studio' : 'Pro'} for ${input.quantity} licensed Sites now. Provider invoice preview: ${formatMoneyMinor(invoice.amount_due, invoice.currency)} due.`,
+          `Change to ${input.plan === 'TEAM' ? 'Team' : 'Pro'} for ${input.quantity} licensed Sites now. Provider invoice preview: ${formatMoneyMinor(invoice.amount_due, invoice.currency)} due.`,
           ...(managedSchedule
             ? [
                 'Release the existing schedule and its future phases. Preserve any existing cancellation date.',
@@ -202,7 +202,7 @@ export async function previewAdminBillingAction(request: AdminActionRequest) {
     return {
       revision: revisionHash({ ...identity, phases: schedule?.phases }),
       effects: [
-        `Apply ${input.plan === 'TEAM' ? 'Studio' : 'Pro'} for ${input.quantity} licensed Sites at ${new Date(end * 1000).toISOString()}.`,
+        `Apply ${input.plan === 'TEAM' ? 'Team' : 'Pro'} for ${input.quantity} licensed Sites at ${new Date(end * 1000).toISOString()}.`,
         schedule
           ? 'Replace the scheduled future plan phases with this confirmed change.'
           : 'Preserve the current subscription until that billing boundary.',

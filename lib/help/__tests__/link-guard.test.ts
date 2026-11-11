@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isParkedPowerToolPath } from '@/proxy'
 import { FAQ, faqEntryAnchor } from '@/lib/marketing/copy/faq'
-import { PRICING_FAQ } from '@/lib/marketing/copy/plans'
+import { PRICING_PAGE_FAQ } from '@/lib/marketing/copy/pricing-page'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
 import { DOCS_PAGES } from '@/lib/docs/catalog'
 import { INDEXABLE_ROUTES } from '@/lib/marketing/seo-routes'
@@ -10,7 +10,7 @@ const PARKED_PREFIXES = [
   '/help/mcp-and-editors',
 ]
 
-const FAQ_SETS = [FAQ, PRICING_FAQ] as const
+const FAQ_SETS = [FAQ, PRICING_PAGE_FAQ] as const
 
 function collectHrefs(): string[] {
   const hrefs: string[] = []
@@ -47,7 +47,8 @@ describe('help and docs link guard', () => {
       ...HELP_ARTICLES.map((article) => `/help/${article.categoryId}/${article.slug}`),
       '/waitlist',
       '/waitlist/pro',
-      '/waitlist/studio',
+      '/waitlist/team',
+      '/waitlist/agency',
     ])
 
     for (const items of FAQ_SETS) {

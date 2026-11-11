@@ -8,6 +8,7 @@ import { saveSiteSettings, removeSite } from '@/lib/sites/application/settings-c
 import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { appendSupportMessage } from '@/lib/live-support/ordered-messages'
 import { SITE_URL } from '@/lib/marketing/copy-barrel'
+import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 import { AdminActionError } from './errors'
 
 const databaseActions = new Set([
@@ -272,7 +273,7 @@ export async function performAdminDatabaseAction(
       await tx.paidPlanWaitlistEntry.update({ where: { id: targetId }, data: { invitedAt: now } })
       return {
         entryId: targetId,
-        joinUrl: `${SITE_URL}/waitlist/${entry.plan === 'TEAM' ? 'studio' : 'pro'}?code=${invite.code}`,
+        joinUrl: `${SITE_URL}${waitlistPathForPlan(entry.plan === 'TEAM' ? 'TEAM' : 'BUILDER')}?code=${invite.code}`,
         emailSent: false,
         checkoutPolicyUnchanged: true,
       }

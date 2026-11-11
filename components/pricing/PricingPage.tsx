@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
-import { PricingImpact, PricingStory, PricingToolComparison } from '@/components/pricing/PricingSections'
+import { PricingImpact, PricingStory } from '@/components/pricing/PricingSections'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { MarketingSectionHeader } from '@/components/marketing/MarketingSectionHeader'
@@ -27,7 +27,6 @@ export function PricingPage() {
           <PricingComparisonTable />
         </section>
         <PricingStory />
-        <PricingToolComparison />
         <PricingImpact />
         <section className={s.faq} aria-labelledby="pricing-faq-title"><MarketingSectionHeader id="pricing-faq-title" lines={PRICING.faqLines} align="center" /><FaqSection items={PRICING_PAGE_FAQ} title="" sectionLabel={null} /></section>
       </div>

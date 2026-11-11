@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { MeProvider } from '@/hooks/useMe'
-import { BILLING_ACTION_COPY, PRICING_CARDS } from '@/lib/marketing/copy/plans'
+import { BILLING_ACTION_COPY, PLANS } from '@/lib/marketing/copy/plans'
 
 const push = vi.fn()
 
@@ -36,15 +36,15 @@ describe('PricingCTAButton', () => {
 
   it('sends the public Free offer directly to sign up', () => {
     push.mockReset()
-    const free = PRICING_CARDS[0]
+    const free = PLANS[0]
     render(<MeProvider initialUser={null}><PricingCTAButton plan={free.plan} cta={free.cta} signUpHref={free.href} isLoggedIn={false} variant="brand" /></MeProvider>)
     expect(screen.getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/sign-up')
   })
 
-  it('sends Studio clicks to the Studio waitlist', () => {
+  it('sends Team clicks to the Team waitlist', () => {
     push.mockReset()
-    render(<MeProvider initialUser={null}><PricingCTAButton plan="TEAM" cta="Join Studio waitlist" signUpHref="/waitlist/studio" waitlistGated /></MeProvider>)
-    expect(screen.getByRole('link', { name: 'Join Studio waitlist' })).toHaveAttribute('href', '/waitlist/studio')
+    render(<MeProvider initialUser={null}><PricingCTAButton plan="TEAM" cta="Join Team waitlist" signUpHref="/waitlist/team" waitlistGated /></MeProvider>)
+    expect(screen.getByRole('link', { name: 'Join Team waitlist' })).toHaveAttribute('href', '/waitlist/team')
   })
 
   it('sends gated Pro clicks to the waitlist without loading checkout', () => {

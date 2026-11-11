@@ -21,6 +21,6 @@ export const AGENCIES_PAGE = {
     title: 'What is not here yet',
     body: 'During the open beta each account saves one website. Plans for more websites are coming soon, and shared client workspaces are not available yet. Only check websites you have permission to test.',
     action: 'Join the waitlist',
-    href: '/waitlist/studio',
+    href: '/waitlist/agency',
   },
 } as const

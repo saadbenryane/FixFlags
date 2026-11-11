@@ -72,14 +72,14 @@ describe('PlanPickerDialog', () => {
 
     expect(screen.getByText('Free')).toBeInTheDocument()
     expect(screen.getByText('Pro')).toBeInTheDocument()
-    expect(screen.getByText('Studio')).toBeInTheDocument()
+    expect(screen.getByText('Team')).toBeInTheDocument()
     expect(
       screen.getByText('One website. All features. No usage limits during open beta.'),
     ).toBeInTheDocument()
     expect(screen.getByText('Current plan')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start free' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Join Pro waitlist' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Join Studio waitlist' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Join Team waitlist' })).toBeInTheDocument()
     await waitFor(() =>
       expect(trackEvent).toHaveBeenCalledWith(
         'plan_picker_viewed',

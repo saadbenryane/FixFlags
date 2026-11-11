@@ -1,11 +1,19 @@
+import { PLANNED_ADD_ON_PRICING as ADD_ON, PLANNED_PAID_PRICING as PAID } from '@/lib/billing/beta-policy'
 import type { FaqEntry } from './faq'
+import { PRODUCT_STORY } from './product-story'
 
 /**
- * Pricing page: planned per-account pricing (decided 2026-11-11).
+ * Pricing page: planned per-account pricing (owner decision 2026-11-11).
  * Open beta is free on one website. Paid plans are planned and not on sale.
- * Billing, checkout and waitlist logic still read PLANNED_PAID_PRICING in
- * lib/billing/beta-policy.ts; this file only owns what /pricing renders.
+ * Prices and included websites come from PLANNED_PAID_PRICING in
+ * lib/billing/beta-policy.ts. The public offer, Terms, Help and in-app plans
+ * derive their pricing words from PRICING_TIERS and PRICING_ADD_ONS here.
  */
+
+/** "1 website", "5 websites". */
+export function websitesLabel(count: number): string {
+  return `${count} ${count === 1 ? 'website' : 'websites'}`
+}
 
 export type PlanFeature = { label: string; planned?: boolean }
 
@@ -14,6 +22,8 @@ export type PricingTier = {
   name: string
   price: string
   period: string
+  /** Websites included in the plan. */
+  websites: number
   priceLabel: string
   status: string
   available: boolean
@@ -24,28 +34,28 @@ export type PricingTier = {
 
 export const PRICING_TIERS = [
   {
-    id: 'free', name: 'Free', price: '$0', period: '', priceLabel: 'During open beta', status: 'Available now', available: true,
+    id: 'free', name: 'Free', price: '$0', period: '', websites: 1, priceLabel: 'During open beta', status: 'Available now', available: true,
     summary: 'Every supported feature and schedule on one website while the beta runs.',
-    features: [{ label: '1 website' }, { label: 'Weekly checks' }, { label: 'Uptime monitoring' }, { label: 'Fix instructions and rechecks' }],
+    features: [{ label: websitesLabel(1) }, { label: 'Any check schedule' }, { label: 'A check after every deploy' }, { label: 'Uptime monitoring' }, { label: 'Fix instructions and rechecks' }],
     cta: { label: 'Start free', href: '/sign-up' },
   },
   {
-    id: 'pro', name: 'Pro', price: '$49', period: '/month', priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
+    id: 'pro', name: 'Pro', ...PAID.BUILDER, priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
     summary: 'For one website that needs a daily eye on it.',
-    features: [{ label: '1 website' }, { label: 'Daily checks' }, { label: 'Uptime monitoring' }, { label: 'Fix instructions and rechecks' }],
+    features: [{ label: websitesLabel(PAID.BUILDER.websites) }, { label: 'Daily checks' }, { label: 'Uptime monitoring' }, { label: 'Fix instructions and rechecks' }],
     cta: { label: 'Join Pro waitlist', href: '/waitlist/pro' },
   },
   {
-    id: 'team', name: 'Team', price: '$149', period: '/month', priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
+    id: 'team', name: 'Team', ...PAID.TEAM, priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
     summary: 'For teams that publish often across a few websites.',
-    features: [{ label: '5 websites' }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Fix instructions and rechecks' }],
-    cta: { label: 'Join Team waitlist', href: '/waitlist/studio' },
+    features: [{ label: websitesLabel(PAID.TEAM.websites) }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Fix instructions and rechecks' }],
+    cta: { label: 'Join Team waitlist', href: '/waitlist/team' },
   },
   {
-    id: 'agency', name: 'Agency', price: '$399', period: '/month', priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
+    id: 'agency', name: 'Agency', ...PAID.AGENCY, priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
     summary: 'For agencies looking after client websites. Know a client site broke before the client does.',
-    features: [{ label: '25 websites' }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Client reports', planned: true }],
-    cta: { label: 'Talk to us', href: '/request-demo' },
+    features: [{ label: websitesLabel(PAID.AGENCY.websites) }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Client reports', planned: true }],
+    cta: { label: 'Join Agency waitlist', href: '/waitlist/agency' },
   },
 ] as const satisfies readonly PricingTier[]
 
@@ -53,8 +63,8 @@ export const PRICING_ADD_ONS = {
   title: 'Add-ons on every plan',
   note: 'Add-ons start when paid plans open.',
   items: [
-    { id: 'sites', name: 'Extra websites', price: '$19', unit: 'a month each' },
-    { id: 'checks', name: 'Extra checks and rechecks', price: '$29', unit: 'per 1,000' },
+    { id: 'sites', name: 'Extra websites', ...ADD_ON.extraWebsite },
+    { id: 'checks', name: 'Extra checks and rechecks', ...ADD_ON.extraChecks },
   ],
 } as const
 
@@ -72,9 +82,9 @@ export const PRICING_PLAN_TABLE = {
   notIncluded: 'Not included',
   monitoringLink: { label: 'See how monitoring works', href: '/docs/site-care' },
   rows: [
-    { feature: 'Websites', cells: [text('1'), text('1'), text('5'), text('25')] },
-    { feature: 'Scheduled checks', cells: [text('Weekly'), text('Daily'), text('Daily'), text('Daily')] },
-    { feature: 'Check after every deploy', cells: [no, no, yes, yes] },
+    { feature: 'Websites', cells: [text('1'), text(String(PAID.BUILDER.websites)), text(String(PAID.TEAM.websites)), text(String(PAID.AGENCY.websites))] },
+    { feature: 'Scheduled checks', cells: [text('Any schedule'), text('Daily'), text('Daily'), text('Daily')] },
+    { feature: 'Check after every deploy', cells: [yes, no, yes, yes] },
     { feature: 'Uptime monitoring', cells: [yes, yes, yes, yes] },
     { feature: 'Fix instructions and rechecks', cells: [yes, yes, yes, yes] },
     { feature: 'Client reports', cells: [no, no, no, planned] },
@@ -82,43 +92,18 @@ export const PRICING_PLAN_TABLE = {
 } as const satisfies { rows: readonly { feature: string; cells: readonly PlanCell[] }[] } & Record<string, unknown>
 
 export const PRICING_STORY = {
-  title: 'Check. Find. Fix.',
+  title: `${PRODUCT_STORY.loop.join('. ')}.`,
   body: 'Every plan checks your live website in eight areas, shows each problem with evidence, and gives you fix instructions to paste into the tool you build with. A new check confirms the fix.',
   areasLabel: 'Eight areas on every check',
   link: { label: 'See what gets checked', href: '/coverage' },
+  compareLink: { label: 'How FixFlags compares', href: '/compare' },
 } as const
-
-type ToolCell = { kind: 'yes'; note?: string } | { kind: 'no' } | { kind: 'text'; value: string }
-const tyes = { kind: 'yes' } as const
-const tno = { kind: 'no' } as const
-const ttext = (value: string) => ({ kind: 'text', value }) as const
-
-/** Marks copied exactly from the investor deck (v6.3, slide Competition). Re-check vendor pages before changing them. */
-export const PRICING_TOOL_COMPARISON = {
-  id: 'compare-tools',
-  label: 'Compare tools',
-  lines: ['Other tools watch one layer.', 'FixFlags checks all eight.'] as const,
-  caption: 'FixFlags compared with other website tools',
-  columns: ['Live site, no scripts', 'All 8 areas', 'Evidence', 'AI fix prompt', 'Proves the fix', 'CLI or agent', 'Independent'] as const,
-  rows: [
-    { name: 'FixFlags', highlight: true, cells: [tyes, tyes, tyes, tyes, tyes, { kind: 'yes', note: 'npm CLI' }, tyes] },
-    { name: 'UptimeRobot / Pingdom', highlight: false, cells: [tyes, ttext('Uptime only'), ttext('Partial'), tno, tno, ttext('API'), tyes] },
-    { name: 'Checkly / Datadog', highlight: false, cells: [ttext('Scripts needed'), ttext('Partial'), tyes, tno, tno, tyes, tyes] },
-    { name: 'Ahrefs / Semrush / Lighthouse', highlight: false, cells: [tyes, ttext('SEO, speed'), tyes, tno, ttext('Manual re-run'), ttext('API'), tyes] },
-    { name: 'accessiBe / Siteimprove', highlight: false, cells: [tyes, ttext('Accessibility'), tyes, tno, ttext('Partial'), tno, tyes] },
-    { name: 'QA Wolf / Momentic / Spur', highlight: false, cells: [ttext('Tests written by AI or people'), ttext('Flows'), tyes, ttext('Partial'), tyes, tyes, tyes] },
-    { name: 'Lovable Security Checker', highlight: false, cells: [ttext('Before publish'), ttext('Security'), tyes, tyes, tyes, tno, tno] },
-  ],
-  note: 'Based on public vendor pages, Nov 2026. FixFlags proves a fix with a new check of the live site.',
-  scrollHint: 'Swipe to see every column.',
-} as const satisfies { rows: readonly { name: string; highlight: boolean; cells: readonly ToolCell[] }[] } & Record<string, unknown>
 
 /** Published findings only, quoted exactly. Sources checked 2026-11-11 (see the investor deck SOURCES.md, v6.3). */
 export const PRICING_IMPACT = {
   id: 'why-it-pays',
   label: 'Why it pays',
   lines: ['Slow sites lose people.', 'Faster ones sell more.'] as const,
-  tieIn: 'FixFlags finds the speed, error and accessibility breaks that cost this.',
   stats: [
     {
       value: '+123%', label: 'chance a mobile visitor bounces as load time goes from 1 to 10 seconds',
@@ -143,9 +128,9 @@ export const PRICING_IMPACT = {
 
 export const PRICING_PAGE_FAQ: readonly FaqEntry[] = [
   { question: 'What do I get during open beta?', answer: 'All supported features on one website, with no usage limits and any supported monitoring schedule. Checks after every deploy are included.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'The beta offer' } },
-  { question: 'Are Pro, Team and Agency available now?', answer: 'Not yet. All three are coming soon. Planned pricing is $49 a month for Pro, $149 for Team and $399 for Agency. Final terms will be confirmed before paid launch. Joining a waitlist does not start a subscription or charge you.', learnMore: { href: '/waitlist', label: 'Paid plan waitlist' } },
-  { question: 'Is pricing per website?', answer: 'No. Paid plans are priced per account and include a number of websites: 1 on Pro, 5 on Team and 25 on Agency. Extra websites are $19 a month each on any plan.', learnMore: { href: '/docs/getting-started', label: 'Getting started' } },
-  { question: 'What counts as a check, and what is a recheck?', answer: 'One check runs the pages and actions available for your website and setup. It can find several problems and tells you what it couldn’t check. A recheck is a new check after you publish a fix, so you can see whether it worked. Extra checks and rechecks beyond your plan are $29 per 1,000.', learnMore: { href: '/coverage', label: 'What FixFlags checks' } },
+  { question: 'Are Pro, Team and Agency available now?', answer: `Not yet. All three are coming soon. Planned pricing is ${PAID.BUILDER.price} a month for Pro, ${PAID.TEAM.price} for Team and ${PAID.AGENCY.price} for Agency. Final terms will be confirmed before paid launch. Joining a waitlist does not start a subscription or charge you.`, learnMore: { href: '/waitlist', label: 'Paid plan waitlist' } },
+  { question: 'Is pricing per website?', answer: `No. Paid plans are priced per account and include a number of websites: ${PAID.BUILDER.websites} on Pro, ${PAID.TEAM.websites} on Team and ${PAID.AGENCY.websites} on Agency. Extra websites are ${ADD_ON.extraWebsite.price} ${ADD_ON.extraWebsite.unit} on any plan.`, learnMore: { href: '/docs/getting-started', label: 'Getting started' } },
+  { question: 'What counts as a check, and what is a recheck?', answer: `One check runs the pages and actions available for your website and setup. It can find several problems and tells you what it couldn’t check. A recheck is a new check after you publish a fix, so you can see whether it worked. Extra checks and rechecks beyond your plan are ${ADD_ON.extraChecks.price} ${ADD_ON.extraChecks.unit}.`, learnMore: { href: '/coverage', label: 'What FixFlags checks' } },
   { question: 'Does uptime count as a check?', answer: 'No. Uptime monitoring is included separately on every plan, including Free.', learnMore: { href: '/coverage#uptime', label: 'Uptime coverage' } },
   { question: 'Can FixFlags check my site after every deploy?', answer: 'Yes. Add one request to your deploy pipeline, from GitHub Actions, Vercel, Netlify or a shell script, and FixFlags checks your live Site after each production deploy, including its open Flags. It is included on Free during open beta and planned for Team and Agency.', learnMore: { href: '/docs/site-care#check-after-every-deploy', label: 'Check after every deploy' } },
   { question: 'What counts as one website?', answer: 'Pages on the same domain count as one website. For example, yourwebsite.com and yourwebsite.com/pricing belong together. A separate subdomain, such as app.yourwebsite.com, counts as another website. Adding www does not make a separate website.', learnMore: { href: '/docs/getting-started', label: 'Getting started' } },

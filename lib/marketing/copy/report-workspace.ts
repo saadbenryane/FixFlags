@@ -110,7 +110,6 @@ export const REPORT_COPY = {
       watchOnSchedule: (date: string) =>
         `FixFlags checks this Product on a schedule. Last checked ${date}.`,
       watchChooseSchedule: "Choose a schedule after the first completed Review.",
-      watchStudio: "Scheduled reviews are available on Studio.",
       watchNeedsAttention: (error: string) => `Watch needs attention: ${error}`,
       latestWatchReview: (label: string) => `Latest Watch Review: ${label}`,
       changesEvaluating: "Meaningful changes are still being evaluated.",
