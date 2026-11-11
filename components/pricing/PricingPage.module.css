@@ -1,14 +1,11 @@
 .container { max-width: 1168px; }
 .signupNote { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
-.sections { display: grid; gap: 64px; }
-.comparison { scroll-margin-top: var(--header-offset); }
-.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 24px; margin-top: 12px; font-size: 13px; }
-.links a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 500; color: hsl(var(--muted-foreground)); }
-.links svg { flex-shrink: 0; color: hsl(var(--brand)); }
+.sections { display: grid; grid-template-columns: minmax(0, 1fr); gap: 112px; }
+.plans { scroll-margin-top: var(--header-offset); }
 .page a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .page a:focus-visible { outline: 2px solid hsl(var(--focus-ring)); outline-offset: 4px; }
 .faq { display: grid; gap: 36px; max-width: 800px; width: 100%; margin-inline: auto; }
 .faq :global([data-state][id]) { background: hsl(var(--muted) / .7); box-shadow: none; backdrop-filter: none; }
 @media (max-width: 767px) {
-  .sections { gap: 48px; }
+  .sections { gap: 80px; }
 }

@@ -3,12 +3,14 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
+import { PricingImpact, PricingStory, PricingToolComparison } from '@/components/pricing/PricingSections'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { MarketingSectionHeader } from '@/components/marketing/MarketingSectionHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { PRICING, PRICING_FAQ } from '@/lib/marketing/copy/plans'
+import { PRICING } from '@/lib/marketing/copy/plans'
+import { PRICING_PAGE_FAQ } from '@/lib/marketing/copy/pricing-page'
 import s from './PricingPage.module.css'
 
 export function PricingPage() {
@@ -20,12 +22,14 @@ export function PricingPage() {
         <p className={s.signupNote}>{PRICING.signupNote}</p>
       </MarketingPageHeader>
       <div className={s.sections}>
-        <section aria-labelledby="pricing-comparison-heading" className={s.comparison} id="compare-plans">
-          <h2 className="sr-only" id="pricing-comparison-heading">{PRICING.compareTitle}</h2>
+        <section aria-labelledby="pricing-plans-heading" className={s.plans} id="plans">
+          <h2 className="sr-only" id="pricing-plans-heading">{PRICING.plansTitle}</h2>
           <PricingComparisonTable />
-          <div className={s.links}><Link prefetch={false} href="/docs/site-care">{PRICING.coverageLink}<ArrowRight aria-hidden size={16} /></Link><Link prefetch={false} href="/docs/integrations">{PRICING.connectionsLink}<ArrowRight aria-hidden size={16} /></Link></div>
         </section>
-        <section className={s.faq} aria-labelledby="pricing-faq-title"><MarketingSectionHeader id="pricing-faq-title" lines={PRICING.faqLines} align="center" /><FaqSection items={PRICING_FAQ} title="" sectionLabel={null} /></section>
+        <PricingStory />
+        <PricingToolComparison />
+        <PricingImpact />
+        <section className={s.faq} aria-labelledby="pricing-faq-title"><MarketingSectionHeader id="pricing-faq-title" lines={PRICING.faqLines} align="center" /><FaqSection items={PRICING_PAGE_FAQ} title="" sectionLabel={null} /></section>
       </div>
     </Container>
   </Section>

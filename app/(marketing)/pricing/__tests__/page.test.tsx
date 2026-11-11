@@ -6,6 +6,7 @@ import PricingRoute from '@/app/(marketing)/pricing/page'
 import { PricingPage } from '@/components/pricing/PricingPage'
 import { MeProvider } from '@/hooks/useMe'
 import { PRICING } from '@/lib/marketing/copy/plans'
+import { PRICING_ADD_ONS, PRICING_IMPACT, PRICING_PAGE_FAQ, PRICING_PLAN_TABLE, PRICING_STORY, PRICING_TOOL_COMPARISON } from '@/lib/marketing/copy/pricing-page'
 
 vi.mock('next/image', () => ({
   default: ({ alt, src }: { alt?: string; src: string }) => (
@@ -39,61 +40,94 @@ describe('/pricing', () => {
     expect(page).not.toMatch(/shopifyNote/)
     expect(page).not.toMatch(/MarketingCompareSection/)
     expect(route).not.toMatch(/['"]use client['"]/)
-    expect(route).toMatch(/faqPageSchema/)
+    expect(route).toMatch(/faqPageSchema\(PRICING_PAGE_FAQ/)
     expect(route).toMatch(/PricingPage/)
   })
 
-  it('renders plan cards and the monitoring headline immediately', () => {
+  it('shows Free, Pro and Team as cards and Agency on its own row', () => {
     renderPricing()
     expect(screen.getByRole('heading', { level: 1, name: PRICING.headline })).toBeInTheDocument()
-    expect(screen.getAllByRole('heading', { name: 'Free' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('heading', { name: 'Pro' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('heading', { name: 'Studio' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByText('$49').length).toBeGreaterThan(0)
     expect(screen.getByText(PRICING.headlineAccent)).toBeVisible()
-    expect(within(screen.getByRole('article', { name: 'Free' })).getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/sign-up')
-    expect(screen.getByRole('link', { name: 'Join Pro waitlist' })).toHaveAttribute('href', '/waitlist/pro')
-    expect(screen.getByRole('link', { name: 'Join Studio waitlist' })).toHaveAttribute('href', '/waitlist/studio')
-    expect(screen.getAllByText('$99').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('article')).toHaveLength(3)
-    expect(screen.getAllByRole('article').filter(card => within(card).queryByText('Coming soon'))).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: 'Compare plans' })).toBeInTheDocument()
-  })
-
-  it('combines plan choices, scheduling, and actions without a second comparison', () => {
-    renderPricing()
+    const articles = screen.getAllByRole('article')
+    expect(articles.map(card => within(card).getByRole('heading', { level: 3 }).textContent)).toEqual(['Free', 'Pro', 'Team', 'Agency'])
     const free = within(screen.getByRole('article', { name: 'Free' }))
     const pro = within(screen.getByRole('article', { name: 'Pro' }))
-    const studio = within(screen.getByRole('article', { name: 'Studio' }))
+    const team = within(screen.getByRole('article', { name: 'Team' }))
+    const agency = within(screen.getByRole('article', { name: 'Agency' }))
     expect(free.getByText('$0')).toBeVisible()
-    // The page eyebrow already says Open beta; the available plan does not repeat it.
-    expect(free.queryByText('Open beta')).not.toBeInTheDocument()
-    expect(free.getByText('Custom')).toBeVisible()
-    expect(free.getByText('No usage limits')).toBeVisible()
+    expect(free.queryByText('Coming soon')).not.toBeInTheDocument()
+    expect(free.getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/sign-up')
     expect(pro.getByText('$49')).toBeVisible()
-    expect(pro.getByText('30 / month')).toBeVisible()
-    expect(pro.getByText('Custom')).toBeVisible()
-    expect(pro.getByText('Planned pricing')).toBeVisible()
-    expect(pro.getByRole('link', { name: 'Join Pro waitlist' })).toBeVisible()
-    expect(studio.getByText('$99')).toBeVisible()
-    expect(studio.getByText('90 / month')).toBeVisible()
-    expect(studio.getByText('Custom')).toBeVisible()
-    expect(studio.getByText('Checks after every deploy')).toBeVisible()
-    expect(studio.getByRole('link', { name: 'Join Studio waitlist' })).toBeVisible()
-    for (const plan of [free, pro, studio]) {
-      expect(plan.getByText('Uptime monitoring')).toBeVisible()
-      expect(plan.getAllByText('Included')[0]).toBeVisible()
+    expect(pro.getByText('Daily checks')).toBeVisible()
+    expect(pro.getByRole('link', { name: 'Join Pro waitlist' })).toHaveAttribute('href', '/waitlist/pro')
+    expect(team.getByText('$149')).toBeVisible()
+    expect(team.getByText('5 websites')).toBeVisible()
+    expect(team.getByRole('link', { name: 'Join Team waitlist' })).toHaveAttribute('href', '/waitlist/studio')
+    expect(agency.getByText('$399')).toBeVisible()
+    expect(agency.getByText('25 websites')).toBeVisible()
+    expect(agency.getByText('Planned')).toBeVisible()
+    expect(agency.getByRole('link', { name: 'Talk to us' })).toHaveAttribute('href', '/request-demo')
+    for (const card of [pro, team, agency]) {
+      expect(card.getByText('Coming soon')).toBeVisible()
+      expect(card.getByText('Planned pricing')).toBeVisible()
     }
-    const included = screen.getByRole('region', { name: PRICING.sharedTitle })
-    for (const feature of PRICING.sharedFeatures) expect(within(included).getByText(feature)).toBeVisible()
-    expect(screen.queryByText('Browser verification')).not.toBeInTheDocument()
-    expect(screen.queryByText('See all plan terms')).not.toBeInTheDocument()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(screen.queryByText(PRICING.compareNote)).not.toBeInTheDocument()
-    expect(screen.queryByText(PRICING.studioLine)).not.toBeInTheDocument()
+    expect(screen.queryByText('Studio')).not.toBeInTheDocument()
+    expect(screen.queryByText('$99')).not.toBeInTheDocument()
+  })
+
+  it('lists the add-ons and a plan table with honest statuses', () => {
+    renderPricing()
+    const addOns = within(screen.getByRole('region', { name: PRICING_ADD_ONS.title }))
+    expect(addOns.getByText('$19')).toBeVisible()
+    expect(addOns.getByText('a month each')).toBeVisible()
+    expect(addOns.getByText('$29')).toBeVisible()
+    expect(addOns.getByText('per 1,000')).toBeVisible()
+    const planTable = screen.getByRole('table', { name: PRICING_PLAN_TABLE.caption })
+    expect(within(planTable).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual(['Feature', 'Free$0', 'Pro$49/month', 'Team$149/month', 'Agency$399/month'])
+    const reports = within(within(planTable).getByRole('rowheader', { name: 'Client reports' }).closest('tr')!)
+    expect(reports.getByText('Planned')).toBeVisible()
+    expect(reports.getAllByText('Not included')).toHaveLength(3)
+    expect(screen.getByText(PRICING_PLAN_TABLE.note)).toBeVisible()
+  })
+
+  it('tells the Check. Find. Fix. story across the eight areas', () => {
+    renderPricing()
+    const story = within(screen.getByRole('region', { name: PRICING_STORY.title }))
+    for (const area of ['Uptime', 'Pages', 'Conversion', 'Security', 'Performance', 'Search', 'Tracking', 'Accessibility']) expect(story.getByText(area)).toBeVisible()
+    expect(story.getByRole('link', { name: PRICING_STORY.link.label })).toHaveAttribute('href', '/coverage')
+  })
+
+  it('compares tools with the deck marks and a vendor-page note', () => {
+    renderPricing()
+    const table = screen.getByRole('table', { name: PRICING_TOOL_COMPARISON.caption })
+    expect(within(table).getAllByRole('columnheader').slice(1).map(cell => cell.textContent)).toEqual([...PRICING_TOOL_COMPARISON.columns])
+    expect(within(table).getAllByRole('rowheader').map(cell => cell.textContent)).toEqual(PRICING_TOOL_COMPARISON.rows.map(row => row.name))
+    const fixflags = within(within(table).getAllByRole('rowheader')[0].closest('tr')!)
+    expect(fixflags.getAllByText('Yes')).toHaveLength(7)
+    expect(fixflags.getByText('npm CLI')).toBeVisible()
+    const lovable = within(within(table).getByRole('rowheader', { name: 'Lovable Security Checker' }).closest('tr')!)
+    expect(lovable.getByText('Before publish')).toBeVisible()
+    expect(lovable.getAllByText('No')).toHaveLength(2)
+    expect(screen.getByText(/Based on public vendor pages, Nov 2026\./)).toBeVisible()
+  })
+
+  it('cites every impact number at its source', () => {
+    renderPricing()
+    const impact = within(screen.getByRole('region', { name: PRICING_IMPACT.lines.join(' ') }))
+    for (const stat of PRICING_IMPACT.stats) {
+      expect(impact.getByText(stat.value)).toBeVisible()
+      expect(impact.getByText(`“${stat.quote}”`)).toBeVisible()
+      expect(impact.getByRole('link', { name: stat.source })).toHaveAttribute('href', stat.href)
+    }
+    expect(JSON.stringify(PRICING_IMPACT)).not.toMatch(/estimate|assum|illustrative/i)
+  })
+
+  it('answers pricing questions with the new plans', () => {
+    renderPricing()
     expect(screen.getByRole('button', { name: 'What do I get during open beta?' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('link', { name: PRICING.coverageLink })).toHaveAttribute('href', '/docs/site-care')
-    expect(screen.getByRole('link', { name: PRICING.connectionsLink })).toHaveAttribute('href', '/docs/integrations')
+    expect(screen.getByRole('button', { name: 'Are Pro, Team and Agency available now?' })).toBeInTheDocument()
+    expect(JSON.stringify(PRICING_PAGE_FAQ)).not.toMatch(/Studio|\$99|per website per month/)
+    expect(JSON.stringify(PRICING_PAGE_FAQ)).not.toMatch(/\u2014/)
   })
 
   it('embeds FAQPage structured data on the route', () => {
@@ -105,5 +139,6 @@ describe('/pricing', () => {
     const jsonLd = container.querySelector('script[type="application/ld+json"]')
     expect(jsonLd?.textContent).toContain('FAQPage')
     expect(jsonLd?.textContent).toContain('/pricing')
+    expect(jsonLd?.textContent).toContain('Are Pro, Team and Agency available now?')
   })
 })
