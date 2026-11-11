@@ -74,7 +74,7 @@ export default async function AdminWaitlistPage({
     <Container variant="wide" className="space-y-6 py-8">
       <PageHeader
         title="Paid plan waitlist"
-        description="Pro and Studio waitlist with usage signals. T1 = first 500 (25% off), T2 = next 500 (15% off), None = list price. B1/B2 = access batches; checkout requires a released batch (WAITLIST_OPEN_BATCH) or an explicit grant."
+        description="Pro, Team and Agency waitlist with usage signals. Agency joins record TEAM with source waitlist-agency. T1 = first 500 (25% off), T2 = next 500 (15% off), None = list price. B1/B2 = access batches; checkout requires a released batch (WAITLIST_OPEN_BATCH) or an explicit grant."
       />
 
       <div
@@ -111,7 +111,7 @@ export default async function AdminWaitlistPage({
         </Button>
         <Button variant={planFilter === 'TEAM' ? 'default' : 'outline'} size="sm" asChild>
           <Link href={'/admin/waitlist?plan=TEAM' as Route}>
-            Studio ({studioCount}) {planFilter === 'TEAM' && batchBadge(studioBatches)}
+            Team ({studioCount}) {planFilter === 'TEAM' && batchBadge(studioBatches)}
           </Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
@@ -129,7 +129,7 @@ export default async function AdminWaitlistPage({
           <p className="mt-1 text-xs text-muted-foreground">{releaseBadge(proGrants)}</p>
         </div>
         <div className="rounded-card border border-border/60 bg-muted/40 p-4 text-sm">
-          <p className="font-medium text-foreground">Studio batches</p>
+          <p className="font-medium text-foreground">Team batches</p>
           <p className="mt-1 text-xs text-muted-foreground">{batchBadge(studioBatches)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{tierBadge(studioTiers)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{releaseBadge(studioGrants)}</p>

@@ -5,7 +5,7 @@ import { PUBLIC_OFFER } from './public-offer'
  */
 
 export const LEGAL_PAGE_META = {
-  termsUpdated: 'November 2026',
+  termsUpdated: 'November 11, 2026',
   privacyUpdated: 'November 2026',
 } as const
 
@@ -18,26 +18,27 @@ export const ANALYTICS_CONSENT_COPY = {
   necessaryOnly: 'Only necessary',
 } as const
 
+/** Terms of Service sections, rendered in this order. A lawyer should review changes. */
 export const TERMS_SECTIONS = {
   service: {
     title: 'Service',
     body:
-      'FixFlags checks a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. GitHub authorization is available. Other integrations are coming soon. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
+      'FixFlags checks a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. GitHub authorization is available. Other integrations are coming soon. FixFlags does not change your website. Flags and fix instructions are suggestions, and you decide whether to apply them. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
   },
   accountsAndBilling: {
-    title: 'Accounts and billing',
+    title: 'Accounts, pricing and billing',
     body:
-      `You can start a check of a public URL without an account. Seeing its results, saving the Site, rechecking fixes, and keeping watch require signing in. ${PUBLIC_OFFER.free} ${PUBLIC_OFFER.paid} ${PUBLIC_OFFER.availability} ${PUBLIC_OFFER.usage} Existing subscribers can manage their subscription in the Stripe portal and keep their existing billing terms.`,
+      `You can start a check of a public URL without an account. Seeing its results, saving the Site, rechecking fixes, and keeping watch require signing in. ${PUBLIC_OFFER.free} ${PUBLIC_OFFER.model} ${PUBLIC_OFFER.paid} ${PUBLIC_OFFER.availability} ${PUBLIC_OFFER.noCharge} ${PUBLIC_OFFER.usage} Existing subscribers can manage their subscription in the Stripe portal and keep their existing billing terms.`,
   },
   discountTiers: {
     title: 'Launch discount tiers',
     body:
-      'From time to time we offer launch discounts on Pro or Studio subscriptions. The first 500 waitlisters per plan receive 25% off for twelve months from plan release. The next 500 waitlisters per plan receive 15% off for twelve months from plan release. Discounts are limited, non-transferable, tied to the waitlist position recorded at join time, and expire twelve months after plan release even if you subscribe later. After the discount period, subscriptions renew at the standard list price unless you cancel.',
+      'From time to time we offer launch discounts on paid plan subscriptions. The first 500 waitlisters per plan receive 25% off for twelve months from plan release. The next 500 waitlisters per plan receive 15% off for twelve months from plan release. Discounts are limited, non-transferable, tied to the waitlist position recorded at join time, and expire twelve months after plan release even if you subscribe later. After the discount period, subscriptions renew at the standard list price unless you cancel.',
   },
   waitlist: {
     title: 'Waitlist',
     body:
-      'If paid checkout is not yet open, you may join a Pro or Studio waitlist with a signed-in account. We record the email you enter at join time and use it to notify you when checkout opens. Joining the waitlist does not guarantee a specific opening date or discount eligibility beyond the published terms. Discount tiers are assigned by join order: the first 500 waitlisters per plan receive 25% off and the next 500 receive 15% off, each for twelve months from plan release.',
+      'If paid checkout is not yet open, you may join a Pro, Team or Agency waitlist with a signed-in account. We record the email you enter at join time and use it to notify you when checkout opens. Joining the waitlist does not start a subscription or charge you, and it does not guarantee a specific opening date or discount eligibility beyond the published terms. Discount tiers are assigned by join order: the first 500 waitlisters per plan receive 25% off and the next 500 receive 15% off, each for twelve months from plan release.',
   },
   refunds: {
     title: 'Refunds and cancellation',
@@ -47,12 +48,17 @@ export const TERMS_SECTIONS = {
   acceptableUse: {
     title: 'Acceptable use',
     body:
-      'Do not use FixFlags to check sites you do not have permission to test, to abuse rate limits, or to reverse-engineer the service.',
+      'Only check websites you own or are authorized to check. Do not use FixFlags to test websites without permission, to overload or disrupt a website, to get around access controls, to abuse rate limits, or to reverse-engineer the service. We may stop checks or suspend an account that breaks these rules.',
   },
-  automatedActions: {
-    title: 'Automated checks and your responsibility',
+  responsibility: {
+    title: 'Your responsibility',
     body:
-      'FixFlags uses automated browsers and AI-assisted analysis. It may be incomplete or wrong, so review a Flag before acting. FixFlags does not routinely submit purchases, payments, lead forms, or account registrations. Verify is a fresh independent check, not a warranty or certification.',
+      'You are responsible for how you use FixFlags and for every change you make to your website. That includes changes you make by applying Flags, fix instructions, or other suggestions yourself, with an AI tool or website builder, or through someone who works for you. Review and test a change before you publish it, and keep backups. FixFlags uses automated browsers and AI-assisted analysis, so a check can be incomplete or wrong. FixFlags does not routinely submit purchases, payments, lead forms, or account registrations. Verify is a fresh independent check, not a warranty or certification.',
+  },
+  liability: {
+    title: 'No warranty and limitation of liability',
+    body:
+      'FixFlags is provided as is and as available. We do not promise that a check finds every problem, that its results are accurate, or that a suggested fix will work. FixFlags is not responsible for how you or anyone else uses the service, or for the results of applying its Flags, fix instructions, or other suggestions, including lost sales, lost data, downtime, or damage to a website. FixFlags is not liable for indirect or consequential losses. Our total liability for any claim relating to the service is limited to the amount you paid FixFlags in the 12 months before the claim. Some places do not allow these limits, so they apply only as far as the law allows.',
   },
 } as const
 

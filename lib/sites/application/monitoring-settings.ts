@@ -49,7 +49,7 @@ export async function setProjectWatch(input: { projectId: string; userId: string
       if (!effective?.available)
         return { ok: false, error: WATCH_MESSAGES.accountUnavailable, code: 'WATCH_UNAVAILABLE' }
       if (!effective.watchIntervals.includes(interval)) return { ok: false,
-        error: interval === 'daily' ? 'Daily watching is available on Pro and Studio. Free Sites watch weekly.'
+        error: interval === 'daily' ? 'Daily watching is available on paid plans. Free Sites watch weekly.'
           : 'That watch interval is not available on your plan.', code: 'INTERVAL_NOT_ALLOWED' }
       const readiness = productWatchReadiness()
       if (!readiness.available) return { ok: false, error: readiness.error!, code: 'WATCH_UNAVAILABLE' }

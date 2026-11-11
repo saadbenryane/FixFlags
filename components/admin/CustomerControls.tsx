@@ -58,7 +58,7 @@ export function CustomerControls({
               onChange={(e) => setGrantPlan(e.target.value as typeof grantPlan)}
             >
               <option value="BUILDER">Pro</option>
-              <option value="TEAM">Studio</option>
+              <option value="TEAM">Team</option>
             </InteractiveSelect>
           </label>
           <label htmlFor={`${fieldId}-grant-days`} className="space-y-1 text-sm">
@@ -100,7 +100,7 @@ export function CustomerControls({
                   onChange={(e) => setPlan(e.target.value as typeof plan)}
                 >
                   <option value="BUILDER">Pro</option>
-                  <option value="TEAM">Studio</option>
+                  <option value="TEAM">Team</option>
                 </InteractiveSelect>
               </label>
               <label htmlFor={`${fieldId}-quantity`} className="space-y-1 text-sm">

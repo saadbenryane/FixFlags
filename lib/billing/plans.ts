@@ -1,6 +1,6 @@
 import { Plan } from '@prisma/client'
 import { envPriceId, envPriceIds } from '@/lib/billing/env'
-import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { OPEN_BETA_ACCESS, PLANNED_PAID_PRICING } from '@/lib/billing/beta-policy'
 
 export type PaidPlan = Exclude<Plan, 'FREE'>
 
@@ -96,27 +96,27 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     plan: 'BUILDER',
     name: 'Pro',
     label: 'Pro',
-    price: '$49',
-    period: '/website/mo',
-    persona: 'Daily verification per website',
-    outcome: 'Verified every day, billed per website',
+    price: PLANNED_PAID_PRICING.BUILDER.price,
+    period: PLANNED_PAID_PRICING.BUILDER.period,
+    persona: 'One website, checked daily',
+    outcome: 'Priced per account with 1 website included',
     auditLimit: 30,
     auditLimitKind: 'monthly',
-    auditLimitLabel: 'Verified every day',
+    auditLimitLabel: 'Daily checks',
     deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: 'Path depth included',
     chatTokenLimit: 500_000,
     projectLimit: 5,
-    projectLimitLabel: 'Pay per website',
+    projectLimitLabel: '1 website included',
     scheduledReviews: true,
     workspaceSeatLimit: 1,
     workspaceSeatsLabel: '1 seat',
-    accountModel: 'One account. Pay per website.',
+    accountModel: 'One account with 1 website included. Extra websites cost a monthly fee.',
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
-      'Billed per website',
-      'Verified every day',
+      '1 website included',
+      'Daily checks',
       'Flags, evidence, and verify',
       'Connections included',
       'We are not charging yet',
@@ -126,39 +126,40 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     cta: 'Join waitlist',
     href: '/waitlist/pro',
   },
+  // Internal plan TEAM displays as Team (formerly Studio); the id and Stripe price stay.
   TEAM: {
     plan: 'TEAM',
-    name: 'Studio',
-    label: 'Studio',
-    price: 'Volume',
-    period: '',
-    persona: 'Several websites, billed per website',
-    outcome: 'Same product, volume quoted',
+    name: 'Team',
+    label: 'Team',
+    price: PLANNED_PAID_PRICING.TEAM.price,
+    period: PLANNED_PAID_PRICING.TEAM.period,
+    persona: 'A few websites that change often',
+    outcome: 'Priced per account with 5 websites included',
     auditLimit: 90,
     auditLimitKind: 'monthly',
-    auditLimitLabel: 'Quoted',
+    auditLimitLabel: 'Daily checks and a check after every deploy',
     deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: 'Path depth included',
     chatTokenLimit: 2_000_000,
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
     projectLimit: null,
-    projectLimitLabel: 'Many websites, quoted',
+    projectLimitLabel: '5 websites included',
     scheduledReviews: true,
     workspaceSeatLimit: null,
-    workspaceSeatsLabel: 'Quoted with the volume',
-    accountModel: 'Client websites on one login, billed per website.',
+    workspaceSeatsLabel: 'Seats confirmed at launch',
+    accountModel: 'One account with 5 websites included. Extra websites cost a monthly fee.',
     features: [
-      'Several websites, billed per website',
-      'Client websites on one login',
+      '5 websites included',
+      'Daily checks',
+      'A check after every deploy',
       'Flags, evidence, and verify',
-      'Connections included',
-      'Volume quoted on the waitlist',
+      'We are not charging yet',
     ],
     reviewDepth: 3,
     highlight: false,
     cta: 'Join waitlist',
-    href: '/waitlist/studio',
+    href: '/waitlist/team',
   },
 }
 
@@ -194,9 +195,9 @@ export function chatTokenLimitForPlan(plan: Plan): number {
 }
 
 /**
- * Customer-facing plan name (Free / Pro / Studio). Never render the raw enum
- * (FREE / BUILDER / TEAM): "Builder" and "Team" are internal codes that do not
- * match what users bought, which reads as a billing bug to a paying customer.
+ * Customer-facing plan name (Free / Pro / Team). Never render the raw enum
+ * (FREE / BUILDER / TEAM): "Builder" is an internal code that does not match
+ * what users bought, which reads as a billing bug to a paying customer.
  */
 export function planLabel(plan: Plan | string): string {
   return PLAN_DEFINITIONS[plan as Plan]?.label ?? PLAN_DEFINITIONS.FREE.label
@@ -241,43 +242,3 @@ export function usageAllowanceForPriceId(
   }
   return null
 }
-
-export function getMarketingPlans() {
-  return (['FREE', 'BUILDER', 'TEAM'] as const).map((plan) => {
-    const def = PLAN_DEFINITIONS[plan]
-    return {
-      name: def.name,
-      plan: def.plan,
-      price: def.price,
-      period: def.period,
-      persona: def.persona,
-      outcome: def.outcome,
-      audits: def.auditLimitLabel,
-      features: def.features,
-      cta: def.cta,
-      href: def.href,
-      highlight: def.highlight,
-      products: def.projectLimitLabel,
-      accountModel: def.accountModel,
-    }
-  })
-}
-
-export const CONTACT_PLAN = {
-  name: 'High volume',
-  plan: 'CONTACT' as const,
-  price: 'Custom',
-  period: '',
-  persona: 'Teams auditing at scale',
-  outcome: 'Volume pricing for teams that need more reviews',
-  audits: 'More than 90 / month',
-  features: [
-    'Custom review volume',
-    'A product and workspace setup that fits your team',
-    'Talk through your workflow with us',
-  ],
-  cta: 'Talk to us',
-  href: 'mailto:hello@fixflags.com?subject=FixFlags%20high%20volume',
-  highlight: false,
-  accountModel: 'Talk to us about your workflow.',
-} as const

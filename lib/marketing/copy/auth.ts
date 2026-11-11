@@ -136,16 +136,6 @@ export const AUTH = {
     emailLabel: 'Email',
     emailPlaceholder: 'you@example.com',
     passwordLabel: 'Password',
-    planStepsTitle: 'What happens next',
-    planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro: daily verification, billed per website',
-      TEAM: 'You\u2019re signing up for Studio: several websites, billed per website',
-    },
-    planSteps: [
-      'Create your account',
-      'Complete payment in Stripe',
-      'Run your first check from the dashboard',
-    ],
   },
   postLogin: {
     signingIn: 'Signing you in',

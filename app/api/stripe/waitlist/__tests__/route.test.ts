@@ -73,7 +73,7 @@ describe('POST /api/stripe/waitlist', () => {
     })
     const response = await POST(postReq({ plan: 'TEAM', source: 'pricing' }))
     expect(response.status).toBe(200)
-    expect(recordSiteLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ name: 'waitlist_interest_recorded', properties: expect.objectContaining({ plannedPrice: '$99', plan: 'TEAM' }) }))
+    expect(recordSiteLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ name: 'waitlist_interest_recorded', properties: expect.objectContaining({ plannedPrice: '$149', plan: 'TEAM' }) }))
     expect(upsertPaidPlanWaitlistEntry).toHaveBeenCalledWith({
       userId: 'user-1',
       plan: 'TEAM',

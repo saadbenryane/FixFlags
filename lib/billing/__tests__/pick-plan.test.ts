@@ -96,7 +96,7 @@ describe('pickPlan', () => {
     } as PickPlanInput)
 
     expect(onPrivateBeta).toHaveBeenCalled()
-    expect(result).toEqual({ kind: 'waitlist', url: '/waitlist/studio' })
+    expect(result).toEqual({ kind: 'waitlist', url: '/waitlist/team' })
   })
 
   it('builds checkout redirect branch and returns URL', async () => {
@@ -223,7 +223,7 @@ describe('pickPlan', () => {
       } as PickPlanInput)
     ).resolves.toEqual({
       kind: 'waitlist',
-      url: '/waitlist/studio',
+      url: '/waitlist/team',
       message: 'paid checkout opens in batches',
     })
     expect(onPrivateBeta).toHaveBeenCalled()

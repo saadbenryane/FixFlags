@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, PRICING_FAQ, SEO, SITE_URL } from '@/lib/marketing/copy-barrel'
+import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, SEO, SITE_URL } from '@/lib/marketing/copy-barrel'
+import { PRICING_PAGE_FAQ } from '@/lib/marketing/copy/pricing-page'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getHelpArticle } from '@/lib/help/search'
 import {
@@ -46,13 +47,13 @@ describe('structured data', () => {
   })
 
   it('emits FAQPage schema for pricing questions', () => {
-    const schema = faqPageSchema(PRICING_FAQ, { path: '/pricing', name: PRICING.faqTitle })
+    const schema = faqPageSchema(PRICING_PAGE_FAQ, { path: '/pricing', name: PRICING.faqTitle })
     expect(schema).toMatchObject({
       '@type': 'FAQPage',
       url: `${SITE_URL}/pricing`,
       name: PRICING.faqTitle,
     })
-    const paidQuestion = schema.mainEntity.find((entity) => entity.name === 'Are Pro and Studio available now?')
+    const paidQuestion = schema.mainEntity.find((entity) => entity.name === 'Are Pro, Team and Agency available now?')
     expect(paidQuestion?.acceptedAnswer.text).toContain('/waitlist')
   })
 

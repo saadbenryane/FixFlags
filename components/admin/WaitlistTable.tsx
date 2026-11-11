@@ -15,7 +15,7 @@ export function WaitlistTable({ rows }: { rows: WaitlistRow[] }) {
               {row.email}
             </Link>
             <span className="text-sm">
-              {row.plan === 'TEAM' ? 'Studio' : 'Pro'} ·{' '}
+              {row.plan === 'TEAM' ? 'Team' : 'Pro'} ·{' '}
               {row.batch ? `Batch ${row.batch}` : 'No batch'}
             </span>
           </div>

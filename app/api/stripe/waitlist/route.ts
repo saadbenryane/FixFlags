@@ -19,7 +19,7 @@ async function recordInterest(id: string | undefined, plan: 'BUILDER' | 'TEAM', 
   if (!id) return
   await recordSiteLifecycleEvent({
     name: 'waitlist_interest_recorded', idempotencyKey: `beta-waitlist:${id}:${plan}`,
-    userId, properties: { plan, plannedPrice: PLANNED_PAID_PRICING[plan].price, period: 'website/month', offer: 'open-beta-v1' },
+    userId, properties: { plan, plannedPrice: PLANNED_PAID_PRICING[plan].price, period: 'account/month', offer: 'open-beta-v1' },
   }).catch(() => undefined)
 }
 
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { plan, source, campaign, code } = parsed.data
-    const planLabel = plan === 'TEAM' ? 'Studio' : 'Pro'
+    const planLabel = plan === 'TEAM' ? 'Team' : 'Pro'
 
     // One-time invite redeem (signed-in or email-only). Grants immediate access.
     if (code) {

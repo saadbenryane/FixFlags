@@ -9,15 +9,7 @@ import { BRAND, LEGAL_PAGE_META, TERMS_SECTIONS } from '@/lib/marketing/copy-bar
 export const metadata = buildPageMetadata('terms', '/terms')
 
 export default function TermsPage() {
-  const sections = [
-    TERMS_SECTIONS.service,
-    TERMS_SECTIONS.accountsAndBilling,
-    TERMS_SECTIONS.discountTiers,
-    TERMS_SECTIONS.waitlist,
-    TERMS_SECTIONS.refunds,
-    TERMS_SECTIONS.automatedActions,
-    TERMS_SECTIONS.acceptableUse,
-  ]
+  const sections = Object.values(TERMS_SECTIONS)
 
   return (
     <Section spacing="default">

@@ -339,17 +339,13 @@ export const CUSTOMER_TERMS = {
 } as const
 
 /**
- * Public packaging numbers. Check-pool counts still match `lib/billing/plans.ts`
- * enforcement (hidden from /pricing). Display prices are the public list, not
- * the live Stripe SKU.
+ * Check-pool counts that must match `lib/billing/plans.ts` enforcement (hidden
+ * from /pricing). Display prices live in PLANNED_PAID_PRICING
+ * (lib/billing/beta-policy.ts); studio keys follow internal plan TEAM.
  */
 export const PRICING_COPY = {
   freeProductReviewsPerMonth: 3,
-  proPrice: '$49',
-  proPeriod: '/website/mo',
   proProductReviewsPerMonth: 30,
-  studioPrice: '$99',
-  studioPeriod: '/website/mo',
   studioProductReviewsPerMonth: 90,
   freeFrequency: 'any supported schedule during open beta',
   paidFrequency: 'every day',

@@ -87,7 +87,7 @@ describe('BillingPlansSection', () => {
     expect(screen.getByRole('heading', { name: BILLING_PAGE_COPY.plansTitle })).toBeInTheDocument()
     expect(screen.getByText('Free')).toBeInTheDocument()
     expect(screen.getByText('Pro')).toBeInTheDocument()
-    expect(screen.getByText('Studio')).toBeInTheDocument()
+    expect(screen.getByText('Team')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: PRICING.pickerCurrentPlan })).toBeDisabled()
 
     fireEvent.click(screen.getAllByRole('button', { name: BILLING_PAGE_COPY.upgradeCta })[0])

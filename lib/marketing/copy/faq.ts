@@ -80,8 +80,8 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'Is FixFlags free?',
-    answer: [PUBLIC_OFFER.free, PUBLIC_OFFER.availability, PUBLIC_OFFER.usage].join(' '),
-    learnMore: { href: '/pricing', label: 'See current usage allowances' },
+    answer: [PUBLIC_OFFER.free, PUBLIC_OFFER.model, PUBLIC_OFFER.availability, PUBLIC_OFFER.usage].join(' '),
+    learnMore: { href: '/pricing', label: 'See pricing' },
   },
   {
     question: 'Do you charge or complete checkout on a store?',

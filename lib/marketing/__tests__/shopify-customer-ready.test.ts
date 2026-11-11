@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { FAQ, PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy-barrel'
+import { FAQ, PLANS, PRICING } from '@/lib/marketing/copy-barrel'
+import { PRICING_PAGE_FAQ } from '@/lib/marketing/copy/pricing-page'
 import { getDocsPageByPath } from '@/lib/docs/catalog'
 import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy/integrations'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
@@ -11,7 +12,7 @@ describe('supported open-beta offer', () => {
     expect(PRICING.headline).toMatch(/free during open beta/i)
     expect(PLANS.find(plan => plan.plan === 'FREE')?.cta).toBe('Start free')
     expect(PLANS.filter(plan => plan.plan !== 'FREE').every(plan => plan.href.startsWith('/waitlist'))).toBe(true)
-    expect(PRICING_FAQ.some(entry => /waitlist/i.test(entry.answer))).toBe(true)
+    expect(PRICING_PAGE_FAQ.some(entry => /waitlist/i.test(entry.answer))).toBe(true)
     expect(FAQ.find(entry => entry.question === 'Is FixFlags free?')?.answer).toMatch(/one website/)
   })
   it('publishes guides for supported connections and an evidence-based fix loop', () => {

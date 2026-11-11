@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const hasAccess = await hasPlanAccessGranted(session.user.id, plan)
     if (!hasAccess) {
       const planLabel =
-        PLAN_DEFINITIONS[plan]?.label ?? (plan === 'TEAM' ? 'Studio' : 'Pro')
+        PLAN_DEFINITIONS[plan]?.label ?? (plan === 'TEAM' ? 'Team' : 'Pro')
       return apiError(
         `${planLabel} opens in batches. Your batch has not been released yet, so checkout is not open for you. Join the waitlist to hold your spot.`,
         403,
