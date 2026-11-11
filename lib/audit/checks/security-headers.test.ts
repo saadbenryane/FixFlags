@@ -196,17 +196,17 @@ describe('public response header repair evidence', () => {
     expect(runSecurityHeaderChecks(pageUrl, headers).some(flag => flag.checkId === 'security-permissions-policy-overbroad')).toBe(passed === false)
   })
   it.each([
-    { value: 'max-age=31536000; ignored-includeSubDomains; no-preload', complete: true, duration: true, subdomains: false, preload: false },
-    { value: 'max-age=31536000; note="includeSubDomains; preload"', complete: true, duration: true, subdomains: false, preload: false },
-    { value: 'max-age="31536000"; includeSubDomains; preload', complete: true, duration: true, subdomains: true, preload: true },
-    { value: 'max-age=31536000invalid; includeSubDomains; preload', complete: false, duration: false, subdomains: false, preload: false },
-    { value: 'max-age=31536000; includeSubDomains; includeSubDomains; preload', complete: false, duration: false, subdomains: false, preload: false },
-    { value: 'max-age=0; includeSubDomains; preload', complete: true, duration: false, subdomains: false, preload: false },
-    { value: 'max-age=31536000; includeSubDomains; preload=unrecognized', complete: true, duration: true, subdomains: true, preload: false },
-    { value: '  MAX-AGE = "31536000" ; INCLUDESUBDOMAINS ; PRELOAD ; extension="value;with\\\"quotes" ; ', complete: true, duration: true, subdomains: true, preload: true },
-    { value: 'max-age=31536000; includeSubDomains=ignored; preload', complete: false, duration: false, subdomains: false, preload: false },
-    { value: 'max-age=31536000; includeSubDomains; preload; unknown="unterminated', complete: false, duration: false, subdomains: false, preload: false },
-  ])('interprets one complete HSTS declaration: $value', scenario => {
+    { name: 'lookalike directive names', value: 'max-age=31536000; ignored-includeSubDomains; no-preload', complete: true, duration: true, subdomains: false, preload: false },
+    { name: 'directives inside a quoted value', value: 'max-age=31536000; note="includeSubDomains; preload"', complete: true, duration: true, subdomains: false, preload: false },
+    { name: 'a quoted max-age', value: 'max-age="31536000"; includeSubDomains; preload', complete: true, duration: true, subdomains: true, preload: true },
+    { name: 'an invalid max-age', value: 'max-age=31536000invalid; includeSubDomains; preload', complete: false, duration: false, subdomains: false, preload: false },
+    { name: 'a repeated includeSubDomains', value: 'max-age=31536000; includeSubDomains; includeSubDomains; preload', complete: false, duration: false, subdomains: false, preload: false },
+    { name: 'a zero max-age', value: 'max-age=0; includeSubDomains; preload', complete: true, duration: false, subdomains: false, preload: false },
+    { name: 'a preload with a value', value: 'max-age=31536000; includeSubDomains; preload=unrecognized', complete: true, duration: true, subdomains: true, preload: false },
+    { name: 'uppercase spacing and an extension', value: '  MAX-AGE = "31536000" ; INCLUDESUBDOMAINS ; PRELOAD ; extension="value;with\\\"quotes" ; ', complete: true, duration: true, subdomains: true, preload: true },
+    { name: 'an includeSubDomains with a value', value: 'max-age=31536000; includeSubDomains=ignored; preload', complete: false, duration: false, subdomains: false, preload: false },
+    { name: 'an unterminated quoted extension', value: 'max-age=31536000; includeSubDomains; preload; unknown="unterminated', complete: false, duration: false, subdomains: false, preload: false },
+  ])('interprets one complete HSTS declaration with $name', scenario => {
     const assertions = securityHeaderObservations(pageUrl, { ...healthy, 'strict-transport-security': scenario.value })
     for (const [key, passed] of [['duration', scenario.duration], ['subdomains', scenario.subdomains], ['preload', scenario.preload]] as const)
       expect(assertions.find(item => item.key === 'hsts-' + key)).toMatchObject({ complete: scenario.complete, passed })

@@ -60,14 +60,14 @@ describe('comparable console recovery', () => {
     expect(proof(coverage({ mobile: { ...coverage().mobile, errors: 1 } }))?.passed).toBe(false)
   })
   it.each([
-    coverage({ pageUrl: pageUrl + 'other' }),
-    coverage({ access: 'credentialed:different' }),
-    coverage({ desktop: { ...coverage().desktop, finalUrl: pageUrl + 'redirect' } }),
-    coverage({ desktop: { ...coverage().desktop, finalUrl: pageUrl + '#different-route' } }),
-    coverage({ desktop: { ...coverage().desktop, finalUrl: 'http://example.com/' } }),
-    coverage({ mobile: { ...coverage().mobile, profile: 'changed-profile' } }),
-    coverage({ access: 'credentialed:unknown' }),
-  ])('keeps different URLs, capture profiles and access conditions inconclusive', value => {
+    ['a different page URL', coverage({ pageUrl: pageUrl + 'other' })],
+    ['different credentialed access', coverage({ access: 'credentialed:different' })],
+    ['a redirected desktop final URL', coverage({ desktop: { ...coverage().desktop, finalUrl: pageUrl + 'redirect' } })],
+    ['a different desktop final route', coverage({ desktop: { ...coverage().desktop, finalUrl: pageUrl + '#different-route' } })],
+    ['an insecure desktop final URL', coverage({ desktop: { ...coverage().desktop, finalUrl: 'http://example.com/' } })],
+    ['a changed mobile capture profile', coverage({ mobile: { ...coverage().mobile, profile: 'changed-profile' } })],
+    ['unknown credentialed access', coverage({ access: 'credentialed:unknown' })],
+  ])('keeps coverage with %s inconclusive', (_condition, value) => {
     expect(proof(value)).toBeUndefined()
   })
   it('keeps legacy and mixed action findings inconclusive instead of inferring repair from absence', () => {

@@ -175,7 +175,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
     ['granted', '/new', 'https://customer.example/private', undefined, false, false],
     ['granted', '/new', 'website-online-but-not-working', 'another-check', false, false],
     ['granted', '/new', 'website-online-but-not-working', undefined, true, false],
-  ] as const)('qualifies guide metadata without changing scan admission (%s, %s, %s)', async (consent, path, guideEntry, parentId, signedIn, accepted) => {
+  ] as const)('qualifies guide metadata without changing scan admission (%s, %s, %s, parent %s, signed in %s)', async (consent, path, guideEntry, parentId, signedIn, accepted) => {
     if (signedIn) getSession.mockResolvedValue({ user: { id: 'user-1' } })
     const req = postReq({ url: 'https://example.com', source: 'homepage', parentId, journeyId: `ffj_${'b'.repeat(32)}` })
     const referer = new URL(path, req.nextUrl.origin)

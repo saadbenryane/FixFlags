@@ -57,7 +57,10 @@ it('keeps a failed draft editable and succeeds on a deliberate retry', async () 
   expect(routeRefresh).toHaveBeenCalledOnce()
 })
 
-it.each([{}, saved('Customer checkout', 'another-outcome'), saved('Another label')])('refuses an incomplete or unrelated rename receipt', async receipt => {
+it.each([
+  ['an empty receipt', {}], ['a receipt for another outcome', saved('Customer checkout', 'another-outcome')],
+  ['a receipt with another label', saved('Another label')],
+])('refuses an incomplete or unrelated rename receipt: %s', async (_receipt, receipt) => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(receipt)))
   render(<OutcomeNameControl siteId="site" outcomeId="outcome" name="Checkout" />)
   fireEvent.click(screen.getByRole('button', { name: C.edit }))

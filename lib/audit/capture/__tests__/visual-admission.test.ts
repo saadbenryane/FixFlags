@@ -131,7 +131,7 @@ describe('visual evidence resource ownership', () => {
     [undefined, '/api/screenshots/recorded/mobile?page=' + flowKey + '-flow-1'],
     [undefined, '/api/screenshots/recorded/desktop?page=' + flowKey + '-flow-0'],
     [undefined, '/api/screenshots/recorded/desktop?page=flow-' + 'b'.repeat(32) + '-flow-1'],
-  ])('does not reconstruct a flow comparison from unqualified references: %s', async (source, destination) => {
+  ])('does not reconstruct a flow comparison from unqualified references: %s to %s', async (source, destination) => {
     admission(1)
     await tryCaptureVisualEvidenceForAudit('recorded', 'https://example.test/', failedFlow, undefined, Date.now() + 5000, [flow(source, destination)])
     expect(boundary.admit).not.toHaveBeenCalled()

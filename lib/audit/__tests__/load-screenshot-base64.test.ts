@@ -57,11 +57,11 @@ describe('loadAuditScreenshotBase64', () => {
   })
 
   it.each([
-    { page: { position: 1, url: 'https://example.com/linked' }, key: 'capture-p1-g1' },
-    { page: { position: 0, url: 'https://example.com/linked' }, key: 'capture-p0-g1' },
-    { page: null, key: 'capture-p1-g1' },
-    { page: null, key: 'p0-g1-flow-2' },
-  ])('does not borrow a linked or unrelated capture as primary: $key', async ({ page, key }) => {
+    { name: 'a capture linked to a later page', page: { position: 1, url: 'https://example.com/linked' }, key: 'capture-p1-g1' },
+    { name: 'a first-page capture at another URL', page: { position: 0, url: 'https://example.com/linked' }, key: 'capture-p0-g1' },
+    { name: 'an unlinked later-page capture', page: null, key: 'capture-p1-g1' },
+    { name: 'an unlinked flow capture', page: null, key: 'p0-g1-flow-2' },
+  ])('does not borrow a linked or unrelated capture as primary: $name', async ({ page, key }) => {
     prismaMock.audit.findUnique.mockResolvedValue({ url: 'https://example.com/', screenshots: [
       { device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop?page=' + key, page },
     ] })

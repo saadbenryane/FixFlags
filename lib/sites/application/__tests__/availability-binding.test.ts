@@ -36,7 +36,7 @@ describe('availability transport evidence', () => {
     [503, { 'cf-mitigated': 'challenge' }, 'BLOCKED', 'bot_wall', 1],
     [407, {}, 'BLOCKED', 'access_restricted', 1],
     [511, {}, 'BLOCKED', 'access_restricted', 1],
-  ] as const)('retains the received HTTP %s status when its body is interrupted', async (status, headers, disposition, reason, count) => {
+  ] as const)('retains the received HTTP %s status with headers %j when its body is interrupted', async (status, headers, disposition, reason, count) => {
     fixture.fetch.mockRejectedValue(new PublicResponseBodyError({ statusCode: status, finalUrl: startUrl,
       body: null, headers, redirects: [] }, new TypeError('connection reset')))
     await runAvailabilityBinding(input)
@@ -89,19 +89,19 @@ describe('availability transport evidence', () => {
   })
 
   it.each([
-    { status: 401, body: '', headers: {}, reason: 'access_restricted' },
-    { status: 403, body: '', headers: {}, reason: 'access_restricted' },
-    { status: 407, body: '', headers: {}, reason: 'access_restricted' },
-    { status: 429, body: '', headers: {}, reason: 'access_restricted' },
-    { status: 511, body: '', headers: {}, reason: 'access_restricted' },
-    { status: 503, body: '<h1>Verify you are human</h1>', headers: {}, reason: 'bot_wall' },
-    { status: 503, body: '<main>Wait</main>', headers: { 'cf-mitigated': 'challenge' }, reason: 'bot_wall' },
-    { status: 200, body: '<title>Just a moment...</title>', headers: {}, reason: 'bot_wall' },
-    { status: 302, body: '<main>Redirect</main>', headers: {}, reason: 'redirect_unfollowed' },
-    { status: 302, body: '<main>Redirect</main>', headers: { 'cf-mitigated': 'challenge' }, reason: 'bot_wall' },
-    { status: 206, body: '<main>Partial content</main>', headers: {}, reason: 'response_unavailable' },
-    { status: null, body: '<main>Content without a response</main>', headers: {}, reason: 'response_unavailable' },
-  ])('keeps restricted or absent browser response evidence inconclusive: $status $reason', async ({ status, body, headers, reason }) => {
+    { name: 'HTTP 401', status: 401, body: '', headers: {}, reason: 'access_restricted' },
+    { name: 'HTTP 403', status: 403, body: '', headers: {}, reason: 'access_restricted' },
+    { name: 'HTTP 407', status: 407, body: '', headers: {}, reason: 'access_restricted' },
+    { name: 'HTTP 429', status: 429, body: '', headers: {}, reason: 'access_restricted' },
+    { name: 'HTTP 511', status: 511, body: '', headers: {}, reason: 'access_restricted' },
+    { name: 'HTTP 503 with a human check', status: 503, body: '<h1>Verify you are human</h1>', headers: {}, reason: 'bot_wall' },
+    { name: 'HTTP 503 with a challenge header', status: 503, body: '<main>Wait</main>', headers: { 'cf-mitigated': 'challenge' }, reason: 'bot_wall' },
+    { name: 'HTTP 200 with a challenge title', status: 200, body: '<title>Just a moment...</title>', headers: {}, reason: 'bot_wall' },
+    { name: 'HTTP 302 without a challenge', status: 302, body: '<main>Redirect</main>', headers: {}, reason: 'redirect_unfollowed' },
+    { name: 'HTTP 302 with a challenge header', status: 302, body: '<main>Redirect</main>', headers: { 'cf-mitigated': 'challenge' }, reason: 'bot_wall' },
+    { name: 'HTTP 206', status: 206, body: '<main>Partial content</main>', headers: {}, reason: 'response_unavailable' },
+    { name: 'no browser response', status: null, body: '<main>Content without a response</main>', headers: {}, reason: 'response_unavailable' },
+  ])('keeps restricted or absent browser response evidence inconclusive: $name as $reason', async ({ status, body, headers, reason }) => {
     browserResponse(status, body, headers)
     await runAvailabilityBinding(input)
     expect(fixture.record.mock.calls[0][0]).toMatchObject({ conclusive: { disposition: 'BLOCKED', reason } })
@@ -184,7 +184,7 @@ describe('availability transport evidence', () => {
     [new TypeError('fetch failed', { cause: { code: 'ECONNREFUSED' } }), 'connection_failed'],
     [new TypeError('fetch failed', { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } }), 'response_timeout'],
     [new TypeError('fetch failed', { cause: { code: 'CERT_HAS_EXPIRED', private: 'PRIVATE_ERROR_VALUE' } }), 'certificate_expired'],
-  ])('confirms a recognized public failure before recording its Flag: %s', async (error, reason) => {
+  ])('confirms a recognized public failure before recording its Flag: %s as %s', async (error, reason) => {
     fixture.fetch.mockRejectedValue(error)
     await runAvailabilityBinding(input)
     expect(fixture.fetch).toHaveBeenCalledTimes(2)
@@ -211,11 +211,11 @@ describe('availability transport evidence', () => {
   })
 
   it.each([
-    new AuditUrlError('Resolver unavailable', 'DNS_UNAVAILABLE'), new AuditUrlError('Private target'),
-    new PublicRedirectError({ statusCode: 302, finalUrl: startUrl, headers: { location: '/next' }, redirects: [] }, false),
-    new PublicRedirectError({ statusCode: 302, finalUrl: startUrl, headers: { location: '/' }, redirects: [startUrl] }, true),
-    new TypeError('fetch failed', { cause: { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' } }), new Error('Worker failed'),
-  ])('retains uncertain observations for execution recovery without a website Flag: %s', async error => {
+    ['an unavailable resolver', new AuditUrlError('Resolver unavailable', 'DNS_UNAVAILABLE')], ['a private target', new AuditUrlError('Private target')],
+    ['a redirect limit without a loop', new PublicRedirectError({ statusCode: 302, finalUrl: startUrl, headers: { location: '/next' }, redirects: [] }, false)],
+    ['an uncertain redirect loop', new PublicRedirectError({ statusCode: 302, finalUrl: startUrl, headers: { location: '/' }, redirects: [startUrl] }, true)],
+    ['an unverifiable certificate', new TypeError('fetch failed', { cause: { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' } })], ['a worker failure', new Error('Worker failed')],
+  ])('retains uncertain observations for execution recovery without a website Flag: %s', async (_observation, error) => {
     fixture.fetch.mockRejectedValue(error)
     await runAvailabilityBinding(input)
     expect(fixture.fetch).toHaveBeenCalledOnce()

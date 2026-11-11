@@ -10,12 +10,12 @@ describe('bounded repair evidence delivery', () => {
   const build = (flag = repairFlag()) => buildSiteRepairBrief('site', flag, 'https://fixflags.test')
   const large = 'é🧭\\"\n'.repeat(40_000)
   it.each([
-    repairFlag({ evidence: large }),
-    repairFlag({ fix: large, whyItMatters: large, verificationRule: large }),
-    repairFlag({ affectedPaths: Array.from({ length: 5000 }, (_, i) => `https://example.com/${i}/${'page'.repeat(20)}`) }),
-    repairFlag({ supportingObservations: repairObservations(2, large) }),
-    repairFlag({ supportingObservations: [{ ...repairObservations(1)[0], references: [{ selector: large, label: large, device: 'mobile' }] }] }),
-  ])('reconstructs every supported large field and every observation without truncation', flag => {
+    ['large evidence', repairFlag({ evidence: large })],
+    ['large guidance fields', repairFlag({ fix: large, whyItMatters: large, verificationRule: large })],
+    ['many affected paths', repairFlag({ affectedPaths: Array.from({ length: 5000 }, (_, i) => `https://example.com/${i}/${'page'.repeat(20)}`) })],
+    ['large supporting observations', repairFlag({ supportingObservations: repairObservations(2, large) })],
+    ['large observation references', repairFlag({ supportingObservations: [{ ...repairObservations(1)[0], references: [{ selector: large, label: large, device: 'mobile' }] }] })],
+  ])('reconstructs every supported large field and every observation without truncation: %s', (_fields, flag) => {
     const expectedObservations = flag.supportingObservations ?? []
     const received = []
     let observationOffset = 0

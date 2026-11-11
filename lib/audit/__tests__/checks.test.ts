@@ -479,7 +479,7 @@ describe('runSecurityHeaderChecks', () => {
     )
   })
 
-  it('flags unsafe-inline in CSP script-src', () => {
+  it('flags unsafe-inline in CSP script-src when object-src is restricted', () => {
     assert.ok(
       checkIds(
         runSecurityHeaderChecks('https://example.com', safeHeaders({
@@ -1034,7 +1034,7 @@ describe('runSecurityHeaderChecks', () => {
     assert.ok(ids.includes('security-csp-missing'))
   })
 
-  it('flags unsafe-inline in CSP script-src', () => {
+  it('flags unsafe-inline in CSP script-src without an object-src directive', () => {
     const ids = checkIds(
       runSecurityHeaderChecks('https://example.com', {
         ...FULL_HEADERS,

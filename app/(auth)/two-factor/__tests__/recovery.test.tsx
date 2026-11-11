@@ -19,8 +19,11 @@ function code() {
   return { input, form: input.closest('form')! }
 }
 
-it.each([undefined, {}, { user: { id: 'another-owner' }, session: passkey.data.session }])
-('does not continue from an incomplete or mismatched passkey session', async data => {
+it.each([
+  ['missing session data', undefined], ['empty session data', {}],
+  ['a session for another owner', { user: { id: 'another-owner' }, session: passkey.data.session }],
+])
+('does not continue from an incomplete or mismatched passkey session: %s', async (_session, data) => {
   mocks.passkey.mockResolvedValueOnce({ data, error: null })
   render(<TwoFactorPage />)
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: C.passkeyCta })) })

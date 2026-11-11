@@ -5,10 +5,10 @@ import { requireExecutionReady } from '../execution-readiness'
 describe('execution readiness', () => {
   beforeEach(() => vi.clearAllMocks())
   it.each([
-    { alive: false, browserOk: false, workers: [] },
-    { alive: true, browserOk: false, workers: [{ queueState: 'idle' }] },
-    { alive: true, browserOk: true, workers: [{ queueState: 'stopping' }] },
-  ])('refuses an unavailable scanner', async (heartbeat) => {
+    ['no live heartbeat', { alive: false, browserOk: false, workers: [] }],
+    ['an unavailable browser', { alive: true, browserOk: false, workers: [{ queueState: 'idle' }] }],
+    ['a stopping worker', { alive: true, browserOk: true, workers: [{ queueState: 'stopping' }] }],
+  ])('refuses an unavailable scanner: %s', async (_scanner, heartbeat) => {
     read.mockResolvedValue(heartbeat)
     await expect(requireExecutionReady()).rejects.toMatchObject({ status: 503, code: 'EXECUTION_UNAVAILABLE' })
   })

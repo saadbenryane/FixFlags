@@ -102,8 +102,12 @@ it('preserves the native passkey wait and prevents an overlapping email submissi
   expect(vi.getTimerCount()).toBe(0)
 })
 
-it.each([undefined, { user: { id: 'confirmed-user' } }, { user: { id: 'another-user' }, session: passkeyAuthenticated.data.session }])
-('rejects an incomplete or inconsistent passkey session before authentication callbacks', async data => {
+it.each([
+  ['missing session data', undefined],
+  ['a user without a session', { user: { id: 'confirmed-user' } }],
+  ['a session for another user', { user: { id: 'another-user' }, session: passkeyAuthenticated.data.session }],
+])
+('rejects an incomplete or inconsistent passkey session before authentication callbacks: %s', async (_session, data) => {
   mocks.passkey.mockResolvedValueOnce({ data, error: null }).mockResolvedValueOnce(passkeyAuthenticated)
   const onAuthenticated = vi.fn()
   render(<AuthFlow mode="signin" onAuthenticated={onAuthenticated} />)

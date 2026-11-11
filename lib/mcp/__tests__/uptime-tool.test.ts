@@ -116,7 +116,10 @@ it('restarts stale check history without dropping the separately selected uptime
   expect(stubs.history).toHaveBeenLastCalledWith(ownedSite, '7d', 'probe-page')
 })
 
-it.each([null, { kind: 'project', siteId: 'site-alias', projectId: 'foreign-project', userId: 'someone-else' }])('denies inaccessible Site evidence before reading uptime', async site => {
+it.each([
+  ['a missing Site', null],
+  ['a foreign Site', { kind: 'project', siteId: 'site-alias', projectId: 'foreign-project', userId: 'someone-else' }],
+])('denies inaccessible Site evidence before reading uptime: %s', async (_site, site) => {
   stubs.site.mockResolvedValue(site)
   const result = await call(MCP_TOOLS.listOutcomes.name, { siteId: 'site-alias', uptimeWindow: '24h' })
   expect(result.isError).toBe(true)

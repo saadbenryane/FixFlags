@@ -42,11 +42,11 @@ describe('controlled GA4 pageview cutover', () => {
   })
 
   it.each([
-    [{ ...settings, pageChangesEnabled: false }, 'provider-prerequisite-met'],
-    [{ ...settings, streamEnabled: false }, 'provider-prerequisite-met'],
-    [{ name: settings.name, streamEnabled: true }, 'settings-unverified'],
-    [{ name: 'unrelated', streamEnabled: false }, 'settings-unverified'],
-  ])('handles explicit settings and refuses incomplete or unrelated evidence', async (providerSettings, status) => {
+    ['disabled page changes', { ...settings, pageChangesEnabled: false }, 'provider-prerequisite-met'],
+    ['a disabled stream', { ...settings, streamEnabled: false }, 'provider-prerequisite-met'],
+    ['incomplete settings', { name: settings.name, streamEnabled: true }, 'settings-unverified'],
+    ['unrelated settings', { name: 'unrelated', streamEnabled: false }, 'settings-unverified'],
+  ])('handles explicit settings and refuses incomplete or unrelated evidence: %s', async (_settings, providerSettings, status) => {
     request.mockReset().mockResolvedValueOnce({ data: stream }).mockResolvedValueOnce({ data: providerSettings })
     expect(await inspectGaPageviewCutover(candidate)).toMatchObject({ status })
   })

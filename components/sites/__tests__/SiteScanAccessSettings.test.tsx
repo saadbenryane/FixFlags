@@ -96,7 +96,7 @@ describe('saved Site access uses the existing credential command', () => {
     ['Request headers (JSON object)', '{"X-Preview":', SITE_SETTINGS_COPY.access.invalidHeaders],
     ['Request headers (JSON object)', '{"X-Preview":42}', SITE_SETTINGS_COPY.access.invalidHeaders],
     ['Cookies (JSON array)', '[{"name":"session"}]', SITE_SETTINGS_COPY.access.invalidCookies],
-  ])('reveals and focuses invalid %s without submitting or clearing the draft', async (label, draft, message) => {
+  ])('reveals and focuses invalid %s without submitting or clearing the draft %s', async (label, draft, message) => {
     const fetcher = vi.fn().mockResolvedValue(response(true))
     vi.stubGlobal('fetch', fetcher)
     render(<SiteScanAccessSettings siteId="site" />)

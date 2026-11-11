@@ -236,7 +236,7 @@ describe('AuditInput scan handoff', () => {
     ['landing', undefined, 'ff_entry=issue_page&ff_entry=tool_page', 'homepage'],
     ['landing', 'tool_page', 'ff_entry=issue_page', 'tool_page'],
     ['default', undefined, 'ff_entry=issue_page', 'dashboard'],
-  ] as const)('does not let a query marker replace explicit or private entry context (%s, %s)', async (variant, source, query, expected) => {
+  ] as const)('does not let a query marker replace explicit or private entry context (%s, %s, %s)', async (variant, source, query, expected) => {
     window.history.replaceState({}, '', `/?${query}`)
     startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site', reportId: 'audit' })
     render(<MeProvider initialUser={null}><AuditInput idSuffix="-private-entry-test" variant={variant} source={source} /></MeProvider>)

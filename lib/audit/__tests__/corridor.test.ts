@@ -95,10 +95,10 @@ describe('runCorridorConsistencyChecks', () => {
       titleComplete: true, descriptionComplete: true, scope, source: 'native-head-v1' })
   })
   it.each([
-    { title: undefined, ogTitle: 'Known', ogDescription: 'Known description' },
-    { title: 'Known', ogTitle: undefined, ogDescription: 'Known description' },
-    { title: 'x'.repeat(8001), ogTitle: 'Known', ogDescription: 'Known description' },
-  ])('withholds title comparison when a required native field is unavailable', runtimeHeadMetadata => {
+    ['a missing title', { title: undefined, ogTitle: 'Known', ogDescription: 'Known description' }],
+    ['a missing og:title', { title: 'Known', ogTitle: undefined, ogDescription: 'Known description' }],
+    ['an oversized title', { title: 'x'.repeat(8001), ogTitle: 'Known', ogDescription: 'Known description' }],
+  ])('withholds title comparison when a required native field is unavailable: %s', (_field, runtimeHeadMetadata) => {
     const preview = capturedPagePreview({ runtimeHeadScope: pages()[0].scope!, runtimeHeadMetadata })!
     expect(preview).toMatchObject({ titleComplete: false, descriptionComplete: true })
     expect(JSON.stringify(preview).length).toBeLessThan(10_000)

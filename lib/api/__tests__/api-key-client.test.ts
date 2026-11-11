@@ -12,8 +12,13 @@ it('returns only a complete one-time secret whose display metadata matches it', 
   await expect(createApiKey({ name: 'Fixture' })).resolves.toEqual(created)
 })
 
-it.each([{ ...created, key: '' }, { ...created, key: `ff_live_${'b'.repeat(64)}` }, { ...created, expiresAt: null }, {}])
-('keeps malformed creation receipts unconfirmed', async body => {
+it.each([
+  ['an empty secret', { ...created, key: '' }],
+  ['a secret that does not match its display metadata', { ...created, key: `ff_live_${'b'.repeat(64)}` }],
+  ['a missing expiry', { ...created, expiresAt: null }],
+  ['an empty body', {}],
+])
+('keeps a malformed creation receipt with %s unconfirmed', async (_receipt, body) => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(body, { status: 201 })))
   await expect(createApiKey()).rejects.toBeInstanceOf(ApiKeyCreationUnconfirmed)
 })

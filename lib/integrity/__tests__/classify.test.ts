@@ -95,11 +95,11 @@ describe('checkout failure confirmation', () => {
   })
 
   it.each([
-    { ...failedCheckout, outcome: outcome({ checkoutErrorVisible: true }) },
-    { ...failedCheckout, outcome: outcome({ httpStatus: 503, failedStep: 'landing' }) },
-    { ...failedCheckout, outcome: { ...failedCheckout.outcome, purchaseControlKey: 'b'.repeat(64) } },
-    { ...failedCheckout, steps: [{ ...failedCheckout.steps[0], destinationUrl: 'https://store.example/other-checkout' }] },
-  ])('keeps different failures inconclusive even when both attempts fail', second => {
+    ['a visible checkout error', { ...failedCheckout, outcome: outcome({ checkoutErrorVisible: true }) }],
+    ['a landing HTTP 503', { ...failedCheckout, outcome: outcome({ httpStatus: 503, failedStep: 'landing' }) }],
+    ['a different purchase control', { ...failedCheckout, outcome: { ...failedCheckout.outcome, purchaseControlKey: 'b'.repeat(64) } }],
+    ['a different checkout destination', { ...failedCheckout, steps: [{ ...failedCheckout.steps[0], destinationUrl: 'https://store.example/other-checkout' }] }],
+  ])('keeps different failures inconclusive even when both attempts fail: %s', (_failure, second) => {
     expect(combinePathAttempts(failedCheckout, second))
       .toEqual({ health: 'UNKNOWN', reason: 'flaky', confirmed: false })
   })

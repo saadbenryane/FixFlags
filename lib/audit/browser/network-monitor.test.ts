@@ -385,7 +385,7 @@ it.each([
   [200, 'script_mime', { 'x-content-type-options': 'nosniff' }],
   [200, 'challenge', { 'cf-mitigated': 'Challenge', 'content-type': 'application/javascript' }],
   [503, 'challenge', { 'cf-mitigated': 'challenge' }],
-] as const)('retains HTTP %s without certifying a library response of kind %s', (status, responseKind, headers) => {
+] as const)('retains HTTP %s without certifying a library response of kind %s with headers %j', (status, responseKind, headers) => {
   const { monitor, start } = fixture()
   const url = 'https://example.com/'
   const library = start(url + '_vercel/insights/script.js', undefined, 'GET', 'script')

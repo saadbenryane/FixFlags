@@ -157,11 +157,11 @@ describe('Flag verification attempts', () => {
   })
 
   it.each([
-    { view: 'pages', label: 'Pages', href: '/sites/site-1?view=pages#pages' },
-    { view: 'timeline', label: 'Timeline', href: '/sites/site-1?view=timeline#timeline' },
-    { view: 'home', label: 'Overview', href: '/sites/site-1' },
-    { view: 'home', category: 'search', label: 'Overview', href: '/sites/site-1?category=search#category-search' },
-  ])('returns full Flag details to the originating $label workspace', async ({ view, category, label, href }) => {
+    { name: 'pages view', view: 'pages', label: 'Pages', href: '/sites/site-1?view=pages#pages' },
+    { name: 'timeline view', view: 'timeline', label: 'Timeline', href: '/sites/site-1?view=timeline#timeline' },
+    { name: 'home view', view: 'home', label: 'Overview', href: '/sites/site-1' },
+    { name: 'search category view', view: 'home', category: 'search', label: 'Overview', href: '/sites/site-1?category=search#category-search' },
+  ])('returns full Flag details to the originating $label workspace from the $name', async ({ view, category, label, href }) => {
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({ view, category }) }))
     expect(screen.getByRole('link', { name: C.backTo(label) })).toHaveAttribute('href', href)
   })

@@ -162,11 +162,11 @@ it.each([null, { version: 9, items: [] }])('distinguishes absent historical supp
 })
 
 it.each([
-  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_REVIEW_FAILED' }, expected: 'ready' },
-  { fix: ' ', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: null }, expected: 'ready' },
-  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: new Date(), failureCode: null }, expected: 'ready' },
-  { fix: 'Restore the measured action.', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_CONTRACT_INVALID' }, expected: 'ready' },
-])('projects per-finding guidance without borrowing broader prescription success: $expected', async ({ fix, audit, expected }) => {
+  { name: 'an empty fix after failed AI review', fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_REVIEW_FAILED' }, expected: 'ready' },
+  { name: 'a blank fix with AI review pending', fix: ' ', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: null }, expected: 'ready' },
+  { name: 'an empty fix after AI review', fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: new Date(), failureCode: null }, expected: 'ready' },
+  { name: 'a fix after an invalid AI contract', fix: 'Restore the measured action.', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_CONTRACT_INVALID' }, expected: 'ready' },
+])('projects per-finding guidance without borrowing broader prescription success: $name', async ({ fix, audit, expected }) => {
   const recorded = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...recorded, fix, audit })
   const detail = await loadSiteFlagDetail(site, 'captured-flag')

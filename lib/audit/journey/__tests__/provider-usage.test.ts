@@ -48,8 +48,8 @@ describe.each(calls)('$name provider consumption custody', ({ run }) => {
     expect(consumed).toHaveBeenCalledExactlyOnceWith(null)
   })
 
-  it.each([undefined, { prompt_tokens: 10, completion_tokens: 2, prompt_tokens_details: { cached_tokens: 11 } }])(
-    'keeps missing or contradictory consumption unknown', async usage => {
+  it.each([['missing', undefined], ['contradictory', { prompt_tokens: 10, completion_tokens: 2, prompt_tokens_details: { cached_tokens: 11 } }]])(
+    'keeps %s consumption unknown', async (_consumption, usage) => {
       provider.create.mockResolvedValue({ choices: [], usage })
       const consumed = vi.fn(async () => undefined)
       await expect(run(async () => consumed)).rejects.toThrow('No function call')

@@ -88,7 +88,7 @@ describe('SiteSettingsControls Watch', () => {
 
   it.each([
     ['connected', true, 'Manage'], ['revoked', true, 'Reconnect'], ['not_connected', true, 'Connect'], ['revoked', false, 'Manage'],
-  ] as const)('shows the actual %s GitHub state', (status, configured, label) => {
+  ] as const)('shows the actual %s GitHub state when configured is %s', (status, configured, label) => {
     render(<SiteIntegrationsPanel {...siteViewFixture().settings} github={{ configured, status, login: 'site-owner' }} onDisconnectShopify={vi.fn()} onDisconnectGoogle={vi.fn()} />)
     expect(screen.getByRole('link', { name: 'Manage GitHub connection' })).toHaveTextContent(label)
     if (status === 'connected') expect(screen.getByText('site-owner')).toBeVisible()

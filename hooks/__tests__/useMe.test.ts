@@ -170,9 +170,9 @@ describe('session lookup recovery', () => {
   })
 
   it.each([
-    { user: account() },
-    { user: { id: 'owner', email: 'owner@example.test' }, claimedCount: 1 },
-  ])('does not celebrate a claim with incomplete account or claim facts', async body => {
+    ['a missing claim count', { user: account() }],
+    ['an incomplete account', { user: { id: 'owner', email: 'owner@example.test' }, claimedCount: 1 }],
+  ])('does not celebrate a claim with %s', async (_facts, body) => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json(body)))
     const owner = account()
     const wrapper = ({ children }: PropsWithChildren) => createElement(MeProvider, { initialUser: owner }, children)

@@ -120,7 +120,7 @@ describe('automatic scheduled Site care', () => {
     }, context: { cadence: 'weekly' } }))
   })
   it.each([['weekly', undefined, 10080], ['daily', undefined, 1440], ['hourly', undefined, 1440],
-    ['custom', 180, 1440], ['custom', 4320, 4320]] as const)('retains %s cadence and bounds repeated broad collection', (interval, everyMinutes, minutes) => {
+    ['custom', 180, 1440], ['custom', 4320, 4320]] as const)('retains %s cadence with everyMinutes %s and bounds repeated broad collection', (interval, everyMinutes, minutes) => {
     expect(siteCareIntervalMinutes(interval, everyMinutes)).toBe(minutes)
   })
 })

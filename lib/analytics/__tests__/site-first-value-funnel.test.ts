@@ -405,11 +405,12 @@ describe('Site first-value funnel', () => {
   })
 
   it.each([
-    [], [claim('another-audit', 'owner')], [claim('a1', 'other-owner')],
-    [{ ...claim('a1', 'owner'), projectId: 'another-site' }],
-    [{ ...claim('a1', 'owner'), createdAt: new Date('2026-09-20T06:00:00Z') }],
-    [{ ...claim('a1', 'owner'), createdAt: new Date('2026-10-05T00:00:01Z') }],
-  ].map(claims => [claims]))('withholds Admin claim rates when the exact retained claim is unproven', claims => {
+    ['no claim', []], ['a claim for another Audit', [claim('another-audit', 'owner')]],
+    ['a claim by another owner', [claim('a1', 'other-owner')]],
+    ['a claim for another Site', [{ ...claim('a1', 'owner'), projectId: 'another-site' }]],
+    ['a claim before the start', [{ ...claim('a1', 'owner'), createdAt: new Date('2026-09-20T06:00:00Z') }]],
+    ['a claim after the report time', [{ ...claim('a1', 'owner'), createdAt: new Date('2026-10-05T00:00:01Z') }]],
+  ])('withholds Admin claim rates when the exact retained claim is unproven: %s', (_claim, claims) => {
     const journeyId = `ffj_${'1'.repeat(32)}`
     const result = calculateSiteFirstValueFunnel({
       starts: [{ idempotencyKey: 'analyze_started:a1', createdAt: new Date('2026-09-20T12:00:00Z'),

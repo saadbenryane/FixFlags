@@ -96,8 +96,8 @@ describe('Watch delivery selections', () => {
     expect(restricted.text).toBe('Critical only')
   })
 
-  it.each([{ to: 'other@example.test' }, { tags: [{ name: 'audit_id', value: 'other' }] }])(
-    'rejects recorded recipient or Audit mismatches', changed => {
+  it.each([['recipient', { to: 'other@example.test' }], ['Audit', { tags: [{ name: 'audit_id', value: 'other' }] }]])(
+    'rejects a recorded %s mismatch', (_field, changed) => {
       expect(() => select(fresh(), { ...select(fresh()), ...changed })).toThrow('no longer matches')
     })
 

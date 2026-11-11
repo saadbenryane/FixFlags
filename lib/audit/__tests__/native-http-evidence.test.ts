@@ -79,11 +79,11 @@ describe('private native HTTP evidence', () => {
   })
 
   it.each([
-    { status: 200, type: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFElEQVQImWP4r8TwX4kBhP8rMQAAI6YEhXbc9zcAAAAASUVORK5CYII=', 'base64'), flags: 0 },
-    { status: 404, type: 'text/plain', body: Buffer.from('Missing'), flags: 1 },
-    { status: 200, type: 'image/png', body: '', flags: 1 },
-    { status: 403, type: 'text/html', body: 'Refused', flags: 0 },
-  ])('replays the consumed image response facts for HTTP $status', async ({ status, type, body, flags }) => {
+    { name: 'a valid image', status: 200, type: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFElEQVQImWP4r8TwX4kBhP8rMQAAI6YEhXbc9zcAAAAASUVORK5CYII=', 'base64'), flags: 0 },
+    { name: 'a missing image', status: 404, type: 'text/plain', body: Buffer.from('Missing'), flags: 1 },
+    { name: 'an empty image', status: 200, type: 'image/png', body: '', flags: 1 },
+    { name: 'a refused page', status: 403, type: 'text/html', body: 'Refused', flags: 0 },
+  ])('replays the consumed image response facts for HTTP $status: $name', async ({ status, type, body, flags }) => {
     vi.mocked(safeFetchResource).mockResolvedValue({ ...response, statusCode: status, body: Buffer.from(body), headers: { 'content-type': type, 'set-cookie': 'private' } })
     const collected = nativeHttpCollection(), scope = {}, assertions: CheckAssertion[] = []
     const original = await runOgImageUrlCheck(pageUrl, metadata, { ...collected.options, scope, record: value => assertions.push(value) })

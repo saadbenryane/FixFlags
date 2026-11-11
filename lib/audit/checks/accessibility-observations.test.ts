@@ -174,13 +174,13 @@ describe('automated accessibility responsibilities', () => {
     expect(inspect([{ id: 'image-alt', state: 'passed', nodes: 1 }, { id: 'input-image-alt', state: 'failed', nodes: 1 }])?.passed).toBe(false)
   })
   it.each([
-    evidence('passed', { engine: 'different-engine' }),
-    evidence('passed', { scope: { ...scope, finalUrl: pageUrl + '#different-route' } }),
-    evidence('passed', { scope: { ...scope, pageUrl: pageUrl + 'other' } }),
-    evidence('passed', { scope: { ...scope, profile: 'different-profile' } }),
-    evidence('passed', { scope: { ...scope, access: 'credentialed:different' } }),
-    evidence('passed', { scope: { ...scope, access: 'credentialed:unknown' } }),
-  ])('keeps changed capture and engine conditions inconclusive', value => { expect(proof(value)).toBeUndefined() })
+    ['a different engine', evidence('passed', { engine: 'different-engine' })],
+    ['a different final route', evidence('passed', { scope: { ...scope, finalUrl: pageUrl + '#different-route' } })],
+    ['a different page URL', evidence('passed', { scope: { ...scope, pageUrl: pageUrl + 'other' } })],
+    ['a different capture profile', evidence('passed', { scope: { ...scope, profile: 'different-profile' } })],
+    ['different credentialed access', evidence('passed', { scope: { ...scope, access: 'credentialed:different' } })],
+    ['unknown credentialed access', evidence('passed', { scope: { ...scope, access: 'credentialed:unknown' } })],
+  ])('keeps a capture with %s inconclusive', (_condition, value) => { expect(proof(value)).toBeUndefined() })
   it('credits an independent rule repair despite unrelated failed or unresolved rules', () => {
     const mixed = evidence('passed', { rules: [{ id: 'button-name', state: 'passed', nodes: 1 }, { id: 'color-contrast', state: 'incomplete', nodes: 1 },
       { id: 'aria-required-parent', state: 'failed', nodes: 1 }] })

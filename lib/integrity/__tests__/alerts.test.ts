@@ -23,7 +23,10 @@ beforeEach(() => {
 })
 
 describe('integrity notification admission', () => {
-  it.each([null, { ...source, health: 'UNKNOWN' }, { ...source, confirmed: false }, { ...source, pathId: 'other' }])('refuses missing, unknown, unconfirmed or foreign source observations', async value => {
+  it.each([
+    ['missing', null], ['unknown', { ...source, health: 'UNKNOWN' }], ['unconfirmed', { ...source, confirmed: false }],
+    ['foreign', { ...source, pathId: 'other' }],
+  ])('refuses a source observation that is %s', async (_state, value) => {
     boundary.source.mockResolvedValue(value)
     await send()
     expect(boundary.send).not.toHaveBeenCalled(); expect(boundary.fetch).not.toHaveBeenCalled(); expect(boundary.track).not.toHaveBeenCalled()

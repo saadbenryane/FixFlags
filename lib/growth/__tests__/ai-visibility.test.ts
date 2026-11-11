@@ -67,12 +67,17 @@ describe('recorded public AI visibility evaluation', () => {
   })
 
   it.each([
-    { promptId: 'unknown-prompt' }, { model: '' }, { platform: 'unknown-secret-platform' }, { observedAt: '2026-02-30T12:00:00Z' },
-    { observedAt: '2027-01-01T12:00:00Z' }, { answer: '' }, { citationUrls: ['https://fixflags.com/share/private-token'] },
-    { citationUrls: ['https://fixflags.com/?token=secret'] }, { citationUrls: ['https://127.0.0.1/path'] },
-    { citationUrls: ['https://private.internal/path'] }, { citationUrls: ['https://secret:password@fixflags.com/'] },
-    { citationUrls: ['not-a-url'] }, { review: { offer: 'invented' } }, { review: { privateCustomer: 'secret' } }, { customerEmail: 'secret@test.test' },
-  ])('rejects malformed fields without reflecting their values', (change) => {
+    ['an unknown prompt', { promptId: 'unknown-prompt' }], ['an empty model', { model: '' }],
+    ['an unknown platform', { platform: 'unknown-secret-platform' }], ['an impossible observation date', { observedAt: '2026-02-30T12:00:00Z' }],
+    ['a future observation date', { observedAt: '2027-01-01T12:00:00Z' }], ['an empty answer', { answer: '' }],
+    ['a private share citation', { citationUrls: ['https://fixflags.com/share/private-token'] }],
+    ['a citation with a token query', { citationUrls: ['https://fixflags.com/?token=secret'] }],
+    ['a loopback citation', { citationUrls: ['https://127.0.0.1/path'] }],
+    ['an internal host citation', { citationUrls: ['https://private.internal/path'] }],
+    ['a citation with credentials', { citationUrls: ['https://secret:password@fixflags.com/'] }],
+    ['a citation that is not a URL', { citationUrls: ['not-a-url'] }], ['an invented review offer', { review: { offer: 'invented' } }],
+    ['a private review field', { review: { privateCustomer: 'secret' } }], ['a customer email field', { customerEmail: 'secret@test.test' }],
+  ])('rejects %s without reflecting its value', (_field, change) => {
     expect(() => evaluate([{ ...observation, ...change }])).toThrow('Invalid public observation dataset')
   })
 

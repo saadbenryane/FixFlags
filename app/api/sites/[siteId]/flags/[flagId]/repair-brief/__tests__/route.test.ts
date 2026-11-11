@@ -105,7 +105,7 @@ describe('private agent repair context URL', () => {
     expect(result.headers.get('Cache-Control')).toBe('private, no-store')
     expect(mocks.flag).not.toHaveBeenCalled()
   })
-  it.each([null, undefined])('rejects invalid, expired or revoked credentials without borrowing the owner session', async invalid => {
+  it.each([null, undefined])('rejects invalid, expired or revoked credentials without borrowing the owner session when the key lookup returns %s', async invalid => {
     mocks.key.mockResolvedValue(invalid)
     expect((await read({ Authorization: 'Bearer invalid' })).status).toBe(401)
     expect(mocks.owner).not.toHaveBeenCalled()

@@ -269,7 +269,7 @@ describe('Product Watch', () => {
     expect(mocks.projectUpdateMany.mock.calls.some(([call]) => call.data.watchNextRunAt !== undefined)).toBe(false)
   })
 
-  it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with its duration', async (interval, everyMinutes, stored) => {
+  it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with everyMinutes %s', async (interval, everyMinutes, stored) => {
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval, ...(everyMinutes ? { everyMinutes } : {}) })).toEqual({ ok: true })
     expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchInterval: stored, watchEveryMinutes: everyMinutes ?? null }) }))
   })

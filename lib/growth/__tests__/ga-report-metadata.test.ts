@@ -61,12 +61,12 @@ describe('GA report provenance', () => {
   })
 
   it.each([
-    { timeZone: 'Africa/Casablanca' },
-    { timeZone: 'America/New_York', subjectToThresholding: true },
-    { timeZone: 'UTC', dataLossFromOtherRow: true },
-    { timeZone: 'UTC', samplingMetadatas: [{ samplesReadCount: '50', samplingSpaceSize: '100' }] },
-    { timeZone: 'UTC', dataTruncationReasons: [{ dataTruncationType: 'DATA_RETENTION' }] },
-  ])('keeps the reporting timezone and limitations from the actual landing report', async (metadata) => {
+    ['a non-UTC timezone', { timeZone: 'Africa/Casablanca' }],
+    ['thresholding', { timeZone: 'America/New_York', subjectToThresholding: true }],
+    ['other-row data loss', { timeZone: 'UTC', dataLossFromOtherRow: true }],
+    ['sampling', { timeZone: 'UTC', samplingMetadatas: [{ samplesReadCount: '50', samplingSpaceSize: '100' }] }],
+    ['retention truncation', { timeZone: 'UTC', dataTruncationReasons: [{ dataTruncationType: 'DATA_RETENTION' }] }],
+  ])('keeps the reporting timezone and limitations from the actual landing report: %s', async (_limitation, metadata) => {
     report.mockImplementation(async ({ requestBody }) => ({ data: {
       metadata,
       rows: requestBody.dimensions[0]?.name === 'customEvent:journey_id'
