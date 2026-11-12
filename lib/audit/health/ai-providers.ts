@@ -2,6 +2,7 @@ import { getJudgeProviderChain, getConfiguredJudgeProviderChain, getTriageProvid
 import { isAiProviderConfigured } from '@/lib/env'
 import { getOpenAIProviderKey } from '@/lib/audit/llm-keys'
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicWorkspaceOptions } from '../anthropic-workspace'
 import OpenAI from 'openai'
 import { sanitizeAuditErrorMessage } from '@/lib/audit/pipeline/context'
 import { classifyJudgeProviderFailure, type JudgeProviderFailure } from '../judge'
@@ -62,7 +63,7 @@ export async function validateAiProviderCredentials(actor: AdminActor): Promise<
     } else if (provider === 'anthropic') {
       const key = process.env.ANTHROPIC_API_KEY
       if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
-      const anthropic = new Anthropic({ apiKey: key, timeout: 15_000, maxRetries: 0 })
+      const anthropic = new Anthropic({ apiKey: key, ...anthropicWorkspaceOptions(), timeout: 15_000, maxRetries: 0 })
       const requestBody = {
         model,
         max_tokens: 5,

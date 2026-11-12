@@ -136,6 +136,17 @@ describe('validateAiProviderCredentials', () => {
     expect(result?.error).toContain('Unknown provider')
   })
 
+  it('uses the selected Anthropic workspace for the credential probe', async () => {
+    getConfiguredJudgeProviderChain.mockReturnValue(['anthropic'])
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-test')
+    vi.stubEnv('ANTHROPIC_WORKSPACE_ID', '  wrkspc_health_fixture  ')
+    anthropicCreate.mockResolvedValueOnce({ id: 'probe' })
+    expect(await validateAiProviderCredentials(actor)).toMatchObject({ ok: true, provider: 'anthropic' })
+    expect(anthropicOptions).toHaveBeenCalledWith(expect.objectContaining({
+      defaultHeaders: { 'anthropic-workspace-id': 'wrkspc_health_fixture' },
+    }))
+  })
+
   it('distinguishes a typed authentication rejection from provider unavailability', async () => {
     getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
     getOpenAIProviderKey.mockReturnValue('sk-test')

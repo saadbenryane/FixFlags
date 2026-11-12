@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicWorkspaceOptions } from './anthropic-workspace'
 import OpenAI from 'openai'
 import { getConfiguredJudgeProviderChain } from './judge-config'
 import { hasAnthropicProviderKey, getOpenAIProviderKey } from './llm-keys'
@@ -21,7 +22,7 @@ const executionFetch: typeof globalThis.fetch = (input, init) => {
 
 // Application attempts own retries, deadlines and provider-consumption custody.
 export const anthropic = hasAnthropicProviderKey()
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0, fetch: executionFetch })
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, ...anthropicWorkspaceOptions(), maxRetries: 0, fetch: executionFetch })
   : null
 
 export const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey, maxRetries: 0, fetch: executionFetch }) : null

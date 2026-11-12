@@ -14,6 +14,21 @@ vi.mock('@/lib/db', () => ({ prisma: { audit: {
 describe('provider transport attempt custody', () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.resetModules() })
 
+  it.each([undefined, '  wrkspc_transport_fixture  '])('sends the configured workspace through the Anthropic SDK (%s)', async workspace => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'transport-test-key')
+    vi.stubEnv('ANTHROPIC_WORKSPACE_ID', workspace)
+    let received: Headers | undefined
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input, init) => {
+      received = new Request(input, init).headers
+      return new Response(JSON.stringify({ error: { type: 'rate_limit_error', message: 'Controlled refusal' } }),
+        { status: 429, headers: { 'content-type': 'application/json' } })
+    }))
+    const { anthropic } = await import('../judge-runner')
+    await expect(anthropic!.messages.create({ model: 'fixture', messages: [], max_tokens: 1 })).rejects.toMatchObject({ status: 429 })
+    expect(received!.get('anthropic-workspace-id')).toBe(workspace?.trim() ?? null)
+    expect(received!.get('x-api-key')).toBe('transport-test-key')
+  })
+
   it('interrupts retry backoff when ownership is canceled', async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'transport-test-key')
     const { runLlmWithRetry } = await import('../judge-runner')
