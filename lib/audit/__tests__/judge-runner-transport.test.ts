@@ -14,6 +14,31 @@ vi.mock('@/lib/db', () => ({ prisma: { audit: {
 describe('provider transport attempt custody', () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.resetModules() })
 
+  it('lets native fetch measure SDK request bytes while preserving authentication and workspace headers', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'transport-test-key')
+    vi.stubEnv('ANTHROPIC_WORKSPACE_ID', 'wrkspc_transport_fixture')
+    const { anthropic } = await import('../judge-runner')
+    let received: { length: string | undefined; bytes: number; workspace: string | undefined; key: string | undefined } | undefined
+    const server = createServer(async (request, response) => {
+      const chunks: Buffer[] = []
+      for await (const chunk of request) chunks.push(Buffer.from(chunk))
+      received = { length: request.headers['content-length'], bytes: Buffer.concat(chunks).byteLength,
+        workspace: request.headers['anthropic-workspace-id'] as string | undefined, key: request.headers['x-api-key'] as string | undefined }
+      response.setHeader('content-type', 'application/json')
+      response.end(JSON.stringify({ id: 'fixture', type: 'message', role: 'assistant', model: 'fixture', content: [],
+        stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } }))
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    anthropic!.baseURL = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    try {
+      await expect(anthropic!.messages.create({ model: 'fixture', max_tokens: 1,
+        messages: [{ role: 'user', content: 'Résumé. مرحباً. '.repeat(100) }] },
+      { headers: { 'content-length': 'invalid' } })).resolves.toMatchObject({ model: 'fixture' })
+      expect(received).toMatchObject({ workspace: 'wrkspc_transport_fixture', key: 'transport-test-key' })
+      expect(Number(received!.length)).toBe(received!.bytes)
+    } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
+  })
+
   it.each([undefined, '  wrkspc_transport_fixture  '])('sends the configured workspace through the Anthropic SDK (%s)', async workspace => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'transport-test-key')
     vi.stubEnv('ANTHROPIC_WORKSPACE_ID', workspace)

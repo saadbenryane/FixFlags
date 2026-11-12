@@ -12,11 +12,16 @@ const openAiApiKey = getOpenAIProviderKey()
 
 /** Every SDK consumer shares the owning execution's transport lifetime. */
 const executionFetch: typeof globalThis.fetch = (input, init) => {
+  // The installed SDK also supports node-fetch. Native fetch owns framing for
+  // the actual body and must not inherit an incompatible Content-Length.
+  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
+  headers.delete('content-length')
+  const options = { ...init, headers }
   const executionSignal = currentExecutionOwnership()?.signal
-  if (!executionSignal) return globalThis.fetch(input, init)
+  if (!executionSignal) return globalThis.fetch(input, options)
   executionSignal.throwIfAborted()
   const requestSignal = init?.signal ?? (input instanceof Request ? input.signal : undefined)
-  return globalThis.fetch(input, { ...init,
+  return globalThis.fetch(input, { ...options,
     signal: requestSignal ? AbortSignal.any([requestSignal, executionSignal]) : executionSignal })
 }
 
