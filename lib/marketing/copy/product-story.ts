@@ -5,7 +5,7 @@ export const PRODUCT_STORY = {
   lede: 'We check your live site like a real visitor, hand your AI the fix, and prove it worked.',
   summary: 'Find what’s broken. Hand your AI the fix. Prove it worked.',
   action: 'Check your website',
-  setup: 'No install. No signup to start.',
+  setup: 'No install. Free account, free during open beta.',
   /** The one product loop. Every surface that names its steps uses these words in this order. */
   loop: ['Check', 'Flag', 'Fix', 'Verify'],
 } as const

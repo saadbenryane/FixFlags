@@ -98,7 +98,7 @@ export const AI_BUILDERS_PAGE = {
   open: (name: string) => `FixFlags for ${name}`,
   loopHeader: { label: 'The loop', lines: ['Four steps.', 'The same in every tool.'] as const },
   loop: [
-    { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
+    { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install. Free account, free during open beta.' },
     { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
     { label: PRODUCT_STORY.loop[2], title: 'Hand your AI the fix', body: 'Copy the fix instructions into the tool you build with. Review the change and publish.' },
     { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Recheck. FixFlags checks the same page and action on the live site.' },
@@ -114,7 +114,7 @@ export const AI_BUILDERS_PAGE = {
     titleLines: (name: string) => [`${name} built it.`, PRODUCT_STORY.headline[1]] as const,
     stepsTitle: 'How it works',
     steps: (tool: AiBuilderTool) => [
-      { title: 'Check your live site', body: 'Paste your published URL into FixFlags. Nothing to install, and no signup to start.' },
+      { title: 'Check your live site', body: 'Paste your published URL into FixFlags. Nothing to install. Free account, free during open beta.' },
       { title: 'Open a Flag and copy the fix', body: 'Each Flag shows what happened, what should happen, and the evidence. Copy its fix instructions.' },
       { title: `Paste it into ${tool.name}`, body: tool.where },
       { title: 'Publish, then prove it', body: `${tool.publish} Then select Recheck in FixFlags to check the same page and action again.` },

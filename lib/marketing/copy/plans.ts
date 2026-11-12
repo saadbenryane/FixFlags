@@ -50,7 +50,7 @@ export const PRICING = {
   pickerEyebrow: 'Open beta', pickerTitle: 'Start free on one website',
   pickerSubtitle: 'Explore all supported features without usage limits during beta. Paid plans are coming soon.',
   pickerBody: 'Start free. Join the waitlist if you need another website.',
-  pickerBodyWithReport: 'The first check can start as soon as you enter a URL.',
+  pickerBodyWithReport: 'Create a free account and your first check starts right away.',
   pickerCreditNote: 'One website. All features. No usage limits during open beta.',
   pickerReportNote: 'Choosing Free returns you to your Site.', pickerFootnote: 'Need more detail?', pickerCompareLink: 'See pricing.',
   // Keys named Studio follow internal plan TEAM, which displays as Team.
