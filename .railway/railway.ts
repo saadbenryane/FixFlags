@@ -65,6 +65,7 @@ export default defineRailway(ctx => {
       STRIPE_TEAM_PRICE_ID: preserve(),
       STRIPE_WEBHOOK_SECRET: preserve(),
       TOKEN_ENCRYPTION_KEY: preserve(),
+      TRIAGE_MAX_TOKENS: preserve(),
     },
   });
   const worker = service("FixFlags Worker", {
@@ -115,6 +116,7 @@ export default defineRailway(ctx => {
       STRIPE_TEAM_PRICE_ID: preserve(),
       STRIPE_WEBHOOK_SECRET: preserve(),
       TOKEN_ENCRYPTION_KEY: preserve(),
+      TRIAGE_MAX_TOKENS: preserve(),
     },
   });
   return project("FixFlags", { resources: [web, worker] });

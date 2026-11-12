@@ -32,6 +32,13 @@ import {
 
 export type TriageUsage = LlmUsage
 
+class TriageOutputLimitError extends JudgeContractError {
+  constructor(limit: number) {
+    super(`Triage output reached its ${limit}-token limit before the complete review was returned.`)
+    this.name = 'TriageOutputLimitError'
+  }
+}
+
 export interface TriageResult {
   output: TriageOutput
   usage: TriageUsage
@@ -286,6 +293,7 @@ async function runAnthropicTriage(
       usage: response => anthropicResponseUsage(response, cfg.model),
     })
 
+    if (response.stop_reason === 'max_tokens') throw new TriageOutputLimitError(cfg.maxTokens)
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
       throw new Error('No tool_use in triage response')
@@ -324,6 +332,7 @@ async function runOpenAITriage(
       usage: response => openAIResponseUsage(response, cfg.model),
     })
 
+    if (response.choices[0]?.finish_reason === 'length') throw new TriageOutputLimitError(cfg.maxTokens)
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {
       throw new Error('No content in triage response')
@@ -361,6 +370,7 @@ async function runTriageWithProvider(
 }
 
 function isTriageAttemptRetryable(err: unknown): boolean {
+  if (err instanceof TriageOutputLimitError) return false
   return (
     isRetryableJudgeError(err) ||
     err instanceof JudgeContractError ||

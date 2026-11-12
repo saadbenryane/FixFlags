@@ -43,3 +43,20 @@ describe('getConfiguredJudgeProviderChain', () => {
     expect(getConfiguredJudgeProviderChain()).toEqual([])
   })
 })
+
+describe('triage response budget', () => {
+  beforeEach(() => { vi.resetModules() })
+  afterEach(() => { vi.unstubAllEnvs() })
+
+  it.each(['anthropic', 'openai'])('allows a complete structured %s review by default', async provider => {
+    vi.stubEnv('TRIAGE_MAX_TOKENS', '')
+    const { getTriageProviderConfig } = await import('../judge-config')
+    expect(getTriageProviderConfig(provider).maxTokens).toBe(4096)
+  })
+
+  it('preserves an explicitly configured smaller response limit', async () => {
+    vi.stubEnv('TRIAGE_MAX_TOKENS', '1200')
+    const { getTriageProviderConfig } = await import('../judge-config')
+    expect(getTriageProviderConfig('anthropic').maxTokens).toBe(1200)
+  })
+})

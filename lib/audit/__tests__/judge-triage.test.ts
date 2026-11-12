@@ -232,6 +232,24 @@ describe('runTriageWithRetry provider paths', () => {
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
 
+  it.each(['anthropic', 'openai'])('rejects a truncated %s response even when its visible fields look valid', async provider => {
+    runAttempt(provider)
+    if (provider === 'anthropic') mocks.anthropicCreate.mockResolvedValue({
+      stop_reason: 'max_tokens', content: [{ type: 'tool_use', input: VALID_OUTPUT }],
+      usage: { input_tokens: 20, output_tokens: 4096 },
+    })
+    else mocks.openaiCreate.mockResolvedValue({
+      choices: [{ finish_reason: 'length', message: { content: JSON.stringify(VALID_OUTPUT) } }],
+      usage: { prompt_tokens: 20, completion_tokens: 4096 },
+    })
+    let failure: unknown
+    try { await runTriageWithRetry('https://example.com', METADATA, null, null, FLAGS, null, null) }
+    catch (error) { failure = error }
+    assert.ok(failure instanceof Error)
+    assert.match(failure.message, /triage output reached.*token limit/i)
+    assert.equal(mocks.runLlmWithRetry.mock.calls[0][0].isRetryable(failure), false)
+  })
+
   it('rejects unknown providers', async () => {
     runAttempt('gemini')
     await assert.rejects(

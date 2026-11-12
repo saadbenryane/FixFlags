@@ -68,7 +68,7 @@ export function getConfiguredJudgeProviderChain(): string[] {
   })
 }
 
-const TRIAGE_DEFAULT_MAX_TOKENS = 1500
+const TRIAGE_DEFAULT_MAX_TOKENS = 4096
 
 /** Repair guidance has its own model contract, independent of scoring and chat. */
 export function getPrescriptionProviderConfig(provider: string, maxTimeoutMs?: number): ProviderConfig {

@@ -36,7 +36,8 @@ ${formatRubricForJudgePrompt()}
 
 VERDICT STYLE: Describe only supplied facts and conditional review needs. Do not declare the website ready or unready from appearance alone.
 
-newFlags: 0-5 source-backed Recommendations. An empty array is valid; there is no minimum finding quota.
+newFlags: 0-5 source-backed Recommendations. Always include this array, including when empty; there is no minimum finding quota.
+Keep each rubric summary to two short sentences and each Flag explanation to one or two short sentences. Return the complete structured response within the output budget.
 Use one declared reviewKind: copy-clarity, action-clarity, visual-hierarchy, search-snippet.
 Every candidate must contain evidenceRefs with exact quotes from their named supplied source: pageText, title, description, headline, or ctaText. Do not quote a different source under that name. Use the complete captured value for headline and ctaText references; prose quotes must contain at least six characters. Text-only reviews must declare device none. Only visual-hierarchy may declare desktop or mobile when that screenshot was supplied.
 - copy-clarity uses only headline or pageText references and rubric MESSAGE. Review visible copy in its supporting context and page purpose. Metadata belongs in a separate search-snippet review.

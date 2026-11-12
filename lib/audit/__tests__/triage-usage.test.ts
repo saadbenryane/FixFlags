@@ -19,6 +19,15 @@ const run = (onAttempt: Admission) => runTriageWithRetry(
   'https://example.com/', metadata, null, null, [], null, null, undefined, undefined, onAttempt)
 
 describe('triage provider consumption custody', () => {
+  it.each(['openai', 'anthropic'])('records %s consumption before refusing a truncated response', async name => {
+    provider.name = name
+    provider.create.mockResolvedValue(name === 'openai'
+      ? { model: 'gpt-4o-mini', choices: [{ finish_reason: 'length', message: { content: '{}' } }], usage: { prompt_tokens: 13, completion_tokens: 1000 } }
+      : { model: 'claude-haiku-4-5', stop_reason: 'max_tokens', content: [{ type: 'tool_use', input: {} }], usage: { input_tokens: 13, output_tokens: 1000 } })
+    const consumed = vi.fn(async () => undefined)
+    await expect(run(async () => consumed)).rejects.toThrow(/triage output reached.*token limit/i)
+    expect(consumed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ inputTokens: 13, outputTokens: 1000 }))
+  })
   it('cannot relabel a prescription response as triage consumption', () => {
     const detail = { version: 1, responseId: '11111111-1111-4111-8111-111111111111', model: 'gpt-4o-mini',
       usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 } }
