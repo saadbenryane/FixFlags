@@ -48,13 +48,13 @@ export const PRICING_TIERS = [
   {
     id: 'team', name: 'Team', ...PAID.TEAM, priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
     summary: 'For teams that publish often across a few websites.',
-    features: [{ label: websitesLabel(PAID.TEAM.websites) }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Fix instructions and rechecks' }],
+    features: [{ label: websitesLabel(PAID.TEAM.websites) }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Uptime monitoring' }, { label: 'Fix instructions and rechecks' }],
     cta: { label: 'Join Team waitlist', href: '/waitlist/team' },
   },
   {
     id: 'agency', name: 'Agency', ...PAID.AGENCY, priceLabel: 'Planned pricing', status: 'Coming soon', available: false,
-    summary: 'For agencies looking after client websites. Know a client site broke before the client does.',
-    features: [{ label: websitesLabel(PAID.AGENCY.websites) }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Client reports', planned: true }],
+    summary: 'Catch problems on client sites before your clients do.',
+    features: [{ label: websitesLabel(PAID.AGENCY.websites) }, { label: 'Daily checks' }, { label: 'A check after every deploy' }, { label: 'Uptime monitoring' }, { label: 'Client reports', planned: true }],
     cta: { label: 'Join Agency waitlist', href: '/waitlist/agency' },
   },
 ] as const satisfies readonly PricingTier[]
