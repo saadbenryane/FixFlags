@@ -99,3 +99,47 @@ export const AI_BUILDERS_PAGE = {
   loopHeader: { label: 'The loop', lines: ['Four steps.', 'The same in every tool.'] as const },
   loop: [
     { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install. Free account, free during open beta.' },
+    { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
+    { label: PRODUCT_STORY.loop[2], title: 'Hand your AI the fix', body: 'Copy the fix instructions into the tool you build with. Review the change and publish.' },
+    { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Recheck. FixFlags checks the same page and action on the live site.' },
+  ],
+  why: {
+    label: 'Independent', lines: ['An independent check.', 'Not the tool grading itself.'] as const,
+    body: 'The tool that made a change should not certify it. Builders test the preview before publish. FixFlags checks production after, and keeps the before and after with the Flag.',
+  },
+  tool: {
+    back: 'All AI tools',
+    label: (name: string) => `FixFlags for ${name}`,
+    title: (name: string) => `${name} built it. ${PRODUCT_STORY.headline[1]}`,
+    titleLines: (name: string) => [`${name} built it.`, PRODUCT_STORY.headline[1]] as const,
+    stepsTitle: 'How it works',
+    steps: (tool: AiBuilderTool) => [
+      { title: 'Check your live site', body: 'Paste your published URL into FixFlags. Nothing to install. Free account, free during open beta.' },
+      { title: 'Open a Flag and copy the fix', body: 'Each Flag shows what happened, what should happen, and the evidence. Copy its fix instructions.' },
+      { title: `Paste it into ${tool.name}`, body: tool.where },
+      { title: 'Publish, then prove it', body: `${tool.publish} Then select Recheck in FixFlags to check the same page and action again.` },
+    ],
+    exampleTitle: 'Example fix instructions',
+    exampleNote: 'Sample Flag. Your instructions come from your own check.',
+    copy: 'Copy example',
+    copied: 'Example copied.',
+    tipTitle: 'Tip',
+    /** Coding agents can skip the copy and paste. */
+    mcp: {
+      title: 'Or connect over MCP',
+      body: (name: string) => `${name} can also connect to FixFlags over MCP. It reads your Flags directly and asks FixFlags to recheck after you deploy.`,
+      action: 'Connect with MCP',
+      href: AI_CONNECTION_PATH,
+    },
+    cta: 'Check your website',
+    other: 'Other tools',
+  },
+  seo: {
+    title: 'FixFlags for AI builders | Lovable, Bolt, v0, Replit, Cursor, Claude Code',
+    description: 'Check the live site your AI tool built, copy fix instructions into Lovable, Bolt, v0, Replit, Cursor or Claude Code, and recheck to prove the fix worked.',
+    tool: (name: string) => ({
+      title: `FixFlags for ${name} | Check your live site and hand ${name} the fix`,
+      description: `Check the site you built with ${name} in a real browser, paste fix instructions into ${name}, and recheck the live site to prove the fix worked.`,
+    }),
+  },
+} as const
