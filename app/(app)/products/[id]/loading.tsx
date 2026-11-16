@@ -9,7 +9,7 @@ export default function ProductLoading() {
       aria-busy="true"
       aria-label="Loading Product"
     >
-      <Skeleton shimmer className="h-11 w-28 rounded-[var(--radius-control)]" />
+      <Skeleton shimmer className="h-11 w-28 rounded-control" />
       <div className="space-y-1.5">
         <Skeleton shimmer className="h-8 w-56 max-w-full rounded-md" />
         <Skeleton shimmer className="h-4 w-40 max-w-full rounded-md" />

@@ -1,5 +1,5 @@
 .container { max-width: 1168px; }
-.signupNote { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
+.signupNote { color: hsl(var(--muted-foreground)); font-size: var(--text-xs); line-height: 1.5; }
 .sections { display: grid; grid-template-columns: minmax(0, 1fr); gap: 112px; }
 .plans { scroll-margin-top: var(--header-offset); }
 .page a:hover { text-decoration: underline; text-underline-offset: 4px; }

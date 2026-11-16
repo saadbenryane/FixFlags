@@ -20,7 +20,10 @@ const mocks = vi.hoisted(() => ({
   listSiteOutcomes: vi.fn(),
   loadSiteConnectionViews: vi.fn(),
   recordSiteLifecycleEvent: vi.fn(),
+  evidenceRead: vi.fn(),
 }))
+vi.mock('next/server', async importOriginal => ({ ...await importOriginal<typeof import('next/server')>(), after: (callback: () => Promise<void>) => { void callback() } }))
+vi.mock('@/lib/analytics/site-evidence-read', () => ({ recordSiteEvidenceRead: mocks.evidenceRead }))
 
 vi.mock('@/lib/db', () => ({
   prisma: { audit: { findFirst: vi.fn() } },
@@ -91,6 +94,7 @@ describe('Flag verification attempts', () => {
     mocks.currentSiteViewer.mockResolvedValue({ userId: 'user-1' })
     mocks.requestedPath.mockImplementation(async fallback => fallback)
     mocks.recordSiteLifecycleEvent.mockResolvedValue(undefined)
+    mocks.evidenceRead.mockResolvedValue(undefined)
     mocks.requireSiteAccess.mockResolvedValue({
       ok: true,
       decision: { role: 'owner', site: { siteId: 'site-1' } },
@@ -215,12 +219,13 @@ describe('Flag verification attempts', () => {
     expect(screen.getByRole('link', { name: C.open('https://shop.example/products/tote') })).toHaveAttribute('href', 'https://shop.example/products/tote')
   })
 
-  it.each(['still_open', 'could_not_verify'])('shows the recorded %s check in the full Flag view', async result => {
+  it.each(['still_open', 'could_not_verify', 'incomparable_scope'])('shows the recorded %s check in the full Flag view', async result => {
     const detail = await mocks.loadSiteBoardFlag()
     mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
       verificationFeedback: { result, checkedAt: '2026-11-03T00:00:00.000Z' } } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
-    const notice = screen.getByText(result === 'still_open' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive, { exact: false })
+    const notice = screen.getByText(result === 'incomparable_scope' ? C.flagVerificationIncomparable
+      : result === 'still_open' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive, { exact: false })
     expect(notice).toBeVisible()
     expect(notice.querySelector('time')).toHaveAttribute('datetime', '2026-11-03T00:00:00.000Z')
   })
@@ -262,6 +267,20 @@ describe('Flag verification attempts', () => {
     const repairCalls = fetch.mock.calls.filter(([url]) => String(url).endsWith('/fix'))
     expect(repairCalls).toHaveLength(2)
     expect(repairCalls.every(([url]) => url === `/api/sites/site-1/flags/${reference}/fix`)).toBe(true)
+  })
+
+  it('leads an unverified Flag with recorded evidence instead of previous repair instructions', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, status: 'UNVERIFIED' } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    const evidence = screen.getByRole('heading', { name: SITE_BOARD_COPY.flagEvidence })
+    const summary = screen.getByText(C.previousFixInstructions)
+    expect(evidence.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(summary.closest('details')).not.toHaveAttribute('open')
+    expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.fixAndVerify })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).not.toBeVisible()
+    fireEvent.click(summary)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeVisible()
   })
 
   it('does not call an unproven recovery recovered when the completed audit is still on file', async () => {

@@ -116,6 +116,7 @@ export const SITE_BOARD_COPY = {
   pagesCardName: 'Pages',
   sampleLabel: 'Sample',
   flagStatus: 'Needs a fix',
+  flagNeedsReview: 'Needs review',
   flagRecovered: 'Recovered',
   flagProofMissing: 'Couldn’t verify',
   flagProofObserved: 'That check no longer found the problem.',

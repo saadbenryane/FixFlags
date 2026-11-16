@@ -80,18 +80,6 @@ export function Muted({ className, ...props }: React.HTMLAttributes<HTMLParagrap
   )
 }
 
-export function Prose({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        'max-w-prose text-base leading-relaxed tracking-body text-pretty text-foreground',
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
 /** In-page section heading (dashboard lists, admin groups) */
 export function SectionTitle({
   as: Tag = 'h2',

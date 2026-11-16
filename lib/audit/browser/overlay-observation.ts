@@ -61,7 +61,8 @@ const signature = (blocker: OverlayBlockerInfo | null) => blocker ? JSON.stringi
 
 /** Read-only hit tests preserve original controls without dismissing overlays or submitting forms. */
 export async function collectOverlayObservation(browser: Browser, pageUrl: string, options: { device: 'desktop' | 'mobile'; deadline: number;
-  scanAccess?: ScanAccessConfig | null; expectedTargets?: OverlayTarget[]; kinds?: OverlayTarget['kind'][] }): Promise<OverlayObservation> {
+  scanAccess?: ScanAccessConfig | null; expectedTargets?: OverlayTarget[]; kinds?: OverlayTarget['kind'][];
+  captureFailure?: (page: Page, control: OverlayObservation['controls'][number], scope: OverlayObservation['scope']) => Promise<OverlayObservation['capture'] | undefined> }): Promise<OverlayObservation> {
   const profile = profileForDevice(options.device)
   let page: Page | undefined
   const scope = { pageUrl, finalUrl: pageUrl, profile: captureProfileKey(profile), access: captureAccessKey(options.scanAccess, pageUrl) }
@@ -104,7 +105,13 @@ export async function collectOverlayObservation(browser: Browser, pageUrl: strin
           blocker: blocker ? { ...blocker, persisted: disposition === 'failed' } : null }
       })
       for (const target of expected) if (!controls.some(control => control.context === target.context)) controls.push({ ...target, disposition: 'unknown', reason: 'unavailable', blocker: null })
-      return { version: 1, device: options.device, scope, controls, restricted: documentEvidenceWithheld(session.safetyRestrictions), contentVisible: content.content,
+      const restricted = documentEvidenceWithheld(session.safetyRestrictions)
+      const failure = controls.find(control => control.disposition === 'failed')
+      const capture = !restricted && stable && content.content && failure && options.captureFailure
+        ? await options.captureFailure(page, failure, scope).catch(() => undefined) : undefined
+      const withheld = restricted || documentEvidenceWithheld(session.safetyRestrictions)
+      return { version: 1, device: options.device, scope, controls, restricted: withheld, contentVisible: content.content,
+        ...(capture && !withheld ? { capture } : {}),
         complete: (expected.length > 0 || discovered.complete) && first.complete && last.complete && eligible.length <= MAX_CONTROLS && stable }
     } finally { session.disposeNetwork() }
   } catch (error) { if (error instanceof PageCaptureError) return unknown(); throw error }

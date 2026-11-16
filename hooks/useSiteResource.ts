@@ -93,7 +93,9 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
       const current = newest(view)
       const guidancePending = [...current.flags, ...current.recommendations, ...current.resolvedFlags]
         .some(flag => flag.repairGuidance === 'pending')
-      return guidancePending || current.activeRuns.length > 0 || current.outcomes.some(outcome => outcome.running) || (current.audit.status && !['COMPLETED', 'FAILED'].includes(current.audit.status)) ? 2500 : current.uptime?.enabled ? 60_000 : 0
+      // Stream notices publish promptly. Polling is a fallback, not a second
+      // high-frequency reader competing with the same progressive projection.
+      return guidancePending || current.activeRuns.length > 0 || current.outcomes.some(outcome => outcome.running) || (current.audit.status && !['COMPLETED', 'FAILED'].includes(current.audit.status)) ? 10_000 : current.uptime?.enabled ? 60_000 : 0
     },
     revalidateOnFocus: true,
     refreshWhenHidden: false,

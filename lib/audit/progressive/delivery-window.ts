@@ -48,6 +48,9 @@ export async function claimTaskDelivery(taskId: string) {
       // earlier waiting work, including a Site that could not enter a full
       // delivery window. Broker priority alone cannot see those database rows.
       if (task.workGeneration > task.workAttempts) {
+        // After a bounded wait, only older admitted work may take this turn.
+        // New arrivals can still reserve free capacity, but cannot starve it.
+        const aged = task.createdAt.getTime() <= now.getTime() - 2 * DELIVERY_RECHECK_MS
         // The primary page can finish its current observation before new linked
         // captures take every slot. Other Sites, primary work and aged linked
         // work retain the existing opportunity to enter the delivery window.
@@ -59,6 +62,8 @@ export async function claimTaskDelivery(taskId: string) {
             AND (delivery."workRetryAt" IS NULL OR delivery."workRetryAt" <= ${now})
             AND (delivery."workGeneration" = 0 OR delivery."workRetryAt" IS NULL OR delivery."workRetryAt" < ${task.workRetryAt ?? now}
               OR delivery."workRetryAt" = ${task.workRetryAt ?? now} AND delivery.id < ${task.id})
+            AND (${!aged} OR delivery."createdAt" < ${task.createdAt}
+              OR delivery."createdAt" = ${task.createdAt} AND delivery.id < ${task.id})
             AND (${resource !== 'browser' || !input.primary} OR delivery."auditId" <> ${task.auditId}
               OR delivery."workInput"->>'primary' = 'true' OR delivery."createdAt" <= ${new Date(now.getTime() - 2 * DELIVERY_RECHECK_MS)})
             AND a.status <> 'FAILED' AND (a.status <> 'COMPLETED' OR delivery."workKind" IN (${Prisma.join([...COMPLETION_TASK_KINDS])}))

@@ -214,7 +214,7 @@ export function flagResolutionView(input: FlagResolutionInput): FlagResolution {
       nextStep: 'verify',
     }
   }
-  return { kind: 'open', statusLabel: SITE_BOARD_COPY.flagStatus }
+  return { kind: 'open', statusLabel: input.status === 'UNVERIFIED' ? SITE_BOARD_COPY.flagNeedsReview : SITE_BOARD_COPY.flagStatus }
 }
 
 export type ResolvedFlagEntry<T extends { id: string; sourceFlagId?: string | null }> = {

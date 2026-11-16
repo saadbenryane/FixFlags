@@ -322,7 +322,7 @@ export function AuditInput({
               size="lg"
               disabled={!hydrated || busy}
               className={cn(
-                'inline-flex h-12 min-h-12 w-full shrink-0 items-center justify-center gap-3 rounded-[var(--radius-control)] px-3.5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[10.5rem] sm:px-4 sm:text-base'
+                'inline-flex h-12 min-h-12 w-full shrink-0 items-center justify-center gap-3 rounded-control px-3.5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[10.5rem] sm:px-4 sm:text-base'
               )}
             >
               {busy ? (

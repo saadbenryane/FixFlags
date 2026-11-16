@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
+import { recordSiteEvidenceRead } from '@/lib/analytics/site-evidence-read'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { requireSiteOwner } from '@/lib/sites/request-access'
 import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
@@ -35,6 +36,9 @@ export async function GET(request: Request, context: { params: Promise<{ siteId:
       activeVerificationAuditId: flag.activeVerificationAuditId ?? null,
       verificationFeedback: flag.verificationFeedback ?? null,
     }, capture })
+    const site = access.decision.site
+    if (site.projectId && site.userId) after(() => recordSiteEvidenceRead({ projectId: site.projectId!, userId: site.userId!,
+      flagId: flag.id, auditId: flag.sourceAuditId, area: flag.area, severity: flag.severity }).catch(() => undefined))
     return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) { return handleRouteError(error, 'Could not load Flag') }
 }

@@ -151,6 +151,12 @@ describe('flagRecoveryProofId', () => {
 })
 
 describe('flagResolutionView', () => {
+  it('keeps an unverified Flag available for review without claiming a new failure or recovery', () => {
+    const view = flagResolutionView(input({ status: 'UNVERIFIED', resolvedInId: null, proof: null }))
+    expect(view).toEqual({ kind: 'open', statusLabel: SITE_BOARD_COPY.flagNeedsReview })
+    expect(view.statusLabel).not.toBe(SITE_BOARD_COPY.flagRecovered)
+    expect(view.statusLabel).not.toBe(SITE_BOARD_COPY.flagStatus)
+  })
   it('keeps an open Flag as needing a fix', () => {
     const view = flagResolutionView(input())
     expect(view.kind).toBe('open')

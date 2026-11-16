@@ -205,7 +205,7 @@ function ApiKeyManagerContent({ ownerId, client = 'other', headingAs: KeysHeadin
             value={expiresInDays}
             disabled={busy}
             onChange={(event) => setExpiresInDays(Number(event.target.value) as DeveloperKeyExpiryDays)}
-            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm max-sm:text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            className="flex h-11 w-full rounded-control border border-border bg-background px-3 text-sm max-sm:text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {DEVELOPER_KEY_EXPIRY_DAYS.map((days) => (
               <option key={days} value={days}>
@@ -219,7 +219,7 @@ function ApiKeyManagerContent({ ownerId, client = 'other', headingAs: KeysHeadin
           <InteractiveSelect id="api-key-access" value={scopePreset}
             disabled={busy}
             onChange={event => setScopePreset(event.currentTarget.value as DeveloperKeyScopePreset)}
-            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm max-sm:text-base">
+            className="flex h-11 w-full rounded-control border border-border bg-background px-3 text-sm max-sm:text-base">
             {DEVELOPER_KEY_SCOPE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
           </InteractiveSelect>
           <span className="block text-sm font-normal text-muted-foreground">{DEVELOPER_KEY_SCOPE_PRESETS.find(preset => preset.id === scopePreset)?.description}</span>
@@ -244,7 +244,7 @@ function ApiKeyManagerContent({ ownerId, client = 'other', headingAs: KeysHeadin
               value={created.key}
               aria-label="New API key"
               onFocus={(event) => event.currentTarget.select()}
-              className="min-h-11 min-w-0 flex-1 overflow-x-auto rounded-[var(--radius-control)] border border-border bg-background px-3 font-mono text-sm max-sm:text-base"
+              className="min-h-11 min-w-0 flex-1 overflow-x-auto rounded-control border border-border bg-background px-3 font-mono text-sm max-sm:text-base"
             />
             <Button type="button" variant="outline" disabled={busy} loading={pending === 'copy'} onClick={() => void handleCopy()} className="min-h-11">
               {copied ? <Check className="mr-2 h-4 w-4" aria-hidden /> : <Copy className="mr-2 h-4 w-4" aria-hidden />}

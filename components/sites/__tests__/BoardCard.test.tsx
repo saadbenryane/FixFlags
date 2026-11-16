@@ -41,6 +41,12 @@ describe('BoardCard chrome', () => {
     rerender(<ProductBoardCard card={{ ...card, checkedAt: null, incompleteReason: null, answer: 'Not checked yet', status: 'Not checked yet' }} compact layout="row" />)
     expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
   })
+  it('describes only the running work on a compact category that is still being checked', () => {
+    render(<BoardCard compact name="Security" icon="security" state="unknown" activity="checking" status="Checking" answer="No confirmed Flags" detail="Couldn’t verify" onOpen={() => undefined} />)
+    const button = screen.getByRole('button', { name: 'Open Security' })
+    expect(button).toHaveAccessibleDescription('Checking')
+  })
+
   it.each(['Not checked yet', 'Partially checked'])('shows the visible coverage state for a compact zero-count category: %s', status => {
     render(<BoardCard compact name="Accessibility" icon="accessibility" state="unknown" status={status} answer="No confirmed Flags" />)
     expect(screen.getByText(status, { selector: ':not(.sr-only)' })).toBeVisible()

@@ -53,3 +53,16 @@ test('preserves the evaluated third-party fixture without exempting product CSS'
   assert.deepEqual(uiStyleFailures('app/demo/demo.css', source), [])
   assert.match(uiStyleFailures('components/docs/DocsExperience.module.css', source).join('\n'), /line separator/)
 })
+
+test('shared shadows, pill radii and UI type sizes come from tokens', () => {
+  assert.deepEqual(uiStyleFailures('components/marketing/Card.module.css',
+    '.card { box-shadow: var(--shadow-paper); border-radius: var(--radius-pill); font-size: var(--text-caption); }'), [])
+  assert.deepEqual(uiStyleFailures('components/marketing/Hero.module.css', '.title { font-size: 28px; }'), [])
+  assert.match(uiStyleFailures('components/marketing/Card.module.css',
+    '.card { box-shadow: 0 1px 2px hsl(30 10% 20% / .05); }').join('\n'), /hand-typed warm shadow/)
+  assert.match(uiStyleFailures('components/layout/Switcher.tsx',
+    '<span className="shadow-[0_1px_2px_hsl(30_10%_20%/.08)]" />').join('\n'), /hand-typed warm shadow/)
+  assert.match(uiStyleFailures('components/marketing/Pill.module.css', '.pill { border-radius: 999px; }').join('\n'), /pill radius/)
+  assert.match(uiStyleFailures('components/sites/Row.module.css', '.meta { font-size: 13px; }').join('\n'), /literal UI font size/)
+  assert.deepEqual(uiStyleFailures('lib/design/tokens.css', '--shadow-chip: 0 1px 2px hsl(30 10% 20% / .06);'), [])
+})

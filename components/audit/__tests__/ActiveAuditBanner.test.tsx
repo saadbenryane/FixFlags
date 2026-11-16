@@ -33,7 +33,7 @@ describe('ActiveAuditBanner', () => {
       status: 200,
       json: async () => ({ status: 'CHECKING', url: 'https://southernia.com', siteId: 'site-1' }),
     }))
-    usePathname.mockReturnValue('/dashboard')
+    usePathname.mockReturnValue('/billing')
   })
 
   afterEach(() => {
@@ -49,6 +49,31 @@ describe('ActiveAuditBanner', () => {
 
     expect(screen.queryByText('Return to Site')).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('stays out of sign-in, sign-up and the websites list, which already show the Site', () => {
+    for (const path of ['/sign-up', '/sign-in', '/dashboard']) {
+      usePathname.mockReturnValue(path)
+      const { unmount } = render(<ActiveAuditBanner />)
+      expect(screen.queryByText('Return to Site')).not.toBeInTheDocument()
+      unmount()
+    }
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('says a queued check is waiting rather than checking', async () => {
+    usePathname.mockReturnValue('/')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'QUEUED', url: 'https://southernia.com', siteId: 'site-1' }),
+    }))
+
+    render(<ActiveAuditBanner />)
+
+    expect(await screen.findByText('southernia.com')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Waiting to check southernia.com')
+    expect(screen.getByRole('status')).not.toHaveTextContent(/^Checking/)
   })
 
   it('derives the hostname from the authorized status response', async () => {

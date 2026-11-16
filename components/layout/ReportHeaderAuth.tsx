@@ -19,7 +19,7 @@ export function ReportHeaderAuth() {
         <Button
           variant="brand"
           size="sm"
-          className="rounded-[var(--radius-control)] px-4 font-semibold"
+          className="rounded-control px-4 font-semibold"
           onClick={() => gate?.open({ reason: 'create-account' })}
         >
           {AUTH.reportHeader.cta}

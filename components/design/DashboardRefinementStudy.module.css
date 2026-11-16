@@ -16,7 +16,7 @@
 }
 
 .toolbar h1 {
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: hsl(var(--muted-foreground));
 }
@@ -27,7 +27,7 @@
   min-height: 44px;
   padding-inline: 12px;
   border-radius: var(--radius-control);
-  font-size: 13px;
+  font-size: var(--text-caption);
 }
 
 .toolbar a:focus-visible {

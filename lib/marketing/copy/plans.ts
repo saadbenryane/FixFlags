@@ -33,6 +33,8 @@ export const PLANS = [
 export const PRICING = {
   // The homepage owns the promise; pricing leads with the offer.
   plansTitle: 'Plans', label: 'Open beta', headline: 'Free during open beta.',
+  plannedPricingTitle: 'Explore planned pricing',
+  plannedPricingBody: 'Paid plans and add-ons are coming soon. Explore the details or join a waitlist. No subscription or charge.',
   headlineLead: 'Free during', headlineAccent: 'open beta.',
   subhead: 'One website. All supported features and schedules. No usage limits during beta.',
   signupCta: 'Start free', signupHref: '/sign-up', signupNote: 'No credit card. No automatic charge.',

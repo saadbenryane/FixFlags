@@ -68,19 +68,15 @@ it('joins the same claim for a changed destination and hands off only to the cur
   expect(fetch).toHaveBeenCalledOnce(); expect(signups()).toHaveLength(1)
 })
 
-it('retires an optional enrollment read after leaving the screen', async () => {
+it('takes standalone signup directly to the dashboard without optional setup discovery', async () => {
   mocks.query = new URLSearchParams('signup=1')
-  let finish!: (enroll: boolean) => void
-  mocks.enroll.mockImplementation(() => new Promise<boolean>(resolve => { finish = resolve }))
+  mocks.enroll.mockResolvedValue(true)
   vi.stubGlobal('fetch', vi.fn(async () => receipt()))
-  const view = render(<Fixture />)
-  await waitFor(() => expect(mocks.enroll).toHaveBeenCalledOnce())
-  const signal = mocks.enroll.mock.calls[0][0] as AbortSignal
-  view.rerender(<Fixture visible={false} />)
-  expect(signal?.aborted).toBe(true)
-  await act(async () => { finish(true) })
+  render(<Fixture />)
+  await waitFor(() => expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/dashboard'))
+  expect(mocks.enroll).not.toHaveBeenCalled()
   expect(screen.queryByRole('button', { name: 'Finish optional enrollment' })).not.toBeInTheDocument()
-  expect(mocks.replace).not.toHaveBeenCalled(); expect(signups()).toHaveLength(0)
+  expect(signups()).toHaveLength(1)
 })
 
 it('uses the same owned handoff for a refused claim and an explicit retry', async () => {
@@ -97,16 +93,14 @@ it('uses the same owned handoff for a refused claim and an explicit retry', asyn
   expect(signups()).toHaveLength(1)
 })
 
-it('completes optional enrollment with the claimed account and restores the dashboard once', async () => {
+it('describes a standalone account retry without claiming a Site could not be saved', async () => {
   mocks.query = new URLSearchParams('signup=1')
-  mocks.enroll.mockResolvedValue(true)
-  vi.stubGlobal('fetch', vi.fn(async () => receipt()))
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({}, { status: 503 })))
   render(<Fixture />)
-  const finish = await screen.findByRole('button', { name: 'Finish optional enrollment' })
-  expect(mocks.replace).not.toHaveBeenCalled(); expect(signups()).toHaveLength(0)
-  fireEvent.click(finish)
-  await waitFor(() => expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/dashboard'))
-  expect(signups()).toEqual([['signed_up', expect.objectContaining({ user_id: 'claimed-owner', email: 'claimed@example.invalid' })]])
+  expect(await screen.findByText(AUTH.postLogin.retryTitle)).toBeVisible()
+  expect(screen.getByText(AUTH.postLogin.retryBody)).toBeVisible()
+  expect(screen.queryByText(AUTH.reportContext.saveError)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: AUTH.postLogin.continueCta })).toBeEnabled()
 })
 
 it('restores the destination even when optional signup analytics fails', async () => {

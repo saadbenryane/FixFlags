@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from '../route'
-const mocks = vi.hoisted(() => ({ access: vi.fn(), flag: vi.fn(), verification: vi.fn() }))
+const mocks = vi.hoisted(() => ({ access: vi.fn(), flag: vi.fn(), verification: vi.fn(), after: vi.fn(), read: vi.fn() }))
+vi.mock('next/server', async importOriginal => ({ ...await importOriginal<typeof import('next/server')>(), after: (callback: () => Promise<unknown>) => mocks.after(callback) }))
+vi.mock('@/lib/analytics/site-evidence-read', () => ({ recordSiteEvidenceRead: mocks.read }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.access }))
 vi.mock('@/lib/sites/application/queries', () => ({ loadSiteBoardFlag: mocks.flag }))
 vi.mock('@/lib/sites/application/flag-verification-state', () => ({ loadSiteFlagVerification: mocks.verification }))
 const context = { params: Promise.resolve({ siteId: 'visitor', flagId: 'flag-1' }) }
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.read.mockResolvedValue(undefined)
+  mocks.after.mockImplementation(callback => { void callback() })
   // requireSiteOwner refuses the visitor who started the check until signup.
   mocks.access.mockResolvedValue({ ok: false, status: 401, message: 'Sign in required' })
   mocks.flag.mockResolvedValue({ site: { userId: 'private-user' }, flag: {
@@ -19,6 +23,18 @@ beforeEach(() => {
   }, capture: null })
 })
 describe('dashboard Flag evidence access', () => {
+  it('records the authorized evidence read after returning the payload, independently of telemetry failure', async () => {
+    const callbacks: Array<() => Promise<unknown>> = []
+    mocks.after.mockImplementation(callback => callbacks.push(callback))
+    mocks.read.mockRejectedValue(new Error('Telemetry unavailable'))
+    mocks.access.mockResolvedValue({ ok: true, decision: { role: 'owner', site: { siteId: 'resolved', projectId: 'project', userId: 'owner' } } })
+    const response = await GET(new Request('https://fixflags.com'), context)
+    expect(response.status).toBe(200)
+    expect(mocks.read).not.toHaveBeenCalled()
+    expect(callbacks).toHaveLength(1)
+    await expect(callbacks[0]()).resolves.toBeUndefined()
+    expect(mocks.read).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project', userId: 'owner', flagId: 'flag-1', auditId: 'audit' }))
+  })
   it('returns only the exact repair activity to the resolved owner', async () => {
     const request = new Request('https://fixflags.com/?verification=check-1')
     expect((await GET(request, context)).status).toBe(401)

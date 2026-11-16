@@ -1,5 +1,5 @@
 .stack { display: grid; gap: clamp(72px, 9vw, 120px); }
-.heading { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 500; letter-spacing: -.045em; line-height: 1.06; text-wrap: balance; }
+.heading { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 500; letter-spacing: var(--tracking-display); line-height: 1.06; text-wrap: balance; }
 
 .toolGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
 section > .toolGrid, section > .loop { margin-top: 36px; }
@@ -7,58 +7,58 @@ section > .toolGrid, section > .loop { margin-top: 36px; }
 @media (max-width: 639px) { .toolGrid { grid-template-columns: minmax(0, 1fr); } }
 .toolCard {
   position: relative; display: grid; gap: 8px; height: 100%; min-height: 44px; padding: 22px 48px 22px 22px; border-radius: 20px;
-  background: hsl(var(--window)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 10px 30px -18px hsl(30 15% 20% / .22);
+  background: hsl(var(--window)); color: hsl(var(--foreground)); box-shadow: var(--shadow-paper);
   transition: box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
-.toolCard:hover { transform: translateY(-2px); box-shadow: 0 1px 2px hsl(30 10% 20% / .06), 0 18px 40px -18px hsl(30 15% 20% / .3); }
+.toolCard:hover { transform: translateY(-2px); box-shadow: var(--shadow-paper-hover); }
 .toolCard:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .toolMark { display: inline-flex; width: 22px; height: 22px; color: hsl(var(--brand)); }
 .toolMark svg { width: 100%; height: 100%; }
 .toolTop { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.toolKind { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.toolKind { color: hsl(var(--muted-foreground)); font-size: var(--text-xs); }
 .toolName { font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
-.toolSummary { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.55; }
+.toolSummary { color: hsl(var(--muted-foreground)); font-size: var(--text-sm); line-height: 1.55; }
 .toolArrow { position: absolute; top: 22px; right: 18px; color: hsl(var(--brand)); }
 
 .loop { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 20px 0 0; padding: 0; list-style: none; counter-reset: none; }
-.loop li { padding: 24px; border-radius: 20px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .05), 0 10px 30px -18px hsl(30 15% 20% / .22); }
-.loopHead { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; }
+.loop li { padding: 24px; border-radius: 20px; background: hsl(var(--window)); box-shadow: var(--shadow-paper); }
+.loopHead { display: flex; align-items: center; gap: 10px; font-size: var(--text-caption); font-weight: 650; }
 .loop .loopHead { margin-top: 0; color: hsl(var(--foreground)); }
 /* Steps use the section kicker's mono index, not filled badges. */
-.loopHead > span { color: hsl(var(--brand)); font-size: 13px; font-weight: 650; }
-.loop h3 { margin-top: 18px; font-family: var(--font-display), sans-serif; font-size: 20px; font-weight: 500; letter-spacing: -.025em; }
-.loop p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
+.loopHead > span { color: hsl(var(--brand)); font-size: var(--text-caption); font-weight: 650; }
+.loop h3 { margin-top: 18px; font-family: var(--font-display), sans-serif; font-size: var(--text-xl); font-weight: 500; letter-spacing: var(--tracking-heading); }
+.loop p { margin-top: 6px; color: hsl(var(--muted-foreground)); font-size: var(--text-sm); line-height: 1.6; }
 
 .why { max-width: 720px; }
 .why p { margin-top: 12px; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.7; }
 
 .entry { width: min(100%, 560px); margin: 8px auto 0; }
-.back { display: inline-flex; align-items: center; gap: 8px; justify-self: start; min-height: 44px; color: hsl(var(--muted-foreground)); font-size: 14px; font-weight: 550; }
+.back { display: inline-flex; align-items: center; gap: 8px; justify-self: start; min-height: 44px; color: hsl(var(--muted-foreground)); font-size: var(--text-sm); font-weight: 550; }
 .back:hover { color: hsl(var(--foreground)); }
 
 .example { max-width: 760px; }
 .window { overflow: hidden; margin: 20px 0 0; border-radius: 20px; background: hsl(var(--stage)); color: hsl(var(--stage-foreground)); box-shadow: var(--shadow-window); }
-.windowBar { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 0 16px; background: hsl(var(--stage-raised)); font-size: 13px; font-weight: 600; }
-.windowBar small { margin-left: auto; overflow: hidden; color: hsl(var(--stage-muted)); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.prompt { margin: 0; padding: 20px; font-family: var(--font-mono), monospace; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
-.note { margin-top: 10px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.windowBar { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 0 16px; background: hsl(var(--stage-raised)); font-size: var(--text-caption); font-weight: 600; }
+.windowBar small { margin-left: auto; overflow: hidden; color: hsl(var(--stage-muted)); font-size: var(--text-xs); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.prompt { margin: 0; padding: 20px; font-family: var(--font-mono), monospace; font-size: var(--text-caption); line-height: 1.75; white-space: pre-wrap; }
+.note { margin-top: 10px; color: hsl(var(--muted-foreground)); font-size: var(--text-caption); }
 .copy {
   display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; padding: 0 18px; border: 0; border-radius: var(--radius-control);
-  background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 14px; font-weight: 600; cursor: pointer;
+  background: hsl(var(--brand-control)); color: hsl(var(--brand-foreground)); font-size: var(--text-sm); font-weight: 600; cursor: pointer;
 }
 .copy:hover { background: hsl(var(--brand-hover)); }
-.manual { width: 100%; margin-top: 12px; font-family: var(--font-mono), monospace; font-size: 12px; }
+.manual { width: 100%; margin-top: 12px; font-family: var(--font-mono), monospace; font-size: var(--text-xs); }
 
 .tip { display: flex; align-items: flex-start; gap: 12px; max-width: 760px; padding: 18px 20px; border-radius: 16px; background: hsl(var(--brand-muted)); }
 .tip svg { flex-shrink: 0; margin-top: 2px; color: hsl(var(--brand-strong)); }
-.tip p { font-size: 15px; line-height: 1.6; }
+.tip p { font-size: var(--text-md); line-height: 1.6; }
 
 .mcp { max-width: 760px; }
-.mcp h2 { font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 500; letter-spacing: -.025em; }
-.mcp p { margin-top: 8px; color: hsl(var(--muted-foreground)); font-size: 15px; line-height: 1.6; }
-.mcp a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 4px; color: hsl(var(--link)); font-size: 14px; font-weight: 600; }
+.mcp h2 { font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 500; letter-spacing: var(--tracking-heading); }
+.mcp p { margin-top: 8px; color: hsl(var(--muted-foreground)); font-size: var(--text-md); line-height: 1.6; }
+.mcp a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 4px; color: hsl(var(--link)); font-size: var(--text-sm); font-weight: 600; }
 .mcp a:hover { color: hsl(var(--link-hover)); }
 
 .otherTools { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
-.otherTools a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: hsl(var(--window)); box-shadow: 0 1px 2px hsl(30 10% 20% / .08), 0 6px 16px -8px hsl(30 15% 20% / .3); font-size: 14px; font-weight: 550; }
+.otherTools a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-pill); background: hsl(var(--window)); box-shadow: var(--shadow-chip); font-size: var(--text-sm); font-weight: 550; }
 .otherTools a:hover { color: hsl(var(--brand-strong)); }

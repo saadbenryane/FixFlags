@@ -11,6 +11,9 @@ export type SiteResultsGateView = {
   host: string
   state: SiteResultsGateState
   stage: SiteResultsGateStage
+  startedAt?: string | null
+  lastActivityAt?: string | null
+  queued?: boolean
   /** sign_in for a visitor without an account, claim for a signed-in visitor. */
   continuation: 'sign_in' | 'claim'
 }
@@ -32,7 +35,8 @@ export function siteResultsGateState(status: string | null | undefined): SiteRes
  */
 export async function loadSiteResultsGate(site: SiteRecord, authenticated: boolean): Promise<SiteResultsGateView> {
   const audit = site.primaryAuditId
-    ? await prisma.audit.findUnique({ where: { id: site.primaryAuditId }, select: { status: true } })
+    ? await prisma.audit.findUnique({ where: { id: site.primaryAuditId }, select: { status: true, createdAt: true, startedAt: true,
+      pipelineEvents: { where: { event: 'projection_changed' }, orderBy: { sequence: 'desc' }, take: 1, select: { occurredAt: true } } } })
     : null
   const status = audit?.status ?? null
   return {
@@ -41,6 +45,9 @@ export async function loadSiteResultsGate(site: SiteRecord, authenticated: boole
     host: site.canonicalHost.replace(/^www\./, ''),
     state: siteResultsGateState(status),
     stage: status ? STAGE_BY_STATUS[status] ?? 0 : 0,
+    startedAt: (audit?.startedAt ?? audit?.createdAt)?.toISOString() ?? null,
+    lastActivityAt: (audit?.pipelineEvents?.[0]?.occurredAt ?? audit?.startedAt ?? audit?.createdAt)?.toISOString() ?? null,
+    queued: status === 'QUEUED',
     continuation: authenticated ? 'claim' : 'sign_in',
   }
 }

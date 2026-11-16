@@ -14,7 +14,6 @@ import {
 import { useMe, type MeUser } from '@/hooks/useMe'
 import { planLabel } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
-import { SITE_SETTINGS_COPY } from '@/lib/marketing/copy/site-settings'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { useSignOut } from '@/hooks/useSignOut'
 import { AUTH } from '@/lib/marketing/copy/auth'
@@ -61,7 +60,7 @@ export function AvatarMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {variant === 'panel' ? <button type="button" aria-label="Account menu" data-site-return-focus="account"
-          className={cn('flex min-h-12 w-full items-center gap-3 rounded-[var(--radius-control)] px-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', className)}>
+          className={cn('flex min-h-12 w-full items-center gap-3 rounded-control px-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', className)}>
           <Avatar fallback={getInitials(user.name, user.email)} size="md" className="bg-foreground text-background" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">{user.name || user.email}</span>
@@ -94,10 +93,10 @@ export function AvatarMenu({
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {/* Every account destination lives here, so the panel above stays about websites. */}
-        <DropdownMenuItem asChild>
+        {/* Every account destination lives here. In the app panel the site switcher already leads to every website. */}
+        {variant !== 'panel' ? <DropdownMenuItem asChild>
           <Link href="/dashboard" className="gap-2"><Boxes className="h-4 w-4" />{SITE_WORKSPACE_COPY.websites}</Link>
-        </DropdownMenuItem>
+        </DropdownMenuItem> : null}
         <DropdownMenuItem asChild>
           <Link href="/billing" className="gap-2"><CreditCard className="h-4 w-4" />{APP_NAV_COPY.billing}</Link>
         </DropdownMenuItem>
@@ -105,7 +104,7 @@ export function AvatarMenu({
           <Link href="/settings/api-keys" className="gap-2"><KeyRound className="h-4 w-4" />{APP_NAV_COPY.apiKeys}</Link>
         </DropdownMenuItem> : null}
         <DropdownMenuItem asChild>
-          <Link href="/settings" className="gap-2"><Settings className="h-4 w-4" />{SITE_SETTINGS_COPY.accountSettings}</Link>
+          <Link href="/settings" className="gap-2"><Settings className="h-4 w-4" />{APP_NAV_COPY.account}</Link>
         </DropdownMenuItem>
         {user.isAdmin ? <DropdownMenuItem asChild>
           <Link href="/admin" className="gap-2"><ShieldCheck className="h-4 w-4" />{APP_NAV_COPY.admin}</Link>

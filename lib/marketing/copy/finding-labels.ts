@@ -37,7 +37,7 @@ export const FINDING_LABEL_COPY: Readonly<Record<string, string>> = {
   'scroll-ghost-sections': 'Some sections stay invisible when visitors scroll',
 
   'overlay-blocks-cta': 'A pop-up covers the main button',
-  'overlay-blocks-nav': 'A pop-up covers the menu',
+  'overlay-blocks-nav': 'A pop-up covers a navigation link',
   'overlay-blocks-form': 'A pop-up covers the form',
   'account-signup-failed': 'Signing up doesn’t work',
   'account-verification-failed': 'The sign-up email step doesn’t work',

@@ -45,7 +45,7 @@ export function runOverlayBlockerChecks(
         : 'overlay-blocks-cta'
 
   const targetLabel =
-    target === 'nav' ? 'primary navigation' : target === 'form' ? 'form controls' : 'primary CTA'
+    target === 'nav' ? 'a navigation link' : target === 'form' ? 'a form control' : 'the main action'
 
   const coverageNote =
     typeof overlay.coverageFraction === 'number' && overlay.coverageFraction < 0.85

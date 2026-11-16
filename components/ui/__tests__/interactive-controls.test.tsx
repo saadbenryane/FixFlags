@@ -9,7 +9,6 @@ import { Textarea } from '../textarea'
 import { Checkbox } from '../checkbox'
 import { Dialog, DialogTrigger } from '../dialog'
 import { DropdownMenu, DropdownMenuTrigger } from '../dropdown-menu'
-import { Select, SelectTrigger } from '../select'
 import { Tabs, TabsList, TabsTrigger } from '../tabs'
 import { InteractiveSelect } from '../interactive-controls'
 import { FilterPill } from '../filter-pill'
@@ -39,7 +38,6 @@ describe('client control readiness', () => {
     { name: 'checkbox', element: <Checkbox aria-label="Remember" defaultChecked />, selector: '[role="checkbox"]' },
     { name: 'dialog trigger', element: <Dialog><DialogTrigger>Open</DialogTrigger></Dialog>, selector: 'button' },
     { name: 'menu trigger with a native child', element: <DropdownMenu><DropdownMenuTrigger asChild><button>Open</button></DropdownMenuTrigger></DropdownMenu>, selector: 'button' },
-    { name: 'select trigger', element: <Select><SelectTrigger>Choose</SelectTrigger></Select>, selector: '[role="combobox"]' },
     { name: 'tab trigger', element: <Tabs defaultValue="saved"><TabsList><TabsTrigger value="saved">Saved</TabsTrigger></TabsList></Tabs>, selector: '[role="tab"]' },
   ])('keeps the server-rendered $name pending until its handlers are ready', ({ element, selector }) => {
     const container = document.createElement('div')

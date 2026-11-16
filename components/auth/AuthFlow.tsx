@@ -424,8 +424,8 @@ export function AuthFlow({
 
       {oauth.isLoading ? (
         <div className="space-y-2" role="status" aria-label={AUTH.reportGate.preparingOptions}>
-          <div className="h-11 animate-pulse rounded-[var(--radius-control)] bg-muted" />
-          <div className="h-11 animate-pulse rounded-[var(--radius-control)] bg-muted" />
+          <div className="h-11 animate-pulse rounded-control bg-muted" />
+          <div className="h-11 animate-pulse rounded-control bg-muted" />
         </div>
       ) : oauth.anyEnabled ? (
         <OAuthButtons
@@ -449,7 +449,7 @@ export function AuthFlow({
         />
       ) : oauth.error ? (
         <div
-          className="flex items-center justify-between gap-3 rounded-[var(--radius-control)] bg-muted/40 px-3 py-2.5"
+          className="flex items-center justify-between gap-3 rounded-control bg-muted/40 px-3 py-2.5"
           role="alert"
         >
           <p className="text-sm text-muted-foreground">{AUTH.oauth.discoveryError}</p>

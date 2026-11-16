@@ -11,7 +11,7 @@ These files preserve original owner artwork and historical visual references. Th
 
 ## Original identity sources
 
-- `logo-mark-source.jpg` is the owner's original folded-F mark. Preserve it. The cleaned vector trace in `public/brand/logo-mark.svg` removes the JPEG fringe and supplies runtime sizes through `npm run brand:icons`.
+- `logo-mark-source.jpg` is the owner's original folded-F mark. Preserve it. `public/brand/logo-mark.svg` is its vector master with refined proportions (one slope, one thickness, an even channel and consistent corners) and supplies runtime sizes through `npm run brand:icons`.
 - `logo-lockup-source.jpg` preserves the owner's flattened lockup. It is source artwork, not a logo for light surfaces.
 - `brand-sheet-2026-07.png` and `ui-kit-v2.png` preserve the original identity and historical UI treatment. Their palette and layout recipes do not override current tokens or components.
 - `logo-lockup-on-ink.png` is an earlier identity reference.

@@ -51,6 +51,17 @@ const user: MeUser = {
 }
 
 describe('AvatarMenu', () => {
+  it('leaves websites to the site switcher inside the app panel', async () => {
+    render(
+      <MeProvider initialUser={user}>
+        <AvatarMenu user={user} variant="panel" />
+      </MeProvider>
+    )
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Account menu' }), { button: 0, ctrlKey: false })
+    expect(await screen.findByRole('menuitem', { name: 'Account' })).toHaveAttribute('href', '/settings')
+    expect(screen.queryByRole('menuitem', { name: 'Websites' })).toBeNull()
+  })
+
   it('opens Settings, Help, and Log out actions', async () => {
     signOut.mockResolvedValue({ data: { success: true }, error: null })
 
@@ -69,7 +80,7 @@ describe('AvatarMenu', () => {
       'href',
       '/dashboard'
     )
-    expect(screen.getByRole('menuitem', { name: 'Account settings' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Account' })).toHaveAttribute(
       'href',
       '/settings'
     )

@@ -1,6 +1,8 @@
 'use client'
 
-import { ChevronDown, Check, Copy } from 'lucide-react'
+import Link from 'next/link'
+import type { Route } from 'next'
+import { ArrowRight, ChevronDown, Check, Copy } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,9 +11,11 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { cursorPromptDeeplink } from '@/lib/integrations/editor-deeplinks'
 import styles from './FixPromptCard.module.css'
 
-export function FixPromptCard({ prompt, onCopy, copied = false, busy = false, disabled = false, copyLabel, copiedLabel, onExpand, unavailable, onDownload, downloadLabel, openInCursor = false }: {
+export function FixPromptCard({ prompt, onCopy, copied = false, busy = false, disabled = false, copyLabel, copiedLabel, onExpand, unavailable, onDownload, downloadLabel, openInCursor = false, agentHref }: {
   prompt?: string | null; onCopy: () => void; copied?: boolean; busy?: boolean; disabled?: boolean; copyLabel: string; copiedLabel: string; onExpand?: () => void; unavailable?: string | null;
   onDownload?: () => void; downloadLabel?: string; openInCursor?: boolean;
+  /** Where to connect a coding agent over MCP. The agent reads the same Flag and asks for the recheck. */
+  agentHref?: Route;
 }) {
   const cursorLink = openInCursor && prompt ? cursorPromptDeeplink(prompt) : null
   return <section className={styles.card} aria-label={C.promptTitle}>
@@ -22,5 +26,6 @@ export function FixPromptCard({ prompt, onCopy, copied = false, busy = false, di
       {cursorLink ? <p className={styles.handoff}><a href={cursorLink}>{C.openInCursor}</a><span>{C.openInCursorNote}</span></p> : null}
       {prompt && onDownload ? <Button type="button" variant="outline" size="sm" disabled={busy || disabled} onClick={onDownload}>{downloadLabel}</Button> : null}
     </details>
+    {agentHref ? <p className={styles.agent}><span>{C.agentHandoff}</span><Link href={agentHref}>{C.agentHandoffAction}<ArrowRight size={14} aria-hidden /></Link></p> : null}
   </section>
 }

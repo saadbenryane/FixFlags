@@ -93,7 +93,7 @@ export function CliAuthorizeCard({ userCode }: { userCode: string }) {
       </p>
 
       {!finished ? (
-        <div className="my-6 rounded-[var(--radius-control)] border border-border bg-muted/40 px-4 py-5 text-center font-mono text-2xl font-semibold tracking-[0.18em]">
+        <div className="my-6 rounded-control border border-border bg-muted/40 px-4 py-5 text-center font-mono text-2xl font-semibold tracking-[0.18em]">
           {userCode || 'NO CODE'}
         </div>
       ) : null}

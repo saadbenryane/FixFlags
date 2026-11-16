@@ -28,12 +28,47 @@ run('current admitted Flag verification', () => {
   })
   afterEach(async () => { vi.restoreAllMocks(); await prisma.user.deleteMany({ where: { id: ownerId } }) })
   const targets = () => [{ id: flagId, auditId: sourceId, improvementId, createdAt: observedAt }]
-  async function check(createdAt = new Date('2026-11-02T00:00:00Z'), parentId = sourceId) {
+  async function check(createdAt = new Date('2026-11-02T00:00:00Z'), parentId = sourceId,
+    scope: { sourceFlagIds?: string[]; handoffReference?: string } = {}) {
     const audit = await prisma.audit.create({ data: { userId: ownerId, projectId, parentId, url: 'https://example.com/', status: 'CHECKING', createdAt } })
     const attempt = await prisma.improvementAttempt.create({ data: { improvementId, sourceAuditId: sourceId, sourceFlagIds: [flagId],
-      builder: 'CUSTOM', verificationAuditId: audit.id, handoffReference: 'flag:' + flagId, createdAt: observedAt } })
+      builder: 'CUSTOM', verificationAuditId: audit.id, handoffReference: 'flag:' + flagId, createdAt: observedAt, ...scope } })
     return { audit, attempt }
   }
+
+  it('reads the exact admitted check through the visible Flag ID and its captured source ID', async () => {
+    const { audit } = await check()
+    const site = (await loadSiteRecord(projectId))!
+    const expected = await loadSiteFlagVerification(site, flagId, audit.id)
+    expect(expected).toMatchObject({ auditId: audit.id, verifying: true })
+    expect(await loadSiteFlagVerification(site, improvementId, audit.id)).toEqual(expected)
+    await check(new Date('2026-11-03T00:00:00Z'))
+    const laterSource = await prisma.audit.create({ data: { userId: ownerId, projectId, url: 'https://example.com/' } })
+    const laterFlag = await prisma.flag.create({ data: { auditId: laterSource.id, source: 'DETERMINISTIC', rubric: 'REACH', severity: 'IMPORTANT',
+      problem: 'Page title is missing', evidence: 'Later observation', whyItMatters: '', fix: '', confidence: 1, position: 0 } })
+    await prisma.improvementOccurrence.create({ data: { improvementId, auditId: laterSource.id, flagId: laterFlag.id, kind: 'REGRESSED' } })
+    expect(await loadSiteFlagVerification(site, improvementId, audit.id)).toEqual(expected)
+    const legacy = await check(new Date('2026-11-04T00:00:00Z'), sourceId, { sourceFlagIds: [] })
+    expect(await loadSiteFlagVerification(site, improvementId, legacy.audit.id))
+      .toEqual(await loadSiteFlagVerification(site, flagId, legacy.audit.id))
+    const unrelated = await check(new Date('2026-11-05T00:00:00Z'), sourceId, { sourceFlagIds: [], handoffReference: 'flag:unrelated' })
+    expect(await loadSiteFlagVerification(site, improvementId, unrelated.audit.id)).toBeNull()
+  })
+
+  it('keeps visible Flag aliases bound to the original source, Site, owner and admitted parent', async () => {
+    const { audit } = await check()
+    const site = (await loadSiteRecord(projectId))!
+    expect(await loadSiteFlagVerification(site, improvementId, audit.id)).toMatchObject({ auditId: audit.id })
+    const foreignProject = await prisma.project.create({ data: { userId: ownerId, canonicalHost: 'other.example', url: 'https://other.example/', name: 'Other Site' } })
+    expect(await loadSiteFlagVerification((await loadSiteRecord(foreignProject.id))!, improvementId, audit.id)).toBeNull()
+    await expect(loadSiteFlagVerification({ ...site, userId: 'other-owner' }, improvementId, audit.id)).rejects.toThrow('Site not found')
+    expect(await loadSiteFlagVerification(site, improvementId, sourceId)).toBeNull()
+    const wrongFlags = await check(new Date('2026-11-03T00:00:00Z'), sourceId, { sourceFlagIds: ['unrelated'] })
+    expect(await loadSiteFlagVerification(site, improvementId, wrongFlags.audit.id)).toBeNull()
+    const later = await prisma.audit.create({ data: { userId: ownerId, projectId, url: 'https://example.com/' } })
+    const wrongParent = await check(new Date('2026-11-04T00:00:00Z'), later.id)
+    expect(await loadSiteFlagVerification(site, improvementId, wrongParent.audit.id)).toBeNull()
+  })
 
   it('keeps an admitted check visible beyond twelve newer copied tasks and retains the display history', async () => {
     const { audit, attempt } = await check()

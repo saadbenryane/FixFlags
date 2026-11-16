@@ -38,7 +38,7 @@ it('keeps Site checking usable after a stream interruption while showing the dis
     expect(screen.getByText('Updates disconnected', { exact: true })).toBeVisible()
     const check = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })
     expect(check).toBeEnabled()
-    expect(screen.queryByRole('button', { name: 'Retry updates' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry updates' })).toBeEnabled()
     fireEvent.click(check)
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/p_example/runs', expect.objectContaining({ method: 'POST' })))
     expect(await screen.findByText(SITE_BOARD_COPY.checkStarted)).toBeVisible()
@@ -507,7 +507,7 @@ describe('SiteBoard chrome', () => {
     expect(conversion.compareDocumentPosition(uptime)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(uptime.compareDocumentPosition(screen.getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     const findings = screen.getByRole('region', { name: 'Flags summary' })
-    expect(screen.getByRole('region', { name: 'Website preview' }).compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(findings.compareDocumentPosition(screen.getByRole('region', { name: 'Website preview' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('starts a fresh Search category check and retains saved results on refusal', async () => {

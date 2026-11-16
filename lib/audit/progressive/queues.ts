@@ -21,6 +21,9 @@ export function priorityForTask(kind: TaskKind, input: TaskInput, attempts = 0, 
   // A slow provider retry must not overtake untried linked-page measurements.
   // Bound the persisted attempt count to BullMQ's supported priority range.
   if (kind === 'pagespeed') return Math.min(500_000, Math.max(0, Math.floor(attempts))) * 4 + (input.primary ? 1 : 3)
+  // A resumed HTTP cohort must eventually compete with new primary requests.
+  // This promotes queue order without increasing delivery or worker capacity.
+  if (continuation && ageMs >= 2 * DELIVERY_RECHECK_MS && ['http', 'discovery', 'search', 'check'].includes(kind)) return 1
   if (['pagespeed', 'google', 'judge'].includes(kind)) return input.primary ? 1 : 3
   if (queueForTask(kind, input) === 'browser') {
     if (ageMs >= 2 * DELIVERY_RECHECK_MS) return 1

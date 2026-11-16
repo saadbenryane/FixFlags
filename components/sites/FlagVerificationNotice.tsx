@@ -4,8 +4,10 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 export function FlagVerificationNotice({ feedback }: { feedback: FlagVerificationFeedback }) {
   const checkedAt = feedback.checkedAt && formatEvidenceTimestamp(feedback.checkedAt)
+  const message = feedback.result === 'incomparable_scope' ? C.flagVerificationIncomparable
+    : feedback.result === 'still_open' || feedback.result === 'regressed' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive
   return <p role="status" className="rounded-control bg-muted/30 p-4 text-sm">
-    {feedback.result === 'still_open' || feedback.result === 'regressed' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive}
+    {message}
     {checkedAt ? <> <time className="block pt-1 text-xs text-muted-foreground" dateTime={feedback.checkedAt!}>{checkedAt}</time></> : null}
   </p>
 }

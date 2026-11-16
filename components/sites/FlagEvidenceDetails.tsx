@@ -2,7 +2,8 @@ import { EDITOR_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence
 import type { ReactNode } from 'react'
 import type { publicSupportingObservations } from '@/lib/audit/flag-observations'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
-import { presentObservedEvidence, type ObservedPage } from '@/lib/sites/observed-evidence'
+import { presentObservedEvidence, presentOverlayEvidence, type ObservedPage } from '@/lib/sites/observed-evidence'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { includesRepairAlternatives } from '@/lib/audit/evidence-presentation'
 import { RecordedPageLink } from './RecordedPageLink'
@@ -19,6 +20,13 @@ function ObservedPageRow({ page }: { page: ObservedPage }) {
 }
 
 function ObservedFact({ text, diagnosis }: { text: string; diagnosis?: string }) {
+  const overlay = presentOverlayEvidence(text)
+  if (overlay) return <div className="space-y-2">
+    <p className="leading-relaxed">{SITE_DASHBOARD_COPY.overlayObservation(overlay.coverage, overlay.target)}</p>
+    <details><summary className="flex min-h-11 cursor-pointer items-center text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.technicalDiagnostic}</summary>
+      <p className="mt-2 whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+    </details>
+  </div>
   if (includesRepairAlternatives(text)) return <div className="space-y-3">
     {diagnosis ? <p className="leading-relaxed">{diagnosis}</p> : null}
     <details><summary className="flex min-h-11 cursor-pointer items-center text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.technicalDiagnostic}</summary>

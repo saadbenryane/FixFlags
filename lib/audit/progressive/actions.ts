@@ -41,6 +41,7 @@ import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { readDiagnosticSources } from '@/lib/sites/domain/verification-source'
 import { collectOverlayObservation } from '../browser/overlay-observation'
+import { captureOverlayFailure } from '../browser/overlay-capture'
 import { overlayObservationSchema, overlayAssertions, overlayTargetSchema, runObservedOverlayChecks, OVERLAY_CHECKS, scopedOverlayRule, scopedOverlayResult, overlayCheckReceipts, overlayReceiptScope, type OverlayTarget } from '../checks/overlay-evidence'
 import { createOverlayInteractionRecorder } from '../browser/overlay-interaction'
 import { capturePageKey } from '../browser/observation-scope'
@@ -81,7 +82,8 @@ export const actionHandlers: TaskHandler[] = [
       }) : [])
       const kinds = (Object.keys(OVERLAY_CHECKS) as Array<keyof typeof OVERLAY_CHECKS>).filter(kind => spec?.checks[OVERLAY_CHECKS[kind]])
       const observation = await collectOverlayObservation(await getAuditBrowser(), context.input.pageUrl, { device: context.input.device ?? 'desktop',
-        deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id), expectedTargets, kinds })
+        deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id), expectedTargets, kinds,
+        captureFailure: (page, control, scope) => captureOverlayFailure(page, control, { auditId: context.audit.id, device: context.input.device ?? 'desktop', deadline: context.deadline, scope }) })
       const assertions = overlayAssertions(observation)
       return serializeArtifact('overlays', { observation, flags: runObservedOverlayChecks(observation), receipt: checkReceiptSchema.parse({
         kind: 'site-module-check', version: 1, module: 'overlays', pageUrl: context.input.pageUrl, applicable: true,

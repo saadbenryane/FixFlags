@@ -15,6 +15,29 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 afterEach(() => vi.unstubAllGlobals())
 
+it('recovers one interrupted evidence read without replaying a write', async () => {
+  const fetcher = vi.fn().mockRejectedValueOnce(new Error('Connection interrupted')).mockResolvedValueOnce(Response.json(panel))
+  vi.stubGlobal('fetch', fetcher)
+  const { result, unmount } = renderHook(() => useSiteFlagDetail('site', 'flag-1', 'revision', true), { wrapper })
+  try {
+    await waitFor(() => expect(result.current.data?.flag.evidence).toBe(panel.flag.evidence))
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(fetcher.mock.calls.every(([, options]) => options.method === undefined)).toBe(true)
+    expect(result.current.failed).toBe(false)
+  } finally { unmount() }
+})
+
+it('does not automatically retry an access refusal', async () => {
+  const fetcher = vi.fn().mockResolvedValue(Response.json({}, { status: 403 }))
+  vi.stubGlobal('fetch', fetcher)
+  const { result, unmount } = renderHook(() => useSiteFlagDetail('site', 'flag-1', 'revision', true), { wrapper })
+  try {
+    await waitFor(() => expect(result.current.failed).toBe(true))
+    expect(fetcher).toHaveBeenCalledOnce()
+    expect(result.current.data).toBeNull()
+  } finally { unmount() }
+})
+
 it('removes retained owner detail immediately when repair permission changes', async () => {
   const reads: Array<(response: Response) => void> = []
   vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { reads.push(resolve) })))

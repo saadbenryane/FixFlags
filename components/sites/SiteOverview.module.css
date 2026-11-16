@@ -3,6 +3,8 @@
 .overview { display: grid; gap: 12px; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .preview { min-width: 0; overflow: hidden; border-radius: var(--radius-board-panel); }
+.previewToggle { display: flex; width: 100%; justify-content: space-between; }
+.previewContent[data-expanded="false"] { display: none; }
 .findings { display: flex; align-items: stretch; min-width: 0; }
 .findings > * { width: 100%; }
 /* The summary figures are small cards; beside a lead they stack to the row's height. */
@@ -10,11 +12,17 @@
 .findings dl > div { align-content: center; padding: 14px 18px; border-radius: var(--radius-board-panel); background: hsl(var(--surface-board)); box-shadow: var(--shadow-board); }
 .lead { display: flex; min-width: 0; }
 .lead > * { flex: 1; }
-.notice { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.notice { margin: 0 0 16px; font-size: var(--text-caption); line-height: 1.5; color: hsl(var(--muted-foreground)); }
 @container site-overview (min-width: 640px) {
   .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .preview { grid-column: 1; grid-row: 1; }
+  .findings { grid-column: 2; grid-row: 1; }
+  .previewToggle { display: none; }
+  .previewContent[data-expanded] { display: block; }
   .layout[data-lead] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .layout[data-lead] .lead { grid-column: 1 / -1; }
+  .layout[data-lead] .preview { grid-row: 2; }
+  .layout[data-lead] .findings { grid-row: 2; }
 }
 @container site-overview (min-width: 900px) {
   .layout[data-lead] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, .7fr); }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { retryDecision, validateTaskGraph, readArtifact, serializeArtifact, taskInputSchema } from '../contracts'
 import { registerTaskHandlers } from '../registry'
 import { initialTaskPlan, pageTaskPlan } from '../graph'
-import { CHECK_REGISTRY } from '../../check-registry'
+import { CHECK_REGISTRY, supportsExecutionCheckVersion, registeredRepairRecipe } from '../../check-registry'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { pageMetadataSchema } from '../snapshots'
 import { parseMetadataFromHtml } from '../../metadata'
@@ -12,6 +12,13 @@ import { collectionHandlers } from '../collectors'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('durable bounded work contracts', () => {
+  it('does not borrow the previous consent classifier as current overlay proof', () => {
+    for (const check of ['overlay-blocks-nav', 'overlay-blocks-cta', 'overlay-blocks-form']) {
+      expect(supportsExecutionCheckVersion(check, 1)).toBe(false)
+      expect(supportsExecutionCheckVersion(check, 2)).toBe(true)
+      expect(registeredRepairRecipe(check)?.checkVersion).toBe(2)
+    }
+  })
   it('admits engagement API repair through the existing native action collector on every affected page', () => {
     const pageUrl = input.pageUrl, peer = pageUrl + 'contact'
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', browserCollection: 'per-profile-v1',

@@ -15,6 +15,7 @@ import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { usePreparedRepairPrompt } from '@/hooks/usePreparedRepairPrompt'
 import { FixPromptCard } from './FixPromptCard'
+import { AI_CONNECTION_PATH } from '@/lib/marketing/copy/ai-connection'
 import { showFixPromptCopied } from './FixPromptToast'
 import { SiteActionFeedback } from './SiteActionFeedback'
 import { SitePromptAccessActions } from './SiteActionContinuation'
@@ -105,7 +106,7 @@ function RepairPromptContent({ scope, availability, label, flagTitle, compact = 
   const feedback = <SiteActionFeedback message={recordNotice ?? scopeNotice ?? (message === H.fileReady || isFlag && presentation === 'button' && !copied ? message : null)} error={error} siteId={siteId} />
   return <>
     {presentation === 'preview' ? <div className={isFlag ? undefined : 'w-full'}>
-      <FixPromptCard openInCursor unavailable={scopeNotice ?? prepared.unavailable} prompt={prepared.preview} busy={busy} disabled={scopeTooLarge} copied={copied} copyLabel={downloading ? H.fileDownloading : copyLabel} copiedLabel={copiedLabel} onCopy={() => void copy()}
+      <FixPromptCard openInCursor agentHref={AI_CONNECTION_PATH} unavailable={scopeNotice ?? prepared.unavailable} prompt={prepared.preview} busy={busy} disabled={scopeTooLarge} copied={copied} copyLabel={downloading ? H.fileDownloading : copyLabel} copiedLabel={copiedLabel} onCopy={() => void copy()}
         onDownload={() => void download()} downloadLabel={H.fileDownload}
         onExpand={() => { if (!scopeTooLarge && !prepared.preview) void submit(() => prepared.prepare(), () => null) }} />
       {feedback}

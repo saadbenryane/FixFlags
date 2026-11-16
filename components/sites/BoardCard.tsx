@@ -252,7 +252,7 @@ export function BoardCard({
   if (compact && count === 0) {
     // While a check runs, describe only the running work. The previous result's
     // gaps belong to that result, not to the check in progress.
-    const description = [...new Set((checking ? [status ?? SITE_BOARD_COPY.checking, detail]
+    const description = [...new Set((checking ? [status ?? SITE_BOARD_COPY.checking]
       : [status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail]).filter(Boolean))].join('. ')
     const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{/* While a check runs, the header owns the status; a card shows only its spinner. */}
       {checking ? null : <span className={styles.compactStatus}>{state === 'healthy' && !incompleteReason ? flagCountLabel(0) : status}</span>}

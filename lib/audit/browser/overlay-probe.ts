@@ -1,5 +1,11 @@
 import type { Page } from 'playwright'
 
+// Shared by observation and dismissal so both recognize the same consent choices.
+const consentChoices = {
+  accept: '\\b(?:accept|allow|agree|consent|got it|i agree|ok,?\\s*continue|keep on|turn on|enable analytics)\\b',
+  reject: '\\b(?:reject|deny|decline|refuse|(?:only|just) (?:the )?(?:necessary|essential)|(?:necessary|essential)(?: cookies)? only|no thanks|disagree|turn off|disable analytics)\\b',
+}
+
 export interface OverlayBlockerInfo {
   tag: string
   id: string | null
@@ -101,7 +107,7 @@ export async function probeCoverAtPoint(
   requireOverlayLook: boolean
 ): Promise<OverlayBlockerInfo | null> {
   return page.evaluate(
-    ({ selector, requireOverlayLook: requireLook }) => {
+    ({ selector, requireOverlayLook: requireLook, choices }) => {
       const el = document.querySelector(selector)
       if (!el || !(el instanceof HTMLElement)) return null
       const rect = el.getBoundingClientRect()
@@ -175,20 +181,20 @@ export async function probeCoverAtPoint(
         const controls = Array.from(
           node.querySelectorAll('button, [role="button"], a[href]')
         ) as HTMLElement[]
-        const labels = controls.map((control) =>
+        const labels = controls.filter(control => {
+          const bounds = control.getBoundingClientRect(), style = getComputedStyle(control)
+          if (control.matches(':disabled,[aria-disabled="true"]') || bounds.width < 2 || bounds.height < 2 ||
+            style.visibility !== 'visible' || style.display === 'none' || Number(style.opacity) === 0) return false
+          const top = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+          return Boolean(top && control.contains(top))
+        }).map((control) =>
           `${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`
             .replace(/\s+/g, ' ')
             .trim()
             .toLowerCase()
         )
-        const hasAccept = labels.some((label) =>
-          /accept|allow|agree|consent|got it|i agree|ok,?\s*continue/.test(label)
-        )
-        const hasReject = labels.some((label) =>
-          /reject|deny|decline|refuse|(?:only|just) (?:the )?(?:necessary|essential)|(?:necessary|essential)(?: cookies)? only|no thanks|disagree/.test(
-            label
-          )
-        )
+        const hasAccept = labels.some(label => new RegExp(choices.accept, 'i').test(label) && !new RegExp(choices.reject, 'i').test(label))
+        const hasReject = labels.some(label => new RegExp(choices.reject, 'i').test(label))
         looksLikeConsentChrome = hasAccept && hasReject
       }
 
@@ -204,7 +210,7 @@ export async function probeCoverAtPoint(
         looksLikeConsentChrome,
       }
     },
-    { selector: targetSelector, requireOverlayLook }
+    { selector: targetSelector, requireOverlayLook, choices: consentChoices }
   )
 }
 
@@ -245,7 +251,7 @@ export function severityForOverlayBlocker(
  */
 export async function dismissConsentChrome(page: Page): Promise<boolean> {
   try {
-    const rejected = await page.evaluate(() => {
+    const rejected = await page.evaluate((choices) => {
       const roots = Array.from(
         document.querySelectorAll(
           '[role="dialog"], [aria-modal="true"], [class*="cookie" i], [id*="cookie" i], [class*="consent" i], [id*="consent" i]'
@@ -270,23 +276,22 @@ export async function dismissConsentChrome(page: Page): Promise<boolean> {
         const controls = Array.from(
           root.querySelectorAll('button, [role="button"]')
         ) as HTMLElement[]
-        const reject = controls.find((control) =>
-          /reject|deny|decline|refuse|necessary only|essential only|no thanks|disagree|reject analytics/i.test(
-            `${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`
-          )
-        )
-        const accept = controls.find((control) =>
-          /accept|allow|agree|consent|got it|i agree/i.test(
-            `${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`
-          )
-        )
+        const usable = controls.filter(control => {
+          const bounds = control.getBoundingClientRect(), style = getComputedStyle(control)
+          if (control.matches(':disabled,[aria-disabled="true"]') || bounds.width < 2 || bounds.height < 2 ||
+            style.visibility !== 'visible' || style.display === 'none' || Number(style.opacity) === 0) return false
+          const top = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+          return Boolean(top && control.contains(top))
+        })
+        const reject = usable.find(control => new RegExp(choices.reject, 'i').test(`${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`))
+        const accept = usable.find(control => new RegExp(choices.accept, 'i').test(`${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`))
         const choice = reject ?? accept
         if (!choice) continue
         choice.click()
         return true
       }
       return false
-    })
+    }, consentChoices)
     if (rejected) {
       await page.waitForTimeout(300)
     }

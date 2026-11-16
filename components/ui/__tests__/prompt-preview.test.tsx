@@ -82,3 +82,16 @@ it('keeps locked previews with their access action and performs no preparation',
   expect(load).not.toHaveBeenCalled()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
+
+it('shows a readable repair summary and selects the exact complete brief on request', async () => {
+  const brief = 'Problem to fix on https://example.com/: A recorded link is covered.\n\nFixFlags repair brief (fixflags.repair-brief.v1)\n\nExact evidence and safety instructions.\nNever infer that the Flag is resolved.'
+  render(<PromptPreviewButton prompt={brief} />)
+  fireEvent.click(screen.getByRole('button', { name: C.viewPrompt }))
+  expect(await screen.findByText(brief.split('\n\n')[0])).toBeVisible()
+  expect(screen.getByRole('textbox', { name: C.fixPromptLabel })).not.toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: C.selectPrompt }))
+  const text = screen.getByRole('textbox', { name: C.fixPromptLabel }) as HTMLTextAreaElement
+  expect(text).toHaveValue(brief)
+  expect(text).toHaveFocus()
+  expect([text.selectionStart, text.selectionEnd]).toEqual([0, brief.length])
+})

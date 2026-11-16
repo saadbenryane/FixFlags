@@ -72,7 +72,7 @@ it('closes the account mobile menu after navigating from its account dropdown', 
   fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
   await screen.findByRole('dialog', { name: 'Navigation' })
   fireEvent.pointerDown(screen.getByRole('button', { name: 'Account menu' }), { button: 0, ctrlKey: false })
-  fireEvent.click(await screen.findByRole('menuitem', { name: 'Account settings' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Account' }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Navigation' })).not.toBeInTheDocument())
 })
 

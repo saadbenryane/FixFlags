@@ -43,6 +43,7 @@ import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
 import { executionPageCoverage, recordedPageEvidenceScope } from '../page-coverage'
 import { projectSiteHomeForViewer } from '../viewer-projection'
+import { recordedOverlayCapture } from '../overlay-capture'
 
 export type { BoardCardView }
 
@@ -347,6 +348,18 @@ async function readSiteBoardFlag(site: SiteRecord, flagId: string) {
         capture = { url: `${url.pathname}${url.search}`, recordedAt: finding.createdAt.toISOString() }
       }
     } catch { /* An unusable reference is not visual evidence. */ }
+  }
+  if (!capture && flag.checkId?.split('::page:')[0].startsWith('overlay-blocks-') && flag.pageUrl) {
+    const [source, tasks] = await Promise.all([
+      prisma.flag.findFirst({ where: { id: flag.sourceFlagId ?? flag.id, auditId: flag.sourceAuditId,
+        audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } }, select: { evidenceTargets: true } }),
+      prisma.auditExecutionTask.findMany({ where: { auditId: flag.sourceAuditId, workKind: 'overlays', pageUrl: flag.pageUrl, workState: 'COMPLETED',
+        audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } }, select: { workResult: true }, take: 10 }),
+    ])
+    for (const task of tasks) {
+      capture = recordedOverlayCapture({ artifact: task.workResult, auditId: flag.sourceAuditId, pageUrl: flag.pageUrl, targets: source?.evidenceTargets })
+      if (capture) break
+    }
   }
   return { site, flag, capture }
 }

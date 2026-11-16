@@ -28,10 +28,10 @@ describe('website analysis details', () => {
     } finally { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers() }
   })
 
-  it('does not offer a read retry for a stream interruption alone', () => {
+  it('offers a refresh for a stream interruption while retaining the recorded status', () => {
     render(<SiteAnalysisDetails view={siteViewFixture()} disconnected onRetry={vi.fn()} />)
     expect(screen.getByRole('status')).toHaveTextContent(C.disconnected)
-    expect(screen.queryByRole('button', { name: C.retryUpdates })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: C.retryUpdates })).toBeEnabled()
   })
 
   it.each([['idle', 'COMPLETED'], ['partial', 'COMPLETED'], ['failed', 'FAILED'], ['interrupted', 'FAILED']] as const)(

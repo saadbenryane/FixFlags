@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { fetchSiteActionJson } from '@/lib/sites/client-actions'
+import { fetchSiteActionJson, SiteActionError } from '@/lib/sites/client-actions'
 import { siteFlagPanelSchema } from '@/lib/sites/flag-panel'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { viewerRepairGuidance } from '@/lib/sites/viewer-projection'
@@ -14,9 +14,15 @@ export function useSiteFlagDetail(siteId: string, flagId: string | null, revisio
   const resource = useSWR(flagId ? ['site-flag', siteId, flagId, revision, canReadGuidance] as const : null,
     async ([, requestedSite, requestedFlag, requestedRevision, owner]) => {
       const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), READ_TIMEOUT_MS)
+      const timer = setTimeout(() => controller.abort(), READ_TIMEOUT_MS * 2)
       try {
-        const { response, body } = await fetchSiteActionJson(`/api/sites/${encodeURIComponent(requestedSite)}/flags/${encodeURIComponent(requestedFlag)}`, { cache: 'no-store', signal: controller.signal })
+        const url = `/api/sites/${encodeURIComponent(requestedSite)}/flags/${encodeURIComponent(requestedFlag)}`
+        const options = { cache: 'no-store' as const, signal: controller.signal }
+        const { response, body } = await fetchSiteActionJson(url, options, READ_TIMEOUT_MS).catch(error => {
+          // One bounded retry warms a cold read without replaying writes or a server refusal.
+          if (!(error instanceof SiteActionError) || error.status !== undefined || controller.signal.aborted) throw error
+          return fetchSiteActionJson(url, options, READ_TIMEOUT_MS)
+        })
         if (!response.ok) throw new Error(C.flagUnavailable)
         const data = siteFlagPanelSchema.parse(body)
         if (data.flag.id !== requestedFlag && data.flag.sourceFlagId !== requestedFlag) throw new Error(C.flagUnavailable)

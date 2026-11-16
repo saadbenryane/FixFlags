@@ -17,6 +17,9 @@ const POLL_DELAYS_MS = [2_000, 4_000, 8_000, 15_000] as const
 export function ActiveAuditBanner() {
   const { active, dismiss } = useActiveAudit()
   const pathname = usePathname()
+  // Sign-in and sign-up already name the Site and link back to it, and the websites list shows each
+  // check's live status in its row, so the banner would only repeat them.
+  if (pathname === '/dashboard' || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) return null
   return active ? <ActiveCheckBanner key={JSON.stringify([active.auditId, active.siteId])} active={active} dismiss={dismiss} pathname={pathname} /> : null
 }
 
@@ -27,6 +30,8 @@ function ActiveCheckBanner({ active, dismiss, pathname }: {
 }) {
   const { auditId, siteId: initialSiteId } = active
   const [stillRunning, setStillRunning] = useState(true)
+  // Queued is not running: the banner waits quietly until the check starts.
+  const [queued, setQueued] = useState(false)
   const [hostname, setHostname] = useState<string | null>(null)
   const [siteId, setSiteId] = useState<string | null>(initialSiteId ?? null)
   const boardHref = siteId ? `/sites/${siteId}` : null
@@ -63,6 +68,7 @@ function ActiveCheckBanner({ active, dismiss, pathname }: {
         if (response.ok && body && typeof body === 'object' && !Array.isArray(body)) {
           const data = body as Record<string, unknown>
           if (typeof data.url === 'string') setHostname(auditHostname(data.url))
+          if (typeof data.status === 'string') setQueued(data.status === 'QUEUED')
           if (typeof data.siteId === 'string' && data.siteId.trim()) {
             setSiteId(data.siteId)
           } else if (typeof data.projectId === 'string' && data.projectId.trim()) {
@@ -95,9 +101,11 @@ function ActiveCheckBanner({ active, dismiss, pathname }: {
     <div className="pointer-events-none px-3 pb-2 pt-0">
       <Container className="pointer-events-auto">
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full glass-surface-elevated px-4 py-2 text-xs text-muted-foreground shadow-raised">
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" aria-hidden />
-          <span>
-            {AUDIT_PROGRESS.bannerScanning}{' '}
+          {queued
+            ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" aria-hidden />
+            : <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" aria-hidden />}
+          <span role="status">
+            {queued ? AUDIT_PROGRESS.bannerQueued : AUDIT_PROGRESS.bannerScanning}{' '}
             <span className="font-medium text-foreground">{hostname ?? 'your page'}</span>
           </span>
           {boardHref ? (
@@ -105,7 +113,7 @@ function ActiveCheckBanner({ active, dismiss, pathname }: {
               href={boardHref as Route}
               className="font-medium text-brand transition-colors duration-200 hover:text-brand/80"
             >
-              Return to Site
+              {AUDIT_PROGRESS.bannerReturn}
             </Link>
           ) : null}
         </div>

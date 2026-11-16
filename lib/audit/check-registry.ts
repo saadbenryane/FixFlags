@@ -231,9 +231,9 @@ const LEGACY_CHECK_DEFINITIONS = {
   'form-submit-api-unauthorized': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'form-submit-api-server-error': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'form-submit-silent-failure': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
-  'overlay-blocks-nav': { version: 1, area: 'conversion', module: 'overlays', capabilities: ["experience-overlay-blockers"] },
-  'overlay-blocks-cta': { version: 1, area: 'conversion', module: 'overlays', capabilities: ["experience-overlay-blockers"] },
-  'overlay-blocks-form': { version: 1, area: 'conversion', module: 'overlays', capabilities: ["experience-overlay-blockers"] },
+  'overlay-blocks-nav': { version: 2, area: 'conversion', module: 'overlays', capabilities: ["experience-overlay-blockers"] },
+  'overlay-blocks-cta': { version: 2, area: 'conversion', module: 'overlays', capabilities: ["experience-overlay-blockers"] },
+  'overlay-blocks-form': { version: 2, area: 'conversion', module: 'overlays', capabilities: ["experience-overlay-blockers"] },
 } as const satisfies Record<string, CheckDefinition>
 
 type NewSearchIdentity = Exclude<SearchCheckIdentity, keyof typeof LEGACY_CHECK_DEFINITIONS>

@@ -141,6 +141,8 @@ export const AUTH = {
     signingIn: 'Signing you in',
     preparing: 'Preparing your account',
     continueCta: 'Continue to dashboard',
+    retryTitle: 'We couldn’t finish signing you in',
+    retryBody: 'Try again to continue to your websites.',
   },
   error: {
     title: 'Could not load this page',

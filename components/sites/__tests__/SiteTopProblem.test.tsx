@@ -53,4 +53,14 @@ describe('top problem', () => {
     expect(screen.queryByRole('button', { name: /Copy fix instructions/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^On /)).not.toBeInTheDocument()
   })
+
+  it('leads an unverified Flag with evidence review even when older instructions are ready', () => {
+    const onOpen = vi.fn()
+    render(<SiteTopProblem siteId="site-1" flag={flag({ status: 'UNVERIFIED' })} copyAvailability="available" copyReady technologies={[]} onOpen={onOpen} />)
+    expect(screen.getByText(C.reviewLabel)).toBeVisible()
+    expect(screen.queryByText(C.label)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Copy fix instructions/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: C.view }))
+    expect(onOpen).toHaveBeenCalledWith('flag-1', expect.any(HTMLElement))
+  })
 })

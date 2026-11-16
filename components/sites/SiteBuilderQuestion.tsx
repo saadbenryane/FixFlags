@@ -39,7 +39,7 @@ export function SiteBuilderQuestion({ siteId, onAnswer }: { siteId: string; onAn
   return <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
     <label htmlFor={`builder-${siteId}`} className="text-muted-foreground">{C.title}</label>
     <select id={`builder-${siteId}`} defaultValue="" disabled={state === 'saving'} onChange={event => { if (event.currentTarget.value) void answer(event.currentTarget.value) }}
-      className="min-h-11 rounded-control bg-background/80 px-3 pr-8 text-sm font-medium text-foreground shadow-[0_1px_2px_hsl(30_10%_20%/.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60">
+      className="min-h-11 rounded-control bg-background/80 px-3 pr-8 text-sm font-medium text-foreground shadow-hairline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60">
       <option value="" disabled>{C.placeholder}</option>
       {C.options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
     </select>

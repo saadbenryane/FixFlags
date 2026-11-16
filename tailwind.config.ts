@@ -37,7 +37,9 @@ const config: Config = {
         // true at runtime. xs-2xl match Tailwind defaults; 3xl-5xl follow the
         // documented editorial scale with heading/display leading tokens.
         xs: ['var(--text-xs)', { lineHeight: '1rem' }],
+        caption: ['var(--text-caption)', { lineHeight: '1.125rem' }],
         sm: ['var(--text-sm)', { lineHeight: '1.25rem' }],
+        md: ['var(--text-md)', { lineHeight: '1.375rem' }],
         base: ['var(--text-base)', { lineHeight: '1.5rem' }],
         lg: ['var(--text-lg)', { lineHeight: '1.75rem' }],
         xl: ['var(--text-xl)', { lineHeight: '1.75rem' }],
@@ -93,6 +95,8 @@ const config: Config = {
         },
         brand: {
           DEFAULT: 'hsl(var(--brand))',
+          control: 'hsl(var(--brand-control))',
+          'control-hover': 'hsl(var(--brand-control-hover))',
           foreground: 'hsl(var(--brand-foreground))',
           muted: 'hsl(var(--brand-muted))',
           border: 'hsl(var(--brand-border))',
@@ -104,12 +108,6 @@ const config: Config = {
         },
         'focus-ring': 'hsl(var(--focus-ring))',
         overlay: 'hsl(var(--overlay))',
-        terminal: {
-          DEFAULT: 'hsl(var(--terminal))',
-          foreground: 'hsl(var(--terminal-foreground))',
-          muted: 'hsl(var(--terminal-muted))',
-          border: 'hsl(var(--terminal-border))',
-        },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
@@ -163,6 +161,10 @@ const config: Config = {
         'glass-subtle': 'var(--shadow-glass-subtle)',
         'glass-deep': 'var(--shadow-glass-deep)',
         'filter-pill': '0 0 12px 0 rgb(0 0 0 / 0.06)',
+        hairline: 'var(--shadow-hairline)',
+        chip: 'var(--shadow-chip)',
+        paper: 'var(--shadow-paper)',
+        window: 'var(--shadow-window)',
       },
       zIndex: {
         background: 'var(--z-background)',

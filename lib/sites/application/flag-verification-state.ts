@@ -65,10 +65,24 @@ export async function loadSiteFlagVerification(site: SiteRecord, flagId: string,
   const projectId = site.projectId
   if (!projectId) return null
   return readSiteEvidence(site, async () => {
-    const source = await prisma.flag.findFirst({ where: { id: flagId, audit: { projectId } },
+    let source = await prisma.flag.findFirst({ where: { id: flagId, audit: { projectId } },
       select: { id: true, auditId: true, improvementOccurrence: { select: { improvementId: true } } } })
+    if (!source) {
+      // The visible Flag ID names its incident. Resolve it through this exact
+      // admitted check, so a newer occurrence cannot replace the original proof.
+      const attempt = await prisma.improvementAttempt.findFirst({ where: { improvementId: flagId, verificationAuditId,
+        improvement: { projectId }, sourceAudit: { projectId }, verificationAudit: { projectId } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: { sourceAuditId: true, sourceFlagIds: true, handoffReference: true, verificationAudit: { select: { parentId: true } } } })
+      if (!attempt || attempt.verificationAudit?.parentId !== attempt.sourceAuditId) return null
+      const legacyFlag = attempt.handoffReference?.startsWith('flag:') ? attempt.handoffReference.slice(5) : null
+      source = await prisma.flag.findFirst({ where: { auditId: attempt.sourceAuditId, audit: { projectId },
+        improvementOccurrence: { improvementId: flagId },
+        ...(attempt.sourceFlagIds.length ? { id: { in: attempt.sourceFlagIds } } : legacyFlag !== null ? { id: legacyFlag } : {}) },
+        select: { id: true, auditId: true, improvementOccurrence: { select: { improvementId: true } } } })
+    }
     if (!source?.improvementOccurrence) return null
     return (await loadCurrentFlagVerifications(projectId, [{ id: source.id, auditId: source.auditId,
-      improvementId: source.improvementOccurrence.improvementId }], prisma, verificationAuditId)).get(flagId) ?? null
+      improvementId: source.improvementOccurrence.improvementId }], prisma, verificationAuditId)).get(source.id) ?? null
   })
 }

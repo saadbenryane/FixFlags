@@ -78,7 +78,7 @@ export function MarketingPageLoading() {
     >
       <Skeleton className="h-10 w-72 max-w-full rounded-md" />
       <Skeleton className="mt-4 h-5 w-96 max-w-full rounded-md" />
-      <Skeleton className="mt-8 h-12 w-full max-w-lg rounded-[var(--radius-control)]" />
+      <Skeleton className="mt-8 h-12 w-full max-w-lg rounded-control" />
       <div className="mt-16 grid w-full gap-6 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
           <Skeleton key={index} className="h-48 w-full rounded-card" />
@@ -98,7 +98,7 @@ export function AuthPageLoading() {
       <div className="w-full max-w-sm space-y-6">
         <Skeleton className="mx-auto h-8 w-32 rounded-md" />
         {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-11 w-full rounded-[var(--radius-control)]" />
+          <Skeleton key={index} className="h-11 w-full rounded-control" />
         ))}
       </div>
     </Container>

@@ -172,7 +172,7 @@ export const FLAG_EXPLANATIONS: Readonly<Record<string, string>> = {
   // The main button and what follows
   "flow-no-cta-found": "Visitors don’t see a main button on the first screen, so the next step isn’t obvious.",
   "flow-cta-unclickable": "Visitors who try the main button can’t click it. Something blocks it or it doesn’t respond.",
-  "overlay-blocks-nav": "Visitors can’t use the menu, because a pop-up or banner covers it.",
+  "overlay-blocks-nav": "A pop-up or banner covers a recorded navigation link. Review the affected link and device below.",
   "overlay-blocks-cta": "Visitors can’t use the main button, because a pop-up or banner covers it.",
   "overlay-blocks-form": "Visitors can’t use the form, because a pop-up or banner covers it.",
   "api-engagement-unauthorized": "Visitors who try this action are refused by the server.",

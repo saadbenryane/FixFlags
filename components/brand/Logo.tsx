@@ -6,9 +6,9 @@ export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
 
 /** The cleaned owner mark stays sharp at every display density. */
 const MARK = {
-  sm: { width: 15, height: 24 },
-  md: { width: 17, height: 28 },
-  lg: { width: 20, height: 32 },
+  sm: { width: 16, height: 24 },
+  md: { width: 19, height: 28 },
+  lg: { width: 21, height: 32 },
 } as const
 
 const WORD_CLASS = {

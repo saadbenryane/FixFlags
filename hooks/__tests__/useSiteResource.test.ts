@@ -63,7 +63,7 @@ it('keeps pending guidance updating after analysis completion and stops frequent
     try {
       await act(async () => { await vi.advanceTimersByTimeAsync(50) })
       expect(fetch).toHaveBeenCalledTimes(1)
-      await act(async () => { await vi.advanceTimersByTimeAsync(2700) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_100) })
       expect(result.current.view.flags[0].repairGuidance).toBe('ready')
       const settledReads = fetch.mock.calls.length
       await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
@@ -101,7 +101,7 @@ it('keeps updating after analysis finishes until the independent result arrives,
     await act(async () => { await vi.advanceTimersByTimeAsync(50) })
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(result.current.view.outcomes[0].running).toBe(true)
-    await act(async () => { await vi.advanceTimersByTimeAsync(2700) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_100) })
     expect(result.current.view.outcomes[0].lastVerifiedAt).toBe('2026-10-10T15:00:00Z')
     const calls = fetch.mock.calls.length
     await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
@@ -166,7 +166,7 @@ it('retains newest validated facts and connection state when an older request la
   expect(result.current.view.inventoryPageCount).toBe(12)
   expect(result.current.disconnected).toBe(false)
   current = { ...current, audit: { ...current.audit, status: 'COMPLETED' } }
-  await waitFor(() => expect(result.current.view.audit.status).toBe('COMPLETED'), { timeout: 5000 })
+  await waitFor(() => expect(result.current.view.audit.status).toBe('COMPLETED'), { timeout: 12_000 })
   unmount()
 })
 
@@ -361,7 +361,7 @@ it('observes an active diagnostic run even when the broad analysis and Outcomes 
   try {
     await act(async () => { await vi.advanceTimersByTimeAsync(50) })
     expect(fetch).toHaveBeenCalledTimes(1)
-    await act(async () => { await vi.advanceTimersByTimeAsync(2700) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_100) })
     expect(result.current.view.activeRuns).toEqual([])
     expect(result.current.view.audit.id).toBe('audit-1')
   } finally { unmount(); vi.useRealTimers() }

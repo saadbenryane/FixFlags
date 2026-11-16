@@ -9,7 +9,7 @@ export function InputGroup({ className, ...props }: InputGroupProps) {
   return (
     <div
       className={cn(
-        'flex flex-col gap-1.5 overflow-hidden rounded-[var(--radius-control)] border border-border bg-background p-1.5 shadow-sm',
+        'flex flex-col gap-1.5 overflow-hidden rounded-control border border-border bg-background p-1.5 shadow-sm',
         'transition-shadow duration-200',
         'focus-within:shadow-card-hover focus-within:ring-2 focus-within:ring-focus-ring/25',
         'sm:flex-row sm:items-stretch sm:gap-0',

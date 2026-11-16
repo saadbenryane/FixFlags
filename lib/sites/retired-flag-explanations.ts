@@ -6,6 +6,7 @@
  * stays exact. Fingerprints only; the retired wording is not kept.
  */
 const RETIRED_TEMPLATE_FINGERPRINTS = new Set([
+  'pbskk',
   '115p50d', '120bz3k', '12z4p80', '13jn4v5', '13ygayu', '13zeguj', '143pvh6', '14821mb', '14zmsb8', '158nezl',
   '15k8c30', '16mwhki', '16rmsbw', '16w3gz', '187dj4a', '189yi58', '18zt3pu', '190en25', '197u66u', '199dre7',
   '1a5hau2', '1ap31vc', '1ap8jbn', '1bydsx5', '1c46ru', '1c5nhyl', '1cfg3pg', '1ckjch9', '1cxh80r', '1cy9vbz',

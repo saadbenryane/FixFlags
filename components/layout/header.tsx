@@ -107,21 +107,13 @@ export function Header({
           )}
         >
           <div className={cn('flex min-w-0 items-center gap-3', isMarketing && 'translate-y-px')}>
+            {/* The name stays visible on phones: the lockup fits beside Sign in and the menu down to 320px. */}
             <span className="sm:hidden">
-              <span className="max-[419px]:hidden">
-                <Logo
-                  variant="lockup"
-                  size="sm"
-                  href={logoHref ?? defaultLogoHref}
-                />
-              </span>
-              <span className="hidden max-[419px]:block">
-                <Logo
-                  variant="mark"
-                  size="sm"
-                  href={logoHref ?? defaultLogoHref}
-                />
-              </span>
+              <Logo
+                variant="lockup"
+                size="sm"
+                href={logoHref ?? defaultLogoHref}
+              />
             </span>
             <span className="hidden sm:block">
               <Logo

@@ -7,6 +7,7 @@ import { PRICING_ADD_ONS as ADD_ONS, PRICING_PLAN_TABLE as T, PRICING_TIERS, typ
 import { PricingCTAButton } from './PricingCTAButton'
 import { PlanPrice } from './PlanPrice'
 import s from './PricingComparisonTable.module.css'
+import { PRICING } from '@/lib/marketing/copy/plans'
 
 const TIER_ICONS = { free: ShieldCheck, pro: Flag, team: Users, agency: Building2 } as const
 
@@ -40,9 +41,18 @@ function PlanCellValue({ cell }: { cell: (typeof T.rows)[number]['cells'][number
 }
 
 export function PricingComparisonTable() {
-  const cards = PRICING_TIERS.filter(tier => tier.id !== 'agency')
+  const free = PRICING_TIERS.find(tier => tier.id === 'free')!
+  const cards = PRICING_TIERS.filter(tier => tier.id !== 'agency' && tier.id !== 'free')
   const agency = PRICING_TIERS.find(tier => tier.id === 'agency')!
   return <div className={s.comparison}>
+    <article aria-labelledby="pricing-free" className={`${s.plan} ${s.available}`} data-featured="true">
+      <div><TierHeading tier={free} /><p className={s.summary}>{free.summary}</p></div>
+      <FeatureList features={free.features} />
+      <div className={s.action}><TierAction tier={free} /></div>
+    </article>
+    <details className={s.future}>
+      <summary className="flex min-h-11 cursor-pointer items-center rounded-control font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{PRICING.plannedPricingTitle}</summary>
+      <p className={s.futureNote}>{PRICING.plannedPricingBody}</p>
     <div className={s.columns}>{cards.map(tier => <article key={tier.id} aria-labelledby={`pricing-${tier.id}`} className={s.plan} data-featured={tier.available}>
       <TierHeading tier={tier} />
       <p className={s.summary}>{tier.summary}</p>
@@ -73,5 +83,6 @@ export function PricingComparisonTable() {
       <p className={s.tableNote}>{T.note}</p>
       <p className={s.tableLink}><Link prefetch={false} href={T.monitoringLink.href as Route}>{T.monitoringLink.label}<ArrowRight aria-hidden size={16} /></Link></p>
     </section>
+    </details>
   </div>
 }

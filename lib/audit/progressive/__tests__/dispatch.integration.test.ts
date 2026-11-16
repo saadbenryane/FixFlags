@@ -998,6 +998,23 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(await prisma.auditVerificationReceipt.count({ where: { auditId: audit.id, targetKey: 'fixture:checkpoint' } })).toBe(1)
   })
 
+  it.each(['flow', 'discovery'] as const)('admits an aged continuation before newer untried arrivals without excluding the new Site: %s', async kind => {
+    const first = await admission([kind]), fresh = await admission([kind === 'flow' ? 'browser' : 'http'])
+    const original = first.tasks[0]
+    await prisma.auditExecutionTask.update({ where: { id: original.id }, data: {
+      createdAt: new Date(Date.now() - 2 * DELIVERY_RECHECK_MS - 1000), workGeneration: 1, workAttempts: 0,
+      workResult: { ...serializeArtifact(kind, { recordedStep: 1 }), continuation: true },
+    } })
+    expect(await dispatchTask(original.id)).toBe(true)
+    expect(await dispatchTask(fresh.tasks[0].id)).toBe(true)
+    const resource = kind === 'flow' ? 'browser' : 'http'
+    expect((await dispatch.queues.get(resource)!.getJob(original.id + '-g2'))?.priority).toBe(1)
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({
+      workGeneration: 1, workAttempts: 0, workState: 'READY', workDispatchState: 'SENT',
+      workResult: { data: { recordedStep: 1 }, continuation: true },
+    })
+  })
+
   it('gives an older queued observation a turn before later primary arrivals without rotating it again', async () => {
     const queue = dispatch.queues.get('browser')!
     await queue.drain()

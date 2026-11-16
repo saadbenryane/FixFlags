@@ -195,14 +195,14 @@ export function PlanPickerDialog({
               )}
             >
               {planKey === 'FREE' ? (
-                <span className="absolute -top-2.5 right-4 rounded-full bg-brand px-2.5 py-0.5 text-2xs font-semibold text-brand-foreground">
+                <span className="absolute -top-2.5 right-4 rounded-full bg-brand-control px-2.5 py-0.5 text-2xs font-semibold text-brand-foreground">
                   {PRICING.pickerRecommended}
                 </span>
               ) : null}
               <div className="flex items-center gap-3">
                 <span
                   className={cn(
-                    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-foreground',
+                    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-foreground',
                     isHighlight ? 'bg-brand/10 text-brand' : 'bg-muted/70'
                   )}
                 >

@@ -1,6 +1,8 @@
 export const SITE_DASHBOARD_COPY = {
   openInCursor: 'Open in Cursor',
   openInCursorNote: 'Cursor shows the instructions and waits for you to send them.',
+  agentHandoff: 'Or let your coding agent read this Flag over MCP and ask for the recheck.',
+  agentHandoffAction: 'Connect an agent',
   verifiedReceipt: {
     stamp: 'Verified',
     label: 'Verified receipt',
@@ -16,6 +18,7 @@ export const SITE_DASHBOARD_COPY = {
   homepage: 'Homepage',
   topProblem: {
     label: 'Fix this first',
+    reviewLabel: 'Review this first',
     page: (path: string) => path === '/' ? 'On your homepage' : `On ${path}`,
     view: 'View Flag',
     builderGuide: (tool: string) => `Using FixFlags with ${tool}`,
@@ -54,6 +57,7 @@ export const SITE_DASHBOARD_COPY = {
   pagesInScope: (count: number) => `${count} ${count === 1 ? 'page' : 'pages'}`,
   noPageFlags: 'No page Flags found',
   promptTitle: 'Fix instructions',
+  completeInstructions: 'Read the complete instructions',
   promptPreview: 'View instructions',
   promptLoading: 'Preparing fix instructions…',
   promptChanged: 'The fix instructions changed. Review the update, then copy again.',
@@ -74,6 +78,8 @@ export const SITE_DASHBOARD_COPY = {
   priorityMeter: (label: string, level: number) => `${label} priority, ${level} of 5`,
   evidenceDetails: 'Screenshot and technical details',
   seenOn: 'Seen on',
+  captureMissing: 'No screenshot was recorded for this observation. The recorded details below are the evidence.',
+  overlayObservation: (coverage: number, target: string) => `An overlay covered about ${coverage}% of “${target}” in the recorded viewport.`,
   tracking: {
     library: 'No external tracking library observed',
     activity: 'No tracking event observed',
@@ -92,7 +98,9 @@ export const SITE_DASHBOARD_COPY = {
   flagResolved: 'This Flag is resolved. The observation below is from before the fix.',
   flagVerificationStillOpen: 'The latest check still found a problem.',
   flagVerificationInconclusive: 'The latest check couldn’t establish whether this fix worked.',
+  flagVerificationIncomparable: 'This run couldn’t be compared with the original check. The Flag remains unverified. Review the current check results before making more changes.',
   previousObservation: 'Previous observation',
+  previousFixInstructions: 'Previous fix instructions',
   whyItMatters: 'Why it matters',
   fixAll: 'Copy all fixes',
   fixCategory: 'Copy these fixes',

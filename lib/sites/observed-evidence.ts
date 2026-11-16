@@ -7,6 +7,13 @@ export type ObservedPage = {
   share: number | null
 }
 
+/** Presentation of a single recorded overlay measurement, without inferring a failed action. */
+export function presentOverlayEvidence(text: string): { coverage: number; target: string } | null {
+  const match = /^.+?covers ~(\d{1,3})% of target(?: consent-chrome)? · (.+?)\.(?: Partial coverage[^\n]*)?$/.exec(text.trim())
+  if (!match || Number(match[1]) > 100 || match[2].includes('covers ~')) return null
+  return { coverage: Number(match[1]), target: match[2].replace(/\.+$/, '').trim() }
+}
+
 export type ObservedEvidence =
   | { kind: 'text'; text: string }
   | {

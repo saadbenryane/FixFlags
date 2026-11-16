@@ -80,7 +80,6 @@ it.each(['primary', 'paths-only'] as const)('opens every affected page once in %
     affectedPaths: mode === 'primary' ? [first, second, second] : [second] }))))
   render(panel(viewFixture()), { wrapper })
   await screen.findByText('Recorded unnamed button')
-  fireEvent.click(screen.getByText(C.evidenceDetails, { selector: 'summary' }))
   for (const url of mode === 'primary' ? [first, second] : [second]) {
     const links = screen.getAllByRole('link', { name: C.open(url) })
     expect(links).toHaveLength(1)
@@ -96,11 +95,24 @@ it.each(['still_open', 'regressed', 'could_not_verify', 'missing_evidence', 'inc
   const checkedAt = '2026-11-03T00:00:00.000Z'
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(payload({ verificationFeedback: { result, checkedAt } }))))
   render(panel(viewFixture()), { wrapper })
-  const notice = await screen.findByText(result === 'still_open' || result === 'regressed' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive, { exact: false })
+  const notice = await screen.findByText(result === 'incomparable_scope' ? C.flagVerificationIncomparable
+    : result === 'still_open' || result === 'regressed' ? C.flagVerificationStillOpen : C.flagVerificationInconclusive, { exact: false })
   expect(notice).toBeVisible()
   expect(notice.querySelector('time')).toHaveAttribute('datetime', checkedAt)
   expect(notice.compareDocumentPosition(screen.getByText('Recorded unnamed button')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Check recorded fix' })).toBeEnabled()
+})
+
+it('leads an unverified Flag with its evidence and keeps previous repair actions collapsed', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(payload({ status: 'UNVERIFIED' }))))
+  render(panel(viewFixture()), { wrapper })
+  const evidence = await screen.findByText('Recorded unnamed button')
+  const summary = screen.getByText(C.previousFixInstructions)
+  expect(evidence.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(summary.closest('details')).not.toHaveAttribute('open')
+  expect(screen.getByRole('button', { name: 'Check recorded fix' })).not.toBeVisible()
+  fireEvent.click(summary)
+  expect(screen.getByRole('button', { name: 'Check recorded fix' })).toBeVisible()
 })
 
 it('does not treat an ordinary open Flag as a completed unsuccessful verification', async () => {

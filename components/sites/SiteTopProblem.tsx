@@ -51,20 +51,22 @@ export function SiteTopProblem({ siteId, flag, copyAvailability, copyReady, tech
   const path = pathOf(flag.pageUrl)
   const builder = handoffTool(technologies, reportedBuilder)
   const area = CARD_CATALOG[flag.area]?.name
+  const needsReview = flag.status === 'UNVERIFIED'
+  const offerCopy = copyReady && !needsReview
   // The same words the Flag list and the Flag itself use, so the band and the detail never disagree.
   const title = boardFindingTitle(flag.problem, flag.checkId)
   // A card in the overview row: what is wrong and where, then the handoff at its foot.
   return <section aria-labelledby="top-problem-title" className="flex h-full flex-col justify-between gap-4 rounded-card bg-brand-muted/60 p-5 sm:p-6">
     <div className="min-w-0">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-[hsl(var(--brand-strong))]"><Flag size={14} aria-hidden="true" />{C.label}{area ? <span className="font-medium text-muted-foreground">{area}</span> : null}</p>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-[hsl(var(--brand-strong))]"><Flag size={14} aria-hidden="true" />{needsReview ? C.reviewLabel : C.label}{area ? <span className="font-medium text-muted-foreground">{area}</span> : null}</p>
       <h2 id="top-problem-title" className="mt-2 text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-xl">{title}</h2>
       {path ? <p className="mt-1 text-sm text-muted-foreground">{C.page(path)}</p> : null}
     </div>
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        {/* Handing the fix to the AI is the one primary action; reading the Flag is the secondary one. */}
-        {copyReady ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={title} availability={copyAvailability} preview={false} /> : null}
-        <Button type="button" variant={copyReady ? 'ghost' : 'default'} className="min-h-11" onClick={event => onOpen(flag.id, event.currentTarget)}>
+        {/* Unverified Flags lead with their evidence; other Flags lead with available fix instructions. */}
+        {offerCopy ? <SitePromptCopyButton siteId={siteId} flagId={flag.id} flagTitle={title} availability={copyAvailability} preview={false} /> : null}
+        <Button type="button" variant={offerCopy ? 'ghost' : 'default'} className="min-h-11" onClick={event => onOpen(flag.id, event.currentTarget)}>
           {C.view}<ArrowRight size={15} aria-hidden="true" />
         </Button>
       </div>

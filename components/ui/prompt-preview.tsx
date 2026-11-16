@@ -51,20 +51,35 @@ export function PromptPreviewDialog({ prompt, open, onOpenChange, onCopy, copyLa
 }) {
   const input = useRef<HTMLTextAreaElement>(null)
   const title = useRef<HTMLHeadingElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const selectRequested = useRef(false)
+  const briefSummary = prompt.includes('\n\nFixFlags repair brief (fixflags.repair-brief.v1)') ? prompt.split('\n\n')[0] : null
+  useLayoutEffect(() => {
+    if (expanded && selectRequested.current) { selectRequested.current = false; input.current?.focus(); input.current?.select() }
+  }, [expanded])
   const ready = !loading && !error && Boolean(prompt.trim())
+  const instructions = <Textarea ref={input} readOnly value={prompt} rows={14} aria-label={C.fixPromptLabel} className="font-mono text-xs leading-relaxed" />
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent header={<DialogTitle ref={title}>{heading}</DialogTitle>} initialFocus="title" className="max-w-3xl">
       <DialogDescription>{description}</DialogDescription>
       {loading ? <p role="status" className="min-h-40 text-sm text-muted-foreground">{SITE_DASHBOARD_COPY.promptLoading}</p>
         : error ? <div className="min-h-40 space-y-3"><p role="alert" className="text-sm text-destructive">{error}</p>
           {onRetry ? <Button type="button" variant="outline" onClick={() => { title.current?.focus({ preventScroll: true }); onRetry() }}>{SYSTEM_COPY.actions.retry}</Button> : null}</div>
-        : <Textarea ref={input} readOnly value={prompt} rows={14} aria-label={C.fixPromptLabel} className="font-mono text-xs leading-relaxed" />}
+        : briefSummary ? <div className="space-y-4"><p className="text-sm leading-relaxed">{briefSummary}</p>
+          <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}>
+            <summary className="flex min-h-11 cursor-pointer items-center font-medium text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_DASHBOARD_COPY.completeInstructions}</summary>
+            {instructions}
+          </details>
+        </div> : instructions}
       {doneLabel ? <DialogFooter>
         {onDownload ? <Button type="button" variant="ghost" disabled={!ready} onClick={() => { onOpenChange(false); onDownload() }}>{downloadLabel}</Button> : null}
         <Button type="button" onClick={() => onOpenChange(false)}>{doneLabel}</Button>
       </DialogFooter> : <DialogFooter>
         {onDownload ? <Button type="button" variant="outline" disabled={copyDisabled || !ready} onClick={() => { onOpenChange(false); onDownload() }}>{downloadLabel}</Button> : null}
-        <Button type="button" variant="outline" disabled={!ready} onClick={() => { input.current?.focus(); input.current?.select() }}>{C.selectPrompt}</Button>
+        <Button type="button" variant="outline" disabled={!ready} onClick={() => {
+          if (briefSummary && !expanded) { selectRequested.current = true; setExpanded(true) }
+          else { input.current?.focus(); input.current?.select() }
+        }}>{C.selectPrompt}</Button>
         {onCopy ? <Button type="button" disabled={copyDisabled || !ready} onClick={() => { onOpenChange(false); onCopy() }}><Copy aria-hidden />{copyLabel}</Button> : null}
       </DialogFooter>}
     </DialogContent>

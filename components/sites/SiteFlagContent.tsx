@@ -31,28 +31,31 @@ export function SiteFlagContent({ siteId, flagId, view, seed, resource }: {
   const resolved = current?.status === 'FIXED' || current?.status === 'VERIFIED'
   const dismissed = current?.status === 'DISMISSED' || current?.status === 'IGNORED'
   const verifying = stale && seed ? seed.verificationState === 'verifying' : flag?.verifying
+  const needsReview = current?.status === 'UNVERIFIED' && !verifying
   const sourceFlagId = current?.sourceFlagId ?? current?.id
   const activeVerificationAuditId = verifying && sourceFlagId === (flag?.sourceFlagId ?? flag?.id) ? flag?.activeVerificationAuditId : null
   const otherPaths = [...new Set(flag?.affectedPaths ?? [])].filter(path => path !== flag?.pageUrl)
+  const repairActions = flag ? <>
+      {view.actions.copy === 'available' && !resolved && !dismissed ? <SiteFlagActions compact key={key}
+        siteId={siteId} flagId={sourceFlagId ?? flag.id} referenceFlagId={flagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
+        initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={verifying}
+        initialVerificationAuditId={activeVerificationAuditId} onVerificationSettled={retry} /> :
+        view.actions.copy !== 'available' ? <SitePromptAccessActions availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
+  </> : null
   return <>
     {flag && failed ? <div role="status" className="flex flex-wrap items-center gap-3 rounded-control bg-muted/30 p-3 text-sm"><p>{C.flagRefreshFailed}</p><Button variant="outline" size="sm" loading={refreshing} loadingLabel={SITE_ACTION_COPY.loading} onClick={() => void retry()}>{SITE_ACTION_COPY.retryResults}</Button></div>
       : flag && stale ? <p role="status" className="text-xs text-muted-foreground">{refreshing ? C.flagRefreshing : C.flagPrevious}</p> : null}
     {flag ? <>
       {resolved ? <p role="status" className="rounded-control bg-muted/30 p-4 text-sm">{C.flagResolved}</p> : null}
       {!resolved && !dismissed && !verifying && !stale && flag.verificationFeedback ? <FlagVerificationNotice feedback={flag.verificationFeedback} /> : null}
-      {view.actions.copy === 'available' && !resolved && !dismissed ? <SiteFlagActions compact key={key}
-        siteId={siteId} flagId={sourceFlagId ?? flag.id} referenceFlagId={flagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
-        initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={verifying}
-        initialVerificationAuditId={activeVerificationAuditId} onVerificationSettled={retry} /> :
-        view.actions.copy !== 'available' ? <SitePromptAccessActions availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
+      {!needsReview ? repairActions : null}
       {flag.pageUrl || otherPaths.length ? <div className="text-sm">
         <p className="text-xs font-medium text-muted-foreground">{C.seenOn}</p>
         <ul className="mt-1 flex flex-wrap gap-x-4">{[flag.pageUrl, ...otherPaths].filter((path): path is string => Boolean(path)).map(path => <li key={path} className="break-all"><RecordedPageLink url={path}
           className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{pagePath(path)}</RecordedPageLink></li>)}</ul>
       </div> : null}
-      <details className="text-sm"><summary className="flex min-h-11 cursor-pointer items-center font-medium">{C.evidenceDetails}</summary>
-        <div className="mt-3 space-y-4">
-          {data?.capture ? <BoardDetails image={{ src: data.capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={data.capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
+      <section className="space-y-4" aria-label={SITE_BOARD_COPY.flagEvidence}>
+          {data?.capture ? <BoardDetails image={{ src: data.capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={data.capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : <p className="text-xs text-muted-foreground">{C.captureMissing}</p>}
           <section className="space-y-3" aria-label={SITE_BOARD_COPY.flagEvidence}>
             <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
               factsClassName="grid gap-3 text-sm sm:grid-cols-2 [&>div]:rounded-control [&>div]:bg-muted/30 [&>div]:p-4"
@@ -61,8 +64,11 @@ export function SiteFlagContent({ siteId, flagId, view, seed, resource }: {
           </section>
           {flag.performanceEvidenceSource ? <p className="text-xs leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p> : null}
           {flag.viewport ? <p className="text-muted-foreground">{flag.viewport}</p> : null}
-        </div>
-      </details>
+      </section>
+      {needsReview ? <details className="rounded-control bg-muted/30 p-4" key={key}>
+        <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{C.previousFixInstructions}</summary>
+        <div className="mt-4">{repairActions}</div>
+      </details> : null}
     </> : failed ? <div role="status" className="space-y-3"><p>{C.flagUnavailable}</p><Button variant="outline" loading={refreshing} loadingLabel={SITE_ACTION_COPY.loading} onClick={() => void retry()}>{SITE_ACTION_COPY.retryResults}</Button></div> : <p role="status" className="text-sm text-muted-foreground">{C.loadingFlag}</p>}
   </>
 }

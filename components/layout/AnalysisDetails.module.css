@@ -1,1 +1,1 @@
-.status { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.4; }
+.status { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: hsl(var(--muted-foreground)); font-size: var(--text-caption); line-height: 1.4; }

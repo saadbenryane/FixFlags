@@ -70,9 +70,9 @@ describe('shared design contract', () => {
       const strong = hslHex(resolveVariables(values.get('--brand-strong')!, values))
       expect(contrast(strong, surface)).toBeGreaterThanOrEqual(4.5)
     }
-    // The explicitly approved control exception must remain precisely documented.
-    expect(contrast(brand.brandForeground, brand.brand)).toBeGreaterThanOrEqual(3.12)
-    expect(contrast(brand.brandForeground, brand.brand)).toBeLessThanOrEqual(3.14)
+    expect(hslHex(resolveVariables(values.get('--brand-control')!, values))).toBe(brand.brand)
+    expect(resolveVariables(values.get('--brand-control-hover')!, values))
+      .toBe(resolveVariables(values.get('--brand-hover')!, values))
   })
 
   it('generates resolvable semantic styles in both themes without changing board geometry or layers', async () => {

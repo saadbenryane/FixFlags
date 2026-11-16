@@ -99,7 +99,7 @@ export function SidebarNav({
         }}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'relative flex min-h-11 items-center rounded-[var(--radius-control)] text-sm font-medium transition-colors duration-150',
+          'relative flex min-h-11 items-center rounded-control text-sm font-medium transition-colors duration-150',
           compact ? 'justify-center px-2' : 'gap-3 px-3 py-2',
           active
             ? cn(

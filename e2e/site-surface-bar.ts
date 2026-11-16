@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { inspectAccessibilityViolations } from './approved-contrast'
 
 /**
@@ -76,11 +76,7 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
     }
 
     const violations = (await new AxeBuilder({ page: page as never }).analyze()).violations
-    const { failures, approvedContrastCount } = await inspectAccessibilityViolations(page, violations)
-    if (approvedContrastCount) await test.info().attach(`approved-control-contrast-${density.width}`, {
-      contentType: 'application/json', body: Buffer.from(JSON.stringify({ density, foreground: '#ffffff', background: '#ff5a00',
-        contrast: 3.13, minimumSmallTextContrast: 4.5, count: approvedContrastCount, fullWcagAaCompliance: false })),
-    })
+    const { failures } = await inspectAccessibilityViolations(page, violations)
     expect(
       failures,
       `axe violations at ${label}`,

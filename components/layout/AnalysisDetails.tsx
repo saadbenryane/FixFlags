@@ -45,14 +45,21 @@ export function SiteAnalysisDetails({ view, disconnected, readUnavailable = fals
   const retryNeeded = readUnavailable || Boolean(view.recoveryUnavailable)
   const offline = disconnected || retryNeeded
   const checkedAt = !active && !offline ? freshness.checkedAt : null
-  const label = offline ? SITE_WORKSPACE_COPY.disconnected : run.state === 'queued' ? SITE_WORKSPACE_COPY.queued : SITE_WORKSPACE_COPY.analyzing
+  const label = offline ? SITE_WORKSPACE_COPY.disconnected : run.state === 'queued' ? SITE_WORKSPACE_COPY.queued : SITE_WORKSPACE_COPY.phases[view.audit.status ?? ''] ?? SITE_WORKSPACE_COPY.analyzing
   const settledLabel = run.state === 'idle'
     ? view.audit.status === 'COMPLETED' ? SITE_WORKSPACE_COPY.analysisFinished : ''
     : run.label
   return <div key={siteId} className={active || offline || checkedAt ? 'flex flex-wrap items-center gap-x-3' : 'sr-only'}>
     <AnalysisDetails statusLabel={label} active={active} disconnected={offline} settledLabel={settledLabel} />
     {checkedAt ? <p className={styles.status}>{SITE_BOARD_COPY.lastChecked} <SiteEvidenceTime checkedAt={checkedAt} label={freshness.label} /></p> : null}
-    {retryNeeded && onRetry ? <Button ref={button} type="button" variant="ghost" size="xs" loading={busy} aria-busy={busy || undefined} onClick={() => void retry()}>{SITE_WORKSPACE_COPY.retryUpdates}</Button> : null}
+    {active && view.executionProgress ? <details className="relative text-xs text-muted-foreground">
+      <summary className="flex min-h-11 cursor-pointer items-center rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_WORKSPACE_COPY.progress}</summary>
+      <div className="absolute right-0 z-dropdown mt-1 w-64 max-w-[85vw] space-y-2 rounded-control bg-popover p-4 text-popover-foreground shadow-board">
+        <p>{SITE_WORKSPACE_COPY.progressCounts(view.executionProgress.completed, view.executionProgress.running, view.executionProgress.pending + view.executionProgress.recovering, view.executionProgress.unknown)}</p>
+        <p>{SITE_WORKSPACE_COPY.progressScope}</p>
+      </div>
+    </details> : null}
+    {offline && onRetry ? <Button ref={button} type="button" variant="ghost" size="xs" loading={busy} aria-busy={busy || undefined} onClick={() => void retry()}>{SITE_WORKSPACE_COPY.retryUpdates}</Button> : null}
   </div>
 }
 

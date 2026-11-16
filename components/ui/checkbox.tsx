@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useClientControlProps } from './interactive-controls'
 
@@ -22,9 +23,7 @@ const Checkbox = React.forwardRef<
     >
       <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center rounded-sm border border-input group-data-[state=checked]/checkbox:bg-primary group-data-[state=checked]/checkbox:text-primary-foreground group-data-[state=indeterminate]/checkbox:bg-primary group-data-[state=indeterminate]/checkbox:text-primary-foreground">
         <CheckboxPrimitive.Indicator className={cn("flex items-center justify-center text-current")}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <Check size={14} strokeWidth={2} aria-hidden />
         </CheckboxPrimitive.Indicator>
       </span>
     </CheckboxPrimitive.Root>

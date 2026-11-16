@@ -4,6 +4,14 @@ import { FlagEvidenceDetails } from '../FlagEvidenceDetails'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 
 describe('shared Flag evidence presentation', () => {
+  it('names the recorded overlay target without inferring that the menu failed', () => {
+    const raw = 'div .consent-banner role=dialog z-index=60 covers ~90% of target · Openfair.'
+    render(<FlagEvidenceDetails observed={raw} expected="The recorded link is reachable." />)
+    expect(screen.getByText(C.overlayObservation(90, 'Openfair'))).toBeVisible()
+    expect(screen.getByText(raw)).not.toBeVisible()
+    fireEvent.click(screen.getByText('Technical details', { selector: 'summary' }))
+    expect(screen.getByText(raw)).toBeVisible()
+  })
   it('opens each measured hash route at its exact recorded address with a distinct accessible name', () => {
     const pricing = 'https://example.com/#/pricing'
     const checkout = 'https://example.com/#/checkout'

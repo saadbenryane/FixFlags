@@ -1,5 +1,7 @@
 'use client'
 
+import { AfterCheckPasskeyPrompt } from '@/components/auth/AfterCheckPasskeyPrompt'
+
 
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
@@ -202,7 +204,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
         <SiteOverviewWorkspace summary={<SiteOverview host={view.presentation.identity.host}
-          lead={!checking && primaryProblem ? <SiteTopProblem siteId={siteId} flag={primaryProblem} copyAvailability={view.actions.copy}
+          lead={primaryProblem ? <SiteTopProblem siteId={siteId} flag={primaryProblem} copyAvailability={view.actions.copy}
             copyReady={view.actions.copy !== 'available' || Boolean(primaryProblem.fix.trim())} technologies={technologies} reportedBuilder={reportedBuilder} onOpen={openFlag}
             // The answer points fix instructions at the owner's tool, so it is asked inside the fix card.
             builderQuestion={ownsSite && !detectedBuilder(technologies) ? <SiteBuilderQuestion siteId={siteId} onAnswer={setReportedBuilder} /> : null} /> : undefined} captures={view.captures ?? []} captureAvailability={view.captureAvailability} capturePriority summaryItems={summaryItems}
@@ -240,6 +242,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
                 selectCategory(card.id)
               }} /></Frame> } }
             })} />
+        {ownsSite && user && view.audit.status === 'COMPLETED' ? <AfterCheckPasskeyPrompt key={user.id} ownerId={user.id} /> : null}
         {(() => {
           const unfinished = !checking ? recoveryLink() : null
           return unfinished?.action === 'inspect' ? <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">{SITE_ACTION_COPY.recovery.inspectLead}

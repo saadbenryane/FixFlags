@@ -229,7 +229,7 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
   overlays: { ...define('overlays', 'Covered controls', 'browser', {
     'overlay-nav': assertion('conversion', ['overlay-blocks-nav']), 'overlay-cta': assertion('conversion', ['overlay-blocks-cta']),
     'overlay-form': assertion('conversion', ['overlay-blocks-form']), 'overlay-scope': assertion('conversion'),
-  }), requiredEvidence: ['initial-control-hit-tests'], timeoutMs: 30_000 },
+  }), version: 2, requiredEvidence: ['initial-control-hit-tests'], timeoutMs: 30_000 },
   'slow-replay': { ...define('slow-replay', 'Slow connection visibility', 'browser', {
     'meaningful-text': assertion('performance', ['slow-3g-blank-screen']),
     'primary-action-visibility': assertion('performance', ['slow-3g-cta-delayed']),

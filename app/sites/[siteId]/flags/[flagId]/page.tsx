@@ -1,5 +1,7 @@
 import { repairGuidanceState } from '@/lib/improvements/repair-guidance'
 import { prisma } from '@/lib/db'
+import { after } from 'next/server'
+import { recordSiteEvidenceRead } from '@/lib/analytics/site-evidence-read'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { notFound } from 'next/navigation'
@@ -78,13 +80,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const affectedPaths = [...new Set(flag.affectedPaths?.length ? flag.affectedPaths : flag.pageUrl ? [flag.pageUrl] : [])]
   async function recordOpening() {
     if (ownsSite) {
-      await recordSiteLifecycleEvent({
-        name: 'flag_opened',
-        idempotencyKey: `flag_opened:${site.projectId}:${flag.id}`,
-        userId: site.userId,
-        projectId: site.projectId,
-        properties: { area: flag.area, severity: flag.severity },
-      }).catch(() => undefined)
+      if (site.projectId && site.userId) await recordSiteEvidenceRead({ projectId: site.projectId, userId: site.userId,
+        flagId: flag.id, auditId: flag.sourceAuditId, area: flag.area, severity: flag.severity }).catch(() => undefined)
       if (source === 'watch-email') {
         await recordSiteLifecycleEvent({
           name: 'notification_returned',
@@ -99,9 +96,9 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const [home, connectionViews] = await Promise.all([
     homePromise,
     connectionViewsPromise,
-    recordOpening(),
   ])
   if (!home) notFound()
+  after(recordOpening)
   const connectionContext = connectionLines(connectionViews?.facts ?? [], flag.pageUrl)
   const relatedOutcome = home.outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
 
@@ -152,6 +149,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   const plainTitle = customerFindingLabel(flag)
   const showActions = ownsSite && (resolution.kind === 'open' || resolution.kind === 'verifying')
+  const needsReview = flag.status === 'UNVERIFIED' && !flag.verifying
+  const repairActions = <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.activeVerificationAuditId} verifying={flag.verifying} />
   const linkClass = 'inline-flex min-h-11 max-w-full items-center gap-1.5 break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
 
   return (
@@ -182,15 +181,15 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             </p>
           ) : null}
 
-          <div className={`${styles.evidenceGrid} ${showActions ? styles.withActions : ''}`}>
-            {/* The next action leads on phones and sits beside the evidence on wide screens. */}
-            {showActions ? (
+          <div className={`${styles.evidenceGrid} ${showActions && !needsReview ? styles.withActions : ''}`}>
+            {/* Confirmed open problems lead with repair; uncertain ones lead with their evidence. */}
+            {showActions && !needsReview ? (
               <aside className={`rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:sticky lg:top-6 ${styles.actions}`} aria-labelledby="fix-and-verify-heading">
                 <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
                   {SITE_BOARD_COPY.fixAndVerify}
                 </h2>
                 <div className="mt-6">
-                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} referenceFlagId={flagId} initial={home} initialVerificationAuditId={flag.activeVerificationAuditId} verifying={flag.verifying} />
+                  {repairActions}
                 </div>
               </aside>
             ) : null}
@@ -203,17 +202,17 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </h2>
                 {resolution.kind === 'proven' ? <p className="mt-1 text-sm text-muted-foreground">{plainTitle}</p> : null}
                 <div className="mt-5 space-y-5">
-                  {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
+                  {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : <p className="text-sm text-muted-foreground">{SITE_DASHBOARD_COPY.captureMissing}</p>}
                   {affectedPaths.length > 1 ? <details className="text-sm">
                     <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.viewAll(affectedPaths.length)}</summary>
                     <ul className="mt-2 space-y-1">{affectedPaths.map((path) => <li key={path}><RecordedPageLink url={path} className={linkClass}>{recordedPathLabel(path)}</RecordedPageLink></li>)}</ul>
                   </details> : null}
+                  <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
+                        observedLabel={FLAG_PAGE_COPY.observed} expectedLabel={FLAG_PAGE_COPY.expected}
+                        supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
                   <details className="text-sm">
                     <summary className="flex min-h-11 cursor-pointer items-center font-medium text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{FLAG_PAGE_COPY.details}</summary>
                     <div className="mt-3 space-y-5">
-                      <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior} diagnosis={flag.problem}
-                        observedLabel={FLAG_PAGE_COPY.observed} expectedLabel={FLAG_PAGE_COPY.expected}
-                        supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
                       {flag.performanceEvidenceSource ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
                     <p>{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p>
                     {flag.performanceEvidence?.length ? <details>
@@ -276,6 +275,10 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </ol>
               </section> : null}
             </div>
+            {showActions && needsReview ? <details className="rounded-board-panel bg-background p-5 shadow-board sm:p-6">
+              <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_DASHBOARD_COPY.previousFixInstructions}</summary>
+              <div className="mt-4">{repairActions}</div>
+            </details> : null}
           </div>
         </FlagResolutionPanel>
       </div>

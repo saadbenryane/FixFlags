@@ -98,7 +98,7 @@ export const AI_BUILDERS_PAGE = {
   open: (name: string) => `FixFlags for ${name}`,
   loopHeader: { label: 'The loop', lines: ['Four steps.', 'The same in every tool.'] as const },
   loop: [
-    { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. No install, no signup to start.' },
+    { label: PRODUCT_STORY.loop[0], title: 'Check the live site', body: 'Paste your published URL. Nothing to install. Create a free account to see results as checks finish.' },
     { label: PRODUCT_STORY.loop[1], title: 'See what’s broken', body: 'Each Flag shows the page, what happened, what should happen, and the evidence.' },
     { label: PRODUCT_STORY.loop[2], title: 'Hand your AI the fix', body: 'Copy the fix instructions into the tool you build with. Review the change and publish.' },
     { label: PRODUCT_STORY.loop[3], title: 'Prove it worked', body: 'Select Recheck. FixFlags checks the same page and action on the live site.' },

@@ -31,8 +31,8 @@ export function SiteSwitcher({ current }: { current?: { id: string; host: string
   return <DropdownMenu onOpenChange={open => { if (open) void load() }}>
     <DropdownMenuTrigger asChild>
       <button type="button" aria-label={`${C.label}: ${current?.host ?? C.all}`}
-        className="flex min-h-12 w-full items-center gap-3 rounded-[var(--radius-control)] bg-muted/50 px-3 text-left text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-background text-muted-foreground shadow-[0_1px_2px_hsl(30_10%_20%/.08)]"><LayoutGrid className="h-4 w-4" aria-hidden /></span>
+        className="flex min-h-12 w-full items-center gap-3 rounded-control bg-muted/50 px-3 text-left text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-background text-muted-foreground shadow-hairline"><LayoutGrid className="h-4 w-4" aria-hidden /></span>
         <span className="min-w-0 flex-1 truncate">{current?.host ?? C.all}</span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>

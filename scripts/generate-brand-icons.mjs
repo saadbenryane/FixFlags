@@ -12,6 +12,7 @@ const ink = '#0B0B0D'
 const white = '#FFFFFF'
 const mark = await readFile('public/brand/logo-mark.svg', 'utf8')
 const markPaths = mark.match(/<path[^>]+\/>/g).join('')
+const [, , markWidth, markHeight] = mark.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number)
 const bold = parseFont(await readFile('scripts/assets/fonts/InterTight-Bold.ttf'))
 const semibold = parseFont(await readFile('scripts/assets/fonts/InterTight-SemiBold.ttf'))
 
@@ -29,12 +30,12 @@ function textPaths(text, font, x, baseline, size, color) {
 }
 
 function markAt(x, y, height) {
-  return `<g fill="${primary}" transform="translate(${x} ${y}) scale(${height / 779})">${markPaths}</g>`
+  return `<g fill="${primary}" transform="translate(${x} ${y}) scale(${height / markHeight})">${markPaths}</g>`
 }
 
 async function icon(size, path, { background = 'transparent', scale = .74 } = {}) {
   const height = size * scale
-  const width = height * 474 / 779
+  const width = height * markWidth / markHeight
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${background !== 'transparent' ? `<rect width="${size}" height="${size}" fill="${background}"/>` : ''}${markAt((size - width) / 2, (size - height) / 2, height)}</svg>`
   // Rasterize the paths at each target's native resolution. No bitmap enlargement.
   let raster = sharp(Buffer.from(svg))
@@ -50,7 +51,7 @@ for (const [name, display] of Object.entries({ sm: 24, md: 28, lg: 32 })) {
 
 for (const size of [16, 32, 48]) await icon(size, `public/icon-${size}.png`, { scale: .94 })
 await icon(96, 'public/icon-96.png', { scale: .94 })
-await writeFile('public/icon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${markAt((32 - 30 * 474 / 779) / 2, 1, 30)}</svg>`)
+await writeFile('public/icon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${markAt((32 - 30 * markWidth / markHeight) / 2, 1, 30)}</svg>`)
 for (const size of [192, 512]) await icon(size, `public/icon-${size}.png`, { background: white })
 await icon(512, 'public/icon-512-maskable.png', { background: white, scale: .66 })
 await icon(180, 'public/apple-icon.png', { background: white })
@@ -60,7 +61,7 @@ const { default: pngToIco } = await import('png-to-ico')
 await writeFile('public/favicon.ico', await pngToIco(['public/icon-16.png', 'public/icon-32.png', 'public/icon-48.png']))
 
 for (const [theme, color] of [['light', ink], ['dark', white]]) {
-  const fix = textPaths('Fix', bold, 94, 94, 96, color)
+  const fix = textPaths('Fix', bold, Math.round(120 * markWidth / markHeight) + 21, 94, 96, color)
   const flags = textPaths('Flags', semibold, fix.end, 94, 96, color)
   const width = Math.ceil(flags.end + 2)
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 120" role="img" aria-label="FixFlags">${markAt(0, 0, 120)}${fix.paths}${flags.paths}</svg>`

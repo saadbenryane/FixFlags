@@ -16,6 +16,7 @@ export const overlayTargetSchema = z.object({ kind: z.enum(['nav', 'cta', 'form'
 const blockerSchema = z.object({ tag: z.string(), id: z.string().nullable(), className: z.string(), role: z.string().nullable(), text: z.string(), zIndex: z.string(),
   coverageFraction: z.number().min(0).max(1).optional(), persisted: z.boolean().optional(), looksLikeOverlay: z.boolean().optional(), looksLikeConsentChrome: z.boolean().optional() }).strict()
 export const overlayObservationSchema = z.object({ version: z.literal(1), device: z.enum(['desktop', 'mobile']), scope: captureObservationScopeSchema,
+  capture: z.object({ url: z.string(), recordedAt: z.string().datetime(), context: z.string().regex(OVERLAY_CONTEXT_PATTERN) }).strict().optional(),
   phase: z.string().regex(/^(page_load|primary_action(?:_after)?|pricing_navigation(?:_after)?|(?:flow_)?form_validation(?:_after)?|journey_[a-z0-9_-]+)$/).max(160).optional(),
   complete: z.boolean(), contentVisible: z.boolean(), restricted: z.boolean(),
   controls: z.array(overlayTargetSchema.extend({ disposition: z.enum(['passed', 'failed', 'unknown']),
@@ -65,7 +66,7 @@ export function overlayCheckReceipts(observations: OverlayObservation[], executi
     return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'overlays', pageUrl: observation.scope.pageUrl,
       applicable: true, assertions, complete: assertions.every(item => item.complete === true), passed: assertions.every(item => item.passed),
       limitation: 'Recorded control and interaction phase only. Overlay recovery does not establish a completed business outcome.',
-      execution: { ...execution, checkVersion: 1, source: 'rendered-dom' } })
+      execution: { ...execution, checkVersion: 2, source: 'rendered-dom' } })
   })
 }
 export function overlayReceiptScope(receipt: ReturnType<typeof overlayCheckReceipts>[number]) {

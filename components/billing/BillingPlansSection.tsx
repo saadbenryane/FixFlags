@@ -48,7 +48,7 @@ export function BillingPlansSection({ currentPlan }: Props) {
               <div className="flex items-start justify-between gap-3">
                 <span
                   className={cn(
-                    'inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-muted/70 text-foreground',
+                    'inline-flex h-10 w-10 items-center justify-center rounded-control bg-muted/70 text-foreground',
                     plan.highlight && 'bg-brand/10 text-brand',
                   )}
                 >

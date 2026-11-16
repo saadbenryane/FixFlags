@@ -161,6 +161,62 @@
         "scripts/generate-social-card.mts"
       ],
       "replaces": []
+    },
+    {
+      "id": "check-performance-glass-v1",
+      "src": "/marketing/visuals/check-performance-glass-v1.webp",
+      "classification": "approved",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "check-tracking-glass-v1",
+      "src": "/marketing/visuals/check-tracking-glass-v1.webp",
+      "classification": "approved",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "check-accessibility-glass-v1",
+      "src": "/marketing/visuals/check-accessibility-glass-v1.webp",
+      "classification": "approved",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "check-uptime-glass-v1",
+      "src": "/marketing/visuals/check-uptime-glass-v1.webp",
+      "classification": "approved",
+      "width": 1254,
+      "height": 1254,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "lib/marketing/check-artwork.ts"
+      ],
+      "replaces": []
     }
   ]
 }

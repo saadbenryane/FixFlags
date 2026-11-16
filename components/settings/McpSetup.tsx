@@ -65,7 +65,7 @@ export function McpSetup({ ownerId, initialEditor = 'cursor' }: { ownerId: strin
     <label htmlFor="mcp-editor" className="block space-y-2 text-sm font-medium">
       {C.editor}
       <InteractiveSelect id="mcp-editor" value={editorKey} onChange={event => setEditorKey(event.currentTarget.value as EditorIntegrationKey)}
-        className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm max-sm:text-base">
+        className="flex h-11 w-full rounded-control border border-border bg-background px-3 text-sm max-sm:text-base">
         {EDITOR_INTEGRATIONS.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
       </InteractiveSelect>
     </label>

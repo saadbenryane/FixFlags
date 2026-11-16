@@ -206,6 +206,8 @@ export const AUDIT_PROGRESS = {
   inProgress: 'Checking your website…',
   submitLoading: 'Checking…',
   bannerScanning: 'Checking',
+  bannerQueued: 'Waiting to check',
+  bannerReturn: 'Return to Site',
   workerQueuedWarningDev:
     'Report is still preparing. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:

@@ -20,7 +20,7 @@ import { fetchJsonWithDeadline } from '@/lib/api/client-request'
 const responseSchema = z.object({ ok: z.literal(true), notifications: notificationPreferencesSchema.extend({
   nextSendAt: z.string().datetime().nullable(),
 }) })
-const selectClass = 'min-h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 py-2 text-sm max-sm:text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50'
+const selectClass = 'min-h-11 w-full rounded-control border border-border bg-background px-3 py-2 text-sm max-sm:text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50'
 
 export function EmailPreferences({ ownerId, initial, nextSendAt, email, emailVerified, hasMonitoredSites, followCadence = null, history = [], blocked = false }: {
   ownerId: string;

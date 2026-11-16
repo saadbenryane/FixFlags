@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { CheckCircle2, Loader2 } from 'lucide-react'
@@ -11,7 +11,6 @@ import { useMe } from '@/hooks/useMe'
 import { trackEvent } from '@/lib/analytics/events'
 import { AUTH } from '@/lib/marketing/copy-barrel'
 import { useSiteAuthContext } from '@/hooks/useSiteAuthContext'
-import { PasskeyEnrollPrompt, shouldShowPasskeyEnroll } from '@/components/auth/PasskeyEnrollPrompt'
 import { runPostLoginClaimFlow, type ClaimFlowAccount } from '@/hooks/post-login-claim-flow'
 import { useSiteAction } from '@/hooks/useSiteAction'
 
@@ -22,7 +21,6 @@ function PostLoginRedirect() {
   const searchParams = useSearchParams()
   const isNewOauthUser = searchParams.get('signup') === '1'
   const trackedRef = useRef(false)
-  const [enrollment, setEnrollment] = useState<{ account?: ClaimFlowAccount | null } | null>(null)
   const claimStarted = useRef(false)
   const { busy, error: flowError, submit } = useSiteAction()
 
@@ -38,13 +36,13 @@ function PostLoginRedirect() {
     await submit(signal => runPostLoginClaimFlow({
       signal,
       claim: () => claimAnonymous({ showToast: true }),
-      shouldEnroll: shouldShowPasskeyEnroll,
-      skipEnrollment: Boolean(next),
-      showEnrollment: claimed => setEnrollment({ account: claimed.user }),
+      shouldEnroll: async () => false,
+      skipEnrollment: true,
+      showEnrollment: () => {},
       beforeNavigate: claimed => trackSignup(claimed.user === undefined ? user : claimed.user),
       navigate: navigateAfterAuth,
     }), () => null)
-  }, [claimAnonymous, navigateAfterAuth, next, submit, trackSignup, user])
+  }, [claimAnonymous, navigateAfterAuth, submit, trackSignup, user])
 
   useEffect(() => {
     let active = true
@@ -57,23 +55,11 @@ function PostLoginRedirect() {
     return () => { active = false }
   }, [startClaimFlow])
 
-  if (enrollment) {
-    return (
-      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <PasskeyEnrollPrompt ownerId={user?.id ?? null} onComplete={() => {
-          setEnrollment(null)
-          trackSignup(enrollment.account === undefined ? user : enrollment.account)
-          void navigateAfterAuth()
-        }} />
-      </div>
-    )
-  }
-
   if (error || flowError) {
     return (
       <div className="flex max-w-sm flex-col items-center gap-3 text-center" role="alert">
-        <p className="font-medium">{AUTH.reportContext.saveError}</p>
-        <p className="text-sm text-muted-foreground">{error ?? AUTH.me.claimError}</p>
+        <p className="font-medium">{isSiteContext ? AUTH.reportContext.saveError : AUTH.postLogin.retryTitle}</p>
+        <p className="text-sm text-muted-foreground">{isSiteContext ? error ?? AUTH.me.claimError : AUTH.postLogin.retryBody}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button
             onClick={() => void startClaimFlow()}

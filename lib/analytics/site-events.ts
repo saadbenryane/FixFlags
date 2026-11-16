@@ -11,6 +11,7 @@ export const SITE_LIFECYCLE_EVENTS = [
   'site_claimed',
   'analysis_claimed',
   'flag_opened',
+  'first_evidence_read',
   'fix_handoff',
   'verify_started',
   'verify_result',

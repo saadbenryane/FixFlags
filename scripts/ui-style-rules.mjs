@@ -34,5 +34,25 @@ export function uiStyleFailures(file, source) {
   if (/text-\[1[012]px\]/.test(source)) {
     failures.push(`${file}: arbitrary micro font size (use text-2xs/text-3xs or .section-label/.meta-label)`)
   }
+  return failures.concat(tokenStyleFailures(file, source))
+}
+
+/**
+ * Shared values come from lib/design/tokens.css: the warm elevation scale, the pill radius and the
+ * UI type scale (10 to 16px). Display and editorial headings above 16px may keep local sizes.
+ */
+export function tokenStyleFailures(file, source) {
+  if (file === 'lib/design/tokens.css' || file === 'app/demo/demo.css') return []
+  if (file.includes('/__tests__/') || /\.(?:test|spec)\./.test(file)) return []
+  const failures = []
+  if (/hsl\(30[ _]1[05]%[ _]20%|hsl\(30[ _]20%[ _]18%/.test(source)) {
+    failures.push(`${file}: hand-typed warm shadow (use --shadow-hairline, -chip, -paper, -window or -window-lifted)`)
+  }
+  if (/border-radius:\s*9{3,4}px/.test(source)) {
+    failures.push(`${file}: literal pill radius (use var(--radius-pill))`)
+  }
+  if (/\.css$/.test(file) && /font-size:\s*(?:1[0-6](?:\.\d+)?px|0?\.(?:6875|75|8125|875|9|9375)rem|1rem)\s*[;}]/.test(source)) {
+    failures.push(`${file}: literal UI font size (use var(--text-*) from the type scale)`)
+  }
   return failures
 }
