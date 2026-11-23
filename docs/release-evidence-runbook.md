@@ -52,6 +52,20 @@ On 2026-11-23, the production database could not start with roughly 8 MB free. T
 
 During the rollout, PostgreSQL recovered from multiple killed backends. Its log named the current-Finding read on one killed backend. That read generated a separate set of ownership joins for each incident. The replacement batches IDs by Site, keeps the source, occurrence, and incident ownership predicates, and retains the existing page limit. The disposable PostgreSQL regression covers distinct Sites, an inconsistent occurrence, and a cohort spanning the incident batch boundary.
 
+### November 23 production recovery receipt
+
+Railway production ran `b583dce123cd458f3bc8f1121ea244b3eb50a454` on both services. Web deployment `22872a2b-0e10-4c1f-8db9-4fe440847b4f` became healthy at 04:06 UTC with image `sha256:45cac35a030b7c55f509b26f3b55db0a7e6347f5b981631a7f6253d91c213ab0`. Worker deployment `b408e611-c7b2-4e31-b8d4-3f2eaa12a4f1` became healthy at 04:05 UTC with image `sha256:d6009a9e4f69edf028f526ef62a3bc0e64f32aa15341e723f82ea18162a6603e`. The live revision and readiness endpoints agreed with Railway's deployment records. Homepage, pricing, sign-up, and auth-provider requests returned HTTP 200. Fifty-three disposable PostgreSQL and Redis tests passed for the query and related evidence and email projections.
+
+Two overdue scheduled summaries settled on the new worker. Their durable send records and verified provider events recorded acceptance and delivery for both. This receipt covers the recovered summaries and public route availability. The full customer signup and repair journey, a fresh independent backup restore, and safe compaction of historical payloads each need their own receipt.
+
+The 04:10 and 04:20 UTC production uptime cycles each recorded six on-time, first-attempt online observations. The worker reported zero overdue schedules, overdue probes, undelivered alerts, or unsettled summaries. PostgreSQL's kernel memory-kill counter stayed at nine through both cycles. Full website audits were still progressing at the end of those uptime observations.
+
+Railway's PostgreSQL memory metric peaked at 8.00 GB between 03:48 and 04:05 UTC and at 1.65 GB between the worker cutover and the 04:13 UTC reading. The windows contain different production activity and establish an operational observation rather than a controlled benchmark.
+
+Website verification exposed an extra read per Site in the recovery build. The follow-up keeps shared summary and proof reads for up to four Sites at a time, with one bound incident predicate per Site. Seventy focused cases passed, including disposable PostgreSQL and Redis coverage for cross-Site isolation, paginated findings, and summary delivery.
+
+The current workspace uses Railway Hobby. Railway's configurable disk alerts require Pro, and no capacity alert delivery was observed. The service filesystem measured 92% full during backlog processing, above the runbook's urgent threshold.
+
 ## Independent encrypted database backups
 
 The maintained job is `ops/database-backup/backup.py`, packaged separately by

@@ -185,18 +185,26 @@ run('current finding history with bounded PostgreSQL reads', () => {
     const extra = await prisma.improvement.createManyAndReturn({ data: Array.from({ length: 34 }, (_, index) => ({
       ...incident, fingerprint: `fixture-${index}`,
     })) })
+    const otherIncident = await prisma.improvement.create({ data: { ...incident, projectId: otherProject.id } })
+    const otherFlag = await prisma.flag.create({ data: { ...detected, auditId: otherAudit.id, status: 'OPEN',
+      source: 'DETERMINISTIC', fingerprint: otherIncident.fingerprint, position: 0, pageUrl: otherProject.url,
+      whyItMatters: 'Visitors wait' } })
+    await prisma.improvementOccurrence.create({ data: { improvementId: otherIncident.id, auditId: otherAudit.id,
+      flagId: otherFlag.id, kind: 'OBSERVED' } })
     await prisma.improvementOccurrence.update({ where: { flagId: currentIds[0] }, data: { auditId: otherAudit.id } })
 
     const findFlags = vi.spyOn(prisma.flag, 'findMany')
-    const current = await loadCurrentFindingSources([projectId, otherProject.id], [{ ...incident, id: incidentId }, ...extra])
+    const current = await loadCurrentFindingSources([projectId, otherProject.id], [{ ...incident, id: incidentId }, ...extra, otherIncident])
     expect(current.byImprovement.get(incidentId)?.map(row => row.flag.id)).toEqual([currentIds[2], currentIds[1]])
+    expect(current.byImprovement.get(otherIncident.id)?.map(row => row.flag.id)).toEqual([otherFlag.id])
     expect(current.unbound.get(projectId)?.map(row => row.id)).toEqual([unboundId])
     expect(current.unbound.get(otherProject.id)).toEqual([])
-    const scopedReads = findFlags.mock.calls.flatMap(([args]) => args?.where?.OR?.filter(branch =>
+    const scopedReads = findFlags.mock.calls.map(([args]) => args?.where?.OR?.filter(branch =>
       branch.improvementOccurrence && 'improvementId' in branch.improvementOccurrence) ?? [])
-    expect(scopedReads.every(branch => branch.audit && 'projectId' in branch.audit && branch.audit.projectId === projectId)).toBe(true)
-    expect(scopedReads.length).toBeGreaterThan(1)
-    expect(new Set(scopedReads.map(branch => JSON.stringify(branch)))).toHaveLength(2)
+    const firstSiteReads = scopedReads.flat().filter(branch => branch.audit && 'projectId' in branch.audit && branch.audit.projectId === projectId)
+    expect(new Set(firstSiteReads.map(branch => JSON.stringify(branch)))).toHaveLength(2)
+    expect(scopedReads.every(branches => new Set(branches.map(branch => JSON.stringify(branch.audit))).size === branches.length)).toBe(true)
+    expect(scopedReads.some(branches => branches.length === 2)).toBe(true)
   })
 
   it('uses recorded observation order consistently when an older source is linked later', async () => {

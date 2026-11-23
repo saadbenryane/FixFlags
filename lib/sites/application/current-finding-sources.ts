@@ -11,6 +11,7 @@ import { loadConfirmedOutcomeFlagIds } from './outcome-finding-sources'
 
 const SOURCE_BATCH = 128
 const INCIDENT_BATCH = 32
+const SITE_BATCH = 4
 const sourceSelect = { id: true, auditId: true, createdAt: true, checkId: true, rubric: true, severity: true,
   impactTag: true, pageUrl: true, status: true, resolvedInId: true, confidence: true, affectedPaths: true,
   fingerprint: true, attentionPolicy: true } satisfies Prisma.FlagSelect
@@ -84,17 +85,20 @@ export async function loadCurrentFindingSources(projectIds: string[], incidents:
   }
   const seen = new Map(projectIds.map(projectId => [projectId, new Set<string>()]))
   const incidentsByProject = Map.groupBy(incidents, incident => incident.projectId)
-  for (const projectId of projectIds) {
-    const owned = incidentsByProject.get(projectId) ?? []
+  for (let siteOffset = 0; siteOffset < projectIds.length; siteOffset += SITE_BATCH) {
+    const sites = projectIds.slice(siteOffset, siteOffset + SITE_BATCH)
+    const owned = sites.flatMap(projectId => incidentsByProject.get(projectId) ?? [])
     if (!owned.length && !includeUnbound) continue
     for (let offset = 0; offset < Math.max(owned.length, 1); offset += INCIDENT_BATCH) {
       const selected = owned.slice(offset, offset + INCIDENT_BATCH)
-      // One relation predicate per Site keeps the three ownership checks
-      // intact without making Prisma repeat the same joins for every incident.
-      const bound: Prisma.FlagWhereInput[] = selected.length ? [{ audit: { projectId }, improvementOccurrence: {
-        improvementId: { in: selected.map(incident => incident.id) }, audit: { projectId }, improvement: { projectId },
-      } }] : []
-      const conditions = offset === 0 && includeUnbound ? [...bound, unboundSiteFindingWhere(projectId)] : bound
+      // Cap relation joins by Site while sharing the history and proof reads
+      // across Sites in the same batch.
+      const bound: Prisma.FlagWhereInput[] = [...Map.groupBy(selected, incident => incident.projectId)].map(([projectId, group]) => ({
+        audit: { projectId }, improvementOccurrence: {
+          improvementId: { in: group.map(incident => incident.id) }, audit: { projectId }, improvement: { projectId },
+        },
+      }))
+      const conditions = offset === 0 && includeUnbound ? [...bound, unboundSiteFindingWhere(sites)] : bound
       let cursor: string | undefined
       for (;;) {
         const rows = await prisma.flag.findMany({ where: { OR: conditions }, select: { ...sourceSelect, audit: { select: { projectId: true } },
