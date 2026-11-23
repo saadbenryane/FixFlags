@@ -36,6 +36,20 @@ If rollback is required, retain the failed deployment and logs, stop admitting p
 
 The final production receipt must link the actual retained-image observation and schema rehearsal. A prepared command or a healthy endpoint alone cannot close rollback readiness.
 
+## PostgreSQL storage pressure
+
+Compare Railway volume usage and its growth trend with the database's relation sizes before choosing a cleanup. When PostgreSQL accepts connections, run `psql -X -f ops/postgres-storage-audit.sql` inside an approved environment using its existing connection configuration. The read-only report shows table, index and TOAST bytes, estimated live and dead rows, vacuum timestamps, and retained WAL due to replication slots. Run again with `-v deep=true` on a restored copy to count event and task payloads, including exact same-generation duplicates. It emits no evidence payloads or customer records.
+
+Review `railway metrics --service Postgres --volume --since 7d` for growth. Use 70% as the initial investigation threshold and 85% as the urgent threshold. Escalate earlier when the recent rate projects exhaustion within three days. Route alerts to the approved operator outside FixFlags and verify delivery before relying on them. [Railway observability monitors](https://docs.railway.com/observability#monitors)
+
+If Postgres cannot start because the volume is full, SQL deletes and vacuum are unavailable. Preserve the database-managed files and WAL. Check for an approved recovery point and provider-supported capacity recovery. Ordinary vacuum makes space reusable inside the database. A table rewrite needs working space, a tested recovery point, and a maintenance window.
+
+If a prior cutover left standalone backup archives on the database volume, confirm their paths, sizes, and checksums through the approved maintenance environment. Copy the archives to independent encrypted storage, verify the copies and restore the selected recovery point in isolation before removing the source archives. Keep cutover dumps off the database volume for future migrations.
+
+Start with data that has explicit retention, including expired uptime probes, Product Signals, provider budget windows and verification messages. Confirm their normal sweeps are healthy. Keep Flag, comparison, occurrence, and delivery evidence. Review exact duplicate terminal observation payloads as a separate compaction candidate and preserve earlier or partial generations.
+
+On 2026-11-23, the production database could not start with roughly 8 MB free. The older October cutover archive and its listing were removed after verifying the newer archive's catalog and checksum. That freed roughly 501 MB without modifying database-managed files. PostgreSQL started normally, web readiness returned HTTP 200, and the worker reported no overdue monitoring. At recovery, task, event, and verification tables occupied about 3.47 GB combined. The full duplicate comparison timed out on production. Keep that comparison and any table rewrite on an isolated copy before scheduling further compaction.
+
 ## Independent encrypted database backups
 
 The maintained job is `ops/database-backup/backup.py`, packaged separately by

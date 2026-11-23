@@ -71,7 +71,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Pages', 'Conversion', 'Uptime', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility'])
     const findings = within(board).getByRole('region', { name: 'Flags summary' })
     const capture = within(board).getByRole('region', { name: 'Website preview' })
-    expect(capture.compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(findings.compareDocumentPosition(capture)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     const uptime = within(board).getByRole('article', { name: 'Uptime' })
     expect(uptime.compareDocumentPosition(within(board).getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(SITE_CARD_AREAS[0]).toBe('uptime')

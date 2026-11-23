@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   aggregateWorkerHeartbeats,
+  publishWorkerState,
+  touchWorkerHeartbeat,
   type WorkerHeartbeatRecord,
 } from '@/lib/queue/worker-heartbeat'
+
+vi.mock('@/lib/queue/redis', () => ({ createQueueRedis: () => ({ set: vi.fn().mockResolvedValue('OK') }) }))
 
 const now = 2_000_000
 
@@ -21,6 +25,28 @@ function heartbeat(
 }
 
 describe('worker heartbeat aggregation', () => {
+  it('publishes process readiness only while a confirmed uptime sweep and heartbeat are fresh', async () => {
+    const send = vi.fn()
+    vi.stubGlobal('process', Object.assign(Object.create(process), { connected: true, send }))
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+    try {
+      publishWorkerState('ready')
+      expect(send).toHaveBeenLastCalledWith({ type: 'fixflags:worker-state', state: 'starting' }, expect.any(Function))
+      await touchWorkerHeartbeat({ queueState: 'idle', uptimeReady: true, lastUptimeSweepAt: new Date(now).toISOString() })
+      expect(send).toHaveBeenLastCalledWith({ type: 'fixflags:worker-state', state: 'ready' }, expect.any(Function))
+      clock.mockReturnValue(now + 91_000)
+      await touchWorkerHeartbeat()
+      expect(send).toHaveBeenLastCalledWith({ type: 'fixflags:worker-state', state: 'starting' }, expect.any(Function))
+      await touchWorkerHeartbeat({ uptimeReady: true, lastUptimeSweepAt: new Date(Date.now()).toISOString() })
+      expect(send).toHaveBeenLastCalledWith({ type: 'fixflags:worker-state', state: 'ready' }, expect.any(Function))
+      clock.mockReturnValue(now + 140_000)
+      publishWorkerState('ready')
+      expect(send).toHaveBeenLastCalledWith({ type: 'fixflags:worker-state', state: 'starting' }, expect.any(Function))
+    } finally {
+      clock.mockRestore()
+      vi.unstubAllGlobals()
+    }
+  })
   it('aggregates only complete, internally consistent ownership inventories', () => {
     const contextOwnership = { audit: 1, inspection: 0, probe: 0, unattributed: 1, closing: 1, overdue: 1 }
     const valid = heartbeat('current', { contextOwnership, activeBrowserContexts: 2 })

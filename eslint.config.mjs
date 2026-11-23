@@ -11,6 +11,7 @@ const config = [
       '.next/**',
       '.next-*/**',
       '.cache/**',
+      '.data/**',
       'coverage/**',
       'dist/**',
       '**/dist/**',

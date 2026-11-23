@@ -84,15 +84,22 @@ export function savedEvidenceCompositionIsCanonical(source) {
   const file = ts.createSourceFile('CompletedReportView.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   if (file.parseDiagnostics.length) return false
   const tags = [], headings = []
+  let linksToSiteEntry = false
   const visit = node => {
-    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) tags.push(node.tagName.getText(file))
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(file)
+      tags.push(tag)
+      if (tag === 'Link' && node.attributes.properties.some(attribute => ts.isJsxAttribute(attribute) &&
+        attribute.name.getText(file) === 'href' && attribute.initializer &&
+        ts.isStringLiteral(attribute.initializer) && attribute.initializer.text === '/new')) linksToSiteEntry = true
+    }
     if (ts.isJsxText(node)) headings.push(node.text)
     ts.forEachChild(node, visit)
   }
   visit(file)
   return tags.includes('AuditShell') && tags.includes('main') &&
     headings.some(text => text.includes('Saved observations')) &&
-    headings.some(text => text.includes('Analyze a website')) &&
+    linksToSiteEntry &&
     !tags.some(tag => /^(AuditReport|LiveReportExplorer|ReportWorkspaceSplitShell|WorkspaceChatPanel|ReportCanvasPanel)$/.test(tag))
 }
 

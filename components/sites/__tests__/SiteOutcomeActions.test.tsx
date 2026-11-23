@@ -347,6 +347,7 @@ it('observes verification admission and completion through one shared Site strea
 })
 
 it('observes completion by polling when event streaming is unavailable', async () => {
+  vi.useFakeTimers()
   const initial = viewFixture(); initial.outcomes[0].running = true
   const complete = structuredClone(initial); complete.outcomes[0].running = false
   vi.stubGlobal('EventSource', undefined)
@@ -355,9 +356,15 @@ it('observes completion by polling when event streaming is unavailable', async (
   const rendered = show(initial)
   try {
     expect(screen.getByRole('button', { name: C.outcome.verifying })).toBeDisabled()
-    await waitFor(() => expect(screen.getByRole('button', { name: C.outcome.verify })).toBeEnabled(), { timeout: 5000 })
+    await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    expect(screen.getByRole('button', { name: C.outcome.verify })).toBeEnabled()
     expect(routeRefresh).toHaveBeenCalledTimes(1)
-  } finally { rendered.unmount() }
+  } finally {
+    rendered.unmount()
+    vi.useRealTimers()
+  }
 })
 
 it('continues visitors through authentication instead of submitting a refused verification', async () => {

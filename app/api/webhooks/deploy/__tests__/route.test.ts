@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { validateApiKey, findFirst, requestSiteRun } = vi.hoisted(() => ({ validateApiKey: vi.fn(), findFirst: vi.fn(), requestSiteRun: vi.fn() }))
+const { validateApiKey, findFirst, requestSiteRun, loadOwnedRunRequestByKey } = vi.hoisted(() => ({
+  validateApiKey: vi.fn(), findFirst: vi.fn(), requestSiteRun: vi.fn(), loadOwnedRunRequestByKey: vi.fn(),
+}))
 vi.mock('@/lib/mcp/tools', () => ({ validateApiKey }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst } } }))
 vi.mock('@/lib/sites/application/run-requests', () => ({ requestSiteRun }))
+vi.mock('@/lib/sites/application/run-request-keys', () => ({ loadOwnedRunRequestByKey }))
 import { POST } from '../route'
 
 const key = (scopes: string[], audience: string | null = null) => ({ user: { id: 'owner' }, apiKey: { id: 'k', client: 'cli', scopes, audience } })
@@ -19,6 +22,7 @@ describe('POST /api/webhooks/deploy', () => {
     vi.clearAllMocks()
     validateApiKey.mockResolvedValue(key(['sites:read', 'runs:write']))
     findFirst.mockResolvedValue({ id: 'project-1', siteOutcomes: [] })
+    loadOwnedRunRequestByKey.mockResolvedValue(null)
     requestSiteRun.mockResolvedValue({ runId: 'run-1', auditId: 'audit-1', outcomeIds: [], reused: false })
   })
 
@@ -42,7 +46,8 @@ describe('POST /api/webhooks/deploy', () => {
     expect(requestSiteRun).not.toHaveBeenCalled()
   })
 
-  it('rechecks the whole Site when it has no confirmed Outcomes, once per deployment', async () => {
+  it('rechecks the whole Site even when it has enabled Outcomes', async () => {
+    findFirst.mockResolvedValue({ id: 'project-1', siteOutcomes: [{ id: 'o1' }] })
     const res = await call()
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ ok: true, siteId: 'project-1', runId: 'run-1', mode: 'site' })
@@ -50,11 +55,24 @@ describe('POST /api/webhooks/deploy', () => {
     expect(requestSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', scope: 'SITE', outcomeIds: [], source: 'DEPLOYMENT', idempotencyKey: 'deploy:gh-123:site' }))
   })
 
-  it('verifies confirmed Outcomes and accepts the URL from the header', async () => {
-    findFirst.mockResolvedValue({ id: 'project-1', siteOutcomes: [{ id: 'o1' }, { id: 'o2' }] })
+  it('accepts the URL from the header for callers without a deployment ID', async () => {
     const res = await call({ body: '', headers: { 'x-fixflags-check-url': 'https://shop.example.com/' } })
     expect(res.status).toBe(200)
-    expect(requestSiteRun).toHaveBeenCalledWith(expect.objectContaining({ outcomeIds: ['o1', 'o2'], source: 'DEPLOYMENT', idempotencyKey: undefined }))
+    expect(requestSiteRun).toHaveBeenCalledWith(expect.objectContaining({ scope: 'SITE', outcomeIds: [], source: 'DEPLOYMENT', idempotencyKey: undefined }))
+    expect(loadOwnedRunRequestByKey).not.toHaveBeenCalled()
+  })
+
+  it.each(['site', 'outcomes'] as const)('replays a %s receipt even after the enabled Outcomes change', async mode => {
+    loadOwnedRunRequestByKey.mockImplementation(async ({ idempotencyKey }) => idempotencyKey === `deploy:gh-123:${mode}`
+      ? { id: 'recorded-run', auditId: 'recorded-audit' } : null)
+    for (const siteOutcomes of [[{ id: 'o1' }], []]) {
+      findFirst.mockResolvedValue({ id: 'project-1', siteOutcomes })
+      const res = await call()
+      expect(res.status).toBe(200)
+      expect(await res.json()).toMatchObject({ runId: 'recorded-run', auditId: 'recorded-audit', reused: true, mode })
+    }
+    expect(loadOwnedRunRequestByKey).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', userId: 'owner', source: 'DEPLOYMENT' }))
+    expect(requestSiteRun).not.toHaveBeenCalled()
   })
 
   it('reports an unknown host as not found', async () => {

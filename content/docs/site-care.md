@@ -51,7 +51,7 @@ Choose which Flag emails you want in Settings. You can also choose emails when a
 
 ## Check after every deploy
 
-FixFlags can check your Site each time you ship. After a production deploy, send one request to FixFlags from your deploy pipeline. If the Site has confirmed Outcomes, FixFlags verifies them. Otherwise it checks the whole Site again, which also rechecks its open Flags.
+FixFlags can check your Site each time you ship. After a production deploy, send one request to FixFlags from your deploy pipeline. It checks the whole Site, including eligible Outcomes and open Flags.
 
 1. Open [API keys](/settings/api-keys) and create a key with **Run checks** permission. Store it as a secret in your CI or host, for example `FIXFLAGS_API_KEY`.
 2. Add a step that runs after your production deploy succeeds:
@@ -60,10 +60,10 @@ FixFlags can check your Site each time you ship. After a production deploy, send
 curl -X POST https://fixflags.com/api/webhooks/deploy \
   -H "Authorization: Bearer $FIXFLAGS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://yourwebsite.com","deployment":"'"$GITHUB_SHA"'"}'
+  -d '{"url":"https://yourwebsite.com","deployment":"'"$DEPLOYMENT_ID"'"}'
 ```
 
-The `url` must belong to a Site you own. `deployment` is optional. Send the same value again and FixFlags reuses the run instead of starting a second one. The key is sent only in the `Authorization` header, never in the URL.
+The `url` must belong to a Site you own. Set `DEPLOYMENT_ID` to the ID assigned by your host or deploy pipeline. Use a new ID for each production deploy and the same ID for every retry of that deploy. FixFlags uses it to return the original run on retries. Send the key in the `Authorization` header.
 
 Results appear on your Site like any other check.
 

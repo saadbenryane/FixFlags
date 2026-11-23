@@ -19,10 +19,11 @@ test('collectMcpTools extracts registered names without prose references', () =>
 })
 
 test('saved evidence guard rejects retired workspaces and malformed JSX', () => {
-  const source = 'export function View() { return <AuditShell><main><h2>Saved observations</h2><a>Analyze a website</a></main></AuditShell> }'
+  const source = 'export function View() { return <AuditShell><main><h2>Saved observations</h2><Link href="/new">Check your website</Link></main></AuditShell> }'
   assert.equal(savedEvidenceCompositionIsCanonical(source), true)
   assert.equal(savedEvidenceCompositionIsCanonical(source.replace('<main>', '<main><WorkspaceChatPanel />')), false)
   assert.equal(savedEvidenceCompositionIsCanonical(source.replace('Saved observations', 'Score')), false)
+  assert.equal(savedEvidenceCompositionIsCanonical(source.replace('href="/new"', 'href="/how-it-works"')), false)
   assert.equal(savedEvidenceCompositionIsCanonical(source.slice(0, -20)), false)
 })
 

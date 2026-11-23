@@ -366,7 +366,9 @@ async function commitTaskObservation(context: TaskContext, handler: TaskHandler,
     stage: 'checking', event: 'task_observation_committed', status: partial ? 'partial' : 'completed',
     detail: { version: 1, taskId: context.task.id, generation: context.task.workGeneration, kind: handler.kind,
       collectedAt: result.collectedAt, evidenceReference: context.task.id,
-      ...(handler.kind === 'check' || handler.kind === 'search' || handler.kind === 'google' ? { observations: result.data } : {}) },
+      // The completed task is the durable owner of this generation's result.
+      // Partial checkpoints can be superseded, so retain their original observations.
+      ...(partial && (handler.kind === 'check' || handler.kind === 'search' || handler.kind === 'google') ? { observations: result.data } : {}) },
   } })
   return result
 }

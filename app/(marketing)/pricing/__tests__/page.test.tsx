@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import PricingRoute from '@/app/(marketing)/pricing/page'
 import { PricingPage } from '@/components/pricing/PricingPage'
@@ -46,6 +46,9 @@ describe('/pricing', () => {
 
   it('shows Free, Pro and Team as cards and Agency on its own row', () => {
     renderPricing()
+    const plannedPricing = screen.getByText(PRICING.plannedPricingTitle, { selector: 'summary' })
+    expect(plannedPricing.closest('details')).not.toHaveAttribute('open')
+    fireEvent.click(plannedPricing)
     expect(screen.getByRole('heading', { level: 1, name: PRICING.headline })).toBeInTheDocument()
     expect(screen.getByText(PRICING.headlineAccent)).toBeVisible()
     const articles = screen.getAllByRole('article')
@@ -81,6 +84,7 @@ describe('/pricing', () => {
 
   it('lists the add-ons and a plan table with honest statuses', () => {
     renderPricing()
+    fireEvent.click(screen.getByText(PRICING.plannedPricingTitle, { selector: 'summary' }))
     const addOns = within(screen.getByRole('region', { name: PRICING_ADD_ONS.title }))
     expect(addOns.getByText('$19')).toBeVisible()
     expect(addOns.getByText('a month each')).toBeVisible()

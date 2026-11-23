@@ -29,7 +29,7 @@ import { ensureReleasePasswordAccount } from '@/lib/release/fixture-authenticati
 import { repairBriefSchema } from '@/lib/sites/repair-brief-contract'
 import { MCP_PROTOCOL_VERSION, MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { NOTIFICATIONS_COPY } from '@/lib/marketing/copy/notifications'
-import { SITE_SETTINGS_COPY } from '@/lib/marketing/copy/site-settings'
+import { APP_NAV_COPY } from '@/lib/marketing/copy/navigation'
 import { processDueProjectWatches } from '@/lib/audit/project-watch'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
@@ -802,7 +802,7 @@ run('compiled production ' + (webProof ? 'web API and worker' : 'worker') + ' ag
       await page.getByRole('link', { name: C.manageSites, exact: true }).click()
       await page.waitForURL(location => location.pathname === '/dashboard')
       await page.getByRole('button', { name: 'Account menu', exact: true }).first().click()
-      await page.getByRole('menuitem', { name: SITE_SETTINGS_COPY.accountSettings, exact: true }).click()
+      await page.getByRole('menuitem', { name: APP_NAV_COPY.account, exact: true }).click()
       await page.waitForURL(location => location.pathname === '/settings')
       const documentId = await page.evaluate(() => {
         const id = crypto.randomUUID()

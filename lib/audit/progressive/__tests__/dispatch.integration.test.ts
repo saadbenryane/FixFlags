@@ -629,6 +629,32 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     }, { timeout: 10_000, interval: 25 })
   }
 
+  it('stores a completed observation once and preserves an earlier partial observation', async () => {
+    const { audit, tasks: [task] } = await admission(['check'])
+    const partial = serializeArtifact('check', { observed: 'partial' })
+    const result = serializeArtifact('check', { observed: 'complete' })
+    const handler: TaskHandler = { kind: 'check', replay: 'read_only', timeoutMs: 1000, validateResult: () => {},
+      async evaluate(context) {
+        if (context.task.workAttempts === 1) throw new TaskFailure('MEASUREMENT_INCOMPLETE', true, 25_000, false, partial)
+        return result
+      } }
+    const registry = new Map([['check', handler]])
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, registry)
+    await prisma.auditExecutionTask.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })
+    await reconcileTasks(audit.id)
+    await executeTask({ auditId: audit.id, taskId: task.id, generation: 2 }, registry)
+
+    expect(await prisma.auditExecutionTask.findUniqueOrThrow({ where: { id: task.id } }))
+      .toMatchObject({ workState: 'COMPLETED', workGeneration: 2, workResult: result })
+    const events = await prisma.auditPipelineEvent.findMany({ where: { auditId: audit.id, event: 'task_observation_committed' },
+      orderBy: { sequence: 'asc' } })
+    expect(events).toMatchObject([
+      { status: 'partial', detail: { generation: 1, observations: partial.data } },
+      { status: 'completed', detail: { generation: 2, evidenceReference: task.id } },
+    ])
+    expect(events[1].detail).not.toHaveProperty('observations')
+  })
+
   it('settles ready AI and HTTP work while independent PageSpeed and Google requests are still active', async () => {
     let release!: () => void
     const held = new Promise<void>(resolve => { release = resolve })

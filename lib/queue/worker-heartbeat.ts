@@ -22,6 +22,7 @@ let redis: Redis | null = null
 let stopping = false
 let draining = false
 let runtimeReady = false
+let publishedHeartbeat: WorkerHeartbeatRecord | null = null
 let diagnostics: WorkerDiagnostics = {
   browserOk: false,
   activeBrowserContexts: 0,
@@ -66,7 +67,11 @@ export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
 /** Private readiness acknowledgement to the process that owns this worker. */
 export function publishWorkerState(state: 'starting' | 'ready' | 'stopping') {
   runtimeReady = state === 'ready'
-  if (process.connected && process.send) process.send({ type: 'fixflags:worker-state', state }, () => {})
+  const now = Date.now()
+  const ready = publishedHeartbeat && heartbeatIsFresh(publishedHeartbeat, now) && uptimeSweepIsFresh(publishedHeartbeat, now) &&
+    (publishedHeartbeat.queueState === 'idle' || publishedHeartbeat.queueState === 'active')
+  if (process.connected && process.send)
+    process.send({ type: 'fixflags:worker-state', state: state === 'ready' && !ready ? 'starting' : state }, () => {})
 }
 
 /** Called by the worker process on start, idle tick, and each job lifecycle event. */
@@ -93,6 +98,7 @@ export async function touchWorkerHeartbeat(
     'EX',
     HEARTBEAT_TTL_SECONDS
   )
+  publishedHeartbeat = record
   if (runtimeReady && record.queueState !== 'starting') publishWorkerState(record.queueState === 'stopping' ? 'stopping' : 'ready')
 }
 
@@ -206,9 +212,7 @@ export function aggregateWorkerHeartbeats(
   records: WorkerHeartbeatRecord[],
   now = Date.now()
 ): WorkerHeartbeatStatus {
-  const aliveRecords = records.filter(
-    (record) => Number.isFinite(record.lastSeenMs) && now >= record.lastSeenMs && now - record.lastSeenMs <= HEARTBEAT_TTL_SECONDS * 1000
-  )
+  const aliveRecords = records.filter(record => heartbeatIsFresh(record, now))
   if (aliveRecords.length === 0) {
     return {
       uptimeReady: false, accountChecksReady: false, accountConfigurationMatches: false,
@@ -224,8 +228,7 @@ export function aggregateWorkerHeartbeats(
   }
   const lastSeenMs = Math.max(...aliveRecords.map((record) => record.lastSeenMs))
   return {
-    uptimeReady: aliveRecords.every(record => record.uptimeReady === true && record.lastUptimeSweepAt != null &&
-      Number.isFinite(Date.parse(record.lastUptimeSweepAt)) && now >= Date.parse(record.lastUptimeSweepAt) && now - Date.parse(record.lastUptimeSweepAt) <= 90_000),
+    uptimeReady: aliveRecords.every(record => uptimeSweepIsFresh(record, now)),
     accountChecksReady: aliveRecords.every(record => record.accountChecksReady === true),
     accountConfigurationMatches: accountConfigurationFingerprint() != null && aliveRecords.every(record =>
       record.accountConfigurationFingerprint === accountConfigurationFingerprint()),
@@ -263,6 +266,16 @@ export function aggregateWorkerHeartbeats(
       queueState: record.queueState ?? 'idle',
     })),
   }
+}
+
+function heartbeatIsFresh(record: WorkerHeartbeatRecord, now: number) {
+  const age = now - record.lastSeenMs
+  return age >= 0 && age <= HEARTBEAT_TTL_SECONDS * 1000
+}
+
+function uptimeSweepIsFresh(record: WorkerHeartbeatRecord, now: number) {
+  const age = now - Date.parse(record.lastUptimeSweepAt ?? '')
+  return record.uptimeReady === true && age >= 0 && age <= 90_000
 }
 
 function validContextOwnership(record: WorkerHeartbeatRecord): boolean {
