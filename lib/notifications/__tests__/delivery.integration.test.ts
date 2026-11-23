@@ -6,6 +6,7 @@ import { deliverWebsiteSummaries, saveNotificationPreferences } from '../service
 import { DEFAULT_NOTIFICATION_PREFERENCES, nextSummaryAt } from '../preferences'
 import * as summaries from '@/lib/sites/application/list-sites'
 import { scheduleSummaries } from '../schedule'
+import { NOTIFICATIONS_COPY } from '@/lib/marketing/copy/notifications'
 
 const provider = vi.hoisted(() => ({ send: vi.fn(), reserved: false }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: provider.send } } }))
@@ -168,7 +169,8 @@ run('summary delivery using real database claims', () => {
     await deliverWebsiteSummaries(now)
     expect(provider.send.mock.calls[0][0].text).toContain('1 urgent problem to review')
     expect(provider.send.mock.calls[0][0].text).toContain('- Controlled problem')
-    expect(provider.send.mock.calls[0][0].html).toContain('View fix prompts</a>')
+    expect(provider.send.mock.calls[0][0].html).toContain(`${NOTIFICATIONS_COPY.summary.fixAction}</a>`)
+    expect(provider.send.mock.calls[0][0].html).toContain(`/sites/${site.id}/flags?source=summary-email`)
     expect(provider.send.mock.calls[0][0].text).not.toContain('Some checks could not finish.')
   })
   it('keeps existing website problems after a newer targeted check completes', async () => {

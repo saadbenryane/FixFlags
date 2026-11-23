@@ -173,6 +173,32 @@ run('current finding history with bounded PostgreSQL reads', () => {
     expect(current.unbound.get(projectId)?.map(row => row.id)).toEqual([unboundId])
   })
 
+  it('bounds incident joins per Site and excludes an occurrence from another Site', async () => {
+    const otherProject = await prisma.project.create({ data: {
+      userId: owner, url: 'https://other.example.com/', canonicalHost: 'other.example.com', name: 'Other Site',
+    } })
+    const otherAudit = await prisma.audit.create({ data: {
+      userId: owner, projectId: otherProject.id, url: otherProject.url, status: 'COMPLETED',
+    } })
+    const incident = { projectId, fingerprint: 'fixture', title: 'Fixture incident', judgment: 'Fixture',
+      expectedBenefit: 'Fixture', recommendedChange: 'Fixture', successCondition: 'Fixture', status: 'PROPOSED' as const }
+    const extra = await prisma.improvement.createManyAndReturn({ data: Array.from({ length: 34 }, (_, index) => ({
+      ...incident, fingerprint: `fixture-${index}`,
+    })) })
+    await prisma.improvementOccurrence.update({ where: { flagId: currentIds[0] }, data: { auditId: otherAudit.id } })
+
+    const findFlags = vi.spyOn(prisma.flag, 'findMany')
+    const current = await loadCurrentFindingSources([projectId, otherProject.id], [{ ...incident, id: incidentId }, ...extra])
+    expect(current.byImprovement.get(incidentId)?.map(row => row.flag.id)).toEqual([currentIds[2], currentIds[1]])
+    expect(current.unbound.get(projectId)?.map(row => row.id)).toEqual([unboundId])
+    expect(current.unbound.get(otherProject.id)).toEqual([])
+    const scopedReads = findFlags.mock.calls.flatMap(([args]) => args?.where?.OR?.filter(branch =>
+      branch.improvementOccurrence && 'improvementId' in branch.improvementOccurrence) ?? [])
+    expect(scopedReads.every(branch => branch.audit && 'projectId' in branch.audit && branch.audit.projectId === projectId)).toBe(true)
+    expect(scopedReads.length).toBeGreaterThan(1)
+    expect(new Set(scopedReads.map(branch => JSON.stringify(branch)))).toHaveLength(2)
+  })
+
   it('uses recorded observation order consistently when an older source is linked later', async () => {
     await prisma.flag.update({ where: { id: currentIds[0] }, data: { severity: 'CRITICAL' } })
     await prisma.improvementOccurrence.update({ where: { flagId: currentIds[0] }, data: { createdAt: at(1000) } })

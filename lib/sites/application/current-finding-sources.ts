@@ -83,20 +83,21 @@ export async function loadCurrentFindingSources(projectIds: string[], incidents:
     })))
   }
   const seen = new Map(projectIds.map(projectId => [projectId, new Set<string>()]))
-  for (let projectOffset = 0; projectOffset < projectIds.length; projectOffset += INCIDENT_BATCH) {
-    const projects = projectIds.slice(projectOffset, projectOffset + INCIDENT_BATCH)
-    const owned = incidents.filter(incident => projects.includes(incident.projectId))
+  const incidentsByProject = Map.groupBy(incidents, incident => incident.projectId)
+  for (const projectId of projectIds) {
+    const owned = incidentsByProject.get(projectId) ?? []
     if (!owned.length && !includeUnbound) continue
     for (let offset = 0; offset < Math.max(owned.length, 1); offset += INCIDENT_BATCH) {
       const selected = owned.slice(offset, offset + INCIDENT_BATCH)
+      // One relation predicate per Site keeps the three ownership checks
+      // intact without making Prisma repeat the same joins for every incident.
+      const bound: Prisma.FlagWhereInput[] = selected.length ? [{ audit: { projectId }, improvementOccurrence: {
+        improvementId: { in: selected.map(incident => incident.id) }, audit: { projectId }, improvement: { projectId },
+      } }] : []
+      const conditions = offset === 0 && includeUnbound ? [...bound, unboundSiteFindingWhere(projectId)] : bound
       let cursor: string | undefined
       for (;;) {
-        const rows = await prisma.flag.findMany({ where: { OR: [
-          ...selected.map(incident => ({ audit: { projectId: incident.projectId }, improvementOccurrence: {
-            improvementId: incident.id, audit: { projectId: incident.projectId }, improvement: { projectId: incident.projectId },
-          } })),
-          ...(offset === 0 && includeUnbound ? [unboundSiteFindingWhere(projects)] : []),
-        ] }, select: { ...sourceSelect, audit: { select: { projectId: true } },
+        const rows = await prisma.flag.findMany({ where: { OR: conditions }, select: { ...sourceSelect, audit: { select: { projectId: true } },
           improvementOccurrence: { select: { improvementId: true, createdAt: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: SOURCE_BATCH,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

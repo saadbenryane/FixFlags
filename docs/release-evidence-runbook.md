@@ -50,6 +50,8 @@ Start with data that has explicit retention, including expired uptime probes, Pr
 
 On 2026-11-23, the production database could not start with roughly 8 MB free. The older October cutover archive and its listing were removed after verifying the newer archive's catalog and checksum. That freed roughly 501 MB without modifying database-managed files. PostgreSQL started normally, web readiness returned HTTP 200, and the worker reported no overdue monitoring. At recovery, task, event, and verification tables occupied about 3.47 GB combined. The full duplicate comparison timed out on production. Keep that comparison and any table rewrite on an isolated copy before scheduling further compaction.
 
+During the rollout, PostgreSQL recovered from multiple killed backends. Its log named the current-Finding read on one killed backend. That read generated a separate set of ownership joins for each incident. The replacement batches IDs by Site, keeps the source, occurrence, and incident ownership predicates, and retains the existing page limit. The disposable PostgreSQL regression covers distinct Sites, an inconsistent occurrence, and a cohort spanning the incident batch boundary.
+
 ## Independent encrypted database backups
 
 The maintained job is `ops/database-backup/backup.py`, packaged separately by
